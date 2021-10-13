@@ -1,4 +1,4 @@
-import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, Vault, DataWriteOptions, View } from "obsidian";
+import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 
@@ -104,22 +104,47 @@ const escapeStringToHTML = (str: string) => {
         return escape[match];
     });
 };
+const isValidRemoteCouchDBURI = (uri: string): boolean => {
+    if (uri.startsWith("https://")) return true;
+    if (uri.startsWith("http://")) return true;
+    return false;
+};
+const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<false | { db: PouchDB.Database; info: any }> => {
+    if (!isValidRemoteCouchDBURI(uri)) false;
+    let db = new PouchDB(uri, {
+        auth,
+    });
+    try {
+        let info = await db.info();
+        return { db: db, info: info };
+    } catch (ex) {
+        return;
+    }
+};
 //<--Functions
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
     localDatabase: PouchDB.Database<Notes>;
     logMessage: string[] = [];
+    onLogChanged: () => void;
 
-    async addLog(message: any) {
+    async addLog(message: any, isNotify?: boolean) {
         let timestamp = new Date().toLocaleString();
-        let newmessage = timestamp + "->" + (typeof message == "string" ? message : JSON.stringify(message, null, 2));
+        let messagecontent = typeof message == "string" ? message : JSON.stringify(message, null, 2);
+        let newmessage = timestamp + "->" + messagecontent;
 
         this.logMessage = [].concat(this.logMessage).concat([newmessage]).slice(-100);
         // this.logMessage = [...this.logMessage, timestamp + ":" + newmessage].slice(-100);
         console.log(newmessage);
         if (this.statusBar2 != null) {
-            this.statusBar2.setText(newmessage);
+            this.statusBar2.setText(newmessage.substring(0, 60));
+        }
+        if (this.onLogChanged != null) {
+            this.onLogChanged();
+        }
+        if (isNotify) {
+            new Notice(messagecontent);
         }
     }
 
@@ -132,8 +157,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             try {
                 await this.app.vault.createFolder(c);
             } catch (ex) {
-                this.addLog("ensure excep");
-                this.addLog(ex);
+                // basically skip exceptions.
+                if (ex.message && ex.message == "Folder already exists.") {
+                    // especialy this message is.
+                } else {
+                    this.addLog("Folder Create Error");
+                    this.addLog(ex);
+                }
             }
             c += "/";
         }
@@ -148,17 +178,27 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.app.vault.trigger("create", newfile);
         }
     }
+    async deleteVaultItem(file: TFile | TFolder) {
+        let dir = file.parent;
+        await this.app.vault.delete(file);
+        this.addLog(`deleted:${file.path}`);
+        this.addLog(`other items:${dir.children.length}`);
+        if (dir.children.length == 0) {
+            this.addLog(`all files deleted by replication, so delete dir`);
+            await this.deleteVaultItem(dir);
+        }
+    }
     async doc2storate_modify(doc: Notes, file: TFile, force?: boolean) {
         if (doc._deleted) {
             //basically pass.
             //but if there're no docs left, delete file.
             try {
-                let lastDocs = this.localDatabase.get(doc._id);
-                this.addLog(`delete skipped:${doc._id}`);
+                let lastDocs = await this.localDatabase.get(doc._id);
+                this.addLog(`delete skipped:${lastDocs._id}`);
             } catch (ex) {
                 if (ex.status || ex.status == 404) {
                     //no op.
-                    await this.app.vault.delete(file);
+                    await this.deleteVaultItem(file);
                 }
             }
             return;
@@ -203,17 +243,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.syncHandler != null) {
             return false;
         }
-        let db = new PouchDB(this.settings.couchDB_URI, {
-            auth: {
-                username: this.settings.couchDB_USER,
-                password: this.settings.couchDB_PASSWORD,
-            },
+
+        let dbret = await connectRemoteCouchDB(this.settings.couchDB_URI, {
+            username: this.settings.couchDB_USER,
+            password: this.settings.couchDB_PASSWORD,
         });
-        try {
-            let info = await db.info();
-        } catch (ex) {
+        if (dbret === false) {
+            this.addLog(`could not connect to ${this.settings.couchDB_URI}`, true);
             return;
         }
+        let db = dbret.db;
+
         this.syncHandler = this.localDatabase.sync(db, { live: true, retry: true });
 
         this.syncHandler
@@ -222,20 +262,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 for (var change of docs) {
                     await this.pouchdbChanged(change as Notes);
                 }
+                this.addLog(`replicated ${docs.length} doc(s)`);
                 localStorage.setItem("last-sync-no", e.change.last_seq + "");
                 // new Notice(`changed:${JSON.stringify(e)}`);
             })
             .on("active", () => {
                 // new Notice(`Replication activated`);
+                this.addLog("Replication activated");
             })
             .on("complete", (e) => {
-                new Notice(`Replication completed`);
+                this.addLog("Replication completed", true);
             })
             .on("denied", (e) => {
-                new Notice(`Replication denied`);
+                this.addLog("Replication denied", true);
             })
             .on("error", (e) => {
-                new Notice(`Replication error`);
+                this.addLog("Replication error", true);
             })
             .on("paused", (e) => {
                 // new Notice(`Replication paused`);
@@ -274,7 +316,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.statusBar.setText("Sync:" + statusStr);
     }
     async initializeDatabase() {
-        // debugger;
         let vaultName = this.app.vault.getName();
 
         this.localDatabase = new PouchDB<Notes>(vaultName + "-livesync", {
@@ -289,14 +330,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     statusBar2: HTMLElement;
     //<-- Sync
     async replicate() {
-        let db = new PouchDB(this.settings.couchDB_URI, {
-            auth: {
-                username: this.settings.couchDB_USER,
-                password: this.settings.couchDB_PASSWORD,
-            },
+        let dbret = await connectRemoteCouchDB(this.settings.couchDB_URI, {
+            username: this.settings.couchDB_USER,
+            password: this.settings.couchDB_PASSWORD,
         });
+        if (dbret === false) {
+            this.addLog("could not connect to database");
+            return;
+        }
         try {
-            var info = await db.info();
+            let db = dbret.db;
+            var info = dbret.info;
             new Notice(`Connected to ${info.db_name}`);
             this.localDatabase
                 .sync(db, {
@@ -304,8 +348,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     // since: "0",
                 })
                 .on("change", async (e) => {
-                    // debugger;
-
                     let docs = e.change.docs;
                     for (var change of docs) {
                         this.addLog("replication change arrived");
@@ -313,8 +355,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         await this.pouchdbChanged(change as Notes);
                     }
                     localStorage.setItem("last-sync-no", e.change.last_seq + "");
-                    // this.addLog(e.change.last_seq);
-                    // new Notice(`changed:${JSON.stringify(e)}`);
                 })
                 .on("active", () => {
                     new Notice(`Replication activated`);
@@ -339,31 +379,47 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addLog("loading plugin");
 
         await this.loadSettings();
-
-        this.addRibbonIcon("dice", "Replicate", async () => {
+        addIcon(
+            "replicate",
+            `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
+            <path d="m85 22.2c-0.799-4.74-4.99-8.37-9.88-8.37-0.499 0-1.1 0.101-1.6 0.101-2.4-3.03-6.09-4.94-10.3-4.94-6.09 0-11.2 4.14-12.8 9.79-5.59 1.11-9.78 6.05-9.78 12 0 6.76 5.39 12.2 12 12.2h29.9c5.79 0 10.1-4.74 10.1-10.6 0-4.84-3.29-8.88-7.68-10.2zm-2.99 14.7h-29.5c-2.3-0.202-4.29-1.51-5.29-3.53-0.899-2.12-0.699-4.54 0.698-6.46 1.2-1.61 2.99-2.52 4.89-2.52 0.299 0 0.698 0 0.998 0.101l1.8 0.303v-2.02c0-3.63 2.4-6.76 5.89-7.57 0.599-0.101 1.2-0.202 1.8-0.202 2.89 0 5.49 1.62 6.79 4.24l0.598 1.21 1.3-0.504c0.599-0.202 1.3-0.303 2-0.303 1.3 0 2.5 0.404 3.59 1.11 1.6 1.21 2.6 3.13 2.6 5.15v1.61h2c2.6 0 4.69 2.12 4.69 4.74-0.099 2.52-2.2 4.64-4.79 4.64z"/>
+            <path d="m53.2 49.2h-41.6c-1.8 0-3.2 1.4-3.2 3.2v28.6c0 1.8 1.4 3.2 3.2 3.2h15.8v4h-7v6h24v-6h-7v-4h15.8c1.8 0 3.2-1.4 3.2-3.2v-28.6c0-1.8-1.4-3.2-3.2-3.2zm-2.8 29h-36v-23h36z"/>
+            <path d="m73 49.2c1.02 1.29 1.53 2.97 1.53 4.56 0 2.97-1.74 5.65-4.39 7.04v-4.06l-7.46 7.33 7.46 7.14v-4.06c7.66-1.98 12.2-9.61 10-17-0.102-0.297-0.205-0.595-0.307-0.892z"/>
+            <path d="m24.1 43c-0.817-0.991-1.53-2.97-1.53-4.56 0-2.97 1.74-5.65 4.39-7.04v4.06l7.46-7.33-7.46-7.14v4.06c-7.66 1.98-12.2 9.61-10 17 0.102 0.297 0.205 0.595 0.307 0.892z"/>
+           </g>`
+        );
+        addIcon(
+            "view-log",
+            `<g transform="matrix(1.28 0 0 1.28 -131 -411)" fill="currentColor" fill-rule="evenodd">
+        <path d="m103 330h76v12h-76z"/>
+        <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
+       </g>`
+        );
+        this.addRibbonIcon("replicate", "Replicate", async () => {
             await this.replicate();
         });
 
-        this.addRibbonIcon("dice", "pull file force", async () => {
-            this.localDatabase
-                .changes({
-                    since: 0,
-                    include_docs: true,
-                })
-                .on("change", async (change) => {
-                    await this.pouchdbChanged(change.doc);
-                    localStorage.setItem("last-sync-no", change.seq + "");
-                    // received a change
-                })
-                .on("error", function (err) {
-                    // handle errors
-                });
-        });
-        this.addRibbonIcon("dice", "Toggle Sync", () => {
-            this.toggleSync();
-            // Vault.recurseChildren();
+        // this.addRibbonIcon("dice", "pull file force", async () => {
+        //     this.localDatabase
+        //         .changes({
+        //             since: 0,
+        //             include_docs: true,
+        //         })
+        //         .on("change", async (change) => {
+        //             await this.pouchdbChanged(change.doc);
+        //             localStorage.setItem("last-sync-no", change.seq + "");
+        //             // received a change
+        //         })
+        //         .on("error", function (err) {
+        //             // handle errors
+        //         });
+        // });
+
+        this.addRibbonIcon("view-log", "Show log", () => {
+            new LogDisplayModal(this.app, this).open();
         });
         this.statusBar = this.addStatusBarItem();
+
         this.statusBar2 = this.addStatusBarItem();
 
         this.watchVaultChange = debounce(this.watchVaultChange.bind(this), 200, false);
@@ -423,17 +479,57 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
     }
     watchWorkspaceOpen(file: TFile) {
+        if (file == null) return;
         this.showIfConflicted(file);
     }
     watchVaultChange(file: TFile, ...args: any[]) {
         this.updateDB(file);
     }
-    watchVaultDelete(file: TFile) {
-        this.deleteDB(file);
+    watchVaultDelete(file: TFile & TFolder) {
+        // debugger;
+        if (file.children) {
+            //folder
+            this.deleteFolderOnDB(file);
+            // this.app.vault.delete(file);
+        } else {
+            this.deleteDB(file);
+        }
     }
-    watchVaultRename(file: any, oldFile: any) {
-        this.updateDB(file);
-        this.deleteDBbyPath(oldFile);
+    async deleteFolderOnDB(folder: TFolder) {
+        this.addLog(`delete folder:${folder.path}`);
+        for (var v of folder.children) {
+            let entry = v as TFile & TFolder;
+            this.addLog(`->entry:${entry.path}`);
+            if (entry.children) {
+                this.addLog(`->is dir`);
+                await this.deleteFolderOnDB(entry);
+                await this.app.vault.delete(entry);
+            } else {
+                this.addLog(`->is file`);
+                await this.deleteDB(entry);
+            }
+        }
+        await this.app.vault.delete(folder);
+    }
+    watchVaultRename(file: TFile & TFolder, oldFile: any) {
+        if (file.children) {
+            // this.renameFolder(file,oldFile);
+            this.addLog(`folder name changed:(this operation is not supported) ${file.path}`);
+        } else {
+            this.updateDB(file);
+            this.deleteDBbyPath(oldFile);
+        }
+    }
+    async renameFolder(folder: TFolder, oldFile: any) {
+        for (var v of folder.children) {
+            let entry = v as TFile & TFolder;
+            if (entry.children) {
+                await this.deleteFolderOnDB(entry);
+                this.app.vault.delete(entry);
+            } else {
+                await this.deleteDB(entry);
+            }
+        }
     }
 
     // --> conflict resolving
@@ -454,7 +550,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return false;
     }
     async getConflictedStatus(path: string): Promise<diff_check_result> {
-        let test = await this.localDatabase.get(path, { conflicts: true });
+        let test: Notes & PouchDB.Core.GetMeta = null;
+        try {
+            test = await this.localDatabase.get(path, { conflicts: true });
+        } catch (ex) {
+            if (ex.status && ex.status == 404) {
+                this.addLog(`Getting conflicted status, but there was not ${path}`);
+                // NO OP.
+            } else {
+                throw ex;
+            }
+        }
+        if (test == null) return false;
         if (!test._conflicts) return false;
         if (test._conflicts.length == 0) return false;
         // should be two or more conflicts;
@@ -527,6 +634,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             let doc = await this.localDatabase.get(filename);
             await this.doc2storate_modify(doc, file, force);
         } else {
+            this.addLog(`target files:${filename} is two or more files in your vault`);
             //something went wrong..
         }
         //when to opened file;
@@ -559,8 +667,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         };
         try {
             let old = await this.localDatabase.get(fullpath);
-            let oldData = { data: old.data };
-            let newData = { data: d.data };
+            let oldData = { data: old.data, deleted: old._deleted };
+            let newData = { data: d.data, deleted: d._deleted };
             if (JSON.stringify(oldData) == JSON.stringify(newData)) {
                 this.addLog("no changed" + fullpath);
                 return;
@@ -575,7 +683,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         let ret = await this.localDatabase.put(d);
 
-        this.addLog("put database " + fullpath);
+        this.addLog("put database:" + fullpath);
         this.addLog(ret);
         if (this.settings.syncOnSave) {
             await this.replicate();
@@ -623,8 +731,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 }
 class LogDisplayModal extends Modal {
-    constructor(app: App) {
+    plugin: ObsidianLiveSyncPlugin;
+    logEl: HTMLDivElement;
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
         super(app);
+        this.plugin = plugin;
+    }
+    updateLog() {
+        let logs = [...this.plugin.logMessage];
+        let msg = "";
+        for (var v of logs) {
+            msg += escapeStringToHTML(v) + "<br>";
+        }
+        this.logEl.innerHTML = msg;
+    }
+    onOpen() {
+        let { contentEl } = this;
+
+        contentEl.empty();
+        contentEl.createEl("h2", { text: "Sync Status" });
+        let div = contentEl.createDiv("");
+        div.addClass("op-scrollable");
+        div.addClass("op-pre");
+        this.logEl = div;
+        this.plugin.onLogChanged = this.updateLog;
+        this.updateLog();
+    }
+    onClose() {
+        let { contentEl } = this;
+        contentEl.empty();
+        this.plugin.onLogChanged = null;
     }
 }
 class ConflictResolveModal extends Modal {
@@ -700,18 +836,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async test(): Promise<void> {
-        let db = new PouchDB(this.plugin.settings.couchDB_URI, {
-            auth: {
-                username: this.plugin.settings.couchDB_USER,
-                password: this.plugin.settings.couchDB_PASSWORD,
-            },
+        let db = await connectRemoteCouchDB(this.plugin.settings.couchDB_URI, {
+            username: this.plugin.settings.couchDB_USER,
+            password: this.plugin.settings.couchDB_PASSWORD,
         });
-        try {
-            var info = await db.info();
-            new Notice(`Connected to ${info.db_name}`);
-        } catch (ex) {
-            new Notice("Could not connect to db:" + ex);
+        if (db === false) {
+            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI}`);
+            new Notice(`could not connect to ${this.plugin.settings.couchDB_URI}`);
+            return;
         }
+        new Notice(`Connected to ${db.info.db_name}`);
+        this.plugin.addLog(`Connected to ${db.info.db_name}`);
     }
     display(): void {
         let { containerEl } = this;
@@ -720,18 +855,15 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h2", { text: "Settings for obsidian-livesync." });
 
-        new Setting(containerEl)
-            .setName("CouchDB Remote URI")
-            .setDesc("It's a secret")
-            .addText((text) =>
-                text
-                    .setPlaceholder("https://........")
-                    .setValue(this.plugin.settings.couchDB_URI)
-                    .onChange(async (value) => {
-                        this.plugin.settings.couchDB_URI = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
+        new Setting(containerEl).setName("CouchDB Remote URI").addText((text) =>
+            text
+                .setPlaceholder("https://........")
+                .setValue(this.plugin.settings.couchDB_URI)
+                .onChange(async (value) => {
+                    this.plugin.settings.couchDB_URI = value;
+                    await this.plugin.saveSettings();
+                })
+        );
         new Setting(containerEl)
             .setName("CouchDB Username")
             .setDesc("username")
@@ -794,7 +926,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
         new Setting(containerEl)
-            .setName("Database Operations")
+            .setName("Local Database Operations")
             .addButton((button) =>
                 button
                     .setButtonText("Reset local database")

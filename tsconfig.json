@@ -12,5 +12,6 @@
         "lib": ["dom", "es5", "scripthost", "es2015"]
     },
     "include": ["**/*.ts"],
-    "exclude": ["pouchdb-browser.js"]
+    "files": ["./main.ts"],
+    "exclude": ["pouchdb-browser-webpack"]
 }
