@@ -1,10 +1,16 @@
 # obsidian-livesync
 
-This is the obsidian plugin that enables livesync between multi terminals.
+This is the obsidian plugin that enables livesync between multi terminals.  
+Runs in Mac, Android, Windows, and iOS.
 
- <!-- screenshot/movie will coming. -->
+<!-- <div><video controls src="https://user-images.githubusercontent.com/45774780/137352386-a274736d-a38b-4069-ac41-759c73e36a23.mp4"  muted="false"></video></div> -->
 
-**It's on the bleeding edge. Do not use for your "precious" Vault.**
+![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
+
+
+**It's beta. Please make sure back your vault up!**
+
+Limitations: File deletion handling is not completed.
 
 ## This plugin enables..
 
@@ -98,3 +104,6 @@ example values.
 | CouchDB Remote URI: | (\*1)/(\*2) | https://xxxxxxxxxxxxxxxxx-bluemix.cloudantnosqldb.appdomain.cloud/sync-test |
 | CouchDB Username    | (\*3)       | apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5                      |
 | CouchDB Password    | (\*4)       | c2c11651d75497fa3d3c486e4c8bdf27                                            |
+
+# License
+The source code is licensed MIT.
