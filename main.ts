@@ -278,6 +278,7 @@ class LocalPouchDB {
             } else {
                 obj = await this.localDatabase.get(id);
             }
+
             if (obj.type && obj.type == "leaf") {
                 //do nothing for leaf;
                 return false;
@@ -286,7 +287,8 @@ class LocalPouchDB {
             if (!obj.type || (obj.type && obj.type == "notes")) {
                 // let note = obj as Notes;
                 // note._deleted=true;
-                await this.localDatabase.remove(id, opt);
+                obj._deleted=true;
+                let r = await this.localDatabase.put(obj);
                 return true;
                 // simple note
             }
@@ -445,7 +447,7 @@ class LocalPouchDB {
         this.syncHandler.cancel();
         this.syncHandler.removeAllListeners();
         this.syncHandler = null;
-        this.addLog("Replication closed", true);
+        this.addLog("Replication closed");
     }
 
     async resetDatabase() {
@@ -954,7 +956,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             let oldData = { data: old.data, deleted: old._deleted };
             let newData = { data: d.data, deleted: d._deleted };
             if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                this.addLog("no changed" + fullpath);
+                this.addLog("no changed" + fullpath + d._deleted);
                 return;
             }
             // d._rev = old._rev;
