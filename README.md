@@ -17,7 +17,7 @@ Limitations: File deletion handling is not completed.
 -   Live sync
 -   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
 
-## how to use the experimental build
+## How to use the beta build
 
 1.  download this repo and expand `[your-vault]/.obsidian/plugins/` (PC, Mac and Android will work)
 1.  enable obsidian livesync in the settings dialog.
