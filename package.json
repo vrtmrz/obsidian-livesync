@@ -1,14 +1,14 @@
 {
-    "name": "obsidian-pouch",
-    "version": "0.12.0",
-    "description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+    "name": "obsidian-livesync",
+    "version": "0.0.6",
+    "description": "obsidian Live synchronization plugin.",
     "main": "main.js",
     "scripts": {
         "dev": "rollup --config rollup.config.js -w",
         "build": "rollup --config rollup.config.js --environment BUILD:production"
     },
     "keywords": [],
-    "author": "",
+    "author": "vorotamoroz",
     "license": "MIT",
     "devDependencies": {
         "@rollup/plugin-commonjs": "^18.0.0",
