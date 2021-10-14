@@ -17,7 +17,6 @@
     "pouchdb-browser": "^7.2.2"
   },
   "devDependencies": {
-    "@webpack-cli/generators": "^2.4.0",
     "webpack": "^5.58.1",
     "webpack-cli": "^4.9.0"
   }

@@ -9,10 +9,7 @@ const config = {
     output: {
         filename: "pouchdb-browser.js",
         path: path.resolve(__dirname, "dist"),
-        // library: "PouchDB",
-        // libraryTarget: "umd",
         library: {
-            // name: "pouchdb_browser",
             type: "module",
         },
     },
