@@ -20,7 +20,6 @@ export default {
         exports: "default",
         banner,
     },
-    // treeshake: "safest",
     external: ["obsidian"],
     plugins: [
         typescript({ exclude: ["pouchdb-browser.js", "pouchdb-browser-webpack"] }),
@@ -28,9 +27,5 @@ export default {
             browser: true,
         }),
         commonjs(),
-        // nodePolyfills(
-        //   //   // {crypto:true}
-        //   { include: "pouchdb-browser" }
-        // ),
     ],
 };

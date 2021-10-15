@@ -14,6 +14,8 @@ interface ObsidianLiveSyncSettings {
     liveSync: boolean;
     syncOnSave: boolean;
     syncOnStart: boolean;
+    savingDelay: number;
+    lessInformationInLog: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -23,6 +25,8 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     liveSync: false,
     syncOnSave: false,
     syncOnStart: false,
+    savingDelay: 200,
+    lessInformationInLog: false,
 };
 
 interface Entry {
@@ -287,7 +291,7 @@ class LocalPouchDB {
             if (!obj.type || (obj.type && obj.type == "notes")) {
                 // let note = obj as Notes;
                 // note._deleted=true;
-                obj._deleted=true;
+                obj._deleted = true;
                 let r = await this.localDatabase.put(obj);
                 return true;
                 // simple note
@@ -382,7 +386,7 @@ class LocalPouchDB {
 
     syncHandler: PouchDB.Replication.Sync<{}> = null;
 
-    async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, callback: (e: PouchDB.Replication.SyncResult<{}>) => Promise<void>) {
+    async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<{}>[]) => Promise<void>) {
         let uri = setting.couchDB_URI;
         let auth: Credential = {
             username: setting.couchDB_USER,
@@ -401,14 +405,26 @@ class LocalPouchDB {
         let db = dbret.db;
 
         //replicate once
-        this.localDatabase.replicate
-            .from(db)
+        let replicate = this.localDatabase.replicate.from(db);
+        replicate
+            .on("change", async (e) => {
+                try {
+                    callback(e.docs);
+                    this.addLog(`pulled ${e.docs.length} doc(s)`);
+                } catch (ex) {
+                    this.addLog("Replication callback error");
+                    this.addLog(ex);
+                }
+            })
             .on("complete", async (info) => {
+                replicate.removeAllListeners();
+                replicate.cancel();
+                // this.syncHandler = null;
                 this.syncHandler = this.localDatabase.sync(db, syncOption);
                 this.syncHandler
                     .on("change", async (e) => {
                         try {
-                            callback(e);
+                            callback(e.change.docs);
                             this.addLog(`replicated ${e.change.docs.length} doc(s)`);
                         } catch (ex) {
                             this.addLog("Replication callback error");
@@ -419,8 +435,9 @@ class LocalPouchDB {
                         this.addLog("Replication activated");
                     })
                     .on("complete", (e) => {
-                        this.addLog("Replication completed", true);
+                        this.addLog("Replication completed", showResult);
                         // this.addLog(e);
+                        console.dir(this.syncHandler);
                         this.syncHandler = null;
                     })
                     .on("denied", (e) => {
@@ -433,7 +450,10 @@ class LocalPouchDB {
                     })
                     .on("paused", (e) => {
                         this.addLog("replication paused");
+                        // console.dir(this.syncHandler);
+                        // this.addLog(e);
                     });
+                // console.dir();
             })
             .on("error", () => {
                 this.addLog("Pulling Replication error", true);
@@ -453,6 +473,7 @@ class LocalPouchDB {
     async resetDatabase() {
         await this.closeReplication();
         await this.localDatabase.destroy();
+        this.localDatabase = null;
         await this.initializeDatabase();
         this.addLog("Local Database Reset", true);
     }
@@ -492,11 +513,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     //localDatabase: PouchDB.Database<EntryDoc>;
     localDatabase: LocalPouchDB;
     logMessage: string[] = [];
-    onLogChanged: () => void;
+    // onLogChanged: () => void;
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
 
     async onload() {
+        this.addLog = this.addLog.bind(this);
         this.addLog("loading plugin");
         await this.openDatabase();
         await this.loadSettings();
@@ -517,20 +539,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
        </g>`
         );
         this.addRibbonIcon("replicate", "Replicate", async () => {
-            await this.replicate();
+            await this.replicate(true);
         });
 
-        this.addRibbonIcon("view-log", "Show log", () => {
+        let x = this.addRibbonIcon("view-log", "Show log", () => {
             new LogDisplayModal(this.app, this).open();
         });
+
         this.statusBar = this.addStatusBarItem();
 
         this.statusBar2 = this.addStatusBarItem();
-
-        this.watchVaultChange = debounce(this.watchVaultChange.bind(this), 200, false);
-        this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), 200, false);
-        this.watchVaultRename = debounce(this.watchVaultRename.bind(this), 200, false);
-        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 200, false);
+        let delay = this.settings.savingDelay;
+        if (delay < 200) delay = 200;
+        if (delay > 5000) delay = 5000;
+        this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
+        this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
+        this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
+        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), delay, false);
         this.registerWatchEvents();
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
@@ -540,7 +565,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.initializeDatabase();
             this.realizeSettingSyncMode();
             if (this.settings.syncOnStart) {
-                await this.replicate();
+                await this.replicate(false);
             }
         }, 100);
 
@@ -550,17 +575,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 if (this.settings.liveSync) {
                     await this.localDatabase.closeReplication();
                     if (this.settings.liveSync) {
-                        this.localDatabase.openReplication(this.settings, true, this.parseReplicationResult);
+                        this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
                     }
                 }
             }, 60 * 1000)
         );
+        this.watchWindowVisiblity = this.watchWindowVisiblity.bind(this);
+        window.addEventListener("visibilitychange", this.watchWindowVisiblity);
     }
 
     onunload() {
         this.localDatabase.closeReplication();
         this.localDatabase.close();
         this.addLog("unloading plugin");
+        window.removeEventListener("visibilitychange", this.watchWindowVisiblity);
     }
 
     async openDatabase() {
@@ -587,6 +615,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.registerEvent(this.app.vault.on("create", this.watchVaultChange));
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
     }
+
+    watchWindowVisiblity() {
+        this.addLog("visiblity changed");
+        let isHidden = document.hidden;
+        // this.addLog(isHidden);
+        if (isHidden) {
+            this.localDatabase.closeReplication();
+        } else {
+            if (this.settings.liveSync) {
+                this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+            }
+            if (this.settings.syncOnStart) {
+                this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+            }
+        }
+    }
+
     watchWorkspaceOpen(file: TFile) {
         if (file == null) return;
         this.showIfConflicted(file);
@@ -615,6 +660,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     //--> Basic document Functions
     async addLog(message: any, isNotify?: boolean) {
+        // debugger;
+
+        if (!isNotify && this.settings && this.settings.lessInformationInLog) {
+            return;
+        }
+        // console.log(this.settings);
         let timestamp = new Date().toLocaleString();
         let messagecontent = typeof message == "string" ? message : JSON.stringify(message, null, 2);
         let newmessage = timestamp + "->" + messagecontent;
@@ -625,9 +676,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.statusBar2 != null) {
             this.statusBar2.setText(newmessage.substring(0, 60));
         }
-        if (this.onLogChanged != null) {
-            this.onLogChanged();
-        }
+        // if (this.onLogChanged != null) {
+        //     this.onLogChanged();
+        // }
         if (isNotify) {
             new Notice(messagecontent);
         }
@@ -725,18 +776,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     //---> Sync
-    async parseReplicationResult(e: PouchDB.Replication.SyncResult<{}>): Promise<void> {
-        let docs = e.change.docs;
+    async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<Entry>>): Promise<void> {
         for (var change of docs) {
             this.addLog("replication change arrived");
-            // this.addLog(change);
-            await this.pouchdbChanged(change as Entry);
+            await this.pouchdbChanged(change);
         }
     }
     async realizeSettingSyncMode() {
         await this.localDatabase.closeReplication();
         if (this.settings.liveSync) {
-            this.localDatabase.openReplication(this.settings, true, this.parseReplicationResult);
+            this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
     }
@@ -744,8 +793,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let statusStr = this.localDatabase.status();
         this.statusBar.setText("Sync:" + statusStr);
     }
-    async replicate() {
-        this.localDatabase.openReplication(this.settings, false, this.parseReplicationResult);
+    async replicate(showMessage?: boolean) {
+        this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
     //<-- Sync
 
@@ -787,13 +836,31 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (entry.children) {
                 this.addLog(`->is dir`);
                 await this.deleteFolderOnDB(entry);
-                await this.app.vault.delete(entry);
+                try {
+                    await this.app.vault.delete(entry);
+                } catch (ex) {
+                    if (ex.code && ex.code == "ENOENT") {
+                        //NO OP.
+                    } else {
+                        this.addLog(`error while delete filder:${entry.path}`);
+                        this.addLog(ex);
+                    }
+                }
             } else {
                 this.addLog(`->is file`);
                 await this.deleteFromDB(entry);
             }
         }
-        await this.app.vault.delete(folder);
+        try {
+            await this.app.vault.delete(folder);
+        } catch (ex) {
+            if (ex.code && ex.code == "ENOENT") {
+                //NO OP.
+            } else {
+                this.addLog(`error while delete filder:${folder.path}`);
+                this.addLog(ex);
+            }
+        }
     }
 
     async renameFolder(folder: TFolder, oldFile: any) {
@@ -956,7 +1023,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             let oldData = { data: old.data, deleted: old._deleted };
             let newData = { data: d.data, deleted: d._deleted };
             if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                this.addLog("no changed" + fullpath + d._deleted);
+                this.addLog("no changed" + fullpath + (d._deleted ? " (deleted)" : ""));
                 return;
             }
             // d._rev = old._rev;
@@ -1001,9 +1068,8 @@ class LogDisplayModal extends Modal {
         this.plugin = plugin;
     }
     updateLog() {
-        let logs = [...this.plugin.logMessage];
         let msg = "";
-        for (var v of logs) {
+        for (var v of this.plugin.logMessage) {
             msg += escapeStringToHTML(v) + "<br>";
         }
         this.logEl.innerHTML = msg;
@@ -1017,13 +1083,14 @@ class LogDisplayModal extends Modal {
         div.addClass("op-scrollable");
         div.addClass("op-pre");
         this.logEl = div;
-        this.plugin.onLogChanged = this.updateLog;
+        this.updateLog = this.updateLog.bind(this);
+        // this.plugin.onLogChanged = this.updateLog;
         this.updateLog();
     }
     onClose() {
         let { contentEl } = this;
         contentEl.empty();
-        this.plugin.onLogChanged = null;
+        // this.plugin.onLogChanged = null;
     }
 }
 class ConflictResolveModal extends Modal {
@@ -1158,6 +1225,32 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
         );
 
+        new Setting(containerEl)
+            .setName("File to Database saving delay")
+            .setDesc("ms, between 200 and 5000, restart required.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.savingDelay + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 200 || v > 5000) {
+                            return 200;
+                            //text.inputEl.va;
+                        }
+                        this.plugin.settings.savingDelay = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerEl)
+            .setName("Log")
+            .setDesc("Reduce log infomations")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
+                    this.plugin.settings.lessInformationInLog = value;
+                    await this.plugin.saveSettings();
+                })
+            );
         new Setting(containerEl)
             .setName("LiveSync")
             .setDesc("Sync realtime")
