@@ -16,6 +16,7 @@ Limitations: File deletion handling is not completed.
 
 -   Live sync
 -   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
+-   Off line sync is also available.
 
 ## How to use the beta build
 
