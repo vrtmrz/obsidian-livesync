@@ -1,11 +1,13 @@
 import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
+import xxhash from "xxhash-wasm";
 
 // docs should be encoded as base64, so 1 char -> 1 bytes
 // and cloudant limitation is 1MB , we use 900kb;
 // const MAX_DOC_SIZE = 921600;
-const MAX_DOC_SIZE = 921600;
+const MAX_DOC_SIZE = 200; // for .md file
+const MAX_DOC_SIZE_BIN = 102400; // 100kb
 
 interface ObsidianLiveSyncSettings {
     couchDB_URI: string;
@@ -16,6 +18,7 @@ interface ObsidianLiveSyncSettings {
     syncOnStart: boolean;
     savingDelay: number;
     lessInformationInLog: boolean;
+    gcDelay: number;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -27,6 +30,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     syncOnStart: false,
     savingDelay: 200,
     lessInformationInLog: false,
+    gcDelay: 30,
 };
 
 interface Entry {
@@ -56,13 +60,11 @@ type LoadedEntry = Entry & {
 
 interface EntryLeaf {
     _id: string;
-    parent: string;
-    seq: number;
     data: string;
-    _rev?: string;
     _deleted?: boolean;
     type: "leaf";
 }
+
 type EntryDoc = Entry | NewEntry | LoadedEntry | EntryLeaf;
 type diff_result_leaf = {
     rev: string;
@@ -164,6 +166,8 @@ class LocalPouchDB {
     addLog: (message: any, isNotify?: boolean) => Promise<void>;
     localDatabase: PouchDB.Database<EntryDoc>;
 
+    h32: (input: string, seed?: number) => string;
+    h64: (input: string, seedHigh?: number, seedLow?: number) => string;
     constructor(app: App, plugin: ObsidianLiveSyncPlugin, dbname: string) {
         this.plugin = plugin;
         this.app = app;
@@ -185,7 +189,7 @@ class LocalPouchDB {
         }
         return "disabled";
     }
-    initializeDatabase() {
+    async initializeDatabase() {
         if (this.localDatabase != null) this.localDatabase.close();
         this.localDatabase = null;
         this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
@@ -193,8 +197,14 @@ class LocalPouchDB {
             revs_limit: 100,
             deterministic_revs: true,
         });
+        await this.prepareHashArg();
     }
-
+    async prepareHashArg() {
+        if (this.h32 != null) return;
+        const { h32, h64 } = await xxhash();
+        this.h32 = h32;
+        this.h64 = h64;
+    }
     async getDatabaseDoc(id: string, opt?: any): Promise<false | LoadedEntry> {
         try {
             let obj: EntryDoc & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = null;
@@ -229,23 +239,16 @@ class LocalPouchDB {
                 // search childrens
                 try {
                     let childrens = [];
-                    // let childPromise = [];
                     for (var v of obj.children) {
                         // childPromise.push(this.localDatabase.get(v));
                         let elem = await this.localDatabase.get(v);
                         if (elem.type && elem.type == "leaf") {
-                            childrens.push(elem);
+                            childrens.push(elem.data);
                         } else {
                             throw new Error("linked document is not leaf");
                         }
                     }
-                    // let childrens = await Promise.all(childPromise);
-                    let data = childrens
-                        // .filter((e) => e.type == "leaf")
-                        // .map((e) => e as NoteLeaf)
-                        .sort((e) => e.seq)
-                        .map((e) => e.data)
-                        .join("");
+                    let data = childrens.join("");
                     let doc: LoadedEntry = {
                         data: data,
                         _id: obj._id,
@@ -261,6 +264,7 @@ class LocalPouchDB {
                     if (ex.status && ex.status == 404) {
                         this.addLog(`Missing document content!, could not read ${obj._id} from database.`, true);
                         // this.addLog(ex);
+                        return false;
                     }
                     this.addLog(`Something went wrong on reading ${obj._id} from database.`, true);
                     this.addLog(ex);
@@ -289,24 +293,12 @@ class LocalPouchDB {
             }
             //Check it out and fix docs to regular case
             if (!obj.type || (obj.type && obj.type == "notes")) {
-                // let note = obj as Notes;
-                // note._deleted=true;
                 obj._deleted = true;
                 let r = await this.localDatabase.put(obj);
                 return true;
                 // simple note
             }
             if (obj.type == "newnote") {
-                // search childrens
-                for (var v of obj.children) {
-                    let d = await this.localDatabase.get(v);
-                    if (d.type != "leaf") {
-                        this.addLog(`structure went wrong:${id}-${v}`);
-                    }
-                    d._deleted = true;
-                    await this.localDatabase.put(d);
-                    this.addLog(`content removed:${(d as EntryLeaf).seq}`);
-                }
                 obj._deleted = true;
                 await this.localDatabase.put(obj);
                 this.addLog(`entry removed:${obj._id}`);
@@ -322,25 +314,79 @@ class LocalPouchDB {
 
     async putDBEntry(note: LoadedEntry) {
         let leftData = note.data;
-        let savenNotes = []; // something occured, kill this .
-        let seq = 0;
-        let now = Date.now();
+        let savenNotes = [];
+        let processed = 0;
+        let made = 0;
+        let skiped = 0;
+        let pieceSize = MAX_DOC_SIZE;
+        if (!note._id.endsWith(".md")) {
+            pieceSize = MAX_DOC_SIZE_BIN;
+        }
         do {
-            let piece = leftData.substring(0, MAX_DOC_SIZE);
-            leftData = leftData.substring(MAX_DOC_SIZE);
-            seq++;
-            let leafid = note._id + "-" + now + "-" + seq;
-            let d: EntryLeaf = {
-                _id: leafid,
-                parent: note._id,
-                data: piece,
-                seq: seq,
-                type: "leaf",
-            };
-            let result = await this.localDatabase.put(d);
+            // To keep low bandwith and database size,
+            // Dedup pieces on database.
+            let piece = leftData.substring(0, pieceSize);
+            leftData = leftData.substring(pieceSize);
+            processed++;
+            // Get has of piece.
+            let hashedPiece = this.h32(piece);
+            let leafid = "h:" + hashedPiece;
+            let hashQ: number = 0; // if hash collided, **IF**, count it up.
+            let tryNextHash = false;
+            let needMake = true;
+
+            do {
+                let nleafid = leafid;
+                try {
+                    nleafid = `${leafid}${hashQ}`;
+                    // console.log(nleafid);
+                    let pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
+                    if (pieceData.type == "leaf" && pieceData.data == piece) {
+                        this.addLog("hashe:data exists.");
+                        leafid = nleafid;
+                        needMake = false;
+                        tryNextHash = false;
+                    } else if (pieceData.type == "leaf") {
+                        this.addLog("hash:collision!!");
+                        hashQ++;
+                        tryNextHash = true;
+                    } else {
+                        this.addLog("hash:no collision, it's not leaf. what's going on..");
+                        leafid = nleafid;
+                        tryNextHash = false;
+                    }
+                } catch (ex) {
+                    if (ex.status && ex.status == 404) {
+                        //not found, we can use it.
+                        this.addLog(`hash:not found.`);
+                        leafid = nleafid;
+                        needMake = true;
+                    } else {
+                        needMake = false;
+                        throw ex;
+                    }
+                }
+            } while (tryNextHash);
+            if (needMake) {
+                //have to make
+                let d: EntryLeaf = {
+                    _id: leafid,
+                    data: piece,
+                    type: "leaf",
+                };
+                let result = await this.localDatabase.put(d);
+                if (result.ok) {
+                    this.addLog(`ok:saven`);
+                    made++;
+                } else {
+                    this.addLog("save faild");
+                }
+            } else {
+                skiped++;
+            }
             savenNotes.push(leafid);
         } while (leftData != "");
-        this.addLog(`note content saven, pieces:${seq}`);
+        this.addLog(`note content saven, pieces:${processed} new:${made}, skip:${skiped}`);
         let newDoc: NewEntry = {
             NewNote: true,
             children: savenNotes,
@@ -355,13 +401,8 @@ class LocalPouchDB {
         // Here for upsert logic,
         try {
             let old = await this.localDatabase.get(newDoc._id);
-            if (!old.type || old.type == "notes") {
+            if (!old.type || old.type == "notes" || old.type == "newnote") {
                 // simple use rev for new doc
-                newDoc._rev = old._rev;
-            }
-            if (old.type == "newnote") {
-                //when save finished, we have to garbage collect.
-                deldocs = old.children;
                 newDoc._rev = old._rev;
             }
         } catch (ex) {
@@ -373,15 +414,6 @@ class LocalPouchDB {
         }
         await this.localDatabase.put(newDoc);
         this.addLog(`note saven:${newDoc._id}`);
-        let items = 0;
-        for (var v of deldocs) {
-            items++;
-            //TODO: Check for missing link
-            let d = await this.localDatabase.get(v);
-            d._deleted = true;
-            await this.localDatabase.put(d);
-        }
-        this.addLog(`old content deleted, pieces:${items}`);
     }
 
     syncHandler: PouchDB.Replication.Sync<{}> = null;
@@ -506,6 +538,53 @@ class LocalPouchDB {
         if (con2 === false) return;
         this.addLog("Remote Database Created or Connected", true);
     }
+
+    async garbageCollect() {
+        // get all documents of NewEntry2
+        // we don't use queries , just use allDocs();
+        let c = 0;
+        let readCount = 0;
+        let hashPieces: string[] = [];
+        let usedPieces: string[] = [];
+        do {
+            let result = await this.localDatabase.allDocs({ include_docs: true, skip: c, limit: 100 });
+            readCount = result.rows.length;
+            if (readCount > 0) {
+                //there are some result
+                for (let v of result.rows) {
+                    let doc = v.doc;
+                    if (doc.type == "newnote") {
+                        // used pieces memo.
+                        usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
+                    }
+                    if (doc.type == "leaf") {
+                        // all pieces.
+                        hashPieces = Array.from(new Set([...hashPieces, doc._id]));
+                    }
+                    // this.addLog(`GC:processed:${v.doc._id}`);
+                }
+            }
+            c += readCount;
+        } while (readCount != 0);
+        // items collected.
+        const garbages = hashPieces.filter((e) => usedPieces.indexOf(e) == -1);
+        let deleteCount = 0;
+        for (let v of garbages) {
+            try {
+                let item = await this.localDatabase.get(v);
+                item._deleted = true;
+                await this.localDatabase.put(item);
+                deleteCount++;
+            } catch (ex) {
+                if (ex.status && ex.status == 404) {
+                    // NO OP. It should be timing problem.
+                } else {
+                    throw ex;
+                }
+            }
+        }
+        this.addLog(`GC:deleted ${deleteCount} items.`);
+    }
 }
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
@@ -585,10 +664,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     onunload() {
+        if (this.gcTimerHandler != null) {
+            clearTimeout(this.gcTimerHandler);
+            this.gcTimerHandler = null;
+        }
         this.localDatabase.closeReplication();
         this.localDatabase.close();
-        this.addLog("unloading plugin");
         window.removeEventListener("visibilitychange", this.watchWindowVisiblity);
+        this.addLog("unloading plugin");
     }
 
     async openDatabase() {
@@ -597,7 +680,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         let vaultName = this.app.vault.getName();
         this.localDatabase = new LocalPouchDB(this.app, this, vaultName);
-        this.localDatabase.initializeDatabase();
+        await this.localDatabase.initializeDatabase();
+    }
+    async garbageCollect() {
+        await this.localDatabase.garbageCollect();
     }
 
     async loadSettings() {
@@ -607,7 +693,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
     }
-
+    gcTimerHandler: any = null;
+    gcHook() {
+        if (this.settings.gcDelay == 0) return;
+        const GC_DELAY = this.settings.gcDelay * 1000; // if leaving opening window, try GC,
+        if (this.gcTimerHandler != null) {
+            clearTimeout(this.gcTimerHandler);
+            this.gcTimerHandler = null;
+        }
+        this.gcTimerHandler = setTimeout(() => {
+            this.gcTimerHandler = null;
+            this.garbageCollect();
+        }, GC_DELAY);
+    }
     registerWatchEvents() {
         this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
         this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
@@ -630,14 +728,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
             }
         }
+        this.gcHook();
     }
 
     watchWorkspaceOpen(file: TFile) {
         if (file == null) return;
         this.showIfConflicted(file);
+        this.gcHook();
     }
     watchVaultChange(file: TFile, ...args: any[]) {
         this.updateIntoDB(file);
+        this.gcHook();
     }
     watchVaultDelete(file: TFile & TFolder) {
         if (file.children) {
@@ -647,6 +748,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else {
             this.deleteFromDB(file);
         }
+        this.gcHook();
     }
     watchVaultRename(file: TFile & TFolder, oldFile: any) {
         if (file.children) {
@@ -656,6 +758,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.updateIntoDB(file);
             this.deleteFromDBbyPath(oldFile);
         }
+        this.gcHook();
     }
 
     //--> Basic document Functions
@@ -1243,6 +1346,23 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
         new Setting(containerEl)
+            .setName("Auto GC delay")
+            .setDesc("(seconds), if you set zero, you have to run manually.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.gcDelay + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 200 || v > 5000) {
+                            return 30;
+                            //text.inputEl.va;
+                        }
+                        this.plugin.settings.gcDelay = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerEl)
             .setName("Log")
             .setDesc("Reduce log infomations")
             .addToggle((toggle) =>
@@ -1287,6 +1407,25 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin.resetLocalDatabase();
+                        //await this.test();
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset local files")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        //await this.test();
+                    })
+            );
+        new Setting(containerEl)
+            .setName("Garbage Collect")
+            .addButton((button) =>
+                button
+                    .setButtonText("Garbage Collection")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.garbageCollect();
                         //await this.test();
                     })
             )

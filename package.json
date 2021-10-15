@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "obsidian Live synchronization plugin.",
     "main": "main.js",
     "scripts": {
@@ -22,6 +22,7 @@
         "typescript": "^4.2.4"
     },
     "dependencies": {
-        "diff-match-patch": "^1.0.5"
+        "diff-match-patch": "^1.0.5",
+        "xxhash-wasm": "^0.4.2"
     }
 }
