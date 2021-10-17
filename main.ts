@@ -1,4 +1,4 @@
-import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder } from "obsidian";
+import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, ItemView } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import xxhash from "xxhash-wasm";
@@ -6,8 +6,9 @@ import xxhash from "xxhash-wasm";
 // docs should be encoded as base64, so 1 char -> 1 bytes
 // and cloudant limitation is 1MB , we use 900kb;
 // const MAX_DOC_SIZE = 921600;
-const MAX_DOC_SIZE = 200; // for .md file
+const MAX_DOC_SIZE = 1000; // for .md file, but if delimiters exists. use that before.
 const MAX_DOC_SIZE_BIN = 102400; // 100kb
+const VER = 10
 
 interface ObsidianLiveSyncSettings {
     couchDB_URI: string;
@@ -19,6 +20,9 @@ interface ObsidianLiveSyncSettings {
     savingDelay: number;
     lessInformationInLog: boolean;
     gcDelay: number;
+    versionUpFlash: string;
+    minimumChunkSize: number;
+    longLineThreshold: number
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -31,6 +35,9 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     savingDelay: 200,
     lessInformationInLog: false,
     gcDelay: 30,
+    versionUpFlash: "",
+    minimumChunkSize: 20,
+    longLineThreshold: 250,
 };
 
 interface Entry {
@@ -54,8 +61,20 @@ interface NewEntry {
     NewNote: true;
     type: "newnote";
 }
+interface PlainEntry {
+    _id: string;
+    children: string[];
+    _rev?: string;
+    ctime: number;
+    mtime: number;
+    size: number;
+    _deleted?: boolean;
+    NewNote: true;
+    type: "plain";
+}
 type LoadedEntry = Entry & {
     children: string[];
+    datatype: "plain" | "newnote"
 };
 
 interface EntryLeaf {
@@ -63,9 +82,10 @@ interface EntryLeaf {
     data: string;
     _deleted?: boolean;
     type: "leaf";
+    _rev?: string;
 }
 
-type EntryDoc = Entry | NewEntry | LoadedEntry | EntryLeaf;
+type EntryDoc = Entry | NewEntry | PlainEntry | LoadedEntry | EntryLeaf;
 type diff_result_leaf = {
     rev: string;
     data: string;
@@ -166,6 +186,7 @@ class LocalPouchDB {
     addLog: (message: any, isNotify?: boolean) => Promise<void>;
     localDatabase: PouchDB.Database<EntryDoc>;
 
+    recentModifiedDocs: string[] = [];
     h32: (input: string, seed?: number) => string;
     h64: (input: string, seedHigh?: number, seedLow?: number) => string;
     constructor(app: App, plugin: ObsidianLiveSyncPlugin, dbname: string) {
@@ -188,6 +209,17 @@ class LocalPouchDB {
             return "connected";
         }
         return "disabled";
+    }
+    updateRecentModifiedDocs(id: string, rev: string) {
+        let idrev = id + rev;
+        this.recentModifiedDocs.push(idrev);
+        if (this.recentModifiedDocs.length > 10) {
+            this.recentModifiedDocs = this.recentModifiedDocs.slice(-30);
+        }
+    }
+    isSelfModified(id: string, rev: string): boolean {
+        let idrev = id + rev;
+        return this.recentModifiedDocs.indexOf(idrev) !== -1;
     }
     async initializeDatabase() {
         if (this.localDatabase != null) this.localDatabase.close();
@@ -231,21 +263,29 @@ class LocalPouchDB {
                     _deleted: obj._deleted,
                     _rev: obj._rev,
                     children: [],
+                    datatype: "newnote",
                 };
                 return doc;
                 // simple note
             }
-            if (obj.type == "newnote") {
+            if (obj.type == "newnote" || obj.type == "plain") {
                 // search childrens
                 try {
                     let childrens = [];
                     for (var v of obj.children) {
-                        // childPromise.push(this.localDatabase.get(v));
-                        let elem = await this.localDatabase.get(v);
-                        if (elem.type && elem.type == "leaf") {
-                            childrens.push(elem.data);
-                        } else {
-                            throw new Error("linked document is not leaf");
+                        try {
+                            let elem = await this.localDatabase.get(v);
+                            if (elem.type && elem.type == "leaf") {
+                                childrens.push(elem.data);
+                            } else {
+                                throw new Error("linked document is not leaf");
+                            }
+                        } catch (ex) {
+                            if (ex.status && ex.status == 404) {
+                                this.addLog(`Missing document content!, could not read ${v} of ${obj._id} from database.`, true);
+                                return false;
+                            }
+                            throw ex;
                         }
                     }
                     let data = childrens.join("");
@@ -258,12 +298,13 @@ class LocalPouchDB {
                         _deleted: obj._deleted,
                         _rev: obj._rev,
                         children: obj.children,
+                        datatype: obj.type
                     };
+
                     return doc;
                 } catch (ex) {
                     if (ex.status && ex.status == 404) {
                         this.addLog(`Missing document content!, could not read ${obj._id} from database.`, true);
-                        // this.addLog(ex);
                         return false;
                     }
                     this.addLog(`Something went wrong on reading ${obj._id} from database.`, true);
@@ -295,13 +336,15 @@ class LocalPouchDB {
             if (!obj.type || (obj.type && obj.type == "notes")) {
                 obj._deleted = true;
                 let r = await this.localDatabase.put(obj);
+                this.updateRecentModifiedDocs(r.id, r.rev);
                 return true;
                 // simple note
             }
-            if (obj.type == "newnote") {
+            if (obj.type == "newnote" || obj.type == "plain") {
                 obj._deleted = true;
-                await this.localDatabase.put(obj);
+                let r = await this.localDatabase.put(obj);
                 this.addLog(`entry removed:${obj._id}`);
+                this.updateRecentModifiedDocs(r.id, r.rev);
                 return true;
             }
         } catch (ex) {
@@ -318,15 +361,61 @@ class LocalPouchDB {
         let processed = 0;
         let made = 0;
         let skiped = 0;
-        let pieceSize = MAX_DOC_SIZE;
-        if (!note._id.endsWith(".md")) {
-            pieceSize = MAX_DOC_SIZE_BIN;
+        let pieceSize = MAX_DOC_SIZE_BIN;
+        let plainSplit = false;
+        if (note._id.endsWith(".md")) {
+            pieceSize = MAX_DOC_SIZE;
+            plainSplit = true;
         }
         do {
             // To keep low bandwith and database size,
             // Dedup pieces on database.
-            let piece = leftData.substring(0, pieceSize);
-            leftData = leftData.substring(pieceSize);
+            // from 0.1.10, for best performance. we use markdown delimiters 
+            // 1. \n[^\n]{longLineThreshold}[^\n]*\n -> long sentence shuld break.
+            // 2. \n\n shold break
+            // 3. \r\n\r\n should break
+            // 4. \n# should break.
+            let cPieceSize = pieceSize
+            let minimumChunkSize = this.plugin.settings.minimumChunkSize;
+            if (minimumChunkSize < 10) minimumChunkSize = 10;
+            let longLineThreshold = this.plugin.settings.longLineThreshold;
+            if (longLineThreshold < 100) longLineThreshold = 100;
+            if (plainSplit) {
+                cPieceSize = 0;
+                // lookup for next splittion .
+                // we're standing on "\n"
+                // debugger
+                do {
+                    let n1 = leftData.indexOf("\n", cPieceSize + 1);
+                    let n2 = leftData.indexOf("\n\n", cPieceSize + 1);
+                    let n3 = leftData.indexOf("\r\n\r\n", cPieceSize + 1);
+                    let n4 = leftData.indexOf("\n#", cPieceSize + 1);
+                    if (n1 == -1 && n2 == -1 && n3 == -1 && n4 == -1) {
+                        cPieceSize = MAX_DOC_SIZE;
+                        break;
+                    }
+
+                    if (n1 > longLineThreshold) {
+                        // long sentence is an established piece
+                        cPieceSize = n1 + 1;
+                    } else {
+                        // cPieceSize = Math.min.apply([n2, n3, n4].filter((e) => e > 1));
+                        // ^ heavy.
+                        if (n2 > 0 && cPieceSize < n2) cPieceSize = n2 + 1;
+                        if (n3 > 0 && cPieceSize < n3) cPieceSize = n3 + 3;
+                        if (n4 > 0 && cPieceSize < n4) cPieceSize = n4 + 0;
+                        cPieceSize++;
+                    }
+                } while (cPieceSize < minimumChunkSize)
+                // console.log("and we use:" + cPieceSize)
+            }
+
+            let piece = leftData.substring(0, cPieceSize);
+            // if (plainSplit) {
+            //     this.addLog(`piece_len:${cPieceSize}`);
+            //     this.addLog("piece:" + piece);
+            // }
+            leftData = leftData.substring(cPieceSize);
             processed++;
             // Get has of piece.
             let hashedPiece = this.h32(piece);
@@ -342,7 +431,7 @@ class LocalPouchDB {
                     // console.log(nleafid);
                     let pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
                     if (pieceData.type == "leaf" && pieceData.data == piece) {
-                        this.addLog("hash:data exists.");
+                        // this.addLog("hash:data exists.");
                         leafid = nleafid;
                         needMake = false;
                         tryNextHash = false;
@@ -351,14 +440,14 @@ class LocalPouchDB {
                         hashQ++;
                         tryNextHash = true;
                     } else {
-                        this.addLog("hash:no collision, it's not leaf. what's going on..");
+                        // this.addLog("hash:no collision, it's not leaf. what's going on..");
                         leafid = nleafid;
                         tryNextHash = false;
                     }
                 } catch (ex) {
                     if (ex.status && ex.status == 404) {
                         //not found, we can use it.
-                        this.addLog(`hash:not found.`);
+                        // this.addLog(`hash:not found.`);
                         leafid = nleafid;
                         needMake = true;
                     } else {
@@ -375,6 +464,7 @@ class LocalPouchDB {
                     type: "leaf",
                 };
                 let result = await this.localDatabase.put(d);
+                this.updateRecentModifiedDocs(result.id, result.rev);
                 if (result.ok) {
                     this.addLog(`ok:saven`);
                     made++;
@@ -387,21 +477,21 @@ class LocalPouchDB {
             savenNotes.push(leafid);
         } while (leftData != "");
         this.addLog(`note content saven, pieces:${processed} new:${made}, skip:${skiped}`);
-        let newDoc: NewEntry = {
+        let newDoc: PlainEntry | NewEntry = {
             NewNote: true,
             children: savenNotes,
             _id: note._id,
             ctime: note.ctime,
             mtime: note.mtime,
             size: note.size,
-            type: "newnote",
+            type: plainSplit ? "plain" : "newnote",
         };
 
         let deldocs: string[] = [];
         // Here for upsert logic,
         try {
             let old = await this.localDatabase.get(newDoc._id);
-            if (!old.type || old.type == "notes" || old.type == "newnote") {
+            if (!old.type || old.type == "notes" || old.type == "newnote" || old.type == "plain") {
                 // simple use rev for new doc
                 newDoc._rev = old._rev;
             }
@@ -412,13 +502,18 @@ class LocalPouchDB {
                 throw ex;
             }
         }
-        await this.localDatabase.put(newDoc);
+        let r = await this.localDatabase.put(newDoc);
+        this.updateRecentModifiedDocs(r.id, r.rev);
         this.addLog(`note saven:${newDoc._id}`);
     }
 
     syncHandler: PouchDB.Replication.Sync<{}> = null;
 
     async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<{}>[]) => Promise<void>) {
+        if (setting.versionUpFlash != "") {
+            new Notice("Open settings and check message, please.");
+            return;
+        }
         let uri = setting.couchDB_URI;
         let auth: Credential = {
             username: setting.couchDB_USER,
@@ -438,6 +533,7 @@ class LocalPouchDB {
 
         //replicate once
         let replicate = this.localDatabase.replicate.from(db);
+        // console.log("replication start.")
         replicate
             .on("change", async (e) => {
                 try {
@@ -452,8 +548,14 @@ class LocalPouchDB {
                 replicate.removeAllListeners();
                 replicate.cancel();
                 // this.syncHandler = null;
+                if (this.syncHandler != null) {
+                    this.syncHandler.removeAllListeners();
+                }
                 this.syncHandler = this.localDatabase.sync(db, syncOption);
                 this.syncHandler
+                    .on("active", () => {
+                        this.addLog("Replication activated");
+                    })
                     .on("change", async (e) => {
                         try {
                             callback(e.change.docs);
@@ -463,13 +565,8 @@ class LocalPouchDB {
                             this.addLog(ex);
                         }
                     })
-                    .on("active", () => {
-                        this.addLog("Replication activated");
-                    })
                     .on("complete", (e) => {
                         this.addLog("Replication completed", showResult);
-                        // this.addLog(e);
-                        console.dir(this.syncHandler);
                         this.syncHandler = null;
                     })
                     .on("denied", (e) => {
@@ -553,7 +650,7 @@ class LocalPouchDB {
                 //there are some result
                 for (let v of result.rows) {
                     let doc = v.doc;
-                    if (doc.type == "newnote") {
+                    if (doc.type == "newnote" || doc.type == "plain") {
                         // used pieces memo.
                         usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
                     }
@@ -599,9 +696,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async onload() {
         this.addLog = this.addLog.bind(this);
         this.addLog("loading plugin");
-        await this.openDatabase();
+        const lsname = "obsidian-live-sync-ver" + this.app.vault.getName();
+        const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
-        
+        if (!last_version || Number(last_version) < VER) {
+            this.settings.liveSync = false;
+            this.settings.syncOnSave = false;
+            this.settings.syncOnStart = false;
+            this.settings.versionUpFlash = "I changed specifications incompatiblly, so when you enable sync again, be sure to made version up all nother devides.";
+            this.saveSettings();
+        }
+        localStorage.setItem(lsname, `${VER}`);
+        await this.openDatabase();
+
         addIcon(
             "replicate",
             `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
@@ -811,12 +918,21 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async doc2storage_create(docEntry: Entry, force?: boolean) {
         let doc = await this.localDatabase.getDatabaseDoc(docEntry._id, { _rev: docEntry._rev });
         if (doc === false) return;
-        let bin = base64ToArrayBuffer(doc.data);
-        if (bin != null) {
+        if (doc.datatype == "newnote") {
+            let bin = base64ToArrayBuffer(doc.data);
+            if (bin != null) {
+                await this.ensureDirectory(doc._id);
+                let newfile = await this.app.vault.createBinary(doc._id, bin, { ctime: doc.ctime, mtime: doc.mtime });
+                this.addLog("live : write to local (newfile:b) " + doc._id);
+                await this.app.vault.trigger("create", newfile);
+            }
+        } else if (doc.datatype == "plain") {
             await this.ensureDirectory(doc._id);
-            let newfile = await this.app.vault.createBinary(doc._id, bin, { ctime: doc.ctime, mtime: doc.mtime });
-            this.addLog("live : write to local (newfile) " + doc._id);
+            let newfile = await this.app.vault.create(doc._id, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+            this.addLog("live : write to local (newfile:p) " + doc._id);
             await this.app.vault.trigger("create", newfile);
+        } else {
+            this.addLog("live : New data imcoming, but we cound't parse that.1" + doc.datatype, true);
         }
     }
 
@@ -846,11 +962,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (file.stat.mtime < docEntry.mtime || force) {
             let doc = await this.localDatabase.getDatabaseDoc(docEntry._id);
             if (doc === false) return;
-            let bin = base64ToArrayBuffer(doc.data);
-            if (bin != null) {
-                await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
+            // debugger;
+            if (doc.datatype == "newnote") {
+                let bin = base64ToArrayBuffer(doc.data);
+                if (bin != null) {
+                    await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
+                    this.addLog("livesync : newer local files so write to local:" + file.path);
+                    await this.app.vault.trigger("modify", file);
+                }
+            } if (doc.datatype == "plain") {
+                await this.ensureDirectory(doc._id);
+                await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
                 this.addLog("livesync : newer local files so write to local:" + file.path);
                 await this.app.vault.trigger("modify", file);
+
+            } else {
+                this.addLog("live : New data imcoming, but we cound't parse that.2:" + doc.datatype + "-", true);
             }
         } else if (file.stat.mtime > docEntry.mtime) {
             // newer local file.
@@ -881,8 +1008,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<Entry>>): Promise<void> {
         for (var change of docs) {
+            if (this.localDatabase.isSelfModified(change._id, change._rev)) {
+                return;
+            }
             this.addLog("replication change arrived");
             await this.pouchdbChanged(change);
+            this.gcHook();
         }
     }
     async realizeSettingSyncMode() {
@@ -897,6 +1028,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.statusBar.setText("Sync:" + statusStr);
     }
     async replicate(showMessage?: boolean) {
+        if (this.settings.versionUpFlash != "") {
+            new Notice("Open settings and check message, please.");
+            return;
+        }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
     //<-- Sync
@@ -983,11 +1118,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         try {
             let doc = await this.localDatabase.getDatabaseDoc(path, { rev: rev });
             if (doc === false) return false;
+            let data = doc.data;
+            if (doc.datatype == "newnote") {
+                data = base64ToString(doc.data);
+            } else if (doc.datatype == "plain") {
+                data = doc.data;
+            }
             return {
                 ctime: doc.ctime,
                 mtime: doc.mtime,
                 rev: rev,
-                data: base64ToString(doc.data),
+                data: data,
             };
         } catch (ex) {
             if (ex.status && ex.status == 404) {
@@ -1109,8 +1250,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async updateIntoDB(file: TFile) {
-        let contentBin = await this.app.vault.readBinary(file);
-        let content = arrayBufferToBase64(contentBin);
+        let content = "";
+        let datatype: "plain" | "newnote" = "newnote";
+        if (file.extension != "md") {
+            let contentBin = await this.app.vault.readBinary(file);
+            content = arrayBufferToBase64(contentBin);
+            datatype = "newnote";
+        } else {
+            content = await this.app.vault.read(file);
+            datatype = "plain";
+        }
         let fullpath = file.path;
         let d: LoadedEntry = {
             _id: fullpath,
@@ -1119,6 +1268,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             mtime: file.stat.mtime,
             size: file.stat.size,
             children: [],
+            datatype: datatype
         };
         //From here
         let old = await this.localDatabase.getDatabaseDoc(fullpath);
@@ -1133,7 +1283,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         let ret = await this.localDatabase.putDBEntry(d);
 
-        this.addLog("put database:" + fullpath);
+        this.addLog("put database:" + fullpath + "(" + datatype + ")");
         if (this.settings.syncOnSave) {
             await this.replicate();
         }
@@ -1371,6 +1521,18 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        if (this.plugin.settings.versionUpFlash != "") {
+            let c = containerEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
+            c.createEl("button", { text: "I got it and updated." }, (e) => {
+                e.addEventListener("click", async () => {
+                    this.plugin.settings.versionUpFlash = "";
+                    this.plugin.saveSettings();
+                    c.remove();
+                });
+            });
+            c.addClass("op-warn")
+        }
+        // containerEl.createDiv(this.plugin.settings.versionUpFlash);
         new Setting(containerEl)
             .setName("LiveSync")
             .setDesc("Sync realtime")
@@ -1399,6 +1561,38 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerEl)
+            .setName("Minimum chunk size")
+            .setDesc("(letters), minimum chunk size.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.minimumChunkSize + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10 || v > 1000) {
+                            return 10;
+                        }
+                        this.plugin.settings.minimumChunkSize = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerEl)
+            .setName("LongLine Threshold")
+            .setDesc("(letters), If the line is longer than this, make the line to chunk")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.longLineThreshold + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10 || v > 1000) {
+                            return 10;
+                        }
+                        this.plugin.settings.longLineThreshold = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
         new Setting(containerEl)
             .setName("Local Database Operations")
             .addButton((button) =>

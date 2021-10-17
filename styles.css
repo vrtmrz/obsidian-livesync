@@ -18,3 +18,8 @@
 .op-pre {
     white-space: pre-wrap;
 }
+.op-warn {
+    border:1px solid salmon;
+    padding:2px;
+    border-radius: 4px;
+}

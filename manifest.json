@@ -1,7 +1,7 @@
 {
     "id": "obsidian-livesync",
     "name": "Obsidian Live sync",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "minAppVersion": "0.9.12",
     "description": "obsidian Live synchronization plugin.",
     "author": "vorotamoroz",
