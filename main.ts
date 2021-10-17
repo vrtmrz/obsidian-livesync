@@ -342,7 +342,7 @@ class LocalPouchDB {
                     // console.log(nleafid);
                     let pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
                     if (pieceData.type == "leaf" && pieceData.data == piece) {
-                        this.addLog("hashe:data exists.");
+                        this.addLog("hash:data exists.");
                         leafid = nleafid;
                         needMake = false;
                         tryNextHash = false;
@@ -425,7 +425,7 @@ class LocalPouchDB {
             password: setting.couchDB_PASSWORD,
         };
         if (this.syncHandler != null) {
-            this.addLog("Another replication running.", true);
+            this.addLog("Another replication running.");
             return false;
         }
         let dbret = await connectRemoteCouchDB(uri, auth);
@@ -601,6 +601,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addLog("loading plugin");
         await this.openDatabase();
         await this.loadSettings();
+        
         addIcon(
             "replicate",
             `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
@@ -640,13 +641,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
-        setTimeout(async () => {
+        this.app.workspace.onLayoutReady(async () => {
             await this.initializeDatabase();
             this.realizeSettingSyncMode();
             if (this.settings.syncOnStart) {
                 await this.replicate(false);
             }
-        }, 100);
+        });
 
         // when in mobile, too long suspended , connection won't back if setting retry:true
         this.registerInterval(
@@ -662,7 +663,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.watchWindowVisiblity = this.watchWindowVisiblity.bind(this);
         window.addEventListener("visibilitychange", this.watchWindowVisiblity);
     }
-
     onunload() {
         if (this.gcTimerHandler != null) {
             clearTimeout(this.gcTimerHandler);
@@ -971,7 +971,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             let entry = v as TFile & TFolder;
             if (entry.children) {
                 await this.deleteFolderOnDB(entry);
-                this.app.vault.delete(entry);
+                await this.app.vault.delete(entry);
             } else {
                 await this.deleteFromDB(entry);
             }
@@ -1419,6 +1419,18 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
         new Setting(containerEl)
+            .setName("Re-init")
+            .addButton((button) =>
+                button
+                    .setButtonText("Init Database again")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.resetLocalDatabase();
+                        await this.plugin.initializeDatabase();
+                    })
+            );
+
+        new Setting(containerEl)
             .setName("Garbage Collect")
             .addButton((button) =>
                 button
@@ -1429,14 +1441,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         //await this.test();
                     })
             )
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset local files")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        //await this.test();
-                    })
-            );
         new Setting(containerEl).setName("Remote Database Operations").addButton((button) =>
             button
                 .setButtonText("Reset remote database")
