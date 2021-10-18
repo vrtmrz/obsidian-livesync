@@ -1,21 +1,26 @@
 # obsidian-livesync
 
-This is the obsidian plugin that enables livesync between multi terminals.  
+This is the obsidian plugin that enables livesync between multi-devices.  
 Runs in Mac, Android, Windows, and iOS.
 
 <!-- <div><video controls src="https://user-images.githubusercontent.com/45774780/137352386-a274736d-a38b-4069-ac41-759c73e36a23.mp4"  muted="false"></video></div> -->
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-**It's beta. Please make sure back your vault up!**
+**It's beta. Please make sure to back your vault up!**
 
-Limitations: File deletion handling is not completed.
+Limitations: Folder deletion handling is not completed.
 
 ## This plugin enables..
 
--   Live sync
+-   Live Sync
 -   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
--   Off line sync is also available.
+-   Off-line sync is also available.
+
+## IMPORTANT NOTICE
+
+**Please make sure to disable other synchronize solutions to avoid content corruption or duplication.**
+If you want to synchronize to both backend, sync one by one, please.
 
 ## How to use
 
@@ -31,14 +36,14 @@ Limitations: File deletion handling is not completed.
 
 obsidian-livesync changes data treatment of markdown files since 0.1.0  
 When you are troubled with synchronization, **Please reset local and remote databases**.  
-*Note: Without synchronization, your files won't be deleted.*
+_Note: Without synchronization, your files won't be deleted._
 
 1.  Disable any synchronizations on all devices.
 2.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
 3.  Click "Reset local database" on all devices.
 4.  From _The device_ click "Reset remote database".
 5.  From _The device_ click "Init Database again".
-6.  Enable any sync or Hit Replication button.
+6.  Enable any sync or Hit the Replication button.
 
 And wait for a minute. your data will be uploaded and synchronized with all devices again.
 
@@ -52,7 +57,7 @@ And wait for a minute. your data will be uploaded and synchronized with all devi
 1. In IBM Cloud Catalog, search "Cloudant".
    ![step 2](instruction_images/cloudant_2.png)
 
-1. You can choise "Lite plan" in free.
+1. You can choose "Lite plan" for free.
    ![step 3](instruction_images/cloudant_3.png)
 
 Select Multitenant(it's the default) and the region as you like.
