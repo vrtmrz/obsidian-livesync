@@ -7,7 +7,6 @@ Runs in Mac, Android, Windows, and iOS.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-
 **It's beta. Please make sure back your vault up!**
 
 Limitations: File deletion handling is not completed.
@@ -18,15 +17,30 @@ Limitations: File deletion handling is not completed.
 -   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
 -   Off line sync is also available.
 
-## How to use the beta build
+## How to use
 
-1.  download this repo and expand `[your-vault]/.obsidian/plugins/` (PC, Mac and Android will work)
-1.  enable obsidian livesync in the settings dialog.
-1.  If you use your self-hosted CouchDB, set your server's info.
-1.  or Use [IBM Cloudant](https://www.ibm.com/cloud/cloudant), take an account and enable **Cloudant** in [Catalog](https://cloud.ibm.com/catalog#services)  
-    Note please choose "IAM and legacy credentials" for the Authentication method
-    Setup details are in Couldant Setup Section.
-1.  Setup LiveSync or SyncOnSave or SyncOnStart as you like.
+1. Install from Obsidian, or clone this repo and run `npm run build` ,copy `main.js`, `styles.css` and `manifest.json` into `[your-vault]/.obsidian/plugins/` (PC, Mac and Android will work)
+2. Enable obsidian livesync in the settings dialog.
+3. If you use your self-hosted CouchDB, set your server's info.
+4. or Use [IBM Cloudant](https://www.ibm.com/cloud/cloudant), take an account and enable **Cloudant** in [Catalog](https://cloud.ibm.com/catalog#services)  
+   Note please choose "IAM and legacy credentials" for the Authentication method
+   Setup details are in Couldant Setup Section.
+5. Setup LiveSync or SyncOnSave or SyncOnStart as you like.
+
+## When your database looks corrupted
+
+obsidian-livesync changes data treatment of markdown files since 0.1.0  
+When you are troubled with synchronization, **Please reset local and remote databases**.  
+*Note: Without synchronization, your files won't be deleted.*
+
+1.  Disable any synchronizations on all devices.
+2.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
+3.  Click "Reset local database" on all devices.
+4.  From _The device_ click "Reset remote database".
+5.  From _The device_ click "Init Database again".
+6.  Enable any sync or Hit Replication button.
+
+And wait for a minute. your data will be uploaded and synchronized with all devices again.
 
 ## Cloudant Setup
 
@@ -107,4 +121,5 @@ example values.
 | CouchDB Password    | (\*4)       | c2c11651d75497fa3d3c486e4c8bdf27                                            |
 
 # License
+
 The source code is licensed MIT.
