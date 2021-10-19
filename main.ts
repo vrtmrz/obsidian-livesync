@@ -11,7 +11,7 @@ const MAX_DOC_SIZE_BIN = 102400; // 100kb
 const VER = 10;
 
 const RECENT_MOFIDIED_DOCS_QTY = 30;
-
+const LEAF_WAIT_TIMEOUT = 30000; // in synchronization, waiting missing leaf time out.
 const LOG_LEVEL = {
     VERBOSE: 1,
     INFO: 10,
@@ -34,6 +34,7 @@ interface ObsidianLiveSyncSettings {
     minimumChunkSize: number;
     longLineThreshold: number;
     showVerboseLog: boolean;
+    suspendFileWatching: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -45,11 +46,12 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     syncOnStart: false,
     savingDelay: 200,
     lessInformationInLog: false,
-    gcDelay: 30,
+    gcDelay: 300,
     versionUpFlash: "",
     minimumChunkSize: 20,
     longLineThreshold: 250,
     showVerboseLog: false,
+    suspendFileWatching: false,
 };
 interface Entry {
     _id: string;
@@ -99,7 +101,9 @@ interface EntryLeaf {
     _rev?: string;
 }
 
-type EntryDoc = Entry | NewEntry | PlainEntry | LoadedEntry | EntryLeaf;
+type EntryBody = Entry | NewEntry | PlainEntry;
+type EntryDoc = EntryBody | LoadedEntry | EntryLeaf;
+
 type diff_result_leaf = {
     rev: string;
     data: string;
@@ -188,7 +192,7 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
         let info = await db.info();
         return { db: db, info: info };
     } catch (ex) {
-        return;
+        return false;
     }
 };
 
@@ -211,6 +215,8 @@ class LocalPouchDB {
     hashCacheRev: {
         [key: string]: string;
     } = {};
+
+    corruptedEntries: { [key: string]: EntryDoc } = {};
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin, dbname: string) {
         this.plugin = plugin;
@@ -251,23 +257,112 @@ class LocalPouchDB {
         let idrev = id + rev;
         return this.recentModifiedDocs.indexOf(idrev) !== -1;
     }
+    changeHandler: PouchDB.Core.Changes<{}> = null;
     async initializeDatabase() {
         if (this.localDatabase != null) this.localDatabase.close();
+        if (this.changeHandler != null) {
+            this.changeHandler.cancel();
+        }
         this.localDatabase = null;
         this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
             auto_compaction: true,
             revs_limit: 100,
             deterministic_revs: true,
         });
+
+        // Traceing the leaf id
+        let changes = this.localDatabase
+            .changes({
+                since: "now",
+                live: true,
+                filter: (doc) => doc.type == "leaf",
+            })
+            .on("change", (e) => {
+                if (e.deleted) return;
+                this.leafArrived(e.id);
+            });
+        this.changeHandler = changes;
         await this.prepareHashFunctions();
     }
+
     async prepareHashFunctions() {
         if (this.h32 != null) return;
         const { h32, h64 } = await xxhash();
         this.h32 = h32;
         this.h64 = h64;
     }
-    async getDBEntry(id: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+
+    // leaf waiting
+    leafArrivedCallbacks: { [key: string]: (() => void)[] } = {};
+
+    leafArrived(id: string) {
+        if (typeof this.leafArrivedCallbacks[id] !== "undefined") {
+            for (let func of this.leafArrivedCallbacks[id]) {
+                func();
+            }
+            delete this.leafArrivedCallbacks[id];
+        }
+    }
+    // wait
+    waitForLeafReady(id: string): Promise<boolean> {
+        return new Promise((_, res) => {
+            // Set timeout.
+            let timer = setTimeout(() => res(false), LEAF_WAIT_TIMEOUT);
+            if (typeof this.leafArrivedCallbacks[id] == "undefined") {
+                this.leafArrivedCallbacks[id] = [];
+            }
+            this.leafArrivedCallbacks[id].push(() => {
+                clearTimeout(timer);
+                res(true);
+            });
+        });
+    }
+
+    async getDBLeaf(id: string): Promise<string> {
+        // when in cache, use that.
+        if (this.hashCacheRev[id]) {
+            return this.hashCacheRev[id];
+        }
+        try {
+            let w = await this.localDatabase.get(id);
+            if (w.type == "leaf") {
+                this.hashCache[w.data] = id;
+                this.hashCacheRev[id] = w.data;
+                return w.data;
+            }
+            throw new Error(`retrive leaf, but it was not leaf.`);
+        } catch (ex) {
+            if (ex.status && ex.status == 404) {
+                // just leaf is not ready.
+                // wait for on
+                if ((await this.waitForLeafReady(id)) === false) {
+                    throw new Error(`time out (waiting leaf)`);
+                }
+                try {
+                    // retrive again.
+                    let w = await this.localDatabase.get(id);
+
+                    if (w.type == "leaf") {
+                        this.hashCache[w.data] = id;
+                        this.hashCacheRev[id] = w.data;
+                        return w.data;
+                    }
+                    throw new Error(`retrive leaf, but it was not leaf.`);
+                } catch (ex) {
+                    if (ex.status && ex.status == 404) {
+                        throw new Error("leaf is not found");
+                    }
+                    this.addLog(`Something went wrong on retriving leaf`);
+                    throw ex;
+                }
+            } else {
+                this.addLog(`Something went wrong on retriving leaf`);
+                throw ex;
+            }
+        }
+    }
+
+    async getDBEntry(id: string, opt?: PouchDB.Core.GetOptions, retryCount = 5): Promise<false | LoadedEntry> {
         try {
             let obj: EntryDocResponse = null;
             if (opt) {
@@ -296,33 +391,24 @@ class LocalPouchDB {
                     children: [],
                     datatype: "newnote",
                 };
+                if (typeof this.corruptedEntries[doc._id] != "undefined") {
+                    delete this.corruptedEntries[doc._id];
+                }
                 return doc;
                 // simple note
             }
             if (obj.type == "newnote" || obj.type == "plain") {
                 // search childrens
                 try {
-                    let childrens = [];
-                    for (var v of obj.children) {
-                        if (typeof this.hashCacheRev[v] !== "undefined") {
-                            childrens.push(this.hashCacheRev[v]);
-                        } else {
-                            try {
-                                let elem = await this.localDatabase.get(v);
-                                if (elem.type && elem.type == "leaf") {
-                                    childrens.push(elem.data);
-                                } else {
-                                    throw new Error("linked document is not leaf");
-                                }
-                            } catch (ex) {
-                                if (ex.status && ex.status == 404) {
-                                    this.addLog(`Missing document content!, could not read ${v} of ${obj._id}(${obj._rev}) from database.`, LOG_LEVEL.NOTICE);
-                                    return false;
-                                }
-                                throw ex;
-                            }
-                        }
+                    let childrens;
+                    try {
+                        childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e)));
+                    } catch (ex) {
+                        this.addLog(`Something went wrong on reading elements of ${obj._id} from database.`, LOG_LEVEL.NOTICE);
+                        this.corruptedEntries[obj._id] = obj;
+                        return false;
                     }
+
                     let data = childrens.join("");
                     let doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                         data: data,
@@ -336,7 +422,9 @@ class LocalPouchDB {
                         datatype: obj.type,
                         _conflicts: obj._conflicts,
                     };
-
+                    if (typeof this.corruptedEntries[doc._id] != "undefined") {
+                        delete this.corruptedEntries[doc._id];
+                    }
                     return doc;
                 } catch (ex) {
                     if (ex.status && ex.status == 404) {
@@ -373,6 +461,9 @@ class LocalPouchDB {
                 obj._deleted = true;
                 let r = await this.localDatabase.put(obj);
                 this.updateRecentModifiedDocs(r.id, r.rev, true);
+                if (typeof this.corruptedEntries[obj._id] != "undefined") {
+                    delete this.corruptedEntries[obj._id];
+                }
                 return true;
                 // simple note
             }
@@ -381,6 +472,9 @@ class LocalPouchDB {
                 let r = await this.localDatabase.put(obj);
                 this.addLog(`entry removed:${obj._id}-${r.rev}`);
                 this.updateRecentModifiedDocs(r.id, r.rev, true);
+                if (typeof this.corruptedEntries[obj._id] != "undefined") {
+                    delete this.corruptedEntries[obj._id];
+                }
                 return true;
             }
         } catch (ex) {
@@ -528,7 +622,6 @@ class LocalPouchDB {
             size: note.size,
             type: plainSplit ? "plain" : "newnote",
         };
-
         // Here for upsert logic,
         try {
             let old = await this.localDatabase.get(newDoc._id);
@@ -545,6 +638,9 @@ class LocalPouchDB {
         }
         let r = await this.localDatabase.put(newDoc);
         this.updateRecentModifiedDocs(r.id, r.rev, newDoc._deleted);
+        if (typeof this.corruptedEntries[note._id] != "undefined") {
+            delete this.corruptedEntries[note._id];
+        }
         this.addLog(`note saven:${newDoc._id}:${r.rev}`);
     }
 
@@ -576,11 +672,13 @@ class LocalPouchDB {
         let syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
 
         let db = dbret.db;
-
         //replicate once
         let replicate = this.localDatabase.replicate.from(db, syncOptionBase);
         replicate
             .on("change", async (e) => {
+                // when in first run, replication will send us tombstone data
+                // and in normal cases, all leavs should sent before the entry that contains these item.
+                // so skip to completed all, we should treat all changes.
                 try {
                     callback(e.docs);
                     this.addLog(`pulled ${e.docs.length} doc(s)`);
@@ -590,10 +688,11 @@ class LocalPouchDB {
                 }
             })
             .on("complete", async (info) => {
-                replicate.removeAllListeners();
                 replicate.cancel();
+                replicate.removeAllListeners();
                 this.syncHandler = null;
                 if (this.syncHandler != null) {
+                    this.syncHandler.cancel();
                     this.syncHandler.removeAllListeners();
                 }
                 this.syncHandler = this.localDatabase.sync(db, syncOption);
@@ -644,10 +743,14 @@ class LocalPouchDB {
     }
 
     async resetDatabase() {
+        if (this.changeHandler != null) {
+            this.changeHandler.cancel();
+        }
         await this.closeReplication();
         await this.localDatabase.destroy();
         this.localDatabase = null;
         await this.initializeDatabase();
+        this.disposeHashCache();
         this.addLog("Local Database Reset", LOG_LEVEL.NOTICE);
     }
     async tryResetRemoteDatabase(setting: ObsidianLiveSyncSettings) {
@@ -741,7 +844,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     //localDatabase: PouchDB.Database<EntryDoc>;
     localDatabase: LocalPouchDB;
     logMessage: string[] = [];
-    // onLogChanged: () => void;
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
 
@@ -827,6 +929,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.replicate();
             },
         });
+        // this.addCommand({
+        //     id: "livesync-test",
+        //     name: "test reset db and replicate",
+        //     callback: async () => {
+        //         await this.resetLocalDatabase();
+        //         await this.replicate();
+        //     },
+        // });
         this.addCommand({
             id: "livesync-gc",
             name: "garbage collect now",
@@ -904,6 +1014,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     watchWindowVisiblity() {
+        if (this.settings.suspendFileWatching) return;
         let isHidden = document.hidden;
         if (isHidden) {
             this.localDatabase.closeReplication();
@@ -919,16 +1030,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     watchWorkspaceOpen(file: TFile) {
+        if (this.settings.suspendFileWatching) return;
         if (file == null) return;
         this.localDatabase.disposeHashCache();
         this.showIfConflicted(file);
         this.gcHook();
     }
     watchVaultChange(file: TFile, ...args: any[]) {
+        if (this.settings.suspendFileWatching) return;
         this.updateIntoDB(file);
         this.gcHook();
     }
     watchVaultDelete(file: TFile & TFolder) {
+        if (this.settings.suspendFileWatching) return;
         if (file.children) {
             //folder
             this.deleteFolderOnDB(file);
@@ -939,6 +1053,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.gcHook();
     }
     watchVaultRename(file: TFile & TFolder, oldFile: any) {
+        if (this.settings.suspendFileWatching) return;
         if (file.children) {
             // this.renameFolder(file,oldFile);
             this.addLog(`folder name changed:(this operation is not supported) ${file.path}`);
@@ -995,7 +1110,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    async doc2storage_create(docEntry: Entry, force?: boolean) {
+    async doc2storage_create(docEntry: EntryBody, force?: boolean) {
         let doc = await this.localDatabase.getDBEntry(docEntry._id, { rev: docEntry._rev });
         if (doc === false) return;
         if (doc.datatype == "newnote") {
@@ -1026,7 +1141,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.deleteVaultItem(dir);
         }
     }
-    async doc2storate_modify(docEntry: Entry, file: TFile, force?: boolean) {
+    async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
         if (docEntry._deleted) {
             //basically pass.
             //but if there're no docs left, delete file.
@@ -1072,7 +1187,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             //eq.case
         }
     }
-    async handleDBChanged(change: Entry) {
+    async handleDBChanged(change: EntryBody) {
         let allfiles = this.app.vault.getFiles();
         let targetFiles = allfiles.filter((e) => e.path == change._id);
         if (targetFiles.length == 0) {
@@ -1091,13 +1206,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     //---> Sync
-    async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<Entry>>): Promise<void> {
+    async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
         for (var change of docs) {
             if (this.localDatabase.isSelfModified(change._id, change._rev)) {
                 return;
             }
             this.addLog("replication change arrived", LOG_LEVEL.VERBOSE);
-            await this.handleDBChanged(change);
+            if (change.type != "leaf") {
+                await this.handleDBChanged(change);
+            }
             this.gcHook();
         }
     }
@@ -1588,6 +1705,8 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
         );
 
+        containerEl.createEl("h3", { text: "Database configuration" });
+
         new Setting(containerEl)
             .setName("File to Database saving delay")
             .setDesc("ms, between 200 and 5000, restart required.")
@@ -1615,15 +1734,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         let v = Number(value);
                         if (isNaN(v) || v > 5000) {
                             return 0;
-                            //text.inputEl.va;
                         }
                         this.plugin.settings.gcDelay = v;
                         await this.plugin.saveSettings();
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+
+        containerEl.createEl("h3", { text: "Log Setting" });
+
         new Setting(containerEl)
-            .setName("Log")
+            .setName("Do not show low-priority Log")
             .setDesc("Reduce log infomations")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
@@ -1640,18 +1761,21 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+
+        containerEl.createEl("h3", { text: "Sync setting" });
+
         if (this.plugin.settings.versionUpFlash != "") {
             let c = containerEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
             c.createEl("button", { text: "I got it and updated." }, (e) => {
                 e.addEventListener("click", async () => {
                     this.plugin.settings.versionUpFlash = "";
-                    this.plugin.saveSettings();
+                    await this.plugin.saveSettings();
                     c.remove();
                 });
             });
             c.addClass("op-warn");
         }
-        // containerEl.createDiv(this.plugin.settings.versionUpFlash);
+
         new Setting(containerEl)
             .setName("LiveSync")
             .setDesc("Sync realtime")
@@ -1664,7 +1788,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerEl)
             .setName("Sync on Save")
-            .setDesc("Sync on Save")
+            .setDesc("When you save file, sync automatically")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
                     this.plugin.settings.syncOnSave = value;
@@ -1673,13 +1797,14 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerEl)
             .setName("Sync on Start")
-            .setDesc("Sync on Start")
+            .setDesc("Start synchronization on Obsidian started.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
                     this.plugin.settings.syncOnStart = value;
                     await this.plugin.saveSettings();
                 })
             );
+
         new Setting(containerEl)
             .setName("Minimum chunk size")
             .setDesc("(letters), minimum chunk size.")
@@ -1696,6 +1821,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+
         new Setting(containerEl)
             .setName("LongLine Threshold")
             .setDesc("(letters), If the line is longer than this, make the line to chunk")
@@ -1712,6 +1838,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+
         new Setting(containerEl).setName("Local Database Operations").addButton((button) =>
             button
                 .setButtonText("Reset local database")
@@ -1738,6 +1865,19 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.garbageCollect();
                 })
         );
+
+        containerEl.createEl("h3", { text: "Hatch" });
+
+        new Setting(containerEl)
+            .setName("Suspend file watching")
+            .setDesc("if enables it, all file operations are ignored.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
+                    this.plugin.settings.suspendFileWatching = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
         new Setting(containerEl).setName("Remote Database Operations").addButton((button) =>
             button
                 .setButtonText("Reset remote database")
@@ -1754,5 +1894,21 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.tryResetRemoteDatabase();
                 })
         );
+
+        containerEl.createEl("h3", { text: "Corrupted data" });
+
+        if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
+            let cx = containerEl.createEl("div", { text: "If you have copy of these items on any device, simply edit once or twice. Or not, delete this. sorry.." });
+            for (let k in this.plugin.localDatabase.corruptedEntries) {
+                let xx = cx.createEl("div", { text: `${k}` });
+
+                let ba = xx.createEl("button", { text: `Delete this` }, (e) => {
+                    e.addEventListener("click", async () => {
+                        await this.plugin.localDatabase.deleteDBEntry(k);
+                        xx.remove();
+                    });
+                });
+            }
+        }
     }
 }
