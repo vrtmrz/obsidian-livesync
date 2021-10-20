@@ -309,9 +309,9 @@ class LocalPouchDB {
     }
     // wait
     waitForLeafReady(id: string): Promise<boolean> {
-        return new Promise((res) => {
+        return new Promise((res, rej) => {
             // Set timeout.
-            let timer = setTimeout(() => res(false), LEAF_WAIT_TIMEOUT);
+            let timer = setTimeout(() => rej(false), LEAF_WAIT_TIMEOUT);
             if (typeof this.leafArrivedCallbacks[id] == "undefined") {
                 this.leafArrivedCallbacks[id] = [];
             }
