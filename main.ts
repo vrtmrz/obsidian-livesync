@@ -147,7 +147,11 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
         }
         return bytes.buffer;
     } catch (ex) {
-        return null;
+        return new Uint16Array(
+            [].map.call(base64, function (c: string) {
+                return c.charCodeAt(0);
+            })
+        ).buffer;
     }
 }
 function base64ToString(base64: string): string {
@@ -160,7 +164,7 @@ function base64ToString(base64: string): string {
         }
         return new TextDecoder().decode(bytes);
     } catch (ex) {
-        return null;
+        return base64;
     }
 }
 
@@ -305,7 +309,7 @@ class LocalPouchDB {
     }
     // wait
     waitForLeafReady(id: string): Promise<boolean> {
-        return new Promise((_, res) => {
+        return new Promise((res) => {
             // Set timeout.
             let timer = setTimeout(() => res(false), LEAF_WAIT_TIMEOUT);
             if (typeof this.leafArrivedCallbacks[id] == "undefined") {
