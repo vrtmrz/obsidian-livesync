@@ -32,6 +32,13 @@ If you want to synchronize to both backend, sync one by one, please.
    Setup details are in Couldant Setup Section.
 5. Setup LiveSync or SyncOnSave or SyncOnStart as you like.
 
+## Test Server
+Setting up an instance of Cloudant or local CouchDB is a little complicated, so I made the [Tasting server of obsidian-livesync](https://olstaste.vrtmrz.net/) up. Try free!   
+Note: Please read "Limitations" carefully. Do not send your private vault.
+
+## WebClipper is also available.
+See [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are work in progress.)
+
 ## When your database looks corrupted
 
 obsidian-livesync changes data treatment of markdown files since 0.1.0  
