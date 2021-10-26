@@ -16,6 +16,7 @@ Limitations: Folder deletion handling is not completed.
 -   Live Sync
 -   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
 -   Off-line sync is also available.
+-   Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 
 ## IMPORTANT NOTICE
 
@@ -33,11 +34,14 @@ If you want to synchronize to both backend, sync one by one, please.
 5. Setup LiveSync or SyncOnSave or SyncOnStart as you like.
 
 ## Test Server
-Setting up an instance of Cloudant or local CouchDB is a little complicated, so I made the [Tasting server of obsidian-livesync](https://olstaste.vrtmrz.net/) up. Try free!   
+
+Setting up an instance of Cloudant or local CouchDB is a little complicated, so I made the [Tasting server of obsidian-livesync](https://olstaste.vrtmrz.net/) up. Try free!  
 Note: Please read "Limitations" carefully. Do not send your private vault.
 
 ## WebClipper is also available.
-See [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are work in progress.)
+
+Available from on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)  
+Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are work in progress.)
 
 ## When your database looks corrupted
 

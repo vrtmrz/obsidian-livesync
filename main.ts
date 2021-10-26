@@ -21,6 +21,8 @@ const LOG_LEVEL = {
 type LOG_LEVEL = typeof LOG_LEVEL[keyof typeof LOG_LEVEL];
 
 const VERSIONINFO_DOCID = "obsydian_livesync_version";
+const MILSTONE_DOCID = "_local/obsydian_livesync_milestone";
+const NODEINFO_DOCID = "_local/obsydian_livesync_nodeinfo";
 
 interface ObsidianLiveSyncSettings {
     couchDB_URI: string;
@@ -110,8 +112,27 @@ interface EntryVersionInfo {
     version: number;
     _deleted?: boolean;
 }
+
+interface EntryMilestoneInfo {
+    _id: typeof MILSTONE_DOCID;
+    _rev?: string;
+    type: "milestoneinfo";
+    _deleted?: boolean;
+    created: number;
+    accepted_nodes: string[];
+    locked: boolean;
+}
+
+interface EntryNodeInfo {
+    _id: typeof NODEINFO_DOCID;
+    _rev?: string;
+    _deleted?: boolean;
+    type: "nodeinfo";
+    nodeid: string;
+}
+
 type EntryBody = Entry | NewEntry | PlainEntry;
-type EntryDoc = EntryBody | LoadedEntry | EntryLeaf | EntryVersionInfo;
+type EntryDoc = EntryBody | LoadedEntry | EntryLeaf | EntryVersionInfo | EntryMilestoneInfo | EntryNodeInfo;
 
 type diff_result_leaf = {
     rev: string;
@@ -195,6 +216,13 @@ const escapeStringToHTML = (str: string) => {
         return escape[match];
     });
 };
+
+function resolveWithIgnoreKnownError<T>(p: Promise<T>, def: T): Promise<T> {
+    return new Promise((res, rej) => {
+        p.then(res).catch((ex) => (ex.status && ex.status == 404 ? res(def) : rej(ex)));
+    });
+}
+
 const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("https://")) return true;
     if (uri.startsWith("http://")) return true;
@@ -251,22 +279,21 @@ const bumpRemoteVersion = async (db: PouchDB.Database, barrier: number = VER): P
         version: barrier,
         type: "versioninfo",
     };
-    try {
-        let versionInfo = (await db.get(VERSIONINFO_DOCID)) as EntryVersionInfo;
-        if (versionInfo.type != "versioninfo") {
-            return false;
-        }
-        vi._rev = versionInfo._rev;
-    } catch (ex) {
-        if (ex.status && ex.status == 404) {
-            // no op.
-        } else {
-            throw ex;
-        }
+    let versionInfo = (await resolveWithIgnoreKnownError(db.get(VERSIONINFO_DOCID), vi)) as EntryVersionInfo;
+    if (versionInfo.type != "versioninfo") {
+        return false;
     }
+    vi._rev = versionInfo._rev;
     await db.put(vi);
     return true;
 };
+function isValidPath(filename: string): boolean {
+    let regex = /[\u0000-\u001f]|[\\"':?<>|*$]/g;
+    let x = filename.replace(regex, "_");
+    let win = /(\\|\/)(COM\d|LPT\d|CON|PRN|AUX|NUL|CLOCK$)($|\.)/gi;
+    let sx = (x = x.replace(win, "/_"));
+    return sx == filename;
+}
 
 // Default Logger.
 let Logger: (message: any, levlel?: LOG_LEVEL) => Promise<void> = async (message, _) => {
@@ -282,6 +309,7 @@ class LocalPouchDB {
     dbname: string;
     settings: ObsidianLiveSyncSettings;
     localDatabase: PouchDB.Database<EntryDoc>;
+    nodeid: string = "";
 
     recentModifiedDocs: string[] = [];
     h32: (input: string, seed?: number) => string;
@@ -294,6 +322,8 @@ class LocalPouchDB {
     } = {};
 
     corruptedEntries: { [key: string]: EntryDoc } = {};
+    remoteLocked = false;
+    remoteLockedAndDeviceNotAccepted = false;
 
     constructor(settings: ObsidianLiveSyncSettings, dbname: string) {
         this.auth = {
@@ -345,6 +375,17 @@ class LocalPouchDB {
             revs_limit: 100,
             deterministic_revs: true,
         });
+        // initialize local node information.
+        let nodeinfo: EntryNodeInfo = await resolveWithIgnoreKnownError<EntryNodeInfo>(this.localDatabase.get(NODEINFO_DOCID), {
+            _id: NODEINFO_DOCID,
+            type: "nodeinfo",
+            nodeid: "",
+        });
+        if (nodeinfo.nodeid == "") {
+            nodeinfo.nodeid = Math.random().toString(36).slice(-10);
+            await this.localDatabase.put(nodeinfo);
+        }
+        this.nodeid = nodeinfo.nodeid;
 
         // Traceing the leaf id
         let changes = this.localDatabase
@@ -560,7 +601,54 @@ class LocalPouchDB {
             throw ex;
         }
     }
-
+    async deleteDBEntryPrefix(prefix: string): Promise<boolean> {
+        // delete database entries by prefix.
+        // it called from folder deletion.
+        let c = 0;
+        let readCount = 0;
+        let delDocs: string[] = [];
+        do {
+            let result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 100, conflicts: true });
+            readCount = result.rows.length;
+            if (readCount > 0) {
+                //there are some result
+                for (let v of result.rows) {
+                    // let doc = v.doc;
+                    if (v.id.startsWith(prefix) || v.id.startsWith("/" + prefix)) {
+                        delDocs.push(v.id);
+                        console.log("!" + v.id);
+                    } else {
+                        if (!v.id.startsWith("h:")) {
+                            console.log("?" + v.id);
+                        }
+                    }
+                }
+            }
+            c += readCount;
+        } while (readCount != 0);
+        // items collected.
+        //bulk docs to delete?
+        let deleteCount = 0;
+        let notfound = 0;
+        for (let v of delDocs) {
+            try {
+                let item = await this.localDatabase.get(v);
+                item._deleted = true;
+                await this.localDatabase.put(item);
+                this.updateRecentModifiedDocs(item._id, item._rev, true);
+                deleteCount++;
+            } catch (ex) {
+                if (ex.status && ex.status == 404) {
+                    notfound++;
+                    // NO OP. It should be timing problem.
+                } else {
+                    throw ex;
+                }
+            }
+        }
+        Logger(`deleteDBEntryPrefix:deleted ${deleteCount} items, skipped ${notfound}`);
+        return true;
+    }
     async putDBEntry(note: LoadedEntry) {
         let leftData = note.data;
         let savenNotes = [];
@@ -727,6 +815,47 @@ class LocalPouchDB {
         // no op now,
         return true;
     }
+    replicateAllToServer(setting: ObsidianLiveSyncSettings) {
+        return new Promise(async (res, rej) => {
+            this.closeReplication();
+            Logger("send all data to server", LOG_LEVEL.NOTICE);
+            let uri = setting.couchDB_URI;
+            let auth: Credential = {
+                username: setting.couchDB_USER,
+                password: setting.couchDB_PASSWORD,
+            };
+            let dbret = await connectRemoteCouchDB(uri, auth);
+            if (dbret === false) {
+                Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+                return rej(`could not connect to ${uri}`);
+            }
+
+            let syncOptionBase: PouchDB.Replication.SyncOptions = {
+                batch_size: 250,
+                batches_limit: 40,
+            };
+
+            let db = dbret.db;
+            //replicate once
+            let replicate = this.localDatabase.replicate.to(db, syncOptionBase);
+            replicate
+                .on("change", async (e) => {
+                    // no op.
+                    Logger(`sending..:${e.docs.length}`);
+                })
+                .on("complete", async (info) => {
+                    Logger("Completed", LOG_LEVEL.NOTICE);
+                    replicate.cancel();
+                    replicate.removeAllListeners();
+                    res(true);
+                })
+                .on("error", (e) => {
+                    Logger("Pulling Replication error", LOG_LEVEL.NOTICE);
+                    Logger(e);
+                    rej(e);
+                });
+        });
+    }
     async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<{}>[]) => Promise<void>) {
         if (setting.versionUpFlash != "") {
             new Notice("Open settings and check message, please.");
@@ -750,6 +879,26 @@ class LocalPouchDB {
         if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
             Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
             return;
+        }
+
+        let defMilestonePoint: EntryMilestoneInfo = {
+            _id: MILSTONE_DOCID,
+            type: "milestoneinfo",
+            created: (new Date() as any) / 1,
+            locked: false,
+            accepted_nodes: [this.nodeid],
+        };
+
+        let remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
+        this.remoteLocked = remoteMilestone.locked;
+        this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
+
+        if (remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1) {
+            Logger("Remote database marked as 'Auto Sync Locked'. And this devide does not marked as resolved device. see settings dialog.", LOG_LEVEL.NOTICE);
+            return;
+        }
+        if (typeof remoteMilestone._rev == "undefined") {
+            await dbret.db.put(remoteMilestone);
         }
 
         let syncOptionBase: PouchDB.Replication.SyncOptions = {
@@ -868,6 +1017,71 @@ class LocalPouchDB {
         let con2 = await connectRemoteCouchDB(uri, auth);
         if (con2 === false) return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
+    }
+    async markRemoteLocked(setting: ObsidianLiveSyncSettings, locked: boolean) {
+        let uri = setting.couchDB_URI;
+        let auth: Credential = {
+            username: setting.couchDB_USER,
+            password: setting.couchDB_PASSWORD,
+        };
+        let dbret = await connectRemoteCouchDB(uri, auth);
+        if (dbret === false) {
+            Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+            return;
+        }
+
+        if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+            Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
+            return;
+        }
+        let defInitPoint: EntryMilestoneInfo = {
+            _id: MILSTONE_DOCID,
+            type: "milestoneinfo",
+            created: (new Date() as any) / 1,
+            locked: locked,
+            accepted_nodes: [this.nodeid],
+        };
+
+        let remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint);
+        remoteMilestone.accepted_nodes = [this.nodeid];
+        remoteMilestone.locked = locked;
+        if (locked) {
+            Logger("Lock remote database to prevent data corruption", LOG_LEVEL.NOTICE);
+        } else {
+            Logger("Unlock remote database to prevent data corruption", LOG_LEVEL.NOTICE);
+        }
+        await dbret.db.put(remoteMilestone);
+    }
+    async markRemoteResolved(setting: ObsidianLiveSyncSettings) {
+        let uri = setting.couchDB_URI;
+        let auth: Credential = {
+            username: setting.couchDB_USER,
+            password: setting.couchDB_PASSWORD,
+        };
+        let dbret = await connectRemoteCouchDB(uri, auth);
+        if (dbret === false) {
+            Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+            return;
+        }
+
+        if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+            Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
+            return;
+        }
+        let defInitPoint: EntryMilestoneInfo = {
+            _id: MILSTONE_DOCID,
+            type: "milestoneinfo",
+            created: (new Date() as any) / 1,
+            locked: false,
+            accepted_nodes: [this.nodeid],
+        };
+        // check local database hash status and remote replicate hash status
+        let remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint);
+        // remoteMilestone.locked = false;
+        remoteMilestone.accepted_nodes = Array.from(new Set([...remoteMilestone.accepted_nodes, this.nodeid]));
+        // this.remoteLocked = false;
+        Logger("Mark this device as 'resolved'.", LOG_LEVEL.NOTICE);
+        await dbret.db.put(remoteMilestone);
     }
 
     async garbageCollect() {
@@ -1202,12 +1416,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (doc.datatype == "newnote") {
             let bin = base64ToArrayBuffer(doc.data);
             if (bin != null) {
+                if (!isValidPath(doc._id)) {
+                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                    return;
+                }
                 await this.ensureDirectory(doc._id);
                 let newfile = await this.app.vault.createBinary(doc._id, bin, { ctime: doc.ctime, mtime: doc.mtime });
                 Logger("live : write to local (newfile:b) " + doc._id);
                 await this.app.vault.trigger("create", newfile);
             }
         } else if (doc.datatype == "plain") {
+            if (!isValidPath(doc._id)) {
+                Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                return;
+            }
             await this.ensureDirectory(doc._id);
             let newfile = await this.app.vault.create(doc._id, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
             Logger("live : write to local (newfile:p) " + doc._id);
@@ -1251,6 +1473,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (doc.datatype == "newnote") {
                 let bin = base64ToArrayBuffer(doc.data);
                 if (bin != null) {
+                    if (!isValidPath(doc._id)) {
+                        Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                        return;
+                    }
                     await this.ensureDirectory(doc._id);
                     await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
                     Logger(msg);
@@ -1258,6 +1484,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
             }
             if (doc.datatype == "plain") {
+                if (!isValidPath(doc._id)) {
+                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                    return;
+                }
                 await this.ensureDirectory(doc._id);
                 await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
                 Logger(msg);
@@ -1298,7 +1528,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return;
             }
             Logger("replication change arrived", LOG_LEVEL.VERBOSE);
-            if (change.type != "leaf" && change.type != "versioninfo") {
+            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
                 await this.handleDBChanged(change);
             }
             if (change.type == "versioninfo") {
@@ -1333,6 +1563,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.openDatabase();
         await this.syncAllFiles();
     }
+    async replicateAllToServer() {
+        return await this.localDatabase.replicateAllToServer(this.settings);
+    }
+    async markRemoteLocked() {
+        return await this.localDatabase.markRemoteLocked(this.settings, true);
+    }
+    async markRemoteUnlocked() {
+        return await this.localDatabase.markRemoteLocked(this.settings, false);
+    }
+    async markRemoteResolved() {
+        return await this.localDatabase.markRemoteResolved(this.settings);
+    }
     async syncAllFiles() {
         // synchronize all files between database and storage.
         const filesStorage = this.app.vault.getFiles();
@@ -1362,6 +1604,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async deleteFolderOnDB(folder: TFolder) {
         Logger(`delete folder:${folder.path}`);
+        await this.localDatabase.deleteDBEntryPrefix(folder.path + "/");
         for (var v of folder.children) {
             let entry = v as TFile & TFolder;
             Logger(`->entry:${entry.path}`, LOG_LEVEL.VERBOSE);
@@ -1374,7 +1617,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     if (ex.code && ex.code == "ENOENT") {
                         //NO OP.
                     } else {
-                        Logger(`error while delete filder:${entry.path}`, LOG_LEVEL.NOTICE);
+                        Logger(`error while delete folder:${entry.path}`, LOG_LEVEL.NOTICE);
                         Logger(ex);
                     }
                 }
@@ -1788,14 +2031,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "password");
             });
-        new Setting(containerEl).setName("Test DB").addButton((button) =>
-            button
-                .setButtonText("Test Database Connection")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.testConnection();
-                })
-        );
+        new Setting(containerEl)
+            .setName("Test Database Connection")
+            .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Test")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.testConnection();
+                    })
+            );
 
         containerEl.createEl("h3", { text: "Database configuration" });
 
@@ -1931,24 +2177,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
-        new Setting(containerEl).setName("Local Database Operations").addButton((button) =>
-            button
-                .setButtonText("Reset local database")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.resetLocalDatabase();
-                })
-        );
-        new Setting(containerEl).setName("Re-init").addButton((button) =>
-            button
-                .setButtonText("Init Database again")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.resetLocalDatabase();
-                    await this.plugin.initializeDatabase();
-                })
-        );
-
         new Setting(containerEl).setName("Garbage Collect").addButton((button) =>
             button
                 .setButtonText("Garbage Collection")
@@ -1960,6 +2188,60 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h3", { text: "Hatch" });
 
+        if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
+            let c = containerEl.createEl("div", {
+                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. it caused by some operations like this. re-initialized. Local database initialization should be required. please back your vault up, reset local database, and press 'Mark this device as resolved'. ",
+            });
+            c.createEl("button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
+                e.addEventListener("click", async () => {
+                    await this.plugin.markRemoteResolved();
+                    c.remove();
+                });
+            });
+            c.addClass("op-warn");
+        } else {
+            if (this.plugin.localDatabase.remoteLocked) {
+                let c = containerEl.createEl("div", {
+                    text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
+                });
+                c.createEl("button", { text: "I'm ready, unlock the database" }, (e) => {
+                    e.addEventListener("click", async () => {
+                        await this.plugin.markRemoteUnlocked();
+                        c.remove();
+                    });
+                });
+                c.addClass("op-warn");
+            }
+        }
+
+        new Setting(containerEl)
+            .setName("Drop History")
+            .setDesc("Initialize local and remote database, and create local database from storage and put all into server. And also, lock the database to prevent data corruption.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Execute")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.resetLocalDatabase();
+                        await this.plugin.initializeDatabase();
+                        await this.plugin.tryResetRemoteDatabase();
+                        await this.plugin.markRemoteLocked();
+                        await this.plugin.replicateAllToServer();
+                    })
+            );
+        new Setting(containerEl)
+            .setName("Lock remote database")
+            .setDesc("Lock remote database for synchronize")
+            .addButton((button) =>
+                button
+                    .setButtonText("Lock")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.markRemoteLocked();
+                    })
+            );
+
         new Setting(containerEl)
             .setName("Suspend file watching")
             .setDesc("if enables it, all file operations are ignored.")
@@ -1970,23 +2252,41 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl).setName("Remote Database Operations").addButton((button) =>
-            button
-                .setButtonText("Reset remote database")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.tryResetRemoteDatabase();
-                })
-        );
-        new Setting(containerEl).setName("Remote Database Operations").addButton((button) =>
-            button
-                .setButtonText("Create remote database")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.tryResetRemoteDatabase();
-                })
-        );
-
+        new Setting(containerEl)
+            .setName("Reset remote database")
+            .setDesc("Reset remote database, this affects only database. If you replicate again, remote database will restored by local database.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.tryResetRemoteDatabase();
+                    })
+            );
+        new Setting(containerEl)
+            .setName("Reset local database")
+            .setDesc("Reset local database, this affects only database. If you replicate again, local database will restored by remote database.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.resetLocalDatabase();
+                    })
+            );
+        new Setting(containerEl)
+            .setName("Initialize local database again")
+            .setDesc("WARNING: Reset local database and reconstruct by storage data. It affects local database, but if you replicate remote as is, remote data will be merged or corrupted.")
+            .addButton((button) =>
+                button
+                    .setButtonText("INITIALIZE")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.resetLocalDatabase();
+                        await this.plugin.initializeDatabase();
+                    })
+            );
         containerEl.createEl("h3", { text: "Corrupted data" });
 
         if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
