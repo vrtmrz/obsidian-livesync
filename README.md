@@ -43,20 +43,20 @@ Note: Please read "Limitations" carefully. Do not send your private vault.
 Available from on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)  
 Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are work in progress.)
 
-## When your database looks corrupted
+## When your database looks corrupted or too heavy to replicate to a new device.
 
 obsidian-livesync changes data treatment of markdown files since 0.1.0  
 When you are troubled with synchronization, **Please reset local and remote databases**.  
 _Note: Without synchronization, your files won't be deleted._
 
+1.  Update plugin on all devices.
 1.  Disable any synchronizations on all devices.
-2.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
-3.  Click "Reset local database" on all devices.
-4.  From _The device_ click "Reset remote database".
-5.  From _The device_ click "Init Database again".
-6.  Enable any sync or Hit the Replication button.
-
-And wait for a minute. your data will be uploaded and synchronized with all devices again.
+1.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
+1.  Press "Drop History"-> "Execute" button from _The device_.
+1.  Wait for a while, so obsidian-livesync will say "completed."
+1.  In other devices, replication will be canceled automatically. Click "Reset local database" and click "I'm ready, mark this device 'resolved'" on all devices.  
+    If it doesn't be shown. replicate once.
+1.  It's all done. But if you are sure to resolve all devices and the warning is noisy, click "I'm ready, unlock the database". it unlocks the database completely.
 
 ## Cloudant Setup
 
