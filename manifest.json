@@ -1,7 +1,7 @@
 {
     "id": "obsidian-livesync",
     "name": "Obsidian Live sync",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "minAppVersion": "0.9.12",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "author": "vorotamoroz",
