@@ -1482,8 +1482,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(msg);
                     await this.app.vault.trigger("modify", file);
                 }
-            }
-            if (doc.datatype == "plain") {
+            } else if (doc.datatype == "plain") {
                 if (!isValidPath(doc._id)) {
                     Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
                     return;
