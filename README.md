@@ -136,6 +136,23 @@ example values.
 | CouchDB Username    | (\*3)       | apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5                      |
 | CouchDB Password    | (\*4)       | c2c11651d75497fa3d3c486e4c8bdf27                                            |
 
+# Designed architecture
+
+## How does this plugin synchronize.
+
+![Synchronization](images/1.png)
+
+1. When notes are created or modified, Obsidian raises some events. obsidian-live-sync catch these events and reflect changes into Local PouchDB.
+2. PouchDB automatically or manually replicates changes to remote CouchDB.
+3. Another device is watching remote CouchDB's changes, so retrieve new changes.
+4. obsidian-live-sync reflects replicated changeset into Obsidian's vault.
+
+Note: The figure is drawn as single-directional, between two devices. But everything occurs bi-directionally between many devices at once in real.
+
+## Techniques to keep bandwidth low.
+
+![dedupe](images/2.png)
+
 # License
 
 The source code is licensed MIT.
