@@ -7,7 +7,7 @@ Runs in Mac, Android, Windows, and iOS.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-**It's beta. Please make sure to back your vault up!**
+**It's getting almost stable now, But Please make sure to back your vault up!**
 
 Limitations: Folder deletion handling is not completed.
 
