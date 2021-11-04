@@ -19,7 +19,11 @@
     white-space: pre-wrap;
 }
 .op-warn {
-    border:1px solid salmon;
-    padding:2px;
+    border: 1px solid salmon;
+    padding: 2px;
     border-radius: 4px;
+}
+.syncstatusbar {
+    -webkit-filter: grayscale(100%);
+    filter: grayscale(100%);
 }

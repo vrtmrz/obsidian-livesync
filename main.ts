@@ -1,4 +1,4 @@
-import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder } from "obsidian";
+import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, normalizePath } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import xxhash from "xxhash-wasm";
@@ -39,6 +39,7 @@ interface ObsidianLiveSyncSettings {
     longLineThreshold: number;
     showVerboseLog: boolean;
     suspendFileWatching: boolean;
+    trashInsteadDelete: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -56,6 +57,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     longLineThreshold: 250,
     showVerboseLog: false,
     suspendFileWatching: false,
+    trashInsteadDelete: false,
 };
 interface Entry {
     _id: string;
@@ -303,6 +305,8 @@ let Logger: (message: any, levlel?: LOG_LEVEL) => Promise<void> = async (message
     console.log(newmessage);
 };
 
+type DatabaseConnectingStatus = "NOT_CONNECTED" | "PAUSED" | "CONNECTED" | "COMPLETED" | "CLOSED" | "ERRORED";
+
 //<--Functions
 class LocalPouchDB {
     auth: Credential;
@@ -397,6 +401,7 @@ class LocalPouchDB {
             .on("change", (e) => {
                 if (e.deleted) return;
                 this.leafArrived(e.id);
+                this.docSeq = `${e.seq}`;
             });
         this.changeHandler = changes;
         await this.prepareHashFunctions();
@@ -479,6 +484,44 @@ class LocalPouchDB {
         }
     }
 
+    async getDBEntryMeta(id: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+        try {
+            let obj: EntryDocResponse = null;
+            if (opt) {
+                obj = await this.localDatabase.get(id, opt);
+            } else {
+                obj = await this.localDatabase.get(id);
+            }
+
+            if (obj.type && obj.type == "leaf") {
+                //do nothing for leaf;
+                return false;
+            }
+
+            // retrieve metadata only
+            if (!obj.type || (obj.type && obj.type == "notes") || obj.type == "newnote" || obj.type == "plain") {
+                let note = obj as Entry;
+                let doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
+                    data: "",
+                    _id: note._id,
+                    ctime: note.ctime,
+                    mtime: note.mtime,
+                    size: note.size,
+                    _deleted: obj._deleted,
+                    _rev: obj._rev,
+                    _conflicts: obj._conflicts,
+                    children: [],
+                    datatype: "newnote",
+                };
+            }
+        } catch (ex) {
+            if (ex.status && ex.status == 404) {
+                return false;
+            }
+            throw ex;
+        }
+        return false;
+    }
     async getDBEntry(id: string, opt?: PouchDB.Core.GetOptions, retryCount = 5): Promise<false | LoadedEntry> {
         try {
             let obj: EntryDocResponse = null;
@@ -809,7 +852,13 @@ class LocalPouchDB {
     }
 
     syncHandler: PouchDB.Replication.Sync<{}> = null;
-
+    syncStatus: DatabaseConnectingStatus = "NOT_CONNECTED";
+    docArrived: number = 0;
+    docSent: number = 0;
+    docSeq: string = "";
+    updateInfo: () => void = () => {
+        console.log("default updinfo");
+    };
     async migrate(from: number, to: number): Promise<boolean> {
         Logger(`Database updated from ${from} to ${to}`, LOG_LEVEL.NOTICE);
         // no op now,
@@ -819,6 +868,8 @@ class LocalPouchDB {
         return new Promise(async (res, rej) => {
             this.closeReplication();
             Logger("send all data to server", LOG_LEVEL.NOTICE);
+            this.syncStatus = "CLOSED";
+            this.updateInfo();
             let uri = setting.couchDB_URI;
             let auth: Credential = {
                 username: setting.couchDB_USER,
@@ -839,17 +890,28 @@ class LocalPouchDB {
             //replicate once
             let replicate = this.localDatabase.replicate.to(db, syncOptionBase);
             replicate
+                .on("active", () => {
+                    this.syncStatus = "CONNECTED";
+                    this.updateInfo();
+                })
                 .on("change", async (e) => {
                     // no op.
+                    this.docSent += e.docs_written;
+                    this.docArrived += e.docs_read;
+                    this.updateInfo();
                     Logger(`sending..:${e.docs.length}`);
                 })
                 .on("complete", async (info) => {
+                    this.syncStatus = "COMPLETED";
+                    this.updateInfo();
                     Logger("Completed", LOG_LEVEL.NOTICE);
                     replicate.cancel();
                     replicate.removeAllListeners();
                     res(true);
                 })
                 .on("error", (e) => {
+                    this.syncStatus = "ERRORED";
+                    this.updateInfo();
                     Logger("Pulling Replication error", LOG_LEVEL.NOTICE);
                     Logger(e);
                     rej(e);
@@ -909,14 +971,22 @@ class LocalPouchDB {
 
         let db = dbret.db;
         //replicate once
+        this.syncStatus = "CONNECTED";
         let replicate = this.localDatabase.replicate.from(db, syncOptionBase);
         replicate
+            .on("active", () => {
+                this.syncStatus = "CONNECTED";
+                this.updateInfo();
+            })
             .on("change", async (e) => {
                 // when in first run, replication will send us tombstone data
                 // and in normal cases, all leavs should sent before the entry that contains these item.
                 // so skip to completed all, we should treat all changes.
                 try {
                     callback(e.docs);
+                    this.docArrived += e.docs_read;
+                    this.docSent += e.docs_written;
+                    this.updateInfo();
                     Logger(`pulled ${e.docs.length} doc(s)`);
                 } catch (ex) {
                     Logger("Replication callback error");
@@ -924,6 +994,8 @@ class LocalPouchDB {
                 }
             })
             .on("complete", async (info) => {
+                this.syncStatus = "COMPLETED";
+                this.updateInfo();
                 replicate.cancel();
                 replicate.removeAllListeners();
                 this.syncHandler = null;
@@ -934,10 +1006,15 @@ class LocalPouchDB {
                 this.syncHandler = this.localDatabase.sync(db, syncOption);
                 this.syncHandler
                     .on("active", () => {
+                        this.syncStatus = "CONNECTED";
+                        this.updateInfo();
                         Logger("Replication activated");
                     })
                     .on("change", async (e) => {
                         try {
+                            this.docArrived += e.change.docs_read;
+                            this.docSent += e.change.docs_written;
+                            this.updateInfo();
                             callback(e.change.docs);
                             Logger(`replicated ${e.change.docs.length} doc(s)`);
                         } catch (ex) {
@@ -946,23 +1023,33 @@ class LocalPouchDB {
                         }
                     })
                     .on("complete", (e) => {
+                        this.syncStatus = "COMPLETED";
+                        this.updateInfo();
                         Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                         this.syncHandler = null;
                     })
                     .on("denied", (e) => {
+                        this.syncStatus = "ERRORED";
+                        this.updateInfo();
                         Logger("Replication denied", LOG_LEVEL.NOTICE);
                         // Logger(e);
                     })
                     .on("error", (e) => {
+                        this.syncStatus = "ERRORED";
+                        this.updateInfo();
                         Logger("Replication error", LOG_LEVEL.NOTICE);
                         // Logger(e);
                     })
                     .on("paused", (e) => {
+                        this.syncStatus = "PAUSED";
+                        this.updateInfo();
                         Logger("replication paused", LOG_LEVEL.VERBOSE);
                         // Logger(e);
                     });
             })
             .on("error", (e) => {
+                this.syncStatus = "ERRORED";
+                this.updateInfo();
                 Logger("Pulling Replication error", LOG_LEVEL.NOTICE);
                 Logger(e);
             });
@@ -972,6 +1059,8 @@ class LocalPouchDB {
         if (this.syncHandler == null) {
             return;
         }
+        this.syncStatus = "CLOSED";
+        this.updateInfo();
         this.syncHandler.cancel();
         this.syncHandler.removeAllListeners();
         this.syncHandler = null;
@@ -1187,6 +1276,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
 
         this.statusBar = this.addStatusBarItem();
+        this.statusBar.addClass("syncstatusbar");
+        this.refreshStatusText = this.refreshStatusText.bind(this);
 
         this.statusBar2 = this.addStatusBarItem();
         let delay = this.settings.savingDelay;
@@ -1278,6 +1369,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         let vaultName = this.app.vault.getName();
         this.localDatabase = new LocalPouchDB(this.settings, vaultName);
+        this.localDatabase.updateInfo = () => {
+            this.refreshStatusText();
+        };
         await this.localDatabase.initializeDatabase();
     }
     async garbageCollect() {
@@ -1366,8 +1460,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     //--> Basic document Functions
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
-        // debugger;
-
         if (level < LOG_LEVEL.INFO && this.settings && this.settings.lessInformationInLog) {
             return;
         }
@@ -1381,9 +1473,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.logMessage = [].concat(this.logMessage).concat([newmessage]).slice(-100);
         console.log(valutName + ":" + newmessage);
-        if (this.statusBar2 != null) {
-            this.statusBar2.setText(newmessage.substring(0, 60));
-        }
+        // if (this.statusBar2 != null) {
+        //     this.statusBar2.setText(newmessage.substring(0, 60));
+        // }
         if (level >= LOG_LEVEL.NOTICE) {
             new Notice(messagecontent);
         }
@@ -1421,9 +1513,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     return;
                 }
                 await this.ensureDirectory(doc._id);
-                let newfile = await this.app.vault.createBinary(doc._id, bin, { ctime: doc.ctime, mtime: doc.mtime });
-                Logger("live : write to local (newfile:b) " + doc._id);
-                await this.app.vault.trigger("create", newfile);
+                try {
+                    let newfile = await this.app.vault.createBinary(normalizePath(doc._id), bin, { ctime: doc.ctime, mtime: doc.mtime });
+                    Logger("live : write to local (newfile:b) " + doc._id);
+                    await this.app.vault.trigger("create", newfile);
+                } catch (ex) {
+                    Logger("could not write to local (newfile:bin) " + doc._id, LOG_LEVEL.NOTICE);
+                }
             }
         } else if (doc.datatype == "plain") {
             if (!isValidPath(doc._id)) {
@@ -1431,9 +1527,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return;
             }
             await this.ensureDirectory(doc._id);
-            let newfile = await this.app.vault.create(doc._id, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
-            Logger("live : write to local (newfile:p) " + doc._id);
-            await this.app.vault.trigger("create", newfile);
+            try {
+                let newfile = await this.app.vault.create(normalizePath(doc._id), doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+                Logger("live : write to local (newfile:p) " + doc._id);
+                await this.app.vault.trigger("create", newfile);
+            } catch (ex) {
+                Logger("could not write to local (newfile:plain) " + doc._id, LOG_LEVEL.NOTICE);
+            }
         } else {
             Logger("live : New data imcoming, but we cound't parse that." + doc.datatype, LOG_LEVEL.NOTICE);
         }
@@ -1441,7 +1541,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async deleteVaultItem(file: TFile | TFolder) {
         let dir = file.parent;
-        await this.app.vault.delete(file);
+        if (this.settings.trashInsteadDelete) {
+            await this.app.vault.trash(file, false);
+        } else {
+            await this.app.vault.delete(file);
+        }
         Logger(`deleted:${file.path}`);
         Logger(`other items:${dir.children.length}`);
         if (dir.children.length == 0) {
@@ -1478,19 +1582,28 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         return;
                     }
                     await this.ensureDirectory(doc._id);
-                    await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
-                    Logger(msg);
-                    await this.app.vault.trigger("modify", file);
+                    try {
+                        await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
+                        Logger(msg);
+                        await this.app.vault.trigger("modify", file);
+                    } catch (ex) {
+                        Logger("could not write to local (modify:bin) " + doc._id, LOG_LEVEL.NOTICE);
+                    }
                 }
-            } else if (doc.datatype == "plain") {
+            }
+            if (doc.datatype == "plain") {
                 if (!isValidPath(doc._id)) {
                     Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
                     return;
                 }
                 await this.ensureDirectory(doc._id);
-                await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
-                Logger(msg);
-                await this.app.vault.trigger("modify", file);
+                try {
+                    await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+                    Logger(msg);
+                    await this.app.vault.trigger("modify", file);
+                } catch (ex) {
+                    Logger("could not write to local (modify:plain) " + doc._id, LOG_LEVEL.NOTICE);
+                }
             } else {
                 Logger("live : New data imcoming, but we cound't parse that.:" + doc.datatype + "-", LOG_LEVEL.NOTICE);
             }
@@ -1522,6 +1635,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
+        this.refreshStatusText();
         for (var change of docs) {
             if (this.localDatabase.isSelfModified(change._id, change._rev)) {
                 return;
@@ -1539,7 +1653,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.gcHook();
         }
     }
-    async realizeSettingSyncMode() {
+    realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
         if (this.settings.liveSync) {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
@@ -1547,8 +1661,29 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     refreshStatusText() {
-        let statusStr = this.localDatabase.status();
-        this.statusBar.setText("Sync:" + statusStr);
+        let sent = this.localDatabase.docSent;
+        let arrived = this.localDatabase.docArrived;
+        let w = "";
+        switch (this.localDatabase.syncStatus) {
+            case "CLOSED":
+            case "COMPLETED":
+            case "NOT_CONNECTED":
+                w = "⏹";
+                break;
+            case "PAUSED":
+                w = "💤";
+                break;
+
+            case "CONNECTED":
+                w = "⚡";
+                break;
+            case "ERRORED":
+                w = "⚠";
+                break;
+            default:
+                w = "?";
+        }
+        this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}`);
     }
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
@@ -1576,10 +1711,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async syncAllFiles() {
         // synchronize all files between database and storage.
+
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.map((e) => e.id);
+        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:")).map((e) => normalizePath(e.id));
 
         const onlyInStorage = filesStorage.filter((e) => filesDatabase.indexOf(e.path) == -1);
         const onlyInDatabase = filesDatabase.filter((e) => filesStorageName.indexOf(e) == -1);
@@ -1587,19 +1723,25 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const onlyInStorageNames = onlyInStorage.map((e) => e.path);
 
         const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
-
+        Logger("Initialize and checking database files");
+        Logger("Updating database by new files");
+        this.statusBar.setText(`UPDATE DATABASE`);
         // just write to DB from storage.
         for (let v of onlyInStorage) {
             await this.updateIntoDB(v);
         }
         // simply realize it
+        this.statusBar.setText(`UPDATE STORAGE`);
+        Logger("Writing files that only in database");
         for (let v of onlyInDatabase) {
             await this.pullFile(v, filesStorage);
         }
         // have to sync below..
+        this.statusBar.setText(`CHECK FILE STATUS`);
         for (let v of syncFiles) {
             await this.syncFileBetweenDBandStorage(v, filesStorage);
         }
+        Logger("Initialized");
     }
     async deleteFolderOnDB(folder: TFolder) {
         Logger(`delete folder:${folder.path}`);
@@ -1611,7 +1753,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`->is dir`, LOG_LEVEL.VERBOSE);
                 await this.deleteFolderOnDB(entry);
                 try {
-                    await this.app.vault.delete(entry);
+                    if (this.settings.trashInsteadDelete) {
+                        await this.app.vault.trash(entry, false);
+                    } else {
+                        await this.app.vault.delete(entry);
+                    }
                 } catch (ex) {
                     if (ex.code && ex.code == "ENOENT") {
                         //NO OP.
@@ -1626,7 +1772,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         try {
-            await this.app.vault.delete(folder);
+            if (this.settings.trashInsteadDelete) {
+                await this.app.vault.trash(folder, false);
+            } else {
+                await this.app.vault.delete(folder);
+            }
         } catch (ex) {
             if (ex.code && ex.code == "ENOENT") {
                 //NO OP.
@@ -1642,7 +1792,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             let entry = v as TFile & TFolder;
             if (entry.children) {
                 await this.deleteFolderOnDB(entry);
-                await this.app.vault.delete(entry);
+                if (this.settings.trashInsteadDelete) {
+                    await this.app.vault.trash(entry, false);
+                } else {
+                    await this.app.vault.delete(entry);
+                }
             } else {
                 await this.deleteFromDB(entry);
             }
@@ -1770,7 +1924,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!fileList) {
             fileList = this.app.vault.getFiles();
         }
-        let targetFiles = fileList.filter((e) => e.path == filename);
+        let targetFiles = fileList.filter((e) => e.path == normalizePath(filename));
         if (targetFiles.length == 0) {
             //have to create;
             let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null);
@@ -1789,7 +1943,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         //when to opened file;
     }
     async syncFileBetweenDBandStorage(file: TFile, fileList?: TFile[]) {
-        let doc = await this.localDatabase.getDBEntry(file.path);
+        let doc = await this.localDatabase.getDBEntryMeta(file.path);
         if (doc === false) return;
         if (file.stat.mtime > doc.mtime) {
             //newer local file.
@@ -1798,7 +1952,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else if (file.stat.mtime < doc.mtime) {
             //newer database file.
             Logger("sync : older storage files so write from database:" + file.path);
-            await this.doc2storate_modify(doc, file);
+            let docx = await this.localDatabase.getDBEntry(file.path);
+            if (docx != false) {
+                await this.doc2storate_modify(docx, file);
+            }
         } else {
             //eq.case
         }
@@ -2138,6 +2295,16 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
                     this.plugin.settings.syncOnStart = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Trash deleted files")
+            .setDesc("Do not delete files that deleted in remote, just move to trash.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.trashInsteadDelete).onChange(async (value) => {
+                    this.plugin.settings.trashInsteadDelete = value;
                     await this.plugin.saveSettings();
                 })
             );
