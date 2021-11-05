@@ -1,7 +1,9 @@
-# obsidian-livesync
+# Self-hosted LiveSync
+**Renamed from: obsidian-livesync**
 
-This is the obsidian plugin that enables livesync between multi-devices.  
-Runs in Mac, Android, Windows, and iOS.
+This is the obsidian plugin that enables livesync between multi-devices with self-hosted database.  
+Runs in Mac, Android, Windows, and iOS.  
+Community implementation, not compatible with official "Sync".
 
 <!-- <div><video controls src="https://user-images.githubusercontent.com/45774780/137352386-a274736d-a38b-4069-ac41-759c73e36a23.mp4"  muted="false"></video></div> -->
 
@@ -26,7 +28,7 @@ If you want to synchronize to both backend, sync one by one, please.
 ## How to use
 
 1. Install from Obsidian, or clone this repo and run `npm run build` ,copy `main.js`, `styles.css` and `manifest.json` into `[your-vault]/.obsidian/plugins/` (PC, Mac and Android will work)
-2. Enable obsidian livesync in the settings dialog.
+2. Enable Self-hosted LiveSync in the settings dialog.
 3. If you use your self-hosted CouchDB, set your server's info.
 4. or Use [IBM Cloudant](https://www.ibm.com/cloud/cloudant), take an account and enable **Cloudant** in [Catalog](https://cloud.ibm.com/catalog#services)  
    Note please choose "IAM and legacy credentials" for the Authentication method
@@ -35,7 +37,7 @@ If you want to synchronize to both backend, sync one by one, please.
 
 ## Test Server
 
-Setting up an instance of Cloudant or local CouchDB is a little complicated, so I made the [Tasting server of obsidian-livesync](https://olstaste.vrtmrz.net/) up. Try free!  
+Setting up an instance of Cloudant or local CouchDB is a little complicated, so I made the [Tasting server of self-hosted-livesync](https://olstaste.vrtmrz.net/) up. Try free!  
 Note: Please read "Limitations" carefully. Do not send your private vault.
 
 ## WebClipper is also available.
@@ -45,7 +47,7 @@ Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-liv
 
 ## When your database looks corrupted or too heavy to replicate to a new device.
 
-obsidian-livesync changes data treatment of markdown files since 0.1.0  
+self-hosted-livesync changes data treatment of markdown files since 0.1.0  
 When you are troubled with synchronization, **Please reset local and remote databases**.  
 _Note: Without synchronization, your files won't be deleted._
 
@@ -53,7 +55,7 @@ _Note: Without synchronization, your files won't be deleted._
 1.  Disable any synchronizations on all devices.
 1.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
 1.  Press "Drop History"-> "Execute" button from _The device_.
-1.  Wait for a while, so obsidian-livesync will say "completed."
+1.  Wait for a while, so self-hosted-livesync will say "completed."
 1.  In other devices, replication will be canceled automatically. Click "Reset local database" and click "I'm ready, mark this device 'resolved'" on all devices.  
     If it doesn't be shown. replicate once.
 1.  It's all done. But if you are sure to resolve all devices and the warning is noisy, click "I'm ready, unlock the database". it unlocks the database completely.
@@ -102,7 +104,7 @@ Select Multitenant(it's the default) and the region as you like.
 6. When all of the above steps have been done, Open "Resource list" on the left pane. you can see the Cloudant instance in the "Service and software". Click it.
    ![step 8](instruction_images/cloudant_8.png)
 
-7. In resource details, there's information to connect from obsidian-livesync.
+7. In resource details, there's information to connect from self-hosted-livesync.
    Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>
    ![step 9](instruction_images/cloudant_9.png)
 
@@ -133,7 +135,7 @@ Select Multitenant(it's the default) and the region as you like.
 1.  The dialog to create a credential will be shown.
     type any name or leave it default, hit the "Add" button.  
     ![step 2](instruction_images/credentials_2.png)  
-    _NOTE: This "name" is not related to your username that uses in Obsidian-livesync._
+    _NOTE: This "name" is not related to your username that uses in self-hosted-livesync._
 
 1.  Back to "Service credentials", the new credential should be created.  
     open details.  
@@ -143,7 +145,7 @@ Select Multitenant(it's the default) and the region as you like.
     follow the figure, it's
     "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
 
-### obsidian-livesync setting
+### self-hosted-livesync setting
 
 ![xx](instruction_images/obsidian_sync_1.png)
 example values.

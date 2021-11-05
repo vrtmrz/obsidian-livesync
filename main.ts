@@ -939,7 +939,7 @@ class LocalPouchDB {
         }
 
         if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
-            Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
+            Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
             return;
         }
 
@@ -1120,7 +1120,7 @@ class LocalPouchDB {
         }
 
         if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
-            Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
+            Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
             return;
         }
         let defInitPoint: EntryMilestoneInfo = {
@@ -1154,7 +1154,7 @@ class LocalPouchDB {
         }
 
         if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
-            Logger("Remote database is newer or corrupted, make sure to latest version of obsidian-livesync installed", LOG_LEVEL.NOTICE);
+            Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
             return;
         }
         let defInitPoint: EntryMilestoneInfo = {
@@ -1647,7 +1647,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (change.type == "versioninfo") {
                 if (change.version > VER) {
                     this.localDatabase.closeReplication();
-                    Logger(`Remote database updated to incompatible version. update your Obsidian-livesync plugin.`, LOG_LEVEL.NOTICE);
+                    Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL.NOTICE);
                 }
             }
             this.gcHook();
@@ -2152,7 +2152,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        containerEl.createEl("h2", { text: "Settings for obsidian-livesync." });
+        containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
 
         new Setting(containerEl).setName("CouchDB Remote URI").addText((text) =>
             text
