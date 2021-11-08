@@ -231,7 +231,7 @@ const isValidRemoteCouchDBURI = (uri: string): boolean => {
     return false;
 };
 const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<false | { db: PouchDB.Database; info: any }> => {
-    if (!isValidRemoteCouchDBURI(uri)) false;
+    if (!isValidRemoteCouchDBURI(uri)) return false;
     let db = new PouchDB(uri, {
         auth,
     });
@@ -239,6 +239,7 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
         let info = await db.info();
         return { db: db, info: info };
     } catch (ex) {
+        Logger(ex, LOG_LEVEL.VERBOSE);
         return false;
     }
 };
@@ -1683,6 +1684,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             default:
                 w = "?";
         }
+        this.statusBar.title = this.localDatabase.syncStatus;
         this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}`);
     }
     async replicate(showMessage?: boolean) {
