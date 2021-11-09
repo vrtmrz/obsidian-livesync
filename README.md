@@ -1,4 +1,5 @@
 # Self-hosted LiveSync
+
 **Renamed from: obsidian-livesync**
 
 This is the obsidian plugin that enables livesync between multi-devices with self-hosted database.  
@@ -11,7 +12,7 @@ Community implementation, not compatible with official "Sync".
 
 **It's getting almost stable now, But Please make sure to back your vault up!**
 
-Limitations: Folder deletion handling is not completed.
+Limitations: ~~Folder deletion handling is not completed.~~ **It would work now.**
 
 ## This plugin enables..
 
@@ -77,7 +78,6 @@ Note: The figure is drawn as single-directional, between two devices. But everyt
 
 ![dedupe](images/2.png)
 
-
 ## Cloudant Setup
 
 ### Creating an Instance
@@ -105,7 +105,7 @@ Select Multitenant(it's the default) and the region as you like.
    ![step 8](instruction_images/cloudant_8.png)
 
 7. In resource details, there's information to connect from self-hosted-livesync.
-   Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>
+   Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>. We use this address later, with the database name.
    ![step 9](instruction_images/cloudant_9.png)
 
 ### CouchDB setup
@@ -120,11 +120,13 @@ Select Multitenant(it's the default) and the region as you like.
     _NOTE: of course We want to set "app://obsidian.md" but it's not acceptable on Cloudant._
     ![step 2](instruction_images/couchdb_2.png)
 
-1.  And open the "Databases" tab and hit the "Create Database" button.
+1.  And open the "Databases" tab and hit the "Create Database" button.  
     Enter the name as you like <sup>(\*2)</sup> and Hit the "Create" button below.  
     ![step 3](instruction_images/couchdb_3.png)
 
-1.  If the database was shown with joyful messages, then you can close this browser tab now.  
+1.  If the database was shown with joyful messages, setup is almost done.
+    And, once you have confirmed that you can create a database, usullay there is no need to open this screen.
+    You can create a database from Self-hosted LiveSync.
     ![step 4](instruction_images/couchdb_4.png)
 
 ### Credentials Setup
@@ -135,7 +137,7 @@ Select Multitenant(it's the default) and the region as you like.
 1.  The dialog to create a credential will be shown.
     type any name or leave it default, hit the "Add" button.  
     ![step 2](instruction_images/credentials_2.png)  
-    _NOTE: This "name" is not related to your username that uses in self-hosted-livesync._
+    _NOTE: This "name" is not related to your username that uses in Self-hosted LiveSync._
 
 1.  Back to "Service credentials", the new credential should be created.  
     open details.  
@@ -145,16 +147,16 @@ Select Multitenant(it's the default) and the region as you like.
     follow the figure, it's
     "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
 
-### self-hosted-livesync setting
+### Self-hosted LiveSync setting
 
 ![xx](instruction_images/obsidian_sync_1.png)
 example values.
 
-| Items               | Value       | example                                                                     |
-| ------------------- | ----------- | --------------------------------------------------------------------------- |
-| CouchDB Remote URI: | (\*1)/(\*2) | https://xxxxxxxxxxxxxxxxx-bluemix.cloudantnosqldb.appdomain.cloud/sync-test |
-| CouchDB Username    | (\*3)       | apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5                      |
-| CouchDB Password    | (\*4)       | c2c11651d75497fa3d3c486e4c8bdf27                                            |
+| Items               | Value                            | example                                                                     |
+| ------------------- | -------------------------------- | --------------------------------------------------------------------------- |
+| CouchDB Remote URI: | (\*1)/(\*2) or any favorite name | https://xxxxxxxxxxxxxxxxx-bluemix.cloudantnosqldb.appdomain.cloud/sync-test |
+| CouchDB Username    | (\*3)                            | apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5                      |
+| CouchDB Password    | (\*4)                            | c2c11651d75497fa3d3c486e4c8bdf27                                            |
 
 # License
 

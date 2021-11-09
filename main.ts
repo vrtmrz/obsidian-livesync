@@ -1,4 +1,4 @@
-import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, normalizePath } from "obsidian";
+import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, normalizePath, TAbstractFile } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import xxhash from "xxhash-wasm";
@@ -663,7 +663,7 @@ class LocalPouchDB {
                         console.log("!" + v.id);
                     } else {
                         if (!v.id.startsWith("h:")) {
-                            console.log("?" + v.id);
+                            // console.log("?" + v.id);
                         }
                     }
                 }
@@ -1285,9 +1285,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (delay < 200) delay = 200;
         if (delay > 5000) delay = 5000;
         this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
-        this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
-        this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
+        // this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
+        // this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
+
+        // this.watchVaultChange = this.watchVaultChange.bind(this);
+        this.watchVaultDelete = this.watchVaultDelete.bind(this);
+        this.watchVaultRename = this.watchVaultRename.bind(this);
         this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), delay, false);
+        this.watchWindowVisiblity = debounce(this.watchWindowVisiblity.bind(this), delay, false);
 
         this.registerWatchEvents();
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
@@ -1409,16 +1414,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     watchWindowVisiblity() {
+        this.watchWindowVisiblityAsync();
+    }
+    async watchWindowVisiblityAsync() {
         if (this.settings.suspendFileWatching) return;
         let isHidden = document.hidden;
         if (isHidden) {
             this.localDatabase.closeReplication();
         } else {
             if (this.settings.liveSync) {
-                this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+                await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             }
             if (this.settings.syncOnStart) {
-                this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                await this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
             }
         }
         this.gcHook();
@@ -1426,35 +1434,82 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     watchWorkspaceOpen(file: TFile) {
         if (this.settings.suspendFileWatching) return;
+        this.watchWorkspaceOpenAsync(file);
+    }
+    async watchWorkspaceOpenAsync(file: TFile) {
         if (file == null) return;
         this.localDatabase.disposeHashCache();
-        this.showIfConflicted(file);
+        await this.showIfConflicted(file);
         this.gcHook();
     }
     watchVaultChange(file: TFile, ...args: any[]) {
         if (this.settings.suspendFileWatching) return;
-        this.updateIntoDB(file);
+        this.watchVaultChangeAsync(file, ...args);
+    }
+    batchFileChange: string[] = [];
+    async watchVaultChangeAsync(file: TFile, ...args: any[]) {
+        await this.updateIntoDB(file);
         this.gcHook();
     }
-    watchVaultDelete(file: TFile & TFolder) {
+    watchVaultDelete(file: TFile | TFolder) {
         if (this.settings.suspendFileWatching) return;
-        if (file.children) {
-            //folder
-            this.deleteFolderOnDB(file);
-            // this.app.vault.delete(file);
-        } else {
-            this.deleteFromDB(file);
+        this.watchVaultDeleteAsync(file);
+    }
+    async watchVaultDeleteAsync(file: TFile | TFolder) {
+        if (file instanceof TFile) {
+            await this.deleteFromDB(file);
+        } else if (file instanceof TFolder) {
+            await this.deleteFolderOnDB(file);
         }
         this.gcHook();
     }
-    watchVaultRename(file: TFile & TFolder, oldFile: any) {
-        if (this.settings.suspendFileWatching) return;
-        if (file.children) {
-            // this.renameFolder(file,oldFile);
-            Logger(`folder name changed:(this operation is not supported) ${file.path}`, LOG_LEVEL.NOTICE);
+    GetAllFilesRecursively(file: TAbstractFile): TFile[] {
+        if (file instanceof TFile) {
+            return [file];
+        } else if (file instanceof TFolder) {
+            let result: TFile[] = [];
+            for (var v of file.children) {
+                result.push(...this.GetAllFilesRecursively(v));
+            }
+            return result;
         } else {
-            this.updateIntoDB(file);
-            this.deleteFromDBbyPath(oldFile);
+            Logger(`Filetype error:${file.path}`, LOG_LEVEL.NOTICE);
+            throw new Error(`Filetype error:${file.path}`);
+        }
+    }
+    watchVaultRename(file: TFile | TFolder, oldFile: any) {
+        if (this.settings.suspendFileWatching) return;
+        this.watchVaultRenameAsync(file, oldFile);
+    }
+    getFilePath(file: TAbstractFile): string {
+        if (file instanceof TFolder) {
+            if (file.isRoot()) return "";
+            return this.getFilePath(file.parent) + "/" + file.name;
+        }
+        if (file instanceof TFile) {
+            return this.getFilePath(file.parent) + "/" + file.name;
+        }
+    }
+    async watchVaultRenameAsync(file: TFile | TFolder, oldFile: any) {
+        Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
+        if (file instanceof TFolder) {
+            const newFiles = this.GetAllFilesRecursively(file);
+            // for guard edge cases. this won't happen and each file's event will be raise.
+            for (const i of newFiles) {
+                let newFilePath = normalizePath(this.getFilePath(i));
+                let newFile = this.app.vault.getAbstractFileByPath(newFilePath);
+                if (newFile instanceof TFile) {
+                    Logger(`save ${newFile.path} into db`);
+                    await this.updateIntoDB(newFile);
+                }
+            }
+            Logger(`delete below ${oldFile} from db`);
+            await this.deleteFromDBbyPath(oldFile);
+        } else if (file instanceof TFile) {
+            Logger(`file save ${file.path} into db`);
+            await this.updateIntoDB(file);
+            Logger(`deleted ${oldFile} into db`);
+            await this.deleteFromDBbyPath(oldFile);
         }
         this.gcHook();
     }
