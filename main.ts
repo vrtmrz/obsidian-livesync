@@ -1284,11 +1284,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let delay = this.settings.savingDelay;
         if (delay < 200) delay = 200;
         if (delay > 5000) delay = 5000;
-        this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
+        // this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
         // this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
         // this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
 
-        // this.watchVaultChange = this.watchVaultChange.bind(this);
+        this.watchVaultChange = this.watchVaultChange.bind(this);
+        this.watchVaultCreate = this.watchVaultCreate.bind(this);
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
         this.watchVaultRename = this.watchVaultRename.bind(this);
         this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), delay, false);
@@ -1441,6 +1442,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.localDatabase.disposeHashCache();
         await this.showIfConflicted(file);
         this.gcHook();
+    }
+    watchVaultCreate(file: TFile, ...args: any[]) {
+        if (this.settings.suspendFileWatching) return;
+        this.watchVaultChangeAsync(file, ...args);
     }
     watchVaultChange(file: TFile, ...args: any[]) {
         if (this.settings.suspendFileWatching) return;
