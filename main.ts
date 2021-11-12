@@ -43,6 +43,10 @@ interface ObsidianLiveSyncSettings {
     trashInsteadDelete: boolean;
     periodicReplication: boolean;
     periodicReplicationInterval: number;
+    encrypt: boolean;
+    passphrase: string;
+    workingEncrypt: boolean;
+    workingPassphrase: string;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -64,6 +68,10 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     periodicReplication: false,
     periodicReplicationInterval: 60,
     syncOnFileOpen: false,
+    encrypt: false,
+    passphrase: "",
+    workingEncrypt: false,
+    workingPassphrase: "",
 };
 interface Entry {
     _id: string;
@@ -326,6 +334,175 @@ let Logger: (message: any, levlel?: LOG_LEVEL) => Promise<void> = async (message
 
 type DatabaseConnectingStatus = "NOT_CONNECTED" | "PAUSED" | "CONNECTED" | "COMPLETED" | "CLOSED" | "ERRORED";
 
+// --> Encryption.
+//NOTE: I have to split source.
+type encodedData = [encryptedData: string, iv: string, salt: string];
+type KeyBuffer = {
+    index: string;
+    key: CryptoKey;
+    salt: Uint8Array;
+};
+
+let KeyBuffs: KeyBuffer[] = [];
+
+const KEY_RECYCLE_COUNT = 100;
+let recycleCount = KEY_RECYCLE_COUNT;
+
+async function getKeyForEncrypt(passphrase: string): Promise<[CryptoKey, Uint8Array]> {
+    // For performance, the plugin reuses the key KEY_RECYCLE_COUNT times.
+    let f = KeyBuffs.find((e) => e.index == passphrase);
+    if (f) {
+        recycleCount--;
+        if (recycleCount > 0) {
+            return [f.key, f.salt];
+        }
+        KeyBuffs.remove(f);
+        recycleCount = KEY_RECYCLE_COUNT;
+    }
+    let xpassphrase = new TextEncoder().encode(passphrase);
+    let digest = await crypto.subtle.digest({ name: "SHA-256" }, xpassphrase);
+    let keyMaterial = await crypto.subtle.importKey("raw", digest, { name: "PBKDF2" }, false, ["deriveKey"]);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    let key = await crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt,
+            iterations: 100000,
+            hash: "SHA-256",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt"]
+    );
+    KeyBuffs.push({
+        index: passphrase,
+        key,
+        salt,
+    });
+    while (KeyBuffs.length > 50) {
+        KeyBuffs.shift();
+    }
+    return [key, salt];
+}
+
+let decKeyBuffs: KeyBuffer[] = [];
+
+async function getKeyForDecryption(passphrase: string, salt: Uint8Array): Promise<[CryptoKey, Uint8Array]> {
+    let bufKey = passphrase + uint8ArrayToHexString(salt);
+    let f = decKeyBuffs.find((e) => e.index == bufKey);
+    if (f) {
+        return [f.key, f.salt];
+    }
+    let xpassphrase = new TextEncoder().encode(passphrase);
+    let digest = await crypto.subtle.digest({ name: "SHA-256" }, xpassphrase);
+    let keyMaterial = await crypto.subtle.importKey("raw", digest, { name: "PBKDF2" }, false, ["deriveKey"]);
+    let key = await crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt,
+            iterations: 100000,
+            hash: "SHA-256",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+    );
+    decKeyBuffs.push({
+        index: bufKey,
+        key,
+        salt,
+    });
+    while (decKeyBuffs.length > 50) {
+        decKeyBuffs.shift();
+    }
+    return [key, salt];
+}
+let semiStaticFieldBuffer: Uint8Array = null;
+function getSemiStaticField(reset?: boolean) {
+    // return fixed field of iv.
+    if (semiStaticFieldBuffer != null && !reset) {
+        return semiStaticFieldBuffer;
+    }
+    semiStaticFieldBuffer = crypto.getRandomValues(new Uint8Array(12));
+    return semiStaticFieldBuffer;
+}
+
+let nonceBuffer: Uint32Array = new Uint32Array(1);
+function getNonce() {
+    // This is nonce, so do not send same thing.
+    nonceBuffer[0]++;
+    if (nonceBuffer[0] > 10000) {
+        // reset semi-static field.
+        getSemiStaticField(true);
+    }
+    return nonceBuffer;
+}
+
+function uint8ArrayToHexString(src: Uint8Array): string {
+    return Array.from(src)
+        .map((e: number): string => `00${e.toString(16)}`.slice(-2))
+        .join("");
+}
+function hexStringToUint8Array(src: string): Uint8Array {
+    const srcArr = [...src];
+    const arr = srcArr.reduce((acc, _, i) => (i % 2 ? acc : [...acc, srcArr.slice(i, i + 2).join("")]), []).map((e) => parseInt(e, 16));
+    return Uint8Array.from(arr);
+}
+async function encrypt(input: string, passphrase: string) {
+    let key: CryptoKey;
+    let salt: Uint8Array;
+    [key, salt] = await getKeyForEncrypt(passphrase);
+    // Create initial vector with semifixed part and incremental part
+    // I think it's not good against related-key attacks.
+    const fixedPart = getSemiStaticField();
+    const invocationPart = getNonce();
+    const iv = Uint8Array.from([...fixedPart, ...new Uint8Array(invocationPart.buffer)]);
+    const plainStringified: string = JSON.stringify(input);
+    const plainStringBuffer: Uint8Array = new TextEncoder().encode(plainStringified);
+    const encryptedDataArrayBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainStringBuffer);
+
+    const encryptedData = window.btoa(Array.from(new Uint8Array(encryptedDataArrayBuffer), (char) => String.fromCharCode(char)).join(""));
+
+    //return data with iv and salt.
+    const response: encodedData = [encryptedData, uint8ArrayToHexString(iv), uint8ArrayToHexString(salt)];
+    const ret = JSON.stringify(response);
+    return ret;
+}
+
+async function decrypt(encryptedResult: string, passphrase: string): Promise<string> {
+    try {
+        let [encryptedData, ivString, salt]: encodedData = JSON.parse(encryptedResult);
+        let [key, _] = await getKeyForDecryption(passphrase, hexStringToUint8Array(salt));
+        let iv = hexStringToUint8Array(ivString);
+        // decode base 64, it should increase speed and i should with in MAX_DOC_SIZE_BIN, so it won't OOM.
+        let encryptedDataBin = window.atob(encryptedData);
+        let encryptedDataArrayBuffer = Uint8Array.from(encryptedDataBin.split(""), (char) => char.charCodeAt(0));
+        let plainStringBuffer: ArrayBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encryptedDataArrayBuffer);
+        let plainStringified = new TextDecoder().decode(plainStringBuffer);
+        let plain = JSON.parse(plainStringified);
+        return plain;
+    } catch (ex) {
+        Logger("Couldn't decode! You should wrong the passphrases", LOG_LEVEL.VERBOSE);
+        Logger(ex, LOG_LEVEL.VERBOSE);
+        throw ex;
+    }
+}
+
+async function testCrypt() {
+    let src = "supercalifragilisticexpialidocious";
+    let encoded = await encrypt(src, "passwordTest");
+    let decrypted = await decrypt(encoded, "passwordTest");
+    if (src != decrypted) {
+        Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.VERBOSE);
+        return false;
+    } else {
+        Logger("CRYPT LOGIC OK", LOG_LEVEL.VERBOSE);
+        return true;
+    }
+}
+// <-- Encryption
 //<--Functions
 class LocalPouchDB {
     auth: Credential;
@@ -338,6 +515,7 @@ class LocalPouchDB {
     recentModifiedDocs: string[] = [];
     h32: (input: string, seed?: number) => string;
     h64: (input: string, seedHigh?: number, seedLow?: number) => string;
+    h32Raw: (input: Uint8Array, seed?: number) => number;
     hashCache: {
         [key: string]: string;
     } = {};
@@ -443,9 +621,10 @@ class LocalPouchDB {
 
     async prepareHashFunctions() {
         if (this.h32 != null) return;
-        const { h32, h64 } = await xxhash();
+        const { h32, h64, h32Raw } = await xxhash();
         this.h32 = h32;
         this.h64 = h64;
+        this.h32Raw = h32Raw;
     }
 
     // leaf waiting
@@ -482,6 +661,14 @@ class LocalPouchDB {
         try {
             let w = await this.localDatabase.get(id);
             if (w.type == "leaf") {
+                if (id.startsWith("h:+")) {
+                    try {
+                        w.data = await decrypt(w.data, this.settings.passphrase);
+                    } catch (e) {
+                        Logger("The element of the document has been encrypted, but decryption failed.", LOG_LEVEL.NOTICE);
+                        throw e;
+                    }
+                }
                 this.hashCache[w.data] = id;
                 this.hashCacheRev[id] = w.data;
                 return w.data;
@@ -497,8 +684,15 @@ class LocalPouchDB {
                 try {
                     // retrive again.
                     let w = await this.localDatabase.get(id);
-
                     if (w.type == "leaf") {
+                        if (id.startsWith("h:+")) {
+                            try {
+                                w.data = await decrypt(w.data, this.settings.passphrase);
+                            } catch (e) {
+                                Logger("The element of the document has been encrypted, but decryption failed.", LOG_LEVEL.NOTICE);
+                                throw e;
+                            }
+                        }
                         this.hashCache[w.data] = id;
                         this.hashCacheRev[id] = w.data;
                         return w.data;
@@ -604,7 +798,7 @@ class LocalPouchDB {
                         Logger(`Enhanced doc`);
                         Logger(obj);
                     }
-                    let childrens;
+                    let childrens: string[];
                     try {
                         childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e)));
                         if (dump) {
@@ -616,7 +810,6 @@ class LocalPouchDB {
                         this.corruptedEntries[obj._id] = obj;
                         return false;
                     }
-
                     let data = childrens.join("");
                     let doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                         data: data,
@@ -711,7 +904,7 @@ class LocalPouchDB {
                     // let doc = v.doc;
                     if (v.id.startsWith(prefix) || v.id.startsWith("/" + prefix)) {
                         delDocs.push(v.id);
-                        console.log("!" + v.id);
+                        // console.log("!" + v.id);
                     } else {
                         if (!v.id.startsWith("h:")) {
                             // console.log("?" + v.id);
@@ -765,6 +958,7 @@ class LocalPouchDB {
         let pieceSize = MAX_DOC_SIZE_BIN;
         let plainSplit = false;
         let cacheUsed = 0;
+        let userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
         if (this.isPlainText(note._id)) {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
@@ -830,13 +1024,29 @@ class LocalPouchDB {
                 skiped++;
                 cacheUsed++;
             } else {
-                hashedPiece = this.h32(piece);
+                if (this.settings.encrypt) {
+                    // When encryption has been enabled, make hash to be different between each passphrase to avoid inferring password.
+                    hashedPiece = "+" + (this.h32Raw(new TextEncoder().encode(piece)) ^ userpasswordHash).toString(16);
+                } else {
+                    hashedPiece = this.h32(piece);
+                }
                 leafid = "h:" + hashedPiece;
                 do {
                     let nleafid = leafid;
                     try {
                         nleafid = `${leafid}${hashQ}`;
                         let pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
+                        //try decode
+                        if (pieceData._id.startsWith("h:+")) {
+                            try {
+                                pieceData.data = await decrypt(pieceData.data, this.settings.passphrase);
+                            } catch (e) {
+                                Logger("Decode failed !");
+                                Logger(pieceData.data);
+                                Logger(this.settings.passphrase);
+                                throw e;
+                            }
+                        }
                         if (pieceData.type == "leaf" && pieceData.data == piece) {
                             leafid = nleafid;
                             needMake = false;
@@ -856,17 +1066,24 @@ class LocalPouchDB {
                             //not found, we can use it.
                             leafid = nleafid;
                             needMake = true;
+                            tryNextHash = false;
                         } else {
                             needMake = false;
+                            tryNextHash = false;
                             throw ex;
                         }
                     }
                 } while (tryNextHash);
                 if (needMake) {
                     //have to make
+                    let savePiece = piece;
+                    if (this.settings.encrypt) {
+                        let passphrase = this.settings.passphrase;
+                        savePiece = await encrypt(piece, passphrase);
+                    }
                     let d: EntryLeaf = {
                         _id: leafid,
-                        data: piece,
+                        data: savePiece,
                         type: "leaf",
                     };
                     newLeafs.push(d);
@@ -889,10 +1106,14 @@ class LocalPouchDB {
 
                         Logger(`save ok:id:${item.id} rev:${item.rev}`, LOG_LEVEL.VERBOSE);
                     } else {
-                        Logger(`save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
-                        Logger(item);
-                        this.disposeHashCache();
-                        saved = false;
+                        if ((item as any).status && (item as any).status == 409) {
+                            // conflicted, but it would be ok in childrens.
+                        } else {
+                            Logger(`save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
+                            Logger(item);
+                            this.disposeHashCache();
+                            saved = false;
+                        }
                     }
                 }
             } catch (ex) {
@@ -950,10 +1171,14 @@ class LocalPouchDB {
         // no op now,
         return true;
     }
-    replicateAllToServer(setting: ObsidianLiveSyncSettings) {
+    replicateAllToServer(setting: ObsidianLiveSyncSettings, showingNotice?: boolean) {
         return new Promise(async (res, rej) => {
             this.closeReplication();
             Logger("send all data to server", LOG_LEVEL.NOTICE);
+            let notice: Notice = null;
+            if (showingNotice) {
+                notice = new Notice("Initializing", 0);
+            }
             this.syncStatus = "CLOSED";
             this.updateInfo();
             let uri = setting.couchDB_URI;
@@ -964,6 +1189,7 @@ class LocalPouchDB {
             let dbret = await connectRemoteCouchDB(uri, auth);
             if (dbret === false) {
                 Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+                if (notice != null) notice.hide();
                 return rej(`could not connect to ${uri}`);
             }
 
@@ -973,18 +1199,22 @@ class LocalPouchDB {
             };
 
             let db = dbret.db;
+            let totalCount = (await this.localDatabase.info()).doc_count;
             //replicate once
             let replicate = this.localDatabase.replicate.to(db, syncOptionBase);
             replicate
                 .on("active", () => {
                     this.syncStatus = "CONNECTED";
                     this.updateInfo();
+                    if (notice) {
+                        notice.setMessage("CONNECTED");
+                    }
                 })
                 .on("change", async (e) => {
                     // no op.
-                    this.docSent += e.docs_written;
-                    this.docArrived += e.docs_read;
+                    this.docSent += e.docs.length;
                     this.updateInfo();
+                    notice.setMessage(`SENDING:${e.docs_written}/${totalCount}`);
                     Logger(`replicateAllToServer: sending..:${e.docs.length}`);
                 })
                 .on("complete", async (info) => {
@@ -993,6 +1223,7 @@ class LocalPouchDB {
                     Logger("replicateAllToServer: Completed", LOG_LEVEL.NOTICE);
                     replicate.cancel();
                     replicate.removeAllListeners();
+                    if (notice != null) notice.hide();
                     res(true);
                 })
                 .on("error", (e) => {
@@ -1002,6 +1233,7 @@ class LocalPouchDB {
                     Logger(e);
                     replicate.cancel();
                     replicate.removeAllListeners();
+                    if (notice != null) notice.hide();
                     rej(e);
                 });
         });
@@ -1062,7 +1294,10 @@ class LocalPouchDB {
             batches_limit: 40,
         };
         let syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
-
+        let notice: Notice = null;
+        if (showResult) {
+            notice = new Notice("Replicating", 0);
+        }
         let db = dbret.db;
         //replicate once
         this.syncStatus = "CONNECTED";
@@ -1082,10 +1317,12 @@ class LocalPouchDB {
                 // so skip to completed all, we should treat all changes.
                 try {
                     callback(e.docs);
-                    this.docArrived += e.docs_read;
-                    this.docSent += e.docs_written;
+                    this.docArrived += e.docs.length;
                     this.updateInfo();
                     Logger(`pulled ${e.docs.length} doc(s)`);
+                    if (notice != null) {
+                        notice.setMessage(`Replication pulled:${e.docs_read}`);
+                    }
                 } catch (ex) {
                     Logger("Replication callback error");
                     Logger(ex);
@@ -1111,11 +1348,17 @@ class LocalPouchDB {
                     })
                     .on("change", async (e) => {
                         try {
-                            this.docArrived += e.change.docs_read;
-                            this.docSent += e.change.docs_written;
+                            if (e.direction == "pull") {
+                                callback(e.change.docs);
+                                Logger(`replicated ${e.change.docs_read} doc(s)`);
+                                this.docArrived += e.change.docs.length;
+                            } else {
+                                this.docSent += e.change.docs.length;
+                            }
+                            if (notice != null) {
+                                notice.setMessage(`↑${e.change.docs_written} ↓${e.change.docs_read}`);
+                            }
                             this.updateInfo();
-                            callback(e.change.docs);
-                            Logger(`replicated ${e.change.docs.length} doc(s)`);
                         } catch (ex) {
                             Logger("Replication callback error");
                             Logger(ex);
@@ -1126,22 +1369,26 @@ class LocalPouchDB {
                         this.updateInfo();
                         Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                         this.syncHandler = null;
+                        if (notice != null) notice.hide();
                     })
                     .on("denied", (e) => {
                         this.syncStatus = "ERRORED";
                         this.updateInfo();
+                        if (notice != null) notice.hide();
                         Logger("Replication denied", LOG_LEVEL.NOTICE);
                         // Logger(e);
                     })
                     .on("error", (e) => {
                         this.syncStatus = "ERRORED";
                         this.updateInfo();
+                        if (notice != null) notice.hide();
                         Logger("Replication error", LOG_LEVEL.NOTICE);
                         // Logger(e);
                     })
                     .on("paused", (e) => {
                         this.syncStatus = "PAUSED";
                         this.updateInfo();
+                        if (notice != null) notice.hide();
                         Logger("replication paused", LOG_LEVEL.VERBOSE);
                         // Logger(e);
                     });
@@ -1155,6 +1402,7 @@ class LocalPouchDB {
                 this.syncHandler.cancel();
                 this.syncHandler.removeAllListeners();
                 this.syncHandler = null;
+                if (notice != null) notice.hide();
                 // debugger;
                 Logger(e);
             });
@@ -1423,9 +1671,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
         this.app.workspace.onLayoutReady(async () => {
-            await this.initializeDatabase();
-            this.realizeSettingSyncMode();
-            this.registerWatchEvents();
+            try {
+                await this.initializeDatabase();
+                this.realizeSettingSyncMode();
+                this.registerWatchEvents();
+            } catch (ex) {
+                Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
+            }
         });
         this.addCommand({
             id: "livesync-replicate",
@@ -1442,14 +1694,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.localDatabase.getDBEntry(view.file.path, {}, true);
             },
         });
-        // this.addCommand({
-        //     id: "livesync-test",
-        //     name: "test reset db and replicate",
-        //     callback: async () => {
-        //         await this.resetLocalDatabase();
-        //         await this.replicate();
-        //     },
-        // });
         this.addCommand({
             id: "livesync-gc",
             name: "garbage collect now",
@@ -1503,6 +1747,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings.workingEncrypt = this.settings.encrypt;
+        this.settings.workingPassphrase = this.settings.passphrase;
     }
 
     async saveSettings() {
@@ -1709,6 +1955,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     await this.app.vault.trigger("create", newfile);
                 } catch (ex) {
                     Logger("could not write to local (newfile:bin) " + doc._id, LOG_LEVEL.NOTICE);
+                    Logger(ex, LOG_LEVEL.VERBOSE);
                 }
             }
         } else if (doc.datatype == "plain") {
@@ -1723,6 +1970,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.app.vault.trigger("create", newfile);
             } catch (ex) {
                 Logger("could not write to local (newfile:plain) " + doc._id, LOG_LEVEL.NOTICE);
+                Logger(ex, LOG_LEVEL.VERBOSE);
             }
         } else {
             Logger("live : New data imcoming, but we cound't parse that." + doc.datatype, LOG_LEVEL.NOTICE);
@@ -1758,8 +2006,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             return;
         }
-
-        if (file.stat.mtime < docEntry.mtime || force) {
+        let localMtime = ~~(file.stat.mtime / 1000);
+        let docMtime = ~~(docEntry.mtime / 1000);
+        if (localMtime < docMtime || force) {
             let doc = await this.localDatabase.getDBEntry(docEntry._id);
             let msg = "livesync : newer local files so write to local:" + file.path;
             if (force) msg = "livesync : force write to local:" + file.path;
@@ -1780,8 +2029,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         Logger("could not write to local (modify:bin) " + doc._id, LOG_LEVEL.NOTICE);
                     }
                 }
-            }
-            if (doc.datatype == "plain") {
+            } else if (doc.datatype == "plain") {
                 if (!isValidPath(doc._id)) {
                     Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
                     return;
@@ -1797,7 +2045,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             } else {
                 Logger("live : New data imcoming, but we cound't parse that.:" + doc.datatype + "-", LOG_LEVEL.NOTICE);
             }
-        } else if (file.stat.mtime > docEntry.mtime) {
+        } else if (localMtime > docMtime) {
             // newer local file.
             // ?
         } else {
@@ -1902,12 +2150,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
-    async initializeDatabase() {
+    async initializeDatabase(showingNotice?: boolean) {
         await this.openDatabase();
-        await this.syncAllFiles();
+        await this.syncAllFiles(showingNotice);
     }
-    async replicateAllToServer() {
-        return await this.localDatabase.replicateAllToServer(this.settings);
+    async replicateAllToServer(showingNotice?: boolean) {
+        return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
     }
     async markRemoteLocked() {
         return await this.localDatabase.markRemoteLocked(this.settings, true);
@@ -1918,9 +2166,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async markRemoteResolved() {
         return await this.localDatabase.markRemoteResolved(this.settings);
     }
-    async syncAllFiles() {
+    async syncAllFiles(showingNotice?: boolean) {
         // synchronize all files between database and storage.
-
+        let notice: Notice = null;
+        if (showingNotice) {
+            notice = new Notice("Initializing", 0);
+        }
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
@@ -1935,25 +2186,46 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         Logger("Initialize and checking database files");
         Logger("Updating database by new files");
         this.statusBar.setText(`UPDATE DATABASE`);
-        // just write to DB from storage.
-        for (let v of onlyInStorage) {
-            Logger(`Update into ${v.path}`);
-            await this.updateIntoDB(v);
+        async function runAll<T>(procedurename: string, objects: T[], callback: (arg: T) => Promise<void>) {
+            const count = objects.length;
+            Logger(procedurename);
+            let i = 0;
+            let procs = objects.map(async (e) => {
+                try {
+                    // debugger;
+                    // Logger("hello?")
+                    await callback(e);
+                    i++;
+                    if (i % 25 == 0) {
+                        const notify = `${procedurename} : ${i}/${count}`;
+                        if (notice != null) notice.setMessage(notify);
+                        Logger(notify);
+                        // this.statusBar.setText(notify);
+                    }
+                } catch (ex) {
+                    Logger(`Error while ${procedurename}`, LOG_LEVEL.NOTICE);
+                    Logger(ex);
+                }
+            });
+            await Promise.allSettled(procs);
         }
-        // simply realize it
-        this.statusBar.setText(`UPDATE STORAGE`);
-        Logger("Writing files that only in database");
-        for (let v of onlyInDatabase) {
-            Logger(`Pull from db:${v}`);
-            await this.pullFile(v, filesStorage);
-        }
-        // have to sync below..
-        this.statusBar.setText(`CHECK FILE STATUS`);
-        for (let v of syncFiles) {
-            await this.syncFileBetweenDBandStorage(v, filesStorage);
-        }
+        await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
+            Logger(`Update into ${e.path}`);
+            await this.updateIntoDB(e);
+        });
+        await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
+            Logger(`Pull from db:${e}`);
+            await this.pullFile(e, filesStorage);
+        });
+        await runAll("CHECK FILE STATUS", syncFiles, async (e) => {
+            await this.syncFileBetweenDBandStorage(e, filesStorage);
+        });
         this.statusBar.setText(`NOW TRACKING!`);
-        Logger("Initialized");
+        Logger("Initialized,NOW TRACKING!");
+        if (showingNotice) {
+            notice.hide();
+            Logger("Initialize done!", LOG_LEVEL.NOTICE);
+        }
     }
     async deleteFolderOnDB(folder: TFolder) {
         Logger(`delete folder:${folder.path}`);
@@ -2157,18 +2429,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async syncFileBetweenDBandStorage(file: TFile, fileList?: TFile[]) {
         let doc = await this.localDatabase.getDBEntryMeta(file.path);
         if (doc === false) return;
-        if (file.stat.mtime > doc.mtime) {
+        let storageMtime = ~~(file.stat.mtime / 1000);
+        let docMtime = ~~(doc.mtime / 1000);
+        if (storageMtime > docMtime) {
             //newer local file.
+            Logger("DB -> STORAGE :" + file.path);
+            Logger(`${storageMtime} > ${docMtime}`);
             await this.updateIntoDB(file);
-            Logger("sync : older databse files so write to database:" + file.path);
-        } else if (file.stat.mtime < doc.mtime) {
+        } else if (storageMtime < docMtime) {
             //newer database file.
-            Logger("sync : older storage files so write from database:" + file.path);
+            Logger("STORAGE <- DB :" + file.path);
+            Logger(`${storageMtime} < ${docMtime}`);
             let docx = await this.localDatabase.getDBEntry(file.path);
             if (docx != false) {
                 await this.doc2storate_modify(docx, file);
             }
         } else {
+            // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
+            // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
             //eq.case
         }
     }
@@ -2468,6 +2746,87 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
+        containerEl.createEl("h3", { text: "End to End Encryption (beta)" });
+        containerEl.createEl("div", {
+            text: "When you change any encryption enabled or passphrase, you have to reset all databases to make sure that the last password is unused and erase encrypted data from anywhere. This operation will not lost your vault if you are fully synced.",
+        });
+
+        new Setting(containerEl)
+            .setName("Encrypt database")
+            .setDesc("Encrypting contents on the database.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
+                    this.plugin.settings.workingEncrypt = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerEl)
+            .setName("Passphrase")
+            .setDesc("Encrypting passphrase")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.workingPassphrase)
+                    .onChange(async (value) => {
+                        this.plugin.settings.workingPassphrase = value;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "password");
+            });
+
+        const applyEncryption = async (sendToServer: boolean) => {
+            if (this.plugin.settings.workingEncrypt && this.plugin.settings.workingPassphrase == "") {
+                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (this.plugin.settings.workingEncrypt && !(await testCrypt())) {
+                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (!this.plugin.settings.workingEncrypt) {
+                this.plugin.settings.workingPassphrase = "";
+            }
+            this.plugin.settings.liveSync = false;
+            this.plugin.settings.periodicReplication = false;
+            this.plugin.settings.syncOnSave = false;
+            this.plugin.settings.syncOnStart = false;
+            this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
+            this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
+
+            await this.plugin.saveSettings();
+            await this.plugin.resetLocalDatabase();
+            if (sendToServer) {
+                await this.plugin.initializeDatabase(true);
+                await this.plugin.markRemoteLocked();
+                await this.plugin.tryResetRemoteDatabase();
+                await this.plugin.markRemoteLocked();
+                await this.plugin.replicateAllToServer(true);
+            } else {
+                await this.plugin.markRemoteResolved();
+                await this.plugin.replicate(true);
+            }
+        };
+        new Setting(containerEl)
+            .setName("Apply")
+            .setDesc("apply encryption settinngs, and re-initialize database")
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and send")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await applyEncryption(true);
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and receive")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await applyEncryption(false);
+                    })
+            );
+
         containerEl.createEl("h3", { text: "Sync setting" });
 
         if (this.plugin.settings.versionUpFlash != "") {
@@ -2642,12 +3001,11 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.syncOnSave = false;
                         this.plugin.settings.syncOnStart = false;
                         await this.plugin.saveSettings();
-                        await this.plugin.saveSettings();
                         await this.plugin.resetLocalDatabase();
-                        await this.plugin.initializeDatabase();
+                        await this.plugin.initializeDatabase(true);
                         await this.plugin.tryResetRemoteDatabase();
                         await this.plugin.markRemoteLocked();
-                        await this.plugin.replicateAllToServer();
+                        await this.plugin.replicateAllToServer(true);
                     })
             );
         new Setting(containerEl)
