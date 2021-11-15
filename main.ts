@@ -28,6 +28,7 @@ interface ObsidianLiveSyncSettings {
     couchDB_URI: string;
     couchDB_USER: string;
     couchDB_PASSWORD: string;
+    couchDB_DBNAME: string;
     liveSync: boolean;
     syncOnSave: boolean;
     syncOnStart: boolean;
@@ -47,12 +48,14 @@ interface ObsidianLiveSyncSettings {
     passphrase: string;
     workingEncrypt: boolean;
     workingPassphrase: string;
+    doNotDeleteFolder: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     couchDB_URI: "",
     couchDB_USER: "",
     couchDB_PASSWORD: "",
+    couchDB_DBNAME: "",
     liveSync: false,
     syncOnSave: false,
     syncOnStart: false,
@@ -72,6 +75,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     passphrase: "",
     workingEncrypt: false,
     workingPassphrase: "",
+    doNotDeleteFolder: false,
 };
 interface Entry {
     _id: string;
@@ -994,13 +998,15 @@ class LocalPouchDB {
 
                     if (n1 > longLineThreshold) {
                         // long sentence is an established piece
-                        cPieceSize = n1 + 1;
+                        cPieceSize = n1;
                     } else {
                         // cPieceSize = Math.min.apply([n2, n3, n4].filter((e) => e > 1));
                         // ^ heavy.
+                        if (n1 > 0 && cPieceSize < n1) cPieceSize = n1;
                         if (n2 > 0 && cPieceSize < n2) cPieceSize = n2 + 1;
                         if (n3 > 0 && cPieceSize < n3) cPieceSize = n3 + 3;
-                        if (n4 > 0 && cPieceSize < n4) cPieceSize = n4 + 0;
+                        // Choose shorter, empty line and \n#
+                        if (n4 > 0 && cPieceSize > n4) cPieceSize = n4 + 0;
                         cPieceSize++;
                     }
                 } while (cPieceSize < minimumChunkSize);
@@ -1042,8 +1048,6 @@ class LocalPouchDB {
                                 pieceData.data = await decrypt(pieceData.data, this.settings.passphrase);
                             } catch (e) {
                                 Logger("Decode failed !");
-                                Logger(pieceData.data);
-                                Logger(this.settings.passphrase);
                                 throw e;
                             }
                         }
@@ -1181,7 +1185,7 @@ class LocalPouchDB {
             }
             this.syncStatus = "CLOSED";
             this.updateInfo();
-            let uri = setting.couchDB_URI;
+            let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
             let auth: Credential = {
                 username: setting.couchDB_USER,
                 password: setting.couchDB_PASSWORD,
@@ -1249,7 +1253,7 @@ class LocalPouchDB {
             new Notice("Open settings and check message, please.");
             return;
         }
-        let uri = setting.couchDB_URI;
+        let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         let auth: Credential = {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
@@ -1435,7 +1439,7 @@ class LocalPouchDB {
     }
     async tryResetRemoteDatabase(setting: ObsidianLiveSyncSettings) {
         await this.closeReplication();
-        let uri = setting.couchDB_URI;
+        let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         let auth: Credential = {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
@@ -1452,7 +1456,7 @@ class LocalPouchDB {
     }
     async tryCreateRemoteDatabase(setting: ObsidianLiveSyncSettings) {
         await this.closeReplication();
-        let uri = setting.couchDB_URI;
+        let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         let auth: Credential = {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
@@ -1462,7 +1466,7 @@ class LocalPouchDB {
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
     async markRemoteLocked(setting: ObsidianLiveSyncSettings, locked: boolean) {
-        let uri = setting.couchDB_URI;
+        let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         let auth: Credential = {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
@@ -1496,7 +1500,7 @@ class LocalPouchDB {
         await dbret.db.put(remoteMilestone);
     }
     async markRemoteResolved(setting: ObsidianLiveSyncSettings) {
-        let uri = setting.couchDB_URI;
+        let uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         let auth: Credential = {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
@@ -1677,6 +1681,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.registerWatchEvents();
             } catch (ex) {
                 Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
+                Logger(ex, LOG_LEVEL.VERBOSE);
             }
         });
         this.addCommand({
@@ -1987,8 +1992,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         Logger(`deleted:${file.path}`);
         Logger(`other items:${dir.children.length}`);
         if (dir.children.length == 0) {
-            Logger(`all files deleted by replication, so delete dir`);
-            await this.deleteVaultItem(dir);
+            if (!this.settings.doNotDeleteFolder) {
+                Logger(`all files deleted by replication, so delete dir`);
+                await this.deleteVaultItem(dir);
+            }
         }
     }
     async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
@@ -2190,16 +2197,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const count = objects.length;
             Logger(procedurename);
             let i = 0;
+            let lastTicks = performance.now() + 2000;
             let procs = objects.map(async (e) => {
                 try {
                     // debugger;
                     // Logger("hello?")
                     await callback(e);
                     i++;
-                    if (i % 25 == 0) {
+                    if (lastTicks < performance.now()) {
                         const notify = `${procedurename} : ${i}/${count}`;
                         if (notice != null) notice.setMessage(notify);
                         Logger(notify);
+                        lastTicks = performance.now() + 2000;
                         // this.statusBar.setText(notify);
                     }
                 } catch (ex) {
@@ -2207,7 +2216,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(ex);
                 }
             });
-            await Promise.allSettled(procs);
+            if (!Promise.allSettled) {
+                await Promise.all(
+                    procs.map((p) =>
+                        p
+                            .then((value) => ({
+                                status: "fulfilled",
+                                value,
+                            }))
+                            .catch((reason) => ({
+                                status: "rejected",
+                                reason,
+                            }))
+                    )
+                );
+            } else {
+                await Promise.allSettled(procs);
+            }
         }
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`Update into ${e.path}`);
@@ -2627,12 +2652,12 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        let db = await connectRemoteCouchDB(this.plugin.settings.couchDB_URI, {
+        let db = await connectRemoteCouchDB(this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME), {
             username: this.plugin.settings.couchDB_USER,
             password: this.plugin.settings.couchDB_PASSWORD,
         });
         if (db === false) {
-            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI}`, LOG_LEVEL.NOTICE);
+            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME}`, LOG_LEVEL.NOTICE);
             return;
         }
         this.plugin.addLog(`Connected to ${db.info.db_name}`, LOG_LEVEL.NOTICE);
@@ -2644,39 +2669,95 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
 
-        new Setting(containerEl).setName("CouchDB Remote URI").addText((text) =>
-            text
-                .setPlaceholder("https://........")
-                .setValue(this.plugin.settings.couchDB_URI)
-                .onChange(async (value) => {
-                    this.plugin.settings.couchDB_URI = value;
-                    await this.plugin.saveSettings();
-                })
-        );
-        new Setting(containerEl)
-            .setName("CouchDB Username")
-            .setDesc("username")
-            .addText((text) =>
+        containerEl.createEl("h3", { text: "Remote Database configuration" });
+
+        const isAnySyncEnabled = (): boolean => {
+            if (this.plugin.settings.liveSync) return true;
+            if (this.plugin.settings.periodicReplication) return true;
+            if (this.plugin.settings.syncOnFileOpen) return true;
+            if (this.plugin.settings.syncOnSave) return true;
+            if (this.plugin.settings.syncOnStart) return true;
+        };
+        const applyDisplayEnabled = () => {
+            if (isAnySyncEnabled()) {
+                dbsettings.forEach((e) => {
+                    e.setDisabled(true).setTooltip("When any sync is enabled, It cound't be changed.");
+                });
+            } else {
+                dbsettings.forEach((e) => {
+                    e.setDisabled(false).setTooltip("");
+                });
+            }
+            if (this.plugin.settings.liveSync) {
+                syncNonLive.forEach((e) => {
+                    e.setDisabled(true).setTooltip("");
+                });
+                syncLive.forEach((e) => {
+                    e.setDisabled(false).setTooltip("");
+                });
+            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication) {
+                syncNonLive.forEach((e) => {
+                    e.setDisabled(false).setTooltip("");
+                });
+                syncLive.forEach((e) => {
+                    e.setDisabled(true).setTooltip("");
+                });
+            } else {
+                syncNonLive.forEach((e) => {
+                    e.setDisabled(false).setTooltip("");
+                });
+                syncLive.forEach((e) => {
+                    e.setDisabled(false).setTooltip("");
+                });
+            }
+        };
+
+        let dbsettings: Setting[] = [];
+        dbsettings.push(
+            new Setting(containerEl).setName("URI").addText((text) =>
                 text
-                    .setPlaceholder("")
-                    .setValue(this.plugin.settings.couchDB_USER)
+                    .setPlaceholder("https://........")
+                    .setValue(this.plugin.settings.couchDB_URI)
                     .onChange(async (value) => {
-                        this.plugin.settings.couchDB_USER = value;
+                        this.plugin.settings.couchDB_URI = value;
                         await this.plugin.saveSettings();
                     })
-            );
-        new Setting(containerEl)
-            .setName("CouchDB Password")
-            .setDesc("password")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.couchDB_PASSWORD)
+            ),
+            new Setting(containerEl)
+                .setName("Username")
+                .setDesc("username")
+                .addText((text) =>
+                    text
+                        .setPlaceholder("")
+                        .setValue(this.plugin.settings.couchDB_USER)
+                        .onChange(async (value) => {
+                            this.plugin.settings.couchDB_USER = value;
+                            await this.plugin.saveSettings();
+                        })
+                ),
+            new Setting(containerEl)
+                .setName("Password")
+                .setDesc("password")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.couchDB_PASSWORD)
+                        .onChange(async (value) => {
+                            this.plugin.settings.couchDB_PASSWORD = value;
+                            await this.plugin.saveSettings();
+                        });
+                    text.inputEl.setAttribute("type", "password");
+                }),
+            new Setting(containerEl).setName("Database name").addText((text) =>
+                text
+                    .setPlaceholder("")
+                    .setValue(this.plugin.settings.couchDB_DBNAME)
                     .onChange(async (value) => {
-                        this.plugin.settings.couchDB_PASSWORD = value;
+                        this.plugin.settings.couchDB_DBNAME = value;
                         await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "password");
-            });
+                    })
+            )
+        );
+
         new Setting(containerEl)
             .setName("Test Database Connection")
             .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
@@ -2689,27 +2770,27 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        containerEl.createEl("h3", { text: "Database configuration" });
+        containerEl.createEl("h3", { text: "Local Database configuration" });
 
+        // new Setting(containerEl)
+        //     .setName("File to Database saving delay")
+        //     .setDesc("ms, between 200 and 5000, restart required.")
+        //     .addText((text) => {
+        //         text.setPlaceholder("")
+        //             .setValue(this.plugin.settings.savingDelay + "")
+        //             .onChange(async (value) => {
+        //                 let v = Number(value);
+        //                 if (isNaN(v) || v < 200 || v > 5000) {
+        //                     return 200;
+        //                     //text.inputEl.va;
+        //                 }
+        //                 this.plugin.settings.savingDelay = v;
+        //                 await this.plugin.saveSettings();
+        //             });
+        //         text.inputEl.setAttribute("type", "number");
+        //     });
         new Setting(containerEl)
-            .setName("File to Database saving delay")
-            .setDesc("ms, between 200 and 5000, restart required.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.savingDelay + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 200 || v > 5000) {
-                            return 200;
-                            //text.inputEl.va;
-                        }
-                        this.plugin.settings.savingDelay = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
-        new Setting(containerEl)
-            .setName("Auto GC delay")
+            .setName("Auto Garbage Collection delay")
             .setDesc("(seconds), if you set zero, you have to run manually.")
             .addText((text) => {
                 text.setPlaceholder("")
@@ -2724,43 +2805,25 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-
-        containerEl.createEl("h3", { text: "Log Setting" });
-
-        new Setting(containerEl)
-            .setName("Do not show low-priority Log")
-            .setDesc("Reduce log infomations")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
-                    this.plugin.settings.lessInformationInLog = value;
-                    await this.plugin.saveSettings();
+        new Setting(containerEl).setName("Manual Garbage Collect").addButton((button) =>
+            button
+                .setButtonText("Collect now")
+                .setDisabled(false)
+                .onClick(async () => {
+                    await this.plugin.garbageCollect();
                 })
-            );
+        );
         new Setting(containerEl)
-            .setName("Verbose Log")
-            .setDesc("Show verbose log ")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showVerboseLog).onChange(async (value) => {
-                    this.plugin.settings.showVerboseLog = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-
-        containerEl.createEl("h3", { text: "End to End Encryption (beta)" });
-        containerEl.createEl("div", {
-            text: "When you change any encryption enabled or passphrase, you have to reset all databases to make sure that the last password is unused and erase encrypted data from anywhere. This operation will not lost your vault if you are fully synced.",
-        });
-
-        new Setting(containerEl)
-            .setName("Encrypt database")
+            .setName("End to End Encryption (beta)")
             .setDesc("Encrypting contents on the database.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
                     this.plugin.settings.workingEncrypt = value;
+                    phasspharase.setDisabled(!value);
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerEl)
+        let phasspharase = new Setting(containerEl)
             .setName("Passphrase")
             .setDesc("Encrypting passphrase")
             .addText((text) => {
@@ -2772,7 +2835,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "password");
             });
-
+        phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
+        containerEl.createEl("div", {
+            text: "When you change any encryption enabled or passphrase, you have to reset all databases to make sure that the last password is unused and erase encrypted data from anywhere. This operation will not lost your vault if you are fully synced.",
+        });
         const applyEncryption = async (sendToServer: boolean) => {
             if (this.plugin.settings.workingEncrypt && this.plugin.settings.workingPassphrase == "") {
                 Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
@@ -2827,6 +2893,27 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        containerEl.createEl("h3", { text: "General Settings" });
+
+        new Setting(containerEl)
+            .setName("Do not show low-priority Log")
+            .setDesc("Reduce log infomations")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
+                    this.plugin.settings.lessInformationInLog = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerEl)
+            .setName("Verbose Log")
+            .setDesc("Show verbose log ")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showVerboseLog).onChange(async (value) => {
+                    this.plugin.settings.showVerboseLog = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
         containerEl.createEl("h3", { text: "Sync setting" });
 
         if (this.plugin.settings.versionUpFlash != "") {
@@ -2835,83 +2922,107 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 e.addEventListener("click", async () => {
                     this.plugin.settings.versionUpFlash = "";
                     await this.plugin.saveSettings();
+                    applyDisplayEnabled();
                     c.remove();
                 });
             });
             c.addClass("op-warn");
         }
 
-        new Setting(containerEl)
-            .setName("LiveSync")
-            .setDesc("Sync realtime")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.liveSync).onChange(async (value) => {
-                    this.plugin.settings.liveSync = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.realizeSettingSyncMode();
-                })
-            );
-
-        new Setting(containerEl)
-            .setName("Periodic Sync")
-            .setDesc("Sync periodically")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.periodicReplication).onChange(async (value) => {
-                    this.plugin.settings.periodicReplication = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerEl)
-            .setName("Periodic sync intreval")
-            .setDesc("Interval (sec)")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.periodicReplicationInterval + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v > 5000) {
-                            return 0;
-                        }
-                        this.plugin.settings.periodicReplicationInterval = v;
+        let syncLive: Setting[] = [];
+        let syncNonLive: Setting[] = [];
+        syncLive.push(
+            new Setting(containerEl)
+                .setName("LiveSync")
+                .setDesc("Sync realtime")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.liveSync).onChange(async (value) => {
+                        this.plugin.settings.liveSync = value;
+                        // ps.setDisabled(value);
                         await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+                        applyDisplayEnabled();
+                        this.plugin.realizeSettingSyncMode();
+                    })
+                )
+        );
+
+        syncNonLive.push(
+            new Setting(containerEl)
+                .setName("Periodic Sync")
+                .setDesc("Sync periodically")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.periodicReplication).onChange(async (value) => {
+                        this.plugin.settings.periodicReplication = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                ),
+            new Setting(containerEl)
+                .setName("Periodic sync intreval")
+                .setDesc("Interval (sec)")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.periodicReplicationInterval + "")
+                        .onChange(async (value) => {
+                            let v = Number(value);
+                            if (isNaN(v) || v > 5000) {
+                                return 0;
+                            }
+                            this.plugin.settings.periodicReplicationInterval = v;
+                            await this.plugin.saveSettings();
+                            applyDisplayEnabled();
+                        });
+                    text.inputEl.setAttribute("type", "number");
+                }),
+
+            new Setting(containerEl)
+                .setName("Sync on Save")
+                .setDesc("When you save file, sync automatically")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
+                        this.plugin.settings.syncOnSave = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                ),
+            new Setting(containerEl)
+                .setName("Sync on File Open")
+                .setDesc("When you open file, sync automatically")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncOnFileOpen).onChange(async (value) => {
+                        this.plugin.settings.syncOnFileOpen = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                ),
+            new Setting(containerEl)
+                .setName("Sync on Start")
+                .setDesc("Start synchronization on Obsidian started.")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
+                        this.plugin.settings.syncOnStart = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                )
+        );
 
         new Setting(containerEl)
-            .setName("Sync on Save")
-            .setDesc("When you save file, sync automatically")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
-                    this.plugin.settings.syncOnSave = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerEl)
-            .setName("Sync on File Open")
-            .setDesc("When you open file, sync automatically")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.syncOnFileOpen).onChange(async (value) => {
-                    this.plugin.settings.syncOnFileOpen = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerEl)
-            .setName("Sync on Start")
-            .setDesc("Start synchronization on Obsidian started.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
-                    this.plugin.settings.syncOnStart = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-
-        new Setting(containerEl)
-            .setName("Trash deleted files")
+            .setName("Use Trash for deleted files")
             .setDesc("Do not delete files that deleted in remote, just move to trash.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.trashInsteadDelete).onChange(async (value) => {
                     this.plugin.settings.trashInsteadDelete = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Do not delete empty folder")
+            .setDesc("Normally, folder is deleted When the folder became empty by replication. enable this, leave it as is")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.doNotDeleteFolder).onChange(async (value) => {
+                    this.plugin.settings.doNotDeleteFolder = value;
                     await this.plugin.saveSettings();
                 })
             );
@@ -2950,15 +3061,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
-        new Setting(containerEl).setName("Garbage Collect").addButton((button) =>
-            button
-                .setButtonText("Garbage Collection")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.garbageCollect();
-                })
-        );
-
         containerEl.createEl("h3", { text: "Hatch" });
 
         if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
@@ -2986,28 +3088,48 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 c.addClass("op-warn");
             }
         }
+        const dropHistory = async (sendToServer: boolean) => {
+            this.plugin.settings.liveSync = false;
+            this.plugin.settings.periodicReplication = false;
+            this.plugin.settings.syncOnSave = false;
+            this.plugin.settings.syncOnStart = false;
 
+            await this.plugin.saveSettings();
+            applyDisplayEnabled();
+            await this.plugin.resetLocalDatabase();
+            if (sendToServer) {
+                await this.plugin.initializeDatabase(true);
+                await this.plugin.markRemoteLocked();
+                await this.plugin.tryResetRemoteDatabase();
+                await this.plugin.markRemoteLocked();
+                await this.plugin.replicateAllToServer(true);
+            } else {
+                await this.plugin.markRemoteResolved();
+                await this.plugin.replicate(true);
+            }
+        };
         new Setting(containerEl)
             .setName("Drop History")
-            .setDesc("Initialize local and remote database, and create local database from storage and put all into server. And also, lock the database to prevent data corruption.")
+            .setDesc("Initialize local and remote database, and send all or retrieve all again.")
             .addButton((button) =>
                 button
-                    .setButtonText("Execute")
+                    .setButtonText("Drop and send")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        this.plugin.settings.liveSync = false;
-                        this.plugin.settings.periodicReplication = false;
-                        this.plugin.settings.syncOnSave = false;
-                        this.plugin.settings.syncOnStart = false;
-                        await this.plugin.saveSettings();
-                        await this.plugin.resetLocalDatabase();
-                        await this.plugin.initializeDatabase(true);
-                        await this.plugin.tryResetRemoteDatabase();
-                        await this.plugin.markRemoteLocked();
-                        await this.plugin.replicateAllToServer(true);
+                        await dropHistory(true);
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Drop and receive")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await dropHistory(false);
                     })
             );
+
         new Setting(containerEl)
             .setName("Lock remote database")
             .setDesc("Lock remote database for synchronize")
@@ -3082,5 +3204,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         } else {
             let cx = containerEl.createEl("div", { text: "There's no collupted data." });
         }
+        applyDisplayEnabled();
     }
 }
