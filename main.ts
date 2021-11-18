@@ -49,6 +49,8 @@ interface ObsidianLiveSyncSettings {
     workingEncrypt: boolean;
     workingPassphrase: string;
     doNotDeleteFolder: boolean;
+    resolveConflictsByNewerFile: boolean;
+    batchSave: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -76,6 +78,8 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     workingEncrypt: false,
     workingPassphrase: "",
     doNotDeleteFolder: false,
+    resolveConflictsByNewerFile: false,
+    batchSave: false,
 };
 interface Entry {
     _id: string;
@@ -1605,6 +1609,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     logMessage: string[] = [];
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
+    suspended: boolean;
 
     async onload() {
         Logger = this.addLog.bind(this); // Logger moved to global.
@@ -1652,9 +1657,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.refreshStatusText = this.refreshStatusText.bind(this);
 
         this.statusBar2 = this.addStatusBarItem();
-        let delay = this.settings.savingDelay;
-        if (delay < 200) delay = 200;
-        if (delay > 5000) delay = 5000;
         // this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
         // this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
         // this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
@@ -1663,8 +1665,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.watchVaultCreate = this.watchVaultCreate.bind(this);
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
         this.watchVaultRename = this.watchVaultRename.bind(this);
-        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), delay, false);
-        this.watchWindowVisiblity = debounce(this.watchWindowVisiblity.bind(this), delay, false);
+        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
+        this.watchWindowVisiblity = debounce(this.watchWindowVisiblity.bind(this), 1000, false);
 
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
@@ -1677,7 +1679,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.app.workspace.onLayoutReady(async () => {
             try {
                 await this.initializeDatabase();
-                this.realizeSettingSyncMode();
+                await this.realizeSettingSyncMode();
                 this.registerWatchEvents();
             } catch (ex) {
                 Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
@@ -1709,7 +1711,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addCommand({
             id: "livesync-toggle",
             name: "Toggle LiveSync",
-            callback: () => {
+            callback: async () => {
                 if (this.settings.liveSync) {
                     this.settings.liveSync = false;
                     Logger("LiveSync Disabled.", LOG_LEVEL.NOTICE);
@@ -1717,7 +1719,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     this.settings.liveSync = true;
                     Logger("LiveSync Enabled.", LOG_LEVEL.NOTICE);
                 }
-                this.realizeSettingSyncMode();
+                await this.realizeSettingSyncMode();
+                this.saveSettings();
+            },
+        });
+        this.addCommand({
+            id: "livesync-suspendall",
+            name: "Toggle All Sync.",
+            callback: async () => {
+                if (this.suspended) {
+                    this.suspended = false;
+                    Logger("Self-hosted LiveSync resumed", LOG_LEVEL.NOTICE);
+                } else {
+                    this.suspended = true;
+                    Logger("Self-hosted LiveSync suspended", LOG_LEVEL.NOTICE);
+                }
+                await this.realizeSettingSyncMode();
                 this.saveSettings();
             },
         });
@@ -1759,7 +1776,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
         this.localDatabase.settings = this.settings;
-        this.realizeSettingSyncMode();
+        await this.realizeSettingSyncMode();
     }
     gcTimerHandler: any = null;
     gcHook() {
@@ -1788,11 +1805,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async watchWindowVisiblityAsync() {
         if (this.settings.suspendFileWatching) return;
+        // if (this.suspended) return;
         let isHidden = document.hidden;
+        await this.applyBatchChange();
         if (isHidden) {
             this.localDatabase.closeReplication();
             this.clearPeriodicSync();
         } else {
+            // suspend all temporary.
+            if (this.suspended) return;
             if (this.settings.liveSync) {
                 await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             }
@@ -1811,8 +1832,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.watchWorkspaceOpenAsync(file);
     }
     async watchWorkspaceOpenAsync(file: TFile) {
+        await this.applyBatchChange();
         if (file == null) return;
-        if (this.settings.syncOnFileOpen) {
+        if (this.settings.syncOnFileOpen && !this.suspended) {
             await this.replicate();
         }
         this.localDatabase.disposeHashCache();
@@ -1825,7 +1847,32 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     watchVaultChange(file: TFile, ...args: any[]) {
         if (this.settings.suspendFileWatching) return;
+        // If batchsave is enabled, queue all changes and do nothing.
+        if (this.settings.batchSave) {
+            this.batchFileChange = Array.from(new Set([...this.batchFileChange, file.path]));
+            return;
+        }
         this.watchVaultChangeAsync(file, ...args);
+    }
+    applyBatchChange() {
+        let batchItems = JSON.parse(JSON.stringify(this.batchFileChange)) as string[];
+        this.batchFileChange = [];
+        let files = this.app.vault.getFiles();
+        let promises = batchItems.map(async (e) => {
+            try {
+                if (await this.app.vault.adapter.exists(normalizePath(e))) {
+                    let f = files.find((f) => f.path == e);
+                    if (f) {
+                        await this.updateIntoDB(f);
+                        Logger(`Batch save:${e}`);
+                    }
+                }
+            } catch (ex) {
+                Logger(`Batch save error:${e}`, LOG_LEVEL.NOTICE);
+                Logger(ex, LOG_LEVEL.VERBOSE);
+            }
+        });
+        return Promise.all(promises);
     }
     batchFileChange: string[] = [];
     async watchVaultChangeAsync(file: TFile, ...args: any[]) {
@@ -1835,7 +1882,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     watchVaultDelete(file: TFile | TFolder) {
-        console.log(`${file.path} delete`);
+        // When save is delayed, it should be cancelled.
+        this.batchFileChange = this.batchFileChange.filter((e) => e == file.path);
         if (this.settings.suspendFileWatching) return;
         this.watchVaultDeleteAsync(file);
     }
@@ -1876,6 +1924,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async watchVaultRenameAsync(file: TFile | TFolder, oldFile: any) {
         Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
+        await this.applyBatchChange();
         if (file instanceof TFolder) {
             const newFiles = this.GetAllFilesRecursively(file);
             // for guard edge cases. this won't happen and each file's event will be raise.
@@ -2108,19 +2157,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     setPeriodicSync() {
         if (this.settings.periodicReplication && this.settings.periodicReplicationInterval > 0) {
             this.clearPeriodicSync();
-            this.periodicSyncHandler = setInterval(() => this.periodicSync, Math.max(this.settings.periodicReplicationInterval, 30) * 1000);
+            this.periodicSyncHandler = setInterval(async () => await this.periodicSync(), Math.max(this.settings.periodicReplicationInterval, 30) * 1000);
         }
     }
     async periodicSync() {
         await this.replicate();
     }
-    realizeSettingSyncMode() {
+    async realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
+        this.clearPeriodicSync();
+        await this.applyBatchChange();
+        // disable all sync temporary.
+        if (this.suspended) return;
         if (this.settings.liveSync) {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
-        this.clearPeriodicSync();
         this.setPeriodicSync();
     }
     refreshStatusText() {
@@ -2154,6 +2206,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             new Notice("Open settings and check message, please.");
             return;
         }
+        await this.applyBatchChange();
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
@@ -2373,6 +2426,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(`automaticaly merged:${path}`);
             return true;
         }
+        if (this.settings.resolveConflictsByNewerFile) {
+            let lmtime = ~~(leftLeaf.mtime / 1000);
+            let rmtime = ~~(rightLeaf.mtime / 1000);
+            let loser = leftLeaf;
+            if (lmtime > rmtime) {
+                loser = rightLeaf;
+            }
+            await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
+            await this.pullFile(path, null, true);
+            Logger(`automaticaly merged (newerFileResolve) :${path}`);
+            return true;
+        }
         // make diff.
         let dmp = new diff_match_patch();
         var diff = dmp.diff_main(leftLeaf.data, rightLeaf.data);
@@ -2511,7 +2576,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let ret = await this.localDatabase.putDBEntry(d);
 
         Logger("put database:" + fullpath + "(" + datatype + ") ");
-        if (this.settings.syncOnSave) {
+        if (this.settings.syncOnSave && !this.suspended) {
             await this.replicate();
         }
     }
@@ -2519,13 +2584,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let fullpath = file.path;
         Logger(`deleteDB By path:${fullpath}`);
         await this.deleteFromDBbyPath(fullpath);
-        if (this.settings.syncOnSave) {
+        if (this.settings.syncOnSave && !this.suspended) {
             await this.replicate();
         }
     }
     async deleteFromDBbyPath(fullpath: string) {
         await this.localDatabase.deleteDBEntry(fullpath);
-        if (this.settings.syncOnSave) {
+        if (this.settings.syncOnSave && !this.suspended) {
             await this.replicate();
         }
     }
@@ -2772,23 +2837,21 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h3", { text: "Local Database configuration" });
 
-        // new Setting(containerEl)
-        //     .setName("File to Database saving delay")
-        //     .setDesc("ms, between 200 and 5000, restart required.")
-        //     .addText((text) => {
-        //         text.setPlaceholder("")
-        //             .setValue(this.plugin.settings.savingDelay + "")
-        //             .onChange(async (value) => {
-        //                 let v = Number(value);
-        //                 if (isNaN(v) || v < 200 || v > 5000) {
-        //                     return 200;
-        //                     //text.inputEl.va;
-        //                 }
-        //                 this.plugin.settings.savingDelay = v;
-        //                 await this.plugin.saveSettings();
-        //             });
-        //         text.inputEl.setAttribute("type", "number");
-        //     });
+        new Setting(containerEl)
+            .setName("Batch database update (beta)")
+            .setDesc("Delay all changes, save once before replication or opening another file.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.batchSave).onChange(async (value) => {
+                    if (value && this.plugin.settings.liveSync) {
+                        Logger("LiveSync and Batch database update cannot be used at the same time.", LOG_LEVEL.NOTICE);
+                        toggle.setValue(false);
+                        return;
+                    }
+                    this.plugin.settings.batchSave = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
         new Setting(containerEl)
             .setName("Auto Garbage Collection delay")
             .setDesc("(seconds), if you set zero, you have to run manually.")
@@ -2937,11 +3000,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 .setDesc("Sync realtime")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.liveSync).onChange(async (value) => {
+                        if (value && this.plugin.settings.batchSave) {
+                            Logger("LiveSync and Batch database update cannot be used at the same time.", LOG_LEVEL.NOTICE);
+                            toggle.setValue(false);
+                            return;
+                        }
+
                         this.plugin.settings.liveSync = value;
                         // ps.setDisabled(value);
                         await this.plugin.saveSettings();
                         applyDisplayEnabled();
-                        this.plugin.realizeSettingSyncMode();
+                        await this.plugin.realizeSettingSyncMode();
                     })
                 )
         );

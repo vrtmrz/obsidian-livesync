@@ -1,12 +1,12 @@
 # Self-hosted LiveSync
 
+Sorry for late! [Japanese docs](./README_ja.md) is also coming up.
+
 **Renamed from: obsidian-livesync**
 
-This is the obsidian plugin that enables livesync between multi-devices with self-hosted database.  
-Runs in Mac, Android, Windows, and iOS.  
+Using a self-hosted database, live-sync to multi-devices bidirectionally.
+Runs in Mac, Android, Windows, and iOS. Perhaps available on Linux too.
 Community implementation, not compatible with official "Sync".
-
-<!-- <div><video controls src="https://user-images.githubusercontent.com/45774780/137352386-a274736d-a38b-4069-ac41-759c73e36a23.mp4"  muted="false"></video></div> -->
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
@@ -14,27 +14,45 @@ Community implementation, not compatible with official "Sync".
 
 Limitations: ~~Folder deletion handling is not completed.~~ **It would work now.**
 
-## This plugin enables..
+## This plugin enables...
 
--   Live Sync
--   Self-Hosted data synchronization with conflict detection and resolving in Obsidian.
+-   Runs in Windows, Mac, iPad, iPhone, Android, Chromebook
+-   Synchronize to Self-hosted Database
+-   Replicate to/from other devices bidirectionally near-real-time
+-   Resolving synchronizing conflicts in the Obsidian.
+-   You can use CouchDB or its compatibles like IBM Cloudant. CouchDB is OSS, and IBM Cloudant has the terms and certificates about security. Your notes are yours.
 -   Off-line sync is also available.
--   Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
+-   End-to-End encryption is available (beta).
+-   Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf) (End-to-End encryption will not be applicable.)
+
+It must be useful for the Researcher, Engineer, Developer who has to keep NDA or something like agreement.
+Especially, in some companies, people have to store all data to their fully controlled host, even End-to-End encryption applied.
 
 ## IMPORTANT NOTICE
 
-**Please make sure to disable other synchronize solutions to avoid content corruption or duplication.**
-If you want to synchronize to both backend, sync one by one, please.
+-   Do not use with other synchronize solutions. Before enabling this plugin, make sure to disable other synchronize solutions, to avoid content corruption or duplication. If you want to synchronize to both backend, sync one by one, please.
+    This includes making your vault on the cloud-controlled folder(e.g., Inside the iCloud folder).
+-   This is the synchronization plugin. Not backup solutions. Do not rely on this for backup.
+-   When the device's storage has been run out, Database corruption may happen.
+-   When editing hidden files or any other invisible files from obsidian, the file wouldn't be kept in the database. (**Or be deleted.**)
+
+## Supplements
+
+-   When the file has been deleted, the deletion of the file is replicated to other devices.
+-   When the folder became empty by replication, The folder will be deleted in the default setting. But you can change this behaivour. Check the [Settings](docs/settings.md).
+-   LiveSync drains many batteries in mobile devices.
+-   Mobile Obsidian can not connect to the non-secure(HTTP) or local CA-signed servers, even though the certificate is stored in the device store.
+-   There are no 'exclude_folders' like configurations.
 
 ## How to use
 
-1. Install from Obsidian, or clone this repo and run `npm run build` ,copy `main.js`, `styles.css` and `manifest.json` into `[your-vault]/.obsidian/plugins/` (PC, Mac and Android will work)
-2. Enable Self-hosted LiveSync in the settings dialog.
-3. If you use your self-hosted CouchDB, set your server's info.
-4. or Use [IBM Cloudant](https://www.ibm.com/cloud/cloudant), take an account and enable **Cloudant** in [Catalog](https://cloud.ibm.com/catalog#services)  
-   Note please choose "IAM and legacy credentials" for the Authentication method
-   Setup details are in Couldant Setup Section.
-5. Setup LiveSync or SyncOnSave or SyncOnStart as you like.
+1. Install from Obsidian, or download from this repo's releases, copy `main.js`, `styles.css` and `manifest.json` into `[your-vault]/.obsidian/plugins/`
+2. Get your database. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB.
+   For more information, refer below:
+    1. [Setup IBM Cloudant](docs/setup_cloudant.md)
+    2. [Setup your CouchDB](docs/setup_own_server.md) (Now writing)
+3. Enter connection information to Plugin's setting dialog. In details, refer [Settings of Self-hosted LiveSync](docs/settings.md)
+4. Enable LiveSync or other Synchronize method as you like.
 
 ## Test Server
 
@@ -46,117 +64,26 @@ Note: Please read "Limitations" carefully. Do not send your private vault.
 Available from on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)  
 Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are work in progress.)
 
-## When your database looks corrupted or too heavy to replicate to a new device.
+# Information in StatusBar
 
-self-hosted-livesync changes data treatment of markdown files since 0.1.0  
-When you are troubled with synchronization, **Please reset local and remote databases**.  
-_Note: Without synchronization, your files won't be deleted._
+Synchronization status is shown in statusbar.
 
-1.  Update plugin on all devices.
-1.  Disable any synchronizations on all devices.
-1.  From the most reliable device<sup>(_The device_)</sup>, back your vault up.
-1.  Press "Drop History"-> "Execute" button from _The device_.
-1.  Wait for a while, so self-hosted-livesync will say "completed."
-1.  In other devices, replication will be canceled automatically. Click "Reset local database" and click "I'm ready, mark this device 'resolved'" on all devices.  
-    If it doesn't be shown. replicate once.
-1.  It's all done. But if you are sure to resolve all devices and the warning is noisy, click "I'm ready, unlock the database". it unlocks the database completely.
+-   Status
+    -   ⏹️ Stopped
+    -   💤 LiveSync is enabled. Waiting for changes.
+    -   ⚡️ Synchronize is now in progress.
+    -   ⚠ Error occurred.
+-   ↑ Uploaded pieces
+-   ↓ Downloaded pieces
 
-# Designed architecture
+# More supplements
 
-## How does this plugin synchronize.
-
-![Synchronization](images/1.png)
-
-1. When notes are created or modified, Obsidian raises some events. obsidian-live-sync catch these events and reflect changes into Local PouchDB.
-2. PouchDB automatically or manually replicates changes to remote CouchDB.
-3. Another device is watching remote CouchDB's changes, so retrieve new changes.
-4. obsidian-live-sync reflects replicated changeset into Obsidian's vault.
-
-Note: The figure is drawn as single-directional, between two devices. But everything occurs bi-directionally between many devices at once in real.
-
-## Techniques to keep bandwidth low.
-
-![dedupe](images/2.png)
-
-## Cloudant Setup
-
-### Creating an Instance
-
-1. Hit the "Create Resource" button.
-   ![step 1](./instruction_images/cloudant_1.png)
-
-1. In IBM Cloud Catalog, search "Cloudant".
-   ![step 2](instruction_images/cloudant_2.png)
-
-1. You can choose "Lite plan" for free.
-   ![step 3](instruction_images/cloudant_3.png)
-
-Select Multitenant(it's the default) and the region as you like.
-![step 4](instruction_images/cloudant_4.png) 3. Be sure to select "IAM and Legacy credentials" for "Authentication Method".
-![step 5](instruction_images/cloudant_5.png)
-
-4. Select Lite and be sure to check the capacity.
-   ![step 6](instruction_images/cloudant_6.png)
-
-5. And hit "Create" on the right panel.
-   ![step 7](instruction_images/cloudant_7.png)
-
-6. When all of the above steps have been done, Open "Resource list" on the left pane. you can see the Cloudant instance in the "Service and software". Click it.
-   ![step 8](instruction_images/cloudant_8.png)
-
-7. In resource details, there's information to connect from self-hosted-livesync.
-   Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>. We use this address later, with the database name.
-   ![step 9](instruction_images/cloudant_9.png)
-
-### CouchDB setup
-
-1.  Hit the "Launch Dashboard" button, Cloudant dashboard will be shown.
-    Yes, it's almost CouchDB's fauxton.  
-    ![step 1](instruction_images/couchdb_1.png)
-
-1.  First, you have to enable the CORS option.
-    Hit the Account menu and open the "CORS" tab.
-    Initially, "Origin Domains" is set to "Restrict to specific domains"., so set to "All domains(\*)"  
-    _NOTE: of course We want to set "app://obsidian.md" but it's not acceptable on Cloudant._
-    ![step 2](instruction_images/couchdb_2.png)
-
-1.  And open the "Databases" tab and hit the "Create Database" button.  
-    Enter the name as you like <sup>(\*2)</sup> and Hit the "Create" button below.  
-    ![step 3](instruction_images/couchdb_3.png)
-
-1.  If the database was shown with joyful messages, setup is almost done.
-    And, once you have confirmed that you can create a database, usullay there is no need to open this screen.
-    You can create a database from Self-hosted LiveSync.
-    ![step 4](instruction_images/couchdb_4.png)
-
-### Credentials Setup
-
-1.  Back into IBM Cloud, Open the "Service credentials". You'll get an empty list, hit the "New credential" button.
-    ![step 1](instruction_images/credentials_1.png)
-
-1.  The dialog to create a credential will be shown.
-    type any name or leave it default, hit the "Add" button.  
-    ![step 2](instruction_images/credentials_2.png)  
-    _NOTE: This "name" is not related to your username that uses in Self-hosted LiveSync._
-
-1.  Back to "Service credentials", the new credential should be created.  
-    open details.  
-    ![step 3](instruction_images/credentials_3.png)  
-    The username and password pair is inside this JSON.  
-    "username" and "password" are so.  
-    follow the figure, it's
-    "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
-
-### Self-hosted LiveSync setting
-
-![xx](instruction_images/obsidian_sync_1.png)
-example values.
-
-| Items               | Value                            | example                                                                     |
-| ------------------- | -------------------------------- | --------------------------------------------------------------------------- |
-| CouchDB Remote URI: | (\*1)/(\*2) or any favorite name | https://xxxxxxxxxxxxxxxxx-bluemix.cloudantnosqldb.appdomain.cloud/sync-test |
-| CouchDB Username    | (\*3)                            | apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5                      |
-| CouchDB Password    | (\*4)                            | c2c11651d75497fa3d3c486e4c8bdf27                                            |
+-   When synchronized, files are compared by their modified times and overwritten by the newer ones once. Then plugin checks the conflicts and if a merge is needed, the dialog will open.
+-   Rarely, the file in the database would be broken. The plugin will not write storage when it looks broken, so some old files must be on your device. If you edit the file, it will be cured. But if the file does not exist on any device, can not rescue it. So you can delete these items from the setting dialog.
+-   If your database looks corrupted, try "Drop History". Usually, It is the easiest way.
+-   Q: Database is growing, how can I shrink it up?
+    A: each of the docs is saved with their old 100 revisions to detect and resolve confliction. Picture yourself that one device has been off the line for a while, and joined again. The device has to check his note and remote saved note. If exists in revision histories of remote notes even though the device's note is a little different from the latest one, it could be merged safely. Even if that is not in revision histories, we only have to check differences after the revision that both devices commonly have. This is like The git's conflict resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
+-   And more technical Information are in the [Technical Information](docs/tech_info.md)
 
 # License
 
