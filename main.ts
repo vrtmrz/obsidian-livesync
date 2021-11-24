@@ -1621,6 +1621,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.settings.liveSync = false;
             this.settings.syncOnSave = false;
             this.settings.syncOnStart = false;
+            this.settings.syncOnFileOpen = false;
             this.settings.periodicReplication = false;
             this.settings.versionUpFlash = "I changed specifications incompatiblly, so when you enable sync again, be sure to made version up all nother devides.";
             this.saveSettings();
@@ -1850,6 +1851,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // If batchsave is enabled, queue all changes and do nothing.
         if (this.settings.batchSave) {
             this.batchFileChange = Array.from(new Set([...this.batchFileChange, file.path]));
+            this.refreshStatusText();
             return;
         }
         this.watchVaultChangeAsync(file, ...args);
@@ -1872,6 +1874,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(ex, LOG_LEVEL.VERBOSE);
             }
         });
+        this.refreshStatusText();
         return Promise.all(promises);
     }
     batchFileChange: string[] = [];
@@ -2199,7 +2202,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 w = "?";
         }
         this.statusBar.title = this.localDatabase.syncStatus;
-        this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}`);
+        let waiting = "";
+        if (this.settings.batchSave) {
+            waiting = " " + this.batchFileChange.map((e) => "🚀").join("");
+        }
+        this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}${waiting}`);
     }
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
@@ -2250,18 +2257,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const count = objects.length;
             Logger(procedurename);
             let i = 0;
-            let lastTicks = performance.now() + 2000;
+            // let lastTicks = performance.now() + 2000;
             let procs = objects.map(async (e) => {
                 try {
                     // debugger;
                     // Logger("hello?")
                     await callback(e);
                     i++;
-                    if (lastTicks < performance.now()) {
+                    if (i % 25 == 0) {
                         const notify = `${procedurename} : ${i}/${count}`;
                         if (notice != null) notice.setMessage(notify);
                         Logger(notify);
-                        lastTicks = performance.now() + 2000;
+                        // lastTicks = performance.now() + 2000;
                         // this.statusBar.setText(notify);
                     }
                 } catch (ex) {
@@ -2435,7 +2442,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
             await this.pullFile(path, null, true);
-            Logger(`automaticaly merged (newerFileResolve) :${path}`);
+            Logger(`Automaticaly merged (newerFileResolve) :${path}`, LOG_LEVEL.NOTICE);
             return true;
         }
         // make diff.
@@ -2877,7 +2884,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
         );
         new Setting(containerEl)
-            .setName("End to End Encryption (beta)")
+            .setName("End to End Encryption")
             .setDesc("Encrypting contents on the database.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
@@ -2918,6 +2925,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.periodicReplication = false;
             this.plugin.settings.syncOnSave = false;
             this.plugin.settings.syncOnStart = false;
+            this.plugin.settings.syncOnFileOpen = false;
             this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
             this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
 
@@ -3097,6 +3105,15 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
+            .setName("Use newer file if conflicted (beta)")
+            .setDesc("Resolve conflicts by newer files automatically.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.resolveConflictsByNewerFile).onChange(async (value) => {
+                    this.plugin.settings.resolveConflictsByNewerFile = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerEl)
             .setName("Minimum chunk size")
             .setDesc("(letters), minimum chunk size.")
             .addText((text) => {
@@ -3162,6 +3179,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.periodicReplication = false;
             this.plugin.settings.syncOnSave = false;
             this.plugin.settings.syncOnStart = false;
+            this.plugin.settings.syncOnFileOpen = false;
 
             await this.plugin.saveSettings();
             applyDisplayEnabled();
