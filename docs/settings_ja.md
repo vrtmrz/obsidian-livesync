@@ -49,7 +49,7 @@ Obsidianでのファイル操作が終わってから指定秒数が経過した
 ### Manual Garbage Collect
 上記のGarbage Collectionを手動で行います。
 
-### End to End Encryption (beta)
+### End to End Encryption
 データベースを暗号化します。この効果はデータベースに格納されるデータに限られ、ディスク上のファイルは平文のままです。  
 暗号化はAES-GCMを使用して行っています。
 
@@ -120,6 +120,9 @@ LiveSyncをONにするか、もしくはPeriodic Sync + Sync On File Openがオ�
 ### Do not delete empty folder
 Self-hosted LiveSyncは通常、フォルダ内のファイルがすべて削除された場合、フォルダを削除します。  
 備考:Self-hosted LiveSyncの同期対象はファイルです。
+
+### Use newer file if conflicted (beta)
+競合が発生したとき、常に新しいファイルを使用して競合を自動的に解決します。
 
 ### minimum chunk size と LongLine threshold
 チャンクの分割についての設定です。  

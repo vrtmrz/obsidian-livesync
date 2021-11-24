@@ -47,7 +47,7 @@ If you are an early adopter, maybe this value is left as 30 seconds. Please chan
 ### Manual Garbage Collect
 Run "Garbage Collection" manually.
 
-### End to End Encryption (beta)
+### End to End Encryption
 Encrypt your database. It affects only the database, your files are left as plain.
 
 The encryption algorithm is AES-GCM.
@@ -118,6 +118,9 @@ If this option is enabled, move deleted files into the trash instead delete actu
 
 ### Do not delete empty folder
 Self-hosted LiveSync will delete the folder when the folder becomes empty. If this option is enabled, leave it as an empty folder.
+
+### Use newer file if conflicted (beta)
+Always use the newer file to resolve and overwrite when conflict has occurred.
 
 ### minimum chunk size and LongLine threshold
 The configuration of chunk splitting.
