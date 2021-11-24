@@ -264,8 +264,8 @@ const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("http://")) return true;
     return false;
 };
-const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<false | { db: PouchDB.Database; info: any }> => {
-    if (!isValidRemoteCouchDBURI(uri)) return false;
+const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<string | { db: PouchDB.Database; info: any }> => {
+    if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
     let db = new PouchDB(uri, {
         auth,
     });
@@ -273,8 +273,12 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
         let info = await db.info();
         return { db: db, info: info };
     } catch (ex) {
+        let msg = `${ex.name}:${ex.message}`;
+        if (ex.name == "TypeError" && ex.message == "Failed to fetch") {
+            msg += "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
+        }
         Logger(ex, LOG_LEVEL.VERBOSE);
-        return false;
+        return msg;
     }
 };
 // check the version of remote.
@@ -324,6 +328,7 @@ const bumpRemoteVersion = async (db: PouchDB.Database, barrier: number = VER): P
     await db.put(vi);
     return true;
 };
+
 function isValidPath(filename: string): boolean {
     let regex = /[\u0000-\u001f]|[\\"':?<>|*$]/g;
     let x = filename.replace(regex, "_");
@@ -332,10 +337,22 @@ function isValidPath(filename: string): boolean {
     return sx == filename;
 }
 
+// For backward compatibility, using the path for determining id.
+// Only CouchDB nonacceptable ID (that starts with an underscore) has been prefixed with "/".
+// The first slash will be deleted when the path is normalized.
+function path2id(filename: string): string {
+    let x = normalizePath(filename);
+    if (x.startsWith("_")) x = "/" + x;
+    return x;
+}
+function id2path(filename: string): string {
+    return normalizePath(filename);
+}
+
 // Default Logger.
 let Logger: (message: any, levlel?: LOG_LEVEL) => Promise<void> = async (message, _) => {
     let timestamp = new Date().toLocaleString();
-    let messagecontent = typeof message == "string" ? message : JSON.stringify(message, null, 2);
+    let messagecontent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
     let newmessage = timestamp + "->" + messagecontent;
     console.log(newmessage);
 };
@@ -720,7 +737,8 @@ class LocalPouchDB {
         }
     }
 
-    async getDBEntryMeta(id: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+    async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+        let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
             if (opt) {
@@ -759,7 +777,8 @@ class LocalPouchDB {
         }
         return false;
     }
-    async getDBEntry(id: string, opt?: PouchDB.Core.GetOptions, dump = false): Promise<false | LoadedEntry> {
+    async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false): Promise<false | LoadedEntry> {
+        let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
             if (opt) {
@@ -856,7 +875,8 @@ class LocalPouchDB {
         }
         return false;
     }
-    async deleteDBEntry(id: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
+    async deleteDBEntry(path: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
+        let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
             if (opt) {
@@ -897,12 +917,13 @@ class LocalPouchDB {
             throw ex;
         }
     }
-    async deleteDBEntryPrefix(prefix: string): Promise<boolean> {
+    async deleteDBEntryPrefix(prefixSrc: string): Promise<boolean> {
         // delete database entries by prefix.
         // it called from folder deletion.
         let c = 0;
         let readCount = 0;
         let delDocs: string[] = [];
+        let prefix = path2id(prefixSrc);
         do {
             let result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 100, conflicts: true });
             readCount = result.rows.length;
@@ -1195,10 +1216,10 @@ class LocalPouchDB {
                 password: setting.couchDB_PASSWORD,
             };
             let dbret = await connectRemoteCouchDB(uri, auth);
-            if (dbret === false) {
-                Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+            if (typeof dbret === "string") {
+                Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
                 if (notice != null) notice.hide();
-                return rej(`could not connect to ${uri}`);
+                return rej(`could not connect to ${uri}:${dbret}`);
             }
 
             let syncOptionBase: PouchDB.Replication.SyncOptions = {
@@ -1267,8 +1288,8 @@ class LocalPouchDB {
             return false;
         }
         let dbret = await connectRemoteCouchDB(uri, auth);
-        if (dbret === false) {
-            Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+        if (typeof dbret === "string") {
+            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
         }
 
@@ -1449,7 +1470,7 @@ class LocalPouchDB {
             password: setting.couchDB_PASSWORD,
         };
         let con = await connectRemoteCouchDB(uri, auth);
-        if (con === false) return;
+        if (typeof con == "string") return;
         try {
             await con.db.destroy();
             Logger("Remote Database Destroyed", LOG_LEVEL.NOTICE);
@@ -1466,7 +1487,7 @@ class LocalPouchDB {
             password: setting.couchDB_PASSWORD,
         };
         let con2 = await connectRemoteCouchDB(uri, auth);
-        if (con2 === false) return;
+        if (typeof con2 === "string") return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
     async markRemoteLocked(setting: ObsidianLiveSyncSettings, locked: boolean) {
@@ -1476,8 +1497,8 @@ class LocalPouchDB {
             password: setting.couchDB_PASSWORD,
         };
         let dbret = await connectRemoteCouchDB(uri, auth);
-        if (dbret === false) {
-            Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+        if (typeof dbret === "string") {
+            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
         }
 
@@ -1510,8 +1531,8 @@ class LocalPouchDB {
             password: setting.couchDB_PASSWORD,
         };
         let dbret = await connectRemoteCouchDB(uri, auth);
-        if (dbret === false) {
-            Logger(`could not connect to ${uri}`, LOG_LEVEL.NOTICE);
+        if (typeof dbret === "string") {
+            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
         }
 
@@ -1960,7 +1981,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         let valutName = this.app.vault.getName();
         let timestamp = new Date().toLocaleString();
-        let messagecontent = typeof message == "string" ? message : JSON.stringify(message, null, 2);
+        let messagecontent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
         let newmessage = timestamp + "->" + messagecontent;
 
         this.logMessage = [].concat(this.logMessage).concat([newmessage]).slice(-100);
@@ -1996,37 +2017,39 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async doc2storage_create(docEntry: EntryBody, force?: boolean) {
-        let doc = await this.localDatabase.getDBEntry(docEntry._id, { rev: docEntry._rev });
+        let pathSrc = id2path(docEntry._id);
+        let doc = await this.localDatabase.getDBEntry(pathSrc, { rev: docEntry._rev });
         if (doc === false) return;
+        let path = id2path(doc._id);
         if (doc.datatype == "newnote") {
             let bin = base64ToArrayBuffer(doc.data);
             if (bin != null) {
-                if (!isValidPath(doc._id)) {
-                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                if (!isValidPath(path)) {
+                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
                     return;
                 }
-                await this.ensureDirectory(doc._id);
+                await this.ensureDirectory(path);
                 try {
-                    let newfile = await this.app.vault.createBinary(normalizePath(doc._id), bin, { ctime: doc.ctime, mtime: doc.mtime });
-                    Logger("live : write to local (newfile:b) " + doc._id);
+                    let newfile = await this.app.vault.createBinary(normalizePath(path), bin, { ctime: doc.ctime, mtime: doc.mtime });
+                    Logger("live : write to local (newfile:b) " + path);
                     await this.app.vault.trigger("create", newfile);
                 } catch (ex) {
-                    Logger("could not write to local (newfile:bin) " + doc._id, LOG_LEVEL.NOTICE);
+                    Logger("could not write to local (newfile:bin) " + path, LOG_LEVEL.NOTICE);
                     Logger(ex, LOG_LEVEL.VERBOSE);
                 }
             }
         } else if (doc.datatype == "plain") {
-            if (!isValidPath(doc._id)) {
-                Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+            if (!isValidPath(path)) {
+                Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
                 return;
             }
-            await this.ensureDirectory(doc._id);
+            await this.ensureDirectory(path);
             try {
-                let newfile = await this.app.vault.create(normalizePath(doc._id), doc.data, { ctime: doc.ctime, mtime: doc.mtime });
-                Logger("live : write to local (newfile:p) " + doc._id);
+                let newfile = await this.app.vault.create(normalizePath(path), doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+                Logger("live : write to local (newfile:p) " + path);
                 await this.app.vault.trigger("create", newfile);
             } catch (ex) {
-                Logger("could not write to local (newfile:plain) " + doc._id, LOG_LEVEL.NOTICE);
+                Logger("could not write to local (newfile:plain) " + path, LOG_LEVEL.NOTICE);
                 Logger(ex, LOG_LEVEL.VERBOSE);
             }
         } else {
@@ -2051,16 +2074,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
+        let pathSrc = id2path(docEntry._id);
         if (docEntry._deleted) {
             //basically pass.
             //but if there're no docs left, delete file.
-            let lastDocs = await this.localDatabase.getDBEntry(docEntry._id);
+            let lastDocs = await this.localDatabase.getDBEntry(pathSrc);
             if (lastDocs === false) {
                 await this.deleteVaultItem(file);
             } else {
                 // it perhaps delete some revisions.
                 // may be we have to reload this
-                await this.pullFile(docEntry._id, null, true);
+                await this.pullFile(pathSrc, null, true);
                 Logger(`delete skipped:${lastDocs._id}`);
             }
             return;
@@ -2068,38 +2092,39 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let localMtime = ~~(file.stat.mtime / 1000);
         let docMtime = ~~(docEntry.mtime / 1000);
         if (localMtime < docMtime || force) {
-            let doc = await this.localDatabase.getDBEntry(docEntry._id);
+            let doc = await this.localDatabase.getDBEntry(pathSrc);
             let msg = "livesync : newer local files so write to local:" + file.path;
             if (force) msg = "livesync : force write to local:" + file.path;
             if (doc === false) return;
+            let path = id2path(doc._id);
             if (doc.datatype == "newnote") {
                 let bin = base64ToArrayBuffer(doc.data);
                 if (bin != null) {
-                    if (!isValidPath(doc._id)) {
-                        Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                    if (!isValidPath(path)) {
+                        Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
                         return;
                     }
-                    await this.ensureDirectory(doc._id);
+                    await this.ensureDirectory(path);
                     try {
                         await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
                         Logger(msg);
                         await this.app.vault.trigger("modify", file);
                     } catch (ex) {
-                        Logger("could not write to local (modify:bin) " + doc._id, LOG_LEVEL.NOTICE);
+                        Logger("could not write to local (modify:bin) " + path, LOG_LEVEL.NOTICE);
                     }
                 }
             } else if (doc.datatype == "plain") {
-                if (!isValidPath(doc._id)) {
-                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${doc._id}`, LOG_LEVEL.NOTICE);
+                if (!isValidPath(path)) {
+                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
                     return;
                 }
-                await this.ensureDirectory(doc._id);
+                await this.ensureDirectory(path);
                 try {
                     await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
                     Logger(msg);
                     await this.app.vault.trigger("modify", file);
                 } catch (ex) {
-                    Logger("could not write to local (modify:plain) " + doc._id, LOG_LEVEL.NOTICE);
+                    Logger("could not write to local (modify:plain) " + path, LOG_LEVEL.NOTICE);
                 }
             } else {
                 Logger("live : New data imcoming, but we cound't parse that.:" + doc.datatype + "-", LOG_LEVEL.NOTICE);
@@ -2114,7 +2139,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async handleDBChanged(change: EntryBody) {
         let allfiles = this.app.vault.getFiles();
-        let targetFiles = allfiles.filter((e) => e.path == change._id);
+        let targetFiles = allfiles.filter((e) => e.path == id2path(change._id));
         if (targetFiles.length == 0) {
             if (change._deleted) {
                 return;
@@ -2242,7 +2267,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && e.id != "obsydian_livesync_version").map((e) => normalizePath(e.id));
+        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && e.id != "obsydian_livesync_version").map((e) => id2path(e.id));
 
         const onlyInStorage = filesStorage.filter((e) => filesDatabase.indexOf(e.path) == -1);
         const onlyInDatabase = filesDatabase.filter((e) => filesStorageName.indexOf(e) == -1);
@@ -2505,7 +2530,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!fileList) {
             fileList = this.app.vault.getFiles();
         }
-        let targetFiles = fileList.filter((e) => e.path == normalizePath(filename));
+        let targetFiles = fileList.filter((e) => e.path == id2path(filename));
         if (targetFiles.length == 0) {
             //have to create;
             let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null);
@@ -2559,7 +2584,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             content = await this.app.vault.read(file);
             datatype = "plain";
         }
-        let fullpath = file.path;
+        let fullpath = path2id(file.path);
         let d: LoadedEntry = {
             _id: fullpath,
             data: content,
@@ -2728,8 +2753,8 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             username: this.plugin.settings.couchDB_USER,
             password: this.plugin.settings.couchDB_PASSWORD,
         });
-        if (db === false) {
-            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME}`, LOG_LEVEL.NOTICE);
+        if (typeof db === "string") {
+            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
         }
         this.plugin.addLog(`Connected to ${db.info.db_name}`, LOG_LEVEL.NOTICE);
