@@ -28,3 +28,6 @@
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);
 }
+.tcenter {
+    text-align: center;
+}

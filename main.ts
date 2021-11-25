@@ -1,4 +1,4 @@
-import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView } from "obsidian";
+import { App, debounce, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest } from "obsidian";
 import { PouchDB } from "./pouchdb-browser-webpack/dist/pouchdb-browser";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import xxhash from "xxhash-wasm";
@@ -51,6 +51,8 @@ interface ObsidianLiveSyncSettings {
     doNotDeleteFolder: boolean;
     resolveConflictsByNewerFile: boolean;
     batchSave: boolean;
+    deviceAndVaultName: string;
+    usePluginSettings: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -80,7 +82,10 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     doNotDeleteFolder: false,
     resolveConflictsByNewerFile: false,
     batchSave: false,
+    deviceAndVaultName: "",
+    usePluginSettings: false,
 };
+
 interface Entry {
     _id: string;
     data: string;
@@ -121,6 +126,22 @@ type LoadedEntry = Entry & {
     datatype: "plain" | "newnote";
 };
 
+interface PluginDataEntry {
+    _id: string;
+    deviceVaultName: string;
+    mtime: number;
+    manifest: PluginManifest;
+    mainJs: string;
+    manifestJson: string;
+    styleCss?: string;
+    // it must be encrypted.
+    dataJson?: string;
+    _rev?: string;
+    _deleted?: boolean;
+    _conflicts?: string[];
+    type: "plugin";
+}
+
 interface EntryLeaf {
     _id: string;
     data: string;
@@ -156,7 +177,7 @@ interface EntryNodeInfo {
 }
 
 type EntryBody = Entry | NewEntry | PlainEntry;
-type EntryDoc = EntryBody | LoadedEntry | EntryLeaf | EntryVersionInfo | EntryMilestoneInfo | EntryNodeInfo;
+type EntryDoc = EntryBody | LoadedEntry | EntryLeaf | EntryVersionInfo | EntryMilestoneInfo | EntryNodeInfo | PluginDataEntry;
 
 type diff_result_leaf = {
     rev: string;
@@ -2164,7 +2185,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return;
             }
             Logger("replication change arrived", LOG_LEVEL.VERBOSE);
-            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
+            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo" && change.type != "plugin") {
                 await this.handleDBChanged(change);
             }
             if (change.type == "versioninfo") {
@@ -2267,7 +2288,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && e.id != "obsydian_livesync_version").map((e) => id2path(e.id));
+        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && !e.id.startsWith("ps:") && e.id != "obsydian_livesync_version").map((e) => id2path(e.id));
 
         const onlyInStorage = filesStorage.filter((e) => filesDatabase.indexOf(e.path) == -1);
         const onlyInDatabase = filesDatabase.filter((e) => filesStorageName.indexOf(e) == -1);
@@ -3299,6 +3320,240 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.initializeDatabase();
                     })
             );
+
+        // With great respect, thank you TfTHacker!
+        // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
+        containerEl.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
+
+        // new Setting(containerEl)
+        //     .setName("Use Plugins and settings")
+        //     .setDesc("It's on the bleeding edge. If you change this option, close setting dialog once,")
+        //     .addToggle((toggle) =>
+        //         toggle.setValue(this.plugin.settings.usePluginSettings).onChange(async (value) => {
+        //             this.plugin.settings.usePluginSettings = value;
+        //             await this.plugin.saveSettings();
+        //         })
+        //     );
+
+        new Setting(containerEl)
+            .setName("Device and Vault name")
+            .setDesc("")
+            .addText((text) => {
+                text.setPlaceholder("desktop-main")
+                    .setValue(this.plugin.settings.deviceAndVaultName)
+                    .onChange(async (value) => {
+                        this.plugin.settings.deviceAndVaultName = value;
+                        await this.plugin.saveSettings();
+                    });
+                // text.inputEl.setAttribute("type", "password");
+            });
+
+        const sweepPlugin = async () => {
+            // delete old database plugin entries
+            // TODO: don't delete always.
+            const db = this.plugin.localDatabase.localDatabase;
+            let oldDocs = await db.allDocs({ startkey: `ps:${this.plugin.settings.deviceAndVaultName}-`, endkey: `ps:${this.plugin.settings.deviceAndVaultName}.`, include_docs: true });
+            let delDocs = oldDocs.rows.map((e) => {
+                e.doc._deleted = true;
+                return e.doc;
+            });
+            await db.bulkDocs(delDocs);
+
+            // sweep current plugin.
+            // @ts-ignore
+            const pl = this.plugin.app.plugins;
+            const manifests: PluginManifest[] = Object.values(pl.manifests);
+            console.dir(manifests);
+            for (let m of manifests) {
+                let path = normalizePath(m.dir) + "/";
+                const adapter = this.plugin.app.vault.adapter;
+                let files = ["manifest.json", "main.js", "style.css", "data.json"];
+                let pluginData: { [key: string]: string } = {};
+                for (let file of files) {
+                    let thePath = path + file;
+                    if (await adapter.exists(thePath)) {
+                        // pluginData[file] = await arrayBufferToBase64(await adapter.readBinary(thePath));
+                        pluginData[file] = await adapter.read(thePath);
+                    }
+                }
+                console.dir(m.id);
+                console.dir(pluginData);
+                let mtime = 0;
+                if (await adapter.exists(path + "/data.json")) {
+                    mtime = (await adapter.stat(path + "/data.json")).mtime;
+                }
+                let p: PluginDataEntry = {
+                    _id: `ps:${this.plugin.settings.deviceAndVaultName}-${m.id}`,
+                    dataJson: pluginData["data.json"] ? await encrypt(pluginData["data.json"], this.plugin.settings.passphrase) : undefined,
+                    deviceVaultName: this.plugin.settings.deviceAndVaultName,
+                    mainJs: pluginData["main.js"],
+                    styleCss: pluginData["style.css"],
+                    manifest: m,
+                    manifestJson: pluginData["manifest.json"],
+                    mtime: mtime,
+                    type: "plugin",
+                };
+                await db.put(p);
+            }
+            await this.plugin.replicate(true);
+            updatePluginPane();
+        };
+        const updatePluginPane = async () => {
+            const db = this.plugin.localDatabase.localDatabase;
+            let oldDocs = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: true });
+            let plugins: { [key: string]: PluginDataEntry[] } = {};
+            let allPlugins: { [key: string]: PluginDataEntry } = {};
+            let thisDevicePlugins: { [key: string]: PluginDataEntry } = {};
+            for (let v of oldDocs.rows) {
+                if (typeof plugins[v.doc.deviceVaultName] === "undefined") {
+                    plugins[v.doc.deviceVaultName] = [];
+                }
+                plugins[v.doc.deviceVaultName].push(v.doc);
+                allPlugins[v.doc._id] = v.doc;
+                if (v.doc.deviceVaultName == this.plugin.settings.deviceAndVaultName) {
+                    thisDevicePlugins[v.doc.manifest.id] = v.doc;
+                }
+            }
+            let html = `
+            <table>
+            <tr>
+            <th>vault</th>
+            <th>plugin</th>
+            <th>version</th>
+            <th>modified</th>
+            <th>plugin</th>
+            <th>setting</th>
+            </tr>`;
+            for (let vaults in plugins) {
+                if (vaults == this.plugin.settings.deviceAndVaultName) continue;
+                for (let v of plugins[vaults]) {
+                    let mtime = v.mtime == 0 ? "-" : new Date(v.mtime).toLocaleString();
+                    let settingApplyable: boolean | string = "-";
+                    let settingFleshness: string = "";
+                    let isSameVersion = false;
+                    if (thisDevicePlugins[v.manifest.id]) {
+                        if (thisDevicePlugins[v.manifest.id].manifest.version == v.manifest.version) {
+                            isSameVersion = true;
+                        }
+                    }
+                    if (thisDevicePlugins[v.manifest.id] && thisDevicePlugins[v.manifest.id].dataJson && v.dataJson) {
+                        // have this plugin.
+                        let localSetting = await decrypt(thisDevicePlugins[v.manifest.id].dataJson, this.plugin.settings.passphrase);
+
+                        try {
+                            let remoteSetting = await decrypt(v.dataJson, this.plugin.settings.passphrase);
+                            if (localSetting == remoteSetting) {
+                                settingApplyable = "even";
+                            } else {
+                                if (v.mtime > thisDevicePlugins[v.manifest.id].mtime) {
+                                    settingFleshness = "newer";
+                                } else {
+                                    settingFleshness = "older";
+                                }
+                                settingApplyable = true;
+                            }
+                        } catch (ex) {
+                            settingApplyable = "could not decrypt";
+                        }
+                    } else if (!v.dataJson) {
+                        settingApplyable = "N/A";
+                    }
+                    // very ugly way.
+                    let piece = `<tr>
+                    <th>${escapeStringToHTML(v.deviceVaultName)}</th>
+                    <td>${escapeStringToHTML(v.manifest.name)}</td>
+                    <td class="tcenter">${escapeStringToHTML(v.manifest.version)}</td>
+                    <td class="tcenter">${escapeStringToHTML(mtime)}</td>
+                    <td class="tcenter">${isSameVersion ? "even" : "<button data-key='" + v._id + "' class='apply-plugin-version'>Use</button>"}</td>
+                    <td class="tcenter">${settingApplyable === true ? "<button data-key='" + v._id + "' class='apply-plugin-data'>Apply (" + settingFleshness + ")</button>" : settingApplyable}</td>
+                    </tr>`;
+                    html += piece;
+                }
+            }
+            html += "</table>";
+            pluginConfig.innerHTML = html;
+            pluginConfig.querySelectorAll(".apply-plugin-data").forEach((e) =>
+                e.addEventListener("click", async (evt) => {
+                    console.dir("pluginData:" + e.attributes.getNamedItem("data-key").value);
+                    let plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
+                    const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
+                    const adapter = this.plugin.app.vault.adapter;
+                    // @ts-ignore
+                    let stat = this.plugin.app.plugins.enabledPlugins[plugin.manifest.id];
+                    if (stat) {
+                        // @ts-ignore
+                        await this.plugin.app.plugins.unloadPlugin(plugin.manifest.id);
+                        Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                    }
+                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", await decrypt(plugin.dataJson, this.plugin.settings.passphrase));
+                    Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
+                    // @ts-ignore
+                    if (stat) {
+                        // @ts-ignore
+                        await this.plugin.app.plugins.loadPlugin(plugin.manifest.id);
+                        Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                    }
+                    sweepPlugin();
+                })
+            );
+            pluginConfig.querySelectorAll(".apply-plugin-version").forEach((e) =>
+                e.addEventListener("click", async (evt) => {
+                    console.dir("pluginVersion:" + e.attributes.getNamedItem("data-key").value);
+
+                    let plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
+
+                    // @ts-ignore
+                    let stat = this.plugin.app.plugins.enabledPlugins[plugin.manifest.id];
+                    if (stat) {
+                        // @ts-ignore
+                        await this.plugin.app.plugins.unloadPlugin(plugin.manifest.id);
+                        Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                    }
+
+                    const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
+                    const adapter = this.plugin.app.vault.adapter;
+                    if ((await adapter.exists(pluginTargetFolderPath)) === false) {
+                        await adapter.mkdir(pluginTargetFolderPath);
+                    }
+                    await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
+                    await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
+                    if (plugin.styleCss) await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
+                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", await decrypt(plugin.dataJson, this.plugin.settings.passphrase));
+                    if (stat) {
+                        // @ts-ignore
+                        await this.plugin.app.plugins.loadPlugin(plugin.manifest.id);
+                        Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                    }
+                    sweepPlugin();
+                })
+            );
+        };
+
+        let pluginConfig = containerEl.createEl("div");
+
+        new Setting(containerEl)
+            .setName("Reload")
+            .setDesc("Reload List")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reload")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await updatePluginPane();
+                    })
+            );
+        new Setting(containerEl)
+            .setName("Save plugins into the database")
+            .setDesc("Now, it wouldn't work automatically")
+            .addButton((button) =>
+                button
+                    .setButtonText("Save plugins")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await sweepPlugin();
+                    })
+            );
+        updatePluginPane();
         containerEl.createEl("h3", { text: "Corrupted data" });
 
         if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
