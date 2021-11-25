@@ -584,6 +584,7 @@ class LocalPouchDB {
         // this.initializeDatabase();
     }
     close() {
+        Logger("Database closed (by close)");
         this.isReady = false;
         if (this.changeHandler != null) {
             this.changeHandler.cancel();
@@ -645,6 +646,7 @@ class LocalPouchDB {
             await this.localDatabase.put(nodeinfo);
         }
         this.localDatabase.on("close", () => {
+            Logger("Database closed.");
             this.isReady = false;
         });
         this.nodeid = nodeinfo.nodeid;
@@ -663,6 +665,7 @@ class LocalPouchDB {
             });
         this.changeHandler = changes;
         this.isReady = true;
+        Logger("Database is now ready.");
     }
 
     async prepareHashFunctions() {
@@ -688,7 +691,7 @@ class LocalPouchDB {
     waitForLeafReady(id: string): Promise<boolean> {
         return new Promise((res, rej) => {
             // Set timeout.
-            let timer = setTimeout(() => rej(false), LEAF_WAIT_TIMEOUT);
+            let timer = setTimeout(() => rej(new Error(`Leaf timed out:${id}`)), LEAF_WAIT_TIMEOUT);
             if (typeof this.leafArrivedCallbacks[id] == "undefined") {
                 this.leafArrivedCallbacks[id] = [];
             }
@@ -699,7 +702,7 @@ class LocalPouchDB {
         });
     }
 
-    async getDBLeaf(id: string): Promise<string> {
+    async getDBLeaf(id: string, waitForReady: boolean): Promise<string> {
         // when in cache, use that.
         if (this.hashCacheRev[id]) {
             return this.hashCacheRev[id];
@@ -721,7 +724,7 @@ class LocalPouchDB {
             }
             throw new Error(`retrive leaf, but it was not leaf.`);
         } catch (ex) {
-            if (ex.status && ex.status == 404) {
+            if (ex.status && ex.status == 404 && waitForReady) {
                 // just leaf is not ready.
                 // wait for on
                 if ((await this.waitForLeafReady(id)) === false) {
@@ -776,6 +779,10 @@ class LocalPouchDB {
             // retrieve metadata only
             if (!obj.type || (obj.type && obj.type == "notes") || obj.type == "newnote" || obj.type == "plain") {
                 let note = obj as Entry;
+                let children: string[] = [];
+                if (obj.type == "newnote" || obj.type == "plain") {
+                    children = obj.children;
+                }
                 let doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                     data: "",
                     _id: note._id,
@@ -785,7 +792,7 @@ class LocalPouchDB {
                     _deleted: obj._deleted,
                     _rev: obj._rev,
                     _conflicts: obj._conflicts,
-                    children: [],
+                    children: children,
                     datatype: "newnote",
                 };
                 return doc;
@@ -798,7 +805,7 @@ class LocalPouchDB {
         }
         return false;
     }
-    async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false): Promise<false | LoadedEntry> {
+    async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true): Promise<false | LoadedEntry> {
         let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -848,13 +855,14 @@ class LocalPouchDB {
                     }
                     let childrens: string[];
                     try {
-                        childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e)));
+                        childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e, waitForReady)));
                         if (dump) {
                             Logger(`childrens:`);
                             Logger(childrens);
                         }
                     } catch (ex) {
                         Logger(`Something went wrong on reading elements of ${obj._id} from database.`, LOG_LEVEL.NOTICE);
+                        Logger(ex, LOG_LEVEL.VERBOSE);
                         this.corruptedEntries[obj._id] = obj;
                         return false;
                     }
@@ -1161,7 +1169,7 @@ class LocalPouchDB {
                         } else {
                             Logger(`save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
                             Logger(item);
-                            this.disposeHashCache();
+                            // this.disposeHashCache();
                             saved = false;
                         }
                     }
@@ -1476,6 +1484,7 @@ class LocalPouchDB {
             this.changeHandler.cancel();
         }
         await this.closeReplication();
+        Logger("Database closed for reset Database.");
         this.isReady = false;
         await this.localDatabase.destroy();
         this.localDatabase = null;
@@ -1741,7 +1750,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             name: "Dump informations of this doc ",
             editorCallback: (editor: Editor, view: MarkdownView) => {
                 //this.replicate();
-                this.localDatabase.getDBEntry(view.file.path, {}, true);
+                this.localDatabase.getDBEntry(view.file.path, {}, true, false);
             },
         });
         this.addCommand({
@@ -2182,10 +2191,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.refreshStatusText();
         for (var change of docs) {
             if (this.localDatabase.isSelfModified(change._id, change._rev)) {
-                return;
+                continue;
             }
-            Logger("replication change arrived", LOG_LEVEL.VERBOSE);
+            if (change._id.startsWith("ps:")) {
+                continue;
+            }
+            if (change._id.startsWith("h:")) {
+                continue;
+            }
             if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo" && change.type != "plugin") {
+                Logger("replication change arrived", LOG_LEVEL.VERBOSE);
                 await this.handleDBChanged(change);
             }
             if (change.type == "versioninfo") {
@@ -2346,7 +2361,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
             Logger(`Pull from db:${e}`);
-            await this.pullFile(e, filesStorage);
+            await this.pullFile(e, filesStorage, false, null, false);
         });
         await runAll("CHECK FILE STATUS", syncFiles, async (e) => {
             await this.syncFileBetweenDBandStorage(e, filesStorage);
@@ -2547,20 +2562,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }).open();
         }
     }
-    async pullFile(filename: string, fileList?: TFile[], force?: boolean, rev?: string) {
+    async pullFile(filename: string, fileList?: TFile[], force?: boolean, rev?: string, waitForReady: boolean = true) {
         if (!fileList) {
             fileList = this.app.vault.getFiles();
         }
         let targetFiles = fileList.filter((e) => e.path == id2path(filename));
         if (targetFiles.length == 0) {
             //have to create;
-            let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null);
+            let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
             if (doc === false) return;
             await this.doc2storage_create(doc, force);
         } else if (targetFiles.length == 1) {
             //normal case
             let file = targetFiles[0];
-            let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null);
+            let doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
             if (doc === false) return;
             await this.doc2storate_modify(doc, file, force);
         } else {
@@ -2572,18 +2587,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async syncFileBetweenDBandStorage(file: TFile, fileList?: TFile[]) {
         let doc = await this.localDatabase.getDBEntryMeta(file.path);
         if (doc === false) return;
+
         let storageMtime = ~~(file.stat.mtime / 1000);
         let docMtime = ~~(doc.mtime / 1000);
         if (storageMtime > docMtime) {
             //newer local file.
-            Logger("DB -> STORAGE :" + file.path);
+            Logger("STORAGE -> DB :" + file.path);
             Logger(`${storageMtime} > ${docMtime}`);
             await this.updateIntoDB(file);
         } else if (storageMtime < docMtime) {
             //newer database file.
             Logger("STORAGE <- DB :" + file.path);
             Logger(`${storageMtime} < ${docMtime}`);
-            let docx = await this.localDatabase.getDBEntry(file.path);
+            let docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
             if (docx != false) {
                 await this.doc2storate_modify(docx, file);
             }
@@ -2616,7 +2632,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             datatype: datatype,
         };
         //From here
-        let old = await this.localDatabase.getDBEntry(fullpath);
+        let old = await this.localDatabase.getDBEntry(fullpath, null, false, false);
         if (old !== false) {
             let oldData = { data: old.data, deleted: old._deleted };
             let newData = { data: d.data, deleted: d._deleted };
@@ -3324,9 +3340,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // With great respect, thank you TfTHacker!
         // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         containerEl.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
-        containerEl.createEl("div", {
-            text: "This feature is not compatible with IBM Cloudant and some large plugins (e.g., Self-hosted LiveSync) yet.",
-        }).addClass("op-warn");
 
         // new Setting(containerEl)
         //     .setName("Use Plugins and settings")
@@ -3366,7 +3379,6 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             // @ts-ignore
             const pl = this.plugin.app.plugins;
             const manifests: PluginManifest[] = Object.values(pl.manifests);
-            console.dir(manifests);
             for (let m of manifests) {
                 let path = normalizePath(m.dir) + "/";
                 const adapter = this.plugin.app.vault.adapter;
@@ -3375,19 +3387,16 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 for (let file of files) {
                     let thePath = path + file;
                     if (await adapter.exists(thePath)) {
-                        // pluginData[file] = await arrayBufferToBase64(await adapter.readBinary(thePath));
                         pluginData[file] = await adapter.read(thePath);
                     }
                 }
-                console.dir(m.id);
-                console.dir(pluginData);
                 let mtime = 0;
                 if (await adapter.exists(path + "/data.json")) {
                     mtime = (await adapter.stat(path + "/data.json")).mtime;
                 }
                 let p: PluginDataEntry = {
                     _id: `ps:${this.plugin.settings.deviceAndVaultName}-${m.id}`,
-                    dataJson: pluginData["data.json"] ? await encrypt(pluginData["data.json"], this.plugin.settings.passphrase) : undefined,
+                    dataJson: pluginData["data.json"],
                     deviceVaultName: this.plugin.settings.deviceAndVaultName,
                     mainJs: pluginData["main.js"],
                     styleCss: pluginData["style.css"],
@@ -3396,29 +3405,40 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     mtime: mtime,
                     type: "plugin",
                 };
-                await db.put(p);
+                let d: LoadedEntry = {
+                    _id: p._id,
+                    data: JSON.stringify(p),
+                    ctime: mtime,
+                    mtime: mtime,
+                    size: 0,
+                    children: [],
+                    datatype: "plain",
+                };
+                await this.plugin.localDatabase.putDBEntry(d);
             }
             await this.plugin.replicate(true);
             updatePluginPane();
         };
         const updatePluginPane = async () => {
             const db = this.plugin.localDatabase.localDatabase;
-            let oldDocs = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: true });
+            let docList = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: false });
+            let oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.plugin.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(e.data));
             let plugins: { [key: string]: PluginDataEntry[] } = {};
             let allPlugins: { [key: string]: PluginDataEntry } = {};
             let thisDevicePlugins: { [key: string]: PluginDataEntry } = {};
-            for (let v of oldDocs.rows) {
-                if (typeof plugins[v.doc.deviceVaultName] === "undefined") {
-                    plugins[v.doc.deviceVaultName] = [];
+            for (let v of oldDocs) {
+                if (typeof plugins[v.deviceVaultName] === "undefined") {
+                    plugins[v.deviceVaultName] = [];
                 }
-                plugins[v.doc.deviceVaultName].push(v.doc);
-                allPlugins[v.doc._id] = v.doc;
-                if (v.doc.deviceVaultName == this.plugin.settings.deviceAndVaultName) {
-                    thisDevicePlugins[v.doc.manifest.id] = v.doc;
+                plugins[v.deviceVaultName].push(v);
+                allPlugins[v._id] = v;
+                if (v.deviceVaultName == this.plugin.settings.deviceAndVaultName) {
+                    thisDevicePlugins[v.manifest.id] = v;
                 }
             }
             let html = `
-            <table>
+            <div class='sls-plugins-wrap'>
+            <table class='sls-plugins-tbl'>
             <tr>
             <th>vault</th>
             <th>plugin</th>
@@ -3441,10 +3461,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     }
                     if (thisDevicePlugins[v.manifest.id] && thisDevicePlugins[v.manifest.id].dataJson && v.dataJson) {
                         // have this plugin.
-                        let localSetting = await decrypt(thisDevicePlugins[v.manifest.id].dataJson, this.plugin.settings.passphrase);
+                        let localSetting = thisDevicePlugins[v.manifest.id].dataJson;
 
                         try {
-                            let remoteSetting = await decrypt(v.dataJson, this.plugin.settings.passphrase);
+                            let remoteSetting = v.dataJson;
                             if (localSetting == remoteSetting) {
                                 settingApplyable = "even";
                             } else {
@@ -3473,7 +3493,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     html += piece;
                 }
             }
-            html += "</table>";
+            html += "</table></div>";
             pluginConfig.innerHTML = html;
             pluginConfig.querySelectorAll(".apply-plugin-data").forEach((e) =>
                 e.addEventListener("click", async (evt) => {
@@ -3488,7 +3508,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.app.plugins.unloadPlugin(plugin.manifest.id);
                         Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
                     }
-                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", await decrypt(plugin.dataJson, this.plugin.settings.passphrase));
+                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
                     Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
                     // @ts-ignore
                     if (stat) {
@@ -3521,7 +3541,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
                     await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
                     if (plugin.styleCss) await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
-                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", await decrypt(plugin.dataJson, this.plugin.settings.passphrase));
+                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
                     if (stat) {
                         // @ts-ignore
                         await this.plugin.app.plugins.loadPlugin(plugin.manifest.id);
@@ -3553,6 +3573,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Save plugins")
                     .setDisabled(false)
                     .onClick(async () => {
+                        if (!this.plugin.settings.encrypt) {
+                            Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
+                            return;
+                        }
                         await sweepPlugin();
                     })
             );
@@ -3567,6 +3591,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 let ba = xx.createEl("button", { text: `Delete this` }, (e) => {
                     e.addEventListener("click", async () => {
                         await this.plugin.localDatabase.deleteDBEntry(k);
+                        xx.remove();
+                    });
+                });
+                xx.createEl("button", { text: `Restore from file` }, (e) => {
+                    e.addEventListener("click", async () => {
+                        let f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
+                        if (f.length == 0) {
+                            Logger("Not found in vault", LOG_LEVEL.NOTICE);
+                            return;
+                        }
+                        await this.plugin.updateIntoDB(f[0]);
                         xx.remove();
                     });
                 });

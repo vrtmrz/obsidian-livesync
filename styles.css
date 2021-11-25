@@ -31,3 +31,10 @@
 .tcenter {
     text-align: center;
 }
+.sls-plugins-wrap {
+    display: flex;
+    flex-grow: 1;
+    overflow: scroll;
+}
+.sls-plugins-tbl {
+}
