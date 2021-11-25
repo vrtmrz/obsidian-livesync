@@ -3324,6 +3324,9 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // With great respect, thank you TfTHacker!
         // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         containerEl.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
+        containerEl.createEl("div", {
+            text: "This feature is not compatible with IBM Cloudant and some large plugins (e.g., Self-hosted LiveSync)",
+        }).addClass("op-warn");
 
         // new Setting(containerEl)
         //     .setName("Use Plugins and settings")
