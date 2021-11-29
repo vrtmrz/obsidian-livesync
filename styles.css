@@ -34,7 +34,26 @@
 .sls-plugins-wrap {
     display: flex;
     flex-grow: 1;
-    overflow: scroll;
+    /* overflow: scroll; */
 }
 .sls-plugins-tbl {
+    border:1px solid var(--background-modifier-border);
+    width: 100%;
+}
+.divider th{
+    border-top:1px solid var(--background-modifier-border);
+}
+/* .sls-table-head{
+    width:50%;
+}
+.sls-table-tail{
+    width:50%;
+
+} */
+
+.sls-btn-left {
+    padding-right:4px;
+}
+.sls-btn-right {
+    padding-left:4px;
 }

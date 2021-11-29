@@ -53,6 +53,7 @@ interface ObsidianLiveSyncSettings {
     batchSave: boolean;
     deviceAndVaultName: string;
     usePluginSettings: boolean;
+    showOwnPlugins: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -84,6 +85,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     batchSave: false,
     deviceAndVaultName: "",
     usePluginSettings: false,
+    showOwnPlugins: false,
 };
 
 interface Entry {
@@ -351,7 +353,7 @@ const bumpRemoteVersion = async (db: PouchDB.Database, barrier: number = VER): P
 };
 
 function isValidPath(filename: string): boolean {
-    let regex = /[\u0000-\u001f]|[\\"':?<>|*$]/g;
+    let regex = /[\u0000-\u001f]|[\\"':?<>|*]/g;
     let x = filename.replace(regex, "_");
     let win = /(\\|\/)(COM\d|LPT\d|CON|PRN|AUX|NUL|CLOCK$)($|\.)/gi;
     let sx = (x = x.replace(win, "/_"));
@@ -2265,7 +2267,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.statusBar.title = this.localDatabase.syncStatus;
         let waiting = "";
         if (this.settings.batchSave) {
-            waiting = " " + this.batchFileChange.map((e) => "🚀").join("");
+            waiting = " " + this.batchFileChange.map((e) => "🛫").join("");
+            waiting = waiting.replace(/🛫{10}/g,"🚀");
         }
         this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}${waiting}`);
     }
@@ -3012,6 +3015,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Apply and send")
                     .setWarning()
                     .setDisabled(false)
+                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         await applyEncryption(true);
                     })
@@ -3021,6 +3025,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Apply and receive")
                     .setWarning()
                     .setDisabled(false)
+                    .setClass("sls-btn-right")
                     .onClick(async () => {
                         await applyEncryption(false);
                     })
@@ -3052,6 +3057,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (this.plugin.settings.versionUpFlash != "") {
             let c = containerEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
             c.createEl("button", { text: "I got it and updated." }, (e) => {
+                e.addClass("mod-cta");
                 e.addEventListener("click", async () => {
                     this.plugin.settings.versionUpFlash = "";
                     await this.plugin.saveSettings();
@@ -3216,6 +3222,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. it caused by some operations like this. re-initialized. Local database initialization should be required. please back your vault up, reset local database, and press 'Mark this device as resolved'. ",
             });
             c.createEl("button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
+                e.addClass("mod-warning");
                 e.addEventListener("click", async () => {
                     await this.plugin.markRemoteResolved();
                     c.remove();
@@ -3228,6 +3235,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
                 });
                 c.createEl("button", { text: "I'm ready, unlock the database" }, (e) => {
+                    e.addClass("mod-warning");
                     e.addEventListener("click", async () => {
                         await this.plugin.markRemoteUnlocked();
                         c.remove();
@@ -3265,6 +3273,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Drop and send")
                     .setWarning()
                     .setDisabled(false)
+                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         await dropHistory(true);
                     })
@@ -3274,6 +3283,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Drop and receive")
                     .setWarning()
                     .setDisabled(false)
+                    .setClass("sls-btn-right")
                     .onClick(async () => {
                         await dropHistory(false);
                     })
@@ -3286,6 +3296,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 button
                     .setButtonText("Lock")
                     .setDisabled(false)
+                    .setWarning()
                     .onClick(async () => {
                         await this.plugin.markRemoteLocked();
                     })
@@ -3308,6 +3319,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 button
                     .setButtonText("Reset")
                     .setDisabled(false)
+                    .setWarning()
                     .onClick(async () => {
                         await this.plugin.tryResetRemoteDatabase();
                     })
@@ -3319,6 +3331,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 button
                     .setButtonText("Reset")
                     .setDisabled(false)
+                    .setWarning()
                     .onClick(async () => {
                         await this.plugin.resetLocalDatabase();
                     })
@@ -3350,6 +3363,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         //             await this.plugin.saveSettings();
         //         })
         //     );
+
+        new Setting(containerEl)
+            .setName("Show own plugins and settings")
+            .setDesc("Show ")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showOwnPlugins).onChange(async (value) => {
+                    this.plugin.settings.showOwnPlugins = value;
+                    await this.plugin.saveSettings();
+                    updatePluginPane();
+                })
+            );
 
         new Setting(containerEl)
             .setName("Device and Vault name")
@@ -3439,24 +3463,27 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             let html = `
             <div class='sls-plugins-wrap'>
             <table class='sls-plugins-tbl'>
-            <tr>
-            <th>vault</th>
-            <th>plugin</th>
-            <th>version</th>
-            <th>modified</th>
-            <th>plugin</th>
-            <th>setting</th>
-            </tr>`;
+            `;
             for (let vaults in plugins) {
-                if (vaults == this.plugin.settings.deviceAndVaultName) continue;
+                if (!this.plugin.settings.showOwnPlugins && vaults == this.plugin.settings.deviceAndVaultName) continue;
+                html += `
+                <tr>
+                    <th colspan=2>${escapeStringToHTML(vaults)}</th>
+                </tr>`
                 for (let v of plugins[vaults]) {
                     let mtime = v.mtime == 0 ? "-" : new Date(v.mtime).toLocaleString();
                     let settingApplyable: boolean | string = "-";
                     let settingFleshness: string = "";
                     let isSameVersion = false;
+                    let isSameContents = false;
                     if (thisDevicePlugins[v.manifest.id]) {
                         if (thisDevicePlugins[v.manifest.id].manifest.version == v.manifest.version) {
                             isSameVersion = true;
+                        }
+                        if (thisDevicePlugins[v.manifest.id].styleCss == v.styleCss &&
+                            thisDevicePlugins[v.manifest.id].mainJs == v.mainJs && 
+                            thisDevicePlugins[v.manifest.id].manifestJson == v.manifestJson) {
+                            isSameContents = true;
                         }
                     }
                     if (thisDevicePlugins[v.manifest.id] && thisDevicePlugins[v.manifest.id].dataJson && v.dataJson) {
@@ -3482,16 +3509,26 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         settingApplyable = "N/A";
                     }
                     // very ugly way.
-                    let piece = `<tr>
-                    <th>${escapeStringToHTML(v.deviceVaultName)}</th>
-                    <td>${escapeStringToHTML(v.manifest.name)}</td>
-                    <td class="tcenter">${escapeStringToHTML(v.manifest.version)}</td>
-                    <td class="tcenter">${escapeStringToHTML(mtime)}</td>
-                    <td class="tcenter">${isSameVersion ? "even" : "<button data-key='" + v._id + "' class='apply-plugin-version'>Use</button>"}</td>
-                    <td class="tcenter">${settingApplyable === true ? "<button data-key='" + v._id + "' class='apply-plugin-data'>Apply (" + settingFleshness + ")</button>" : settingApplyable}</td>
-                    </tr>`;
+                    let piece = `
+                    <tr class='divider'>
+                        <th colspan=2></th>
+                    </tr>
+                    <tr>
+                        <th class='sls-table-head'>${escapeStringToHTML(v.manifest.name)}</th>
+                        <td class="sls-table-tail tcenter">${isSameContents?"even":`<button data-key='${v._id}' class='apply-plugin-version mod-cta'>Use (${isSameVersion ? "=" : ""}${v.manifest.version}) </button>`}</td>
+                    </tr>
+                    <tr>
+                        <td class="sls-table-head tcenter">${escapeStringToHTML(mtime)}</td>
+                        <td class="sls-table-tail tcenter">${settingApplyable === true ? "<button data-key='" + v._id + "' class='apply-plugin-data mod-cta'>Apply (" + settingFleshness + ")</button>" : settingApplyable}</td>
+                    </tr>
+                    `;
                     html += piece;
                 }
+                html += `
+                <tr class='divider'>
+                    <th colspan=2></th>
+                </tr>
+`
             }
             html += "</table></div>";
             pluginConfig.innerHTML = html;
@@ -3577,6 +3614,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
                             return;
                         }
+                        if (!this.plugin.settings.deviceAndVaultName) {
+                            Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
+                            return;
+                        }
                         await sweepPlugin();
                     })
             );
@@ -3594,6 +3635,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         xx.remove();
                     });
                 });
+                ba.addClass("mod-warning")
                 xx.createEl("button", { text: `Restore from file` }, (e) => {
                     e.addEventListener("click", async () => {
                         let f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
@@ -3605,6 +3647,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         xx.remove();
                     });
                 });
+                xx.addClass("mod-warning")
             }
         } else {
             let cx = containerEl.createEl("div", { text: "There's no collupted data." });
