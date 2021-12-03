@@ -37,11 +37,11 @@
     /* overflow: scroll; */
 }
 .sls-plugins-tbl {
-    border:1px solid var(--background-modifier-border);
+    border: 1px solid var(--background-modifier-border);
     width: 100%;
 }
-.divider th{
-    border-top:1px solid var(--background-modifier-border);
+.divider th {
+    border-top: 1px solid var(--background-modifier-border);
 }
 /* .sls-table-head{
     width:50%;
@@ -52,8 +52,34 @@
 } */
 
 .sls-btn-left {
-    padding-right:4px;
+    padding-right: 4px;
 }
 .sls-btn-right {
-    padding-left:4px;
+    padding-left: 4px;
+}
+.sls-hidden {
+    display: none;
+}
+
+:root {
+    --slsmessage: "";
+}
+.CodeMirror-wrap::before , .cm-s-obsidian > .cm-editor::before {
+    content: var(--slsmessage);
+    position: absolute;
+    border-radius: 4px;
+    /* border:1px solid --background-modifier-border; */
+    display: inline-block;
+    top: 8px;
+    color: --text-normal;
+    opacity: 0.5;
+    font-size:80%;
+    -webkit-filter: grayscale(100%);
+    filter: grayscale(100%);
+}
+
+.CodeMirror-wrap::before {
+    right: 0px;
+} .cm-s-obsidian > .cm-editor::before {
+    right: 16px;
 }

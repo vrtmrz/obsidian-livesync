@@ -143,6 +143,11 @@ You can dump saved note structure to `Dump informations of this doc`. Replace ev
 
 Default values are 20 letters and 250 letters.
 
+## Miscellaneous
+### Show status inside editor
+Show information inside the editor pane.
+It would be useful for mobile.
+
 ## Hatch
 From here, everything is under the hood. Please handle it with care.
 

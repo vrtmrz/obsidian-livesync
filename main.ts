@@ -54,6 +54,7 @@ interface ObsidianLiveSyncSettings {
     deviceAndVaultName: string;
     usePluginSettings: boolean;
     showOwnPlugins: boolean;
+    showStatusOnEditor: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -86,6 +87,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     deviceAndVaultName: "",
     usePluginSettings: false,
     showOwnPlugins: false,
+    showStatusOnEditor: false,
 };
 
 interface Entry {
@@ -2004,6 +2006,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     addLogHook: () => void = null;
     //--> Basic document Functions
+    notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
         if (level < LOG_LEVEL.INFO && this.settings && this.settings.lessInformationInLog) {
             return;
@@ -2021,8 +2024,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // if (this.statusBar2 != null) {
         //     this.statusBar2.setText(newmessage.substring(0, 60));
         // }
+
         if (level >= LOG_LEVEL.NOTICE) {
-            new Notice(messagecontent);
+            if (messagecontent in this.notifies) {
+                clearTimeout(this.notifies[messagecontent].timer);
+                this.notifies[messagecontent].count++;
+                this.notifies[messagecontent].notice.setMessage(`(${this.notifies[messagecontent].count}):${messagecontent}`);
+            } else {
+                let notify = new Notice(messagecontent, 0);
+                this.notifies[messagecontent] = {
+                    count: 0,
+                    notice: notify,
+                    timer: setTimeout(() => {
+                        notify.hide();
+                        delete this.notifies[messagecontent];
+                    }, 5000),
+                };
+            }
         }
         if (this.addLogHook != null) this.addLogHook();
     }
@@ -2241,6 +2259,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.setPeriodicSync();
     }
+    lastMessage = "";
     refreshStatusText() {
         let sent = this.localDatabase.docSent;
         let arrived = this.localDatabase.docArrived;
@@ -2268,9 +2287,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let waiting = "";
         if (this.settings.batchSave) {
             waiting = " " + this.batchFileChange.map((e) => "🛫").join("");
-            waiting = waiting.replace(/🛫{10}/g,"🚀");
+            waiting = waiting.replace(/🛫{10}/g, "🚀");
         }
-        this.statusBar.setText(`Sync:${w} ↑${sent} ↓${arrived}${waiting}`);
+        const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}`;
+        this.setStatusBarText(message);
+    }
+    setStatusBarText(message: string) {
+        if (this.lastMessage != message) {
+            this.statusBar.setText(message);
+            if (this.settings.showStatusOnEditor) {
+                const root = document.documentElement;
+                root.style.setProperty("--slsmessage", '"' + message + '"');
+            } else {
+                const root = document.documentElement;
+                root.style.setProperty("--slsmessage", '""');
+            }
+            this.lastMessage = message;
+        }
     }
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
@@ -2316,7 +2349,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
         Logger("Initialize and checking database files");
         Logger("Updating database by new files");
-        this.statusBar.setText(`UPDATE DATABASE`);
+        this.setStatusBarText(`UPDATE DATABASE`);
+        let _this = this;
         async function runAll<T>(procedurename: string, objects: T[], callback: (arg: T) => Promise<void>) {
             const count = objects.length;
             Logger(procedurename);
@@ -2333,7 +2367,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         if (notice != null) notice.setMessage(notify);
                         Logger(notify);
                         // lastTicks = performance.now() + 2000;
-                        // this.statusBar.setText(notify);
+                        _this.setStatusBarText(notify);
                     }
                 } catch (ex) {
                     Logger(`Error while ${procedurename}`, LOG_LEVEL.NOTICE);
@@ -2369,7 +2403,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await runAll("CHECK FILE STATUS", syncFiles, async (e) => {
             await this.syncFileBetweenDBandStorage(e, filesStorage);
         });
-        this.statusBar.setText(`NOW TRACKING!`);
+        this.setStatusBarText(`NOW TRACKING!`);
         Logger("Initialized,NOW TRACKING!");
         if (showingNotice) {
             notice.hide();
@@ -2807,6 +2841,9 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
 
         containerEl.createEl("h3", { text: "Remote Database configuration" });
+        let syncWarn = containerEl.createEl("div", { text: "The remote configuration is locked while any synchronization is enabled." });
+        syncWarn.addClass("op-warn");
+        syncWarn.addClass("sls-hidden");
 
         const isAnySyncEnabled = (): boolean => {
             if (this.plugin.settings.liveSync) return true;
@@ -2820,10 +2857,12 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 dbsettings.forEach((e) => {
                     e.setDisabled(true).setTooltip("When any sync is enabled, It cound't be changed.");
                 });
+                syncWarn.removeClass("sls-hidden");
             } else {
                 dbsettings.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
+                syncWarn.addClass("sls-hidden");
             }
             if (this.plugin.settings.liveSync) {
                 syncNonLive.forEach((e) => {
@@ -3215,6 +3254,17 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
+        containerEl.createEl("h3", { text: "Miscellaneous" });
+        new Setting(containerEl)
+            .setName("Show status inside editor")
+            .setDesc("")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showStatusOnEditor).onChange(async (value) => {
+                    this.plugin.settings.showStatusOnEditor = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
         containerEl.createEl("h3", { text: "Hatch" });
 
         if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
@@ -3469,7 +3519,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 html += `
                 <tr>
                     <th colspan=2>${escapeStringToHTML(vaults)}</th>
-                </tr>`
+                </tr>`;
                 for (let v of plugins[vaults]) {
                     let mtime = v.mtime == 0 ? "-" : new Date(v.mtime).toLocaleString();
                     let settingApplyable: boolean | string = "-";
@@ -3480,9 +3530,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         if (thisDevicePlugins[v.manifest.id].manifest.version == v.manifest.version) {
                             isSameVersion = true;
                         }
-                        if (thisDevicePlugins[v.manifest.id].styleCss == v.styleCss &&
-                            thisDevicePlugins[v.manifest.id].mainJs == v.mainJs && 
-                            thisDevicePlugins[v.manifest.id].manifestJson == v.manifestJson) {
+                        if (thisDevicePlugins[v.manifest.id].styleCss == v.styleCss && thisDevicePlugins[v.manifest.id].mainJs == v.mainJs && thisDevicePlugins[v.manifest.id].manifestJson == v.manifestJson) {
                             isSameContents = true;
                         }
                     }
@@ -3515,7 +3563,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     </tr>
                     <tr>
                         <th class='sls-table-head'>${escapeStringToHTML(v.manifest.name)}</th>
-                        <td class="sls-table-tail tcenter">${isSameContents?"even":`<button data-key='${v._id}' class='apply-plugin-version mod-cta'>Use (${isSameVersion ? "=" : ""}${v.manifest.version}) </button>`}</td>
+                        <td class="sls-table-tail tcenter">${isSameContents ? "even" : `<button data-key='${v._id}' class='apply-plugin-version mod-cta'>Use (${isSameVersion ? "=" : ""}${v.manifest.version}) </button>`}</td>
                     </tr>
                     <tr>
                         <td class="sls-table-head tcenter">${escapeStringToHTML(mtime)}</td>
@@ -3528,7 +3576,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 <tr class='divider'>
                     <th colspan=2></th>
                 </tr>
-`
+`;
             }
             html += "</table></div>";
             pluginConfig.innerHTML = html;
@@ -3635,7 +3683,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         xx.remove();
                     });
                 });
-                ba.addClass("mod-warning")
+                ba.addClass("mod-warning");
                 xx.createEl("button", { text: `Restore from file` }, (e) => {
                     e.addEventListener("click", async () => {
                         let f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
@@ -3647,7 +3695,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         xx.remove();
                     });
                 });
-                xx.addClass("mod-warning")
+                xx.addClass("mod-warning");
             }
         } else {
             let cx = containerEl.createEl("div", { text: "There's no collupted data." });
