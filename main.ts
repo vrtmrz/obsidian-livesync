@@ -553,6 +553,13 @@ async function testCrypt() {
     }
 }
 // <-- Encryption
+const delay = (ms: number): Promise<void> => {
+    return new Promise((res) => {
+        setTimeout(() => {
+            res();
+        }, ms);
+    });
+};
 //<--Functions
 class LocalPouchDB {
     auth: Credential;
@@ -707,6 +714,7 @@ class LocalPouchDB {
     }
 
     async getDBLeaf(id: string, waitForReady: boolean): Promise<string> {
+        await this.waitForGCComplete();
         // when in cache, use that.
         if (this.hashCacheRev[id]) {
             return this.hashCacheRev[id];
@@ -766,6 +774,7 @@ class LocalPouchDB {
     }
 
     async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+        await this.waitForGCComplete();
         let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -810,6 +819,7 @@ class LocalPouchDB {
         return false;
     }
     async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true): Promise<false | LoadedEntry> {
+        await this.waitForGCComplete();
         let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -909,6 +919,7 @@ class LocalPouchDB {
         return false;
     }
     async deleteDBEntry(path: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
+        await this.waitForGCComplete();
         let id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -951,6 +962,7 @@ class LocalPouchDB {
         }
     }
     async deleteDBEntryPrefix(prefixSrc: string): Promise<boolean> {
+        await this.waitForGCComplete();
         // delete database entries by prefix.
         // it called from folder deletion.
         let c = 0;
@@ -1012,6 +1024,7 @@ class LocalPouchDB {
         return false;
     }
     async putDBEntry(note: LoadedEntry) {
+        await this.waitForGCComplete();
         let leftData = note.data;
         let savenNotes = [];
         let processed = 0;
@@ -1209,7 +1222,7 @@ class LocalPouchDB {
                     throw ex;
                 }
             }
-            let r = await this.localDatabase.put(newDoc);
+            let r = await this.localDatabase.put(newDoc, { force: true });
             this.updateRecentModifiedDocs(r.id, r.rev, newDoc._deleted);
             if (typeof this.corruptedEntries[note._id] != "undefined") {
                 delete this.corruptedEntries[note._id];
@@ -1235,6 +1248,7 @@ class LocalPouchDB {
     }
     replicateAllToServer(setting: ObsidianLiveSyncSettings, showingNotice?: boolean) {
         return new Promise(async (res, rej) => {
+            await this.waitForGCComplete();
             this.closeReplication();
             Logger("send all data to server", LOG_LEVEL.NOTICE);
             let notice: Notice = null;
@@ -1307,6 +1321,7 @@ class LocalPouchDB {
             return false;
         }
 
+        await this.waitForGCComplete();
         if (setting.versionUpFlash != "") {
             new Notice("Open settings and check message, please.");
             return;
@@ -1483,6 +1498,7 @@ class LocalPouchDB {
     }
 
     async resetDatabase() {
+        await this.waitForGCComplete();
         if (this.changeHandler != null) {
             this.changeHandler.removeAllListeners();
             this.changeHandler.cancel();
@@ -1589,72 +1605,87 @@ class LocalPouchDB {
         Logger("Mark this device as 'resolved'.", LOG_LEVEL.NOTICE);
         await dbret.db.put(remoteMilestone);
     }
-
+    gcRunning = false;
+    async waitForGCComplete() {
+        while (this.gcRunning) {
+            Logger("Waiting for Garbage Collection completed.");
+            await delay(1000);
+        }
+    }
     async garbageCollect() {
-        // get all documents of NewEntry2
-        // we don't use queries , just use allDocs();
-        let c = 0;
-        let readCount = 0;
-        let hashPieces: string[] = [];
-        let usedPieces: string[] = [];
-        Logger("Collecting Garbage");
-        do {
-            let result = await this.localDatabase.allDocs({ include_docs: true, skip: c, limit: 500, conflicts: true });
-            readCount = result.rows.length;
-            Logger("checked:" + readCount);
-            if (readCount > 0) {
-                //there are some result
-                for (let v of result.rows) {
-                    let doc = v.doc;
-                    if (doc.type == "newnote" || doc.type == "plain") {
-                        // used pieces memo.
-                        usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
-                        if (doc._conflicts) {
-                            for (let cid of doc._conflicts) {
-                                let p = await this.localDatabase.get<EntryDoc>(doc._id, { rev: cid });
-                                if (p.type == "newnote" || p.type == "plain") {
-                                    usedPieces = Array.from(new Set([...usedPieces, ...p.children]));
+        if (this.gcRunning) return;
+        this.gcRunning = true;
+        try {
+            // get all documents of NewEntry2
+            // we don't use queries , just use allDocs();
+            this.disposeHashCache();
+            let c = 0;
+            let readCount = 0;
+            let hashPieces: string[] = [];
+            let usedPieces: string[] = [];
+            Logger("Collecting Garbage");
+            do {
+                let result = await this.localDatabase.allDocs({ include_docs: true, skip: c, limit: 500, conflicts: true });
+                readCount = result.rows.length;
+                Logger("checked:" + readCount);
+                if (readCount > 0) {
+                    //there are some result
+                    for (let v of result.rows) {
+                        let doc = v.doc;
+                        if (doc.type == "newnote" || doc.type == "plain") {
+                            // used pieces memo.
+                            usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
+                            if (doc._conflicts) {
+                                for (let cid of doc._conflicts) {
+                                    let p = await this.localDatabase.get<EntryDoc>(doc._id, { rev: cid });
+                                    if (p.type == "newnote" || p.type == "plain") {
+                                        usedPieces = Array.from(new Set([...usedPieces, ...p.children]));
+                                    }
                                 }
                             }
                         }
+                        if (doc.type == "leaf") {
+                            // all pieces.
+                            hashPieces = Array.from(new Set([...hashPieces, doc._id]));
+                        }
                     }
-                    if (doc.type == "leaf") {
-                        // all pieces.
-                        hashPieces = Array.from(new Set([...hashPieces, doc._id]));
+                }
+                c += readCount;
+            } while (readCount != 0);
+            // items collected.
+            Logger("Finding unused pieces");
+            this.disposeHashCache();
+            const garbages = hashPieces.filter((e) => usedPieces.indexOf(e) == -1);
+            let deleteCount = 0;
+            Logger("we have to delete:" + garbages.length);
+            let deleteDoc: EntryDoc[] = [];
+            for (let v of garbages) {
+                try {
+                    let item = await this.localDatabase.get(v);
+                    item._deleted = true;
+                    deleteDoc.push(item);
+                    if (deleteDoc.length > 50) {
+                        await this.localDatabase.bulkDocs(deleteDoc);
+                        deleteDoc = [];
+                        Logger("delete:" + deleteCount);
+                    }
+                    deleteCount++;
+                } catch (ex) {
+                    if (ex.status && ex.status == 404) {
+                        // NO OP. It should be timing problem.
+                    } else {
+                        throw ex;
                     }
                 }
             }
-            c += readCount;
-        } while (readCount != 0);
-        // items collected.
-        Logger("Finding unused pieces");
-        const garbages = hashPieces.filter((e) => usedPieces.indexOf(e) == -1);
-        let deleteCount = 0;
-        Logger("we have to delete:" + garbages.length);
-        let deleteDoc: EntryDoc[] = [];
-        for (let v of garbages) {
-            try {
-                let item = await this.localDatabase.get(v);
-                item._deleted = true;
-                deleteDoc.push(item);
-                if (deleteDoc.length > 50) {
-                    await this.localDatabase.bulkDocs(deleteDoc);
-                    deleteDoc = [];
-                    Logger("delete:" + deleteCount);
-                }
-                deleteCount++;
-            } catch (ex) {
-                if (ex.status && ex.status == 404) {
-                    // NO OP. It should be timing problem.
-                } else {
-                    throw ex;
-                }
+            if (deleteDoc.length > 0) {
+                await this.localDatabase.bulkDocs(deleteDoc);
             }
+            Logger(`GC:deleted ${deleteCount} items.`);
+        } finally {
+            this.gcRunning = false;
         }
-        if (deleteDoc.length > 0) {
-            await this.localDatabase.bulkDocs(deleteDoc);
-        }
-        Logger(`GC:deleted ${deleteCount} items.`);
+        this.disposeHashCache();
     }
 }
 
@@ -2030,6 +2061,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 clearTimeout(this.notifies[messagecontent].timer);
                 this.notifies[messagecontent].count++;
                 this.notifies[messagecontent].notice.setMessage(`(${this.notifies[messagecontent].count}):${messagecontent}`);
+                this.notifies[messagecontent].timer = setTimeout(() => {
+                    this.notifies[messagecontent].notice.hide();
+                    delete this.notifies[messagecontent];
+                }, 5000);
             } else {
                 let notify = new Notice(messagecontent, 0);
                 this.notifies[messagecontent] = {
@@ -2648,6 +2683,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async updateIntoDB(file: TFile) {
+        await this.localDatabase.waitForGCComplete();
         let content = "";
         let datatype: "plain" | "newnote" = "newnote";
         if (file.extension != "md") {
