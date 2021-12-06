@@ -165,6 +165,9 @@ The remote database indicates that has been unlocked Pattern 1.
 When you mark all devices as resolved, you can unlock the database.
 But, there's no problem even if you leave it as it is.
 
+### Reread all files
+Reread all files in the vault, and update them into the database if there's diff or could not read from the database.
+
 ### Drop history
 Drop all histories on the local database and the remote database, and initialize When synchronization time has been prolonged to the new device or new vault, or database size became to be much larger. Try this.
 

@@ -2062,8 +2062,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.notifies[messagecontent].count++;
                 this.notifies[messagecontent].notice.setMessage(`(${this.notifies[messagecontent].count}):${messagecontent}`);
                 this.notifies[messagecontent].timer = setTimeout(() => {
-                    this.notifies[messagecontent].notice.hide();
+                    const notify = this.notifies[messagecontent].notice;
                     delete this.notifies[messagecontent];
+                    try {
+                        notify.hide();
+                    } catch (ex) {
+                        // NO OP
+                    }
                 }, 5000);
             } else {
                 let notify = new Notice(messagecontent, 0);
@@ -2071,8 +2076,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     count: 0,
                     notice: notify,
                     timer: setTimeout(() => {
-                        notify.hide();
                         delete this.notifies[messagecontent];
+                        notify.hide();
                     }, 5000),
                 };
             }
@@ -3351,6 +3356,35 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 await this.plugin.replicate(true);
             }
         };
+        new Setting(containerEl)
+            .setName("Reread all files")
+            .setDesc("Reread all files and update the database without dropping history")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reread")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        const files = this.app.vault.getFiles();
+                        Logger("Reread all files started", LOG_LEVEL.NOTICE);
+                        let notice = new Notice("", 0);
+                        let i = 0;
+                        for (const file of files) {
+                            i++;
+                            Logger(`Update into ${file.path}`);
+                            notice.setMessage(`${i}/${files.length}\n${file.path}`);
+                            try {
+                                await this.plugin.updateIntoDB(file);
+                            } catch (ex) {
+                                Logger("could not update:");
+                                Logger(ex);
+                            }
+                        }
+                        notice.hide();
+                        Logger("done", LOG_LEVEL.NOTICE);
+                    })
+            );
+
         new Setting(containerEl)
             .setName("Drop History")
             .setDesc("Initialize local and remote database, and send all or retrieve all again.")
