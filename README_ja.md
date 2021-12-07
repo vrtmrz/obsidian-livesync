@@ -47,7 +47,7 @@ NDAや類似の契約や義務、倫理を守る必要のある、研究者、�
 1. Community Pluginsから、Self-holsted LiveSyncと検索しインストールするか、このリポジトリのReleasesから`main.js`, `manifest.json`, `style.css` をダウンロードしvaultの中の`.obsidian/plugins/obsidian-livesync`に入れて、Obsidianを再起動してください。
 2. サーバーを確保します。IBM Cloudantがお手軽かつ堅牢で便利です。完全にセルフホストする際にはお持ちのサーバーにCouchDBをインストールする必要があります。詳しくは下記を参照してください
   1. [IBM Cloudantのセットアップ](docs/setup_cloudant_ja.md)
-  2. [独自のCouchDBのセットアップ](docs/setup_own_server_ja.md) (執筆中)
+  2. [独自のCouchDBのセットアップ](docs/setup_own_server_ja.md)
 3. サーバー情報を入力します。初回のみ、Obsidianを再起動することをオススメします。  
 設定内容の詳細は[このプラグインの設定](docs/settings_ja.md)を参照してください。
 

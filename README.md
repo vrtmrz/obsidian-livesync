@@ -50,7 +50,7 @@ Especially, in some companies, people have to store all data to their fully cont
 2. Get your database. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB.
    For more information, refer below:
     1. [Setup IBM Cloudant](docs/setup_cloudant.md)
-    2. [Setup your CouchDB](docs/setup_own_server.md) (Now writing)
+    2. [Setup your CouchDB](docs/setup_own_server.md)
 3. Enter connection information to Plugin's setting dialog. In details, refer [Settings of Self-hosted LiveSync](docs/settings.md)
 4. Enable LiveSync or other Synchronize method as you like.
 
