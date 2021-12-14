@@ -55,6 +55,9 @@ interface ObsidianLiveSyncSettings {
     usePluginSettings: boolean;
     showOwnPlugins: boolean;
     showStatusOnEditor: boolean;
+    autoSweepPlugins: boolean;
+    autoSweepPluginsPeriodic: boolean;
+    notifyPluginOrSettingUpdated: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -73,7 +76,7 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     longLineThreshold: 250,
     showVerboseLog: false,
     suspendFileWatching: false,
-    trashInsteadDelete: false,
+    trashInsteadDelete: true,
     periodicReplication: false,
     periodicReplicationInterval: 60,
     syncOnFileOpen: false,
@@ -88,7 +91,12 @@ const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     usePluginSettings: false,
     showOwnPlugins: false,
     showStatusOnEditor: false,
+    autoSweepPlugins: false,
+    autoSweepPluginsPeriodic: false,
+    notifyPluginOrSettingUpdated: false,
 };
+
+const PERIODIC_PLUGIN_SWEEP = 60;
 
 interface Entry {
     _id: string;
@@ -560,6 +568,7 @@ const delay = (ms: number): Promise<void> => {
         }, ms);
     });
 };
+
 //<--Functions
 class LocalPouchDB {
     auth: Credential;
@@ -1084,7 +1093,6 @@ class LocalPouchDB {
             }
 
             // piece size determined.
-
             let piece = leftData.substring(0, cPieceSize);
             leftData = leftData.substring(cPieceSize);
             processed++;
@@ -1178,7 +1186,6 @@ class LocalPouchDB {
                 for (let item of result) {
                     if ((item as any).ok) {
                         this.updateRecentModifiedDocs(item.id, item.rev, false);
-
                         Logger(`save ok:id:${item.id} rev:${item.rev}`, LOG_LEVEL.VERBOSE);
                     } else {
                         if ((item as any).status && (item as any).status == 409) {
@@ -1825,6 +1832,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.saveSettings();
             },
         });
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+        this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
     }
     onunload() {
         if (this.gcTimerHandler != null) {
@@ -1860,10 +1869,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.settings.workingPassphrase = this.settings.passphrase;
     }
 
+    triggerRealizeSettingSyncMode() {
+        (async () => await this.realizeSettingSyncMode())();
+    }
     async saveSettings() {
         await this.saveData(this.settings);
         this.localDatabase.settings = this.settings;
-        await this.realizeSettingSyncMode();
+        this.triggerRealizeSettingSyncMode();
     }
     gcTimerHandler: any = null;
     gcHook() {
@@ -1901,6 +1913,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else {
             // suspend all temporary.
             if (this.suspended) return;
+            if (this.settings.autoSweepPlugins) {
+                await this.sweepPlugin();
+            }
             if (this.settings.liveSync) {
                 await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             }
@@ -2254,6 +2269,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 continue;
             }
             if (change._id.startsWith("ps:")) {
+                if (this.settings.notifyPluginOrSettingUpdated) {
+                    this.triggerCheckPluginUpdate();
+                }
                 continue;
             }
             if (change._id.startsWith("h:")) {
@@ -2272,6 +2290,37 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.gcHook();
         }
     }
+    triggerCheckPluginUpdate() {
+        (async () => await this.checkPluginUpdate())();
+    }
+    async checkPluginUpdate() {
+        await this.sweepPlugin();
+        const { allPlugins, thisDevicePlugins } = await this.getPluginList();
+        const arrPlugins = Object.values(allPlugins);
+        for (const plugin of arrPlugins) {
+            let currentPlugin = thisDevicePlugins[plugin.manifest.id];
+            if (currentPlugin) {
+                const thisVersion = plugin.manifest.version
+                    .split(".")
+                    .reverse()
+                    .map((e, i) => ((e as any) / 1) * 1000 ** i)
+                    .reduce((prev, current) => prev + current, 0);
+                const currentVersion = currentPlugin.manifest.version
+                    .split(".")
+                    .reverse()
+                    .map((e, i) => ((e as any) / 1) * 1000 ** i)
+                    .reduce((prev, current) => prev + current, 0);
+                if (thisVersion > currentVersion) {
+                    Logger(`the device ${plugin.deviceVaultName} has the newer plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                }
+                if (plugin.mtime > currentPlugin.mtime) {
+                    Logger(`the device ${plugin.deviceVaultName} has the newer settings of the plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                }
+            } else {
+                Logger(`the device ${plugin.deviceVaultName} has the new plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+            }
+        }
+    }
     clearPeriodicSync() {
         if (this.periodicSyncHandler != null) {
             clearInterval(this.periodicSyncHandler);
@@ -2287,17 +2336,39 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async periodicSync() {
         await this.replicate();
     }
+    periodicPluginSweepHandler: NodeJS.Timer = null;
+    clearPluginSweep() {
+        if (this.periodicPluginSweepHandler != null) {
+            clearInterval(this.periodicPluginSweepHandler);
+            this.periodicPluginSweepHandler = null;
+        }
+    }
+    setPluginSweep() {
+        if (this.settings.autoSweepPluginsPeriodic) {
+            this.clearPluginSweep();
+            this.periodicPluginSweepHandler = setInterval(async () => await this.periodicPluginSweep(), PERIODIC_PLUGIN_SWEEP * 1000);
+        }
+    }
+    async periodicPluginSweep() {
+        console.log("periodic p s ");
+        await this.sweepPlugin();
+    }
     async realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
         this.clearPeriodicSync();
+        this.clearPluginSweep();
         await this.applyBatchChange();
         // disable all sync temporary.
         if (this.suspended) return;
+        if (this.settings.autoSweepPlugins) {
+            await this.sweepPlugin();
+        }
         if (this.settings.liveSync) {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
         this.setPeriodicSync();
+        this.periodicPluginSweep();
     }
     lastMessage = "";
     refreshStatusText() {
@@ -2351,6 +2422,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return;
         }
         await this.applyBatchChange();
+        if (this.settings.autoSweepPlugins) {
+            await this.sweepPlugin();
+        }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
@@ -2359,6 +2433,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.syncAllFiles(showingNotice);
     }
     async replicateAllToServer(showingNotice?: boolean) {
+        if (this.settings.autoSweepPlugins) {
+            await this.sweepPlugin();
+        }
         return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
     }
     async markRemoteLocked() {
@@ -2751,6 +2828,141 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async tryCreateRemoteDatabase() {
         await this.localDatabase.tryCreateRemoteDatabase(this.settings);
     }
+    async getPluginList(): Promise<{ plugins: { [key: string]: PluginDataEntry[] }; allPlugins: { [key: string]: PluginDataEntry }; thisDevicePlugins: { [key: string]: PluginDataEntry } }> {
+        const db = this.localDatabase.localDatabase;
+        let docList = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: false });
+        let oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(e.data));
+        let plugins: { [key: string]: PluginDataEntry[] } = {};
+        let allPlugins: { [key: string]: PluginDataEntry } = {};
+        let thisDevicePlugins: { [key: string]: PluginDataEntry } = {};
+        for (let v of oldDocs) {
+            if (typeof plugins[v.deviceVaultName] === "undefined") {
+                plugins[v.deviceVaultName] = [];
+            }
+            plugins[v.deviceVaultName].push(v);
+            allPlugins[v._id] = v;
+            if (v.deviceVaultName == this.settings.deviceAndVaultName) {
+                thisDevicePlugins[v.manifest.id] = v;
+            }
+        }
+        return { plugins, allPlugins, thisDevicePlugins };
+    }
+    async sweepPlugin() {
+        if (this.settings.deviceAndVaultName.trim() == "") {
+            Logger("Set your device and vault name in the setting dialog.", LOG_LEVEL.NOTICE);
+            return;
+        }
+        Logger("Sweeping plugins", LOG_LEVEL.VERBOSE);
+        const db = this.localDatabase.localDatabase;
+        let oldDocs = await db.allDocs({ startkey: `ps:${this.settings.deviceAndVaultName}-`, endkey: `ps:${this.settings.deviceAndVaultName}.`, include_docs: true });
+        Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
+        // sweep current plugin.
+        // @ts-ignore
+        const pl = this.app.plugins;
+        const manifests: PluginManifest[] = Object.values(pl.manifests);
+        for (let m of manifests) {
+            Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+            let path = normalizePath(m.dir) + "/";
+            const adapter = this.app.vault.adapter;
+            let files = ["manifest.json", "main.js", "styles.css", "data.json"];
+            let pluginData: { [key: string]: string } = {};
+            for (let file of files) {
+                let thePath = path + file;
+                if (await adapter.exists(thePath)) {
+                    pluginData[file] = await adapter.read(thePath);
+                }
+            }
+            let mtime = 0;
+            if (await adapter.exists(path + "/data.json")) {
+                mtime = (await adapter.stat(path + "/data.json")).mtime;
+            }
+            let p: PluginDataEntry = {
+                _id: `ps:${this.settings.deviceAndVaultName}-${m.id}`,
+                dataJson: pluginData["data.json"],
+                deviceVaultName: this.settings.deviceAndVaultName,
+                mainJs: pluginData["main.js"],
+                styleCss: pluginData["styles.css"],
+                manifest: m,
+                manifestJson: pluginData["manifest.json"],
+                mtime: mtime,
+                type: "plugin",
+            };
+            let d: LoadedEntry = {
+                _id: p._id,
+                data: JSON.stringify(p),
+                ctime: mtime,
+                mtime: mtime,
+                size: 0,
+                children: [],
+                datatype: "plain",
+            };
+            Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+            let old = await this.localDatabase.getDBEntry(p._id, null, false, false);
+            if (old !== false) {
+                let oldData = { data: old.data, deleted: old._deleted };
+                let newData = { data: d.data, deleted: d._deleted };
+                if (JSON.stringify(oldData) == JSON.stringify(newData)) {
+                    oldDocs.rows = oldDocs.rows.filter((e) => e.id != d._id);
+                    Logger(`Nothing changed:${m.name}`);
+                    continue;
+                }
+            }
+            await this.localDatabase.putDBEntry(d);
+            oldDocs.rows = oldDocs.rows.filter((e) => e.id != d._id);
+            Logger(`Plugin saved:${m.name}`, LOG_LEVEL.NOTICE);
+            //remove saved plugin data.
+        }
+        Logger(`Deleting old plugins`, LOG_LEVEL.VERBOSE);
+        let delDocs = oldDocs.rows.map((e) => {
+            e.doc._deleted = true;
+            return e.doc;
+        });
+        await db.bulkDocs(delDocs);
+        Logger(`Sweep plugin done.`, LOG_LEVEL.VERBOSE);
+    }
+    async applyPluginData(plugin: PluginDataEntry) {
+        const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
+        const adapter = this.app.vault.adapter;
+        // @ts-ignore
+        let stat = this.app.plugins.enabledPlugins[plugin.manifest.id];
+        if (stat) {
+            // @ts-ignore
+            await this.app.plugins.unloadPlugin(plugin.manifest.id);
+            Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+        }
+        if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
+        Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
+        // @ts-ignore
+        if (stat) {
+            // @ts-ignore
+            await this.app.plugins.loadPlugin(plugin.manifest.id);
+            Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+        }
+    }
+    async applyPlugin(plugin: PluginDataEntry) {
+        // @ts-ignore
+        let stat = this.app.plugins.enabledPlugins[plugin.manifest.id];
+        if (stat) {
+            // @ts-ignore
+            await this.app.plugins.unloadPlugin(plugin.manifest.id);
+            Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+        }
+
+        const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
+        const adapter = this.app.vault.adapter;
+        if ((await adapter.exists(pluginTargetFolderPath)) === false) {
+            await adapter.mkdir(pluginTargetFolderPath);
+        }
+        await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
+        await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
+        if (plugin.styleCss) await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
+        // if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
+        if (stat) {
+            // @ts-ignore
+            await this.app.plugins.loadPlugin(plugin.manifest.id);
+            Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+        }
+    }
 }
 class LogDisplayModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -2881,8 +3093,48 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
 
-        containerEl.createEl("h3", { text: "Remote Database configuration" });
-        let syncWarn = containerEl.createEl("div", { text: "The remote configuration is locked while any synchronization is enabled." });
+        const w = containerEl.createDiv("");
+        const screenElements: { [key: string]: HTMLElement[] } = {};
+        const addScreenElement = (key: string, element: HTMLElement) => {
+            if (!(key in screenElements)) {
+                screenElements[key] = [];
+            }
+            screenElements[key].push(element);
+        };
+        w.addClass("sls-setting-menu");
+        w.innerHTML = `
+<label class='sls-setting-label selected'><input type='radio' name='disp' value='0' class='sls-setting-tab' checked><div class='sls-setting-menu-btn'>🛰️</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='10' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>📦</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='20' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>⚙️</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='30' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔁</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='40' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔧</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='50' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🧰</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='60' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔌</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>
+        `;
+        const menutabs = w.querySelectorAll(".sls-setting-label");
+        const changeDisplay = (screen: string) => {
+            for (var k in screenElements) {
+                if (k == screen) {
+                    screenElements[k].forEach((element) => element.removeClass("setting-collapsed"));
+                } else {
+                    screenElements[k].forEach((element) => element.addClass("setting-collapsed"));
+                }
+            }
+        };
+        menutabs.forEach((element) => {
+            const e = element.querySelector(".sls-setting-tab");
+            if (!e) return;
+            e.addEventListener("change", (event: any) => {
+                menutabs.forEach((element) => element.removeClass("selected"));
+                changeDisplay(event.target.value);
+                element.addClass("selected");
+            });
+        });
+
+        const containerRemoteDatabaseEl = containerEl.createDiv();
+        containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
+        let syncWarn = containerRemoteDatabaseEl.createEl("div", { text: "The remote configuration is locked while any synchronization is enabled." });
         syncWarn.addClass("op-warn");
         syncWarn.addClass("sls-hidden");
 
@@ -2931,7 +3183,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         let dbsettings: Setting[] = [];
         dbsettings.push(
-            new Setting(containerEl).setName("URI").addText((text) =>
+            new Setting(containerRemoteDatabaseEl).setName("URI").addText((text) =>
                 text
                     .setPlaceholder("https://........")
                     .setValue(this.plugin.settings.couchDB_URI)
@@ -2940,7 +3192,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             ),
-            new Setting(containerEl)
+            new Setting(containerRemoteDatabaseEl)
                 .setName("Username")
                 .setDesc("username")
                 .addText((text) =>
@@ -2952,7 +3204,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                         })
                 ),
-            new Setting(containerEl)
+            new Setting(containerRemoteDatabaseEl)
                 .setName("Password")
                 .setDesc("password")
                 .addText((text) => {
@@ -2964,7 +3216,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         });
                     text.inputEl.setAttribute("type", "password");
                 }),
-            new Setting(containerEl).setName("Database name").addText((text) =>
+            new Setting(containerRemoteDatabaseEl).setName("Database name").addText((text) =>
                 text
                     .setPlaceholder("")
                     .setValue(this.plugin.settings.couchDB_DBNAME)
@@ -2975,7 +3227,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             )
         );
 
-        new Setting(containerEl)
+        new Setting(containerRemoteDatabaseEl)
             .setName("Test Database Connection")
             .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
             .addButton((button) =>
@@ -2987,9 +3239,11 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        containerEl.createEl("h3", { text: "Local Database configuration" });
+        addScreenElement("0", containerRemoteDatabaseEl);
+        const containerLocalDatabaseEl = containerEl.createDiv();
+        containerLocalDatabaseEl.createEl("h3", { text: "Local Database configuration" });
 
-        new Setting(containerEl)
+        new Setting(containerLocalDatabaseEl)
             .setName("Batch database update (beta)")
             .setDesc("Delay all changes, save once before replication or opening another file.")
             .addToggle((toggle) =>
@@ -3004,7 +3258,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(containerLocalDatabaseEl)
             .setName("Auto Garbage Collection delay")
             .setDesc("(seconds), if you set zero, you have to run manually.")
             .addText((text) => {
@@ -3020,7 +3274,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-        new Setting(containerEl).setName("Manual Garbage Collect").addButton((button) =>
+        new Setting(containerLocalDatabaseEl).setName("Manual Garbage Collect").addButton((button) =>
             button
                 .setButtonText("Collect now")
                 .setDisabled(false)
@@ -3028,7 +3282,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.garbageCollect();
                 })
         );
-        new Setting(containerEl)
+        new Setting(containerLocalDatabaseEl)
             .setName("End to End Encryption")
             .setDesc("Encrypting contents on the database.")
             .addToggle((toggle) =>
@@ -3038,7 +3292,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        let phasspharase = new Setting(containerEl)
+        let phasspharase = new Setting(containerLocalDatabaseEl)
             .setName("Passphrase")
             .setDesc("Encrypting passphrase")
             .addText((text) => {
@@ -3051,7 +3305,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "password");
             });
         phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
-        containerEl.createEl("div", {
+        containerLocalDatabaseEl.createEl("div", {
             text: "When you change any encryption enabled or passphrase, you have to reset all databases to make sure that the last password is unused and erase encrypted data from anywhere. This operation will not lost your vault if you are fully synced.",
         });
         const applyEncryption = async (sendToServer: boolean) => {
@@ -3087,7 +3341,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 await this.plugin.replicate(true);
             }
         };
-        new Setting(containerEl)
+        new Setting(containerLocalDatabaseEl)
             .setName("Apply")
             .setDesc("apply encryption settinngs, and re-initialize database")
             .addButton((button) =>
@@ -3111,9 +3365,11 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        containerEl.createEl("h3", { text: "General Settings" });
+        addScreenElement("10", containerLocalDatabaseEl);
+        const containerGeneralSettingsEl = containerEl.createDiv();
+        containerGeneralSettingsEl.createEl("h3", { text: "General Settings" });
 
-        new Setting(containerEl)
+        new Setting(containerGeneralSettingsEl)
             .setName("Do not show low-priority Log")
             .setDesc("Reduce log infomations")
             .addToggle((toggle) =>
@@ -3122,7 +3378,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerEl)
+        new Setting(containerGeneralSettingsEl)
             .setName("Verbose Log")
             .setDesc("Show verbose log ")
             .addToggle((toggle) =>
@@ -3132,10 +3388,12 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        containerEl.createEl("h3", { text: "Sync setting" });
+        addScreenElement("20", containerGeneralSettingsEl);
+        const containerSyncSettingEl = containerEl.createDiv();
+        containerSyncSettingEl.createEl("h3", { text: "Sync setting" });
 
         if (this.plugin.settings.versionUpFlash != "") {
-            let c = containerEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
+            let c = containerSyncSettingEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
             c.createEl("button", { text: "I got it and updated." }, (e) => {
                 e.addClass("mod-cta");
                 e.addEventListener("click", async () => {
@@ -3151,7 +3409,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         let syncLive: Setting[] = [];
         let syncNonLive: Setting[] = [];
         syncLive.push(
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("LiveSync")
                 .setDesc("Sync realtime")
                 .addToggle((toggle) =>
@@ -3172,7 +3430,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
 
         syncNonLive.push(
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("Periodic Sync")
                 .setDesc("Sync periodically")
                 .addToggle((toggle) =>
@@ -3182,7 +3440,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         applyDisplayEnabled();
                     })
                 ),
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("Periodic sync intreval")
                 .setDesc("Interval (sec)")
                 .addText((text) => {
@@ -3200,7 +3458,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     text.inputEl.setAttribute("type", "number");
                 }),
 
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("Sync on Save")
                 .setDesc("When you save file, sync automatically")
                 .addToggle((toggle) =>
@@ -3210,7 +3468,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         applyDisplayEnabled();
                     })
                 ),
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("Sync on File Open")
                 .setDesc("When you open file, sync automatically")
                 .addToggle((toggle) =>
@@ -3220,7 +3478,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         applyDisplayEnabled();
                     })
                 ),
-            new Setting(containerEl)
+            new Setting(containerSyncSettingEl)
                 .setName("Sync on Start")
                 .setDesc("Start synchronization on Obsidian started.")
                 .addToggle((toggle) =>
@@ -3232,7 +3490,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 )
         );
 
-        new Setting(containerEl)
+        new Setting(containerSyncSettingEl)
             .setName("Use Trash for deleted files")
             .setDesc("Do not delete files that deleted in remote, just move to trash.")
             .addToggle((toggle) =>
@@ -3242,7 +3500,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(containerSyncSettingEl)
             .setName("Do not delete empty folder")
             .setDesc("Normally, folder is deleted When the folder became empty by replication. enable this, leave it as is")
             .addToggle((toggle) =>
@@ -3252,7 +3510,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(containerSyncSettingEl)
             .setName("Use newer file if conflicted (beta)")
             .setDesc("Resolve conflicts by newer files automatically.")
             .addToggle((toggle) =>
@@ -3261,7 +3519,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerEl)
+        new Setting(containerSyncSettingEl)
             .setName("Minimum chunk size")
             .setDesc("(letters), minimum chunk size.")
             .addText((text) => {
@@ -3278,7 +3536,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
-        new Setting(containerEl)
+        new Setting(containerSyncSettingEl)
             .setName("LongLine Threshold")
             .setDesc("(letters), If the line is longer than this, make the line to chunk")
             .addText((text) => {
@@ -3295,8 +3553,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
-        containerEl.createEl("h3", { text: "Miscellaneous" });
-        new Setting(containerEl)
+        addScreenElement("30", containerSyncSettingEl);
+        const containerMiscellaneousEl = containerEl.createDiv();
+        containerMiscellaneousEl.createEl("h3", { text: "Miscellaneous" });
+        new Setting(containerMiscellaneousEl)
             .setName("Show status inside editor")
             .setDesc("")
             .addToggle((toggle) =>
@@ -3305,11 +3565,14 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        addScreenElement("40", containerMiscellaneousEl);
 
-        containerEl.createEl("h3", { text: "Hatch" });
+        const containerHatchEl = containerEl.createDiv();
+
+        containerHatchEl.createEl("h3", { text: "Hatch" });
 
         if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
-            let c = containerEl.createEl("div", {
+            let c = containerHatchEl.createEl("div", {
                 text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. it caused by some operations like this. re-initialized. Local database initialization should be required. please back your vault up, reset local database, and press 'Mark this device as resolved'. ",
             });
             c.createEl("button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
@@ -3322,7 +3585,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             c.addClass("op-warn");
         } else {
             if (this.plugin.localDatabase.remoteLocked) {
-                let c = containerEl.createEl("div", {
+                let c = containerHatchEl.createEl("div", {
                     text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
                 });
                 c.createEl("button", { text: "I'm ready, unlock the database" }, (e) => {
@@ -3356,9 +3619,9 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 await this.plugin.replicate(true);
             }
         };
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Reread all files")
-            .setDesc("Reread all files and update the database without dropping history")
+            .setDesc("Reread all files and update database without dropping history")
             .addButton((button) =>
                 button
                     .setButtonText("Reread")
@@ -3385,7 +3648,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Drop History")
             .setDesc("Initialize local and remote database, and send all or retrieve all again.")
             .addButton((button) =>
@@ -3409,7 +3672,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Lock remote database")
             .setDesc("Lock remote database for synchronize")
             .addButton((button) =>
@@ -3422,7 +3685,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Suspend file watching")
             .setDesc("if enables it, all file operations are ignored.")
             .addToggle((toggle) =>
@@ -3432,7 +3695,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Reset remote database")
             .setDesc("Reset remote database, this affects only database. If you replicate again, remote database will restored by local database.")
             .addButton((button) =>
@@ -3444,7 +3707,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.tryResetRemoteDatabase();
                     })
             );
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Reset local database")
             .setDesc("Reset local database, this affects only database. If you replicate again, local database will restored by remote database.")
             .addButton((button) =>
@@ -3456,7 +3719,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.resetLocalDatabase();
                     })
             );
-        new Setting(containerEl)
+        new Setting(containerHatchEl)
             .setName("Initialize local database again")
             .setDesc("WARNING: Reset local database and reconstruct by storage data. It affects local database, but if you replicate remote as is, remote data will be merged or corrupted.")
             .addButton((button) =>
@@ -3470,32 +3733,57 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        addScreenElement("50", containerHatchEl);
         // With great respect, thank you TfTHacker!
         // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
-        containerEl.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
 
-        // new Setting(containerEl)
-        //     .setName("Use Plugins and settings")
-        //     .setDesc("It's on the bleeding edge. If you change this option, close setting dialog once,")
-        //     .addToggle((toggle) =>
-        //         toggle.setValue(this.plugin.settings.usePluginSettings).onChange(async (value) => {
-        //             this.plugin.settings.usePluginSettings = value;
-        //             await this.plugin.saveSettings();
-        //         })
-        //     );
+        const containerPluginSettings = containerEl.createDiv();
+        containerPluginSettings.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
 
-        new Setting(containerEl)
-            .setName("Show own plugins and settings")
-            .setDesc("Show ")
+        const updateDisabledOfDeviceAndVaultName = () => {
+            vaultName.setDisabled(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic);
+            vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto sweep." : "");
+        };
+        new Setting(containerPluginSettings).setName("Show own plugins and settings").addToggle((toggle) =>
+            toggle.setValue(this.plugin.settings.showOwnPlugins).onChange(async (value) => {
+                this.plugin.settings.showOwnPlugins = value;
+                await this.plugin.saveSettings();
+                updatePluginPane();
+            })
+        );
+
+        new Setting(containerPluginSettings)
+            .setName("Sweep plugins automatically")
+            .setDesc("Sweep plugins before replicating.")
             .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showOwnPlugins).onChange(async (value) => {
-                    this.plugin.settings.showOwnPlugins = value;
+                toggle.setValue(this.plugin.settings.autoSweepPlugins).onChange(async (value) => {
+                    this.plugin.settings.autoSweepPlugins = value;
+                    updateDisabledOfDeviceAndVaultName();
                     await this.plugin.saveSettings();
-                    updatePluginPane();
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(containerPluginSettings)
+            .setName("Sweep plugins periodically")
+            .setDesc("Sweep plugins each 1 minutes.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
+                    this.plugin.settings.autoSweepPluginsPeriodic = value;
+                    updateDisabledOfDeviceAndVaultName();
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(containerPluginSettings)
+            .setName("Notify updates")
+            .setDesc("Notify when any device has a newer plugin or its setting.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.notifyPluginOrSettingUpdated).onChange(async (value) => {
+                    this.plugin.settings.notifyPluginOrSettingUpdated = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        const vaultName = new Setting(containerPluginSettings)
             .setName("Device and Vault name")
             .setDesc("")
             .addText((text) => {
@@ -3508,78 +3796,13 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 // text.inputEl.setAttribute("type", "password");
             });
 
+        updateDisabledOfDeviceAndVaultName();
         const sweepPlugin = async () => {
-            // delete old database plugin entries
-            // TODO: don't delete always.
-            const db = this.plugin.localDatabase.localDatabase;
-            let oldDocs = await db.allDocs({ startkey: `ps:${this.plugin.settings.deviceAndVaultName}-`, endkey: `ps:${this.plugin.settings.deviceAndVaultName}.`, include_docs: true });
-            let delDocs = oldDocs.rows.map((e) => {
-                e.doc._deleted = true;
-                return e.doc;
-            });
-            await db.bulkDocs(delDocs);
-
-            // sweep current plugin.
-            // @ts-ignore
-            const pl = this.plugin.app.plugins;
-            const manifests: PluginManifest[] = Object.values(pl.manifests);
-            for (let m of manifests) {
-                let path = normalizePath(m.dir) + "/";
-                const adapter = this.plugin.app.vault.adapter;
-                let files = ["manifest.json", "main.js", "style.css", "data.json"];
-                let pluginData: { [key: string]: string } = {};
-                for (let file of files) {
-                    let thePath = path + file;
-                    if (await adapter.exists(thePath)) {
-                        pluginData[file] = await adapter.read(thePath);
-                    }
-                }
-                let mtime = 0;
-                if (await adapter.exists(path + "/data.json")) {
-                    mtime = (await adapter.stat(path + "/data.json")).mtime;
-                }
-                let p: PluginDataEntry = {
-                    _id: `ps:${this.plugin.settings.deviceAndVaultName}-${m.id}`,
-                    dataJson: pluginData["data.json"],
-                    deviceVaultName: this.plugin.settings.deviceAndVaultName,
-                    mainJs: pluginData["main.js"],
-                    styleCss: pluginData["style.css"],
-                    manifest: m,
-                    manifestJson: pluginData["manifest.json"],
-                    mtime: mtime,
-                    type: "plugin",
-                };
-                let d: LoadedEntry = {
-                    _id: p._id,
-                    data: JSON.stringify(p),
-                    ctime: mtime,
-                    mtime: mtime,
-                    size: 0,
-                    children: [],
-                    datatype: "plain",
-                };
-                await this.plugin.localDatabase.putDBEntry(d);
-            }
-            await this.plugin.replicate(true);
+            await this.plugin.sweepPlugin();
             updatePluginPane();
         };
         const updatePluginPane = async () => {
-            const db = this.plugin.localDatabase.localDatabase;
-            let docList = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: false });
-            let oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.plugin.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(e.data));
-            let plugins: { [key: string]: PluginDataEntry[] } = {};
-            let allPlugins: { [key: string]: PluginDataEntry } = {};
-            let thisDevicePlugins: { [key: string]: PluginDataEntry } = {};
-            for (let v of oldDocs) {
-                if (typeof plugins[v.deviceVaultName] === "undefined") {
-                    plugins[v.deviceVaultName] = [];
-                }
-                plugins[v.deviceVaultName].push(v);
-                allPlugins[v._id] = v;
-                if (v.deviceVaultName == this.plugin.settings.deviceAndVaultName) {
-                    thisDevicePlugins[v.manifest.id] = v;
-                }
-            }
+            const { plugins, allPlugins, thisDevicePlugins } = await this.plugin.getPluginList();
             let html = `
             <div class='sls-plugins-wrap'>
             <table class='sls-plugins-tbl'>
@@ -3588,7 +3811,12 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 if (!this.plugin.settings.showOwnPlugins && vaults == this.plugin.settings.deviceAndVaultName) continue;
                 html += `
                 <tr>
-                    <th colspan=2>${escapeStringToHTML(vaults)}</th>
+                    <th colspan=1>${escapeStringToHTML(vaults)}</th>
+                    <td class='sls-plugins-tbl-buttons'>
+                        <button class='sls-plugin-apply-all-newer-plugin mod-cta' data-key="${vaults}" aria-label="Apply all newer (without setting)">⚡</button>
+                        <button class='sls-plugin-apply-all-newer-setting mod-cta' data-key="${vaults}" aria-label="Apply all newer settings">📚</button>
+                        <button class='sls-plugin-delete mod-cta' data-key="${vaults}" aria-label="Delete">❌</button>
+                    </td>
                 </tr>`;
                 for (let v of plugins[vaults]) {
                     let mtime = v.mtime == 0 ? "-" : new Date(v.mtime).toLocaleString();
@@ -3604,13 +3832,16 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             isSameContents = true;
                         }
                     }
-                    if (thisDevicePlugins[v.manifest.id] && thisDevicePlugins[v.manifest.id].dataJson && v.dataJson) {
+                    if (thisDevicePlugins[v.manifest.id] && v.dataJson) {
                         // have this plugin.
-                        let localSetting = thisDevicePlugins[v.manifest.id].dataJson;
+                        let localSetting = thisDevicePlugins[v.manifest.id].dataJson || null;
 
                         try {
                             let remoteSetting = v.dataJson;
-                            if (localSetting == remoteSetting) {
+                            if (!localSetting) {
+                                settingFleshness = "newer";
+                                settingApplyable = true;
+                            } else if (localSetting == remoteSetting) {
                                 settingApplyable = "even";
                             } else {
                                 if (v.mtime > thisDevicePlugins[v.manifest.id].mtime) {
@@ -3652,77 +3883,119 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             pluginConfig.innerHTML = html;
             pluginConfig.querySelectorAll(".apply-plugin-data").forEach((e) =>
                 e.addEventListener("click", async (evt) => {
-                    console.dir("pluginData:" + e.attributes.getNamedItem("data-key").value);
                     let plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
-                    const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
-                    const adapter = this.plugin.app.vault.adapter;
-                    // @ts-ignore
-                    let stat = this.plugin.app.plugins.enabledPlugins[plugin.manifest.id];
-                    if (stat) {
-                        // @ts-ignore
-                        await this.plugin.app.plugins.unloadPlugin(plugin.manifest.id);
-                        Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
-                    }
-                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
-                    Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
-                    // @ts-ignore
-                    if (stat) {
-                        // @ts-ignore
-                        await this.plugin.app.plugins.loadPlugin(plugin.manifest.id);
-                        Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
-                    }
-                    sweepPlugin();
+                    Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                    await this.plugin.applyPluginData(plugin);
+                    Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                    await sweepPlugin();
                 })
             );
             pluginConfig.querySelectorAll(".apply-plugin-version").forEach((e) =>
                 e.addEventListener("click", async (evt) => {
-                    console.dir("pluginVersion:" + e.attributes.getNamedItem("data-key").value);
-
                     let plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
-
-                    // @ts-ignore
-                    let stat = this.plugin.app.plugins.enabledPlugins[plugin.manifest.id];
-                    if (stat) {
-                        // @ts-ignore
-                        await this.plugin.app.plugins.unloadPlugin(plugin.manifest.id);
-                        Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                    Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                    await this.plugin.applyPlugin(plugin);
+                    Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                    await sweepPlugin();
+                })
+            );
+            pluginConfig.querySelectorAll(".sls-plugin-apply-all-newer-plugin").forEach((e) =>
+                e.addEventListener("click", async (evt) => {
+                    Logger("Apply all newer plugins.", LOG_LEVEL.NOTICE);
+                    const vaultname = e.attributes.getNamedItem("data-key").value;
+                    let plugins = Object.values(allPlugins).filter((e) => e.deviceVaultName == vaultname && e.manifest.id != "obsidian-livesync");
+                    for (const plugin of plugins) {
+                        let currentPlugin = thisDevicePlugins[plugin.manifest.id];
+                        if (currentPlugin) {
+                            const thisVersion = plugin.manifest.version
+                                .split(".")
+                                .reverse()
+                                .map((e, i) => ((e as any) / 1) * 1000 ** i)
+                                .reduce((prev, current) => prev + current, 0);
+                            const currentVersion = currentPlugin.manifest.version
+                                .split(".")
+                                .reverse()
+                                .map((e, i) => ((e as any) / 1) * 1000 ** i)
+                                .reduce((prev, current) => prev + current, 0);
+                            if (thisVersion > currentVersion) {
+                                Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                                await this.plugin.applyPlugin(plugin);
+                                Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                            } else {
+                                Logger(`Plugin ${plugin.manifest.name} is not new`);
+                            }
+                        } else {
+                            Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                            await this.plugin.applyPlugin(plugin);
+                            Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                        }
                     }
-
-                    const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
-                    const adapter = this.plugin.app.vault.adapter;
-                    if ((await adapter.exists(pluginTargetFolderPath)) === false) {
-                        await adapter.mkdir(pluginTargetFolderPath);
+                    await sweepPlugin();
+                    Logger("Done", LOG_LEVEL.NOTICE);
+                })
+            );
+            pluginConfig.querySelectorAll(".sls-plugin-apply-all-newer-setting").forEach((e) =>
+                e.addEventListener("click", async (evt) => {
+                    Logger("Apply all newer settings.", LOG_LEVEL.NOTICE);
+                    const vaultname = e.attributes.getNamedItem("data-key").value;
+                    let plugins = Object.values(allPlugins).filter((e) => e.deviceVaultName == vaultname && e.manifest.id != "obsidian-livesync");
+                    for (const plugin of plugins) {
+                        let currentPlugin = thisDevicePlugins[plugin.manifest.id];
+                        if (currentPlugin) {
+                            const thisVersion = plugin.mtime;
+                            const currentVersion = currentPlugin.mtime;
+                            if (thisVersion > currentVersion) {
+                                Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                                await this.plugin.applyPluginData(plugin);
+                                Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                            } else {
+                                Logger(`Setting ${plugin.manifest.name} is not new`);
+                            }
+                        } else {
+                            Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                            await this.plugin.applyPluginData(plugin);
+                            Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                        }
                     }
-                    await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
-                    await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
-                    if (plugin.styleCss) await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
-                    if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
-                    if (stat) {
-                        // @ts-ignore
-                        await this.plugin.app.plugins.loadPlugin(plugin.manifest.id);
-                        Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
-                    }
-                    sweepPlugin();
+                    await sweepPlugin();
+                    Logger("Done", LOG_LEVEL.NOTICE);
+                })
+            );
+            pluginConfig.querySelectorAll(".sls-plugin-delete").forEach((e) =>
+                e.addEventListener("click", async (evt) => {
+                    const db = this.plugin.localDatabase.localDatabase;
+                    const vaultname = e.attributes.getNamedItem("data-key").value;
+                    let oldDocs = await db.allDocs({ startkey: `ps:${vaultname}-`, endkey: `ps:${vaultname}.`, include_docs: true });
+                    Logger(`Deleting ${vaultname}`, LOG_LEVEL.NOTICE);
+                    let delDocs = oldDocs.rows.map((e) => {
+                        e.doc._deleted = true;
+                        return e.doc;
+                    });
+                    await db.bulkDocs(delDocs);
+                    Logger(`Deleted ${vaultname}`, LOG_LEVEL.NOTICE);
+                    await this.plugin.replicate(true);
+                    await updatePluginPane();
                 })
             );
         };
 
-        let pluginConfig = containerEl.createEl("div");
+        let pluginConfig = containerPluginSettings.createEl("div");
 
-        new Setting(containerEl)
+        new Setting(containerPluginSettings)
             .setName("Reload")
-            .setDesc("Reload List")
+            .setDesc("Replicate once and reload the list")
             .addButton((button) =>
                 button
                     .setButtonText("Reload")
                     .setDisabled(false)
                     .onClick(async () => {
+                        await this.plugin.replicate(true);
                         await updatePluginPane();
                     })
             );
-        new Setting(containerEl)
+        new Setting(containerPluginSettings)
             .setName("Save plugins into the database")
-            .setDesc("Now, it wouldn't work automatically")
+            .setDesc("")
             .addButton((button) =>
                 button
                     .setButtonText("Save plugins")
@@ -3736,14 +4009,22 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
                             return;
                         }
+                        Logger("Save plugins.", LOG_LEVEL.NOTICE);
                         await sweepPlugin();
+                        Logger("All plugins have been saved.", LOG_LEVEL.NOTICE);
+                        await this.plugin.replicate(true);
                     })
             );
         updatePluginPane();
-        containerEl.createEl("h3", { text: "Corrupted data" });
+
+        addScreenElement("60", containerPluginSettings);
+
+        const containerCorruptedDataEl = containerEl.createDiv();
+
+        containerCorruptedDataEl.createEl("h3", { text: "Corrupted data" });
 
         if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
-            let cx = containerEl.createEl("div", { text: "If you have copy of these items on any device, simply edit once or twice. Or not, delete this. sorry.." });
+            let cx = containerCorruptedDataEl.createEl("div", { text: "If you have copy of these items on any device, simply edit once or twice. Or not, delete this. sorry.." });
             for (let k in this.plugin.localDatabase.corruptedEntries) {
                 let xx = cx.createEl("div", { text: `${k}` });
 
@@ -3768,8 +4049,10 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 xx.addClass("mod-warning");
             }
         } else {
-            let cx = containerEl.createEl("div", { text: "There's no collupted data." });
+            let cx = containerCorruptedDataEl.createEl("div", { text: "There's no collupted data." });
         }
         applyDisplayEnabled();
+        addScreenElement("70", containerCorruptedDataEl);
+        changeDisplay("0");
     }
 }

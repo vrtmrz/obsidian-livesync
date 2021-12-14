@@ -64,7 +64,8 @@
 :root {
     --slsmessage: "";
 }
-.CodeMirror-wrap::before , .cm-s-obsidian > .cm-editor::before {
+.CodeMirror-wrap::before,
+.cm-s-obsidian > .cm-editor::before {
     content: var(--slsmessage);
     position: absolute;
     border-radius: 4px;
@@ -73,13 +74,65 @@
     top: 8px;
     color: --text-normal;
     opacity: 0.5;
-    font-size:80%;
+    font-size: 80%;
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);
 }
 
 .CodeMirror-wrap::before {
     right: 0px;
-} .cm-s-obsidian > .cm-editor::before {
+}
+.cm-s-obsidian > .cm-editor::before {
     right: 16px;
+}
+.sls-setting-tab {
+    display: none;
+}
+div.sls-setting-menu-btn {
+    color: var(--text-normal);
+    background-color: var(--background-secondary-alt);
+    border-radius: 4px 4px 0 0;
+    padding: 6px 10px;
+    cursor: pointer;
+    margin-right: 12px;
+    font-family: "Inter", sans-serif;
+    outline: none;
+    user-select: none;
+    flex-grow: 1;
+    text-align: center;
+    flex-shrink: 1;
+}
+
+.sls-setting-label.selected {
+    /* order: 1; */
+    flex-grow: 1;
+    /* width: 100%; */
+}
+.sls-setting-tab:hover ~ div.sls-setting-menu-btn,
+.sls-setting-tab:checked ~ div.sls-setting-menu-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.sls-setting-menu {
+    display: flex;
+    flex-direction: row;
+    /* flex-wrap: wrap; */
+    overflow-x: auto;
+}
+.sls-setting-label {
+    flex-grow: 1;
+    display: inline-flex;
+    justify-content: center;
+}
+.setting-collapsed {
+    display: none;
+}
+.sls-plugins-tbl-buttons {
+    text-align: right;
+}
+
+.sls-plugins-tbl-buttons button {
+    flex-grow: 0;
+    padding: 6px 10px;
 }
