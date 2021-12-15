@@ -1914,7 +1914,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             // suspend all temporary.
             if (this.suspended) return;
             if (this.settings.autoSweepPlugins) {
-                await this.sweepPlugin();
+                await this.sweepPlugin(false);
             }
             if (this.settings.liveSync) {
                 await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
@@ -2294,7 +2294,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         (async () => await this.checkPluginUpdate())();
     }
     async checkPluginUpdate() {
-        await this.sweepPlugin();
+        await this.sweepPlugin(false);
         const { allPlugins, thisDevicePlugins } = await this.getPluginList();
         const arrPlugins = Object.values(allPlugins);
         for (const plugin of arrPlugins) {
@@ -2350,8 +2350,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     async periodicPluginSweep() {
-        console.log("periodic p s ");
-        await this.sweepPlugin();
+        await this.sweepPlugin(false);
     }
     async realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
@@ -2361,14 +2360,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // disable all sync temporary.
         if (this.suspended) return;
         if (this.settings.autoSweepPlugins) {
-            await this.sweepPlugin();
+            await this.sweepPlugin(false);
         }
         if (this.settings.liveSync) {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
         this.setPeriodicSync();
-        this.periodicPluginSweep();
+        this.setPluginSweep();
     }
     lastMessage = "";
     refreshStatusText() {
@@ -2423,7 +2422,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         await this.applyBatchChange();
         if (this.settings.autoSweepPlugins) {
-            await this.sweepPlugin();
+            await this.sweepPlugin(false);
         }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
@@ -2434,7 +2433,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async replicateAllToServer(showingNotice?: boolean) {
         if (this.settings.autoSweepPlugins) {
-            await this.sweepPlugin();
+            await this.sweepPlugin(showingNotice);
         }
         return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
     }
@@ -2847,12 +2846,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return { plugins, allPlugins, thisDevicePlugins };
     }
-    async sweepPlugin() {
-        if (this.settings.deviceAndVaultName.trim() == "") {
-            Logger("Set your device and vault name in the setting dialog.", LOG_LEVEL.NOTICE);
+    async sweepPlugin(showMessage = false) {
+        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+        if (!this.settings.encrypt) {
+            Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
             return;
         }
-        Logger("Sweeping plugins", LOG_LEVEL.VERBOSE);
+        if (!this.settings.deviceAndVaultName) {
+            Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
+            return;
+        }
+        Logger("Sweeping plugins", logLevel);
         const db = this.localDatabase.localDatabase;
         let oldDocs = await db.allDocs({ startkey: `ps:${this.settings.deviceAndVaultName}-`, endkey: `ps:${this.settings.deviceAndVaultName}.`, include_docs: true });
         Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
@@ -2909,7 +2913,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             await this.localDatabase.putDBEntry(d);
             oldDocs.rows = oldDocs.rows.filter((e) => e.id != d._id);
-            Logger(`Plugin saved:${m.name}`, LOG_LEVEL.NOTICE);
+            Logger(`Plugin saved:${m.name}`, logLevel);
             //remove saved plugin data.
         }
         Logger(`Deleting old plugins`, LOG_LEVEL.VERBOSE);
@@ -2918,7 +2922,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return e.doc;
         });
         await db.bulkDocs(delDocs);
-        Logger(`Sweep plugin done.`, LOG_LEVEL.VERBOSE);
+        Logger(`Sweep plugin done.`, logLevel);
     }
     async applyPluginData(plugin: PluginDataEntry) {
         const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
@@ -3797,8 +3801,8 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
 
         updateDisabledOfDeviceAndVaultName();
-        const sweepPlugin = async () => {
-            await this.plugin.sweepPlugin();
+        const sweepPlugin = async (showMessage: boolean) => {
+            await this.plugin.sweepPlugin(showMessage);
             updatePluginPane();
         };
         const updatePluginPane = async () => {
@@ -3887,7 +3891,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
                     await this.plugin.applyPluginData(plugin);
                     Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await sweepPlugin();
+                    await sweepPlugin(true);
                 })
             );
             pluginConfig.querySelectorAll(".apply-plugin-version").forEach((e) =>
@@ -3896,7 +3900,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
                     await this.plugin.applyPlugin(plugin);
                     Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await sweepPlugin();
+                    await sweepPlugin(true);
                 })
             );
             pluginConfig.querySelectorAll(".sls-plugin-apply-all-newer-plugin").forEach((e) =>
@@ -3930,7 +3934,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
                         }
                     }
-                    await sweepPlugin();
+                    await sweepPlugin(true);
                     Logger("Done", LOG_LEVEL.NOTICE);
                 })
             );
@@ -3957,7 +3961,7 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
                         }
                     }
-                    await sweepPlugin();
+                    await sweepPlugin(true);
                     Logger("Done", LOG_LEVEL.NOTICE);
                 })
             );
@@ -4001,16 +4005,8 @@ class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Save plugins")
                     .setDisabled(false)
                     .onClick(async () => {
-                        if (!this.plugin.settings.encrypt) {
-                            Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
-                            return;
-                        }
-                        if (!this.plugin.settings.deviceAndVaultName) {
-                            Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
-                            return;
-                        }
                         Logger("Save plugins.", LOG_LEVEL.NOTICE);
-                        await sweepPlugin();
+                        await sweepPlugin(true);
                         Logger("All plugins have been saved.", LOG_LEVEL.NOTICE);
                         await this.plugin.replicate(true);
                     })
