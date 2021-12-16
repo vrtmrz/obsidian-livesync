@@ -136,3 +136,7 @@ div.sls-setting-menu-btn {
     flex-grow: 0;
     padding: 6px 10px;
 }
+.sls-plugins-tbl-device-head {
+    background-color: var(--background-secondary-alt);
+    color: var(--text-accent);
+}

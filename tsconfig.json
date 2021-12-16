@@ -9,9 +9,13 @@
         "noImplicitAny": true,
         "moduleResolution": "node",
         "importHelpers": true,
-        "lib": ["dom", "es5", "scripthost", "es2015"]
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "strictFunctionTypes": true,
+        "alwaysStrict": true,
+        "lib": ["dom", "es5", "ES6", "ES7", "es2020"]
     },
-    "include": ["**/*.ts"],
-    "files": ["./main.ts"],
+    "include": ["./src/*.ts"],
+    // "files": ["./src/main.ts"],
     "exclude": ["pouchdb-browser-webpack"]
 }
