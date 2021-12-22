@@ -72,7 +72,7 @@ export function resolveWithIgnoreKnownError<T>(p: Promise<T>, def: T): Promise<T
 
 export function isValidPath(filename: string): boolean {
     // eslint-disable-next-line no-control-regex
-    const regex = /[\u0000-\u001f]|[\\"':?<>|*]/g;
+    const regex = /[\u0000-\u001f]|[\\":?<>|*#]/g;
     let x = filename.replace(regex, "_");
     const win = /(\\|\/)(COM\d|LPT\d|CON|PRN|AUX|NUL|CLOCK$)($|\.)/gi;
     const sx = (x = x.replace(win, "/_"));

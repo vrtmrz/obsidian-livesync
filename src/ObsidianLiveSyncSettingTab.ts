@@ -1084,7 +1084,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 xx.addClass("mod-warning");
             }
         } else {
-            containerCorruptedDataEl.createEl("div", { text: "There's no collupted data." });
+            containerCorruptedDataEl.createEl("div", { text: "There is no corrupted data." });
         }
         applyDisplayEnabled();
         addScreenElement("70", containerCorruptedDataEl);
