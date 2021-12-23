@@ -56,6 +56,8 @@ export interface ObsidianLiveSyncSettings {
     autoSweepPluginsPeriodic: boolean;
     notifyPluginOrSettingUpdated: boolean;
     checkIntegrityOnSave: boolean;
+    batch_size: number;
+    batches_limit: number;
 }
 
 export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -94,6 +96,8 @@ export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     autoSweepPluginsPeriodic: false,
     notifyPluginOrSettingUpdated: false,
     checkIntegrityOnSave: false,
+    batch_size: 250,
+    batches_limit: 40,
 };
 
 export const PERIODIC_PLUGIN_SWEEP = 60;

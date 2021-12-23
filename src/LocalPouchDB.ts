@@ -756,8 +756,8 @@ export class LocalPouchDB {
             }
 
             const syncOptionBase: PouchDB.Replication.SyncOptions = {
-                batch_size: 250,
-                batches_limit: 40,
+                batches_limit: setting.batches_limit,
+                batch_size: setting.batch_size,
             };
 
             const db = dbret.db;
@@ -851,8 +851,8 @@ export class LocalPouchDB {
         }
 
         const syncOptionBase: PouchDB.Replication.SyncOptions = {
-            batch_size: 250,
-            batches_limit: 40,
+            batches_limit: setting.batches_limit,
+            batch_size: setting.batch_size,
         };
         const syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
 
@@ -876,87 +876,89 @@ export class LocalPouchDB {
         //replicate once
         this.syncStatus = "STARTED";
 
-        return new Promise<boolean>(async (res, rej) => {
-            let resolved = false;
-            const _openReplicationSync = () => {
-                this.syncHandler = this.cancelHandler(this.syncHandler);
-                this.syncHandler = this.localDatabase.sync<EntryDoc>(db, syncOption);
-                this.syncHandler
-                    .on("active", () => {
-                        this.syncStatus = "CONNECTED";
-                        this.updateInfo();
-                        Logger("Replication activated");
-                    })
-                    .on("change", async (e) => {
-                        try {
-                            if (e.direction == "pull") {
-                                // console.log(`pulled data:${e.change.docs.map((e) => e._id).join(",")}`);
-                                await callback(e.change.docs);
-                                Logger(`replicated ${e.change.docs_read} doc(s)`);
-                                this.docArrived += e.change.docs.length;
-                            } else {
-                                // console.log(`put data:${e.change.docs.map((e) => e._id).join(",")}`);
-                                this.docSent += e.change.docs.length;
-                            }
-                            if (notice != null) {
-                                notice.setMessage(`↑${e.change.docs_written} ↓${e.change.docs_read}`);
-                            }
-                            this.updateInfo();
-                        } catch (ex) {
-                            Logger("Replication callback error");
-                            Logger(ex);
-                        }
-                    })
-                    .on("complete", (e) => {
-                        this.syncStatus = "COMPLETED";
-                        this.updateInfo();
-                        Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                        if (notice != null) notice.hide();
-                        if (!keepAlive) {
-                            this.syncHandler = this.cancelHandler(this.syncHandler);
-                            // if keep alive runnning, resolve here,
-                            res(true);
-                        }
-                    })
-                    .on("denied", (e) => {
-                        this.syncStatus = "ERRORED";
-                        this.updateInfo();
-                        this.syncHandler = this.cancelHandler(this.syncHandler);
-                        if (notice != null) notice.hide();
-                        Logger("Replication denied", LOG_LEVEL.NOTICE);
-                        // Logger(e);
-                        rej(e);
-                    })
-                    .on("error", (e) => {
-                        this.syncStatus = "ERRORED";
-                        this.syncHandler = this.cancelHandler(this.syncHandler);
-                        this.updateInfo();
-                        if (notice != null) notice.hide();
-                        Logger("Replication error", LOG_LEVEL.NOTICE);
-                        // Logger(e);
-                        rej(e);
-                    })
-                    .on("paused", (e) => {
-                        this.syncStatus = "PAUSED";
-                        this.updateInfo();
-                        if (notice != null) notice.hide();
-                        Logger("replication paused", LOG_LEVEL.VERBOSE);
-                        if (keepAlive && !resolved) {
-                            // if keep alive runnning, resolve here,
-                            resolved = true;
-                            res(true);
-                        }
-                        // Logger(e);
-                    });
-            };
-            if (!keepAlive) {
-                return await _openReplicationSync();
-            }
+        let resolved = false;
+        const docArrivedOnStart = this.docArrived;
+        const docSentOnStart = this.docSent;
+        const _openReplicationSync = () => {
+            Logger("Sync Main Started");
             this.syncHandler = this.cancelHandler(this.syncHandler);
-            Logger("Pull before replicate.");
-            Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
-            Logger(await db.info(), LOG_LEVEL.VERBOSE);
-            const replicate = this.localDatabase.replicate.from(db, syncOptionBase);
+            this.syncHandler = this.localDatabase.sync<EntryDoc>(db, syncOption);
+            this.syncHandler
+                .on("active", () => {
+                    this.syncStatus = "CONNECTED";
+                    this.updateInfo();
+                    Logger("Replication activated");
+                })
+                .on("change", async (e) => {
+                    try {
+                        if (e.direction == "pull") {
+                            // console.log(`pulled data:${e.change.docs.map((e) => e._id).join(",")}`);
+                            await callback(e.change.docs);
+                            Logger(`replicated ${e.change.docs_read} doc(s)`);
+                            this.docArrived += e.change.docs.length;
+                        } else {
+                            // console.log(`put data:${e.change.docs.map((e) => e._id).join(",")}`);
+                            this.docSent += e.change.docs.length;
+                        }
+                        if (notice != null) {
+                            notice.setMessage(`↑${this.docSent - docSentOnStart} ↓${this.docArrived - docArrivedOnStart}`);
+                        }
+                        this.updateInfo();
+                    } catch (ex) {
+                        Logger("Replication callback error");
+                        Logger(ex);
+                    }
+                })
+                .on("complete", (e) => {
+                    this.syncStatus = "COMPLETED";
+                    this.updateInfo();
+                    Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                    if (notice != null) notice.hide();
+                    if (!keepAlive) {
+                        this.syncHandler = this.cancelHandler(this.syncHandler);
+                        // if keep alive runnning, resolve here,
+                    }
+                })
+                .on("denied", (e) => {
+                    this.syncStatus = "ERRORED";
+                    this.updateInfo();
+                    this.syncHandler = this.cancelHandler(this.syncHandler);
+                    if (notice != null) notice.hide();
+                    Logger("Replication denied", LOG_LEVEL.NOTICE);
+                    Logger(e);
+                })
+                .on("error", (e) => {
+                    this.syncStatus = "ERRORED";
+                    this.syncHandler = this.cancelHandler(this.syncHandler);
+                    this.updateInfo();
+                    if (notice != null) notice.hide();
+                    Logger("Replication error", LOG_LEVEL.NOTICE);
+                    Logger(e);
+                })
+                .on("paused", (e) => {
+                    this.syncStatus = "PAUSED";
+                    this.updateInfo();
+                    if (notice != null) notice.hide();
+                    Logger("replication paused", LOG_LEVEL.VERBOSE);
+                    if (keepAlive && !resolved) {
+                        // if keep alive runnning, resolve here,
+                        resolved = true;
+                    }
+                    // Logger(e);
+                });
+            return this.syncHandler;
+        };
+        if (!keepAlive) {
+            await _openReplicationSync();
+            return true;
+        }
+        this.syncHandler = this.cancelHandler(this.syncHandler);
+        Logger("Pull before replicate.");
+        Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
+        Logger(await db.info(), LOG_LEVEL.VERBOSE);
+        let replicate: PouchDB.Replication.Replication<EntryDoc>;
+        try {
+            replicate = this.localDatabase.replicate.from(db, syncOptionBase);
             replicate
                 .on("active", () => {
                     this.syncStatus = "CONNECTED";
@@ -979,36 +981,24 @@ export class LocalPouchDB {
                         Logger("Replication callback error");
                         Logger(ex);
                     }
-                })
-                .on("complete", async (info) => {
-                    this.syncStatus = "COMPLETED";
-                    this.updateInfo();
-                    this.cancelHandler(replicate);
-                    this.syncHandler = this.cancelHandler(this.syncHandler);
-                    Logger("Replication pull completed.");
-                    await _openReplicationSync();
-                })
-                .on("denied", (e) => {
-                    this.syncStatus = "ERRORED";
-                    this.updateInfo();
-                    if (notice != null) notice.hide();
-                    Logger("Pulling Replication denied", LOG_LEVEL.NOTICE);
-                    this.cancelHandler(replicate);
-                    this.syncHandler = this.cancelHandler(this.syncHandler);
-                    rej(e);
-                })
-                .on("error", (e) => {
-                    this.syncStatus = "ERRORED";
-                    this.updateInfo();
-                    Logger("Pulling Replication error", LOG_LEVEL.INFO);
-                    this.cancelHandler(replicate);
-                    this.syncHandler = this.cancelHandler(this.syncHandler);
-                    if (notice != null) notice.hide();
-                    // debugger;
-                    Logger(e);
-                    rej(e);
                 });
-        });
+            this.syncStatus = "COMPLETED";
+            this.updateInfo();
+            this.cancelHandler(replicate);
+            this.syncHandler = this.cancelHandler(this.syncHandler);
+            Logger("Replication pull completed.");
+            _openReplicationSync();
+            return true;
+        } catch (ex) {
+            this.syncStatus = "ERRORED";
+            this.updateInfo();
+            Logger("Pulling Replication error", LOG_LEVEL.NOTICE);
+            this.cancelHandler(replicate);
+            this.syncHandler = this.cancelHandler(this.syncHandler);
+            if (notice != null) notice.hide();
+            // debugger;
+            throw ex;
+        }
     }
 
     closeReplication() {

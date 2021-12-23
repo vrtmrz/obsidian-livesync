@@ -23,7 +23,7 @@ The Database name to synchronize.
 ## Local Database Configurations
 "Local Database" is created inside your obsidian.
 
-### Batch database update (beta)
+### Batch database update
 Delay database update until raise replication, open another file, window visibility changed, or file events except for file modification.  
 This option can not be used with LiveSync at the same time.
 
@@ -78,6 +78,27 @@ When running these operations, every synchronization settings is disabled.
 
 **And even your passphrase is wrong, It doesn't be checked before the plugin really decrypts. So If you set the wrong passphrase and run "Apply and Receive", you will get an amount of decryption error. But, this is the specification.**
 
+### minimum chunk size and LongLine threshold
+The configuration of chunk splitting.
+
+Self-hosted LiveSync splits the note into chunks for efficient synchronization. This chunk should be longer than "Minimum chunk size".
+
+Specifically, the length of the chunk is determined by the following orders.
+
+1. Find the nearest newline character, and if it is farther than LongLineThreshold, this piece becomes an independent chunk.
+
+2. If not, find nearest to these items.
+    1. Newline character
+    2. Empty line (Windows style)
+    3. Empty line (non-Windows style)
+3. Compare the farther in these 3 positions and next "\[newline\]#" position, pick a shorter piece to as chunk.
+
+This rule was made empirically from my dataset. If this rule acts as badly on your data. Please give me the information.
+
+You can dump saved note structure to `Dump informations of this doc`. Replace every character to x except newline and "#" when sending information to me.
+
+Default values are 20 letters and 250 letters.
+
 ## General Settings
 
 ### Do not show low-priority log
@@ -122,31 +143,57 @@ Self-hosted LiveSync will delete the folder when the folder becomes empty. If th
 ### Use newer file if conflicted (beta)
 Always use the newer file to resolve and overwrite when conflict has occurred.
 
-### minimum chunk size and LongLine threshold
-The configuration of chunk splitting.
+### Advanced settings
+Self-hosted LiveSync using PouchDB and synchronizes with the remote by [this protocol](https://docs.couchdb.org/en/stable/replication/protocol.html).
+So, it splits every entry into chunks to be acceptable by the database with limited payload size and document size.
 
-Self-hosted LiveSync splits the note into chunks for efficient synchronization. This chunk should be longer than "Minimum chunk size".
+However, it was not enough.
+According to [2.4.2.5.2. Upload Batch of Changed Documents](https://docs.couchdb.org/en/stable/replication/protocol.html#upload-batch-of-changed-documents) in [Replicate Changes](https://docs.couchdb.org/en/stable/replication/protocol.html#replicate-changes), it might become a bigger request.
 
-Specifically, the length of the chunk is determined by the following orders.
+Unfortunately, there is no way to deal with this automatically by size for every request.
+Therefore, I made it possible to configure this.
 
-1. Find the nearest newline character, and if it is farther than LongLineThreshold, this piece becomes an independent chunk.
+Note: If you set these values lower number, the number of requests will increase.  
+Therefore, if you are far from the server, the total throughput will be low, and the traffic will increase.
 
-2. If not, find nearest to these items.
-    1. Newline character
-    2. Empty line (Windows style)
-    3. Empty line (non-Windows style)
-3. Compare the farther in these 3 positions and next "\[newline\]#" position, pick a shorter piece to as chunk.
+### Batch size
+Number of change feed items to process at a time. Defaults to 250.
 
-This rule was made empirically from my dataset. If this rule acts as badly on your data. Please give me the information.
-
-You can dump saved note structure to `Dump informations of this doc`. Replace every character to x except newline and "#" when sending information to me.
-
-Default values are 20 letters and 250 letters.
+### Batch limit
+Number of batches to process at a time. Defaults to 40. This along with batch size controls how many docs are kept in memory at a time.
 
 ## Miscellaneous
+
 ### Show status inside editor
 Show information inside the editor pane.
 It would be useful for mobile.
+
+### Check integrity on saving
+Check all chunks are correctly saved on saving.
+
+### Presets
+You can set synchronization method at once as these pattern:
+- LiveSync
+  - LiveSync : enabled
+  - Batch database update : disabled
+  - Periodic Sync : disabled
+  - Sync on Save : disabled
+  - Sync on File Open : disabled
+  - Sync on Start : disabled
+- Periodic w/ batch
+  - LiveSync : disabled
+  - Batch database update : enabled
+  - Periodic Sync : enabled
+  - Sync on Save : disabled
+  - Sync on File Open : enabled
+  - Sync on Start : enabled
+- Disable all sync
+  - LiveSync : disabled
+  - Batch database update : disabled
+  - Periodic Sync : disabled
+  - Sync on Save : disabled
+  - Sync on File Open : disabled
+  - Sync on Start : disabled
 
 ## Hatch
 From here, everything is under the hood. Please handle it with care.

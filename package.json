@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.2.1",
+    "version": "0.3.0",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "scripts": {
@@ -22,7 +22,7 @@
         "eslint": "^7.32.0",
         "eslint-config-airbnb-base": "^14.2.1",
         "eslint-plugin-import": "^2.25.2",
-        "obsidian": "^0.12.0",
+        "obsidian": "^0.13.11",
         "rollup": "^2.32.1",
         "tslib": "^2.2.0",
         "typescript": "^4.2.4"

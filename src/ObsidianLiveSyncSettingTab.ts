@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, sanitizeHTMLToDom } from "obsidian";
 import { EntryDoc, LOG_LEVEL } from "./types";
 import { escapeStringToHTML, versionNumberString2Number, path2id, id2path, runWithLock } from "./utils";
 import { Logger } from "./logger";
@@ -82,6 +82,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.syncOnFileOpen) return true;
             if (this.plugin.settings.syncOnSave) return true;
             if (this.plugin.settings.syncOnStart) return true;
+            if (this.plugin.localDatabase.syncStatus == "CONNECTED") return true;
+            if (this.plugin.localDatabase.syncStatus == "PAUSED") return true;
             return false;
         };
         const applyDisplayEnabled = () => {
@@ -304,6 +306,44 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        containerLocalDatabaseEl.createEl("div", {
+            text: sanitizeHTMLToDom(`Advanced settings<br>
+                Configuration of how LiveSync makes chunks from the file.`),
+        });
+        new Setting(containerLocalDatabaseEl)
+            .setName("Minimum chunk size")
+            .setDesc("(letters), minimum chunk size.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.minimumChunkSize + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10 || v > 1000) {
+                            v = 10;
+                        }
+                        this.plugin.settings.minimumChunkSize = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+
+        new Setting(containerLocalDatabaseEl)
+            .setName("LongLine Threshold")
+            .setDesc("(letters), If the line is longer than this, make the line to chunk")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.longLineThreshold + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10 || v > 1000) {
+                            v = 10;
+                        }
+                        this.plugin.settings.longLineThreshold = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+
         addScreenElement("10", containerLocalDatabaseEl);
         const containerGeneralSettingsEl = containerEl.createDiv();
         containerGeneralSettingsEl.createEl("h3", { text: "General Settings" });
@@ -458,35 +498,40 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+
+        containerSyncSettingEl.createEl("div", {
+            text: sanitizeHTMLToDom(`Advanced settings<br>
+            If you reached the payload size limit when using IBM Cloudant, please set batch size and batch limit to a lower value.`),
+        });
         new Setting(containerSyncSettingEl)
-            .setName("Minimum chunk size")
-            .setDesc("(letters), minimum chunk size.")
+            .setName("Batch size")
+            .setDesc("Number of change feed items to process at a time. Defaults to 250.")
             .addText((text) => {
                 text.setPlaceholder("")
-                    .setValue(this.plugin.settings.minimumChunkSize + "")
+                    .setValue(this.plugin.settings.batch_size + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 10 || v > 1000) {
+                        if (isNaN(v) || v < 10) {
                             v = 10;
                         }
-                        this.plugin.settings.minimumChunkSize = v;
+                        this.plugin.settings.batch_size = v;
                         await this.plugin.saveSettings();
                     });
                 text.inputEl.setAttribute("type", "number");
             });
 
         new Setting(containerSyncSettingEl)
-            .setName("LongLine Threshold")
-            .setDesc("(letters), If the line is longer than this, make the line to chunk")
+            .setName("Batch limit")
+            .setDesc("Number of batches to process at a time. Defaults to 40. This along with batch size controls how many docs are kept in memory at a time.")
             .addText((text) => {
                 text.setPlaceholder("")
-                    .setValue(this.plugin.settings.longLineThreshold + "")
+                    .setValue(this.plugin.settings.batches_limit + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 10 || v > 1000) {
+                        if (isNaN(v) || v < 10) {
                             v = 10;
                         }
-                        this.plugin.settings.longLineThreshold = v;
+                        this.plugin.settings.batches_limit = v;
                         await this.plugin.saveSettings();
                     });
                 text.inputEl.setAttribute("type", "number");
@@ -544,10 +589,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL.NOTICE);
                         } else if (currentPrest == "PERIODIC") {
                             this.plugin.settings.batchSave = true;
-                            this.plugin.settings.periodicReplication = false;
+                            this.plugin.settings.periodicReplication = true;
                             this.plugin.settings.syncOnSave = false;
-                            this.plugin.settings.syncOnStart = false;
-                            this.plugin.settings.syncOnFileOpen = false;
+                            this.plugin.settings.syncOnStart = true;
+                            this.plugin.settings.syncOnFileOpen = true;
                             Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL.NOTICE);
                         } else {
                             Logger("All synchronization disabled.", LOG_LEVEL.NOTICE);
