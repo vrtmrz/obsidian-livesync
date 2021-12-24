@@ -7,6 +7,7 @@ export class ConflictResolveModal extends Modal {
     // result: Array<[number, string]>;
     result: diff_result;
     callback: (remove_rev: string) => Promise<void>;
+
     constructor(app: App, diff: diff_result, callback: (remove_rev: string) => Promise<void>) {
         super(app);
         this.result = diff;
@@ -45,18 +46,21 @@ export class ConflictResolveModal extends Modal {
         contentEl.createEl("button", { text: "Keep A" }, (e) => {
             e.addEventListener("click", async () => {
                 await this.callback(this.result.right.rev);
+                this.callback = null;
                 this.close();
             });
         });
         contentEl.createEl("button", { text: "Keep B" }, (e) => {
             e.addEventListener("click", async () => {
                 await this.callback(this.result.left.rev);
+                this.callback = null;
                 this.close();
             });
         });
         contentEl.createEl("button", { text: "Concat both" }, (e) => {
             e.addEventListener("click", async () => {
-                await this.callback(null);
+                await this.callback("");
+                this.callback = null;
                 this.close();
             });
         });
@@ -70,5 +74,8 @@ export class ConflictResolveModal extends Modal {
     onClose() {
         const { contentEl } = this;
         contentEl.empty();
+        if (this.callback != null) {
+            this.callback(null);
+        }
     }
 }

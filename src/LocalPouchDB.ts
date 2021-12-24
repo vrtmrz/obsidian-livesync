@@ -403,41 +403,44 @@ export class LocalPouchDB {
     async deleteDBEntry(path: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
         await this.waitForGCComplete();
         const id = path2id(path);
+
         try {
             let obj: EntryDocResponse = null;
-            if (opt) {
-                obj = await this.localDatabase.get(id, opt);
-            } else {
-                obj = await this.localDatabase.get(id);
-            }
+            return await runWithLock("file:" + id, false, async () => {
+                if (opt) {
+                    obj = await this.localDatabase.get(id, opt);
+                } else {
+                    obj = await this.localDatabase.get(id);
+                }
 
-            if (obj.type && obj.type == "leaf") {
-                //do nothing for leaf;
-                return false;
-            }
-            //Check it out and fix docs to regular case
-            if (!obj.type || (obj.type && obj.type == "notes")) {
-                obj._deleted = true;
-                const r = await this.localDatabase.put(obj);
-                this.updateRecentModifiedDocs(r.id, r.rev, true);
-                if (typeof this.corruptedEntries[obj._id] != "undefined") {
-                    delete this.corruptedEntries[obj._id];
+                if (obj.type && obj.type == "leaf") {
+                    //do nothing for leaf;
+                    return false;
                 }
-                return true;
-                // simple note
-            }
-            if (obj.type == "newnote" || obj.type == "plain") {
-                obj._deleted = true;
-                const r = await this.localDatabase.put(obj);
-                Logger(`entry removed:${obj._id}-${r.rev}`);
-                this.updateRecentModifiedDocs(r.id, r.rev, true);
-                if (typeof this.corruptedEntries[obj._id] != "undefined") {
-                    delete this.corruptedEntries[obj._id];
+                //Check it out and fix docs to regular case
+                if (!obj.type || (obj.type && obj.type == "notes")) {
+                    obj._deleted = true;
+                    const r = await this.localDatabase.put(obj);
+                    this.updateRecentModifiedDocs(r.id, r.rev, true);
+                    if (typeof this.corruptedEntries[obj._id] != "undefined") {
+                        delete this.corruptedEntries[obj._id];
+                    }
+                    return true;
+                    // simple note
                 }
-                return true;
-            } else {
-                return false;
-            }
+                if (obj.type == "newnote" || obj.type == "plain") {
+                    obj._deleted = true;
+                    const r = await this.localDatabase.put(obj);
+                    Logger(`entry removed:${obj._id}-${r.rev}`);
+                    this.updateRecentModifiedDocs(r.id, r.rev, true);
+                    if (typeof this.corruptedEntries[obj._id] != "undefined") {
+                        delete this.corruptedEntries[obj._id];
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            });
         } catch (ex) {
             if (ex.status && ex.status == 404) {
                 return false;
@@ -478,10 +481,13 @@ export class LocalPouchDB {
         let notfound = 0;
         for (const v of delDocs) {
             try {
-                const item = await this.localDatabase.get(v);
-                item._deleted = true;
-                await this.localDatabase.put(item);
-                this.updateRecentModifiedDocs(item._id, item._rev, true);
+                await runWithLock("file:" + v, false, async () => {
+                    const item = await this.localDatabase.get(v);
+                    item._deleted = true;
+                    await this.localDatabase.put(item);
+                    this.updateRecentModifiedDocs(item._id, item._rev, true);
+                });
+
                 deleteCount++;
             } catch (ex) {
                 if (ex.status && ex.status == 404) {
@@ -540,7 +546,6 @@ export class LocalPouchDB {
                 cPieceSize = 0;
                 // lookup for next splittion .
                 // we're standing on "\n"
-                // debugger
                 do {
                     const n1 = leftData.indexOf("\n", cPieceSize + 1);
                     const n2 = leftData.indexOf("\n\n", cPieceSize + 1);
@@ -691,33 +696,35 @@ export class LocalPouchDB {
                 type: plainSplit ? "plain" : "newnote",
             };
             // Here for upsert logic,
-            try {
-                const old = await this.localDatabase.get(newDoc._id);
-                if (!old.type || old.type == "notes" || old.type == "newnote" || old.type == "plain") {
-                    // simple use rev for new doc
-                    newDoc._rev = old._rev;
+            await runWithLock("file:" + newDoc._id, false, async () => {
+                try {
+                    const old = await this.localDatabase.get(newDoc._id);
+                    if (!old.type || old.type == "notes" || old.type == "newnote" || old.type == "plain") {
+                        // simple use rev for new doc
+                        newDoc._rev = old._rev;
+                    }
+                } catch (ex) {
+                    if (ex.status && ex.status == 404) {
+                        // NO OP/
+                    } else {
+                        throw ex;
+                    }
                 }
-            } catch (ex) {
-                if (ex.status && ex.status == 404) {
-                    // NO OP/
+                const r = await this.localDatabase.put(newDoc, { force: true });
+                this.updateRecentModifiedDocs(r.id, r.rev, newDoc._deleted);
+                if (typeof this.corruptedEntries[note._id] != "undefined") {
+                    delete this.corruptedEntries[note._id];
+                }
+                if (this.settings.checkIntegrityOnSave) {
+                    if (!this.sanCheck(await this.localDatabase.get(r.id))) {
+                        Logger("note save failed!", LOG_LEVEL.NOTICE);
+                    } else {
+                        Logger(`note has been surely saved:${newDoc._id}:${r.rev}`);
+                    }
                 } else {
-                    throw ex;
+                    Logger(`note saved:${newDoc._id}:${r.rev}`);
                 }
-            }
-            const r = await this.localDatabase.put(newDoc, { force: true });
-            this.updateRecentModifiedDocs(r.id, r.rev, newDoc._deleted);
-            if (typeof this.corruptedEntries[note._id] != "undefined") {
-                delete this.corruptedEntries[note._id];
-            }
-            if (this.settings.checkIntegrityOnSave) {
-                if (!this.sanCheck(await this.localDatabase.get(r.id))) {
-                    Logger("note save failed!", LOG_LEVEL.NOTICE);
-                } else {
-                    Logger(`note has been surely saved:${newDoc._id}:${r.rev}`);
-                }
-            } else {
-                Logger(`note saved:${newDoc._id}:${r.rev}`);
-            }
+            });
         } else {
             Logger(`note coud not saved:${note._id}`);
         }
@@ -837,6 +844,15 @@ export class LocalPouchDB {
             locked: false,
             accepted_nodes: [this.nodeid],
         };
+        // const remoteInfo = dbret.info;
+        // const localInfo = await this.localDatabase.info();
+        // const remoteDocsCount = remoteInfo.doc_count;
+        // const localDocsCount = localInfo.doc_count;
+        // const remoteUpdSeq = typeof remoteInfo.update_seq == "string" ? Number(remoteInfo.update_seq.split("-")[0]) : remoteInfo.update_seq;
+        // const localUpdSeq = typeof localInfo.update_seq == "string" ? Number(localInfo.update_seq.split("-")[0]) : localInfo.update_seq;
+
+        // Logger(`Database diffences: remote:${remoteDocsCount} docs / last update ${remoteUpdSeq}`);
+        // Logger(`Database diffences: local :${localDocsCount} docs / last update ${localUpdSeq}`);
 
         const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
         this.remoteLocked = remoteMilestone.locked;
@@ -856,7 +872,7 @@ export class LocalPouchDB {
         };
         const syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
 
-        return { db: dbret.db, syncOptionBase, syncOption };
+        return { db: dbret.db, info: dbret.info, syncOptionBase, syncOption };
     }
 
     async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
@@ -996,7 +1012,6 @@ export class LocalPouchDB {
             this.cancelHandler(replicate);
             this.syncHandler = this.cancelHandler(this.syncHandler);
             if (notice != null) notice.hide();
-            // debugger;
             throw ex;
         }
     }

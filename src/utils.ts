@@ -114,16 +114,16 @@ function objectToKey(key: any): string {
     const keys = Object.keys(key).sort((a, b) => a.localeCompare(b));
     return keys.map((e) => e + objectToKey(key[e])).join(":");
 }
-// Just run some async/await as like transacion SERIALIZABLE
 
+// Just run async/await as like transacion ISOLATION SERIALIZABLE
 export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: () => Promise<T>): Promise<T> {
-    Logger(`Lock:${key}:enter`, LOG_LEVEL.VERBOSE);
+    // Logger(`Lock:${key}:enter`, LOG_LEVEL.VERBOSE);
     const lockKey = typeof key === "string" ? key : objectToKey(key);
     const handleNextProcs = () => {
         if (typeof pendingProcs[lockKey] === "undefined") {
             //simply unlock
             runningProcs.remove(lockKey);
-            Logger(`Lock:${lockKey}:released`, LOG_LEVEL.VERBOSE);
+            // Logger(`Lock:${lockKey}:released`, LOG_LEVEL.VERBOSE);
         } else {
             Logger(`Lock:${lockKey}:left ${pendingProcs[lockKey].length}`, LOG_LEVEL.VERBOSE);
             let nextProc = null;
@@ -143,6 +143,10 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
                             handleNextProcs();
                         });
                     });
+            } else {
+                if (pendingProcs && lockKey in pendingProcs && pendingProcs[lockKey].length == 0) {
+                    delete pendingProcs[lockKey];
+                }
             }
         }
     };
@@ -164,7 +168,7 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
             new Promise<void>((res, rej) => {
                 proc()
                     .then((v) => {
-                        Logger(`Lock:${key}:processed`, LOG_LEVEL.VERBOSE);
+                        // Logger(`Lock:${key}:processed`, LOG_LEVEL.VERBOSE);
                         handleNextProcs();
                         responderRes(v);
                         res();
@@ -178,10 +182,11 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
             });
 
         pendingProcs[lockKey].push(subproc);
+        // Logger(`Lock:${lockKey}:queud:left${pendingProcs[lockKey].length}`, LOG_LEVEL.VERBOSE);
         return responder;
     } else {
         runningProcs.push(lockKey);
-        Logger(`Lock:${lockKey}:aqquired`, LOG_LEVEL.VERBOSE);
+        // Logger(`Lock:${lockKey}:aqquired`, LOG_LEVEL.VERBOSE);
         return new Promise((res, rej) => {
             proc()
                 .then((v) => {

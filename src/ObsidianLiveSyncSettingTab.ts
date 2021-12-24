@@ -72,7 +72,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         const containerRemoteDatabaseEl = containerEl.createDiv();
         containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
-        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: "The remote configuration is locked while any synchronization is enabled." });
+        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while automatic synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
         syncWarn.addClass("op-warn");
         syncWarn.addClass("sls-hidden");
 
