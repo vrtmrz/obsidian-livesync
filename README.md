@@ -81,6 +81,7 @@ Synchronization status is shown in statusbar.
 -   When synchronized, files are compared by their modified times and overwritten by the newer ones once. Then plugin checks the conflicts and if a merge is needed, the dialog will open.
 -   Rarely, the file in the database would be broken. The plugin will not write storage when it looks broken, so some old files must be on your device. If you edit the file, it will be cured. But if the file does not exist on any device, can not rescue it. So you can delete these items from the setting dialog.
 -   If your database looks corrupted, try "Drop History". Usually, It is the easiest way.
+-   To stop the bootup sequence for fixing problems on databases, you can put `redflag.md` on top of your vault.
 -   Q: Database is growing, how can I shrink it up?
     A: each of the docs is saved with their old 100 revisions to detect and resolve confliction. Picture yourself that one device has been off the line for a while, and joined again. The device has to check his note and remote saved note. If exists in revision histories of remote notes even though the device's note is a little different from the latest one, it could be merged safely. Even if that is not in revision histories, we only have to check differences after the revision that both devices commonly have. This is like The git's conflict resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
 -   And more technical Information are in the [Technical Information](docs/tech_info.md)

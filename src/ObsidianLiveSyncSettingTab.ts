@@ -635,6 +635,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 c.addClass("op-warn");
             }
         }
+        const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the bootup sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
+        hatchWarn.addClass("op-warn");
         const dropHistory = async (sendToServer: boolean) => {
             this.plugin.settings.liveSync = false;
             this.plugin.settings.periodicReplication = false;
@@ -763,6 +765,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
+        containerHatchEl.createEl("div", {
+            text: sanitizeHTMLToDom(`Advanced buttons<br>
+                These buttons could break your database easily.`),
+        });
         new Setting(containerHatchEl)
             .setName("Reset remote database")
             .setDesc("Reset remote database, this affects only database. If you replicate again, remote database will restored by local database.")

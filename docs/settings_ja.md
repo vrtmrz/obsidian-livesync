@@ -142,11 +142,33 @@ Self-hosted LiveSyncは通常、フォルダ内のファイルがすべて削除
 ### Use newer file if conflicted (beta)
 競合が発生したとき、常に新しいファイルを使用して競合を自動的に解決します。
 
+### Advanced settings
+Self-hosted LiveSyncはPouchDBを使用し、リモートと[このプロトコル](https://docs.couchdb.org/en/stable/replication/protocol.html)で同期しています。  
+そのため、全てのノートなどはデータベースが許容するペイロードサイズやドキュメントサイズに併せてチャンクに分割されています。
+
+しかしながら、それだけでは不十分なケースがあり、[Replicate Changes](https://docs.couchdb.org/en/stable/replication/protocol.html#replicate-changes)の[2.4.2.5.2. Upload Batch of Changed Documents](https://docs.couchdb.org/en/stable/replication/protocol.html#upload-batch-of-changed-documents)を参照すると、このリクエストは巨大になる可能性がありました。
+
+残念ながら、このサイズを呼び出しごとに自動的に調整する方法はありません。  
+そのため、設定を変更できるように機能追加いたしました。
+
+備考：もし小さな値を設定した場合、リクエスト数は増えます。  
+もしサーバから遠い場合、トータルのスループットは遅くなり、転送量は増えます。
+
+### Batch size
+一度に処理するChange feedの数です。デフォルトは250です。
+
+### Batch limit
+一度に処理するBatchの数です。デフォルトは40です。
+
 ## Miscellaneous
 その他の設定です
 ### Show status inside editor
-同期の情報をエディター内に表示します。
+同期の情報をエディター内に表示します。  
 モバイルで便利です。
+
+### Check integrity on saving
+保存時にデータが全て保存できたかチェックを行います。
+
 
 ## Hatch
 ここから先は、困ったときに開ける蓋の中身です。注意して使用してください。
@@ -166,8 +188,11 @@ Self-hosted LiveSyncは通常、フォルダ内のファイルがすべて削除
 ご使用のすべてのデバイスでロックを解除した場合は、データベースのロックを解除することができます。  
 ただし、このまま放置しても問題はありません。
 
-### Reread all files
+### Verify and repair all files
 Vault内のファイルを全て読み込み直し、もし差分があったり、データベースから正常に読み込めなかったものに関して、データベースに反映します。
+
+### Sanity check
+ローカルデータベースに保存されている全てのファイルが正しくチャンクを持っていることを確認します。
 
 ### Drop history
 データベースに記録されている履歴を削除し、データベースを初期化します。  

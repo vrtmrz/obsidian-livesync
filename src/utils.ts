@@ -1,6 +1,6 @@
 import { normalizePath } from "obsidian";
 import { Logger } from "./logger";
-import { LOG_LEVEL } from "./types";
+import { FLAGMD_REDFLAG, LOG_LEVEL } from "./types";
 
 export function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
     return new Promise((res) => {
@@ -77,6 +77,13 @@ export function isValidPath(filename: string): boolean {
     const win = /(\\|\/)(COM\d|LPT\d|CON|PRN|AUX|NUL|CLOCK$)($|\.)/gi;
     const sx = (x = x.replace(win, "/_"));
     return sx == filename;
+}
+
+export function shouldBeIgnored(filename: string): boolean {
+    if (filename == FLAGMD_REDFLAG) {
+        return true;
+    }
+    return false;
 }
 
 export function versionNumberString2Number(version: string): number {

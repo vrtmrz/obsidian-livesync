@@ -1,8 +1,24 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, PluginDataEntry, LOG_LEVEL, VER, PERIODIC_PLUGIN_SWEEP, DEFAULT_SETTINGS, PluginList, DevicePluginList, diff_result } from "./types";
-import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock } from "./utils";
+import {
+    EntryDoc,
+    LoadedEntry,
+    ObsidianLiveSyncSettings,
+    diff_check_result,
+    diff_result_leaf,
+    EntryBody,
+    PluginDataEntry,
+    LOG_LEVEL,
+    VER,
+    PERIODIC_PLUGIN_SWEEP,
+    DEFAULT_SETTINGS,
+    PluginList,
+    DevicePluginList,
+    diff_result,
+    FLAGMD_REDFLAG,
+} from "./types";
+import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored } from "./utils";
 import { Logger, setLogger } from "./logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
@@ -21,6 +37,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const timer = window.setInterval(handler, timeout);
         this.registerInterval(timer);
         return timer;
+    }
+    isRedFlagRaised(): boolean {
+        const redflag = this.app.vault.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
+        if (redflag != null) {
+            return true;
+        }
+        return false;
     }
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
@@ -90,7 +113,27 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.app.workspace.onLayoutReady(async () => {
             try {
-                await this.initializeDatabase();
+                if (this.isRedFlagRaised()) {
+                    this.settings.batchSave = false;
+                    this.settings.liveSync = false;
+                    this.settings.periodicReplication = false;
+                    this.settings.syncOnSave = false;
+                    this.settings.syncOnStart = false;
+                    this.settings.syncOnFileOpen = false;
+                    this.settings.autoSweepPlugins = false;
+                    this.settings.usePluginSync = false;
+                    this.settings.suspendFileWatching = true;
+                    await this.saveSettings();
+                    await this.openDatabase();
+                    const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
+                    Logger(warningMessage, LOG_LEVEL.NOTICE);
+                    this.setStatusBarText(warningMessage);
+                } else {
+                    if (this.settings.suspendFileWatching) {
+                        Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+                    }
+                    await this.initializeDatabase();
+                }
                 await this.realizeSettingSyncMode();
                 this.registerWatchEvents();
                 if (this.settings.syncOnStart) {
@@ -470,6 +513,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async doc2storage_create(docEntry: EntryBody, force?: boolean) {
         const pathSrc = id2path(docEntry._id);
+        if (shouldBeIgnored(pathSrc)) {
+            return;
+        }
         const doc = await this.localDatabase.getDBEntry(pathSrc, { rev: docEntry._rev });
         if (doc === false) return;
         const path = id2path(doc._id);
@@ -527,6 +573,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
         const pathSrc = id2path(docEntry._id);
+        if (shouldBeIgnored(pathSrc)) {
+            return;
+        }
         if (docEntry._deleted) {
             //basically pass.
             //but if there're no docs left, delete file.
@@ -1141,6 +1190,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async updateIntoDB(file: TFile) {
+        if (shouldBeIgnored(file.path)) {
+            return;
+        }
         await this.localDatabase.waitForGCComplete();
         let content = "";
         let datatype: "plain" | "newnote" = "newnote";

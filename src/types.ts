@@ -226,3 +226,5 @@ export interface PluginList {
 export interface DevicePluginList {
     [key: string]: PluginDataEntry;
 }
+
+export const FLAGMD_REDFLAG = "redflag.md";
