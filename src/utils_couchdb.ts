@@ -8,11 +8,54 @@ export const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("http://")) return true;
     return false;
 };
+let last_post_successed = false;
+export const getLastPostFailedBySize = () => {
+    return !last_post_successed;
+};
 export const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
     if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
-    const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, {
+    const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
+        adapter: "http",
         auth,
-    });
+        fetch: async function (url: string | Request, opts: RequestInit) {
+            let size_ok = true;
+            let size = "";
+            const localURL = url.toString().substring(uri.length);
+            const method = opts.method ?? "GET";
+            if (opts.body) {
+                const opts_length = opts.body.toString().length;
+                if (opts_length > 1024 * 1024 * 10) {
+                    // over 10MB
+                    size_ok = false;
+                    if (uri.contains(".cloudantnosqldb.")) {
+                        last_post_successed = false;
+                        Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
+                        throw new Error("This request should fail on IBM Cloudant.");
+                    }
+                }
+                size = ` (${opts_length})`;
+            }
+            try {
+                const responce: Response = await fetch(url, opts);
+                if (method == "POST" || method == "PUT") {
+                    last_post_successed = responce.ok;
+                } else {
+                    last_post_successed = true;
+                }
+                Logger(`HTTP:${method}${size} to:${localURL} -> ${responce.status}`, LOG_LEVEL.VERBOSE);
+                return responce;
+            } catch (ex) {
+                Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                if (!size_ok && (method == "POST" || method == "PUT")) {
+                    last_post_successed = false;
+                }
+                Logger(ex);
+                throw ex;
+            }
+            // return await fetch(url, opts);
+        },
+    };
+    const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
     try {
         const info = await db.info();
         return { db: db, info: info };

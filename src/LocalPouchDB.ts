@@ -25,7 +25,7 @@ import {
 } from "./types";
 import { resolveWithIgnoreKnownError, delay, path2id, runWithLock } from "./utils";
 import { Logger } from "./logger";
-import { checkRemoteVersion, connectRemoteCouchDB } from "./utils_couchdb";
+import { checkRemoteVersion, connectRemoteCouchDB, getLastPostFailedBySize } from "./utils_couchdb";
 import { decrypt, encrypt } from "./e2ee";
 
 export class LocalPouchDB {
@@ -763,6 +763,12 @@ export class LocalPouchDB {
             }
 
             const syncOptionBase: PouchDB.Replication.SyncOptions = {
+                pull: {
+                    checkpoint: "target",
+                },
+                push: {
+                    checkpoint: "source",
+                },
                 batches_limit: setting.batches_limit,
                 batch_size: setting.batch_size,
             };
@@ -770,7 +776,7 @@ export class LocalPouchDB {
             const db = dbret.db;
             const totalCount = (await this.localDatabase.info()).doc_count;
             //replicate once
-            const replicate = this.localDatabase.replicate.to(db, syncOptionBase);
+            const replicate = this.localDatabase.replicate.to(db, { checkpoint: "source", ...syncOptionBase });
             replicate
                 .on("active", () => {
                     this.syncStatus = "CONNECTED";
@@ -806,7 +812,7 @@ export class LocalPouchDB {
         });
     }
 
-    async checkReplicationConnectivity(setting: ObsidianLiveSyncSettings, keepAlive: boolean) {
+    async checkReplicationConnectivity(setting: ObsidianLiveSyncSettings, keepAlive: boolean, skipCheck: boolean) {
         if (!this.isReady) {
             Logger("Database is not ready.");
             return false;
@@ -832,40 +838,41 @@ export class LocalPouchDB {
             return false;
         }
 
-        if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
-            Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
-            return false;
+        if (!skipCheck) {
+            if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+                Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
+                return false;
+            }
+
+            const defMilestonePoint: EntryMilestoneInfo = {
+                _id: MILSTONE_DOCID,
+                type: "milestoneinfo",
+                created: (new Date() as any) / 1,
+                locked: false,
+                accepted_nodes: [this.nodeid],
+            };
+            // const remoteInfo = dbret.info;
+            // const localInfo = await this.localDatabase.info();
+            // const remoteDocsCount = remoteInfo.doc_count;
+            // const localDocsCount = localInfo.doc_count;
+            // const remoteUpdSeq = typeof remoteInfo.update_seq == "string" ? Number(remoteInfo.update_seq.split("-")[0]) : remoteInfo.update_seq;
+            // const localUpdSeq = typeof localInfo.update_seq == "string" ? Number(localInfo.update_seq.split("-")[0]) : localInfo.update_seq;
+
+            // Logger(`Database diffences: remote:${remoteDocsCount} docs / last update ${remoteUpdSeq}`);
+            // Logger(`Database diffences: local :${localDocsCount} docs / last update ${localUpdSeq}`);
+
+            const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
+            this.remoteLocked = remoteMilestone.locked;
+            this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
+
+            if (remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1) {
+                Logger("Remote database marked as 'Auto Sync Locked'. And this devide does not marked as resolved device. see settings dialog.", LOG_LEVEL.NOTICE);
+                return false;
+            }
+            if (typeof remoteMilestone._rev == "undefined") {
+                await dbret.db.put(remoteMilestone);
+            }
         }
-
-        const defMilestonePoint: EntryMilestoneInfo = {
-            _id: MILSTONE_DOCID,
-            type: "milestoneinfo",
-            created: (new Date() as any) / 1,
-            locked: false,
-            accepted_nodes: [this.nodeid],
-        };
-        // const remoteInfo = dbret.info;
-        // const localInfo = await this.localDatabase.info();
-        // const remoteDocsCount = remoteInfo.doc_count;
-        // const localDocsCount = localInfo.doc_count;
-        // const remoteUpdSeq = typeof remoteInfo.update_seq == "string" ? Number(remoteInfo.update_seq.split("-")[0]) : remoteInfo.update_seq;
-        // const localUpdSeq = typeof localInfo.update_seq == "string" ? Number(localInfo.update_seq.split("-")[0]) : localInfo.update_seq;
-
-        // Logger(`Database diffences: remote:${remoteDocsCount} docs / last update ${remoteUpdSeq}`);
-        // Logger(`Database diffences: local :${localDocsCount} docs / last update ${localUpdSeq}`);
-
-        const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
-        this.remoteLocked = remoteMilestone.locked;
-        this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
-
-        if (remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1) {
-            Logger("Remote database marked as 'Auto Sync Locked'. And this devide does not marked as resolved device. see settings dialog.", LOG_LEVEL.NOTICE);
-            return false;
-        }
-        if (typeof remoteMilestone._rev == "undefined") {
-            await dbret.db.put(remoteMilestone);
-        }
-
         const syncOptionBase: PouchDB.Replication.SyncOptions = {
             batches_limit: setting.batches_limit,
             batch_size: setting.batch_size,
@@ -877,33 +884,49 @@ export class LocalPouchDB {
 
     async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
         return await runWithLock("replicate", false, () => {
-            return this._openReplication(setting, keepAlive, showResult, callback);
+            return this._openReplication(setting, keepAlive, showResult, callback, false);
         });
     }
 
-    async _openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
-        const ret = await this.checkReplicationConnectivity(setting, keepAlive);
+    originalSetting: ObsidianLiveSyncSettings = null;
+    // last_seq: number = 200;
+    async _openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean): Promise<boolean> {
+        const ret = await this.checkReplicationConnectivity(setting, keepAlive, retrying);
         if (ret === false) return false;
         let notice: Notice = null;
         if (showResult) {
-            notice = new Notice("Replicating", 0);
+            notice = new Notice("Looking for the point last synchronized point.", 0);
         }
         const { db, syncOptionBase, syncOption } = ret;
         //replicate once
         this.syncStatus = "STARTED";
+        this.updateInfo();
 
         let resolved = false;
         const docArrivedOnStart = this.docArrived;
         const docSentOnStart = this.docSent;
+
         const _openReplicationSync = () => {
             Logger("Sync Main Started");
+            if (!retrying) {
+                this.originalSetting = setting;
+            }
             this.syncHandler = this.cancelHandler(this.syncHandler);
-            this.syncHandler = this.localDatabase.sync<EntryDoc>(db, syncOption);
+            this.syncHandler = this.localDatabase.sync<EntryDoc>(db, {
+                ...syncOption,
+                pull: {
+                    checkpoint: "target",
+                },
+                push: {
+                    checkpoint: "source",
+                },
+            });
             this.syncHandler
                 .on("active", () => {
                     this.syncStatus = "CONNECTED";
                     this.updateInfo();
                     Logger("Replication activated");
+                    if (notice != null) notice.setMessage(`Activated..`);
                 })
                 .on("change", async (e) => {
                     try {
@@ -923,6 +946,16 @@ export class LocalPouchDB {
                     } catch (ex) {
                         Logger("Replication callback error");
                         Logger(ex);
+                    }
+                    // re-connect to retry with original setting
+                    if (retrying) {
+                        if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
+                            // restore sync values
+                            Logger("Back into original settings once.");
+                            if (notice != null) notice.hide();
+                            this.syncHandler = this.cancelHandler(this.syncHandler);
+                            this._openReplication(this.originalSetting, keepAlive, showResult, callback, false);
+                        }
                     }
                 })
                 .on("complete", (e) => {
@@ -948,8 +981,25 @@ export class LocalPouchDB {
                     this.syncHandler = this.cancelHandler(this.syncHandler);
                     this.updateInfo();
                     if (notice != null) notice.hide();
-                    Logger("Replication error", LOG_LEVEL.NOTICE);
-                    Logger(e);
+                    if (getLastPostFailedBySize()) {
+                        if (keepAlive) {
+                            Logger("Replication stopped.", LOG_LEVEL.NOTICE);
+                        } else {
+                            // Duplicate settings for smaller batch.
+                            const xsetting: ObsidianLiveSyncSettings = JSON.parse(JSON.stringify(setting));
+                            xsetting.batch_size = Math.ceil(xsetting.batch_size / 2);
+                            xsetting.batches_limit = Math.ceil(xsetting.batches_limit / 2);
+                            if (xsetting.batch_size <= 3 || xsetting.batches_limit <= 3) {
+                                Logger("We can't replicate more lower value.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                            } else {
+                                Logger(`Retry with lower batch size:${xsetting.batch_size}/${xsetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                                this._openReplication(xsetting, keepAlive, showResult, callback, true);
+                            }
+                        }
+                    } else {
+                        Logger("Replication error", LOG_LEVEL.NOTICE);
+                        Logger(e);
+                    }
                 })
                 .on("paused", (e) => {
                     this.syncStatus = "PAUSED";
@@ -974,7 +1024,7 @@ export class LocalPouchDB {
         Logger(await db.info(), LOG_LEVEL.VERBOSE);
         let replicate: PouchDB.Replication.Replication<EntryDoc>;
         try {
-            replicate = this.localDatabase.replicate.from(db, syncOptionBase);
+            replicate = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase });
             replicate
                 .on("active", () => {
                     this.syncStatus = "CONNECTED";
