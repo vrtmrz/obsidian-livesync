@@ -75,6 +75,8 @@ Synchronization status is shown in statusbar.
     -   ⚠ Error occurred.
 -   ↑ Uploaded pieces
 -   ↓ Downloaded pieces
+-   ⏳ Count of the pending process  
+If you have deleted or renamed files, please wait until this disappears.
 
 # More supplements
 

@@ -18,7 +18,7 @@ import {
     diff_result,
     FLAGMD_REDFLAG,
 } from "./types";
-import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored } from "./utils";
+import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored, getProcessingCounts, setLockNotifier } from "./utils";
 import { Logger, setLogger } from "./logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
@@ -205,6 +205,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
         this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
+        setLockNotifier(() => {
+            this.refreshStatusText();
+        });
     }
     onunload() {
         this.localDatabase.onunload();
@@ -787,7 +790,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             waiting = " " + this.batchFileChange.map((e) => "🛫").join("");
             waiting = waiting.replace(/(🛫){10}/g, "🚀");
         }
-        const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}`;
+        const procs = getProcessingCounts();
+        const procsDisp = procs==0?"":` ⏳${procs}`;
+        const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}`;
         this.setStatusBarText(message);
     }
     setStatusBarText(message: string) {

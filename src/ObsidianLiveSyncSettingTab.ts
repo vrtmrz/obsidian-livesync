@@ -811,7 +811,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // With great respect, thank you TfTHacker!
         // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         const containerPluginSettings = containerEl.createDiv();
-        containerPluginSettings.createEl("h3", { text: "Plugins and settings (bleeding edge)" });
+        containerPluginSettings.createEl("h3", { text: "Plugins and settings (beta)" });
 
         const updateDisabledOfDeviceAndVaultName = () => {
             vaultName.setDisabled(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic);

@@ -121,7 +121,28 @@ function objectToKey(key: any): string {
     const keys = Object.keys(key).sort((a, b) => a.localeCompare(b));
     return keys.map((e) => e + objectToKey(key[e])).join(":");
 }
+export function getProcessingCounts() {
+    let count = 0;
+    for (const v in pendingProcs) {
+        count += pendingProcs[v].length;
+    }
+    count += runningProcs.length;
+    return count;
+}
 
+let externalNotifier: () => void = () => {};
+let notifyTimer: number = null;
+export function setLockNotifier(fn: () => void) {
+    externalNotifier = fn;
+}
+function notifyLock() {
+    if (notifyTimer != null) {
+        window.clearTimeout(notifyTimer);
+    }
+    notifyTimer = window.setTimeout(() => {
+        externalNotifier();
+    }, 100);
+}
 // Just run async/await as like transacion ISOLATION SERIALIZABLE
 export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: () => Promise<T>): Promise<T> {
     // Logger(`Lock:${key}:enter`, LOG_LEVEL.VERBOSE);
@@ -130,11 +151,13 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
         if (typeof pendingProcs[lockKey] === "undefined") {
             //simply unlock
             runningProcs.remove(lockKey);
+            notifyLock();
             // Logger(`Lock:${lockKey}:released`, LOG_LEVEL.VERBOSE);
         } else {
             Logger(`Lock:${lockKey}:left ${pendingProcs[lockKey].length}`, LOG_LEVEL.VERBOSE);
             let nextProc = null;
             nextProc = pendingProcs[lockKey].shift();
+            notifyLock();
             if (nextProc) {
                 // left some
                 nextProc()
@@ -145,6 +168,7 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
                     .finally(() => {
                         if (pendingProcs && lockKey in pendingProcs && pendingProcs[lockKey].length == 0) {
                             delete pendingProcs[lockKey];
+                            notifyLock();
                         }
                         queueMicrotask(() => {
                             handleNextProcs();
@@ -153,6 +177,7 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
             } else {
                 if (pendingProcs && lockKey in pendingProcs && pendingProcs[lockKey].length == 0) {
                     delete pendingProcs[lockKey];
+                    notifyLock();
                 }
             }
         }
@@ -189,10 +214,12 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
             });
 
         pendingProcs[lockKey].push(subproc);
+        notifyLock();
         // Logger(`Lock:${lockKey}:queud:left${pendingProcs[lockKey].length}`, LOG_LEVEL.VERBOSE);
         return responder;
     } else {
         runningProcs.push(lockKey);
+        notifyLock();
         // Logger(`Lock:${lockKey}:aqquired`, LOG_LEVEL.VERBOSE);
         return new Promise((res, rej) => {
             proc()
