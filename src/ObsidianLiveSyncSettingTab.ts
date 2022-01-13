@@ -602,6 +602,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        new Setting(containerMiscellaneousEl)
+            .setName("Use history (beta)")
+            .setDesc("Use history dialog (Restart required, auto compaction would be disabled, and more storage will be consumed)")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.useHistory).onChange(async (value) => {
+                    this.plugin.settings.useHistory = value;
+                    await this.plugin.saveSettings();
+                })
+            );
         addScreenElement("40", containerMiscellaneousEl);
 
         const containerHatchEl = containerEl.createDiv();

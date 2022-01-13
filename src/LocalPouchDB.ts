@@ -121,7 +121,7 @@ export class LocalPouchDB {
         this.changeHandler = this.cancelHandler(this.changeHandler);
         this.localDatabase = null;
         this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
-            auto_compaction: true,
+            auto_compaction: this.settings.useHistory ? false : true,
             revs_limit: 100,
             deterministic_revs: true,
         });
@@ -1204,7 +1204,13 @@ export class LocalPouchDB {
         }
         return false;
     }
+
     async garbageCollect() {
+        // if (this.settings.useHistory) {
+        //     Logger("GC skipped for using history", LOG_LEVEL.VERBOSE);
+        //     return;
+        // }
+        // NOTE:Garbage collection could break old revisions.
         await runWithLock("replicate", true, async () => {
             if (this.gcRunning) return;
             this.gcRunning = true;
@@ -1218,28 +1224,35 @@ export class LocalPouchDB {
                 let usedPieces: string[] = [];
                 Logger("Collecting Garbage");
                 do {
-                    const result = await this.localDatabase.allDocs({ include_docs: true, skip: c, limit: 500, conflicts: true });
+                    const result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 2000, conflicts: true });
                     readCount = result.rows.length;
                     Logger("checked:" + readCount);
                     if (readCount > 0) {
                         //there are some result
                         for (const v of result.rows) {
-                            const doc = v.doc;
-                            if (doc.type == "newnote" || doc.type == "plain") {
-                                // used pieces memo.
-                                usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
-                                if (doc._conflicts) {
-                                    for (const cid of doc._conflicts) {
-                                        const p = await this.localDatabase.get<EntryDoc>(doc._id, { rev: cid });
-                                        if (p.type == "newnote" || p.type == "plain") {
-                                            usedPieces = Array.from(new Set([...usedPieces, ...p.children]));
+                            if (v.id.startsWith("h:")) {
+                                hashPieces = Array.from(new Set([...hashPieces, v.id]));
+                            } else {
+                                const docT = await this.localDatabase.get(v.id, { revs_info: true });
+                                const revs = docT._revs_info;
+                                // console.log(`revs:${revs.length}`)
+                                for (const rev of revs) {
+                                    if (rev.status != "available") continue;
+                                    // console.log(`id:${docT._id},rev:${rev.rev}`);
+                                    const doc = await this.localDatabase.get(v.id, { rev: rev.rev });
+                                    if ("children" in doc) {
+                                        // used pieces memo.
+                                        usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
+                                        if (doc._conflicts) {
+                                            for (const cid of doc._conflicts) {
+                                                const p = await this.localDatabase.get<EntryDoc>(doc._id, { rev: cid });
+                                                if (p.type == "newnote" || p.type == "plain") {
+                                                    usedPieces = Array.from(new Set([...usedPieces, ...p.children]));
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            if (doc.type == "leaf") {
-                                // all pieces.
-                                hashPieces = Array.from(new Set([...hashPieces, doc._id]));
                             }
                         }
                     }

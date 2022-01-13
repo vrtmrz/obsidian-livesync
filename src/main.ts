@@ -24,6 +24,7 @@ import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
+import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
@@ -44,6 +45,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return true;
         }
         return false;
+    }
+    showHistory(file: TFile) {
+        if (!this.settings.useHistory) {
+            Logger("You have to enable Use history in misc.", LOG_LEVEL.NOTICE);
+        } else {
+            new DocumentHistoryModal(this.app, this, file).open();
+        }
     }
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
@@ -203,6 +211,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.saveSettings();
             },
         });
+        this.addCommand({
+            id: "livesync-history",
+            name: "Show history",
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                this.showHistory(view.file);
+            },
+        });
         this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
         this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
         setLockNotifier(() => {
@@ -256,6 +271,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     gcTimerHandler: any = null;
     gcHook() {
         if (this.settings.gcDelay == 0) return;
+        if (this.settings.useHistory) return;
         const GC_DELAY = this.settings.gcDelay * 1000; // if leaving opening window, try GC,
         if (this.gcTimerHandler != null) {
             clearTimeout(this.gcTimerHandler);
@@ -791,7 +807,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             waiting = waiting.replace(/(🛫){10}/g, "🚀");
         }
         const procs = getProcessingCounts();
-        const procsDisp = procs==0?"":` ⏳${procs}`;
+        const procsDisp = procs == 0 ? "" : ` ⏳${procs}`;
         const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}`;
         this.setStatusBarText(message);
     }

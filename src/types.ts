@@ -58,6 +58,7 @@ export interface ObsidianLiveSyncSettings {
     checkIntegrityOnSave: boolean;
     batch_size: number;
     batches_limit: number;
+    useHistory:boolean;
 }
 
 export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -98,6 +99,7 @@ export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     checkIntegrityOnSave: false,
     batch_size: 250,
     batches_limit: 40,
+    useHistory:false,
 };
 
 export const PERIODIC_PLUGIN_SWEEP = 60;

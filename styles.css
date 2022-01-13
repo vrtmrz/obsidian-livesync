@@ -140,3 +140,33 @@ div.sls-setting-menu-btn {
     background-color: var(--background-secondary-alt);
     color: var(--text-accent);
 }
+.op-flex {
+    display: flex;
+}
+.op-flex input {
+    display: inline-flex;
+    flex-grow: 1;
+    margin-bottom: 8px;
+}
+
+.op-info {
+    display: inline-flex;
+    flex-grow: 1;
+    border-bottom: 1px solid var(--background-modifier-border);
+    width: 100%;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+}
+
+.history-added {
+    color: var(--text-on-accent);
+    background-color: var(--text-accent);
+}
+.history-normal {
+    color: var(--text-normal);
+}
+.history-deleted {
+    color: var(--text-on-accent);
+    background-color: var(--text-muted);
+    text-decoration: line-through;
+}
