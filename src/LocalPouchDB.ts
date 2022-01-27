@@ -23,7 +23,7 @@ import {
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
 } from "./types";
-import { resolveWithIgnoreKnownError, delay, path2id, runWithLock } from "./utils";
+import { resolveWithIgnoreKnownError, delay, path2id, runWithLock, isPlainText } from "./utils";
 import { Logger } from "./logger";
 import { checkRemoteVersion, connectRemoteCouchDB, getLastPostFailedBySize } from "./utils_couchdb";
 import { decrypt, encrypt } from "./e2ee";
@@ -501,18 +501,6 @@ export class LocalPouchDB {
         Logger(`deleteDBEntryPrefix:deleted ${deleteCount} items, skipped ${notfound}`);
         return true;
     }
-    isPlainText(filename: string): boolean {
-        if (filename.endsWith(".md")) return true;
-        if (filename.endsWith(".txt")) return true;
-        if (filename.endsWith(".svg")) return true;
-        if (filename.endsWith(".html")) return true;
-        if (filename.endsWith(".csv")) return true;
-        if (filename.endsWith(".css")) return true;
-        if (filename.endsWith(".js")) return true;
-        if (filename.endsWith(".xml")) return true;
-
-        return false;
-    }
     async putDBEntry(note: LoadedEntry) {
         await this.waitForGCComplete();
         let leftData = note.data;
@@ -524,7 +512,7 @@ export class LocalPouchDB {
         let plainSplit = false;
         let cacheUsed = 0;
         const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
-        if (this.isPlainText(note._id)) {
+        if (isPlainText(note._id)) {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
         }

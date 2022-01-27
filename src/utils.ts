@@ -234,3 +234,16 @@ export function runWithLock<T>(key: unknown, ignoreWhenRunning: boolean, proc: (
         });
     }
 }
+
+export function isPlainText(filename: string): boolean {
+    if (filename.endsWith(".md")) return true;
+    if (filename.endsWith(".txt")) return true;
+    if (filename.endsWith(".svg")) return true;
+    if (filename.endsWith(".html")) return true;
+    if (filename.endsWith(".csv")) return true;
+    if (filename.endsWith(".css")) return true;
+    if (filename.endsWith(".js")) return true;
+    if (filename.endsWith(".xml")) return true;
+
+    return false;
+}

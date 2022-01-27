@@ -18,7 +18,7 @@ import {
     diff_result,
     FLAGMD_REDFLAG,
 } from "./types";
-import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored, getProcessingCounts, setLockNotifier } from "./utils";
+import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored, getProcessingCounts, setLockNotifier, isPlainText } from "./utils";
 import { Logger, setLogger } from "./logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
@@ -48,7 +48,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     showHistory(file: TFile) {
         if (!this.settings.useHistory) {
-            Logger("You have to enable Use history in misc.", LOG_LEVEL.NOTICE);
+            Logger("You have to enable Use History in misc.", LOG_LEVEL.NOTICE);
         } else {
             new DocumentHistoryModal(this.app, this, file).open();
         }
@@ -1217,7 +1217,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.localDatabase.waitForGCComplete();
         let content = "";
         let datatype: "plain" | "newnote" = "newnote";
-        if (file.extension != "md") {
+        if (!isPlainText(file.name)) {
             const contentBin = await this.app.vault.readBinary(file);
             content = await arrayBufferToBase64(contentBin);
             datatype = "newnote";
