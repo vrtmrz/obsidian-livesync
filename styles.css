@@ -34,11 +34,13 @@
 .sls-plugins-wrap {
     display: flex;
     flex-grow: 1;
-    /* overflow: scroll; */
+    max-height: 50vh;
+    overflow-y: scroll;
 }
 .sls-plugins-tbl {
     border: 1px solid var(--background-modifier-border);
     width: 100%;
+    max-height: 80%;
 }
 .divider th {
     border-top: 1px solid var(--background-modifier-border);

@@ -2,6 +2,7 @@
 // and cloudant limitation is 1MB , we use 900kb;
 
 import { PluginManifest } from "obsidian";
+import * as PouchDB from "pouchdb";
 
 export const MAX_DOC_SIZE = 1000; // for .md file, but if delimiters exists. use that before.
 export const MAX_DOC_SIZE_BIN = 102400; // 100kb
@@ -58,7 +59,7 @@ export interface ObsidianLiveSyncSettings {
     checkIntegrityOnSave: boolean;
     batch_size: number;
     batches_limit: number;
-    useHistory:boolean;
+    useHistory: boolean;
 }
 
 export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -99,7 +100,7 @@ export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     checkIntegrityOnSave: false,
     batch_size: 250,
     batches_limit: 40,
-    useHistory:false,
+    useHistory: false,
 };
 
 export const PERIODIC_PLUGIN_SWEEP = 60;

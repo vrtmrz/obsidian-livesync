@@ -1,21 +1,17 @@
 {
     "compilerOptions": {
         "baseUrl": ".",
-        "inlineSourceMap": true,
-        "inlineSources": true,
         "module": "ESNext",
-        "target": "es6",
+        "target": "ES6",
         "allowJs": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
+        "types": ["svelte", "node"],
+        // "importsNotUsedAsValues": "error",
         "importHelpers": true,
-        "noImplicitReturns": true,
-        "noImplicitThis": true,
-        "strictFunctionTypes": true,
         "alwaysStrict": true,
-        "lib": ["dom", "es5", "ES6", "ES7", "es2020"]
+        "lib": ["es2018", "DOM", "ES5", "ES6", "ES7"]
     },
-    "include": ["./src/*.ts"],
-    // "files": ["./src/main.ts"],
+    "include": ["**/*.ts"],
     "exclude": ["pouchdb-browser-webpack"]
 }

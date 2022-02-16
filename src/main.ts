@@ -1,4 +1,4 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest } from "obsidian";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
 import {
@@ -26,6 +26,36 @@ import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
+import PluginPane from "./PluginPane.svelte";
+
+class PluginDialogModal extends Modal {
+    plugin: ObsidianLiveSyncPlugin;
+    logEl: HTMLDivElement;
+    component: PluginPane = null;
+
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
+        super(app);
+        this.plugin = plugin;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        if (this.component == null) {
+            this.component = new PluginPane({
+                target: contentEl,
+                props: { plugin: this.plugin },
+            });
+        }
+    }
+
+    onClose() {
+        if (this.component != null) {
+            this.component.$destroy();
+            this.component = null;
+        }
+    }
+}
+
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
     localDatabase: LocalPouchDB;
@@ -39,6 +69,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.registerInterval(timer);
         return timer;
     }
+
     isRedFlagRaised(): boolean {
         const redflag = this.app.vault.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
         if (redflag != null) {
@@ -46,6 +77,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return false;
     }
+
     showHistory(file: TFile) {
         if (!this.settings.useHistory) {
             Logger("You have to enable Use History in misc.", LOG_LEVEL.NOTICE);
@@ -53,6 +85,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             new DocumentHistoryModal(this.app, this, file).open();
         }
     }
+
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
         Logger("loading plugin");
@@ -116,6 +149,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.periodicSync = this.periodicSync.bind(this);
         this.setPeriodicSync = this.setPeriodicSync.bind(this);
 
+        this.getPluginList = this.getPluginList.bind(this);
         // this.registerWatchEvents();
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
@@ -223,8 +257,35 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         setLockNotifier(() => {
             this.refreshStatusText();
         });
+        this.addCommand({
+            id: "livesync-plugin-dialog",
+            name: "Show Plugins and their settings",
+            callback: () => {
+                this.showPluginSyncModal();
+            },
+        });
     }
+
+    pluginDialog: PluginDialogModal = null;
+
+    showPluginSyncModal() {
+        if (this.pluginDialog != null) {
+            this.pluginDialog.open();
+        } else {
+            this.pluginDialog = new PluginDialogModal(this.app, this);
+            this.pluginDialog.open();
+        }
+    }
+
+    hidePluginSyncModal() {
+        if (this.pluginDialog != null) {
+            this.pluginDialog.close();
+            this.pluginDialog = null;
+        }
+    }
+
     onunload() {
+        this.hidePluginSyncModal();
         this.localDatabase.onunload();
         if (this.gcTimerHandler != null) {
             clearTimeout(this.gcTimerHandler);
@@ -250,6 +311,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         };
         await this.localDatabase.initializeDatabase();
     }
+
     async garbageCollect() {
         await this.localDatabase.garbageCollect();
     }
@@ -263,12 +325,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     triggerRealizeSettingSyncMode() {
         (async () => await this.realizeSettingSyncMode())();
     }
+
     async saveSettings() {
         await this.saveData(this.settings);
         this.localDatabase.settings = this.settings;
         this.triggerRealizeSettingSyncMode();
     }
+
     gcTimerHandler: any = null;
+
     gcHook() {
         if (this.settings.gcDelay == 0) return;
         if (this.settings.useHistory) return;
@@ -282,6 +347,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.garbageCollect();
         }, GC_DELAY);
     }
+
     registerWatchEvents() {
         this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
         this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
@@ -294,6 +360,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     watchWindowVisiblity() {
         this.watchWindowVisiblityAsync();
     }
+
     async watchWindowVisiblityAsync() {
         if (this.settings.suspendFileWatching) return;
         // if (this.suspended) return;
@@ -325,6 +392,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.suspendFileWatching) return;
         this.watchWorkspaceOpenAsync(file);
     }
+
     async watchWorkspaceOpenAsync(file: TFile) {
         await this.applyBatchChange();
         if (file == null) return;
@@ -335,10 +403,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.showIfConflicted(file);
         this.gcHook();
     }
+
     watchVaultCreate(file: TFile, ...args: any[]) {
         if (this.settings.suspendFileWatching) return;
         this.watchVaultChangeAsync(file, ...args);
     }
+
     watchVaultChange(file: TAbstractFile, ...args: any[]) {
         if (!(file instanceof TFile)) {
             return;
@@ -352,6 +422,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.watchVaultChangeAsync(file, ...args);
     }
+
     async applyBatchChange() {
         if (!this.settings.batchSave || this.batchFileChange.length == 0) {
             return [];
@@ -375,19 +446,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return await Promise.all(promises);
         });
     }
+
     batchFileChange: string[] = [];
+
     async watchVaultChangeAsync(file: TFile, ...args: any[]) {
         if (file instanceof TFile) {
             await this.updateIntoDB(file);
             this.gcHook();
         }
     }
+
     watchVaultDelete(file: TAbstractFile) {
         // When save is delayed, it should be cancelled.
         this.batchFileChange = this.batchFileChange.filter((e) => e == file.path);
         if (this.settings.suspendFileWatching) return;
-        this.watchVaultDeleteAsync(file);
+        this.watchVaultDeleteAsync(file).then(() => {});
     }
+
     async watchVaultDeleteAsync(file: TAbstractFile) {
         if (file instanceof TFile) {
             await this.deleteFromDB(file);
@@ -396,6 +471,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.gcHook();
     }
+
     GetAllFilesRecursively(file: TAbstractFile): TFile[] {
         if (file instanceof TFile) {
             return [file];
@@ -410,10 +486,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             throw new Error(`Filetype error:${file.path}`);
         }
     }
+
     watchVaultRename(file: TAbstractFile, oldFile: any) {
         if (this.settings.suspendFileWatching) return;
-        this.watchVaultRenameAsync(file, oldFile);
+        this.watchVaultRenameAsync(file, oldFile).then(() => {});
     }
+
     getFilePath(file: TAbstractFile): string {
         if (file instanceof TFolder) {
             if (file.isRoot()) return "";
@@ -425,6 +503,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         return this.getFilePath(file.parent) + "/" + file.name;
     }
+
     async watchVaultRenameAsync(file: TAbstractFile, oldFile: any) {
         Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
         try {
@@ -461,9 +540,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.gcHook();
     }
+
     addLogHook: () => void = null;
     //--> Basic document Functions
     notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
+
     // eslint-disable-next-line require-await
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
         if (level < LOG_LEVEL.INFO && this.settings && this.settings.lessInformationInLog) {
@@ -547,7 +628,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
                 await this.ensureDirectory(path);
                 try {
-                    const newfile = await this.app.vault.createBinary(normalizePath(path), bin, { ctime: doc.ctime, mtime: doc.mtime });
+                    const newfile = await this.app.vault.createBinary(normalizePath(path), bin, {
+                        ctime: doc.ctime,
+                        mtime: doc.mtime,
+                    });
                     Logger("live : write to local (newfile:b) " + path);
                     this.app.vault.trigger("create", newfile);
                 } catch (ex) {
@@ -562,7 +646,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             await this.ensureDirectory(path);
             try {
-                const newfile = await this.app.vault.create(normalizePath(path), doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+                const newfile = await this.app.vault.create(normalizePath(path), doc.data, {
+                    ctime: doc.ctime,
+                    mtime: doc.mtime,
+                });
                 Logger("live : write to local (newfile:p) " + path);
                 this.app.vault.trigger("create", newfile);
             } catch (ex) {
@@ -590,6 +677,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
     }
+
     async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
         const pathSrc = id2path(docEntry._id);
         if (shouldBeIgnored(pathSrc)) {
@@ -597,7 +685,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         if (docEntry._deleted) {
             //basically pass.
-            //but if there're no docs left, delete file.
+            //but if there are no docs left, delete file.
             const lastDocs = await this.localDatabase.getDBEntry(pathSrc);
             if (lastDocs === false) {
                 await this.deleteVaultItem(file);
@@ -657,6 +745,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             //eq.case
         }
     }
+
     async handleDBChanged(change: EntryBody) {
         const targetFile = this.app.vault.getAbstractFileByPath(id2path(change._id));
         if (targetFile == null) {
@@ -676,6 +765,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     periodicSyncHandler: number = null;
+
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
         this.refreshStatusText();
@@ -702,61 +792,81 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.gcHook();
         }
     }
+
     triggerCheckPluginUpdate() {
         (async () => await this.checkPluginUpdate())();
     }
+
     async checkPluginUpdate() {
         if (!this.settings.usePluginSync) return;
         await this.sweepPlugin(false);
         const { allPlugins, thisDevicePlugins } = await this.getPluginList();
         const arrPlugins = Object.values(allPlugins);
+        let updateFound = false;
         for (const plugin of arrPlugins) {
-            const currentPlugin = thisDevicePlugins[plugin.manifest.id];
-            if (currentPlugin) {
-                const thisVersion = versionNumberString2Number(plugin.manifest.version);
-                const currentVersion = versionNumberString2Number(currentPlugin.manifest.version);
-                if (thisVersion > currentVersion) {
-                    Logger(`the device ${plugin.deviceVaultName} has the newer plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+            const ownPlugin = thisDevicePlugins[plugin.manifest.id];
+            if (ownPlugin) {
+                const remoteVersion = versionNumberString2Number(plugin.manifest.version);
+                const ownVersion = versionNumberString2Number(ownPlugin.manifest.version);
+                if (remoteVersion > ownVersion) {
+                    updateFound = true;
                 }
-                if (plugin.mtime > currentPlugin.mtime) {
-                    Logger(`the device ${plugin.deviceVaultName} has the newer settings of the plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
+                if (((plugin.mtime / 1000) | 0) > ((ownPlugin.mtime / 1000) | 0) && (plugin.dataJson ?? "") != (ownPlugin.dataJson ?? "")) {
+                    updateFound = true;
                 }
-            } else {
-                Logger(`the device ${plugin.deviceVaultName} has the new plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
             }
         }
+        if (updateFound) {
+            const fragment = createFragment((doc) => {
+                doc.createEl("a", null, (a) => {
+                    a.text = "There're some new plugins or their settings";
+                    a.addEventListener("click", () => this.showPluginSyncModal());
+                });
+            });
+            new Notice(fragment, 10000);
+        } else {
+            Logger("Everything is up to date.", LOG_LEVEL.NOTICE);
+        }
     }
+
     clearPeriodicSync() {
         if (this.periodicSyncHandler != null) {
             clearInterval(this.periodicSyncHandler);
             this.periodicSyncHandler = null;
         }
     }
+
     setPeriodicSync() {
         if (this.settings.periodicReplication && this.settings.periodicReplicationInterval > 0) {
             this.clearPeriodicSync();
             this.periodicSyncHandler = this.setInterval(async () => await this.periodicSync(), Math.max(this.settings.periodicReplicationInterval, 30) * 1000);
         }
     }
+
     async periodicSync() {
         await this.replicate();
     }
+
     periodicPluginSweepHandler: number = null;
+
     clearPluginSweep() {
         if (this.periodicPluginSweepHandler != null) {
             clearInterval(this.periodicPluginSweepHandler);
             this.periodicPluginSweepHandler = null;
         }
     }
+
     setPluginSweep() {
         if (this.settings.autoSweepPluginsPeriodic) {
             this.clearPluginSweep();
             this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicPluginSweep(), PERIODIC_PLUGIN_SWEEP * 1000);
         }
     }
+
     async periodicPluginSweep() {
         await this.sweepPlugin(false);
     }
+
     async realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
         this.clearPeriodicSync();
@@ -774,7 +884,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.setPeriodicSync();
         this.setPluginSweep();
     }
+
     lastMessage = "";
+
     refreshStatusText() {
         const sent = this.localDatabase.docSent;
         const arrived = this.localDatabase.docArrived;
@@ -811,6 +923,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}`;
         this.setStatusBarText(message);
     }
+
     setStatusBarText(message: string) {
         if (this.lastMessage != message) {
             this.statusBar.setText(message);
@@ -824,6 +937,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.lastMessage = message;
         }
     }
+
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
             new Notice("Open settings and check message, please.");
@@ -840,21 +954,26 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.openDatabase();
         await this.syncAllFiles(showingNotice);
     }
+
     async replicateAllToServer(showingNotice?: boolean) {
         if (this.settings.autoSweepPlugins) {
             await this.sweepPlugin(showingNotice);
         }
         return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
     }
+
     async markRemoteLocked() {
         return await this.localDatabase.markRemoteLocked(this.settings, true);
     }
+
     async markRemoteUnlocked() {
         return await this.localDatabase.markRemoteLocked(this.settings, false);
     }
+
     async markRemoteResolved() {
         return await this.localDatabase.markRemoteResolved(this.settings);
     }
+
     async syncAllFiles(showingNotice?: boolean) {
         // synchronize all files between database and storage.
         let notice: Notice = null;
@@ -896,6 +1015,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(ex);
                 }
             });
+            // @ts-ignore
             if (!Promise.allSettled) {
                 await Promise.all(
                     procs.map((p) =>
@@ -911,6 +1031,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     )
                 );
             } else {
+                // @ts-ignore
                 await Promise.allSettled(procs);
             }
         };
@@ -932,6 +1053,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger("Initialize done!", LOG_LEVEL.NOTICE);
         }
     }
+
     async deleteFolderOnDB(folder: TFolder) {
         Logger(`delete folder:${folder.path}`);
         await this.localDatabase.deleteDBEntryPrefix(folder.path + "/");
@@ -1016,6 +1138,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return false;
     }
+
     /**
      * Getting file conflicted status.
      * @param path the file location
@@ -1076,6 +1199,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             diff: diff,
         };
     }
+
     showMergeDialog(file: TFile, conflictCheckResult: diff_result): Promise<boolean> {
         return new Promise((res, rej) => {
             Logger("open conflict dialog", LOG_LEVEL.VERBOSE);
@@ -1121,10 +1245,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }).open();
         });
     }
+
     conflictedCheckFiles: string[] = [];
 
     // queueing the conflicted file check
     conflictedCheckTimer: number;
+
     queueConflictedCheck(file: TFile) {
         this.conflictedCheckFiles = this.conflictedCheckFiles.filter((e) => e != file.path);
         this.conflictedCheckFiles.push(file.path);
@@ -1146,6 +1272,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }, 1000);
     }
+
     async showIfConflicted(file: TFile) {
         await runWithLock("conflicted", false, async () => {
             const conflictCheckResult = await this.getConflictedStatus(file.path);
@@ -1165,6 +1292,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.showMergeDialog(file, conflictCheckResult);
         });
     }
+
     async pullFile(filename: string, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
         const targetFile = this.app.vault.getAbstractFileByPath(id2path(filename));
         if (targetFile == null) {
@@ -1184,6 +1312,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         //when to opened file;
     }
+
     async syncFileBetweenDBandStorage(file: TFile, fileList?: TFile[]) {
         const doc = await this.localDatabase.getDBEntryMeta(file.path);
         if (doc === false) return;
@@ -1257,6 +1386,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.replicate();
         }
     }
+
     async deleteFromDB(file: TFile) {
         const fullpath = file.path;
         Logger(`deleteDB By path:${fullpath}`);
@@ -1265,6 +1395,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.replicate();
         }
     }
+
     async deleteFromDBbyPath(fullpath: string) {
         await this.localDatabase.deleteDBEntry(fullpath);
         if (this.settings.syncOnSave && !this.suspended) {
@@ -1275,12 +1406,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async resetLocalDatabase() {
         await this.localDatabase.resetDatabase();
     }
+
     async tryResetRemoteDatabase() {
         await this.localDatabase.tryResetRemoteDatabase(this.settings);
     }
+
     async tryCreateRemoteDatabase() {
         await this.localDatabase.tryCreateRemoteDatabase(this.settings);
     }
+
     async getPluginList(): Promise<{ plugins: PluginList; allPlugins: DevicePluginList; thisDevicePlugins: DevicePluginList }> {
         const db = this.localDatabase.localDatabase;
         const docList = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: false });
@@ -1300,6 +1434,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return { plugins, allPlugins, thisDevicePlugins };
     }
+
     async sweepPlugin(showMessage = false) {
         if (!this.settings.usePluginSync) return;
         await runWithLock("sweepplugin", false, async () => {
@@ -1314,7 +1449,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             Logger("Sweeping plugins", logLevel);
             const db = this.localDatabase.localDatabase;
-            const oldDocs = await db.allDocs({ startkey: `ps:${this.settings.deviceAndVaultName}-`, endkey: `ps:${this.settings.deviceAndVaultName}.`, include_docs: true });
+            const oldDocs = await db.allDocs({
+                startkey: `ps:${this.settings.deviceAndVaultName}-`,
+                endkey: `ps:${this.settings.deviceAndVaultName}.`,
+                include_docs: true,
+            });
             Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
             // sweep current plugin.
             // @ts-ignore
@@ -1383,12 +1522,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(`Sweep plugin done.`, logLevel);
         });
     }
+
     async applyPluginData(plugin: PluginDataEntry) {
         await runWithLock("plugin-" + plugin.manifest.id, false, async () => {
             const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
             const adapter = this.app.vault.adapter;
             // @ts-ignore
-            const stat = this.app.plugins.enabledPlugins[plugin.manifest.id];
+            const stat = this.app.plugins.enabledPlugins.has(plugin.manifest.id) == true;
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.unloadPlugin(plugin.manifest.id);
@@ -1396,7 +1536,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
             Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
-            // @ts-ignore
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.loadPlugin(plugin.manifest.id);
@@ -1404,10 +1543,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         });
     }
+
     async applyPlugin(plugin: PluginDataEntry) {
         await runWithLock("plugin-" + plugin.manifest.id, false, async () => {
             // @ts-ignore
-            const stat = this.app.plugins.enabledPlugins[plugin.manifest.id];
+            const stat = this.app.plugins.enabledPlugins.has(plugin.manifest.id) == true;
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.unloadPlugin(plugin.manifest.id);
@@ -1422,7 +1562,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
             await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
             if (plugin.styleCss) await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
-            // if (plugin.dataJson) await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.loadPlugin(plugin.manifest.id);

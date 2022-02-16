@@ -1,6 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting, sanitizeHTMLToDom } from "obsidian";
 import { EntryDoc, LOG_LEVEL } from "./types";
-import { escapeStringToHTML, versionNumberString2Number, path2id, id2path, runWithLock } from "./utils";
+import { path2id, id2path, runWithLock } from "./utils";
 import { Logger } from "./logger";
 import { connectRemoteCouchDB } from "./utils_couchdb";
 import { testCrypt } from "./e2ee";
@@ -830,14 +830,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
                 this.plugin.settings.usePluginSync = value;
                 await this.plugin.saveSettings();
-                updatePluginPane();
             })
         );
         new Setting(containerPluginSettings).setName("Show own plugins and settings").addToggle((toggle) =>
             toggle.setValue(this.plugin.settings.showOwnPlugins).onChange(async (value) => {
                 this.plugin.settings.showOwnPlugins = value;
                 await this.plugin.saveSettings();
-                updatePluginPane();
             })
         );
 
@@ -884,233 +882,19 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 // text.inputEl.setAttribute("type", "password");
             });
+        new Setting(containerPluginSettings)
+            .setName("Open")
+            .setDesc("Open the plugin dialog")
+            .addButton((button) => {
+                button
+                    .setButtonText("Open")
+                    .setDisabled(false)
+                    .onClick(() => {
+                        this.plugin.showPluginSyncModal();
+                    });
+            });
 
         updateDisabledOfDeviceAndVaultName();
-        const sweepPlugin = async (showMessage: boolean) => {
-            if (!this.plugin.settings.usePluginSync) {
-                return;
-            }
-            await this.plugin.sweepPlugin(showMessage);
-            updatePluginPane();
-        };
-        const updatePluginPane = async () => {
-            pluginConfig.innerHTML = "<div class='sls-plugins-wrap'>Retrieving...</div>";
-            const { plugins, allPlugins, thisDevicePlugins } = await this.plugin.getPluginList();
-            let html = `
-            <div class='sls-plugins-wrap'>
-            <table class='sls-plugins-tbl'>
-            `;
-            for (const vaults in plugins) {
-                if (!this.plugin.settings.showOwnPlugins && vaults == this.plugin.settings.deviceAndVaultName) continue;
-                html += `
-                <tr>
-                    <th colspan=1 class='sls-plugins-tbl-device-head'>${escapeStringToHTML(vaults)}</th>
-                    <td class='sls-plugins-tbl-device-head sls-plugins-tbl-buttons'>
-                        <button class='sls-plugin-apply-all-newer-plugin mod-cta' data-key="${vaults}" aria-label="Apply all newer (without setting)">⚡</button>
-                        <button class='sls-plugin-apply-all-newer-setting mod-cta' data-key="${vaults}" aria-label="Apply all newer settings">📚</button>
-                        <button class='sls-plugin-delete mod-warning' data-key="${vaults}" aria-label="Delete">❌</button>
-                    </td>
-                </tr>`;
-                for (const v of plugins[vaults]) {
-                    const mtime = v.mtime == 0 ? "-" : new Date(v.mtime).toLocaleString();
-                    let settingApplyable: boolean | string = "-";
-                    let settingFleshness = "";
-                    let isSameVersion = false;
-                    let isSameContents = false;
-                    if (thisDevicePlugins[v.manifest.id]) {
-                        if (thisDevicePlugins[v.manifest.id].manifest.version == v.manifest.version) {
-                            isSameVersion = true;
-                        }
-                        if (thisDevicePlugins[v.manifest.id].styleCss == v.styleCss && thisDevicePlugins[v.manifest.id].mainJs == v.mainJs && thisDevicePlugins[v.manifest.id].manifestJson == v.manifestJson) {
-                            isSameContents = true;
-                        }
-                    }
-                    if (thisDevicePlugins[v.manifest.id] && v.dataJson) {
-                        // have this plugin.
-                        const localSetting = thisDevicePlugins[v.manifest.id].dataJson || null;
-
-                        try {
-                            const remoteSetting = v.dataJson;
-                            if (!localSetting) {
-                                settingFleshness = "newer";
-                                settingApplyable = true;
-                            } else if (localSetting == remoteSetting) {
-                                settingApplyable = "even";
-                            } else {
-                                if (v.mtime > thisDevicePlugins[v.manifest.id].mtime) {
-                                    settingFleshness = "newer";
-                                } else {
-                                    settingFleshness = "older";
-                                }
-                                settingApplyable = true;
-                            }
-                        } catch (ex) {
-                            settingApplyable = "could not decrypt";
-                        }
-                    } else if (!v.dataJson) {
-                        settingApplyable = "N/A";
-                    }
-                    // very ugly way.
-                    const piece = `
-                    <tr class='divider'>
-                        <th colspan=2></th>
-                    </tr>
-                    <tr>
-                        <th class='sls-table-head'>${escapeStringToHTML(v.manifest.name)}</th>
-                        <td class="sls-table-tail tcenter">${isSameContents ? "even" : `<button data-key='${v._id}' class='apply-plugin-version mod-cta'>Use (${isSameVersion ? "=" : ""}${v.manifest.version}) </button>`}</td>
-                    </tr>
-                    <tr>
-                        <td class="sls-table-head tcenter">${escapeStringToHTML(mtime)}</td>
-                        <td class="sls-table-tail tcenter">${settingApplyable === true ? "<button data-key='" + v._id + "' class='apply-plugin-data mod-cta'>Apply (" + settingFleshness + ")</button>" : settingApplyable}</td>
-                    </tr>
-                    `;
-                    html += piece;
-                }
-                html += `
-                <tr class='divider'>
-                    <th colspan=2></th>
-                </tr>
-`;
-            }
-            html += "</table></div>";
-            pluginConfig.innerHTML = html;
-            pluginConfig.querySelectorAll(".apply-plugin-data").forEach((e) =>
-                e.addEventListener("click", async (evt) => {
-                    const plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
-                    Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await this.plugin.applyPluginData(plugin);
-                    Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await sweepPlugin(true);
-                })
-            );
-            pluginConfig.querySelectorAll(".apply-plugin-version").forEach((e) =>
-                e.addEventListener("click", async (evt) => {
-                    const plugin = allPlugins[e.attributes.getNamedItem("data-key").value];
-                    Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await this.plugin.applyPlugin(plugin);
-                    Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                    await sweepPlugin(true);
-                })
-            );
-            pluginConfig.querySelectorAll(".sls-plugin-apply-all-newer-plugin").forEach((e) =>
-                e.addEventListener("click", async (evt) => {
-                    Logger("Apply all newer plugins.", LOG_LEVEL.NOTICE);
-                    const vaultname = e.attributes.getNamedItem("data-key").value;
-                    const plugins = Object.values(allPlugins).filter((e) => e.deviceVaultName == vaultname && e.manifest.id != "obsidian-livesync");
-                    for (const plugin of plugins) {
-                        const currentPlugin = thisDevicePlugins[plugin.manifest.id];
-                        if (currentPlugin) {
-                            const thisVersion = versionNumberString2Number(plugin.manifest.version);
-                            const currentVersion = versionNumberString2Number(currentPlugin.manifest.version);
-                            if (thisVersion > currentVersion) {
-                                Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                                await this.plugin.applyPlugin(plugin);
-                                Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                            } else {
-                                Logger(`Plugin ${plugin.manifest.name} is not new`);
-                            }
-                        } else {
-                            Logger(`Updating plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                            await this.plugin.applyPlugin(plugin);
-                            Logger(`Updated plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                        }
-                    }
-                    await sweepPlugin(true);
-                    Logger("Done", LOG_LEVEL.NOTICE);
-                })
-            );
-            pluginConfig.querySelectorAll(".sls-plugin-apply-all-newer-setting").forEach((e) =>
-                e.addEventListener("click", async (evt) => {
-                    Logger("Apply all newer settings.", LOG_LEVEL.NOTICE);
-                    const vaultname = e.attributes.getNamedItem("data-key").value;
-                    const plugins = Object.values(allPlugins).filter((e) => e.deviceVaultName == vaultname && e.manifest.id != "obsidian-livesync");
-                    for (const plugin of plugins) {
-                        const currentPlugin = thisDevicePlugins[plugin.manifest.id];
-                        if (currentPlugin) {
-                            const thisVersion = plugin.mtime;
-                            const currentVersion = currentPlugin.mtime;
-                            if (thisVersion > currentVersion) {
-                                Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                                await this.plugin.applyPluginData(plugin);
-                                Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                            } else {
-                                Logger(`Setting ${plugin.manifest.name} is not new`);
-                            }
-                        } else {
-                            Logger(`Setting plugin:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                            await this.plugin.applyPluginData(plugin);
-                            Logger(`Setting done:${plugin.manifest.name}`, LOG_LEVEL.NOTICE);
-                        }
-                    }
-                    await sweepPlugin(true);
-                    Logger("Done", LOG_LEVEL.NOTICE);
-                })
-            );
-            pluginConfig.querySelectorAll(".sls-plugin-delete").forEach((e) =>
-                e.addEventListener("click", async (evt) => {
-                    const db = this.plugin.localDatabase.localDatabase;
-                    const vaultname = e.attributes.getNamedItem("data-key").value;
-                    const oldDocs = await db.allDocs({ startkey: `ps:${vaultname}-`, endkey: `ps:${vaultname}.`, include_docs: true });
-                    Logger(`Deleting ${vaultname}`, LOG_LEVEL.NOTICE);
-                    const delDocs = oldDocs.rows.map((e) => {
-                        e.doc._deleted = true;
-                        return e.doc;
-                    });
-                    await db.bulkDocs(delDocs);
-                    Logger(`Deleted ${vaultname}`, LOG_LEVEL.NOTICE);
-                    await this.plugin.replicate(true);
-                    await updatePluginPane();
-                })
-            );
-        };
-
-        const pluginConfig = containerPluginSettings.createEl("div");
-
-        new Setting(containerPluginSettings)
-            .setName("Reload")
-            .setDesc("Replicate once and reload the list")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reload")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        if (!this.plugin.settings.usePluginSync) {
-                            return;
-                        }
-                        await this.plugin.replicate(true);
-                        await updatePluginPane();
-                    })
-            );
-        new Setting(containerPluginSettings)
-            .setName("Save plugins into the database")
-            .setDesc("")
-            .addButton((button) =>
-                button
-                    .setButtonText("Save plugins")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        if (!this.plugin.settings.usePluginSync) {
-                            return;
-                        }
-                        Logger("Save plugins.", LOG_LEVEL.NOTICE);
-                        await sweepPlugin(true);
-                        Logger("All plugins have been saved.", LOG_LEVEL.NOTICE);
-                        await this.plugin.replicate(true);
-                    })
-            );
-        new Setting(containerPluginSettings)
-            .setName("Check updates")
-            .setDesc("")
-            .addButton((button) =>
-                button
-                    .setButtonText("Check")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        Logger("Checking plugins.", LOG_LEVEL.NOTICE);
-                        await this.plugin.checkPluginUpdate();
-                    })
-            );
-        updatePluginPane();
 
         addScreenElement("60", containerPluginSettings);
 
