@@ -56,7 +56,7 @@
     $: {
         deviceAndPlugins = {};
         for (const p of plugins) {
-            if (p.deviceVaultName == plugin.settings.deviceAndVaultName && !showOwnPlugins) {
+            if (p.deviceVaultName == plugin.deviceAndVaultName && !showOwnPlugins) {
                 continue;
             }
             if (!(p.deviceVaultName in deviceAndPlugins)) {

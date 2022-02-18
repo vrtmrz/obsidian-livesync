@@ -63,6 +63,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
     suspended: boolean;
+    deviceAndVaultName: string;
 
     setInterval(handler: () => any, timeout?: number): number {
         const timer = window.setInterval(handler, timeout);
@@ -320,6 +321,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
         this.settings.workingEncrypt = this.settings.encrypt;
         this.settings.workingPassphrase = this.settings.passphrase;
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+        if (this.settings.deviceAndVaultName != "") {
+            if (!localStorage.getItem(lsname)) {
+                this.deviceAndVaultName = this.settings.deviceAndVaultName;
+                localStorage.setItem(lsname, this.deviceAndVaultName);
+                this.settings.deviceAndVaultName = "";
+            }
+        }
+        this.deviceAndVaultName = localStorage.getItem(lsname) || "";
     }
 
     triggerRealizeSettingSyncMode() {
@@ -327,6 +337,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async saveSettings() {
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+
+        localStorage.setItem(lsname, this.deviceAndVaultName || "");
         await this.saveData(this.settings);
         this.localDatabase.settings = this.settings;
         this.triggerRealizeSettingSyncMode();
@@ -1428,7 +1441,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             plugins[v.deviceVaultName].push(v);
             allPlugins[v._id] = v;
-            if (v.deviceVaultName == this.settings.deviceAndVaultName) {
+            if (v.deviceVaultName == this.deviceAndVaultName) {
                 thisDevicePlugins[v.manifest.id] = v;
             }
         }
@@ -1443,15 +1456,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
                 return;
             }
-            if (!this.settings.deviceAndVaultName) {
+            if (!this.deviceAndVaultName) {
                 Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
                 return;
             }
             Logger("Sweeping plugins", logLevel);
             const db = this.localDatabase.localDatabase;
             const oldDocs = await db.allDocs({
-                startkey: `ps:${this.settings.deviceAndVaultName}-`,
-                endkey: `ps:${this.settings.deviceAndVaultName}.`,
+                startkey: `ps:${this.deviceAndVaultName}-`,
+                endkey: `ps:${this.deviceAndVaultName}.`,
                 include_docs: true,
             });
             Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
@@ -1476,9 +1489,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     mtime = (await adapter.stat(path + "/data.json")).mtime;
                 }
                 const p: PluginDataEntry = {
-                    _id: `ps:${this.settings.deviceAndVaultName}-${m.id}`,
+                    _id: `ps:${this.deviceAndVaultName}-${m.id}`,
                     dataJson: pluginData["data.json"],
-                    deviceVaultName: this.settings.deviceAndVaultName,
+                    deviceVaultName: this.deviceAndVaultName,
                     mainJs: pluginData["main.js"],
                     styleCss: pluginData["styles.css"],
                     manifest: m,

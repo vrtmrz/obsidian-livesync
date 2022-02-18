@@ -875,9 +875,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .setDesc("")
             .addText((text) => {
                 text.setPlaceholder("desktop-main")
-                    .setValue(this.plugin.settings.deviceAndVaultName)
+                    .setValue(this.plugin.deviceAndVaultName)
                     .onChange(async (value) => {
-                        this.plugin.settings.deviceAndVaultName = value;
+                        this.plugin.deviceAndVaultName = value;
                         await this.plugin.saveSettings();
                     });
                 // text.inputEl.setAttribute("type", "password");
