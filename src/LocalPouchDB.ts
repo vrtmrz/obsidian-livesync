@@ -357,7 +357,7 @@ export class LocalPouchDB {
                             Logger(childrens);
                         }
                     } catch (ex) {
-                        Logger(`Something went wrong on reading elements of ${obj._id} from database.`, LOG_LEVEL.NOTICE);
+                        Logger(`Something went wrong on reading elements of ${obj._id} from database:`, LOG_LEVEL.NOTICE);
                         Logger(ex, LOG_LEVEL.VERBOSE);
                         this.corruptedEntries[obj._id] = obj;
                         return false;
@@ -388,7 +388,7 @@ export class LocalPouchDB {
                         Logger(`Missing document content!, could not read ${obj._id} from database.`, LOG_LEVEL.NOTICE);
                         return false;
                     }
-                    Logger(`Something went wrong on reading ${obj._id} from database.`, LOG_LEVEL.NOTICE);
+                    Logger(`Something went wrong on reading ${obj._id} from database:`, LOG_LEVEL.NOTICE);
                     Logger(ex);
                 }
             }
@@ -594,7 +594,7 @@ export class LocalPouchDB {
                             try {
                                 pieceData.data = await decrypt(pieceData.data, this.settings.passphrase);
                             } catch (e) {
-                                Logger("Decode failed !");
+                                Logger("Decode failed!");
                                 throw e;
                             }
                         }
@@ -667,8 +667,8 @@ export class LocalPouchDB {
                     }
                 }
             } catch (ex) {
-                Logger("ERROR ON SAVING LEAVES ");
-                Logger(ex);
+                Logger("ERROR ON SAVING LEAVES:", LOG_LEVEL.NOTICE);
+                Logger(ex, LOG_LEVEL.NOTICE);
                 saved = false;
             }
         }
@@ -822,7 +822,7 @@ export class LocalPouchDB {
         }
         const dbret = await connectRemoteCouchDB(uri, auth);
         if (typeof dbret === "string") {
-            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
+            Logger(`could not connect to ${uri}: ${dbret}`, LOG_LEVEL.NOTICE);
             return false;
         }
 
@@ -932,8 +932,8 @@ export class LocalPouchDB {
                         }
                         this.updateInfo();
                     } catch (ex) {
-                        Logger("Replication callback error");
-                        Logger(ex);
+                        Logger("Replication callback error", LOG_LEVEL.NOTICE);
+                        Logger(ex, LOG_LEVEL.NOTICE);
                     }
                     // re-connect to retry with original setting
                     if (retrying) {
@@ -1032,8 +1032,8 @@ export class LocalPouchDB {
                             notice.setMessage(`Replication pulled:${e.docs_read}`);
                         }
                     } catch (ex) {
-                        Logger("Replication callback error");
-                        Logger(ex);
+                        Logger("Replication callback error", LOG_LEVEL.NOTICE);
+                        Logger(ex, LOG_LEVEL.NOTICE);
                     }
                 });
             this.syncStatus = "COMPLETED";
@@ -1046,7 +1046,8 @@ export class LocalPouchDB {
         } catch (ex) {
             this.syncStatus = "ERRORED";
             this.updateInfo();
-            Logger("Pulling Replication error", LOG_LEVEL.NOTICE);
+            Logger("Pulling Replication error:", LOG_LEVEL.NOTICE);
+            Logger(ex, LOG_LEVEL.NOTICE);
             this.cancelHandler(replicate);
             this.syncHandler = this.cancelHandler(this.syncHandler);
             if (notice != null) notice.hide();
@@ -1087,7 +1088,8 @@ export class LocalPouchDB {
             Logger("Remote Database Destroyed", LOG_LEVEL.NOTICE);
             await this.tryCreateRemoteDatabase(setting);
         } catch (ex) {
-            Logger("something happend on Remote Database Destory", LOG_LEVEL.NOTICE);
+            Logger("Something happened on Remote Database Destory:", LOG_LEVEL.NOTICE);
+            Logger(ex, LOG_LEVEL.NOTICE);
         }
     }
     async tryCreateRemoteDatabase(setting: ObsidianLiveSyncSettings) {
