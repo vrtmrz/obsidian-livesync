@@ -14,10 +14,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        const db = await connectRemoteCouchDB(this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME), {
-            username: this.plugin.settings.couchDB_USER,
-            password: this.plugin.settings.couchDB_PASSWORD,
-        });
+        const db = await connectRemoteCouchDB(
+            this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME),
+            {
+                username: this.plugin.settings.couchDB_USER,
+                password: this.plugin.settings.couchDB_PASSWORD,
+            },
+            this.plugin.settings.disableRequestURI
+        );
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
@@ -165,6 +169,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.couchDB_DBNAME = value;
                         await this.plugin.saveSettings();
                     })
+            ),
+            new Setting(containerRemoteDatabaseEl).setName("Use the old connecting method").addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
+                    this.plugin.settings.disableRequestURI = value;
+                    await this.plugin.saveSettings();
+                })
             )
         );
 
@@ -603,7 +613,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerMiscellaneousEl)
-            .setName("Use history (beta)")
+            .setName("Use history")
             .setDesc("Use history dialog (Restart required, auto compaction would be disabled, and more storage will be consumed)")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.useHistory).onChange(async (value) => {
@@ -829,12 +839,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerPluginSettings).setName("Enable plugin synchronization").addToggle((toggle) =>
             toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
                 this.plugin.settings.usePluginSync = value;
-                await this.plugin.saveSettings();
-            })
-        );
-        new Setting(containerPluginSettings).setName("Show own plugins and settings").addToggle((toggle) =>
-            toggle.setValue(this.plugin.settings.showOwnPlugins).onChange(async (value) => {
-                this.plugin.settings.showOwnPlugins = value;
                 await this.plugin.saveSettings();
             })
         );

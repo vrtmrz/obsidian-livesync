@@ -2,6 +2,7 @@ import { Logger } from "./logger";
 import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc } from "./types";
 import { resolveWithIgnoreKnownError } from "./utils";
 import { PouchDB } from "../pouchdb-browser-webpack/dist/pouchdb-browser.js";
+import { requestUrl, RequestUrlParam } from "obsidian";
 
 export const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("https://")) return true;
@@ -12,8 +13,17 @@ let last_post_successed = false;
 export const getLastPostFailedBySize = () => {
     return !last_post_successed;
 };
-export const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
+
+export const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
     if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
+    let authHeader = "";
+    if (auth.username && auth.password) {
+        const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${auth.username}:${auth.password}`));
+        const encoded = window.btoa(utf8str);
+        authHeader = "Basic " + encoded;
+    } else {
+        authHeader = "";
+    }
     const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
         adapter: "http",
         auth,
@@ -35,6 +45,54 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                 }
                 size = ` (${opts_length})`;
             }
+
+            if (!disableRequestURI && typeof url == "string" && typeof (opts.body ?? "") == "string") {
+                const body = opts.body as string;
+
+                const transformedHeaders = { ...(opts.headers as Record<string, string>) };
+                if (authHeader != "") transformedHeaders["authorization"] = authHeader;
+                delete transformedHeaders["host"];
+                delete transformedHeaders["Host"];
+                delete transformedHeaders["content-length"];
+                delete transformedHeaders["Content-Length"];
+                const requestParam: RequestUrlParam = {
+                    url: url as string,
+                    method: opts.method,
+                    body: body,
+                    headers: transformedHeaders,
+                    contentType: "application/json",
+                    // contentType: opts.headers,
+                };
+
+                try {
+                    const r = await requestUrl(requestParam);
+                    if (method == "POST" || method == "PUT") {
+                        last_post_successed = r.status - (r.status % 100) == 200;
+                    } else {
+                        last_post_successed = true;
+                    }
+                    if (r.status - (r.status % 100) !== 200) {
+                        throw new Error(`Request Error:${r.status}`);
+                    }
+                    Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.VERBOSE);
+
+                    return new Response(r.arrayBuffer, {
+                        headers: r.headers,
+                        status: r.status,
+                        statusText: `${r.status}`,
+                    });
+                } catch (ex) {
+                    Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                    if (!size_ok && (method == "POST" || method == "PUT")) {
+                        last_post_successed = false;
+                    }
+                    Logger(ex);
+                    throw ex;
+                }
+            }
+
+            // -old implementation
+
             try {
                 const responce: Response = await fetch(url, opts);
                 if (method == "POST" || method == "PUT") {

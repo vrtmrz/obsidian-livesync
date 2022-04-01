@@ -60,6 +60,7 @@ export interface ObsidianLiveSyncSettings {
     batch_size: number;
     batches_limit: number;
     useHistory: boolean;
+    disableRequestURI: boolean;
 }
 
 export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
@@ -101,6 +102,7 @@ export const DEFAULT_SETTINGS: ObsidianLiveSyncSettings = {
     batch_size: 250,
     batches_limit: 40,
     useHistory: false,
+    disableRequestURI: false,
 };
 
 export const PERIODIC_PLUGIN_SWEEP = 60;

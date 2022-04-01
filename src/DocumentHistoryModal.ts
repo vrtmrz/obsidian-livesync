@@ -2,6 +2,8 @@ import { TFile, Modal, App } from "obsidian";
 import { path2id, escapeStringToHTML } from "./utils";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
+import { LOG_LEVEL } from "./types";
+import { Logger } from "./logger";
 
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -14,6 +16,7 @@ export class DocumentHistoryModal extends Modal {
     file: string;
 
     revs_info: PouchDB.Core.RevisionInfo[] = [];
+    currentText = "";
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile) {
         super(app);
@@ -37,6 +40,7 @@ export class DocumentHistoryModal extends Modal {
         const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
         const rev = this.revs_info[index];
         const w = await db.getDBEntry(path2id(this.file), { rev: rev.rev }, false, false);
+        this.currentText = "";
 
         if (w === false) {
             this.info.innerHTML = "";
@@ -44,6 +48,7 @@ export class DocumentHistoryModal extends Modal {
         } else {
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
+            this.currentText = w.data;
             if (this.showDiff) {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
@@ -124,6 +129,14 @@ export class DocumentHistoryModal extends Modal {
         this.contentView = div;
         div.addClass("op-scrollable");
         div.addClass("op-pre");
+        const buttons = contentEl.createDiv("");
+        buttons.createEl("button", { text: "Copy to clipboard" }, (e) => {
+            e.addClass("mod-cta");
+            e.addEventListener("click", async () => {
+                await navigator.clipboard.writeText(this.currentText);
+                Logger(`Old content copied to clipboard`, LOG_LEVEL.NOTICE);
+            });
+        });
     }
     onClose() {
         const { contentEl } = this;

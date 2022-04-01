@@ -18,7 +18,14 @@ Note: This password is saved into your Obsidian's vault in plain text.
 The Database name to synchronize.  
 ⚠️If not exist, created automatically.
 
+
+### Use the old connecting method
+Since v0.8.0, Self-hosted LiveSync uses Obsidian's API to connect to the CouchDB instead of the browser API.
+This method will increase the performance and avoid troubles with the CORS.
+But it doesn't been well tested yet. If you are troubled, please disable this option once.
+
 ### Test Database connection
+You can check the connection by clicking this button.
 
 ## Local Database Configurations
 "Local Database" is created inside your obsidian.
@@ -44,6 +51,8 @@ As a result, Obsidian's behavior is temporarily slowed down.
 Default is 300 seconds.
 If you are an early adopter, maybe this value is left as 30 seconds. Please change this value to larger values.
 
+Note: If you want to use "Use history", this vault must be set to 0.
+
 ### Manual Garbage Collect
 Run "Garbage Collection" manually.
 
@@ -51,6 +60,8 @@ Run "Garbage Collection" manually.
 Encrypt your database. It affects only the database, your files are left as plain.
 
 The encryption algorithm is AES-GCM.
+
+Note: If you want to use "Plugins and their settings", you have to enable this.
 
 ### Passphrase
 The passphrase to used as the key of encryption. Please use the long text.
@@ -194,6 +205,29 @@ You can set synchronization method at once as these pattern:
   - Sync on Save : disabled
   - Sync on File Open : disabled
   - Sync on Start : disabled
+
+### Use history
+If you enable this option, you can keep document histories in your database.  
+(Not all intermediate changes are synchronized.)  
+You can check the changes caused by your edit and/or replication.
+
+### Enable plugin synchronization
+If you want to use this feature, you have to activate this feature by this switch.
+
+### Sweep plugins automatically
+Plugin sweep will run before replication automatically.
+
+### Sweep plugins periodically
+Plugin sweep will run each 1 minute.
+
+### Notify updates
+When replication is complete, a message will be notified if a newer version of the plugin applied to this device is configured on another device.
+
+### Device and Vault name
+To save the plugins, you have to set a unique name every each device.
+
+### Open
+Open the "Plugins and their settings" dialog.
 
 ## Hatch
 From here, everything is under the hood. Please handle it with care.

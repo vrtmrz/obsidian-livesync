@@ -743,7 +743,7 @@ export class LocalPouchDB {
                 username: setting.couchDB_USER,
                 password: setting.couchDB_PASSWORD,
             };
-            const dbret = await connectRemoteCouchDB(uri, auth);
+            const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
             if (typeof dbret === "string") {
                 Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
                 if (notice != null) notice.hide();
@@ -820,7 +820,7 @@ export class LocalPouchDB {
             Logger("Another replication running.");
             return false;
         }
-        const dbret = await connectRemoteCouchDB(uri, auth);
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}: ${dbret}`, LOG_LEVEL.NOTICE);
             return false;
@@ -1081,7 +1081,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const con = await connectRemoteCouchDB(uri, auth);
+        const con = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
         if (typeof con == "string") return;
         try {
             await con.db.destroy();
@@ -1099,7 +1099,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const con2 = await connectRemoteCouchDB(uri, auth);
+        const con2 = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
         if (typeof con2 === "string") return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
@@ -1109,7 +1109,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const dbret = await connectRemoteCouchDB(uri, auth);
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
@@ -1143,7 +1143,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const dbret = await connectRemoteCouchDB(uri, auth);
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
