@@ -427,10 +427,21 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return;
         }
         if (this.settings.suspendFileWatching) return;
+
         // If batchsave is enabled, queue all changes and do nothing.
         if (this.settings.batchSave) {
-            this.batchFileChange = Array.from(new Set([...this.batchFileChange, file.path]));
-            this.refreshStatusText();
+            ~(async () => {
+                const meta = await this.localDatabase.getDBEntryMeta(file.path);
+                if (meta != false) {
+                    const localMtime = ~~(file.stat.mtime / 1000);
+                    const docMtime = ~~(meta.mtime / 1000);
+                    if (localMtime !== docMtime) {
+                        // Perhaps we have to modify (to using newer doc), but we don't be sure to every device's clock is adjusted.
+                        this.batchFileChange = Array.from(new Set([...this.batchFileChange, file.path]));
+                        this.refreshStatusText();
+                    }
+                }
+            })();
             return;
         }
         this.watchVaultChangeAsync(file, ...args);
@@ -1232,10 +1243,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     //concat both,
                     // write data,and delete both old rev.
                     const p = conflictCheckResult.diff.map((e) => e[1]).join("");
-                    await this.app.vault.modify(file, p);
-                    await this.updateIntoDB(file);
                     await this.localDatabase.deleteDBEntry(file.path, { rev: conflictCheckResult.left.rev });
                     await this.localDatabase.deleteDBEntry(file.path, { rev: conflictCheckResult.right.rev });
+                    await this.app.vault.modify(file, p);
+                    await this.updateIntoDB(file);
                     await this.pullFile(file.path);
                     Logger("concat both file");
                     setTimeout(() => {
