@@ -146,7 +146,7 @@ export const checkRemoteVersion = async (db: PouchDB.Database, migrate: (from: n
         if (version == barrier) return true;
         return false;
     } catch (ex) {
-        if (ex.status && ex.status == 404) {
+        if ((ex.status && ex.status == 404) || (ex.message && ex.message == "Request Error:404")) {
             if (await bumpRemoteVersion(db)) {
                 return true;
             }
