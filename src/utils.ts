@@ -66,7 +66,7 @@ export const escapeStringToHTML = (str: string) => {
 
 export function resolveWithIgnoreKnownError<T>(p: Promise<T>, def: T): Promise<T> {
     return new Promise((res, rej) => {
-        p.then(res).catch((ex) => ((ex.status && ex.status == 404) || (ex.message && ex.message == "Request Error:404") ? res(def) : rej(ex)));
+        p.then(res).catch((ex) => (ex.status && ex.status == 404 ? res(def) : rej(ex)));
     });
 }
 

@@ -2,7 +2,7 @@ import { Logger } from "./logger";
 import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc } from "./types";
 import { resolveWithIgnoreKnownError } from "./utils";
 import { PouchDB } from "../pouchdb-browser-webpack/dist/pouchdb-browser.js";
-import { requestUrl, RequestUrlParam } from "obsidian";
+import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
 
 export const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("https://")) return true;
@@ -12,6 +12,19 @@ export const isValidRemoteCouchDBURI = (uri: string): boolean => {
 let last_post_successed = false;
 export const getLastPostFailedBySize = () => {
     return !last_post_successed;
+};
+const fetchByAPI = async (request: RequestUrlParam): Promise<RequestUrlResponse> => {
+    const ret = await requestUrl(request);
+    if (ret.status - (ret.status % 100) !== 200) {
+        const er: Error & { status?: number } = new Error(`Request Error:${ret.status}`);
+        if (ret.json) {
+            er.message = ret.json.reason;
+            er.name = `${ret.json.error ?? ""}:${ret.json.message ?? ""}`;
+        }
+        er.status = ret.status;
+        throw er;
+    }
+    return ret;
 };
 
 export const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
@@ -65,14 +78,11 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                 };
 
                 try {
-                    const r = await requestUrl(requestParam);
+                    const r = await fetchByAPI(requestParam);
                     if (method == "POST" || method == "PUT") {
                         last_post_successed = r.status - (r.status % 100) == 200;
                     } else {
                         last_post_successed = true;
-                    }
-                    if (r.status - (r.status % 100) !== 200) {
-                        throw new Error(`Request Error:${r.status}`);
                     }
                     Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.VERBOSE);
 
@@ -146,7 +156,7 @@ export const checkRemoteVersion = async (db: PouchDB.Database, migrate: (from: n
         if (version == barrier) return true;
         return false;
     } catch (ex) {
-        if ((ex.status && ex.status == 404) || (ex.message && ex.message == "Request Error:404")) {
+        if (ex.status && ex.status == 404) {
             if (await bumpRemoteVersion(db)) {
                 return true;
             }
