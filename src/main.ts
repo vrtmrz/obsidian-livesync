@@ -1,25 +1,24 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG } from "./lib/src/types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList } from "./types";
 import {
-    EntryDoc,
-    LoadedEntry,
-    ObsidianLiveSyncSettings,
-    diff_check_result,
-    diff_result_leaf,
-    EntryBody,
-    PluginDataEntry,
-    LOG_LEVEL,
-    VER,
-    PERIODIC_PLUGIN_SWEEP,
-    DEFAULT_SETTINGS,
-    PluginList,
-    DevicePluginList,
-    diff_result,
-    FLAGMD_REDFLAG,
-} from "./types";
-import { base64ToString, arrayBufferToBase64, base64ToArrayBuffer, isValidPath, versionNumberString2Number, id2path, path2id, runWithLock, shouldBeIgnored, getProcessingCounts, setLockNotifier, isPlainText } from "./utils";
-import { Logger, setLogger } from "./logger";
+    base64ToString,
+    arrayBufferToBase64,
+    base64ToArrayBuffer,
+    isValidPath,
+    versionNumberString2Number,
+    runWithLock,
+    shouldBeIgnored,
+    getProcessingCounts,
+    setLockNotifier,
+    isPlainText,
+    setNoticeClass,
+    NewNotice,
+    allSettledWithConcurrencyLimit,
+} from "./lib/src/utils";
+import { Logger, setLogger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -27,7 +26,8 @@ import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 import PluginPane from "./PluginPane.svelte";
-
+import { id2path, path2id } from "./utils";
+setNoticeClass(Notice);
 class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
     logEl: HTMLDivElement;
@@ -702,7 +702,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    async doc2storate_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
+    async doc2storage_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
         const pathSrc = id2path(docEntry._id);
         if (shouldBeIgnored(pathSrc)) {
             return;
@@ -781,7 +781,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else if (targetFile instanceof TFile) {
             const doc = change;
             const file = targetFile;
-            await this.doc2storate_modify(doc, file);
+            await this.doc2storage_modify(doc, file);
             this.queueConflictedCheck(file);
         } else {
             Logger(`${id2path(change._id)} is already exist as the folder`);
@@ -847,7 +847,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     a.addEventListener("click", () => this.showPluginSyncModal());
                 });
             });
-            new Notice(fragment, 10000);
+            NewNotice(fragment, 10000);
         } else {
             Logger("Everything is up to date.", LOG_LEVEL.NOTICE);
         }
@@ -964,7 +964,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
-            new Notice("Open settings and check message, please.");
+            NewNotice("Open settings and check message, please.");
             return;
         }
         await this.applyBatchChange();
@@ -1002,7 +1002,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // synchronize all files between database and storage.
         let notice: Notice = null;
         if (showingNotice) {
-            notice = new Notice("Initializing", 0);
+            notice = NewNotice("Initializing", 0);
         }
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
@@ -1024,12 +1024,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(procedurename);
             let i = 0;
             // let lastTicks = performance.now() + 2000;
+            let workProcs = 0;
             const procs = objects.map(async (e) => {
                 try {
+                    workProcs++;
                     await callback(e);
                     i++;
                     if (i % 25 == 0) {
-                        const notify = `${procedurename} : ${i}/${count}`;
+                        const notify = `${procedurename} : ${workProcs}/${count} (Pending:${workProcs})`;
                         if (notice != null) notice.setMessage(notify);
                         Logger(notify);
                         this.setStatusBarText(notify);
@@ -1037,27 +1039,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 } catch (ex) {
                     Logger(`Error while ${procedurename}`, LOG_LEVEL.NOTICE);
                     Logger(ex);
+                } finally {
+                    workProcs--;
                 }
             });
-            // @ts-ignore
-            if (!Promise.allSettled) {
-                await Promise.all(
-                    procs.map((p) =>
-                        p
-                            .then((value) => ({
-                                status: "fulfilled",
-                                value,
-                            }))
-                            .catch((reason) => ({
-                                status: "rejected",
-                                reason,
-                            }))
-                    )
-                );
-            } else {
-                // @ts-ignore
-                await Promise.allSettled(procs);
-            }
+
+            await allSettledWithConcurrencyLimit(procs, 10);
         };
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`Update into ${e.path}`);
@@ -1329,7 +1316,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const file = targetFile;
             const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
             if (doc === false) return;
-            await this.doc2storate_modify(doc, file, force);
+            await this.doc2storage_modify(doc, file, force);
         } else {
             Logger(`target files:${filename} is exists as the folder`);
             //something went wrong..
@@ -1354,7 +1341,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(`${storageMtime} < ${docMtime}`);
             const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
             if (docx != false) {
-                await this.doc2storate_modify(docx, file);
+                await this.doc2storage_modify(docx, file);
             }
         } else {
             // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
@@ -1471,7 +1458,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
                 return;
             }
-            Logger("Sweeping plugins", logLevel);
+            Logger("Scanning plugins", logLevel);
             const db = this.localDatabase.localDatabase;
             const oldDocs = await db.allDocs({
                 startkey: `ps:${this.deviceAndVaultName}-`,
@@ -1543,7 +1530,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return e.doc;
             });
             await db.bulkDocs(delDocs);
-            Logger(`Sweep plugin done.`, logLevel);
+            Logger(`Scan plugin done.`, logLevel);
         });
     }
 

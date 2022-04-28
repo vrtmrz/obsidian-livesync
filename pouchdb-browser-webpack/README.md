@@ -1,2 +1,0 @@
-# PouchDB-browser
-just webpacked.

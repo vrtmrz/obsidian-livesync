@@ -1,7 +1,7 @@
-import { Logger } from "./logger";
-import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc } from "./types";
-import { resolveWithIgnoreKnownError } from "./utils";
-import { PouchDB } from "../pouchdb-browser-webpack/dist/pouchdb-browser.js";
+import { Logger } from "./lib/src/logger";
+import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc } from "./lib/src/types";
+import { resolveWithIgnoreKnownError } from "./lib/src/utils";
+import { PouchDB } from "./pouchdb-browser";
 import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
 
 export const isValidRemoteCouchDBURI = (uri: string): boolean => {

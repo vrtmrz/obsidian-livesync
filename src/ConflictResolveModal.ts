@@ -1,7 +1,7 @@
 import { App, Modal } from "obsidian";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { diff_result } from "./types";
-import { escapeStringToHTML } from "./utils";
+import { diff_result } from "./lib/src/types";
+import { escapeStringToHTML } from "./lib/src/utils";
 
 export class ConflictResolveModal extends Modal {
     // result: Array<[number, string]>;

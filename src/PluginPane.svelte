@@ -2,7 +2,7 @@
     import ObsidianLiveSyncPlugin from "./main";
     import { onMount } from "svelte";
     import { DevicePluginList, PluginDataEntry } from "./types";
-    import { versionNumberString2Number } from "./utils";
+    import { versionNumberString2Number } from "./lib/src/utils";
 
     type JudgeResult = "" | "NEWER" | "EVEN" | "EVEN_BUT_DIFFERENT" | "OLDER" | "REMOTE_ONLY";
 
@@ -266,7 +266,7 @@
 
     <div class="ols-plugins-div-buttons">
         <button class="mod-cta" on:click={checkUpdates}>Check Updates</button>
-        <button class="mod-cta" on:click={sweepPlugins}>Sweep installed</button>
+        <button class="mod-cta" on:click={sweepPlugins}>Scan installed</button>
         <button class="mod-cta" on:click={applyPlugins}>Apply all</button>
     </div>
     <!--    <div class="ols-plugins-div-buttons">-->

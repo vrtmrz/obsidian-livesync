@@ -1,9 +1,10 @@
 import { TFile, Modal, App } from "obsidian";
-import { path2id, escapeStringToHTML } from "./utils";
+import { path2id } from "./utils";
+import { escapeStringToHTML } from "./lib/src/utils";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { LOG_LEVEL } from "./types";
-import { Logger } from "./logger";
+import { LOG_LEVEL } from "./lib/src/types";
+import { Logger } from "./lib/src/logger";
 
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;

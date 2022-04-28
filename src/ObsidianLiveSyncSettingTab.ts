@@ -1,9 +1,10 @@
-import { App, Notice, PluginSettingTab, Setting, sanitizeHTMLToDom } from "obsidian";
-import { EntryDoc, LOG_LEVEL } from "./types";
-import { path2id, id2path, runWithLock } from "./utils";
-import { Logger } from "./logger";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom } from "obsidian";
+import { EntryDoc, LOG_LEVEL } from "./lib/src/types";
+import { path2id, id2path } from "./utils";
+import { NewNotice, runWithLock } from "./lib/src/utils";
+import { Logger } from "./lib/src/logger";
 import { connectRemoteCouchDB } from "./utils_couchdb";
-import { testCrypt } from "./e2ee";
+import { testCrypt } from "./lib/src/e2ee";
 import ObsidianLiveSyncPlugin from "./main";
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -688,7 +689,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         const files = this.app.vault.getFiles();
                         Logger("Verify and repair all files started", LOG_LEVEL.NOTICE);
-                        const notice = new Notice("", 0);
+                        const notice = NewNotice("", 0);
                         let i = 0;
                         for (const file of files) {
                             i++;
@@ -714,7 +715,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        const notice = new Notice("", 0);
+                        const notice = NewNotice("", 0);
                         Logger(`Begin sanity check`, LOG_LEVEL.INFO);
                         notice.setMessage(`Begin sanity check`);
                         await runWithLock("sancheck", true, async () => {
@@ -834,7 +835,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         const updateDisabledOfDeviceAndVaultName = () => {
             vaultName.setDisabled(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic);
-            vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto sweep." : "");
+            vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto scan." : "");
         };
         new Setting(containerPluginSettings).setName("Enable plugin synchronization").addToggle((toggle) =>
             toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
@@ -844,8 +845,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
 
         new Setting(containerPluginSettings)
-            .setName("Sweep plugins automatically")
-            .setDesc("Sweep plugins before replicating.")
+            .setName("Scan plugins automatically")
+            .setDesc("Scan plugins before replicating.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPlugins).onChange(async (value) => {
                     this.plugin.settings.autoSweepPlugins = value;
@@ -855,8 +856,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerPluginSettings)
-            .setName("Sweep plugins periodically")
-            .setDesc("Sweep plugins each 1 minutes.")
+            .setName("Scan plugins periodically")
+            .setDesc("Scan plugins each 1 minutes.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
                     this.plugin.settings.autoSweepPluginsPeriodic = value;

@@ -1,5 +1,4 @@
-import { Notice } from "obsidian";
-import { PouchDB } from "../pouchdb-browser-webpack/dist/pouchdb-browser.js";
+import { PouchDB } from "./pouchdb-browser";
 import xxhash from "xxhash-wasm";
 import {
     Entry,
@@ -10,7 +9,6 @@ import {
     NewEntry,
     PlainEntry,
     LoadedEntry,
-    ObsidianLiveSyncSettings,
     Credential,
     EntryMilestoneInfo,
     LOG_LEVEL,
@@ -22,16 +20,18 @@ import {
     VER,
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
-} from "./types";
-import { resolveWithIgnoreKnownError, delay, path2id, runWithLock, isPlainText } from "./utils";
-import { Logger } from "./logger";
+} from "./lib/src/types";
+import { decrypt, encrypt } from "./lib/src/e2ee";
+import { RemoteDBSettings } from "./lib/src/types";
+import { resolveWithIgnoreKnownError, delay, runWithLock, isPlainText, splitPieces, NewNotice, WrappedNotice } from "./lib/src/utils";
+import { path2id } from "./utils";
+import { Logger } from "./lib/src/logger";
 import { checkRemoteVersion, connectRemoteCouchDB, getLastPostFailedBySize } from "./utils_couchdb";
-import { decrypt, encrypt } from "./e2ee";
 
 export class LocalPouchDB {
     auth: Credential;
     dbname: string;
-    settings: ObsidianLiveSyncSettings;
+    settings: RemoteDBSettings;
     localDatabase: PouchDB.Database<EntryDoc>;
     nodeid = "";
     isReady = false;
@@ -77,7 +77,7 @@ export class LocalPouchDB {
         this.localDatabase.removeAllListeners();
     }
 
-    constructor(settings: ObsidianLiveSyncSettings, dbname: string) {
+    constructor(settings: RemoteDBSettings, dbname: string) {
         this.auth = {
             username: "",
             password: "",
@@ -503,7 +503,7 @@ export class LocalPouchDB {
     }
     async putDBEntry(note: LoadedEntry) {
         await this.waitForGCComplete();
-        let leftData = note.data;
+        // let leftData = note.data;
         const savenNotes = [];
         let processed = 0;
         let made = 0;
@@ -516,53 +516,22 @@ export class LocalPouchDB {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
         }
+
         const newLeafs: EntryLeaf[] = [];
-        do {
-            // To keep low bandwith and database size,
-            // Dedup pieces on database.
-            // from 0.1.10, for best performance. we use markdown delimiters
-            // 1. \n[^\n]{longLineThreshold}[^\n]*\n -> long sentence shuld break.
-            // 2. \n\n shold break
-            // 3. \r\n\r\n should break
-            // 4. \n# should break.
-            let cPieceSize = pieceSize;
-            if (plainSplit) {
-                let minimumChunkSize = this.settings.minimumChunkSize;
-                if (minimumChunkSize < 10) minimumChunkSize = 10;
-                let longLineThreshold = this.settings.longLineThreshold;
-                if (longLineThreshold < 100) longLineThreshold = 100;
-                cPieceSize = 0;
-                // lookup for next splittion .
-                // we're standing on "\n"
-                do {
-                    const n1 = leftData.indexOf("\n", cPieceSize + 1);
-                    const n2 = leftData.indexOf("\n\n", cPieceSize + 1);
-                    const n3 = leftData.indexOf("\r\n\r\n", cPieceSize + 1);
-                    const n4 = leftData.indexOf("\n#", cPieceSize + 1);
-                    if (n1 == -1 && n2 == -1 && n3 == -1 && n4 == -1) {
-                        cPieceSize = MAX_DOC_SIZE;
-                        break;
-                    }
+        // To keep low bandwith and database size,
+        // Dedup pieces on database.
+        // from 0.1.10, for best performance. we use markdown delimiters
+        // 1. \n[^\n]{longLineThreshold}[^\n]*\n -> long sentence shuld break.
+        // 2. \n\n shold break
+        // 3. \r\n\r\n should break
+        // 4. \n# should break.
+        let minimumChunkSize = this.settings.minimumChunkSize;
+        if (minimumChunkSize < 10) minimumChunkSize = 10;
+        let longLineThreshold = this.settings.longLineThreshold;
+        if (longLineThreshold < 100) longLineThreshold = 100;
 
-                    if (n1 > longLineThreshold) {
-                        // long sentence is an established piece
-                        cPieceSize = n1;
-                    } else {
-                        // cPieceSize = Math.min.apply([n2, n3, n4].filter((e) => e > 1));
-                        // ^ heavy.
-                        if (n1 > 0 && cPieceSize < n1) cPieceSize = n1;
-                        if (n2 > 0 && cPieceSize < n2) cPieceSize = n2 + 1;
-                        if (n3 > 0 && cPieceSize < n3) cPieceSize = n3 + 3;
-                        // Choose shorter, empty line and \n#
-                        if (n4 > 0 && cPieceSize > n4) cPieceSize = n4 + 0;
-                        cPieceSize++;
-                    }
-                } while (cPieceSize < minimumChunkSize);
-            }
-
-            // piece size determined.
-            const piece = leftData.substring(0, cPieceSize);
-            leftData = leftData.substring(cPieceSize);
+        const pieces = splitPieces(note.data, pieceSize, plainSplit, minimumChunkSize, longLineThreshold);
+        for (const piece of pieces()) {
             processed++;
             let leafid = "";
             // Get hash of piece.
@@ -646,7 +615,7 @@ export class LocalPouchDB {
                 }
             }
             savenNotes.push(leafid);
-        } while (leftData != "");
+        }
         let saved = true;
         if (newLeafs.length > 0) {
             try {
@@ -727,14 +696,14 @@ export class LocalPouchDB {
         // no op now,
         return true;
     }
-    replicateAllToServer(setting: ObsidianLiveSyncSettings, showingNotice?: boolean) {
+    replicateAllToServer(setting: RemoteDBSettings, showingNotice?: boolean) {
         return new Promise(async (res, rej) => {
             await this.waitForGCComplete();
             this.closeReplication();
             Logger("send all data to server", LOG_LEVEL.NOTICE);
-            let notice: Notice = null;
+            let notice: WrappedNotice = null;
             if (showingNotice) {
-                notice = new Notice("Initializing", 0);
+                notice = NewNotice("Initializing", 0);
             }
             this.syncStatus = "STARTED";
             this.updateInfo();
@@ -800,7 +769,7 @@ export class LocalPouchDB {
         });
     }
 
-    async checkReplicationConnectivity(setting: ObsidianLiveSyncSettings, keepAlive: boolean, skipCheck: boolean) {
+    async checkReplicationConnectivity(setting: RemoteDBSettings, keepAlive: boolean, skipCheck: boolean) {
         if (!this.isReady) {
             Logger("Database is not ready.");
             return false;
@@ -808,7 +777,7 @@ export class LocalPouchDB {
 
         await this.waitForGCComplete();
         if (setting.versionUpFlash != "") {
-            new Notice("Open settings and check message, please.");
+            NewNotice("Open settings and check message, please.");
             return false;
         }
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
@@ -839,15 +808,6 @@ export class LocalPouchDB {
                 locked: false,
                 accepted_nodes: [this.nodeid],
             };
-            // const remoteInfo = dbret.info;
-            // const localInfo = await this.localDatabase.info();
-            // const remoteDocsCount = remoteInfo.doc_count;
-            // const localDocsCount = localInfo.doc_count;
-            // const remoteUpdSeq = typeof remoteInfo.update_seq == "string" ? Number(remoteInfo.update_seq.split("-")[0]) : remoteInfo.update_seq;
-            // const localUpdSeq = typeof localInfo.update_seq == "string" ? Number(localInfo.update_seq.split("-")[0]) : localInfo.update_seq;
-
-            // Logger(`Database diffences: remote:${remoteDocsCount} docs / last update ${remoteUpdSeq}`);
-            // Logger(`Database diffences: local :${localDocsCount} docs / last update ${localUpdSeq}`);
 
             const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
             this.remoteLocked = remoteMilestone.locked;
@@ -870,20 +830,20 @@ export class LocalPouchDB {
         return { db: dbret.db, info: dbret.info, syncOptionBase, syncOption };
     }
 
-    async openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
+    async openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
         return await runWithLock("replicate", false, () => {
             return this._openReplication(setting, keepAlive, showResult, callback, false);
         });
     }
 
-    originalSetting: ObsidianLiveSyncSettings = null;
+    originalSetting: RemoteDBSettings = null;
     // last_seq: number = 200;
-    async _openReplication(setting: ObsidianLiveSyncSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean): Promise<boolean> {
+    async _openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean): Promise<boolean> {
         const ret = await this.checkReplicationConnectivity(setting, keepAlive, retrying);
         if (ret === false) return false;
-        let notice: Notice = null;
+        let notice: WrappedNotice = null;
         if (showResult) {
-            notice = new Notice("Looking for the point last synchronized point.", 0);
+            notice = NewNotice("Looking for the point last synchronized point.", 0);
         }
         const { db, syncOptionBase, syncOption } = ret;
         //replicate once
@@ -919,12 +879,10 @@ export class LocalPouchDB {
                 .on("change", async (e) => {
                     try {
                         if (e.direction == "pull") {
-                            // console.log(`pulled data:${e.change.docs.map((e) => e._id).join(",")}`);
                             await callback(e.change.docs);
                             Logger(`replicated ${e.change.docs_read} doc(s)`);
                             this.docArrived += e.change.docs.length;
                         } else {
-                            // console.log(`put data:${e.change.docs.map((e) => e._id).join(",")}`);
                             this.docSent += e.change.docs.length;
                         }
                         if (notice != null) {
@@ -974,7 +932,7 @@ export class LocalPouchDB {
                             Logger("Replication stopped.", LOG_LEVEL.NOTICE);
                         } else {
                             // Duplicate settings for smaller batch.
-                            const xsetting: ObsidianLiveSyncSettings = JSON.parse(JSON.stringify(setting));
+                            const xsetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
                             xsetting.batch_size = Math.ceil(xsetting.batch_size / 2);
                             xsetting.batches_limit = Math.ceil(xsetting.batches_limit / 2);
                             if (xsetting.batch_size <= 3 || xsetting.batches_limit <= 3) {
@@ -1074,7 +1032,7 @@ export class LocalPouchDB {
         this.disposeHashCache();
         Logger("Local Database Reset", LOG_LEVEL.NOTICE);
     }
-    async tryResetRemoteDatabase(setting: ObsidianLiveSyncSettings) {
+    async tryResetRemoteDatabase(setting: RemoteDBSettings) {
         await this.closeReplication();
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         const auth: Credential = {
@@ -1092,7 +1050,7 @@ export class LocalPouchDB {
             Logger(ex, LOG_LEVEL.NOTICE);
         }
     }
-    async tryCreateRemoteDatabase(setting: ObsidianLiveSyncSettings) {
+    async tryCreateRemoteDatabase(setting: RemoteDBSettings) {
         await this.closeReplication();
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         const auth: Credential = {
@@ -1103,7 +1061,7 @@ export class LocalPouchDB {
         if (typeof con2 === "string") return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
-    async markRemoteLocked(setting: ObsidianLiveSyncSettings, locked: boolean) {
+    async markRemoteLocked(setting: RemoteDBSettings, locked: boolean) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         const auth: Credential = {
             username: setting.couchDB_USER,
@@ -1137,7 +1095,7 @@ export class LocalPouchDB {
         }
         await dbret.db.put(remoteMilestone);
     }
-    async markRemoteResolved(setting: ObsidianLiveSyncSettings) {
+    async markRemoteResolved(setting: RemoteDBSettings) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
         const auth: Credential = {
             username: setting.couchDB_USER,

@@ -1,5 +1,5 @@
 import { App, Modal } from "obsidian";
-import { escapeStringToHTML } from "./utils";
+import { escapeStringToHTML } from "./lib/src/utils";
 import ObsidianLiveSyncPlugin from "./main";
 
 export class LogDisplayModal extends Modal {
