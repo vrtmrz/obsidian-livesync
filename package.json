@@ -29,7 +29,7 @@
         "eslint-plugin-import": "^2.25.2",
         "obsidian": "^0.14.6",
         "rollup": "^2.32.1",
-        "svelte-preprocess": "^4.10.2",
+        "svelte-preprocess": "^4.10.5",
         "tslib": "^2.2.0",
         "typescript": "^4.2.4"
     },
@@ -42,7 +42,7 @@
         "pouchdb-core": "^7.3.0",
         "pouchdb-mapreduce": "^7.3.0",
         "pouchdb-replication": "^7.3.0",
-        "svelte-preprocess": "^4.10.2",
+        "svelte-preprocess": "^4.10.5",
         "xxhash-wasm": "^0.4.2"
     }
 }
