@@ -22,7 +22,7 @@
         "@typescript-eslint/eslint-plugin": "^5.7.0",
         "@typescript-eslint/parser": "^5.0.0",
         "builtin-modules": "^3.2.0",
-        "esbuild": "0.13.12",
+        "esbuild": "0.14.34",
         "esbuild-svelte": "^0.6.0",
         "eslint": "^7.32.0",
         "eslint-config-airbnb-base": "^14.2.1",
@@ -35,7 +35,7 @@
     },
     "dependencies": {
         "diff-match-patch": "^1.0.5",
-        "esbuild": "0.13.12",
+        "esbuild": "0.14.34",
         "esbuild-svelte": "^0.6.0",
         "pouchdb-adapter-http": "^7.3.0",
         "pouchdb-adapter-idb": "^7.3.0",
