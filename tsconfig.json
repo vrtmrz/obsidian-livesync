@@ -10,7 +10,6 @@
         // "importsNotUsedAsValues": "error",
         "importHelpers": true,
         "alwaysStrict": true,
-        "allowSyntheticDefaultImports": true,
         "lib": ["es2018", "DOM", "ES5", "ES6", "ES7"]
     },
     "include": ["**/*.ts"],
