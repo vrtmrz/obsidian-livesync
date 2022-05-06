@@ -64,6 +64,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     statusBar2: HTMLElement;
     suspended: boolean;
     deviceAndVaultName: string;
+    isMobile = false;
 
     setInterval(handler: () => any, timeout?: number): number {
         const timer = window.setInterval(handler, timeout);
@@ -93,6 +94,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const lsname = "obsidian-live-sync-ver" + this.app.vault.getName();
         const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
+        //@ts-ignore
+        if (this.app.isMobile) {
+            this.isMobile = true;
+            this.settings.disableRequestURI = true;
+        }
         if (last_version && Number(last_version) < VER) {
             this.settings.liveSync = false;
             this.settings.syncOnSave = false;
@@ -180,7 +186,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.realizeSettingSyncMode();
                 this.registerWatchEvents();
                 if (this.settings.syncOnStart) {
-                    await this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                    this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
                 }
             } catch (ex) {
                 Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
@@ -190,8 +196,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addCommand({
             id: "livesync-replicate",
             name: "Replicate now",
-            callback: () => {
-                this.replicate();
+            callback: async () => {
+                await this.replicate();
             },
         });
         this.addCommand({
@@ -306,7 +312,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         const vaultName = this.app.vault.getName();
         Logger("Open Database...");
-        this.localDatabase = new LocalPouchDB(this.settings, vaultName);
+        //@ts-ignore
+        const isMobile = this.app.isMobile;
+        this.localDatabase = new LocalPouchDB(this.settings, vaultName, isMobile);
         this.localDatabase.updateInfo = () => {
             this.refreshStatusText();
         };
@@ -389,10 +397,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.sweepPlugin(false);
             }
             if (this.settings.liveSync) {
-                await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+                this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             }
             if (this.settings.syncOnStart) {
-                await this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
             }
             if (this.settings.periodicReplication) {
                 this.setPeriodicSync();
@@ -408,7 +416,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async watchWorkspaceOpenAsync(file: TFile) {
         await this.applyBatchChange();
-        if (file == null) return;
+        if (file == null) {
+            return;
+        }
         if (this.settings.syncOnFileOpen && !this.suspended) {
             await this.replicate();
         }
@@ -449,7 +459,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async applyBatchChange() {
         if (!this.settings.batchSave || this.batchFileChange.length == 0) {
-            return [];
+            return;
         }
         return await runWithLock("batchSave", false, async () => {
             const batchItems = JSON.parse(JSON.stringify(this.batchFileChange)) as string[];
@@ -467,7 +477,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
             });
             this.refreshStatusText();
-            return await Promise.all(promises);
+            await allSettledWithConcurrencyLimit(promises, 3);
+            return;
         });
     }
 
@@ -902,7 +913,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(false);
         }
         if (this.settings.liveSync) {
-            await this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+            this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
         this.setPeriodicSync();
@@ -971,7 +982,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.autoSweepPlugins) {
             await this.sweepPlugin(false);
         }
-        await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
+        this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
     async initializeDatabase(showingNotice?: boolean) {

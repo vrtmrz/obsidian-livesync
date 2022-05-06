@@ -28,6 +28,8 @@ import { path2id } from "./utils";
 import { Logger } from "./lib/src/logger";
 import { checkRemoteVersion, connectRemoteCouchDB, getLastPostFailedBySize } from "./utils_couchdb";
 
+type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>;
+
 export class LocalPouchDB {
     auth: Credential;
     dbname: string;
@@ -52,7 +54,7 @@ export class LocalPouchDB {
     remoteLockedAndDeviceNotAccepted = false;
 
     changeHandler: PouchDB.Core.Changes<EntryDoc> = null;
-    syncHandler: PouchDB.Replication.Sync<EntryDoc> = null;
+    syncHandler: PouchDB.Replication.Sync<EntryDoc> | PouchDB.Replication.Replication<EntryDoc> = null;
 
     leafArrivedCallbacks: { [key: string]: (() => void)[] } = {};
 
@@ -60,6 +62,8 @@ export class LocalPouchDB {
     docArrived = 0;
     docSent = 0;
     docSeq = "";
+
+    isMobile = false;
 
     cancelHandler<T extends PouchDB.Core.Changes<EntryDoc> | PouchDB.Replication.Sync<EntryDoc> | PouchDB.Replication.Replication<EntryDoc>>(handler: T): T {
         if (handler != null) {
@@ -77,7 +81,7 @@ export class LocalPouchDB {
         this.localDatabase.removeAllListeners();
     }
 
-    constructor(settings: RemoteDBSettings, dbname: string) {
+    constructor(settings: RemoteDBSettings, dbname: string, isMobile: boolean) {
         this.auth = {
             username: "",
             password: "",
@@ -85,6 +89,7 @@ export class LocalPouchDB {
         this.dbname = dbname;
         this.settings = settings;
         this.cancelHandler = this.cancelHandler.bind(this);
+        this.isMobile = isMobile;
 
         // this.initializeDatabase();
     }
@@ -699,73 +704,18 @@ export class LocalPouchDB {
     replicateAllToServer(setting: RemoteDBSettings, showingNotice?: boolean) {
         return new Promise(async (res, rej) => {
             await this.waitForGCComplete();
-            this.closeReplication();
-            Logger("send all data to server", LOG_LEVEL.NOTICE);
-            let notice: WrappedNotice = null;
-            if (showingNotice) {
-                notice = NewNotice("Initializing", 0);
-            }
-            this.syncStatus = "STARTED";
-            this.updateInfo();
-            const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-            const auth: Credential = {
-                username: setting.couchDB_USER,
-                password: setting.couchDB_PASSWORD,
-            };
-            const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
-            if (typeof dbret === "string") {
-                Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
-                if (notice != null) notice.hide();
-                return rej(`could not connect to ${uri}:${dbret}`);
-            }
-
-            const syncOptionBase: PouchDB.Replication.SyncOptions = {
-                pull: {
-                    checkpoint: "target",
-                },
-                push: {
-                    checkpoint: "source",
-                },
-                batches_limit: setting.batches_limit,
-                batch_size: setting.batch_size,
-            };
-
-            const db = dbret.db;
-            const totalCount = (await this.localDatabase.info()).doc_count;
-            //replicate once
-            const replicate = this.localDatabase.replicate.to(db, { checkpoint: "source", ...syncOptionBase });
-            replicate
-                .on("active", () => {
-                    this.syncStatus = "CONNECTED";
-                    this.updateInfo();
-                    if (notice) {
-                        notice.setMessage("CONNECTED");
-                    }
-                })
-                .on("change", (e) => {
-                    // no op.
-                    this.docSent += e.docs.length;
-                    this.updateInfo();
-                    notice.setMessage(`SENDING:${e.docs_written}/${totalCount}`);
-                    Logger(`replicateAllToServer: sending..:${e.docs.length}`);
-                })
-                .on("complete", (info) => {
-                    this.syncStatus = "COMPLETED";
-                    this.updateInfo();
-                    Logger("replicateAllToServer: Completed", LOG_LEVEL.NOTICE);
-                    this.cancelHandler(replicate);
-                    if (notice != null) notice.hide();
-                    res(true);
-                })
-                .on("error", (e) => {
-                    this.syncStatus = "ERRORED";
-                    this.updateInfo();
-                    Logger("replicateAllToServer: Pulling Replication error", LOG_LEVEL.INFO);
-                    Logger(e);
-                    this.cancelHandler(replicate);
-                    if (notice != null) notice.hide();
+            this.openOneshotReplication(
+                setting,
+                showingNotice,
+                async (e) => {},
+                false,
+                (e) => {
+                    if (e === true) res(e);
                     rej(e);
-                });
+                },
+                true,
+                false
+            );
         });
     }
 
@@ -789,7 +739,8 @@ export class LocalPouchDB {
             Logger("Another replication running.");
             return false;
         }
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
+
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}: ${dbret}`, LOG_LEVEL.NOTICE);
             return false;
@@ -830,188 +781,255 @@ export class LocalPouchDB {
         return { db: dbret.db, info: dbret.info, syncOptionBase, syncOption };
     }
 
-    async openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>): Promise<boolean> {
-        return await runWithLock("replicate", false, () => {
-            return this._openReplication(setting, keepAlive, showResult, callback, false);
-        });
+    openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>) {
+        if (keepAlive) {
+            this.openContinuousReplication(setting, showResult, callback, false);
+        } else {
+            this.openOneshotReplication(setting, showResult, callback, false, null, false, false);
+        }
+    }
+    replicationActivated(notice: WrappedNotice) {
+        this.syncStatus = "CONNECTED";
+        this.updateInfo();
+        Logger("Replication activated");
+        if (notice != null) notice.setMessage(`Activated..`);
+    }
+    async replicationChangeDetected(e: PouchDB.Replication.SyncResult<EntryDoc>, notice: WrappedNotice, docSentOnStart: number, docArrivedOnStart: number, callback: ReplicationCallback) {
+        try {
+            if (e.direction == "pull") {
+                await callback(e.change.docs);
+                Logger(`replicated ${e.change.docs_read} doc(s)`);
+                this.docArrived += e.change.docs.length;
+            } else {
+                this.docSent += e.change.docs.length;
+            }
+            if (notice != null) {
+                notice.setMessage(`↑${this.docSent - docSentOnStart} ↓${this.docArrived - docArrivedOnStart}`);
+            }
+            this.updateInfo();
+        } catch (ex) {
+            Logger("Replication callback error", LOG_LEVEL.NOTICE);
+            Logger(ex, LOG_LEVEL.NOTICE);
+            //
+        }
+    }
+    replicationCompleted(notice: WrappedNotice, showResult: boolean) {
+        this.syncStatus = "COMPLETED";
+        this.updateInfo();
+        Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+        if (notice != null) notice.hide();
+        this.syncHandler = this.cancelHandler(this.syncHandler);
+    }
+    replicationDeniend(notice: WrappedNotice, e: any) {
+        this.syncStatus = "ERRORED";
+        this.updateInfo();
+        this.syncHandler = this.cancelHandler(this.syncHandler);
+        if (notice != null) notice.hide();
+        Logger("Replication denied", LOG_LEVEL.NOTICE);
+        Logger(e);
+    }
+    replicationErrored(notice: WrappedNotice, e: any) {
+        this.syncStatus = "ERRORED";
+        this.syncHandler = this.cancelHandler(this.syncHandler);
+        this.updateInfo();
+    }
+    replicationPaused(notice: WrappedNotice) {
+        this.syncStatus = "PAUSED";
+        this.updateInfo();
+        if (notice != null) notice.hide();
+        Logger("replication paused", LOG_LEVEL.VERBOSE);
     }
 
-    originalSetting: RemoteDBSettings = null;
-    // last_seq: number = 200;
-    async _openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean): Promise<boolean> {
-        const ret = await this.checkReplicationConnectivity(setting, keepAlive, retrying);
-        if (ret === false) return false;
+    async openOneshotReplication(
+        setting: RemoteDBSettings,
+        showResult: boolean,
+        callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>,
+        retrying: boolean,
+        callbackDone: (e: boolean | any) => void,
+        pushOnly: boolean,
+        pullOnly: boolean
+    ): Promise<boolean> {
+        if (this.syncHandler != null) {
+            Logger("Replication is already in progress.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+            return;
+        }
+        Logger("Oneshot Sync begin...");
+        let thisCallback = callbackDone;
+        const ret = await this.checkReplicationConnectivity(setting, true, retrying);
         let notice: WrappedNotice = null;
+        if (ret === false) {
+            Logger("Could not connect to server.", LOG_LEVEL.NOTICE);
+            return;
+        }
         if (showResult) {
             notice = NewNotice("Looking for the point last synchronized point.", 0);
         }
-        const { db, syncOptionBase, syncOption } = ret;
-        //replicate once
+        const { db, syncOptionBase } = ret;
         this.syncStatus = "STARTED";
         this.updateInfo();
-
-        let resolved = false;
         const docArrivedOnStart = this.docArrived;
         const docSentOnStart = this.docSent;
-
-        const _openReplicationSync = () => {
-            Logger("Sync Main Started");
-            if (!retrying) {
-                this.originalSetting = setting;
-            }
-            this.syncHandler = this.cancelHandler(this.syncHandler);
-            this.syncHandler = this.localDatabase.sync<EntryDoc>(db, {
-                ...syncOption,
-                pull: {
-                    checkpoint: "target",
-                },
-                push: {
-                    checkpoint: "source",
-                },
-            });
+        if (!retrying) {
+            // If initial replication, save setting to rollback
+            this.originalSetting = setting;
+        }
+        this.syncHandler = this.cancelHandler(this.syncHandler);
+        if (!pushOnly && !pullOnly) {
+            this.syncHandler = this.localDatabase.sync(db, { checkpoint: "target", ...syncOptionBase });
             this.syncHandler
-                .on("active", () => {
-                    this.syncStatus = "CONNECTED";
-                    this.updateInfo();
-                    Logger("Replication activated");
-                    if (notice != null) notice.setMessage(`Activated..`);
-                })
                 .on("change", async (e) => {
-                    try {
-                        if (e.direction == "pull") {
-                            await callback(e.change.docs);
-                            Logger(`replicated ${e.change.docs_read} doc(s)`);
-                            this.docArrived += e.change.docs.length;
-                        } else {
-                            this.docSent += e.change.docs.length;
-                        }
-                        if (notice != null) {
-                            notice.setMessage(`↑${this.docSent - docSentOnStart} ↓${this.docArrived - docArrivedOnStart}`);
-                        }
-                        this.updateInfo();
-                    } catch (ex) {
-                        Logger("Replication callback error", LOG_LEVEL.NOTICE);
-                        Logger(ex, LOG_LEVEL.NOTICE);
-                    }
-                    // re-connect to retry with original setting
+                    await this.replicationChangeDetected(e, notice, docSentOnStart, docArrivedOnStart, callback);
                     if (retrying) {
                         if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
-                            // restore sync values
+                            // restore configration.
                             Logger("Back into original settings once.");
                             if (notice != null) notice.hide();
                             this.syncHandler = this.cancelHandler(this.syncHandler);
-                            this._openReplication(this.originalSetting, keepAlive, showResult, callback, false);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, pushOnly, pullOnly);
                         }
                     }
                 })
                 .on("complete", (e) => {
-                    this.syncStatus = "COMPLETED";
-                    this.updateInfo();
-                    Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                    if (notice != null) notice.hide();
-                    if (!keepAlive) {
-                        this.syncHandler = this.cancelHandler(this.syncHandler);
-                        // if keep alive runnning, resolve here,
+                    this.replicationCompleted(notice, showResult);
+                    if (thisCallback != null) {
+                        thisCallback(true);
+                    }
+                });
+        } else if (pullOnly) {
+            this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase });
+            this.syncHandler
+                .on("change", async (e) => {
+                    await this.replicationChangeDetected({ direction: "pull", change: e }, notice, docSentOnStart, docArrivedOnStart, callback);
+                    if (retrying) {
+                        if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
+                            // restore configration.
+                            Logger("Back into original settings once.");
+                            if (notice != null) notice.hide();
+                            this.syncHandler = this.cancelHandler(this.syncHandler);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, pushOnly, pullOnly);
+                        }
                     }
                 })
-                .on("denied", (e) => {
-                    this.syncStatus = "ERRORED";
-                    this.updateInfo();
-                    this.syncHandler = this.cancelHandler(this.syncHandler);
-                    if (notice != null) notice.hide();
-                    Logger("Replication denied", LOG_LEVEL.NOTICE);
+                .on("complete", (e) => {
+                    this.replicationCompleted(notice, showResult);
+                    if (thisCallback != null) {
+                        thisCallback(true);
+                    }
+                });
+        } else if (pushOnly) {
+            this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase });
+            this.syncHandler.on("complete", (e) => {
+                this.replicationCompleted(notice, showResult);
+                if (thisCallback != null) {
+                    thisCallback(true);
+                }
+            });
+        }
+
+        this.syncHandler
+            .on("active", () => this.replicationActivated(notice))
+            .on("denied", (e) => {
+                this.replicationDeniend(notice, e);
+                if (thisCallback != null) {
+                    thisCallback(e);
+                }
+            })
+            .on("error", (e) => {
+                this.replicationErrored(notice, e);
+                Logger("Replication stopped.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                if (notice != null) notice.hide();
+                if (getLastPostFailedBySize()) {
+                    // Duplicate settings for smaller batch.
+                    const xsetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
+                    xsetting.batch_size = Math.ceil(xsetting.batch_size / 2) + 2;
+                    xsetting.batches_limit = Math.ceil(xsetting.batches_limit / 2) + 2;
+                    if (xsetting.batch_size <= 5 && xsetting.batches_limit <= 5) {
+                        Logger("We can't replicate more lower value.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                    } else {
+                        Logger(`Retry with lower batch size:${xsetting.batch_size}/${xsetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                        thisCallback = null;
+                        this.openOneshotReplication(xsetting, showResult, callback, true, callbackDone, pushOnly, pullOnly);
+                    }
+                } else {
+                    Logger("Replication error", LOG_LEVEL.NOTICE);
                     Logger(e);
-                })
-                .on("error", (e) => {
-                    this.syncStatus = "ERRORED";
-                    this.syncHandler = this.cancelHandler(this.syncHandler);
-                    this.updateInfo();
-                    if (notice != null) notice.hide();
-                    if (getLastPostFailedBySize()) {
-                        if (keepAlive) {
-                            Logger("Replication stopped.", LOG_LEVEL.NOTICE);
-                        } else {
-                            // Duplicate settings for smaller batch.
-                            const xsetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
-                            xsetting.batch_size = Math.ceil(xsetting.batch_size / 2);
-                            xsetting.batches_limit = Math.ceil(xsetting.batches_limit / 2);
-                            if (xsetting.batch_size <= 3 || xsetting.batches_limit <= 3) {
-                                Logger("We can't replicate more lower value.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                            } else {
-                                Logger(`Retry with lower batch size:${xsetting.batch_size}/${xsetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                                this._openReplication(xsetting, keepAlive, showResult, callback, true);
+                }
+                if (thisCallback != null) {
+                    thisCallback(e);
+                }
+            })
+            .on("paused", (e) => this.replicationPaused(notice));
+    }
+
+    openContinuousReplication(setting: RemoteDBSettings, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean) {
+        if (this.syncHandler != null) {
+            Logger("Replication is already in progress.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+            return;
+        }
+        Logger("Before LiveSync, start OneShot once...");
+        this.openOneshotReplication(
+            setting,
+            showResult,
+            callback,
+            false,
+            async () => {
+                Logger("LiveSync begin...");
+                const ret = await this.checkReplicationConnectivity(setting, true, true);
+                let notice: WrappedNotice = null;
+                if (ret === false) {
+                    Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                    return;
+                }
+                if (showResult) {
+                    notice = NewNotice("Looking for the point last synchronized point.", 0);
+                }
+                const { db, syncOption } = ret;
+                this.syncStatus = "STARTED";
+                this.updateInfo();
+                const docArrivedOnStart = this.docArrived;
+                const docSentOnStart = this.docSent;
+                if (!retrying) {
+                    //TODO if successfly saven, roll back org setting.
+                    this.originalSetting = setting;
+                }
+                this.syncHandler = this.cancelHandler(this.syncHandler);
+                this.syncHandler = this.localDatabase.sync<EntryDoc>(db, {
+                    ...syncOption,
+                    pull: {
+                        checkpoint: "target",
+                    },
+                    push: {
+                        checkpoint: "source",
+                    },
+                });
+                this.syncHandler
+                    .on("active", () => this.replicationActivated(notice))
+                    .on("change", async (e) => {
+                        await this.replicationChangeDetected(e, notice, docSentOnStart, docArrivedOnStart, callback);
+                        if (retrying) {
+                            if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
+                                // restore sync values
+                                Logger("Back into original settings once.");
+                                if (notice != null) notice.hide();
+                                this.syncHandler = this.cancelHandler(this.syncHandler);
+                                this.openContinuousReplication(this.originalSetting, showResult, callback, false);
                             }
                         }
-                    } else {
-                        Logger("Replication error", LOG_LEVEL.NOTICE);
-                        Logger(e);
-                    }
-                })
-                .on("paused", (e) => {
-                    this.syncStatus = "PAUSED";
-                    this.updateInfo();
-                    if (notice != null) notice.hide();
-                    Logger("replication paused", LOG_LEVEL.VERBOSE);
-                    if (keepAlive && !resolved) {
-                        // if keep alive runnning, resolve here,
-                        resolved = true;
-                    }
-                    // Logger(e);
-                });
-            return this.syncHandler;
-        };
-        if (!keepAlive) {
-            await _openReplicationSync();
-            return true;
-        }
-        this.syncHandler = this.cancelHandler(this.syncHandler);
-        Logger("Pull before replicate.");
-        Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
-        Logger(await db.info(), LOG_LEVEL.VERBOSE);
-        let replicate: PouchDB.Replication.Replication<EntryDoc>;
-        try {
-            replicate = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase });
-            replicate
-                .on("active", () => {
-                    this.syncStatus = "CONNECTED";
-                    this.updateInfo();
-                    Logger("Replication pull activated.");
-                })
-                .on("change", async (e) => {
-                    // when in first run, replication will send us tombstone data
-                    // and in normal cases, all leavs should sent before the entry that contains these item.
-                    // so skip to completed all, we should treat all changes.
-                    try {
-                        await callback(e.docs);
-                        this.docArrived += e.docs.length;
-                        this.updateInfo();
-                        Logger(`pulled ${e.docs.length} doc(s)`);
-                        if (notice != null) {
-                            notice.setMessage(`Replication pulled:${e.docs_read}`);
-                        }
-                    } catch (ex) {
-                        Logger("Replication callback error", LOG_LEVEL.NOTICE);
-                        Logger(ex, LOG_LEVEL.NOTICE);
-                    }
-                });
-            this.syncStatus = "COMPLETED";
-            this.updateInfo();
-            this.cancelHandler(replicate);
-            this.syncHandler = this.cancelHandler(this.syncHandler);
-            Logger("Replication pull completed.");
-            _openReplicationSync();
-            return true;
-        } catch (ex) {
-            this.syncStatus = "ERRORED";
-            this.updateInfo();
-            Logger("Pulling Replication error:", LOG_LEVEL.NOTICE);
-            Logger(ex, LOG_LEVEL.NOTICE);
-            this.cancelHandler(replicate);
-            this.syncHandler = this.cancelHandler(this.syncHandler);
-            if (notice != null) notice.hide();
-            throw ex;
-        }
+                    })
+                    .on("complete", (e) => this.replicationCompleted(notice, showResult))
+                    .on("denied", (e) => this.replicationDeniend(notice, e))
+                    .on("error", (e) => {
+                        this.replicationErrored(notice, e);
+                        Logger("Replication stopped.", LOG_LEVEL.NOTICE);
+                    })
+                    .on("paused", (e) => this.replicationPaused(notice));
+            },
+            false,
+            true
+        );
     }
+
+    originalSetting: RemoteDBSettings = null;
 
     closeReplication() {
         this.syncStatus = "CLOSED";
@@ -1039,7 +1057,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const con = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
+        const con = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof con == "string") return;
         try {
             await con.db.destroy();
@@ -1057,7 +1075,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const con2 = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
+        const con2 = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof con2 === "string") return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
@@ -1067,7 +1085,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
@@ -1101,7 +1119,7 @@ export class LocalPouchDB {
             username: setting.couchDB_USER,
             password: setting.couchDB_PASSWORD,
         };
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI);
+        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;

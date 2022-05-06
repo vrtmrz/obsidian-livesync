@@ -6,7 +6,6 @@
         "allowJs": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
-        "types": ["svelte", "node"],
         // "importsNotUsedAsValues": "error",
         "importHelpers": true,
         "alwaysStrict": true,

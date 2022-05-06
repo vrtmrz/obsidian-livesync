@@ -171,12 +171,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             ),
-            new Setting(containerRemoteDatabaseEl).setName("Use the old connecting method").addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
-                    this.plugin.settings.disableRequestURI = value;
-                    await this.plugin.saveSettings();
+
+            new Setting(containerRemoteDatabaseEl)
+                .setDesc("This feature is locked in mobile")
+                .setName("Use the old connecting method")
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
+                        this.plugin.settings.disableRequestURI = value;
+                        await this.plugin.saveSettings();
+                    });
+                    toggle.setDisabled(this.plugin.isMobile);
+                    return toggle;
                 })
-            )
         );
 
         new Setting(containerRemoteDatabaseEl)

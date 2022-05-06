@@ -41,7 +41,6 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
         adapter: "http",
         auth,
         fetch: async function (url: string | Request, opts: RequestInit) {
-            let size_ok = true;
             let size = "";
             const localURL = url.toString().substring(uri.length);
             const method = opts.method ?? "GET";
@@ -49,7 +48,6 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                 const opts_length = opts.body.toString().length;
                 if (opts_length > 1024 * 1024 * 10) {
                     // over 10MB
-                    size_ok = false;
                     if (uri.contains(".cloudantnosqldb.")) {
                         last_post_successed = false;
                         Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
@@ -93,7 +91,8 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                     });
                 } catch (ex) {
                     Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
-                    if (!size_ok && (method == "POST" || method == "PUT")) {
+                    // limit only in bulk_docs.
+                    if (url.toString().indexOf("_bulk_docs") !== -1) {
                         last_post_successed = false;
                     }
                     Logger(ex);
@@ -114,7 +113,8 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                 return responce;
             } catch (ex) {
                 Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
-                if (!size_ok && (method == "POST" || method == "PUT")) {
+                // limit only in bulk_docs.
+                if (url.toString().indexOf("_bulk_docs") !== -1) {
                     last_post_successed = false;
                 }
                 Logger(ex);
