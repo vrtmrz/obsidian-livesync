@@ -373,7 +373,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
         this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
         this.registerEvent(this.app.vault.on("rename", this.watchVaultRename));
-        this.registerEvent(this.app.vault.on("create", this.watchVaultChange));
+        this.registerEvent(this.app.vault.on("create", this.watchVaultCreate));
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
         window.addEventListener("visibilitychange", this.watchWindowVisiblity);
     }
