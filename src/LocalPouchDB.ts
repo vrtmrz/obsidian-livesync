@@ -707,7 +707,7 @@ export class LocalPouchDB {
             this.openOneshotReplication(
                 setting,
                 showingNotice,
-                async (e) => {},
+                async (e) => { },
                 false,
                 (e) => {
                     if (e === true) res(e);
@@ -719,7 +719,7 @@ export class LocalPouchDB {
         });
     }
 
-    async checkReplicationConnectivity(setting: RemoteDBSettings, keepAlive: boolean, skipCheck: boolean) {
+    async checkReplicationConnectivity(setting: RemoteDBSettings, keepAlive: boolean, skipCheck: boolean, showResult: boolean) {
         if (!this.isReady) {
             Logger("Database is not ready.");
             return false;
@@ -742,7 +742,7 @@ export class LocalPouchDB {
 
         const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
         if (typeof dbret === "string") {
-            Logger(`could not connect to ${uri}: ${dbret}`, LOG_LEVEL.NOTICE);
+            Logger(`could not connect to ${uri}: ${dbret}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
             return false;
         }
 
@@ -855,10 +855,10 @@ export class LocalPouchDB {
         }
         Logger("Oneshot Sync begin...");
         let thisCallback = callbackDone;
-        const ret = await this.checkReplicationConnectivity(setting, true, retrying);
+        const ret = await this.checkReplicationConnectivity(setting, true, retrying, showResult);
         let notice: WrappedNotice = null;
         if (ret === false) {
-            Logger("Could not connect to server.", LOG_LEVEL.NOTICE);
+            Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
             return;
         }
         if (showResult) {
@@ -974,7 +974,7 @@ export class LocalPouchDB {
             false,
             async () => {
                 Logger("LiveSync begin...");
-                const ret = await this.checkReplicationConnectivity(setting, true, true);
+                const ret = await this.checkReplicationConnectivity(setting, true, true, showResult);
                 let notice: WrappedNotice = null;
                 if (ret === false) {
                     Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
