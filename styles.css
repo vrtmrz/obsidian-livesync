@@ -172,3 +172,19 @@ div.sls-setting-menu-btn {
     background-color: var(--text-muted);
     text-decoration: line-through;
 }
+
+.ob-btn-config-fix label {
+    margin-right: 40px;
+}
+.ob-btn-config-info {
+    border: 1px solid salmon;
+    padding: 2px;
+    margin: 1px;
+    border-radius: 4px;
+}
+
+.ob-btn-config-head {
+    padding: 2px;
+    margin: 1px;
+    border-radius: 4px;
+}

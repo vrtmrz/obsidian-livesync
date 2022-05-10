@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom } from "obsidian";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl } from "obsidian";
 import { EntryDoc, LOG_LEVEL } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { NewNotice, runWithLock } from "./lib/src/utils";
@@ -196,6 +196,174 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.testConnection();
                     })
             );
+
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Check database configuration")
+            // .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Check")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        const checkConfig = async () => {
+                            try {
+                                const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string) => {
+                                    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
+                                    const encoded = window.btoa(utf8str);
+                                    const authHeader = "Basic " + encoded;
+                                    // const origin = "capacitor://localhost";
+                                    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };
+                                    const uri = `${baseUri}/_node/_local/_config${key ? "/" + key : ""}`;
+
+                                    const requestParam: RequestUrlParam = {
+                                        url: uri,
+                                        method: body ? "PUT" : "GET",
+                                        headers: transformedHeaders,
+                                        contentType: "application/json",
+                                        body: body ? JSON.stringify(body) : undefined,
+                                    };
+                                    return await requestUrl(requestParam);
+                                };
+
+                                const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+
+                                Logger(JSON.stringify(r.json, null, 2));
+
+                                const responseConfig = r.json;
+
+                                const emptyDiv = createDiv();
+                                emptyDiv.innerHTML = "<span></span>";
+                                checkResultDiv.replaceChildren(...[emptyDiv]);
+                                const addResult = (msg: string, classes?: string[]) => {
+                                    const tmpDiv = createDiv();
+                                    tmpDiv.addClass("ob-btn-config-fix");
+                                    if (classes) {
+                                        tmpDiv.addClasses(classes);
+                                    }
+                                    tmpDiv.innerHTML = `${msg}`;
+                                    checkResultDiv.appendChild(tmpDiv);
+                                };
+                                const addConfigFixButton = (title: string, key: string, value: string) => {
+                                    const tmpDiv = createDiv();
+                                    tmpDiv.addClass("ob-btn-config-fix");
+                                    tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
+                                    const x = checkResultDiv.appendChild(tmpDiv);
+                                    x.querySelector("button").addEventListener("click", async () => {
+                                        console.dir({ key, value });
+                                        const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
+                                        console.dir(res);
+                                        if (res.status == 200) {
+                                            Logger(`${title} successfly updated`, LOG_LEVEL.NOTICE);
+                                            checkResultDiv.removeChild(x);
+                                            checkConfig();
+                                        } else {
+                                            Logger(`${title} failed`, LOG_LEVEL.NOTICE);
+                                            Logger(res.text);
+                                        }
+                                    });
+                                };
+                                addResult("---Notice---", ["ob-btn-config-head"]);
+                                addResult(
+                                    "If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.",
+                                    ["ob-btn-config-info"]
+                                );
+
+                                addResult("Your configuration is dumped to Log", ["ob-btn-config-info"]);
+                                addResult("--Config check--", ["ob-btn-config-head"]);
+
+                                // Admin check
+                                //  for database creation and deletion
+                                if (!(this.plugin.settings.couchDB_USER in responseConfig.admins)) {
+                                    addResult(`⚠ You do not have administrative privileges.`);
+                                } else {
+                                    addResult("✔ You have administrative privileges.");
+                                }
+                                // HTTP user-authorization check
+                                if (responseConfig?.chttpd?.require_valid_user != "true") {
+                                    addResult("❗ chttpd.require_valid_user looks like wrong.");
+                                    addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
+                                } else {
+                                    addResult("✔ chttpd.require_valid_user is ok.");
+                                }
+                                if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
+                                    addResult("❗ chttpd_auth.require_valid_user looks like wrong.");
+                                    addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
+                                } else {
+                                    addResult("✔ chttpd_auth.require_valid_user is ok.");
+                                }
+                                // HTTPD check
+                                //  Check Authentication header
+                                if (!responseConfig?.httpd["WWW-Authenticate"]) {
+                                    addResult("❗ httpd.WWW-Authenticate is missing");
+                                    addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
+                                } else {
+                                    addResult("✔ httpd.WWW-Authenticate is ok.");
+                                }
+                                if (responseConfig?.httpd?.enable_cors != "true") {
+                                    addResult("❗ httpd.enable_cors is wrong");
+                                    addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
+                                } else {
+                                    addResult("✔ httpd.enable_cors is ok.");
+                                }
+                                // CORS check
+                                //  checking connectivity for mobile
+                                if (responseConfig?.cors?.credentials != "true") {
+                                    addResult("❗ cors.credentials is wrong");
+                                    addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
+                                } else {
+                                    addResult("✔ cors.credentials is ok.");
+                                }
+                                const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
+                                if (
+                                    responseConfig?.cors?.origins == "*" ||
+                                    (ConfiguredOrigins.indexOf("app://obsidian.md") !== -1 && ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 && ConfiguredOrigins.indexOf("http://localhost") !== -1)
+                                ) {
+                                    addResult("✔ cors.origins is ok.");
+                                } else {
+                                    addResult("❗ cors.origins is wrong");
+                                    addConfigFixButton("Set cors.origins", "cors/origins", "app://obsidian.md,capacitor://localhost,http://localhost");
+                                }
+                                addResult("--Connection check--", ["ob-btn-config-head"]);
+                                addResult(`Current origin:${window.location.origin}`);
+
+                                // Request header check
+                                const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
+                                for (const org of origins) {
+                                    const rr = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, org);
+                                    const responseHeaders = Object.entries(rr.headers)
+                                        .map((e) => {
+                                            e[0] = (e[0] + "").toLowerCase();
+                                            return e;
+                                        })
+                                        .reduce((obj, [key, val]) => {
+                                            obj[key] = val;
+                                            return obj;
+                                        }, {});
+                                    addResult(`Origin check:${org}`);
+                                    if (responseHeaders["access-control-allow-credentials"] != "true") {
+                                        addResult("❗ CORS is not allowing credential");
+                                    } else {
+                                        addResult("✔ CORS credential OK");
+                                    }
+                                    if (responseHeaders["access-control-allow-origin"] != org) {
+                                        addResult(`❗ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
+                                    } else {
+                                        addResult("✔ CORS origin OK");
+                                    }
+                                }
+                                addResult("--Done--", ["ob-btn-config-haed"]);
+                                addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
+                            } catch (ex) {
+                                Logger(`Checking configration failed`);
+                                Logger(ex);
+                            }
+                        };
+                        await checkConfig();
+                    })
+            );
+        const checkResultDiv = containerRemoteDatabaseEl.createEl("div", {
+            text: "",
+        });
 
         addScreenElement("0", containerRemoteDatabaseEl);
         const containerLocalDatabaseEl = containerEl.createDiv();
