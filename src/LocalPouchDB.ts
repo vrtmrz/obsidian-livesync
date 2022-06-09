@@ -21,15 +21,56 @@ import {
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
 } from "./lib/src/types";
-import { decrypt, encrypt } from "./lib/src/e2ee";
 import { RemoteDBSettings } from "./lib/src/types";
-import { resolveWithIgnoreKnownError, delay, runWithLock, isPlainText, splitPieces, NewNotice, WrappedNotice } from "./lib/src/utils";
+import { resolveWithIgnoreKnownError, delay, runWithLock, NewNotice, WrappedNotice, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
 import { path2id } from "./utils";
 import { Logger } from "./lib/src/logger";
-import { checkRemoteVersion, connectRemoteCouchDB, getLastPostFailedBySize } from "./utils_couchdb";
+import { checkRemoteVersion, connectRemoteCouchDBWithSetting, getLastPostFailedBySize } from "./utils_couchdb";
+import { openDB, deleteDB, IDBPDatabase } from "idb";
 
 type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>;
+class LRUCache {
+    cache = new Map<string, string>([]);
+    revCache = new Map<string, string>([]);
+    maxCache = 100;
+    constructor() {}
+    get(key: string) {
+        // debugger
+        const v = this.cache.get(key);
 
+        if (v) {
+            // update the key to recently used.
+            this.cache.delete(key);
+            this.revCache.delete(v);
+            this.cache.set(key, v);
+            this.revCache.set(v, key);
+        }
+        return v;
+    }
+    revGet(value: string) {
+        // debugger
+        const key = this.revCache.get(value);
+        if (value) {
+            // update the key to recently used.
+            this.cache.delete(key);
+            this.revCache.delete(value);
+            this.cache.set(key, value);
+            this.revCache.set(value, key);
+        }
+        return key;
+    }
+    set(key: string, value: string) {
+        this.cache.set(key, value);
+        this.revCache.set(value, key);
+        if (this.cache.size > this.maxCache) {
+            for (const kv of this.cache) {
+                this.revCache.delete(kv[1]);
+                this.cache.delete(kv[0]);
+                if (this.cache.size <= this.maxCache) break;
+            }
+        }
+    }
+}
 export class LocalPouchDB {
     auth: Credential;
     dbname: string;
@@ -42,12 +83,13 @@ export class LocalPouchDB {
     h32: (input: string, seed?: number) => string;
     h64: (input: string, seedHigh?: number, seedLow?: number) => string;
     h32Raw: (input: Uint8Array, seed?: number) => number;
-    hashCache: {
-        [key: string]: string;
-    } = {};
-    hashCacheRev: {
-        [key: string]: string;
-    } = {};
+    // hashCache: {
+    //     [key: string]: string;
+    // } = {};
+    // hashCacheRev: {
+    //     [key: string]: string;
+    // } = {};
+    hashCaches = new LRUCache();
 
     corruptedEntries: { [key: string]: EntryDoc } = {};
     remoteLocked = false;
@@ -90,8 +132,6 @@ export class LocalPouchDB {
         this.settings = settings;
         this.cancelHandler = this.cancelHandler.bind(this);
         this.isMobile = isMobile;
-
-        // this.initializeDatabase();
     }
     close() {
         Logger("Database closed (by close)");
@@ -100,10 +140,6 @@ export class LocalPouchDB {
         if (this.localDatabase != null) {
             this.localDatabase.close();
         }
-    }
-    disposeHashCache() {
-        this.hashCache = {};
-        this.hashCacheRev = {};
     }
 
     updateRecentModifiedDocs(id: string, rev: string, deleted: boolean) {
@@ -119,52 +155,132 @@ export class LocalPouchDB {
         const idrev = id + rev;
         return this.recentModifiedDocs.indexOf(idrev) !== -1;
     }
-
-    async initializeDatabase() {
+    async isOldDatabaseExists() {
+        const db = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
+            auto_compaction: this.settings.useHistory ? false : true,
+            revs_limit: 100,
+            deterministic_revs: true,
+            skip_setup: true,
+        });
+        try {
+            const info = await db.info();
+            Logger(info, LOG_LEVEL.VERBOSE);
+            return db;
+        } catch (ex) {
+            return false;
+        }
+    }
+    async initializeDatabase(): Promise<boolean> {
         await this.prepareHashFunctions();
         if (this.localDatabase != null) this.localDatabase.close();
         this.changeHandler = this.cancelHandler(this.changeHandler);
         this.localDatabase = null;
-        this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
+
+        this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync-v2", {
             auto_compaction: this.settings.useHistory ? false : true,
             revs_limit: 100,
             deterministic_revs: true,
         });
-
-        Logger("Database Info");
+        Logger("Database info", LOG_LEVEL.VERBOSE);
         Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
-        // initialize local node information.
-        const nodeinfo: EntryNodeInfo = await resolveWithIgnoreKnownError<EntryNodeInfo>(this.localDatabase.get(NODEINFO_DOCID), {
-            _id: NODEINFO_DOCID,
-            type: "nodeinfo",
-            nodeid: "",
-        });
-        if (nodeinfo.nodeid == "") {
-            nodeinfo.nodeid = Math.random().toString(36).slice(-10);
-            await this.localDatabase.put(nodeinfo);
-        }
-        this.localDatabase.on("close", () => {
-            Logger("Database closed.");
-            this.isReady = false;
-            this.localDatabase.removeAllListeners();
-        });
-        this.nodeid = nodeinfo.nodeid;
-
-        // Traceing the leaf id
-        const changes = this.localDatabase
-            .changes({
-                since: "now",
-                live: true,
-                filter: (doc) => doc.type == "leaf",
-            })
-            .on("change", (e) => {
-                if (e.deleted) return;
-                this.leafArrived(e.id);
-                this.docSeq = `${e.seq}`;
+        Logger("Open Database...");
+        // The sequence after migration.
+        const nextSeq = async (): Promise<boolean> => {
+            Logger("Database Info");
+            Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
+            // initialize local node information.
+            const nodeinfo: EntryNodeInfo = await resolveWithIgnoreKnownError<EntryNodeInfo>(this.localDatabase.get(NODEINFO_DOCID), {
+                _id: NODEINFO_DOCID,
+                type: "nodeinfo",
+                nodeid: "",
+                v20220607: true,
             });
-        this.changeHandler = changes;
-        this.isReady = true;
-        Logger("Database is now ready.");
+            if (nodeinfo.nodeid == "") {
+                nodeinfo.nodeid = Math.random().toString(36).slice(-10);
+                await this.localDatabase.put(nodeinfo);
+            }
+            this.localDatabase.on("close", () => {
+                Logger("Database closed.");
+                this.isReady = false;
+                this.localDatabase.removeAllListeners();
+            });
+            this.nodeid = nodeinfo.nodeid;
+
+            // Traceing the leaf id
+            const changes = this.localDatabase
+                .changes({
+                    since: "now",
+                    live: true,
+                    filter: (doc) => doc.type == "leaf",
+                })
+                .on("change", (e) => {
+                    if (e.deleted) return;
+                    this.leafArrived(e.id);
+                    this.docSeq = `${e.seq}`;
+                });
+            this.changeHandler = changes;
+            this.isReady = true;
+            Logger("Database is now ready.");
+            return true;
+        };
+        Logger("Checking old database", LOG_LEVEL.VERBOSE);
+        const old = await this.isOldDatabaseExists();
+
+        //Migrate.
+        if (old) {
+            const oi = await old.info();
+            if (oi.doc_count == 0) {
+                Logger("Old database is empty, proceed to next step", LOG_LEVEL.VERBOSE);
+                // aleady converted.
+                return nextSeq();
+            }
+            //
+            const progress = NewNotice("Converting..", 0);
+            try {
+                Logger("We have to upgrade database..", LOG_LEVEL.NOTICE);
+
+                // To debug , uncomment below.
+
+                // this.localDatabase.destroy();
+                // await delay(100);
+                // this.localDatabase = new PouchDB<EntryDoc>(this.dbname + "-livesync-v2", {
+                //     auto_compaction: this.settings.useHistory ? false : true,
+                //     revs_limit: 100,
+                //     deterministic_revs: true,
+                // });
+                const newDbStatus = await this.localDatabase.info();
+                Logger("New database is initialized");
+                Logger(newDbStatus);
+
+                if (this.settings.encrypt) {
+                    enableEncryption(old, this.settings.passphrase);
+                }
+                const rep = old.replicate.to(this.localDatabase);
+                rep.on("change", (e) => {
+                    progress.setMessage(`Converting ${e.docs_written} docs...`);
+                    Logger(`Converting ${e.docs_written} docs...`, LOG_LEVEL.VERBOSE);
+                });
+                const w = await rep;
+                progress.hide();
+
+                if (w.ok) {
+                    Logger("Conversion completed!", LOG_LEVEL.NOTICE);
+                    old.destroy(); // delete the old database.
+                    this.isReady = true;
+                    return nextSeq();
+                } else {
+                    throw new Error("Conversion failed!");
+                }
+            } catch (ex) {
+                progress.hide();
+                Logger("Conversion failed!, If you are fully synchronized, please drop the old database in the Hatch pane in setting dialog. or please make an issue on Github.", LOG_LEVEL.NOTICE);
+                Logger(ex);
+                this.isReady = false;
+                return false;
+            }
+        } else {
+            return nextSeq();
+        }
     }
 
     async prepareHashFunctions() {
@@ -203,55 +319,28 @@ export class LocalPouchDB {
     async getDBLeaf(id: string, waitForReady: boolean): Promise<string> {
         await this.waitForGCComplete();
         // when in cache, use that.
-        if (this.hashCacheRev[id]) {
-            return this.hashCacheRev[id];
+        const leaf = this.hashCaches.revGet(id);
+        if (leaf) {
+            return leaf;
         }
         try {
             const w = await this.localDatabase.get(id);
             if (w.type == "leaf") {
-                if (id.startsWith("h:+")) {
-                    try {
-                        w.data = await decrypt(w.data, this.settings.passphrase);
-                    } catch (e) {
-                        Logger("The element of the document has been encrypted, but decryption failed.", LOG_LEVEL.NOTICE);
-                        throw e;
-                    }
-                }
-                this.hashCache[w.data] = id;
-                this.hashCacheRev[id] = w.data;
+                this.hashCaches.set(id, w.data);
                 return w.data;
             }
             throw new Error(`retrive leaf, but it was not leaf.`);
         } catch (ex) {
-            if (ex.status && ex.status == 404 && waitForReady) {
-                // just leaf is not ready.
-                // wait for on
-                if ((await this.waitForLeafReady(id)) === false) {
-                    throw new Error(`time out (waiting leaf)`);
-                }
-                try {
-                    // retrive again.
-                    const w = await this.localDatabase.get(id);
-                    if (w.type == "leaf") {
-                        if (id.startsWith("h:+")) {
-                            try {
-                                w.data = await decrypt(w.data, this.settings.passphrase);
-                            } catch (e) {
-                                Logger("The element of the document has been encrypted, but decryption failed.", LOG_LEVEL.NOTICE);
-                                throw e;
-                            }
-                        }
-                        this.hashCache[w.data] = id;
-                        this.hashCacheRev[id] = w.data;
-                        return w.data;
+            if (ex.status && ex.status == 404) {
+                if (waitForReady) {
+                    // just leaf is not ready.
+                    // wait for on
+                    if ((await this.waitForLeafReady(id)) === false) {
+                        throw new Error(`time out (waiting leaf)`);
                     }
-                    throw new Error(`retrive leaf, but it was not leaf.`);
-                } catch (ex) {
-                    if (ex.status && ex.status == 404) {
-                        throw new Error("leaf is not found");
-                    }
-                    Logger(`Something went wrong on retriving leaf`);
-                    throw ex;
+                    return this.getDBLeaf(id, false);
+                } else {
+                    throw new Error("Leaf was not found");
                 }
             } else {
                 Logger(`Something went wrong on retriving leaf`);
@@ -517,7 +606,7 @@ export class LocalPouchDB {
         let plainSplit = false;
         let cacheUsed = 0;
         const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
-        if (isPlainText(note._id)) {
+        if (shouldSplitAsPlainText(note._id)) {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
         }
@@ -535,7 +624,7 @@ export class LocalPouchDB {
         let longLineThreshold = this.settings.longLineThreshold;
         if (longLineThreshold < 100) longLineThreshold = 100;
 
-        const pieces = splitPieces(note.data, pieceSize, plainSplit, minimumChunkSize, longLineThreshold);
+        const pieces = splitPieces2(note.data, pieceSize, plainSplit, minimumChunkSize, longLineThreshold);
         for (const piece of pieces()) {
             processed++;
             let leafid = "";
@@ -544,9 +633,10 @@ export class LocalPouchDB {
             let hashQ = 0; // if hash collided, **IF**, count it up.
             let tryNextHash = false;
             let needMake = true;
-            if (typeof this.hashCache[piece] !== "undefined") {
+            const cache = this.hashCaches.get(piece);
+            if (cache) {
                 hashedPiece = "";
-                leafid = this.hashCache[piece];
+                leafid = cache;
                 needMake = false;
                 skiped++;
                 cacheUsed++;
@@ -563,21 +653,11 @@ export class LocalPouchDB {
                     try {
                         nleafid = `${leafid}${hashQ}`;
                         const pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
-                        //try decode
-                        if (pieceData._id.startsWith("h:+")) {
-                            try {
-                                pieceData.data = await decrypt(pieceData.data, this.settings.passphrase);
-                            } catch (e) {
-                                Logger("Decode failed!");
-                                throw e;
-                            }
-                        }
                         if (pieceData.type == "leaf" && pieceData.data == piece) {
                             leafid = nleafid;
                             needMake = false;
                             tryNextHash = false;
-                            this.hashCache[piece] = leafid;
-                            this.hashCacheRev[leafid] = piece;
+                            this.hashCaches.set(piece, leafid);
                         } else if (pieceData.type == "leaf") {
                             Logger("hash:collision!!");
                             hashQ++;
@@ -601,19 +681,15 @@ export class LocalPouchDB {
                 } while (tryNextHash);
                 if (needMake) {
                     //have to make
-                    let savePiece = piece;
-                    if (this.settings.encrypt) {
-                        const passphrase = this.settings.passphrase;
-                        savePiece = await encrypt(piece, passphrase);
-                    }
+                    const savePiece = piece;
+
                     const d: EntryLeaf = {
                         _id: leafid,
                         data: savePiece,
                         type: "leaf",
                     };
                     newLeafs.push(d);
-                    this.hashCache[piece] = leafid;
-                    this.hashCacheRev[leafid] = piece;
+                    this.hashCaches.set(piece, leafid);
                     made++;
                 } else {
                     skiped++;
@@ -635,7 +711,6 @@ export class LocalPouchDB {
                         } else {
                             Logger(`save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
                             Logger(item);
-                            // this.disposeHashCache();
                             saved = false;
                         }
                     }
@@ -707,7 +782,7 @@ export class LocalPouchDB {
             this.openOneshotReplication(
                 setting,
                 showingNotice,
-                async (e) => { },
+                async (e) => {},
                 false,
                 (e) => {
                     if (e === true) res(e);
@@ -731,16 +806,12 @@ export class LocalPouchDB {
             return false;
         }
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const auth: Credential = {
-            username: setting.couchDB_USER,
-            password: setting.couchDB_PASSWORD,
-        };
         if (this.syncHandler != null) {
             Logger("Another replication running.");
             return false;
         }
 
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
+        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}: ${dbret}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
             return false;
@@ -1038,6 +1109,15 @@ export class LocalPouchDB {
         Logger("Replication closed");
     }
 
+    async resetLocalOldDatabase() {
+        const oldDB = await this.isOldDatabaseExists();
+        if (oldDB) {
+            oldDB.destroy();
+            NewNotice("Deleted! Please re-launch obsidian.", LOG_LEVEL.NOTICE);
+        } else {
+            NewNotice("Old database is not exist.", LOG_LEVEL.NOTICE);
+        }
+    }
     async resetDatabase() {
         await this.waitForGCComplete();
         this.changeHandler = this.cancelHandler(this.changeHandler);
@@ -1047,17 +1127,11 @@ export class LocalPouchDB {
         await this.localDatabase.destroy();
         this.localDatabase = null;
         await this.initializeDatabase();
-        this.disposeHashCache();
         Logger("Local Database Reset", LOG_LEVEL.NOTICE);
     }
     async tryResetRemoteDatabase(setting: RemoteDBSettings) {
         await this.closeReplication();
-        const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const auth: Credential = {
-            username: setting.couchDB_USER,
-            password: setting.couchDB_PASSWORD,
-        };
-        const con = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
+        const con = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
         if (typeof con == "string") return;
         try {
             await con.db.destroy();
@@ -1070,22 +1144,14 @@ export class LocalPouchDB {
     }
     async tryCreateRemoteDatabase(setting: RemoteDBSettings) {
         await this.closeReplication();
-        const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const auth: Credential = {
-            username: setting.couchDB_USER,
-            password: setting.couchDB_PASSWORD,
-        };
-        const con2 = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
+        const con2 = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
+
         if (typeof con2 === "string") return;
         Logger("Remote Database Created or Connected", LOG_LEVEL.NOTICE);
     }
     async markRemoteLocked(setting: RemoteDBSettings, locked: boolean) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const auth: Credential = {
-            username: setting.couchDB_USER,
-            password: setting.couchDB_PASSWORD,
-        };
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
+        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
@@ -1115,11 +1181,7 @@ export class LocalPouchDB {
     }
     async markRemoteResolved(setting: RemoteDBSettings) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const auth: Credential = {
-            username: setting.couchDB_USER,
-            password: setting.couchDB_PASSWORD,
-        };
-        const dbret = await connectRemoteCouchDB(uri, auth, setting.disableRequestURI || this.isMobile);
+        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
         if (typeof dbret === "string") {
             Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
             return;
@@ -1159,7 +1221,6 @@ export class LocalPouchDB {
                 const dc = await this.localDatabase.allDocs({ keys: [...children] });
                 if (dc.rows.some((e) => "error" in e)) {
                     this.corruptedEntries[entry._id] = entry;
-                    this.disposeHashCache();
                     Logger(`sancheck:corrupted:${entry._id} : ${children.length}`, LOG_LEVEL.VERBOSE);
                     return false;
                 }
@@ -1180,84 +1241,150 @@ export class LocalPouchDB {
         await runWithLock("replicate", true, async () => {
             if (this.gcRunning) return;
             this.gcRunning = true;
+            let idbGC: IDBPDatabase<{ id: string }> = null;
+            const storeIDB = "gc";
+            const idbname = "idb-" + this.dbname + "-idb-gcx";
             try {
-                // get all documents of NewEntry2
-                // we don't use queries , just use allDocs();
-                this.disposeHashCache();
-                let c = 0;
-                let readCount = 0;
-                let hashPieces: string[] = [];
-                let usedPieces: string[] = [];
-                Logger("Collecting Garbage");
-                do {
-                    const result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 2000, conflicts: true });
-                    readCount = result.rows.length;
-                    Logger("checked:" + readCount);
-                    if (readCount > 0) {
-                        //there are some result
-                        for (const v of result.rows) {
-                            if (v.id.startsWith("h:")) {
-                                hashPieces = Array.from(new Set([...hashPieces, v.id]));
-                            } else {
-                                const docT = await this.localDatabase.get(v.id, { revs_info: true });
-                                const revs = docT._revs_info;
-                                // console.log(`revs:${revs.length}`)
-                                for (const rev of revs) {
-                                    if (rev.status != "available") continue;
-                                    // console.log(`id:${docT._id},rev:${rev.rev}`);
-                                    const doc = await this.localDatabase.get(v.id, { rev: rev.rev });
-                                    if ("children" in doc) {
-                                        // used pieces memo.
-                                        usedPieces = Array.from(new Set([...usedPieces, ...doc.children]));
-                                        if (doc._conflicts) {
-                                            for (const cid of doc._conflicts) {
-                                                const p = await this.localDatabase.get<EntryDoc>(doc._id, { rev: cid });
-                                                if (p.type == "newnote" || p.type == "plain") {
-                                                    usedPieces = Array.from(new Set([...usedPieces, ...p.children]));
-                                                }
-                                            }
-                                        }
-                                    }
+                const procAllDocs = async (getLeaf: boolean, startkey: string, endkey: string, callback: (idordoc: string[]) => Promise<void>) => {
+                    let c = 0;
+                    let readCount = 0;
+                    do {
+                        const result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 2000, conflicts: !getLeaf, startkey: startkey, endkey: endkey });
+                        readCount = result.rows.length;
+                        if (readCount > 0) {
+                            await callback(result.rows.map((e) => e.id));
+                        }
+                        c += readCount;
+                    } while (readCount != 0);
+                };
+
+                // Delete working indexedDB once.
+
+                await deleteDB(idbname);
+                idbGC = await openDB(idbname, 1, {
+                    upgrade(db) {
+                        db.createObjectStore(storeIDB, { keyPath: "id" });
+                    },
+                });
+
+                // Mark all chunks once.
+                await procAllDocs(true, "h:", "h_", async (docs) => {
+                    Logger(`Chunks marked - :${docs.length}`);
+                    const tx = idbGC.transaction(storeIDB, "readwrite");
+                    const store = tx.objectStore(storeIDB);
+
+                    for (const docId of docs) {
+                        await store.put({ id: docId });
+                    }
+                    await tx.done;
+                });
+
+                Logger("All chunks are marked once");
+
+                const unmarkUsedByHashId = async (doc: EntryDoc) => {
+                    if ("children" in doc) {
+                        const tx = idbGC.transaction(storeIDB, "readwrite");
+                        const store = tx.objectStore(storeIDB);
+
+                        for (const hashId of doc.children) {
+                            await store.delete(hashId);
+                        }
+                        await tx.done;
+                    }
+                };
+                Logger("Processing existen docs");
+                let procDocs = 0;
+                await procAllDocs(false, null, null, async (doc) => {
+                    const docIds = (doc as string[]).filter((e) => !e.startsWith("h:") && !e.startsWith("ps:"));
+                    for (const docId of docIds) {
+                        procDocs++;
+                        if (procDocs % 25 == 0) Logger(`${procDocs} Processed`);
+                        const docT = await this.localDatabase.get(docId, { revs_info: true });
+                        if (docT._deleted) continue;
+                        // Unmark about latest doc.
+                        unmarkUsedByHashId(docT);
+                        const revs = docT._revs_info;
+
+                        // Unmark old revisions
+                        for (const rev of revs) {
+                            if (rev.status != "available") continue;
+                            const docRev = await this.localDatabase.get(docId, { rev: rev.rev });
+                            unmarkUsedByHashId(docRev);
+                            if (docRev._conflicts) {
+                                // Unmark the conflicted chunks of old revisions.
+                                for (const cid of docRev._conflicts) {
+                                    const docConflict = await this.localDatabase.get<EntryDoc>(docId, { rev: cid });
+                                    unmarkUsedByHashId(docConflict);
                                 }
                             }
                         }
-                    }
-                    c += readCount;
-                } while (readCount != 0);
-                // items collected.
-                Logger("Finding unused pieces");
-                this.disposeHashCache();
-                const garbages = hashPieces.filter((e) => usedPieces.indexOf(e) == -1);
-                let deleteCount = 0;
-                Logger("we have to delete:" + garbages.length);
-                let deleteDoc: EntryDoc[] = [];
-                for (const v of garbages) {
-                    try {
-                        const item = await this.localDatabase.get(v);
-                        item._deleted = true;
-                        deleteDoc.push(item);
-                        if (deleteDoc.length > 50) {
-                            await this.localDatabase.bulkDocs<EntryDoc>(deleteDoc);
-                            deleteDoc = [];
-                            Logger("delete:" + deleteCount);
+                        // Unmark the conflicted chunk.
+                        if (docT._conflicts) {
+                            for (const cid of docT._conflicts) {
+                                const docConflict = await this.localDatabase.get<EntryDoc>(docId, { rev: cid });
+                                unmarkUsedByHashId(docConflict);
+                            }
                         }
-                        deleteCount++;
-                    } catch (ex) {
-                        if (ex.status && ex.status == 404) {
-                            // NO OP. It should be timing problem.
+                    }
+                });
+                // All marked chunks could be deleted.
+                Logger("Delete non-used chunks");
+                let dataLeft = false;
+                let chunkKeys: string[] = [];
+                let totalDelCount = 0;
+                do {
+                    const tx = idbGC.transaction(storeIDB, "readonly");
+                    const store = tx.objectStore(storeIDB);
+                    let cursor = await store.openCursor();
+                    if (cursor == null) break;
+                    const maxconcurrentDocs = 10;
+                    let delChunkCount = 0;
+                    do {
+                        // console.log(cursor.key, cursor.value);
+                        if (cursor) {
+                            chunkKeys.push(cursor.key as string);
+                            delChunkCount++;
+                            dataLeft = true;
                         } else {
-                            throw ex;
+                            dataLeft = false;
                         }
+                        cursor = await cursor.continue();
+                    } while (cursor && dataLeft && delChunkCount < maxconcurrentDocs);
+                    // if (chunkKeys.length > 0) {
+                    totalDelCount += delChunkCount;
+                    const delDocResult = await this.localDatabase.allDocs({ keys: chunkKeys, include_docs: true });
+                    const delDocs = delDocResult.rows.map((e) => ({ ...e.doc, _deleted: true }));
+                    await this.localDatabase.bulkDocs(delDocs);
+                    Logger(`deleted from pouchdb:${delDocs.length}`);
+                    const tx2 = idbGC.transaction(storeIDB, "readwrite");
+                    const store2 = tx2.objectStore(storeIDB);
+                    for (const doc of chunkKeys) {
+                        await store2.delete(doc);
                     }
+                    Logger(`deleted from workspace:${chunkKeys.length}`);
+                    await tx2.done;
+                    // }
+                    chunkKeys = [];
+                } while (dataLeft);
+                Logger(`Deleted ${totalDelCount} chunks`);
+                Logger("Teardown the database");
+                if (idbGC != null) {
+                    idbGC.close();
+                    idbGC = null;
                 }
-                if (deleteDoc.length > 0) {
-                    await this.localDatabase.bulkDocs<EntryDoc>(deleteDoc);
-                }
-                Logger(`GC:deleted ${deleteCount} items.`);
+                await deleteDB(idbname);
+                this.gcRunning = false;
+                Logger("Done");
+            } catch (ex) {
+                Logger("Error on garbage collection");
+                Logger(ex);
             } finally {
+                if (idbGC != null) {
+                    idbGC.close();
+                }
+                await deleteDB(idbname);
                 this.gcRunning = false;
             }
         });
-        this.disposeHashCache();
     }
 }

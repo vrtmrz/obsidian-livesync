@@ -1,9 +1,9 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl } from "obsidian";
-import { EntryDoc, LOG_LEVEL } from "./lib/src/types";
+import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { NewNotice, runWithLock } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { connectRemoteCouchDB } from "./utils_couchdb";
+import { checkSyncInfo, connectRemoteCouchDBWithSetting } from "./utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee";
 import ObsidianLiveSyncPlugin from "./main";
 
@@ -15,14 +15,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        const db = await connectRemoteCouchDB(
-            this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME),
-            {
-                username: this.plugin.settings.couchDB_USER,
-                password: this.plugin.settings.couchDB_PASSWORD,
-            },
-            this.plugin.settings.disableRequestURI
-        );
+        // const db = await connectRemoteCouchDB(
+        //     this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME),
+        //     {
+        //         username: this.plugin.settings.couchDB_USER,
+        //         password: this.plugin.settings.couchDB_PASSWORD,
+        //     },
+        //     this.plugin.settings.disableRequestURI,
+        //     this.plugin.settings.encrypt ? this.plugin.settings.passphrase : this.plugin.settings.encrypt
+        // );
+        const db = await connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.localDatabase.isMobile);
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
@@ -78,7 +80,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const containerRemoteDatabaseEl = containerEl.createDiv();
         containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
         const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while automatic synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
-        syncWarn.addClass("op-warn");
+        syncWarn.addClass("op-warn-info");
         syncWarn.addClass("sls-hidden");
 
         const isAnySyncEnabled = (): boolean => {
@@ -170,20 +172,126 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.couchDB_DBNAME = value;
                         await this.plugin.saveSettings();
                     })
-            ),
+            )
 
-            new Setting(containerRemoteDatabaseEl)
-                .setDesc("This feature is locked in mobile")
-                .setName("Use the old connecting method")
-                .addToggle((toggle) => {
-                    toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
-                        this.plugin.settings.disableRequestURI = value;
+            // new Setting(containerRemoteDatabaseEl)
+            //     .setDesc("This feature is locked in mobile")
+            //     .setName("Use the old connecting method")
+            //     .addToggle((toggle) => {
+            //         toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
+            //             this.plugin.settings.disableRequestURI = value;
+            //             await this.plugin.saveSettings();
+            //         });
+            //         toggle.setDisabled(this.plugin.isMobile);
+            //         return toggle;
+            //     })
+        );
+        new Setting(containerRemoteDatabaseEl)
+            .setName("End to End Encryption")
+            .setDesc("Encrypting contents on the database.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
+                    this.plugin.settings.workingEncrypt = value;
+                    phasspharase.setDisabled(!value);
+                    await this.plugin.saveSettings();
+                })
+            );
+        const phasspharase = new Setting(containerRemoteDatabaseEl)
+            .setName("Passphrase")
+            .setDesc("Encrypting passphrase")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.workingPassphrase)
+                    .onChange(async (value) => {
+                        this.plugin.settings.workingPassphrase = value;
                         await this.plugin.saveSettings();
                     });
-                    toggle.setDisabled(this.plugin.isMobile);
-                    return toggle;
-                })
-        );
+                text.inputEl.setAttribute("type", "password");
+            });
+        phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
+        containerRemoteDatabaseEl.createEl("div", {
+            text: "If you change the passphrase, rebuilding the remote database is required. Please press 'Apply and send'. Or, If you have configured it to connect to an existing database, click 'Just apply'.",
+        });
+        const checkWorkingPassphrase = async (): Promise<boolean> => {
+            const settingForCheck: RemoteDBSettings = {
+                ...this.plugin.settings,
+                encrypt: this.plugin.settings.workingEncrypt,
+                passphrase: this.plugin.settings.workingPassphrase,
+            };
+            console.dir(settingForCheck);
+            const db = await connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
+            if (typeof db === "string") {
+                Logger("Could not connect to the database.", LOG_LEVEL.NOTICE);
+                return false;
+            } else {
+                if (await checkSyncInfo(db.db)) {
+                    // Logger("Database connected", LOG_LEVEL.NOTICE);
+                    return true;
+                } else {
+                    Logger("Failed to read remote database", LOG_LEVEL.NOTICE);
+                    return false;
+                }
+            }
+        };
+        const applyEncryption = async (sendToServer: boolean) => {
+            if (this.plugin.settings.workingEncrypt && this.plugin.settings.workingPassphrase == "") {
+                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (this.plugin.settings.workingEncrypt && !(await testCrypt())) {
+                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (!(await checkWorkingPassphrase())) {
+                return;
+            }
+            if (!this.plugin.settings.workingEncrypt) {
+                this.plugin.settings.workingPassphrase = "";
+            }
+            this.plugin.settings.liveSync = false;
+            this.plugin.settings.periodicReplication = false;
+            this.plugin.settings.syncOnSave = false;
+            this.plugin.settings.syncOnStart = false;
+            this.plugin.settings.syncOnFileOpen = false;
+            this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
+            this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
+
+            await this.plugin.saveSettings();
+            // await this.plugin.resetLocalDatabase();
+            if (sendToServer) {
+                await this.plugin.initializeDatabase(true);
+                await this.plugin.markRemoteLocked();
+                await this.plugin.tryResetRemoteDatabase();
+                await this.plugin.markRemoteLocked();
+                await this.plugin.replicateAllToServer(true);
+            } else {
+                await this.plugin.markRemoteResolved();
+                await this.plugin.replicate(true);
+            }
+        };
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Apply")
+            .setDesc("apply encryption settinngs, and re-initialize remote database")
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and send")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-left")
+                    .onClick(async () => {
+                        await applyEncryption(true);
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Just apply")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-right")
+                    .onClick(async () => {
+                        await applyEncryption(false);
+                    })
+            );
 
         new Setting(containerRemoteDatabaseEl)
             .setName("Test Database Connection")
@@ -408,88 +516,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.garbageCollect();
                 })
         );
-        new Setting(containerLocalDatabaseEl)
-            .setName("End to End Encryption")
-            .setDesc("Encrypting contents on the database.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
-                    this.plugin.settings.workingEncrypt = value;
-                    phasspharase.setDisabled(!value);
-                    await this.plugin.saveSettings();
-                })
-            );
-        const phasspharase = new Setting(containerLocalDatabaseEl)
-            .setName("Passphrase")
-            .setDesc("Encrypting passphrase")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.workingPassphrase)
-                    .onChange(async (value) => {
-                        this.plugin.settings.workingPassphrase = value;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "password");
-            });
-        phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
-        containerLocalDatabaseEl.createEl("div", {
-            text: "When you change any encryption enabled or passphrase, you have to reset all databases to make sure that the last password is unused and erase encrypted data from anywhere. This operation will not lost your vault if you are fully synced.",
-        });
-        const applyEncryption = async (sendToServer: boolean) => {
-            if (this.plugin.settings.workingEncrypt && this.plugin.settings.workingPassphrase == "") {
-                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
-                return;
-            }
-            if (this.plugin.settings.workingEncrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
-                return;
-            }
-            if (!this.plugin.settings.workingEncrypt) {
-                this.plugin.settings.workingPassphrase = "";
-            }
-            this.plugin.settings.liveSync = false;
-            this.plugin.settings.periodicReplication = false;
-            this.plugin.settings.syncOnSave = false;
-            this.plugin.settings.syncOnStart = false;
-            this.plugin.settings.syncOnFileOpen = false;
-            this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
-            this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
-
-            await this.plugin.saveSettings();
-            await this.plugin.resetLocalDatabase();
-            if (sendToServer) {
-                await this.plugin.initializeDatabase(true);
-                await this.plugin.markRemoteLocked();
-                await this.plugin.tryResetRemoteDatabase();
-                await this.plugin.markRemoteLocked();
-                await this.plugin.replicateAllToServer(true);
-            } else {
-                await this.plugin.markRemoteResolved();
-                await this.plugin.replicate(true);
-            }
-        };
-        new Setting(containerLocalDatabaseEl)
-            .setName("Apply")
-            .setDesc("apply encryption settinngs, and re-initialize database")
-            .addButton((button) =>
-                button
-                    .setButtonText("Apply and send")
-                    .setWarning()
-                    .setDisabled(false)
-                    .setClass("sls-btn-left")
-                    .onClick(async () => {
-                        await applyEncryption(true);
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Apply and receive")
-                    .setWarning()
-                    .setDisabled(false)
-                    .setClass("sls-btn-right")
-                    .onClick(async () => {
-                        await applyEncryption(false);
-                    })
-            );
 
         containerLocalDatabaseEl.createEl("div", {
             text: sanitizeHTMLToDom(`Advanced settings<br>
@@ -830,7 +856,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         }
         const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the bootup sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
-        hatchWarn.addClass("op-warn");
+        hatchWarn.addClass("op-warn-info");
         const dropHistory = async (sendToServer: boolean) => {
             this.plugin.settings.liveSync = false;
             this.plugin.settings.periodicReplication = false;
@@ -997,6 +1023,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin.resetLocalDatabase();
+                        await this.plugin.initializeDatabase();
+                    })
+            );
+
+        new Setting(containerHatchEl)
+            .setName("Drop old encrypted database")
+            .setDesc("WARNING: Please use this button only when you have failed on converting old-style localdatabase at v0.10.0.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Drop")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.resetLocalOldDatabase();
                         await this.plugin.initializeDatabase();
                     })
             );

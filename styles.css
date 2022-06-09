@@ -1,14 +1,14 @@
 .added {
-    color: black;
-    background-color: white;
+    color: var(--text-on-accent);
+    background-color: var(--text-accent);
 }
 .normal {
-    color: lightgray;
+    color: var(--text-normal);
 }
 .deleted {
-    color: white;
-    background-color: black;
-    /* text-decoration: line-through; */
+    color: var(--text-on-accent);
+    background-color: var(--text-muted);
+    text-decoration: line-through;
 }
 .op-scrollable {
     overflow-y: scroll;
@@ -23,6 +23,25 @@
     border: 1px solid salmon;
     padding: 2px;
     border-radius: 4px;
+}
+.op-warn::before {
+    content: "Warning";
+    font-weight: bold;
+    color: salmon;
+    position: relative;
+    display: block;
+}
+.op-warn-info {
+    border: 1px solid rgb(255, 209, 81);
+    padding: 2px;
+    border-radius: 4px;
+}
+.op-warn-info::before {
+    content: "Notice";
+    font-weight: bold;
+    color: rgb(255, 209, 81);
+    position: relative;
+    display: block;
 }
 .syncstatusbar {
     -webkit-filter: grayscale(100%);
@@ -69,6 +88,8 @@
 .CodeMirror-wrap::before,
 .cm-s-obsidian > .cm-editor::before {
     content: var(--slsmessage);
+    text-align: right;
+    white-space: pre-wrap;
     position: absolute;
     border-radius: 4px;
     /* border:1px solid --background-modifier-border; */

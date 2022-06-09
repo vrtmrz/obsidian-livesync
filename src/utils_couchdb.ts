@@ -1,6 +1,6 @@
 import { Logger } from "./lib/src/logger";
-import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc } from "./lib/src/types";
-import { resolveWithIgnoreKnownError } from "./lib/src/utils";
+import { LOG_LEVEL, VER, VERSIONINFO_DOCID, EntryVersionInfo, EntryDoc, RemoteDBSettings, SYNCINFO_ID, SyncInfo } from "./lib/src/types";
+import { enableEncryption, resolveWithIgnoreKnownError } from "./lib/src/utils";
 import { PouchDB } from "./pouchdb-browser";
 import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
 
@@ -27,7 +27,18 @@ const fetchByAPI = async (request: RequestUrlParam): Promise<RequestUrlResponse>
     return ret;
 };
 
-export const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
+export const connectRemoteCouchDBWithSetting = (settings: RemoteDBSettings, isMobile: boolean) =>
+    connectRemoteCouchDB(
+        settings.couchDB_URI + (settings.couchDB_DBNAME == "" ? "" : "/" + settings.couchDB_DBNAME),
+        {
+            username: settings.couchDB_USER,
+            password: settings.couchDB_PASSWORD,
+        },
+        settings.disableRequestURI || isMobile,
+        settings.encrypt ? settings.passphrase : settings.encrypt
+    );
+
+const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
     if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
     let authHeader = "";
     if (auth.username && auth.password) {
@@ -82,7 +93,7 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                     } else {
                         last_post_successed = true;
                     }
-                    Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.VERBOSE);
+                    Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.DEBUG);
 
                     return new Response(r.arrayBuffer, {
                         headers: r.headers,
@@ -109,7 +120,7 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
                 } else {
                     last_post_successed = true;
                 }
-                Logger(`HTTP:${method}${size} to:${localURL} -> ${responce.status}`, LOG_LEVEL.VERBOSE);
+                Logger(`HTTP:${method}${size} to:${localURL} -> ${responce.status}`, LOG_LEVEL.DEBUG);
                 return responce;
             } catch (ex) {
                 Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
@@ -124,6 +135,9 @@ export const connectRemoteCouchDB = async (uri: string, auth: { username: string
         },
     };
     const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
+    if (passphrase && typeof passphrase === "string") {
+        enableEncryption(db, passphrase);
+    }
     try {
         const info = await db.info();
         return { db: db, info: info };
@@ -178,4 +192,33 @@ export const bumpRemoteVersion = async (db: PouchDB.Database, barrier: number = 
     vi._rev = versionInfo._rev;
     await db.put(vi);
     return true;
+};
+
+export const checkSyncInfo = async (db: PouchDB.Database): Promise<boolean> => {
+    try {
+        const syncinfo = (await db.get(SYNCINFO_ID)) as SyncInfo;
+        console.log(syncinfo);
+        // if we could decrypt the doc, it must be ok.
+        return true;
+    } catch (ex) {
+        if (ex.status && ex.status == 404) {
+            const randomStrSrc = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const temp = [...Array(30)]
+                .map((e) => Math.floor(Math.random() * randomStrSrc.length))
+                .map((e) => randomStrSrc[e])
+                .join("");
+            const newSyncInfo: SyncInfo = {
+                _id: SYNCINFO_ID,
+                type: "syncinfo",
+                data: temp,
+            };
+            if (await db.put(newSyncInfo)) {
+                return true;
+            }
+            return false;
+        } else {
+            console.dir(ex);
+            return false;
+        }
+    }
 };

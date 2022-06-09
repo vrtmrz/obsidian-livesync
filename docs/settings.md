@@ -1,3 +1,5 @@
+NOTE: This document surely became outdated. I'll improve this doc in a while. but your contributions are always welcome.
+
 # Settings of this plugin
 
 ## Remote Database Configurations
@@ -19,13 +21,50 @@ The Database name to synchronize.
 ⚠️If not exist, created automatically.
 
 
+
 ### Use the old connecting method
-Since v0.8.0, Self-hosted LiveSync uses Obsidian's API to connect to the CouchDB instead of the browser API.
-This method will increase the performance and avoid troubles with the CORS.
-But it doesn't been well tested yet. If you are troubled, please disable this option once.
+This option has been removed at v0.10.0
+
+
+
+### End to End Encryption
+Encrypt your database. It affects only the database, your files are left as plain.
+
+The encryption algorithm is AES-GCM.
+
+Note: If you want to use "Plugins and their settings", you have to enable this.
+
+### Passphrase
+The passphrase to used as the key of encryption. Please use the long text.
+
+### Apply
+To enable End-to-End encryption, there must be no items of the same content encrypted with different passphrases to avoid attackers guessing passphrases. Self-hosted LiveSync uses crc32 of the chunks, It is really a must.
+
+So, this plugin completely deletes everything from both local and remote databases before enabling it and then synchronizing again.
+
+To enable, "Apply and send" from the most powerful device.
+If you want to synchronize an existing database, set passphrase and press "Just apply".
+
+- Apply and send
+1. Initialize the Local Database and set (or clear) passphrase, put all files into the database again.
+2. Initialize the Remote Database.
+3. Lock the Remote Database.
+4. Send it all.
+
+This process is simply heavy. Using a PC or Mac is preferred.
+- Apply and receive
+1. Initialize the Local Database and set (or clear) the passphrase.
+2. Unlock the Remote Database.
+3. Retrieve all and decrypt to file.
+
+When running these operations, every synchronization settings is disabled.
 
 ### Test Database connection
 You can check the connection by clicking this button.
+
+### Check database configuration
+You can check and modify your CouchDB's configuration from here directly.
+
 
 ## Local Database Configurations
 "Local Database" is created inside your obsidian.
@@ -55,39 +94,6 @@ Note: If you want to use "Use history", this vault must be set to 0.
 
 ### Manual Garbage Collect
 Run "Garbage Collection" manually.
-
-### End to End Encryption
-Encrypt your database. It affects only the database, your files are left as plain.
-
-The encryption algorithm is AES-GCM.
-
-Note: If you want to use "Plugins and their settings", you have to enable this.
-
-### Passphrase
-The passphrase to used as the key of encryption. Please use the long text.
-
-### Apply
-To enable End-to-End encryption, there must be no items of the same content encrypted with different passphrases to avoid attackers guessing passphrases. Self-hosted LiveSync uses crc32 of the chunks, It is really a must.
-
-So, this plugin completely deletes everything from both local and remote databases before enabling it and then synchronizing again.
-
-To enable, "Apply and send" from the most powerful device, and "Apply and receive" from every other device.
-
-- Apply and send
-1. Initialize the Local Database and set (or clear) passphrase, put all files into the database again.
-2. Initialize the Remote Database.
-3. Lock the Remote Database.
-4. Send it all.
-
-This process is simply heavy. Using a PC or Mac is preferred.
-- Apply and receive
-1. Initialize the Local Database and set (or clear) the passphrase.
-2. Unlock the Remote Database.
-3. Retrieve all and decrypt to file.
-
-When running these operations, every synchronization settings is disabled.
-
-**And even your passphrase is wrong, It doesn't be checked before the plugin really decrypts. So If you set the wrong passphrase and run "Apply and Receive", you will get an amount of decryption error. But, this is the specification.**
 
 ### minimum chunk size and LongLine threshold
 The configuration of chunk splitting.

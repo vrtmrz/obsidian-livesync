@@ -1,7 +1,7 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG } from "./lib/src/types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList } from "./types";
 import {
     base64ToString,
@@ -17,6 +17,7 @@ import {
     setNoticeClass,
     NewNotice,
     allSettledWithConcurrencyLimit,
+    getLocks,
 } from "./lib/src/utils";
 import { Logger, setLogger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -27,6 +28,7 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 import PluginPane from "./PluginPane.svelte";
 import { id2path, path2id } from "./utils";
+const isDebug = false;
 setNoticeClass(Notice);
 class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -161,37 +163,42 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
         this.app.workspace.onLayoutReady(async () => {
-            try {
-                if (this.isRedFlagRaised()) {
-                    this.settings.batchSave = false;
-                    this.settings.liveSync = false;
-                    this.settings.periodicReplication = false;
-                    this.settings.syncOnSave = false;
-                    this.settings.syncOnStart = false;
-                    this.settings.syncOnFileOpen = false;
-                    this.settings.autoSweepPlugins = false;
-                    this.settings.usePluginSync = false;
-                    this.settings.suspendFileWatching = true;
-                    await this.saveSettings();
-                    await this.openDatabase();
-                    const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
-                    Logger(warningMessage, LOG_LEVEL.NOTICE);
-                    this.setStatusBarText(warningMessage);
-                } else {
-                    if (this.settings.suspendFileWatching) {
-                        Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+            if (this.localDatabase.isReady)
+                try {
+                    if (this.isRedFlagRaised()) {
+                        this.settings.batchSave = false;
+                        this.settings.liveSync = false;
+                        this.settings.periodicReplication = false;
+                        this.settings.syncOnSave = false;
+                        this.settings.syncOnStart = false;
+                        this.settings.syncOnFileOpen = false;
+                        this.settings.autoSweepPlugins = false;
+                        this.settings.usePluginSync = false;
+                        this.settings.suspendFileWatching = true;
+                        await this.saveSettings();
+                        await this.openDatabase();
+                        const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
+                        Logger(warningMessage, LOG_LEVEL.NOTICE);
+                        this.setStatusBarText(warningMessage);
+                    } else {
+                        if (this.settings.suspendFileWatching) {
+                            Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+                        }
+                        const isInitalized = await this.initializeDatabase();
+                        if (!isInitalized) {
+                            //TODO:stop all sync.
+                            return false;
+                        }
                     }
-                    await this.initializeDatabase();
+                    await this.realizeSettingSyncMode();
+                    this.registerWatchEvents();
+                    if (this.settings.syncOnStart) {
+                        this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                    }
+                } catch (ex) {
+                    Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
+                    Logger(ex, LOG_LEVEL.VERBOSE);
                 }
-                await this.realizeSettingSyncMode();
-                this.registerWatchEvents();
-                if (this.settings.syncOnStart) {
-                    this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
-                }
-            } catch (ex) {
-                Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
-                Logger(ex, LOG_LEVEL.VERBOSE);
-            }
         });
         this.addCommand({
             id: "livesync-replicate",
@@ -204,7 +211,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             id: "livesync-dump",
             name: "Dump informations of this doc ",
             editorCallback: (editor: Editor, view: MarkdownView) => {
-                this.localDatabase.disposeHashCache();
                 this.localDatabase.getDBEntry(view.file.path, {}, true, false);
             },
         });
@@ -318,7 +324,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.localDatabase.updateInfo = () => {
             this.refreshStatusText();
         };
-        await this.localDatabase.initializeDatabase();
+        return await this.localDatabase.initializeDatabase();
     }
 
     async garbageCollect() {
@@ -329,6 +335,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
         this.settings.workingEncrypt = this.settings.encrypt;
         this.settings.workingPassphrase = this.settings.passphrase;
+        // Delete this feature to avoid problems on mobile.
+        this.settings.disableRequestURI = true;
         const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsname)) {
@@ -422,7 +430,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.syncOnFileOpen && !this.suspended) {
             await this.replicate();
         }
-        this.localDatabase.disposeHashCache();
         await this.showIfConflicted(file);
         this.gcHook();
     }
@@ -581,7 +588,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
 
     // eslint-disable-next-line require-await
+    lastLog = "";
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
+        if (level == LOG_LEVEL.DEBUG && !isDebug) {
+            return;
+        }
         if (level < LOG_LEVEL.INFO && this.settings && this.settings.lessInformationInLog) {
             return;
         }
@@ -595,6 +606,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.logMessage = [].concat(this.logMessage).concat([newmessage]).slice(-100);
         console.log(valutName + ":" + newmessage);
+        this.setStatusBarText(null, messagecontent.substring(0, 30));
+        if (message instanceof Error) {
+            console.trace(message);
+        }
 
         if (level >= LOG_LEVEL.NOTICE) {
             if (messagecontent in this.notifies) {
@@ -814,6 +829,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (change._id.startsWith("h:")) {
                 continue;
             }
+            if (change._id == SYNCINFO_ID) {
+                continue;
+            }
             if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
                 Logger("replication change arrived", LOG_LEVEL.VERBOSE);
                 await this.handleDBChanged(change);
@@ -956,22 +974,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const procs = getProcessingCounts();
         const procsDisp = procs == 0 ? "" : ` ⏳${procs}`;
         const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}`;
-        this.setStatusBarText(message);
+        const locks = getLocks();
+        const pendingTask = locks.pending.length ? `\nPending:${locks.pending.join(", ")}` : "";
+        const runningTask = locks.running.length ? `\nRunning:${locks.running.join(", ")}` : "";
+        this.setStatusBarText(message + pendingTask + runningTask);
     }
 
-    setStatusBarText(message: string) {
-        if (this.lastMessage != message) {
-            this.statusBar.setText(message);
+    logHideTimer: NodeJS.Timeout = null;
+    setStatusBarText(message: string = null, log: string = null) {
+        if (!this.statusBar) return;
+        const newMsg = typeof message == "string" ? message : this.lastMessage;
+        const newLog = typeof log == "string" ? log : this.lastLog;
+        if (`${this.lastMessage}-${this.lastLog}` != `${newMsg}-${newLog}`) {
+            this.statusBar.setText(newMsg.split("\n")[0]);
+
             if (this.settings.showStatusOnEditor) {
                 const root = document.documentElement;
-                root.style.setProperty("--slsmessage", '"' + message + '"');
+                root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
             } else {
                 const root = document.documentElement;
                 root.style.setProperty("--slsmessage", '""');
             }
-            this.lastMessage = message;
+            if (this.logHideTimer != null) {
+                clearTimeout(this.logHideTimer);
+            }
+            this.logHideTimer = setTimeout(() => this.setStatusBarText(null, ""), 3000);
+            this.lastMessage = newMsg;
+            this.lastLog = newLog;
         }
     }
+    updateStatusBarText() {}
 
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
@@ -986,8 +1018,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async initializeDatabase(showingNotice?: boolean) {
-        await this.openDatabase();
-        await this.syncAllFiles(showingNotice);
+        if (await this.openDatabase()) {
+            if (this.localDatabase.isReady) {
+                await this.syncAllFiles(showingNotice);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     async replicateAllToServer(showingNotice?: boolean) {
@@ -1427,6 +1465,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async resetLocalDatabase() {
         await this.localDatabase.resetDatabase();
+    }
+    async resetLocalOldDatabase() {
+        await this.localDatabase.resetLocalOldDatabase();
     }
 
     async tryResetRemoteDatabase() {
