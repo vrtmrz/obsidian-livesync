@@ -1,7 +1,7 @@
 # Self-hosted LiveSync
 
 IMPORTANT NOTICE: In 0.10.0, database upgraded incompatiblly. And automatic migration fails in some cases. 
-If you are troubled, please downgrade orelse "drop old encrypted database" and "drop and send"(or receive) again.
+If you are troubled, please downgrade or using "drop old encrypted database" and "drop and send"(or receive) again.
 
 Sorry for late! [Japanese docs](./README_ja.md) is also coming up.
 
