@@ -607,9 +607,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.logMessage = [].concat(this.logMessage).concat([newmessage]).slice(-100);
         console.log(valutName + ":" + newmessage);
         this.setStatusBarText(null, messagecontent.substring(0, 30));
-        if (message instanceof Error) {
-            console.trace(message);
-        }
+        // if (message instanceof Error) {
+        //     console.trace(message);
+        // }
 
         if (level >= LOG_LEVEL.NOTICE) {
             if (messagecontent in this.notifies) {

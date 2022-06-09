@@ -158,7 +158,7 @@ export class LocalPouchDB {
     async isOldDatabaseExists() {
         const db = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
             auto_compaction: this.settings.useHistory ? false : true,
-            revs_limit: 100,
+            revs_limit: 20,
             deterministic_revs: true,
             skip_setup: true,
         });
@@ -253,9 +253,9 @@ export class LocalPouchDB {
                 Logger(newDbStatus);
 
                 if (this.settings.encrypt) {
-                    enableEncryption(old, this.settings.passphrase);
+                    enableEncryption(old, this.settings.passphrase, true);
                 }
-                const rep = old.replicate.to(this.localDatabase);
+                const rep = old.replicate.to(this.localDatabase, { batch_size: 25, batches_limit: 10 });
                 rep.on("change", (e) => {
                     progress.setMessage(`Converting ${e.docs_written} docs...`);
                     Logger(`Converting ${e.docs_written} docs...`, LOG_LEVEL.VERBOSE);
