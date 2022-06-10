@@ -16,7 +16,6 @@ import {
     MAX_DOC_SIZE,
     MAX_DOC_SIZE_BIN,
     NODEINFO_DOCID,
-    RECENT_MOFIDIED_DOCS_QTY,
     VER,
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
@@ -142,19 +141,6 @@ export class LocalPouchDB {
         }
     }
 
-    updateRecentModifiedDocs(id: string, rev: string, deleted: boolean) {
-        const idrev = id + rev;
-        if (deleted) {
-            this.recentModifiedDocs = this.recentModifiedDocs.filter((e) => e != idrev);
-        } else {
-            this.recentModifiedDocs.push(idrev);
-            this.recentModifiedDocs = this.recentModifiedDocs.slice(0 - RECENT_MOFIDIED_DOCS_QTY);
-        }
-    }
-    isSelfModified(id: string, rev: string): boolean {
-        const idrev = id + rev;
-        return this.recentModifiedDocs.indexOf(idrev) !== -1;
-    }
     async isOldDatabaseExists() {
         const db = new PouchDB<EntryDoc>(this.dbname + "-livesync", {
             auto_compaction: this.settings.useHistory ? false : true,
@@ -305,7 +291,7 @@ export class LocalPouchDB {
     waitForLeafReady(id: string): Promise<boolean> {
         return new Promise((res, rej) => {
             // Set timeout.
-            const timer = setTimeout(() => rej(new Error(`Leaf timed out:${id}`)), LEAF_WAIT_TIMEOUT);
+            const timer = setTimeout(() => rej(new Error(`Chunk reading timed out:${id}`)), LEAF_WAIT_TIMEOUT);
             if (typeof this.leafArrivedCallbacks[id] == "undefined") {
                 this.leafArrivedCallbacks[id] = [];
             }
@@ -329,21 +315,21 @@ export class LocalPouchDB {
                 this.hashCaches.set(id, w.data);
                 return w.data;
             }
-            throw new Error(`retrive leaf, but it was not leaf.`);
+            throw new Error(`Corrupted chunk detected.`);
         } catch (ex) {
             if (ex.status && ex.status == 404) {
                 if (waitForReady) {
                     // just leaf is not ready.
                     // wait for on
                     if ((await this.waitForLeafReady(id)) === false) {
-                        throw new Error(`time out (waiting leaf)`);
+                        throw new Error(`time out (waiting chunk)`);
                     }
                     return this.getDBLeaf(id, false);
                 } else {
-                    throw new Error("Leaf was not found");
+                    throw new Error("Chunk was not found");
                 }
             } else {
-                Logger(`Something went wrong on retriving leaf`);
+                Logger(`Something went wrong on retriving chunk`);
                 throw ex;
             }
         }
@@ -447,11 +433,11 @@ export class LocalPouchDB {
                     try {
                         childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e, waitForReady)));
                         if (dump) {
-                            Logger(`childrens:`);
+                            Logger(`Chunks:`);
                             Logger(childrens);
                         }
                     } catch (ex) {
-                        Logger(`Something went wrong on reading elements of ${obj._id} from database:`, LOG_LEVEL.NOTICE);
+                        Logger(`Something went wrong on reading chunks of ${obj._id} from database:`, LOG_LEVEL.NOTICE);
                         Logger(ex, LOG_LEVEL.VERBOSE);
                         this.corruptedEntries[obj._id] = obj;
                         return false;
@@ -515,7 +501,7 @@ export class LocalPouchDB {
                 if (!obj.type || (obj.type && obj.type == "notes")) {
                     obj._deleted = true;
                     const r = await this.localDatabase.put(obj);
-                    this.updateRecentModifiedDocs(r.id, r.rev, true);
+                    Logger(`entry removed:${obj._id}-${r.rev}`);
                     if (typeof this.corruptedEntries[obj._id] != "undefined") {
                         delete this.corruptedEntries[obj._id];
                     }
@@ -526,7 +512,6 @@ export class LocalPouchDB {
                     obj._deleted = true;
                     const r = await this.localDatabase.put(obj);
                     Logger(`entry removed:${obj._id}-${r.rev}`);
-                    this.updateRecentModifiedDocs(r.id, r.rev, true);
                     if (typeof this.corruptedEntries[obj._id] != "undefined") {
                         delete this.corruptedEntries[obj._id];
                     }
@@ -579,7 +564,6 @@ export class LocalPouchDB {
                     const item = await this.localDatabase.get(v);
                     item._deleted = true;
                     await this.localDatabase.put(item);
-                    this.updateRecentModifiedDocs(item._id, item._rev, true);
                 });
 
                 deleteCount++;
@@ -702,21 +686,21 @@ export class LocalPouchDB {
             try {
                 const result = await this.localDatabase.bulkDocs(newLeafs);
                 for (const item of result) {
-                    if ((item as any).ok) {
-                        this.updateRecentModifiedDocs(item.id, item.rev, false);
-                        Logger(`save ok:id:${item.id} rev:${item.rev}`, LOG_LEVEL.VERBOSE);
-                    } else {
+                    if (!(item as any).ok) {
                         if ((item as any).status && (item as any).status == 409) {
                             // conflicted, but it would be ok in childrens.
                         } else {
-                            Logger(`save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
+                            Logger(`Save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
                             Logger(item);
                             saved = false;
                         }
                     }
                 }
+                if (saved) {
+                    Logger(`Chunk saved:${newLeafs.length} chunks`);
+                }
             } catch (ex) {
-                Logger("ERROR ON SAVING LEAVES:", LOG_LEVEL.NOTICE);
+                Logger("Chunk save failed:", LOG_LEVEL.NOTICE);
                 Logger(ex, LOG_LEVEL.NOTICE);
                 saved = false;
             }
@@ -748,7 +732,6 @@ export class LocalPouchDB {
                     }
                 }
                 const r = await this.localDatabase.put(newDoc, { force: true });
-                this.updateRecentModifiedDocs(r.id, r.rev, newDoc._deleted);
                 if (typeof this.corruptedEntries[note._id] != "undefined") {
                     delete this.corruptedEntries[note._id];
                 }

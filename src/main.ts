@@ -1,4 +1,4 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App } from "obsidian";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID } from "./lib/src/types";
@@ -28,6 +28,7 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 import PluginPane from "./PluginPane.svelte";
 import { id2path, path2id } from "./utils";
+import { decrypt, encrypt } from "./lib/src/e2ee";
 const isDebug = false;
 setNoticeClass(Notice);
 class PluginDialogModal extends Modal {
@@ -57,6 +58,45 @@ class PluginDialogModal extends Modal {
         }
     }
 }
+class PopoverYesNo extends FuzzySuggestModal<string> {
+    app: App;
+    callback: (e: string) => void = () => {};
+
+    constructor(app: App, note: string, callback: (e: string) => void) {
+        super(app);
+        this.app = app;
+        this.setPlaceholder("y/n) " + note);
+        this.callback = callback;
+    }
+
+    getItems(): string[] {
+        return ["yes", "no"];
+    }
+
+    getItemText(item: string): string {
+        return item;
+    }
+
+    onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
+        // debugger;
+        this.callback(item);
+        this.callback = null;
+    }
+    onClose(): void {
+        setTimeout(() => {
+            if (this.callback != null) {
+                this.callback("");
+            }
+        }, 100);
+    }
+}
+
+const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
+    return new Promise((res) => {
+        const popover = new PopoverYesNo(app, message, (result) => res(result as "yes" | "no"));
+        popover.open();
+    });
+};
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
@@ -199,6 +239,81 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
                     Logger(ex, LOG_LEVEL.VERBOSE);
                 }
+        });
+        this.addCommand({
+            id: "livesync-exportconfig",
+            name: "Copy setup uri (beta)",
+            callback: async () => {
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(this.settings), "---"));
+                const uri = `obsidian://setuplivesync?settings=${encryptedSetting}`;
+                await navigator.clipboard.writeText(uri);
+                Logger("Setup uri copied to clipboard", LOG_LEVEL.NOTICE);
+            },
+        });
+        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
+            try {
+                const oldConf = JSON.parse(JSON.stringify(this.settings));
+                const newconf = await JSON.parse(await decrypt(conf.settings, "---"));
+                if (newconf) {
+                    const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
+                    if (result == "yes") {
+                        const newSettingW = Object.assign({}, this.settings, newconf);
+                        // stopping once.
+                        this.localDatabase.closeReplication();
+                        this.settings.suspendFileWatching = true;
+                        console.dir(newSettingW);
+                        const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
+                        const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
+                        if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
+                            // nothing to do. so peaceful.
+                            this.settings = newSettingW;
+                            await this.saveSettings();
+                            Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                            return;
+                        }
+                        if (keepLocalDB == "no" && keepRemoteDB == "no") {
+                            const reset = await askYesNo(this.app, "Drop everything?");
+                            if (reset != "yes") {
+                                Logger("Cancelled", LOG_LEVEL.NOTICE);
+                                this.settings = oldConf;
+                                return;
+                            }
+                        }
+                        let initDB;
+                        await this.saveSettings();
+                        if (keepLocalDB == "no") {
+                            this.resetLocalOldDatabase();
+                            this.resetLocalDatabase();
+                            this.localDatabase.initializeDatabase();
+                            const rebuild = await askYesNo(this.app, "Rebuild the database?");
+                            if (rebuild == "yes") {
+                                initDB = this.initializeDatabase(true);
+                            } else {
+                                this.markRemoteResolved();
+                            }
+                        }
+                        if (keepRemoteDB == "no") {
+                            await this.tryResetRemoteDatabase();
+                            await this.markRemoteLocked();
+                        }
+                        if (keepLocalDB == "no" || keepRemoteDB == "no") {
+                            const replicate = await askYesNo(this.app, "Replicate once?");
+                            if (replicate == "yes") {
+                                if (initDB != null) {
+                                    await initDB;
+                                }
+                                await this.replicate(true);
+                            }
+                        }
+                    }
+
+                    Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                } else {
+                    Logger("Cancelled.", LOG_LEVEL.NOTICE);
+                }
+            } catch (ex) {
+                Logger("Couldn't parse configuration uri.", LOG_LEVEL.NOTICE);
+            }
         });
         this.addCommand({
             id: "livesync-replicate",
@@ -587,8 +702,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     //--> Basic document Functions
     notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
 
-    // eslint-disable-next-line require-await
     lastLog = "";
+    // eslint-disable-next-line require-await
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
         if (level == LOG_LEVEL.DEBUG && !isDebug) {
             return;
