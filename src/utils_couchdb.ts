@@ -134,6 +134,7 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
             // return await fetch(url, opts);
         },
     };
+
     const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
     if (passphrase && typeof passphrase === "string") {
         enableEncryption(db, passphrase);

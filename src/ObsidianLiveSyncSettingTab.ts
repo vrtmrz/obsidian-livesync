@@ -710,6 +710,24 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
+        new Setting(containerSyncSettingEl)
+            .setName("Skip old files on sync")
+            .setDesc("Skip old incoming if incoming changes older than storage.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.skipOlderFilesOnSync).onChange(async (value) => {
+                    this.plugin.settings.skipOlderFilesOnSync = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Check conflict only on opening file.")
+            .setDesc("Do not check conflict while replication")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.checkConflictOnlyOnOpen).onChange(async (value) => {
+                    this.plugin.settings.checkConflictOnlyOnOpen = value;
+                    await this.plugin.saveSettings();
+                })
+            );
         containerSyncSettingEl.createEl("div", {
             text: sanitizeHTMLToDom(`Advanced settings<br>
             If you reached the payload size limit when using IBM Cloudant, please set batch size and batch limit to a lower value.`),
@@ -1119,8 +1137,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         const containerCorruptedDataEl = containerEl.createDiv();
 
-        containerCorruptedDataEl.createEl("h3", { text: "Corrupted data" });
-
+        containerCorruptedDataEl.createEl("h3", { text: "Corrupted or missing data" });
+        containerCorruptedDataEl.createEl("h4", { text: "Corrupted" });
         if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
             const cx = containerCorruptedDataEl.createEl("div", { text: "If you have copy of these items on any device, simply edit once or twice. Or not, delete this. sorry.." });
             for (const k in this.plugin.localDatabase.corruptedEntries) {
@@ -1148,6 +1166,38 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         } else {
             containerCorruptedDataEl.createEl("div", { text: "There is no corrupted data." });
+        }
+        containerCorruptedDataEl.createEl("h4", { text: "Missing or waiting" });
+        if (Object.keys(this.plugin.queuedFiles).length > 0) {
+            const cx = containerCorruptedDataEl.createEl("div", {
+                text: "These files have missing or waiting chunks. Perhaps almost chunks will be found in a while after replication. But if there're no chunk, you have to restore database entry from existed file by hitting the button below.",
+            });
+            const files = [...new Set([...this.plugin.queuedFiles.map((e) => e.entry._id)])];
+            for (const k of files) {
+                const xx = cx.createEl("div", { text: `${id2path(k)}` });
+
+                const ba = xx.createEl("button", { text: `Delete this` }, (e) => {
+                    e.addEventListener("click", async () => {
+                        await this.plugin.localDatabase.deleteDBEntry(k);
+                        xx.remove();
+                    });
+                });
+                ba.addClass("mod-warning");
+                xx.createEl("button", { text: `Restore from file` }, (e) => {
+                    e.addEventListener("click", async () => {
+                        const f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
+                        if (f.length == 0) {
+                            Logger("Not found in vault", LOG_LEVEL.NOTICE);
+                            return;
+                        }
+                        await this.plugin.updateIntoDB(f[0]);
+                        xx.remove();
+                    });
+                });
+                xx.addClass("mod-warning");
+            }
+        } else {
+            containerCorruptedDataEl.createEl("div", { text: "There is no missing or waiting chunk." });
         }
         applyDisplayEnabled();
         addScreenElement("70", containerCorruptedDataEl);

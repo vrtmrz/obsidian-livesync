@@ -253,7 +253,7 @@ export class LocalPouchDB {
                     Logger("Conversion completed!", LOG_LEVEL.NOTICE);
                     old.destroy(); // delete the old database.
                     this.isReady = true;
-                    return nextSeq();
+                    return await nextSeq();
                 } else {
                     throw new Error("Conversion failed!");
                 }
@@ -265,7 +265,7 @@ export class LocalPouchDB {
                 return false;
             }
         } else {
-            return nextSeq();
+            return await nextSeq();
         }
     }
 
