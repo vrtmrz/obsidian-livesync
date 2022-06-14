@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.11.2",
+    "version": "0.11.3",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -37,7 +37,7 @@
         "diff-match-patch": "^1.0.5",
         "esbuild": "0.13.12",
         "esbuild-svelte": "^0.6.0",
-		"idb": "^7.0.1",
+        "idb": "^7.0.1",
         "svelte-preprocess": "^4.10.2",
         "xxhash-wasm": "^0.4.2"
     }

@@ -961,7 +961,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     async procQueuedFiles() {
-        await runWithLock("procQueue", true, async () => {
+        await runWithLock("procQueue", false, async () => {
             this.saveQueuedFiles();
             for (const queue of this.queuedFiles) {
                 if (queue.done) continue;
@@ -972,8 +972,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         Logger(`Applying ${queue.entry._id} (${queue.entry._rev}) change...`);
                         await this.handleDBChanged(queue.entry);
                     }
-                }
-                if (now > queue.timeout) {
+                } else if (now > queue.timeout) {
                     if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL.NOTICE);
                     queue.warned = true;
                     continue;
@@ -1005,13 +1004,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (isNewFileCompleted) this.procQueuedFiles();
     }
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
-        const skipOldFile = this.settings.skipOlderFilesOnSync;
+        const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         if (skipOldFile) {
             const info = this.app.vault.getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
                 const localMtime = ~~((info as TFile).stat.mtime / 1000);
                 const docMtime = ~~(doc.mtime / 1000);
+                //TODO: some margin required.
                 if (localMtime >= docMtime) {
                     Logger(`${doc._id} Skipped, older than storage.`, LOG_LEVEL.VERBOSE);
                     return;
@@ -1027,15 +1027,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if ("children" in doc) {
             const c = await this.localDatabase.localDatabase.allDocs({ keys: doc.children, include_docs: false });
             const missing = c.rows.filter((e) => "error" in e).map((e) => e.key);
-            if (missing.length) Logger(`${doc._id}(${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
+            Logger(`${doc._id}(${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
-            this.saveQueuedFiles();
         } else {
             this.queuedFiles.push(newQueue);
-            this.saveQueuedFiles();
-            this.procQueuedFiles();
         }
+        this.saveQueuedFiles();
+        this.procQueuedFiles();
     }
     periodicSyncHandler: number = null;
 
@@ -1328,6 +1327,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             });
 
             await allSettledWithConcurrencyLimit(procs, 10);
+            Logger(`${procedurename} done.`);
         };
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`Update into ${e.path}`);

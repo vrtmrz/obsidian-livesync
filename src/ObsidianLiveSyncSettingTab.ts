@@ -710,15 +710,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerSyncSettingEl)
-            .setName("Skip old files on sync")
-            .setDesc("Skip old incoming if incoming changes older than storage.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.skipOlderFilesOnSync).onChange(async (value) => {
-                    this.plugin.settings.skipOlderFilesOnSync = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+        // new Setting(containerSyncSettingEl)
+        //     .setName("Skip old files on sync")
+        //     .setDesc("Skip old incoming if incoming changes older than storage.")
+        //     .addToggle((toggle) =>
+        //         toggle.setValue(this.plugin.settings.skipOlderFilesOnSync).onChange(async (value) => {
+        //             this.plugin.settings.skipOlderFilesOnSync = value;
+        //             await this.plugin.saveSettings();
+        //         })
+        //     );
         new Setting(containerSyncSettingEl)
             .setName("Check conflict only on opening file.")
             .setDesc("Do not check conflict while replication")
