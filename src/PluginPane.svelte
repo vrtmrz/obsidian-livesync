@@ -16,7 +16,7 @@
     export let plugin: ObsidianLiveSyncPlugin;
     let plugins: PluginDataEntry[] = [];
     let deviceAndPlugins: { [key: string]: PluginDataEntryDisp[] } = {};
-    let devicePluginList: [string, PluginDataEntryDisp[]][] = [];
+    let devicePluginList: [string, PluginDataEntryDisp[]][] = null;
     let ownPlugins: DevicePluginList = null;
     let showOwnPlugins = false;
     let targetList: { [key: string]: boolean } = {};
@@ -205,58 +205,63 @@
                 <th class="sls-plugins-tbl-device-head">Info</th>
                 <th class="sls-plugins-tbl-device-head">Target</th>
             </tr>
-            {#if devicePluginList.length == 0}
+            {#if !devicePluginList}
                 <tr>
                     <td colspan="3" class="sls-table-tail tcenter"> Retrieving... </td>
                 </tr>
-            {/if}
-            {#each devicePluginList as [deviceName, devicePlugins]}
+            {:else if devicePluginList.length == 0}
                 <tr>
-                    <th colspan="2" class="sls-plugins-tbl-device-head">{deviceName}</th>
-                    <th class="sls-plugins-tbl-device-head">
-                        <button class="mod-cta" on:click={() => toggleAll(deviceName)}>✔</button>
-                    </th>
+                    <td colspan="3" class="sls-table-tail tcenter"> No plugins found. </td>
                 </tr>
-                {#each devicePlugins as plugin}
+            {:else}
+                {#each devicePluginList as [deviceName, devicePlugins]}
                     <tr>
-                        <td class="sls-table-head">{plugin.manifest.name}</td>
-                        <td class="sls-table-tail tcenter">{plugin.versionInfo}{getDispString(plugin.versionFlag)}</td>
-                        <td class="sls-table-tail tcenter">
-                            {#if plugin.versionFlag === "EVEN" || plugin.versionFlag === ""}
-                                -
-                            {:else}
-                                <div class="wrapToggle">
-                                    <div
-                                        class="checkbox-container"
-                                        class:is-enabled={targetList[plugin.deviceVaultName + "---" + plugin.manifest.id + "---plugin"]}
-                                        on:click={() => toggleTarget(plugin.deviceVaultName + "---" + plugin.manifest.id + "---plugin")}
-                                    />
-                                </div>
-                            {/if}
-                        </td>
+                        <th colspan="2" class="sls-plugins-tbl-device-head">{deviceName}</th>
+                        <th class="sls-plugins-tbl-device-head">
+                            <button class="mod-cta" on:click={() => toggleAll(deviceName)}>✔</button>
+                        </th>
                     </tr>
-                    <tr>
-                        <td class="sls-table-head">Settings</td>
-                        <td class="sls-table-tail tcenter">{plugin.mtimeInfo}{getDispString(plugin.mtimeFlag)}</td>
-                        <td class="sls-table-tail tcenter">
-                            {#if plugin.mtimeFlag === "EVEN" || plugin.mtimeFlag === ""}
-                                -
-                            {:else}
-                                <div class="wrapToggle">
-                                    <div
-                                        class="checkbox-container"
-                                        class:is-enabled={targetList[plugin.deviceVaultName + "---" + plugin.manifest.id + "---setting"]}
-                                        on:click={() => toggleTarget(plugin.deviceVaultName + "---" + plugin.manifest.id + "---setting")}
-                                    />
-                                </div>
-                            {/if}
-                        </td>
-                    </tr>
-                    <tr class="divider">
-                        <th colspan="3" />
-                    </tr>
+                    {#each devicePlugins as plugin}
+                        <tr>
+                            <td class="sls-table-head">{plugin.manifest.name}</td>
+                            <td class="sls-table-tail tcenter">{plugin.versionInfo}{getDispString(plugin.versionFlag)}</td>
+                            <td class="sls-table-tail tcenter">
+                                {#if plugin.versionFlag === "EVEN" || plugin.versionFlag === ""}
+                                    -
+                                {:else}
+                                    <div class="wrapToggle">
+                                        <div
+                                            class="checkbox-container"
+                                            class:is-enabled={targetList[plugin.deviceVaultName + "---" + plugin.manifest.id + "---plugin"]}
+                                            on:click={() => toggleTarget(plugin.deviceVaultName + "---" + plugin.manifest.id + "---plugin")}
+                                        />
+                                    </div>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="sls-table-head">Settings</td>
+                            <td class="sls-table-tail tcenter">{plugin.mtimeInfo}{getDispString(plugin.mtimeFlag)}</td>
+                            <td class="sls-table-tail tcenter">
+                                {#if plugin.mtimeFlag === "EVEN" || plugin.mtimeFlag === ""}
+                                    -
+                                {:else}
+                                    <div class="wrapToggle">
+                                        <div
+                                            class="checkbox-container"
+                                            class:is-enabled={targetList[plugin.deviceVaultName + "---" + plugin.manifest.id + "---setting"]}
+                                            on:click={() => toggleTarget(plugin.deviceVaultName + "---" + plugin.manifest.id + "---setting")}
+                                        />
+                                    </div>
+                                {/if}
+                            </td>
+                        </tr>
+                        <tr class="divider">
+                            <th colspan="3" />
+                        </tr>
+                    {/each}
                 {/each}
-            {/each}
+            {/if}
         </table>
     </div>
     <div class="ols-plugins-div-buttons">

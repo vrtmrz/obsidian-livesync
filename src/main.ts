@@ -968,8 +968,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const now = new Date().getTime();
                 if (queue.missingChildren.length == 0) {
                     queue.done = true;
-                    Logger(`Applying ${queue.entry._id} (${queue.entry._rev}) change...`);
-                    await this.handleDBChanged(queue.entry);
+                    if (isValidPath(id2path(queue.entry._id))) {
+                        Logger(`Applying ${queue.entry._id} (${queue.entry._rev}) change...`);
+                        await this.handleDBChanged(queue.entry);
+                    }
                 }
                 if (now > queue.timeout) {
                     if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL.NOTICE);
@@ -1733,7 +1735,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async sweepPlugin(showMessage = false) {
         if (!this.settings.usePluginSync) return;
-        await runWithLock("sweepplugin", false, async () => {
+        if (!this.localDatabase.isReady) return;
+        await runWithLock("sweepplugin", true, async () => {
             const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
             if (!this.settings.encrypt) {
                 Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);

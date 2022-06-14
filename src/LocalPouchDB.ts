@@ -315,7 +315,7 @@ export class LocalPouchDB {
                 this.hashCaches.set(id, w.data);
                 return w.data;
             }
-            throw new Error(`Corrupted chunk detected.`);
+            throw new Error(`Corrupted chunk detected: ${id}`);
         } catch (ex) {
             if (ex.status && ex.status == 404) {
                 if (waitForReady) {
@@ -326,7 +326,7 @@ export class LocalPouchDB {
                     }
                     return this.getDBLeaf(id, false);
                 } else {
-                    throw new Error("Chunk was not found");
+                    throw new Error(`Chunk was not found: ${id}`);
                 }
             } else {
                 Logger(`Something went wrong on retriving chunk`);
@@ -437,7 +437,7 @@ export class LocalPouchDB {
                             Logger(childrens);
                         }
                     } catch (ex) {
-                        Logger(`Something went wrong on reading chunks of ${obj._id} from database:`, LOG_LEVEL.NOTICE);
+                        Logger(`Something went wrong on reading chunks of ${obj._id} from database, see verbose info for detail.`, LOG_LEVEL.NOTICE);
                         Logger(ex, LOG_LEVEL.VERBOSE);
                         this.corruptedEntries[obj._id] = obj;
                         return false;
