@@ -42,15 +42,15 @@ Especially, in some companies, people have to store all data to their fully cont
 ### Get your database ready.
 
 First, get your database ready. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
-    1. [Setup IBM Cloudant](docs/setup_cloudant.md)
-    2. [Setup your CouchDB](docs/setup_own_server.md)
+1. [Setup IBM Cloudant](docs/setup_cloudant.md)
+2. [Setup your CouchDB](docs/setup_own_server.md)
 
 ### First device
 
 1. Install the plugin on your device.
 2. Configure with the remote database.
 	1. Fill your server's information into the `Remote Database configuration pane`.
-	2. Enabling `End to End Encryption is recommended. After inputting the passphrase, you have to press `Just apply`.
+	2. Enabling `End to End Encryption` is recommended. After inputting the passphrase, you have to press `Just apply`.
 	3. Hit `Test Database Connection` and make sure that the plugin says `Connected`.
 	4. Hit `Check database configuration` and make sure all tests have been passed.
 3. Configure how to synchronize on `Sync setting`. (You can leave these  configures later)
