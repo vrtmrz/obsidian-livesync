@@ -85,10 +85,10 @@ Strongly recommend using the vault in which all files are completely synchronize
 
 Please open the link again and Answer as below:
 - If your local database looks corrupted
-(in the other words, your Obsidian getting werid even off the line)
+(in other words, when your Obsidian getting weird even standalone.)
 	- Answer `No` to `Keep local DB?`
 - If your remote database looks corrupted
-(in the other words, something happens while replicating)
+(in other words, when something happens while replicating)
 	- Answer `No` to `Keep remote DB?`
 
 If you answered `No` to both, your databases will be rebuilt by the content on your device. And the remote database will lock out other devices. You have to synchronize all your devices again. (When this time, almost all your files should be synchronized including a timestamp. So you can use the existed vault).
