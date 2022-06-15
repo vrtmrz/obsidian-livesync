@@ -64,7 +64,7 @@ First, get your database ready. IBM Cloudant is preferred for testing. Or you ca
 6. When status became stabilized (All ⏳ and 🧩 disappeared), you are ready to synchronize with the server.
 7. Press the replicate icon on the Ribbon or run `Replicate now` from the Command pallet. You'll send all your data to the server.
 8. Open the command palette and run `Copy setup uri`. And share copied URI to your other devices.
-**IMPORTANT NOTICE: DO NOT SHARE THIS URI. THIS CONTAINS YOUR CREDENTIALS.**
+**IMPORTANT NOTICE: DO NOT EXPOSE THIS URI. THIS CONTAINS YOUR CREDENTIALS.**
 
 ### Subsequent Devices
 
