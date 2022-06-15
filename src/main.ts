@@ -26,6 +26,7 @@ import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
+//@ts-ignore
 import PluginPane from "./PluginPane.svelte";
 import { id2path, path2id } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee";
@@ -1206,8 +1207,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const procsDisp = procs == 0 ? "" : ` ⏳${procs}`;
         const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}${queued}`;
         const locks = getLocks();
-        const pendingTask = locks.pending.length ? `\nPending:${locks.pending.join(", ")}` : "";
-        const runningTask = locks.running.length ? `\nRunning:${locks.running.join(", ")}` : "";
+        const pendingTask = locks.pending.length
+            ? "\nPending: " +
+              Object.entries([...new Set([...locks.pending])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+                  .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                  .join(", ")
+            : "";
+
+        const runningTask = locks.running.length
+            ? "\nRunning: " +
+              Object.entries([...new Set([...locks.running])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+                  .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                  .join(", ")
+            : "";
         this.setStatusBarText(message + pendingTask + runningTask);
     }
 
@@ -1613,23 +1625,30 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         const storageMtime = ~~(file.stat.mtime / 1000);
         const docMtime = ~~(doc.mtime / 1000);
-        if (storageMtime > docMtime) {
-            //newer local file.
-            Logger("STORAGE -> DB :" + file.path);
-            Logger(`${storageMtime} > ${docMtime}`);
-            await this.updateIntoDB(file);
-        } else if (storageMtime < docMtime) {
-            //newer database file.
-            Logger("STORAGE <- DB :" + file.path);
-            Logger(`${storageMtime} < ${docMtime}`);
-            const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
-            if (docx != false) {
-                await this.doc2storage_modify(docx, file);
-            }
+        const dK = `${file.path}-diff`;
+        const isLastDiff = (await this.localDatabase.kvDB.get<{ storageMtime: number; docMtime: number }>(dK)) || { storageMtime: 0, docMtime: 0 };
+        if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
+            // Logger("CHECKED       :" + file.path, LOG_LEVEL.VERBOSE);
         } else {
-            // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
-            // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
-            //eq.case
+            if (storageMtime > docMtime) {
+                //newer local file.
+                Logger("STORAGE -> DB :" + file.path);
+                Logger(`${storageMtime} > ${docMtime}`);
+                await this.updateIntoDB(file);
+            } else if (storageMtime < docMtime) {
+                //newer database file.
+                Logger("STORAGE <- DB :" + file.path);
+                Logger(`${storageMtime} < ${docMtime}`);
+                const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
+                if (docx != false) {
+                    await this.doc2storage_modify(docx, file);
+                }
+            } else {
+                // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
+                // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
+                //eq.case
+            }
+            await this.localDatabase.kvDB.set(dK, { storageMtime, docMtime });
         }
     }
 

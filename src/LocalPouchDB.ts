@@ -26,6 +26,7 @@ import { path2id } from "./utils";
 import { Logger } from "./lib/src/logger";
 import { checkRemoteVersion, connectRemoteCouchDBWithSetting, getLastPostFailedBySize } from "./utils_couchdb";
 import { openDB, deleteDB, IDBPDatabase } from "idb";
+import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 
 type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>;
 class LRUCache {
@@ -75,6 +76,7 @@ export class LocalPouchDB {
     dbname: string;
     settings: RemoteDBSettings;
     localDatabase: PouchDB.Database<EntryDoc>;
+    kvDB: KeyValueDatabase;
     nodeid = "";
     isReady = false;
 
@@ -115,6 +117,7 @@ export class LocalPouchDB {
         return null;
     }
     onunload() {
+        this.kvDB.close();
         this.recentModifiedDocs = [];
         this.leafArrivedCallbacks;
         this.changeHandler = this.cancelHandler(this.changeHandler);
@@ -139,6 +142,7 @@ export class LocalPouchDB {
         if (this.localDatabase != null) {
             this.localDatabase.close();
         }
+        this.kvDB.close();
     }
 
     async isOldDatabaseExists() {
@@ -167,6 +171,7 @@ export class LocalPouchDB {
             revs_limit: 100,
             deterministic_revs: true,
         });
+        this.kvDB = OpenKeyValueDatabase(this.dbname + "-livesync-kv");
         Logger("Database info", LOG_LEVEL.VERBOSE);
         Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
         Logger("Open Database...");
@@ -1108,6 +1113,7 @@ export class LocalPouchDB {
         Logger("Database closed for reset Database.");
         this.isReady = false;
         await this.localDatabase.destroy();
+        await this.kvDB.destroy();
         this.localDatabase = null;
         await this.initializeDatabase();
         Logger("Local Database Reset", LOG_LEVEL.NOTICE);
