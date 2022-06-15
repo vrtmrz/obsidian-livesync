@@ -36,23 +36,63 @@ Especially, in some companies, people have to store all data to their fully cont
 -   When the device's storage has been run out, Database corruption may happen.
 -   When editing hidden files or any other invisible files from obsidian, the file wouldn't be kept in the database. (**Or be deleted.**)
 
-## Supplements
-
--   When the file has been deleted, the deletion of the file is replicated to other devices.
--   When the folder became empty by replication, The folder will be deleted in the default setting. But you can change this behaivour. Check the [Settings](docs/settings.md).
--   LiveSync drains many batteries in mobile devices.
--   Mobile Obsidian can not connect to the non-secure(HTTP) or local CA-signed servers, even though the certificate is stored in the device store.
--   There are no 'exclude_folders' like configurations.
-
 ## How to use
 
-1. Install from Obsidian, or download from this repo's releases, copy `main.js`, `styles.css` and `manifest.json` into `[your-vault]/.obsidian/plugins/`
-2. Get your database. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB.
-   For more information, refer below:
-    1. [Setup IBM Cloudant](docs/setup_cloudant.md)
-    2. [Setup your CouchDB](docs/setup_own_server.md)
-3. Enter connection information to Plugin's setting dialog. In details, refer [Settings of Self-hosted LiveSync](docs/settings.md)
-4. Enable LiveSync or other Synchronize method as you like.
+
+### Get your database ready.
+
+First, get your database ready. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
+    1. [Setup IBM Cloudant](docs/setup_cloudant.md)
+    2. [Setup your CouchDB](docs/setup_own_server.md)
+
+### First device
+
+1. Install the plugin on your device.
+2. Configure with the remote database.
+	1. Fill your server's information into the `Remote Database configuration pane`.
+	2. Enabling `End to End Encryption is recommended. After inputting the passphrase, you have to press `Just apply`.
+	3. Hit `Test Database Connection` and make sure that the plugin says `Connected`.
+	4. Hit `Check database configuration` and make sure all tests have been passed.
+3. Configure how to synchronize on `Sync setting`. (You can leave these  configures later)
+	1. If you want to synchronize in real-time, enable `LiveSync`.
+	2. Or, set up the synchronization as you like.
+	3. Additional configuration is also here. I recommend enabling `Use Trash for deleted files, but you can leave all configurations disabled.
+4. Configure miscellaneous features.
+	1. Enabling `Show staus inside editor` bring you information. While edit mode, you can see the status on the top-right of the editor. (Recommended)
+	2. Enabling `Use history` let you see the diffs between your edit and synchronization. (Recommended)
+5. Back to the editor. I hope that initial scan is in the progress or done.
+6. When status became stabilized (All ⏳ and 🧩 disappeared), you are ready to synchronize with the server.
+7. Press the replicate icon on the Ribbon or run `Replicate now` from the Command pallet. You'll send all your data to the server.
+8. Open the command palette and run `Copy setup uri`. And share copied URI to your other devices.
+**IMPORTANT NOTICE: DO NOT SHARE THIS URI. THIS CONTAINS YOUR CREDENTIALS.**
+
+### Subsequent Devices
+
+Strongly recommend using the vault in which all files are completely synchronized including timestamps. Otherwise, some files will be corrupted if failed to resolve conflicts. To simplify, I recommend using a new empty vault.
+
+1. Install the plug-in.
+2. Open the link that you had been copied to the other device.
+3. The plug-in asks you that are you sure to apply the configurations. Please answer `Yes` and the following instruction below:
+	1. Answer `Yes` to `Keep local DB?`.
+		*Note: If you started with existed vault, you have to answer `No`. And `No` to `Rebuild the database?`.*
+	2. Answer `Yes` to `Keep remote DB?`.
+	3. Answer `Yes` to `Replicate once?`.
+	Yes, you have to answer `Yes` to everything.
+	Then, all your settings are copied from the first device.
+4. Your notes will arrive soon.
+
+## Something looks corrupted...
+
+Please open the link again and Answer as below:
+- If your local database looks corrupted
+(in the other words, your Obsidian getting werid even off the line)
+	- Answer `No` to `Keep local DB?`
+- If your remote database looks corrupted
+(in the other words, something happens while replicating)
+	- Answer `No` to `Keep remote DB?`
+
+If you answered `No` to both, your databases will be rebuilt by the content on your device. And the remote database will lock out other devices. You have to synchronize all your devices again. (When this time, almost all your files should be synchronized including a timestamp. So you can use the existed vault).
+
 
 ## Test Server
 
@@ -76,10 +116,17 @@ Synchronization status is shown in statusbar.
 -   ↑ Uploaded pieces
 -   ↓ Downloaded pieces
 -   ⏳ Count of the pending process  
+-   🧩 Count of the files that waiting for their chunks.
 If you have deleted or renamed files, please wait until this disappears.
 
-# More supplements
 
+## Supplements
+(This section will be rewrited soon)
+-   When the file has been deleted, the deletion of the file is replicated to other devices.
+-   When the folder became empty by replication, The folder will be deleted in the default setting. But you can change this behaivour. Check the [Settings](docs/settings.md).
+-   LiveSync drains many batteries in mobile devices.
+-   Mobile Obsidian can not connect to the non-secure(HTTP) or local CA-signed servers, even though the certificate is stored in the device store.
+-   There are no 'exclude_folders' like configurations.
 -   When synchronized, files are compared by their modified times and overwritten by the newer ones once. Then plugin checks the conflicts and if a merge is needed, the dialog will open.
 -   Rarely, the file in the database would be broken. The plugin will not write storage when it looks broken, so some old files must be on your device. If you edit the file, it will be cured. But if the file does not exist on any device, can not rescue it. So you can delete these items from the setting dialog.
 -   If your database looks corrupted, try "Drop History". Usually, It is the easiest way.
