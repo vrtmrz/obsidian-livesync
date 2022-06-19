@@ -19,6 +19,7 @@ import {
     VER,
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
+    ObsidianLiveSyncSettings,
 } from "./lib/src/types";
 import { RemoteDBSettings } from "./lib/src/types";
 import { resolveWithIgnoreKnownError, delay, runWithLock, NewNotice, WrappedNotice, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
@@ -33,7 +34,7 @@ class LRUCache {
     cache = new Map<string, string>([]);
     revCache = new Map<string, string>([]);
     maxCache = 100;
-    constructor() {}
+    constructor() { }
     get(key: string) {
         // debugger
         const v = this.cache.get(key);
@@ -770,7 +771,7 @@ export class LocalPouchDB {
             this.openOneshotReplication(
                 setting,
                 showingNotice,
-                async (e) => {},
+                async (e) => { },
                 false,
                 (e) => {
                     if (e === true) res(e);
@@ -1222,10 +1223,14 @@ export class LocalPouchDB {
     }
 
     async garbageCollect() {
-        // if (this.settings.useHistory) {
-        //     Logger("GC skipped for using history", LOG_LEVEL.VERBOSE);
-        //     return;
-        // }
+        if (this.settings.useHistory) {
+            Logger("GC skipped for using history", LOG_LEVEL.VERBOSE);
+            return;
+        }
+        if ((this.settings as ObsidianLiveSyncSettings).liveSync) {
+            Logger("GC skipped while live sync.", LOG_LEVEL.VERBOSE);
+            return;
+        }
         // NOTE:Garbage collection could break old revisions.
         await runWithLock("replicate", true, async () => {
             if (this.gcRunning) return;

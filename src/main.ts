@@ -61,7 +61,7 @@ class PluginDialogModal extends Modal {
 }
 class PopoverYesNo extends FuzzySuggestModal<string> {
     app: App;
-    callback: (e: string) => void = () => {};
+    callback: (e: string) => void = () => { };
 
     constructor(app: App, note: string, callback: (e: string) => void) {
         super(app);
@@ -415,15 +415,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     onunload() {
         this.hidePluginSyncModal();
-        this.localDatabase.onunload();
+        if (this.localDatabase != null) {
+            this.localDatabase.onunload();
+        }
         if (this.gcTimerHandler != null) {
             clearTimeout(this.gcTimerHandler);
             this.gcTimerHandler = null;
         }
         this.clearPeriodicSync();
         this.clearPluginSweep();
-        this.localDatabase.closeReplication();
-        this.localDatabase.close();
+        if (this.localDatabase != null) {
+            this.localDatabase.closeReplication();
+            this.localDatabase.close();
+        }
         window.removeEventListener("visibilitychange", this.watchWindowVisiblity);
         Logger("unloading plugin");
     }
@@ -453,6 +457,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.settings.workingPassphrase = this.settings.passphrase;
         // Delete this feature to avoid problems on mobile.
         this.settings.disableRequestURI = true;
+        // Temporary disabled
+        // TODO: If a new GC is created, a new default value must be created.
+        this.settings.gcDelay = 0;
+
         const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsname)) {
@@ -618,7 +626,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // When save is delayed, it should be cancelled.
         this.batchFileChange = this.batchFileChange.filter((e) => e == file.path);
         if (this.settings.suspendFileWatching) return;
-        this.watchVaultDeleteAsync(file).then(() => {});
+        this.watchVaultDeleteAsync(file).then(() => { });
     }
 
     async watchVaultDeleteAsync(file: TAbstractFile) {
@@ -647,7 +655,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     watchVaultRename(file: TAbstractFile, oldFile: any) {
         if (this.settings.suspendFileWatching) return;
-        this.watchVaultRenameAsync(file, oldFile).then(() => {});
+        this.watchVaultRenameAsync(file, oldFile).then(() => { });
     }
 
     getFilePath(file: TAbstractFile): string {
@@ -1209,16 +1217,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const locks = getLocks();
         const pendingTask = locks.pending.length
             ? "\nPending: " +
-              Object.entries([...new Set([...locks.pending])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
-                  .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                  .join(", ")
+            Object.entries([...new Set([...locks.pending])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+                .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                .join(", ")
             : "";
 
         const runningTask = locks.running.length
             ? "\nRunning: " +
-              Object.entries([...new Set([...locks.running])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
-                  .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                  .join(", ")
+            Object.entries([...new Set([...locks.running])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+                .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                .join(", ")
             : "";
         this.setStatusBarText(message + pendingTask + runningTask);
     }
@@ -1246,7 +1254,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.lastLog = newLog;
         }
     }
-    updateStatusBarText() {}
+    updateStatusBarText() { }
 
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
@@ -1757,10 +1765,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!this.localDatabase.isReady) return;
         await runWithLock("sweepplugin", true, async () => {
             const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
-            if (!this.settings.encrypt) {
-                Logger("You have to encrypt the database to use plugin setting sync.", LOG_LEVEL.NOTICE);
-                return;
-            }
             if (!this.deviceAndVaultName) {
                 Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
                 return;
