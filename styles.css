@@ -2,28 +2,33 @@
     color: var(--text-on-accent);
     background-color: var(--text-accent);
 }
+
 .normal {
     color: var(--text-normal);
 }
+
 .deleted {
     color: var(--text-on-accent);
     background-color: var(--text-muted);
-    text-decoration: line-through;
 }
+
 .op-scrollable {
     overflow-y: scroll;
     /* min-height: 280px; */
     max-height: 280px;
     user-select: text;
 }
+
 .op-pre {
     white-space: pre-wrap;
 }
+
 .op-warn {
     border: 1px solid salmon;
     padding: 2px;
     border-radius: 4px;
 }
+
 .op-warn::before {
     content: "Warning";
     font-weight: bold;
@@ -31,11 +36,13 @@
     position: relative;
     display: block;
 }
+
 .op-warn-info {
     border: 1px solid rgb(255, 209, 81);
     padding: 2px;
     border-radius: 4px;
 }
+
 .op-warn-info::before {
     content: "Notice";
     font-weight: bold;
@@ -43,27 +50,33 @@
     position: relative;
     display: block;
 }
+
 .syncstatusbar {
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);
 }
+
 .tcenter {
     text-align: center;
 }
+
 .sls-plugins-wrap {
     display: flex;
     flex-grow: 1;
     max-height: 50vh;
     overflow-y: scroll;
 }
+
 .sls-plugins-tbl {
     border: 1px solid var(--background-modifier-border);
     width: 100%;
     max-height: 80%;
 }
+
 .divider th {
     border-top: 1px solid var(--background-modifier-border);
 }
+
 /* .sls-table-head{
     width:50%;
 }
@@ -75,9 +88,11 @@
 .sls-btn-left {
     padding-right: 4px;
 }
+
 .sls-btn-right {
     padding-left: 4px;
 }
+
 .sls-hidden {
     display: none;
 }
@@ -85,8 +100,9 @@
 :root {
     --slsmessage: "";
 }
+
 .CodeMirror-wrap::before,
-.cm-s-obsidian > .cm-editor::before {
+.cm-s-obsidian>.cm-editor::before {
     content: var(--slsmessage);
     text-align: right;
     white-space: pre-wrap;
@@ -105,12 +121,15 @@
 .CodeMirror-wrap::before {
     right: 0px;
 }
-.cm-s-obsidian > .cm-editor::before {
+
+.cm-s-obsidian>.cm-editor::before {
     right: 16px;
 }
+
 .sls-setting-tab {
     display: none;
 }
+
 div.sls-setting-menu-btn {
     color: var(--text-normal);
     background-color: var(--background-secondary-alt);
@@ -131,8 +150,9 @@ div.sls-setting-menu-btn {
     flex-grow: 1;
     /* width: 100%; */
 }
-.sls-setting-tab:hover ~ div.sls-setting-menu-btn,
-.sls-setting-tab:checked ~ div.sls-setting-menu-btn {
+
+.sls-setting-tab:hover~div.sls-setting-menu-btn,
+.sls-setting-tab:checked~div.sls-setting-menu-btn {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
@@ -143,14 +163,17 @@ div.sls-setting-menu-btn {
     /* flex-wrap: wrap; */
     overflow-x: auto;
 }
+
 .sls-setting-label {
     flex-grow: 1;
     display: inline-flex;
     justify-content: center;
 }
+
 .setting-collapsed {
     display: none;
 }
+
 .sls-plugins-tbl-buttons {
     text-align: right;
 }
@@ -159,13 +182,16 @@ div.sls-setting-menu-btn {
     flex-grow: 0;
     padding: 6px 10px;
 }
+
 .sls-plugins-tbl-device-head {
     background-color: var(--background-secondary-alt);
     color: var(--text-accent);
 }
+
 .op-flex {
     display: flex;
 }
+
 .op-flex input {
     display: inline-flex;
     flex-grow: 1;
@@ -185,9 +211,11 @@ div.sls-setting-menu-btn {
     color: var(--text-on-accent);
     background-color: var(--text-accent);
 }
+
 .history-normal {
     color: var(--text-normal);
 }
+
 .history-deleted {
     color: var(--text-on-accent);
     background-color: var(--text-muted);
@@ -197,6 +225,7 @@ div.sls-setting-menu-btn {
 .ob-btn-config-fix label {
     margin-right: 40px;
 }
+
 .ob-btn-config-info {
     border: 1px solid salmon;
     padding: 2px;

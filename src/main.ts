@@ -1,4 +1,4 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal } from "obsidian";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal, Setting } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID } from "./lib/src/types";
@@ -59,6 +59,62 @@ class PluginDialogModal extends Modal {
         }
     }
 }
+
+class InputStringDialog extends Modal {
+    result: string | false = false;
+    onSubmit: (result: string | boolean) => void;
+    title: string;
+    key: string;
+    placeholder: string;
+    isManuallyClosed = false;
+
+    constructor(app: App, title: string, key: string, placeholder: string, onSubmit: (result: string | false) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+        this.title = title;
+        this.placeholder = placeholder;
+        this.key = key;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+
+        contentEl.createEl("h1", { text: this.title });
+
+        new Setting(contentEl).setName(this.key).addText((text) =>
+            text.onChange((value) => {
+                this.result = value;
+            })
+        );
+
+        new Setting(contentEl).addButton((btn) =>
+            btn
+                .setButtonText("Ok")
+                .setCta()
+                .onClick(() => {
+                    this.isManuallyClosed = true;
+                    this.close();
+                })
+        ).addButton((btn) =>
+            btn
+                .setButtonText("Cancel")
+                .setCta()
+                .onClick(() => {
+                    this.close();
+                })
+        );
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+        if (this.isManuallyClosed) {
+            this.onSubmit(this.result);
+        } else {
+            this.onSubmit(false);
+        }
+    }
+}
 class PopoverYesNo extends FuzzySuggestModal<string> {
     app: App;
     callback: (e: string) => void = () => { };
@@ -96,6 +152,13 @@ const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
         const popover = new PopoverYesNo(app, message, (result) => res(result as "yes" | "no"));
         popover.open();
+    });
+};
+
+const askString = (app: App, title: string, key: string, placeholder: string): Promise<string | false> => {
+    return new Promise((res) => {
+        const dialog = new InputStringDialog(app, title, key, placeholder, (result) => res(result));
+        dialog.open();
     });
 };
 
@@ -241,20 +304,40 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(ex, LOG_LEVEL.VERBOSE);
                 }
         });
+        const configURIBase = "obsidian://setuplivesync?settings=";
         this.addCommand({
-            id: "livesync-exportconfig",
-            name: "Copy setup uri (beta)",
+            id: "livesync-copysetupuri",
+            name: "Copy setup URI (beta)",
             callback: async () => {
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(this.settings), "---"));
-                const uri = `obsidian://setuplivesync?settings=${encryptedSetting}`;
+                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
+                if (encryptingPassphrase === false) return;
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(this.settings), encryptingPassphrase));
+                const uri = `${configURIBase}${encryptedSetting}`;
                 await navigator.clipboard.writeText(uri);
-                Logger("Setup uri copied to clipboard", LOG_LEVEL.NOTICE);
+                Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
             },
         });
-        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
+        this.addCommand({
+            id: "livesync-opensetupuri",
+            name: "Open setup URI (beta)",
+            callback: async () => {
+                const setupURI = await askString(this.app, "Set up manually", "Set up URI", `${configURIBase}aaaaa`);
+                if (setupURI === false) return;
+                if (!setupURI.startsWith(`${configURIBase}`)) {
+                    Logger("Set up URI looks wrong.", LOG_LEVEL.NOTICE);
+                    return;
+                }
+                const config = decodeURIComponent(setupURI.substring(configURIBase.length));
+                console.dir(config)
+                await setupwizard(config);
+            },
+        });
+        const setupwizard = async (confString: string) => {
             try {
                 const oldConf = JSON.parse(JSON.stringify(this.settings));
-                const newconf = await JSON.parse(await decrypt(conf.settings, "---"));
+                const encryptingPassphrase = await askString(this.app, "Passphrase", "Passphrase for your settings", "");
+                if (encryptingPassphrase === false) return;
+                const newconf = await JSON.parse(await decrypt(confString, encryptingPassphrase));
                 if (newconf) {
                     const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
                     if (result == "yes") {
@@ -269,6 +352,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             // nothing to do. so peaceful.
                             this.settings = newSettingW;
                             await this.saveSettings();
+                            const replicate = await askYesNo(this.app, "Unlock and replicate?");
+                            if (replicate == "yes") {
+                                await this.replicate(true);
+                                await this.markRemoteUnlocked();
+                            }
                             Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
                             return;
                         }
@@ -313,8 +401,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger("Cancelled.", LOG_LEVEL.NOTICE);
                 }
             } catch (ex) {
-                Logger("Couldn't parse configuration uri.", LOG_LEVEL.NOTICE);
+                Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL.NOTICE);
             }
+        };
+        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
+            await setupwizard(conf.settings);
         });
         this.addCommand({
             id: "livesync-replicate",
@@ -1217,14 +1308,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const locks = getLocks();
         const pendingTask = locks.pending.length
             ? "\nPending: " +
-            Object.entries([...new Set([...locks.pending])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+            Object.entries(locks.pending.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
                 .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
                 .join(", ")
             : "";
 
         const runningTask = locks.running.length
             ? "\nRunning: " +
-            Object.entries([...new Set([...locks.running])].reduce((p, c) => ({ ...p, [c]: p[c] ?? 0 + 1 }), {} as { [key: string]: number }))
+            Object.entries(locks.running.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
                 .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
                 .join(", ")
             : "";

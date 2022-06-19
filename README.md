@@ -49,7 +49,7 @@ First, get your database ready. IBM Cloudant is preferred for testing. Or you ca
 
 1. Install the plugin on your device.
 2. Configure with the remote database.
-	1. Fill your server's information into the `Remote Database configuration pane`.
+	1. Fill your server's information into the `Remote Database configuration` pane.
 	2. Enabling `End to End Encryption` is recommended. After inputting the passphrase, you have to press `Just apply`.
 	3. Hit `Test Database Connection` and make sure that the plugin says `Connected`.
 	4. Hit `Check database configuration` and make sure all tests have been passed.
@@ -63,27 +63,28 @@ First, get your database ready. IBM Cloudant is preferred for testing. Or you ca
 5. Back to the editor. I hope that initial scan is in the progress or done.
 6. When status became stabilized (All ⏳ and 🧩 disappeared), you are ready to synchronize with the server.
 7. Press the replicate icon on the Ribbon or run `Replicate now` from the Command pallet. You'll send all your data to the server.
-8. Open the command palette and run `Copy setup uri`. And share copied URI to your other devices.
-**IMPORTANT NOTICE: DO NOT EXPOSE THIS URI. THIS CONTAINS YOUR CREDENTIALS.**
+8. Open the command palette, `Copy setup URI`, and set the passphrase to encrypt the information. Then your configuration will be copied to the clipboard. Please share copied URI with your other devices.
+**IMPORTANT NOTICE: BE CAREFUL TO TREAT THIS URI. THE URI CONTAINS YOUR CREDENTIALS EVEN THOUGH NOBODY COULD READ WITHOUT THE PASSPHRASE.**
 
 ### Subsequent Devices
 
 Strongly recommend using the vault in which all files are completely synchronized including timestamps. Otherwise, some files will be corrupted if failed to resolve conflicts. To simplify, I recommend using a new empty vault.
 
 1. Install the plug-in.
-2. Open the link that you had been copied to the other device.
+2. Open the link that you copied from the other device.
+   1. If you are hard to open the link (i.e., in android), you can use `Open setup URI` from the command palette and paste the URI into LiveSync manually.
 3. The plug-in asks you that are you sure to apply the configurations. Please answer `Yes` and the following instruction below:
 	1. Answer `Yes` to `Keep local DB?`.
 		*Note: If you started with existed vault, you have to answer `No`. And `No` to `Rebuild the database?`.*
 	2. Answer `Yes` to `Keep remote DB?`.
-	3. Answer `Yes` to `Replicate once?`.
+	3. Answer `Yes` to `Unlock and replicate?`.
 	Yes, you have to answer `Yes` to everything.
 	Then, all your settings are copied from the first device.
 4. Your notes will arrive soon.
 
 ## Something looks corrupted...
 
-Please open the link again and Answer as below:
+Please open the link again and answer as below:
 - If your local database looks corrupted
 (in other words, when your Obsidian getting weird even standalone.)
 	- Answer `No` to `Keep local DB?`

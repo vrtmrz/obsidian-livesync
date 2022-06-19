@@ -188,7 +188,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
         new Setting(containerRemoteDatabaseEl)
             .setName("End to End Encryption")
-            .setDesc("Encrypting contents on the remote database. If you use the plugins synchronizing feature, enabling this is recommend.")
+            .setDesc("Encrypt contents on the remote database. If you use the plugins synchronizing feature, enabling this is recommend.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
                     this.plugin.settings.workingEncrypt = value;
