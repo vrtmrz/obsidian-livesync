@@ -4,7 +4,7 @@ import { path2id, id2path } from "./utils";
 import { NewNotice, runWithLock } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, connectRemoteCouchDBWithSetting } from "./utils_couchdb";
-import { testCrypt } from "./lib/src/e2ee";
+import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {

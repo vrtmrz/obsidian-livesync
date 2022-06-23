@@ -29,7 +29,8 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 //@ts-ignore
 import PluginPane from "./PluginPane.svelte";
 import { id2path, path2id } from "./utils";
-import { decrypt, encrypt } from "./lib/src/e2ee";
+import { decrypt, encrypt } from "./lib/src/e2ee_v2";
+
 const isDebug = false;
 setNoticeClass(Notice);
 class PluginDialogModal extends Modal {

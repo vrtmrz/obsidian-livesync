@@ -40,6 +40,8 @@ export const connectRemoteCouchDBWithSetting = (settings: RemoteDBSettings, isMo
 
 const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
     if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
+    if (uri.toLowerCase() != uri) return "Remote URI and database name cound not contain capital letters.";
+    if (uri.indexOf(" ") !== -1) return "Remote URI and database name cound not contain spaces.";
     let authHeader = "";
     if (auth.username && auth.password) {
         const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${auth.username}:${auth.password}`));
