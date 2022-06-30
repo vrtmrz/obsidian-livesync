@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl } from "obsidian";
 import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
-import { NewNotice, runWithLock } from "./lib/src/utils";
+import { delay, runWithLock } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, connectRemoteCouchDBWithSetting } from "./utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
@@ -15,15 +15,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        // const db = await connectRemoteCouchDB(
-        //     this.plugin.settings.couchDB_URI + (this.plugin.settings.couchDB_DBNAME == "" ? "" : "/" + this.plugin.settings.couchDB_DBNAME),
-        //     {
-        //         username: this.plugin.settings.couchDB_USER,
-        //         password: this.plugin.settings.couchDB_PASSWORD,
-        //     },
-        //     this.plugin.settings.disableRequestURI,
-        //     this.plugin.settings.encrypt ? this.plugin.settings.passphrase : this.plugin.settings.encrypt
-        // );
         const db = await connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.localDatabase.isMobile);
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
@@ -174,17 +165,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             )
 
-            // new Setting(containerRemoteDatabaseEl)
-            //     .setDesc("This feature is locked in mobile")
-            //     .setName("Use the old connecting method")
-            //     .addToggle((toggle) => {
-            //         toggle.setValue(this.plugin.settings.disableRequestURI).onChange(async (value) => {
-            //             this.plugin.settings.disableRequestURI = value;
-            //             await this.plugin.saveSettings();
-            //         });
-            //         toggle.setDisabled(this.plugin.isMobile);
-            //         return toggle;
-            //     })
         );
         new Setting(containerRemoteDatabaseEl)
             .setName("End to End Encryption")
@@ -198,7 +178,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         const phasspharase = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
-            .setDesc("Encrypting passphrase")
+            .setDesc("Encrypting passphrase. If you change the passphrase with existen database, overwriting remote database is strongly recommended.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.workingPassphrase)
@@ -209,9 +189,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "password");
             });
         phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
-        containerRemoteDatabaseEl.createEl("div", {
-            text: "If you change the passphrase, rebuilding the remote database is required. Please press 'Apply and send'. Or, If you have configured it to connect to an existing database, click 'Just apply'.",
-        });
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
@@ -271,20 +248,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         new Setting(containerRemoteDatabaseEl)
             .setName("Apply")
-            .setDesc("apply encryption settinngs, and re-initialize remote database")
+            .setDesc("Apply encryption settinngs")
             .addButton((button) =>
                 button
-                    .setButtonText("Apply and send")
-                    .setWarning()
-                    .setDisabled(false)
-                    .setClass("sls-btn-left")
-                    .onClick(async () => {
-                        await applyEncryption(true);
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Just apply")
+                    .setButtonText("Apply")
                     .setWarning()
                     .setDisabled(false)
                     .setClass("sls-btn-right")
@@ -292,6 +259,66 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await applyEncryption(false);
                     })
             );
+
+        const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
+            this.plugin.settings.liveSync = false;
+            this.plugin.settings.periodicReplication = false;
+            this.plugin.settings.syncOnSave = false;
+            this.plugin.settings.syncOnStart = false;
+            this.plugin.settings.syncOnFileOpen = false;
+
+            await this.plugin.saveSettings();
+
+            applyDisplayEnabled();
+            await delay(2000);
+            if (method == "localOnly") {
+                await this.plugin.resetLocalDatabase();
+                await this.plugin.markRemoteResolved();
+                await this.plugin.replicate(true);
+            }
+            if (method == "remoteOnly") {
+                await this.plugin.markRemoteLocked();
+                await this.plugin.tryResetRemoteDatabase();
+                await this.plugin.markRemoteLocked();
+                await this.plugin.replicateAllToServer(true);
+            }
+            if (method == "rebuildBothByThisDevice") {
+                await this.plugin.resetLocalDatabase();
+                await this.plugin.initializeDatabase(true);
+                await this.plugin.markRemoteLocked();
+                await this.plugin.tryResetRemoteDatabase();
+                await this.plugin.markRemoteLocked();
+                await this.plugin.replicateAllToServer(true);
+            }
+        }
+
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Overwrite by local DB")
+            .setDesc("Overwrite remote database with local DB and passphrase.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Send")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-left")
+                    .onClick(async () => {
+                        await rebuildDB("remoteOnly");
+                    })
+            )
+
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Rebuild")
+            .setDesc("Rebuild local and remote database with local files.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Rebuild")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-left")
+                    .onClick(async () => {
+                        await rebuildDB("rebuildBothByThisDevice");
+                    })
+            )
 
         new Setting(containerRemoteDatabaseEl)
             .setName("Test Database Connection")
@@ -473,6 +500,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             text: "",
         });
 
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Lock remote database")
+            .setDesc("Lock remote database to prevent synchronization with other devices.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Lock")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        await this.plugin.markRemoteLocked();
+                    })
+            );
         addScreenElement("0", containerRemoteDatabaseEl);
         const containerLocalDatabaseEl = containerEl.createDiv();
         containerLocalDatabaseEl.createEl("h3", { text: "Local Database configuration" });
@@ -492,30 +531,28 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerLocalDatabaseEl)
-            .setName("Auto Garbage Collection delay")
-            .setDesc("(seconds), if you set zero, you have to run manually.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.gcDelay + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v > 5000) {
-                            v = 0;
-                        }
-                        this.plugin.settings.gcDelay = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
-        new Setting(containerLocalDatabaseEl).setName("Manual Garbage Collect").addButton((button) =>
+        new Setting(containerLocalDatabaseEl).setName("Garbage check").addButton((button) =>
             button
-                .setButtonText("Collect now")
+                .setButtonText("Check now")
                 .setDisabled(false)
                 .onClick(async () => {
-                    await this.plugin.garbageCollect();
+                    await this.plugin.garbageCheck();
                 })
         );
+
+        new Setting(containerLocalDatabaseEl)
+            .setName("Fetch rebuilt DB")
+            .setDesc("Restore or reconstruct local database from remote database.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Fetch")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-left")
+                    .onClick(async () => {
+                        await rebuildDB("localOnly");
+                    })
+            )
 
         containerLocalDatabaseEl.createEl("div", {
             text: sanitizeHTMLToDom(`Advanced settings<br>
@@ -831,15 +868,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
-        new Setting(containerMiscellaneousEl)
-            .setName("Use history")
-            .setDesc("Use history dialog (Restart required, auto compaction would be disabled, and more storage will be consumed)")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.useHistory).onChange(async (value) => {
-                    this.plugin.settings.useHistory = value;
-                    await this.plugin.saveSettings();
-                })
-            );
         addScreenElement("40", containerMiscellaneousEl);
 
         const containerHatchEl = containerEl.createDiv();
@@ -875,30 +903,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
         const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the bootup sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
         hatchWarn.addClass("op-warn-info");
-        const dropHistory = async (sendToServer: boolean) => {
-            this.plugin.settings.liveSync = false;
-            this.plugin.settings.periodicReplication = false;
-            this.plugin.settings.syncOnSave = false;
-            this.plugin.settings.syncOnStart = false;
-            this.plugin.settings.syncOnFileOpen = false;
 
-            await this.plugin.saveSettings();
-            applyDisplayEnabled();
-            await this.plugin.resetLocalDatabase();
-            if (sendToServer) {
-                await this.plugin.initializeDatabase(true);
-                await this.plugin.markRemoteLocked();
-                await this.plugin.tryResetRemoteDatabase();
-                await this.plugin.markRemoteLocked();
-                await this.plugin.replicateAllToServer(true);
-            } else {
-                await this.plugin.markRemoteResolved();
-                await this.plugin.replicate(true);
-            }
-        };
         new Setting(containerHatchEl)
             .setName("Verify and repair all files")
-            .setDesc("Verify and repair all files and update database without dropping history")
+            .setDesc("Verify and repair all files and update database without restoring")
             .addButton((button) =>
                 button
                     .setButtonText("Verify and repair")
@@ -906,13 +914,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setWarning()
                     .onClick(async () => {
                         const files = this.app.vault.getFiles();
-                        Logger("Verify and repair all files started", LOG_LEVEL.NOTICE);
-                        const notice = NewNotice("", 0);
+                        Logger("Verify and repair all files started", LOG_LEVEL.NOTICE, "verify");
+                        // const notice = NewNotice("", 0);
                         let i = 0;
                         for (const file of files) {
                             i++;
                             Logger(`Update into ${file.path}`);
-                            notice.setMessage(`${i}/${files.length}\n${file.path}`);
+                            Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL.NOTICE, "verify");
                             try {
                                 await this.plugin.updateIntoDB(file);
                             } catch (ex) {
@@ -920,8 +928,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 Logger(ex);
                             }
                         }
-                        notice.hide();
-                        Logger("done", LOG_LEVEL.NOTICE);
+                        Logger("done", LOG_LEVEL.NOTICE, "verify");
                     })
             );
         new Setting(containerHatchEl)
@@ -933,9 +940,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        const notice = NewNotice("", 0);
-                        Logger(`Begin sanity check`, LOG_LEVEL.INFO);
-                        notice.setMessage(`Begin sanity check`);
+                        // const notice = NewNotice("", 0);
+                        Logger(`Begin sanity check`, LOG_LEVEL.NOTICE, "sancheck");
                         await runWithLock("sancheck", true, async () => {
                             const db = this.plugin.localDatabase.localDatabase;
                             const wf = await db.allDocs();
@@ -943,59 +949,22 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             let count = 0;
                             for (const id of filesDatabase) {
                                 count++;
-                                notice.setMessage(`${count}/${filesDatabase.length}\n${id2path(id)}`);
+                                Logger(`${count}/${filesDatabase.length}\n${id2path(id)}`, LOG_LEVEL.NOTICE, "sancheck");
                                 const w = await db.get<EntryDoc>(id);
                                 if (!(await this.plugin.localDatabase.sanCheck(w))) {
                                     Logger(`The file ${id2path(id)} missing child(ren)`, LOG_LEVEL.NOTICE);
                                 }
                             }
                         });
-                        notice.hide();
-                        Logger(`Done`, LOG_LEVEL.NOTICE);
+                        Logger(`Done`, LOG_LEVEL.NOTICE, "sancheck");
                         // Logger("done", LOG_LEVEL.NOTICE);
                     })
             );
 
-        new Setting(containerHatchEl)
-            .setName("Drop History")
-            .setDesc("Initialize local and remote database, and send all or retrieve all again.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Drop and send")
-                    .setWarning()
-                    .setDisabled(false)
-                    .setClass("sls-btn-left")
-                    .onClick(async () => {
-                        await dropHistory(true);
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Drop and receive")
-                    .setWarning()
-                    .setDisabled(false)
-                    .setClass("sls-btn-right")
-                    .onClick(async () => {
-                        await dropHistory(false);
-                    })
-            );
-
-        new Setting(containerHatchEl)
-            .setName("Lock remote database")
-            .setDesc("Lock remote database for synchronize")
-            .addButton((button) =>
-                button
-                    .setButtonText("Lock")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        await this.plugin.markRemoteLocked();
-                    })
-            );
 
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
-            .setDesc("if enables it, all file operations are ignored.")
+            .setDesc("If enables it, all file operations are ignored.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
                     this.plugin.settings.suspendFileWatching = value;

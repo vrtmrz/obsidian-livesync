@@ -19,59 +19,26 @@ import {
     VER,
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
-    ObsidianLiveSyncSettings,
+    ChunkVersionRange,
 } from "./lib/src/types";
 import { RemoteDBSettings } from "./lib/src/types";
-import { resolveWithIgnoreKnownError, delay, runWithLock, NewNotice, WrappedNotice, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
+import { resolveWithIgnoreKnownError, runWithLock, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
 import { path2id } from "./utils";
 import { Logger } from "./lib/src/logger";
 import { checkRemoteVersion, connectRemoteCouchDBWithSetting, getLastPostFailedBySize } from "./utils_couchdb";
-import { openDB, deleteDB, IDBPDatabase } from "idb";
 import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
+import { LRUCache } from "./lib/src/LRUCache";
+
+// when replicated, LiveSync checks chunk versions that every node used.
+// If all minumum version of every devices were up, that means we can convert database automatically.
+
+const currentVersionRange: ChunkVersionRange = {
+    min: 0,
+    max: 1,
+    current: 1,
+}
 
 type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>;
-class LRUCache {
-    cache = new Map<string, string>([]);
-    revCache = new Map<string, string>([]);
-    maxCache = 100;
-    constructor() { }
-    get(key: string) {
-        // debugger
-        const v = this.cache.get(key);
-
-        if (v) {
-            // update the key to recently used.
-            this.cache.delete(key);
-            this.revCache.delete(v);
-            this.cache.set(key, v);
-            this.revCache.set(v, key);
-        }
-        return v;
-    }
-    revGet(value: string) {
-        // debugger
-        const key = this.revCache.get(value);
-        if (value) {
-            // update the key to recently used.
-            this.cache.delete(key);
-            this.revCache.delete(value);
-            this.cache.set(key, value);
-            this.revCache.set(value, key);
-        }
-        return key;
-    }
-    set(key: string, value: string) {
-        this.cache.set(key, value);
-        this.revCache.set(value, key);
-        if (this.cache.size > this.maxCache) {
-            for (const kv of this.cache) {
-                this.revCache.delete(kv[1]);
-                this.cache.delete(kv[0]);
-                if (this.cache.size <= this.maxCache) break;
-            }
-        }
-    }
-}
 export class LocalPouchDB {
     auth: Credential;
     dbname: string;
@@ -81,16 +48,9 @@ export class LocalPouchDB {
     nodeid = "";
     isReady = false;
 
-    recentModifiedDocs: string[] = [];
     h32: (input: string, seed?: number) => string;
     h64: (input: string, seedHigh?: number, seedLow?: number) => string;
     h32Raw: (input: Uint8Array, seed?: number) => number;
-    // hashCache: {
-    //     [key: string]: string;
-    // } = {};
-    // hashCacheRev: {
-    //     [key: string]: string;
-    // } = {};
     hashCaches = new LRUCache();
 
     corruptedEntries: { [key: string]: EntryDoc } = {};
@@ -109,6 +69,8 @@ export class LocalPouchDB {
 
     isMobile = false;
 
+    chunkVersion = 0;
+
     cancelHandler<T extends PouchDB.Core.Changes<EntryDoc> | PouchDB.Replication.Sync<EntryDoc> | PouchDB.Replication.Replication<EntryDoc>>(handler: T): T {
         if (handler != null) {
             handler.removeAllListeners();
@@ -119,7 +81,6 @@ export class LocalPouchDB {
     }
     onunload() {
         this.kvDB.close();
-        this.recentModifiedDocs = [];
         this.leafArrivedCallbacks;
         this.changeHandler = this.cancelHandler(this.changeHandler);
         this.syncHandler = this.cancelHandler(this.syncHandler);
@@ -172,7 +133,7 @@ export class LocalPouchDB {
             revs_limit: 100,
             deterministic_revs: true,
         });
-        this.kvDB = OpenKeyValueDatabase(this.dbname + "-livesync-kv");
+        this.kvDB = await OpenKeyValueDatabase(this.dbname + "-livesync-kv");
         Logger("Database info", LOG_LEVEL.VERBOSE);
         Logger(await this.localDatabase.info(), LOG_LEVEL.VERBOSE);
         Logger("Open Database...");
@@ -227,9 +188,8 @@ export class LocalPouchDB {
                 return nextSeq();
             }
             //
-            const progress = NewNotice("Converting..", 0);
+            Logger("We have to upgrade database..", LOG_LEVEL.NOTICE, "conv");
             try {
-                Logger("We have to upgrade database..", LOG_LEVEL.NOTICE);
 
                 // To debug , uncomment below.
 
@@ -249,14 +209,12 @@ export class LocalPouchDB {
                 }
                 const rep = old.replicate.to(this.localDatabase, { batch_size: 25, batches_limit: 10 });
                 rep.on("change", (e) => {
-                    progress.setMessage(`Converting ${e.docs_written} docs...`);
-                    Logger(`Converting ${e.docs_written} docs...`, LOG_LEVEL.VERBOSE);
+                    Logger(`Converting ${e.docs_written} docs...`, LOG_LEVEL.NOTICE, "conv");
                 });
                 const w = await rep;
-                progress.hide();
 
                 if (w.ok) {
-                    Logger("Conversion completed!", LOG_LEVEL.NOTICE);
+                    Logger("Conversion completed!", LOG_LEVEL.NOTICE, "conv");
                     old.destroy(); // delete the old database.
                     this.isReady = true;
                     return await nextSeq();
@@ -264,8 +222,7 @@ export class LocalPouchDB {
                     throw new Error("Conversion failed!");
                 }
             } catch (ex) {
-                progress.hide();
-                Logger("Conversion failed!, If you are fully synchronized, please drop the old database in the Hatch pane in setting dialog. or please make an issue on Github.", LOG_LEVEL.NOTICE);
+                Logger("Conversion failed!, If you are fully synchronized, please drop the old database in the Hatch pane in setting dialog. or please make an issue on Github.", LOG_LEVEL.NOTICE, "conv");
                 Logger(ex);
                 this.isReady = false;
                 return false;
@@ -309,7 +266,6 @@ export class LocalPouchDB {
     }
 
     async getDBLeaf(id: string, waitForReady: boolean): Promise<string> {
-        await this.waitForGCComplete();
         // when in cache, use that.
         const leaf = this.hashCaches.revGet(id);
         if (leaf) {
@@ -342,7 +298,6 @@ export class LocalPouchDB {
     }
 
     async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
-        await this.waitForGCComplete();
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -387,7 +342,6 @@ export class LocalPouchDB {
         return false;
     }
     async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true): Promise<false | LoadedEntry> {
-        await this.waitForGCComplete();
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -487,7 +441,6 @@ export class LocalPouchDB {
         return false;
     }
     async deleteDBEntry(path: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
-        await this.waitForGCComplete();
         const id = path2id(path);
 
         try {
@@ -534,7 +487,6 @@ export class LocalPouchDB {
         }
     }
     async deleteDBEntryPrefix(prefixSrc: string): Promise<boolean> {
-        await this.waitForGCComplete();
         // delete database entries by prefix.
         // it called from folder deletion.
         let c = 0;
@@ -585,8 +537,7 @@ export class LocalPouchDB {
         Logger(`deleteDBEntryPrefix:deleted ${deleteCount} items, skipped ${notfound}`);
         return true;
     }
-    async putDBEntry(note: LoadedEntry) {
-        await this.waitForGCComplete();
+    async putDBEntry(note: LoadedEntry, saveAsBigChunk?: boolean) {
         // let leftData = note.data;
         const savenNotes = [];
         let processed = 0;
@@ -596,7 +547,7 @@ export class LocalPouchDB {
         let plainSplit = false;
         let cacheUsed = 0;
         const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
-        if (shouldSplitAsPlainText(note._id)) {
+        if (!saveAsBigChunk && shouldSplitAsPlainText(note._id)) {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
         }
@@ -702,9 +653,6 @@ export class LocalPouchDB {
                         }
                     }
                 }
-                if (saved) {
-                    Logger(`Chunk saved:${newLeafs.length} chunks`);
-                }
             } catch (ex) {
                 Logger("Chunk save failed:", LOG_LEVEL.NOTICE);
                 Logger(ex, LOG_LEVEL.NOTICE);
@@ -712,7 +660,7 @@ export class LocalPouchDB {
             }
         }
         if (saved) {
-            Logger(`note content saven, pieces:${processed} new:${made}, skip:${skiped}, cache:${cacheUsed}`);
+            Logger(`Content saved:${note._id} ,pieces:${processed} (new:${made}, skip:${skiped}, cache:${cacheUsed})`);
             const newDoc: PlainEntry | NewEntry = {
                 NewNote: true,
                 children: savenNotes,
@@ -766,8 +714,7 @@ export class LocalPouchDB {
         return true;
     }
     replicateAllToServer(setting: RemoteDBSettings, showingNotice?: boolean) {
-        return new Promise(async (res, rej) => {
-            await this.waitForGCComplete();
+        return new Promise((res, rej) => {
             this.openOneshotReplication(
                 setting,
                 showingNotice,
@@ -777,8 +724,7 @@ export class LocalPouchDB {
                     if (e === true) res(e);
                     rej(e);
                 },
-                true,
-                false
+                "pushOnly"
             );
         });
     }
@@ -789,9 +735,8 @@ export class LocalPouchDB {
             return false;
         }
 
-        await this.waitForGCComplete();
         if (setting.versionUpFlash != "") {
-            NewNotice("Open settings and check message, please.");
+            Logger("Open settings and check message, please.", LOG_LEVEL.NOTICE);
             return false;
         }
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
@@ -818,18 +763,37 @@ export class LocalPouchDB {
                 created: (new Date() as any) / 1,
                 locked: false,
                 accepted_nodes: [this.nodeid],
+                node_chunk_info: { [this.nodeid]: currentVersionRange }
             };
 
-            const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint);
+            const remoteMilestone: EntryMilestoneInfo = { ...defMilestonePoint, ...(await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint)) };
+            remoteMilestone.node_chunk_info = { ...defMilestonePoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
             this.remoteLocked = remoteMilestone.locked;
             this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
+            const writeMilestone = ((remoteMilestone.node_chunk_info[this.nodeid].min != currentVersionRange.min || remoteMilestone.node_chunk_info[this.nodeid].max != currentVersionRange.max)
+                || typeof remoteMilestone._rev == "undefined");
+
+            if (writeMilestone) {
+                await dbret.db.put(remoteMilestone);
+            }
+
+            let globalMin = currentVersionRange.min;
+            let globalMax = currentVersionRange.max;
+            for (const nodeid of remoteMilestone.accepted_nodes) {
+                if (nodeid in remoteMilestone.node_chunk_info) {
+                    const nodeinfo = remoteMilestone.node_chunk_info[nodeid];
+                    globalMin = Math.max(nodeinfo.min, globalMin);
+                    globalMax = Math.min(nodeinfo.max, globalMax);
+                } else {
+                    globalMin = 0;
+                    globalMax = 0;
+                }
+            }
+            //If globalMin and globalMax is suitable, we can upgrade.
 
             if (remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1) {
-                Logger("Remote database marked as 'Auto Sync Locked'. And this devide does not marked as resolved device. see settings dialog.", LOG_LEVEL.NOTICE);
+                Logger("The remote database has been rebuilt or corrupted since we have synchronized last time. Fetch rebuilt DB or explicit unlocking is required. See the settings dialog.", LOG_LEVEL.NOTICE);
                 return false;
-            }
-            if (typeof remoteMilestone._rev == "undefined") {
-                await dbret.db.put(remoteMilestone);
             }
         }
         const syncOptionBase: PouchDB.Replication.SyncOptions = {
@@ -845,59 +809,54 @@ export class LocalPouchDB {
         if (keepAlive) {
             this.openContinuousReplication(setting, showResult, callback, false);
         } else {
-            this.openOneshotReplication(setting, showResult, callback, false, null, false, false);
+            this.openOneshotReplication(setting, showResult, callback, false, null, "sync");
         }
     }
-    replicationActivated(notice: WrappedNotice) {
+    replicationActivated(showResult: boolean) {
         this.syncStatus = "CONNECTED";
         this.updateInfo();
-        Logger("Replication activated");
-        if (notice != null) notice.setMessage(`Activated..`);
+        Logger("Replication activated", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
     }
-    async replicationChangeDetected(e: PouchDB.Replication.SyncResult<EntryDoc>, notice: WrappedNotice, docSentOnStart: number, docArrivedOnStart: number, callback: ReplicationCallback) {
+    async replicationChangeDetected(e: PouchDB.Replication.SyncResult<EntryDoc>, showResult: boolean, docSentOnStart: number, docArrivedOnStart: number, callback: ReplicationCallback) {
         try {
             if (e.direction == "pull") {
                 await callback(e.change.docs);
-                Logger(`replicated ${e.change.docs_read} doc(s)`);
                 this.docArrived += e.change.docs.length;
             } else {
                 this.docSent += e.change.docs.length;
             }
-            if (notice != null) {
-                notice.setMessage(`↑${this.docSent - docSentOnStart} ↓${this.docArrived - docArrivedOnStart}`);
+            if (showResult) {
+                Logger(`↑${this.docSent - docSentOnStart} ↓${this.docArrived - docArrivedOnStart}`, LOG_LEVEL.NOTICE, "sync");
             }
             this.updateInfo();
         } catch (ex) {
-            Logger("Replication callback error", LOG_LEVEL.NOTICE);
+            Logger("Replication callback error", LOG_LEVEL.NOTICE, "sync");
             Logger(ex, LOG_LEVEL.NOTICE);
             //
         }
     }
-    replicationCompleted(notice: WrappedNotice, showResult: boolean) {
+    replicationCompleted(showResult: boolean) {
         this.syncStatus = "COMPLETED";
         this.updateInfo();
-        Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-        if (notice != null) notice.hide();
+        Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, showResult ? "sync" : "");
         this.syncHandler = this.cancelHandler(this.syncHandler);
     }
-    replicationDeniend(notice: WrappedNotice, e: any) {
+    replicationDeniend(e: any) {
         this.syncStatus = "ERRORED";
         this.updateInfo();
         this.syncHandler = this.cancelHandler(this.syncHandler);
-        if (notice != null) notice.hide();
-        Logger("Replication denied", LOG_LEVEL.NOTICE);
+        Logger("Replication denied", LOG_LEVEL.NOTICE, "sync");
         Logger(e);
     }
-    replicationErrored(notice: WrappedNotice, e: any) {
+    replicationErrored(e: any) {
         this.syncStatus = "ERRORED";
         this.syncHandler = this.cancelHandler(this.syncHandler);
         this.updateInfo();
     }
-    replicationPaused(notice: WrappedNotice) {
+    replicationPaused() {
         this.syncStatus = "PAUSED";
         this.updateInfo();
-        if (notice != null) notice.hide();
-        Logger("replication paused", LOG_LEVEL.VERBOSE);
+        Logger("replication paused", LOG_LEVEL.VERBOSE, "sync");
     }
 
     async openOneshotReplication(
@@ -906,23 +865,21 @@ export class LocalPouchDB {
         callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>,
         retrying: boolean,
         callbackDone: (e: boolean | any) => void,
-        pushOnly: boolean,
-        pullOnly: boolean
+        syncmode: "sync" | "pullOnly" | "pushOnly"
     ): Promise<boolean> {
         if (this.syncHandler != null) {
-            Logger("Replication is already in progress.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+            Logger("Replication is already in progress.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
             return;
         }
-        Logger("Oneshot Sync begin...");
+        Logger(`Oneshot Sync begin... (${syncmode})`);
         let thisCallback = callbackDone;
         const ret = await this.checkReplicationConnectivity(setting, true, retrying, showResult);
-        let notice: WrappedNotice = null;
         if (ret === false) {
-            Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+            Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
             return;
         }
         if (showResult) {
-            notice = NewNotice("Looking for the point last synchronized point.", 0);
+            Logger("Looking for the point last synchronized point.", LOG_LEVEL.NOTICE, "sync");
         }
         const { db, syncOptionBase } = ret;
         this.syncStatus = "STARTED";
@@ -934,52 +891,61 @@ export class LocalPouchDB {
             this.originalSetting = setting;
         }
         this.syncHandler = this.cancelHandler(this.syncHandler);
-        if (!pushOnly && !pullOnly) {
+        if (syncmode == "sync") {
             this.syncHandler = this.localDatabase.sync(db, { checkpoint: "target", ...syncOptionBase });
             this.syncHandler
                 .on("change", async (e) => {
-                    await this.replicationChangeDetected(e, notice, docSentOnStart, docArrivedOnStart, callback);
+                    await this.replicationChangeDetected(e, showResult, docSentOnStart, docArrivedOnStart, callback);
                     if (retrying) {
                         if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
                             // restore configration.
                             Logger("Back into original settings once.");
-                            if (notice != null) notice.hide();
                             this.syncHandler = this.cancelHandler(this.syncHandler);
-                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, pushOnly, pullOnly);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
                         }
                     }
                 })
                 .on("complete", (e) => {
-                    this.replicationCompleted(notice, showResult);
+                    this.replicationCompleted(showResult);
                     if (thisCallback != null) {
                         thisCallback(true);
                     }
                 });
-        } else if (pullOnly) {
-            this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase });
+        } else if (syncmode == "pullOnly") {
+            this.syncHandler = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase });
             this.syncHandler
                 .on("change", async (e) => {
-                    await this.replicationChangeDetected({ direction: "pull", change: e }, notice, docSentOnStart, docArrivedOnStart, callback);
+                    await this.replicationChangeDetected({ direction: "pull", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
                     if (retrying) {
                         if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
                             // restore configration.
                             Logger("Back into original settings once.");
-                            if (notice != null) notice.hide();
                             this.syncHandler = this.cancelHandler(this.syncHandler);
-                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, pushOnly, pullOnly);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
                         }
                     }
                 })
                 .on("complete", (e) => {
-                    this.replicationCompleted(notice, showResult);
+                    this.replicationCompleted(showResult);
                     if (thisCallback != null) {
                         thisCallback(true);
                     }
                 });
-        } else if (pushOnly) {
+        } else if (syncmode == "pushOnly") {
             this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase });
+            this.syncHandler.on("change", async (e) => {
+                await this.replicationChangeDetected({ direction: "push", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
+                if (retrying) {
+                    if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
+                        // restore configration.
+                        Logger("Back into original settings once.");
+                        this.syncHandler = this.cancelHandler(this.syncHandler);
+                        this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
+                    }
+                }
+            })
             this.syncHandler.on("complete", (e) => {
-                this.replicationCompleted(notice, showResult);
+                this.replicationCompleted(showResult);
                 if (thisCallback != null) {
                     thisCallback(true);
                 }
@@ -987,17 +953,16 @@ export class LocalPouchDB {
         }
 
         this.syncHandler
-            .on("active", () => this.replicationActivated(notice))
+            .on("active", () => this.replicationActivated(showResult))
             .on("denied", (e) => {
-                this.replicationDeniend(notice, e);
+                this.replicationDeniend(e);
                 if (thisCallback != null) {
                     thisCallback(e);
                 }
             })
             .on("error", (e) => {
-                this.replicationErrored(notice, e);
-                Logger("Replication stopped.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                if (notice != null) notice.hide();
+                this.replicationErrored(e);
+                Logger("Replication stopped.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
                 if (getLastPostFailedBySize()) {
                     // Duplicate settings for smaller batch.
                     const xsetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
@@ -1008,17 +973,19 @@ export class LocalPouchDB {
                     } else {
                         Logger(`Retry with lower batch size:${xsetting.batch_size}/${xsetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                         thisCallback = null;
-                        this.openOneshotReplication(xsetting, showResult, callback, true, callbackDone, pushOnly, pullOnly);
+                        this.openOneshotReplication(xsetting, showResult, callback, true, callbackDone, syncmode);
                     }
                 } else {
-                    Logger("Replication error", LOG_LEVEL.NOTICE);
+                    Logger("Replication error", LOG_LEVEL.NOTICE, "sync");
                     Logger(e);
                 }
                 if (thisCallback != null) {
                     thisCallback(e);
                 }
             })
-            .on("paused", (e) => this.replicationPaused(notice));
+            .on("paused", (e) => this.replicationPaused());
+
+        await this.syncHandler;
     }
 
     openContinuousReplication(setting: RemoteDBSettings, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>, retrying: boolean) {
@@ -1035,13 +1002,12 @@ export class LocalPouchDB {
             async () => {
                 Logger("LiveSync begin...");
                 const ret = await this.checkReplicationConnectivity(setting, true, true, showResult);
-                let notice: WrappedNotice = null;
                 if (ret === false) {
                     Logger("Could not connect to server.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                     return;
                 }
                 if (showResult) {
-                    notice = NewNotice("Looking for the point last synchronized point.", 0);
+                    Logger("Looking for the point last synchronized point.", LOG_LEVEL.NOTICE, "sync");
                 }
                 const { db, syncOption } = ret;
                 this.syncStatus = "STARTED";
@@ -1063,29 +1029,27 @@ export class LocalPouchDB {
                     },
                 });
                 this.syncHandler
-                    .on("active", () => this.replicationActivated(notice))
+                    .on("active", () => this.replicationActivated(showResult))
                     .on("change", async (e) => {
-                        await this.replicationChangeDetected(e, notice, docSentOnStart, docArrivedOnStart, callback);
+                        await this.replicationChangeDetected(e, showResult, docSentOnStart, docArrivedOnStart, callback);
                         if (retrying) {
                             if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
                                 // restore sync values
                                 Logger("Back into original settings once.");
-                                if (notice != null) notice.hide();
                                 this.syncHandler = this.cancelHandler(this.syncHandler);
                                 this.openContinuousReplication(this.originalSetting, showResult, callback, false);
                             }
                         }
                     })
-                    .on("complete", (e) => this.replicationCompleted(notice, showResult))
-                    .on("denied", (e) => this.replicationDeniend(notice, e))
+                    .on("complete", (e) => this.replicationCompleted(showResult))
+                    .on("denied", (e) => this.replicationDeniend(e))
                     .on("error", (e) => {
-                        this.replicationErrored(notice, e);
-                        Logger("Replication stopped.", LOG_LEVEL.NOTICE);
+                        this.replicationErrored(e);
+                        Logger("Replication stopped.", LOG_LEVEL.NOTICE, "sync");
                     })
-                    .on("paused", (e) => this.replicationPaused(notice));
+                    .on("paused", (e) => this.replicationPaused());
             },
-            false,
-            true
+            "pullOnly"
         );
     }
 
@@ -1102,15 +1066,14 @@ export class LocalPouchDB {
         const oldDB = await this.isOldDatabaseExists();
         if (oldDB) {
             oldDB.destroy();
-            NewNotice("Deleted! Please re-launch obsidian.", LOG_LEVEL.NOTICE);
+            Logger("Deleted! Please re-launch obsidian.", LOG_LEVEL.NOTICE);
         } else {
-            NewNotice("Old database is not exist.", LOG_LEVEL.NOTICE);
+            Logger("Old database is not exist.", LOG_LEVEL.NOTICE);
         }
     }
     async resetDatabase() {
-        await this.waitForGCComplete();
         this.changeHandler = this.cancelHandler(this.changeHandler);
-        await this.closeReplication();
+        this.closeReplication();
         Logger("Database closed for reset Database.");
         this.isReady = false;
         await this.localDatabase.destroy();
@@ -1120,7 +1083,7 @@ export class LocalPouchDB {
         Logger("Local Database Reset", LOG_LEVEL.NOTICE);
     }
     async tryResetRemoteDatabase(setting: RemoteDBSettings) {
-        await this.closeReplication();
+        this.closeReplication();
         const con = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
         if (typeof con == "string") return;
         try {
@@ -1133,7 +1096,7 @@ export class LocalPouchDB {
         }
     }
     async tryCreateRemoteDatabase(setting: RemoteDBSettings) {
-        await this.closeReplication();
+        this.closeReplication();
         const con2 = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
 
         if (typeof con2 === "string") return;
@@ -1157,9 +1120,11 @@ export class LocalPouchDB {
             created: (new Date() as any) / 1,
             locked: locked,
             accepted_nodes: [this.nodeid],
+            node_chunk_info: { [this.nodeid]: currentVersionRange }
         };
 
-        const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint);
+        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint) };
+        remoteMilestone.node_chunk_info = { ...defInitPoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
         remoteMilestone.accepted_nodes = [this.nodeid];
         remoteMilestone.locked = locked;
         if (locked) {
@@ -1187,21 +1152,14 @@ export class LocalPouchDB {
             created: (new Date() as any) / 1,
             locked: false,
             accepted_nodes: [this.nodeid],
+            node_chunk_info: { [this.nodeid]: currentVersionRange }
         };
         // check local database hash status and remote replicate hash status
-        const remoteMilestone: EntryMilestoneInfo = await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint);
-        // remoteMilestone.locked = false;
+        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint) };
+        remoteMilestone.node_chunk_info = { ...defInitPoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
         remoteMilestone.accepted_nodes = Array.from(new Set([...remoteMilestone.accepted_nodes, this.nodeid]));
-        // this.remoteLocked = false;
         Logger("Mark this device as 'resolved'.", LOG_LEVEL.NOTICE);
         await dbret.db.put(remoteMilestone);
-    }
-    gcRunning = false;
-    async waitForGCComplete() {
-        while (this.gcRunning) {
-            Logger("Waiting for Garbage Collection completed.");
-            await delay(1000);
-        }
     }
     async sanCheck(entry: EntryDoc): Promise<boolean> {
         if (entry.type == "plain" || entry.type == "newnote") {
@@ -1222,163 +1180,59 @@ export class LocalPouchDB {
         return false;
     }
 
-    async garbageCollect() {
-        if (this.settings.useHistory) {
-            Logger("GC skipped for using history", LOG_LEVEL.VERBOSE);
-            return;
-        }
-        if ((this.settings as ObsidianLiveSyncSettings).liveSync) {
-            Logger("GC skipped while live sync.", LOG_LEVEL.VERBOSE);
-            return;
-        }
-        // NOTE:Garbage collection could break old revisions.
-        await runWithLock("replicate", true, async () => {
-            if (this.gcRunning) return;
-            this.gcRunning = true;
-            let idbGC: IDBPDatabase<{ id: string }> = null;
-            const storeIDB = "gc";
-            const idbname = "idb-" + this.dbname + "-idb-gcx";
-            try {
-                const procAllDocs = async (getLeaf: boolean, startkey: string, endkey: string, callback: (idordoc: string[]) => Promise<void>) => {
-                    let c = 0;
-                    let readCount = 0;
-                    do {
-                        const result = await this.localDatabase.allDocs({ include_docs: false, skip: c, limit: 2000, conflicts: !getLeaf, startkey: startkey, endkey: endkey });
-                        readCount = result.rows.length;
-                        if (readCount > 0) {
-                            await callback(result.rows.map((e) => e.id));
+    garbageCheck() {
+        Logger(`Checking garbages`, LOG_LEVEL.NOTICE, "gc");
+        let docNum = 0;
+        const chunks = new Map<string, Set<string>>();
+        this.localDatabase
+            .changes({
+                since: 0,
+                include_docs: true,
+                return_docs: false,
+                style: "all_docs",
+                // selector:
+            })
+            .on("change", (e) => {
+                if (e.id.startsWith("h:")) {
+                    const chunk = e.id;
+                    let c = chunks.get(chunk);
+                    if (c == null) c = new Set<string>();
+                    chunks.set(chunk, c);
+                } else if ("children" in e.doc) {
+                    docNum++;
+                    if (docNum % 100 == 0) Logger(`Processing ${docNum}`, LOG_LEVEL.NOTICE, "gc");
+                    if (!e.deleted) {
+                        for (const chunk of e.doc.children) {
+                            let c = chunks.get(chunk);
+                            if (c == null) c = new Set<string>();
+                            c.add(e.id);
+                            chunks.set(chunk, c);
                         }
-                        c += readCount;
-                    } while (readCount != 0);
-                };
-
-                // Delete working indexedDB once.
-
-                await deleteDB(idbname);
-                idbGC = await openDB(idbname, 1, {
-                    upgrade(db) {
-                        db.createObjectStore(storeIDB, { keyPath: "id" });
-                    },
-                });
-
-                // Mark all chunks once.
-                await procAllDocs(true, "h:", "h_", async (docs) => {
-                    Logger(`Chunks marked - :${docs.length}`);
-                    const tx = idbGC.transaction(storeIDB, "readwrite");
-                    const store = tx.objectStore(storeIDB);
-
-                    for (const docId of docs) {
-                        await store.put({ id: docId });
-                    }
-                    await tx.done;
-                });
-
-                Logger("All chunks are marked once");
-
-                const unmarkUsedByHashId = async (doc: EntryDoc) => {
-                    if ("children" in doc) {
-                        const tx = idbGC.transaction(storeIDB, "readwrite");
-                        const store = tx.objectStore(storeIDB);
-
-                        for (const hashId of doc.children) {
-                            await store.delete(hashId);
-                        }
-                        await tx.done;
-                    }
-                };
-                Logger("Processing existen docs");
-                let procDocs = 0;
-                await procAllDocs(false, null, null, async (doc) => {
-                    const docIds = (doc as string[]).filter((e) => !e.startsWith("h:") && !e.startsWith("ps:"));
-                    for (const docId of docIds) {
-                        procDocs++;
-                        if (procDocs % 25 == 0) Logger(`${procDocs} Processed`);
-                        const docT = await this.localDatabase.get(docId, { revs_info: true });
-                        if (docT._deleted) continue;
-                        // Unmark about latest doc.
-                        unmarkUsedByHashId(docT);
-                        const revs = docT._revs_info;
-
-                        // Unmark old revisions
-                        for (const rev of revs) {
-                            if (rev.status != "available") continue;
-                            const docRev = await this.localDatabase.get(docId, { rev: rev.rev });
-                            unmarkUsedByHashId(docRev);
-                            if (docRev._conflicts) {
-                                // Unmark the conflicted chunks of old revisions.
-                                for (const cid of docRev._conflicts) {
-                                    const docConflict = await this.localDatabase.get<EntryDoc>(docId, { rev: cid });
-                                    unmarkUsedByHashId(docConflict);
-                                }
-                            }
-                        }
-                        // Unmark the conflicted chunk.
-                        if (docT._conflicts) {
-                            for (const cid of docT._conflicts) {
-                                const docConflict = await this.localDatabase.get<EntryDoc>(docId, { rev: cid });
-                                unmarkUsedByHashId(docConflict);
-                            }
+                    } else {
+                        for (const chunk of e.doc.children) {
+                            let c = chunks.get(chunk);
+                            if (c == null) c = new Set<string>();
+                            c.delete(e.id);
+                            chunks.set(chunk, c);
                         }
                     }
-                });
-                // All marked chunks could be deleted.
-                Logger("Delete non-used chunks");
-                let dataLeft = false;
-                let chunkKeys: string[] = [];
-                let totalDelCount = 0;
-                do {
-                    const tx = idbGC.transaction(storeIDB, "readonly");
-                    const store = tx.objectStore(storeIDB);
-                    let cursor = await store.openCursor();
-                    if (cursor == null) break;
-                    const maxconcurrentDocs = 10;
-                    let delChunkCount = 0;
-                    do {
-                        // console.log(cursor.key, cursor.value);
-                        if (cursor) {
-                            chunkKeys.push(cursor.key as string);
-                            delChunkCount++;
-                            dataLeft = true;
-                        } else {
-                            dataLeft = false;
-                        }
-                        cursor = await cursor.continue();
-                    } while (cursor && dataLeft && delChunkCount < maxconcurrentDocs);
-                    // if (chunkKeys.length > 0) {
-                    totalDelCount += delChunkCount;
-                    const delDocResult = await this.localDatabase.allDocs({ keys: chunkKeys, include_docs: true });
-                    const delDocs = delDocResult.rows.map((e) => ({ ...e.doc, _deleted: true }));
-                    await this.localDatabase.bulkDocs(delDocs);
-                    Logger(`deleted from pouchdb:${delDocs.length}`);
-                    const tx2 = idbGC.transaction(storeIDB, "readwrite");
-                    const store2 = tx2.objectStore(storeIDB);
-                    for (const doc of chunkKeys) {
-                        await store2.delete(doc);
-                    }
-                    Logger(`deleted from workspace:${chunkKeys.length}`);
-                    await tx2.done;
-                    // }
-                    chunkKeys = [];
-                } while (dataLeft);
-                Logger(`Deleted ${totalDelCount} chunks`);
-                Logger("Teardown the database");
-                if (idbGC != null) {
-                    idbGC.close();
-                    idbGC = null;
                 }
-                await deleteDB(idbname);
-                this.gcRunning = false;
-                Logger("Done");
-            } catch (ex) {
-                Logger("Error on garbage collection");
-                Logger(ex);
-            } finally {
-                if (idbGC != null) {
-                    idbGC.close();
+            })
+            .on("complete", (v) => {
+                // console.dir(chunks);
+
+                let alive = 0;
+                let nonref = 0;
+                for (const chunk of chunks) {
+                    const items = chunk[1];
+                    if (items.size == 0) {
+                        nonref++;
+                    } else {
+                        alive++;
+                    }
                 }
-                await deleteDB(idbname);
-                this.gcRunning = false;
-            }
-        });
+                Logger(`Garbage checking completed, documents:${docNum}. Used chunks:${alive}, Retained chunks:${nonref}. Retained chunks will be reused, but you can rebuild database if you feel there are too much.`, LOG_LEVEL.NOTICE, "gc");
+            });
+        return;
     }
 }

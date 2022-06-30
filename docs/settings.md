@@ -2,6 +2,20 @@ NOTE: This document surely became outdated. I'll improve this doc in a while. bu
 
 # Settings of this plugin
 
+The settings dialog has been quite long, so I split each configuration into tabs.  
+If you feel something, please feel free to inform me.
+
+| icon  | description                                                       |
+| :---: | ----------------------------------------------------------------- |
+|   🛰️   | [Remote Database Configurations](#remote-database-configurations) |
+|   📦   | [Local Database Configurations](#local-database-configurations)   |
+|   ⚙️   | [General Settings](#general-settings)                             |
+|   🔁   | [Sync setting](#sync-setting)                                     |
+|   🔧   | [Miscellaneous](#miscellaneous)                                   |
+|   🧰   | [Hatch](#miscellaneous)                                           |
+|   🔌   | [Plugin and its settings](#plugin-and-its-settings)               |
+|   🚑   | [Corrupted data](#corrupted-data)                                 |
+
 ## Remote Database Configurations
 Configure settings of synchronize server. If any synchronization is enabled, you can't edit this section. Please disable all synchronization to change.
 
@@ -21,12 +35,6 @@ The Database name to synchronize.
 ⚠️If not exist, created automatically.
 
 
-
-### Use the old connecting method
-This option has been removed at v0.10.0
-
-
-
 ### End to End Encryption
 Encrypt your database. It affects only the database, your files are left as plain.
 
@@ -38,26 +46,16 @@ Note: If you want to use "Plugins and their settings", you have to enable this.
 The passphrase to used as the key of encryption. Please use the long text.
 
 ### Apply
-To enable End-to-End encryption, there must be no items of the same content encrypted with different passphrases to avoid attackers guessing passphrases. Self-hosted LiveSync uses crc32 of the chunks, It is really a must.
+Set the End to End encryption enabled and its passphrase for use in replication.  
+If you change the passphrase with existen database, overwriting remote database is strongly recommended.
 
-So, this plugin completely deletes everything from both local and remote databases before enabling it and then synchronizing again.
 
-To enable, "Apply and send" from the most powerful device.
-If you want to synchronize an existing database, set passphrase and press "Just apply".
+### Overwrite by local DB
+Overwrite the remote database by the local database using the passphrase you applied.
 
-- Apply and send
-1. Initialize the Local Database and set (or clear) passphrase, put all files into the database again.
-2. Initialize the Remote Database.
-3. Lock the Remote Database.
-4. Send it all.
 
-This process is simply heavy. Using a PC or Mac is preferred.
-- Apply and receive
-1. Initialize the Local Database and set (or clear) the passphrase.
-2. Unlock the Remote Database.
-3. Retrieve all and decrypt to file.
-
-When running these operations, every synchronization settings is disabled.
+### Rebuild
+Rebuild remote and local databases with local files. It will delete all document history and retained chunks, and shrink the database.
 
 ### Test Database connection
 You can check the connection by clicking this button.
@@ -65,6 +63,9 @@ You can check the connection by clicking this button.
 ### Check database configuration
 You can check and modify your CouchDB's configuration from here directly.
 
+### Lock remote database.
+Other devices are banned from the database when you have locked the database.  
+If you have something troubled with other devices, you can protect the vault and remote database by your device.
 
 ## Local Database Configurations
 "Local Database" is created inside your obsidian.
@@ -73,27 +74,17 @@ You can check and modify your CouchDB's configuration from here directly.
 Delay database update until raise replication, open another file, window visibility changed, or file events except for file modification.  
 This option can not be used with LiveSync at the same time.
 
-### Auto Garbage Collection delay
-When the note has been modified, Self-hosted LiveSync splits the note into some chunks by parsing the markdown structure. And saving only file information and modified chunks into the Local Database. At this time, do not delete old chunks.
-So, Self-hosted LiveSync has to delete old chunks somewhen.
+### Garbage check
+This plugin saves the file by splitting it into chunks to speed replication up and keep low bandwidth.
 
-However, the chunk is represented as the crc32 of their contents and shared between all notes. In this way, Self-hosted LiveSync dedupes the entries and keeps low bandwidth and low transfer amounts.
+They share the chunk if you use the same paragraph in some notes. And if you change the file, only the paragraph you changed is transferred with metadata of the file. And I know that editing notes are not so straight. Sometimes paragraphs will be back into an old phrase. In these cases, we do not have to transfer the chunk again if the chunk will not be deleted. So all chunks will be reused.
 
-In addition to this, when we edit notes, sometimes back to the previous expression. So It cannot be said that it will be unnecessary immediately.
+As the side effect of this, you can see history the file.
 
-Therefore, the plugin deletes unused chunks at once when you leave Obsidian for a while (after this setting seconds).
+The check will show the number of chunks used or retained. If there are so many retained chunks, you can rebuild the database.
 
-This process is called "Garbage Collection"
-
-As a result, Obsidian's behavior is temporarily slowed down.
-
-Default is 300 seconds.
-If you are an early adopter, maybe this value is left as 30 seconds. Please change this value to larger values.
-
-Note: If you want to use "Use history", this vault must be set to 0.
-
-### Manual Garbage Collect
-Run "Garbage Collection" manually.
+### Fetch rebuilt DB.
+If one device rebuilds or locks the remote database, every other device will be locked out from the remote database until it fetches rebuilt DB.
 
 ### minimum chunk size and LongLine threshold
 The configuration of chunk splitting.
@@ -212,28 +203,6 @@ You can set synchronization method at once as these pattern:
   - Sync on File Open : disabled
   - Sync on Start : disabled
 
-### Use history
-If you enable this option, you can keep document histories in your database.  
-(Not all intermediate changes are synchronized.)  
-You can check the changes caused by your edit and/or replication.
-
-### Enable plugin synchronization
-If you want to use this feature, you have to activate this feature by this switch.
-
-### Sweep plugins automatically
-Plugin sweep will run before replication automatically.
-
-### Sweep plugins periodically
-Plugin sweep will run each 1 minute.
-
-### Notify updates
-When replication is complete, a message will be notified if a newer version of the plugin applied to this device is configured on another device.
-
-### Device and Vault name
-To save the plugins, you have to set a unique name every each device.
-
-### Open
-Open the "Plugins and their settings" dialog.
 
 ## Hatch
 From here, everything is under the hood. Please handle it with care.
@@ -280,11 +249,6 @@ Same as a setting passphrase, database locking is also performed.
 3. Retrieve all and decrypt to file.
 
 
-### Lock remote database
-Lock the remote database to ban out other devices for synchronization. It is the same as the database lock that happened in dropping databases or applying passphrases.
-
-Use it as an emergency evacuation method to protect local or remote databases when synchronization has been broken.
-
 ### Suspend file watching
 If enable this option, Self-hosted LiveSync dismisses every file change or deletes the event.
 
@@ -301,9 +265,27 @@ Discard the data stored in the local database.
 ### Initialize local database again
 Discard the data stored in the local database and initialize and create the database from the files on storage.
 
-### Corrupted data
+## Plugins and settings (beta)
+
+### Enable plugin synchronization
+If you want to use this feature, you have to activate this feature by this switch.
+
+### Sweep plugins automatically
+Plugin sweep will run before replication automatically.
+
+### Sweep plugins periodically
+Plugin sweep will run each 1 minute.
+
+### Notify updates
+When replication is complete, a message will be notified if a newer version of the plugin applied to this device is configured on another device.
+
+### Device and Vault name
+To save the plugins, you have to set a unique name every each device.
+
+### Open
+Open the "Plugins and their settings" dialog.
+
+### Corrupted or missing data
 ![CorruptedData](../images/corrupted_data.png)
 
 When Self-hosted LiveSync could not write to the file on the storage, the files are shown here. If you have the old data in your vault, change it once, it will be cured. Or you can use the "File History" plugin.
-
-But if you don't, sorry, we can't rescue the file, and error messages are shown frequently, and you have to delete the file from here.

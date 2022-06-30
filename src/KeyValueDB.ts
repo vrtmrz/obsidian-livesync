@@ -9,7 +9,7 @@ export interface KeyValueDatabase {
     destroy(): void;
 }
 const databaseCache: { [key: string]: IDBPDatabase<any> } = {};
-export const OpenKeyValueDatabase = (dbKey: string): KeyValueDatabase => {
+export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
     if (dbKey in databaseCache) {
         databaseCache[dbKey].close();
         delete databaseCache[dbKey];
@@ -20,30 +20,32 @@ export const OpenKeyValueDatabase = (dbKey: string): KeyValueDatabase => {
             db.createObjectStore(storeKey);
         },
     });
-    ~(async () => (databaseCache[dbKey] = await dbPromise))();
+    let db: IDBPDatabase<any> = null;
+    db = await dbPromise;
+    databaseCache[dbKey] = db;
     return {
-        async get<T>(key: string): Promise<T> {
-            return (await dbPromise).get(storeKey, key);
+        get<T>(key: string): Promise<T> {
+            return db.get(storeKey, key);
         },
-        async set<T>(key: string, value: T) {
-            return (await dbPromise).put(storeKey, value, key);
+        set<T>(key: string, value: T) {
+            return db.put(storeKey, value, key);
         },
-        async del(key: string) {
-            return (await dbPromise).delete(storeKey, key);
+        del(key: string) {
+            return db.delete(storeKey, key);
         },
-        async clear() {
-            return (await dbPromise).clear(storeKey);
+        clear() {
+            return db.clear(storeKey);
         },
-        async keys(query?: IDBValidKey | IDBKeyRange, count?: number) {
-            return (await dbPromise).getAllKeys(storeKey, query, count);
+        keys(query?: IDBValidKey | IDBKeyRange, count?: number) {
+            return db.getAllKeys(storeKey, query, count);
         },
-        async close() {
+        close() {
             delete databaseCache[dbKey];
-            return (await dbPromise).close();
+            return db.close();
         },
         async destroy() {
             delete databaseCache[dbKey];
-            (await dbPromise).close();
+            db.close();
             await deleteDB(dbKey);
         },
     };
