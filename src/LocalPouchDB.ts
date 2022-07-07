@@ -49,7 +49,6 @@ export class LocalPouchDB {
     isReady = false;
 
     h32: (input: string, seed?: number) => string;
-    h64: (input: string, seedHigh?: number, seedLow?: number) => string;
     h32Raw: (input: Uint8Array, seed?: number) => number;
     hashCaches = new LRUCache();
 
@@ -234,9 +233,8 @@ export class LocalPouchDB {
 
     async prepareHashFunctions() {
         if (this.h32 != null) return;
-        const { h32, h64, h32Raw } = await xxhash();
+        const { h32, h32Raw } = await xxhash();
         this.h32 = h32;
-        this.h64 = h64;
         this.h32Raw = h32Raw;
     }
 
@@ -316,8 +314,10 @@ export class LocalPouchDB {
             if (!obj.type || (obj.type && obj.type == "notes") || obj.type == "newnote" || obj.type == "plain") {
                 const note = obj as Entry;
                 let children: string[] = [];
+                let type: "plain" | "newnote" = "plain";
                 if (obj.type == "newnote" || obj.type == "plain") {
                     children = obj.children;
+                    type = obj.type;
                 }
                 const doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                     data: "",
@@ -329,7 +329,7 @@ export class LocalPouchDB {
                     _rev: obj._rev,
                     _conflicts: obj._conflicts,
                     children: children,
-                    datatype: "newnote",
+                    datatype: type,
                 };
                 return doc;
             }
@@ -662,13 +662,12 @@ export class LocalPouchDB {
         if (saved) {
             Logger(`Content saved:${note._id} ,pieces:${processed} (new:${made}, skip:${skiped}, cache:${cacheUsed})`);
             const newDoc: PlainEntry | NewEntry = {
-                NewNote: true,
                 children: savenNotes,
                 _id: note._id,
                 ctime: note.ctime,
                 mtime: note.mtime,
                 size: note.size,
-                type: plainSplit ? "plain" : "newnote",
+                type: note.datatype,
             };
             // Here for upsert logic,
             await runWithLock("file:" + newDoc._id, false, async () => {
