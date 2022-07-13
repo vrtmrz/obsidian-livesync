@@ -51,7 +51,6 @@ First, get your database ready. IBM Cloudant is preferred for testing. Or you ca
 	3. Additional configuration is also here. I recommend enabling `Use Trash for deleted files, but you can leave all configurations disabled.
 4. Configure miscellaneous features.
 	1. Enabling `Show staus inside editor` bring you information. While edit mode, you can see the status on the top-right of the editor. (Recommended)
-	2. Enabling `Use history` let you see the diffs between your edit and synchronization. (Recommended)
 5. Back to the editor. I hope that initial scan is in the progress or done.
 6. When status became stabilized (All ⏳ and 🧩 have been disappeared), you are ready to synchronize with the server.
 7. Press the replicate icon on the Ribbon or run `Replicate now` from the Command pallet. You'll send all your data to the server.
