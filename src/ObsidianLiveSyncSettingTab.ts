@@ -473,7 +473,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                         .reduce((obj, [key, val]) => {
                                             obj[key] = val;
                                             return obj;
-                                        }, {});
+                                        }, {} as { [key: string]: string });
                                     addResult(`Origin check:${org}`);
                                     if (responseHeaders["access-control-allow-credentials"] != "true") {
                                         addResult("❗ CORS is not allowing credential");
