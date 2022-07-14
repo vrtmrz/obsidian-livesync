@@ -1388,10 +1388,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.statusBar.setText(newMsg.split("\n")[0]);
 
             if (this.settings.showStatusOnEditor) {
-                const root = document.documentElement;
+                const root = activeDocument.documentElement;
                 root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
             } else {
-                const root = document.documentElement;
+                const root = activeDocument.documentElement;
                 root.style.setProperty("--slsmessage", '""');
             }
             if (this.logHideTimer != null) {
@@ -1528,10 +1528,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             do {
                 const syncFilesX = syncFiles.splice(0, 100);
                 const docs = await this.localDatabase.localDatabase.allDocs({ keys: syncFilesX.map(e => path2id(e.path)), include_docs: true })
-                const syncFilesToSync = syncFilesX.map((e) => ({ ...e, doc: docs.rows.find(ee => ee.id == path2id(e.path)).doc as LoadedEntry }));
+                const syncFilesToSync = syncFilesX.map((e) => ({ file: e, doc: docs.rows.find(ee => ee.id == path2id(e.path)).doc as LoadedEntry }));
 
                 await runAll(`CHECK FILE STATUS:${syncFiles.length}/${docsCount}`, syncFilesToSync, async (e) => {
-                    caches = await this.syncFileBetweenDBandStorage(e, initialScan, caches);
+                    caches = await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
                 });
             } while (syncFiles.length > 0);
             await this.localDatabase.kvDB.set("diff-caches", caches);
@@ -1806,9 +1806,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         //when to opened file;
     }
 
-    async syncFileBetweenDBandStorage(file: TFile & { doc?: LoadedEntry }, initialScan: boolean, caches: { [key: string]: { storageMtime: number; docMtime: number } }) {
-        const doc = file.doc;
-        if (!doc) return;
+    async syncFileBetweenDBandStorage(file: TFile, doc: LoadedEntry, initialScan: boolean, caches: { [key: string]: { storageMtime: number; docMtime: number } }) {
+        if (!doc) {
+            throw new Error(`Missing doc:${(file as any).path}`)
+        }
+        if (!(file instanceof TFile) && "path" in file) {
+            const w = this.app.vault.getAbstractFileByPath((file as any).path);
+            if (w instanceof TFile) {
+                file = w;
+            } else {
+                throw new Error(`Missing file:${(file as any).path}`)
+            }
+        }
+
         const storageMtime = ~~(file.stat.mtime / 1000);
         const docMtime = ~~(doc.mtime / 1000);
         const dK = `${file.path}-diff`;
