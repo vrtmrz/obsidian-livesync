@@ -2,8 +2,9 @@
 
 [Japanese docs](./README_ja.md).
 
-Self-hosted LiveSync is a community implemented synchronization plugin.
-It uses Self-hosted or you procured CouchDB as the server. Available on every obsidian installed devices.
+Self-hosted LiveSync is a community implemented synchronization plugin.  
+It uses Self-hosted or you procured CouchDB as the server. Available on every obsidian installed devices.  
+
 Note: It has no compatibilities with official "Sync".
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
@@ -36,6 +37,8 @@ It must be useful for the Researcher, Engineer, Developer who has to keep NDA or
 First, get your database ready. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
 1. [Setup IBM Cloudant](docs/setup_cloudant.md)
 2. [Setup your CouchDB](docs/setup_own_server.md)
+
+Note: Information about hosting service wanted! Currently, [Using fly.io](https://github.com/vrtmrz/obsidian-livesync/discussions/85) is on the table.
 
 ### First device
 
