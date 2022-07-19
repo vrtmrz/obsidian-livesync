@@ -20,6 +20,7 @@ import {
     MILSTONE_DOCID,
     DatabaseConnectingStatus,
     ChunkVersionRange,
+    NoteEntry,
 } from "./lib/src/types";
 import { RemoteDBSettings } from "./lib/src/types";
 import { resolveWithIgnoreKnownError, runWithLock, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
@@ -304,7 +305,7 @@ export class LocalPouchDB {
             } else {
                 obj = await this.localDatabase.get(id);
             }
-
+            const deleted = "deleted" in obj ? obj.deleted : undefined;
             if (obj.type && obj.type == "leaf") {
                 //do nothing for leaf;
                 return false;
@@ -330,6 +331,8 @@ export class LocalPouchDB {
                     _conflicts: obj._conflicts,
                     children: children,
                     datatype: type,
+                    deleted: deleted,
+                    type: type
                 };
                 return doc;
             }
@@ -350,6 +353,7 @@ export class LocalPouchDB {
             } else {
                 obj = await this.localDatabase.get(id);
             }
+            const deleted = "deleted" in obj ? obj.deleted : undefined;
 
             if (obj.type && obj.type == "leaf") {
                 //do nothing for leaf;
@@ -358,7 +362,7 @@ export class LocalPouchDB {
 
             //Check it out and fix docs to regular case
             if (!obj.type || (obj.type && obj.type == "notes")) {
-                const note = obj as Entry;
+                const note = obj as NoteEntry;
                 const doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                     data: note.data,
                     _id: note._id,
@@ -370,6 +374,8 @@ export class LocalPouchDB {
                     _conflicts: obj._conflicts,
                     children: [],
                     datatype: "newnote",
+                    deleted: deleted,
+                    type: "newnote",
                 };
                 if (typeof this.corruptedEntries[doc._id] != "undefined") {
                     delete this.corruptedEntries[doc._id];
@@ -414,6 +420,8 @@ export class LocalPouchDB {
                         children: obj.children,
                         datatype: obj.type,
                         _conflicts: obj._conflicts,
+                        deleted: deleted,
+                        type: obj.type
                     };
                     if (dump) {
                         Logger(`therefore:`);
@@ -684,7 +692,7 @@ export class LocalPouchDB {
                         throw ex;
                     }
                 }
-                const r = await this.localDatabase.put(newDoc, { force: true });
+                const r = await this.localDatabase.put<PlainEntry | NewEntry>(newDoc, { force: true });
                 if (typeof this.corruptedEntries[note._id] != "undefined") {
                     delete this.corruptedEntries[note._id];
                 }

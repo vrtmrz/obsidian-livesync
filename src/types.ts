@@ -22,3 +22,11 @@ export interface DevicePluginList {
     [key: string]: PluginDataEntry;
 }
 export const PERIODIC_PLUGIN_SWEEP = 60;
+
+export interface InternalFileInfo {
+    path: string;
+    mtime: number;
+    ctime: number;
+    size: number;
+    deleted?: boolean;
+}

@@ -1,8 +1,8 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal, Setting } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList } from "./types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo } from "./types";
 import {
     base64ToString,
     arrayBufferToBase64,
@@ -18,6 +18,7 @@ import {
     NewNotice,
     getLocks,
     Parallels,
+    WrappedNotice,
 } from "./lib/src/utils";
 import { Logger, setLogger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -500,6 +501,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.showPluginSyncModal();
             },
         });
+
+        this.addCommand({
+            id: "livesync-scaninternal",
+            name: "Sync hidden files",
+            callback: () => {
+                this.syncInternalFilesAndDatabase("safe", true);
+            },
+        });
     }
 
     pluginDialog: PluginDialogModal = null;
@@ -531,6 +540,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.clearPeriodicSync();
         this.clearPluginSweep();
+        this.clearInternalFileScan();
         if (this.localDatabase != null) {
             this.localDatabase.closeReplication();
             this.localDatabase.close();
@@ -1124,6 +1134,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const now = new Date().getTime();
                 if (queue.missingChildren.length == 0) {
                     queue.done = true;
+                    if (queue.entry._id.startsWith("i:")) {
+                        //system file
+                        const filename = id2path(queue.entry._id.substring("i:".length));
+                        Logger(`Applying hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
+                        await this.syncInternalFilesAndDatabase("pull", false, false, [filename])
+                        Logger(`Applied hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
+                    }
                     if (isValidPath(id2path(queue.entry._id))) {
                         Logger(`Applying ${queue.entry._id} (${queue.entry._rev}) change...`);
                         await this.handleDBChanged(queue.entry);
@@ -1162,7 +1179,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
-        if (skipOldFile) {
+        if ((!doc._id.startsWith("i:")) && skipOldFile) {
             const info = this.app.vault.getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
@@ -1304,6 +1321,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.localDatabase.closeReplication();
         this.clearPeriodicSync();
         this.clearPluginSweep();
+        this.clearInternalFileScan();
         await this.applyBatchChange();
         // disable all sync temporary.
         if (this.suspended) return;
@@ -1314,8 +1332,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
+        if (this.settings.syncInternalFiles) {
+            await this.syncInternalFilesAndDatabase("safe", false);
+        }
         this.setPeriodicSync();
         this.setPluginSweep();
+        this.setPeriodicInternalFileScan();
     }
 
     lastMessage = "";
@@ -1414,6 +1436,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(false);
         }
         await this.loadQueuedFiles();
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication) {
+            await this.syncInternalFilesAndDatabase("push", showMessage);
+        }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
@@ -1877,6 +1902,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             size: file.stat.size,
             children: [],
             datatype: datatype,
+            type: datatype,
         };
         //upsert should locked
         const msg = `DB <- STORAGE (${datatype}) `;
@@ -2016,6 +2042,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     size: 0,
                     children: [],
                     datatype: "plain",
+                    type: "plain"
                 };
                 Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
                 await runWithLock("plugin-" + m.id, false, async () => {
@@ -2090,5 +2117,341 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
             }
         });
+    }
+
+
+    periodicInternalFileScanHandler: number = null;
+
+    clearInternalFileScan() {
+        if (this.periodicInternalFileScanHandler != null) {
+            clearInterval(this.periodicInternalFileScanHandler);
+            this.periodicInternalFileScanHandler = null;
+        }
+    }
+
+    setPeriodicInternalFileScan() {
+        if (this.periodicInternalFileScanHandler != null) {
+            this.clearInternalFileScan();
+        }
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval > 0) {
+            this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicInternalFileScan(), this.settings.syncInternalFilesInterval * 1000);
+        }
+    }
+
+    async periodicInternalFileScan() {
+        await this.syncInternalFilesAndDatabase("push", false);
+    }
+
+    async getFiles(
+        path: string,
+        ignoreList: string[],
+        filter: RegExp[]
+    ) {
+        const w = await this.app.vault.adapter.list(path);
+        let files = [
+            ...w.files
+                .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
+                .filter((e) => !filter || filter.some((ee) => e.match(ee))),
+        ];
+        L1: for (const v of w.folders) {
+            for (const ignore of ignoreList) {
+                if (v.endsWith(ignore)) {
+                    continue L1;
+                }
+            }
+            files = files.concat(await this.getFiles(v, ignoreList, filter));
+        }
+        return files;
+    }
+
+    async scanInternalFiles(): Promise<InternalFileInfo[]> {
+        const ignoreFiles = ["node_modules", ".git", "obsidian-pouch"];
+        const root = this.app.vault.getRoot();
+        const findRoot = root.path;
+        const filenames = (await this.getFiles(findRoot, ignoreFiles, null)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
+        const files = filenames.map(async e => {
+            return {
+                path: e,
+                stat: await this.app.vault.adapter.stat(e)
+            }
+        });
+        const result: InternalFileInfo[] = [];
+        for (const f of files) {
+            const w = await f;
+            result.push({
+                ...w,
+                ...w.stat
+            })
+        }
+        return result;
+    }
+
+    async storeInternaFileToDatabase(file: InternalFileInfo, forceWrite = false) {
+        const id = "i:" + path2id(file.path);
+        const contentBin = await this.app.vault.adapter.readBinary(file.path);
+        const content = await arrayBufferToBase64(contentBin);
+        const mtime = file.mtime;
+        await runWithLock("file-" + id, false, async () => {
+            const old = await this.localDatabase.getDBEntry(id, null, false, false);
+            let saveData: LoadedEntry;
+            if (old === false) {
+                saveData = {
+                    _id: id,
+                    data: content,
+                    mtime,
+                    ctime: mtime,
+                    datatype: "newnote",
+                    size: file.size,
+                    children: [],
+                    deleted: false,
+                    type: "newnote",
+                }
+            } else {
+                if (old.data == content && !forceWrite) {
+                    // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
+                    return;
+                }
+                saveData =
+                {
+                    ...old,
+                    data: content,
+                    mtime,
+                    size: file.size,
+                    datatype: "newnote",
+                    children: [],
+                    deleted: false,
+                    type: "newnote",
+                }
+            }
+            await this.localDatabase.putDBEntry(saveData, true);
+            Logger(`internal files STORAGE --> DB:${file.path}: Done`);
+        });
+    }
+
+    async deleteInternaFileOnDatabase(filename: string, forceWrite = false) {
+        const id = "i:" + path2id(filename);
+        const mtime = new Date().getTime();
+        await runWithLock("file-" + id, false, async () => {
+            const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
+            let saveData: InternalFileEntry;
+            if (old === false) {
+                saveData = {
+                    _id: id,
+                    mtime,
+                    ctime: mtime,
+                    size: 0,
+                    children: [],
+                    deleted: true,
+                    type: "newnote",
+                }
+            } else {
+                if (old.deleted) {
+                    Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
+                    return;
+                }
+                saveData =
+                {
+                    ...old,
+                    mtime,
+                    size: 0,
+                    children: [],
+                    deleted: true,
+                    type: "newnote",
+                }
+            }
+            await this.localDatabase.localDatabase.put(saveData);
+            Logger(`STORAGE -x> DB:${filename}: (hidden) Done`);
+
+        });
+    }
+    async ensureDirectoryEx(fullpath: string) {
+        const pathElements = fullpath.split("/");
+        pathElements.pop();
+        let c = "";
+        for (const v of pathElements) {
+            c += v;
+            try {
+                await this.app.vault.adapter.mkdir(c);
+            } catch (ex) {
+                // basically skip exceptions.
+                if (ex.message && ex.message == "Folder already exists.") {
+                    // especialy this message is.
+                } else {
+                    Logger("Folder Create Error");
+                    Logger(ex);
+                }
+            }
+            c += "/";
+        }
+    }
+    async extractInternaFileFromDatabase(filename: string, force = false) {
+        const isExists = await this.app.vault.adapter.exists(filename);
+        const id = "i:" + path2id(filename);
+
+        return await runWithLock("file-" + id, false, async () => {
+            const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
+            if (fileOnDB === false) throw new Error(`File not found on database.:${id}`);
+            const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
+            if (deleted) {
+                if (!isExists) {
+                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
+                } else {
+                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
+                    await this.app.vault.adapter.remove(filename);
+                }
+                return true;
+            }
+            if (!isExists) {
+                await this.ensureDirectoryEx(filename);
+                await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
+                return true;
+            } else {
+                try {
+                    // const stat = await this.app.vault.adapter.stat(filename);
+                    // const fileMTime = ~~(stat.mtime/1000);
+                    // const docMtime = ~~(old.mtime/1000);
+                    const contentBin = await this.app.vault.adapter.readBinary(filename);
+                    const content = await arrayBufferToBase64(contentBin);
+                    if (content == fileOnDB.data && !force) {
+                        Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`);
+                        return false;
+                    }
+                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""})`);
+                    return true;
+                } catch (ex) {
+                    Logger(ex);
+                    return false;
+                }
+            }
+        });
+    }
+
+    confirmPopup: WrappedNotice = null;
+    confirmPopupTimer: number = null;
+    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
+        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+        Logger("Scanning hidden files.", logLevel, "sync_internal");
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
+        if (!files) files = await this.scanInternalFiles();
+        const filesOnDB = (await this.localDatabase.localDatabase.allDocs({ startkey: "i:", endkey: "i;", include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[];
+        const allFileNames = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(e._id.substring("i:".length))))])];
+        function compareMTime(a: number, b: number) {
+            const wa = ~~(a / 1000);
+            const wb = ~~(b / 1000);
+            const diff = wa - wb;
+            return diff;
+        }
+
+        const fileCount = allFileNames.length;
+        let processed = 0;
+        let filesChanged = 0;
+        const p = Parallels();
+        const limit = 10;
+
+        for (const filename of allFileNames) {
+            // Logger(`Processing:${filename}`, LOG_LEVEL.VERBOSE);
+            processed++;
+            if (processed % 100 == 0) Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
+            if (ignorePatterns.some(e => filename.match(e))) continue;
+            if (targetFiles !== false && targetFiles.indexOf(filename) == -1) continue;
+
+            const fileOnStorage = files.find(e => e.path == filename);
+            const fileOnDatabase = filesOnDB.find(e => e._id == "i:" + id2path(filename));
+            let proc: () => Promise<void> | null = null;
+            if (fileOnStorage && fileOnDatabase) {
+                // Both => Synchronize
+
+                const nw = compareMTime(fileOnStorage.mtime, fileOnDatabase.mtime);
+                if (nw == 0) continue;
+
+                if (nw > 0) {
+                    proc = async () => {
+                        await this.storeInternaFileToDatabase(fileOnStorage);
+                    }
+
+                }
+                if (nw < 0) {
+                    proc = async () => {
+                        if (await this.extractInternaFileFromDatabase(filename)) {
+                            filesChanged++;
+                        }
+                    }
+
+                }
+            } else if (!fileOnStorage && fileOnDatabase) {
+                if (direction == "push") {
+                    if (fileOnDatabase.deleted) {
+                        // await this.storeInternaFileToDatabase(fileOnStorage);
+                    } else {
+                        proc = async () => {
+                            await this.deleteInternaFileOnDatabase(filename);
+                        }
+                    }
+                } else if (direction == "pull") {
+                    proc = async () => {
+                        if (await this.extractInternaFileFromDatabase(filename)) {
+                            filesChanged++;
+                        }
+                    }
+                } else if (direction == "safe") {
+                    if (fileOnDatabase.deleted) {
+                        // await this.storeInternaFileToDatabase(fileOnStorage);
+                    } else {
+                        proc = async () => {
+                            if (await this.extractInternaFileFromDatabase(filename)) {
+                                filesChanged++;
+                            }
+                        }
+                    }
+                }
+            } else if (fileOnStorage && !fileOnDatabase) {
+                proc = async () => {
+                    await this.storeInternaFileToDatabase(fileOnStorage);
+                }
+            } else {
+                throw new Error("Invalid state on hidden file sync");
+                // Something corrupted?
+            }
+            if (proc) p.add(proc());
+            proc = null;
+            await p.wait(limit);
+        }
+        await p.all();
+        // Show notification to restart obsidian.
+        if (direction == "pull" && filesChanged != 0) {
+
+            const fragment = createFragment((doc) => {
+                doc.createEl("span", null, (a) => {
+                    a.appendText(`Hidden files have been synchronized, Press `)
+                    a.appendChild(a.createEl("a", null, (anchor) => {
+                        anchor.text = "HERE";
+                        anchor.addEventListener("click", () => {
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        });
+                    }))
+
+                    a.appendText(` to reload obsidian, or press elsewhere to dismiss this message.`)
+                });
+            });
+            //@ts-ignore
+            const isShown = this.confirmPopup?.noticeEl?.isShown();
+            if (!isShown) {
+                this.confirmPopup = new Notice(fragment, 0);
+            }
+            if (this.confirmPopupTimer != null) {
+                clearTimeout(this.confirmPopupTimer);
+            }
+            setTimeout(() => {
+                this.confirmPopup?.hide();
+                this.confirmPopup = null;
+            }, 10000)
+        }
+
+        Logger(`Hidden files scanned`, logLevel, "sync_internal");
     }
 }

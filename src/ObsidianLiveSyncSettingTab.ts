@@ -765,9 +765,60 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+
+        containerSyncSettingEl.createEl("h3", {
+            text: sanitizeHTMLToDom(`Experimental`),
+        });
+        new Setting(containerSyncSettingEl)
+            .setName("Sync hidden files.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.syncInternalFiles).onChange(async (value) => {
+                    this.plugin.settings.syncInternalFiles = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Scan hidden files before replication.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
+                    this.plugin.settings.syncInternalFilesBeforeReplication = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Scan hidden files periodicaly.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.syncInternalFilesInterval + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10) {
+                            v = 10;
+                        }
+                        this.plugin.settings.syncInternalFilesInterval = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerSyncSettingEl)
+            .setName("Skip patterns")
+            .setDesc(
+                "Regular expression"
+            )
+            .addTextArea((text) =>
+                text
+                    .setValue(this.plugin.settings.syncInternalFilesIgnorePatterns)
+                    .setPlaceholder("\\/node_modules\\/, \\/\\.git\\/")
+                    .onChange(async (value) => {
+                        this.plugin.settings.syncInternalFilesIgnorePatterns = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+        containerSyncSettingEl.createEl("h3", {
+            text: sanitizeHTMLToDom(`Advanced settings`),
+        });
         containerSyncSettingEl.createEl("div", {
-            text: sanitizeHTMLToDom(`Advanced settings<br>
-            If you reached the payload size limit when using IBM Cloudant, please set batch size and batch limit to a lower value.`),
+            text: `If you reached the payload size limit when using IBM Cloudant, please set batch size and batch limit to a lower value.`,
         });
         new Setting(containerSyncSettingEl)
             .setName("Batch size")
