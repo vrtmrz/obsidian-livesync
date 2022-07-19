@@ -150,6 +150,30 @@ Self-hosted LiveSyncは通常、フォルダ内のファイルがすべて削除
 ### Use newer file if conflicted (beta)
 競合が発生したとき、常に新しいファイルを使用して競合を自動的に解決します。
 
+
+### Experimental.
+### Sync hidden files
+
+隠しファイルを同期します
+
+- Scan hidden files before replication.
+このオプション有効にすると、レプリケーションを実行する前に隠しファイルをスキャンします。
+
+- Scan hidden files periodicaly.
+このオプションを有効にすると、n秒おきに隠しファイルをスキャンします。
+
+隠しファイルは能動的に検出されないため、スキャンが必要です。
+スキャンでは、ファイルと共にファイルの変更時刻を保存します。もしファイルが消された場合は、その事実も保存します。このファイルを記録したエントリーがレプリケーションされた際、ストレージよりも新しい場合はストレージに反映されます。
+
+そのため、端末のクロックは時刻合わせされている必要があります。ファイルが隠しフォルダに生成された場合でも、もし変更時刻が古いと判断された場合はスキップされるかキャンセル（つまり、削除）されます。
+
+
+Each scan stores the file with their modification time. And if the file has been disappeared, the fact is also stored. Then, When the entry of the hidden file has been replicated, it will be reflected in the storage if the entry is newer than storage.
+
+Therefore, the clock must be adjusted. If the modification time is old, the changeset will be skipped or cancelled (It means, **deleted**), even if the file spawned in a hidden folder.
+
+
+
 ### Advanced settings
 Self-hosted LiveSyncはPouchDBを使用し、リモートと[このプロトコル](https://docs.couchdb.org/en/stable/replication/protocol.html)で同期しています。  
 そのため、全てのノートなどはデータベースが許容するペイロードサイズやドキュメントサイズに併せてチャンクに分割されています。

@@ -151,6 +151,24 @@ Self-hosted LiveSync will delete the folder when the folder becomes empty. If th
 ### Use newer file if conflicted (beta)
 Always use the newer file to resolve and overwrite when conflict has occurred.
 
+
+### Experimental.
+### Sync hidden files
+
+Synchronize hidden files.
+
+- Scan hidden files before replication.
+If you enable this option, all hidden files are scanned once before replication.
+
+- Scan hidden files periodicaly.
+If you enable this option, all hidden files will be scanned each [n] seconds.
+
+Hidden files are not actively detected, so we need scanning.
+
+Each scan stores the file with their modification time. And if the file has been disappeared, the fact is also stored. Then, When the entry of the hidden file has been replicated, it will be reflected in the storage if the entry is newer than storage.
+
+Therefore, the clock must be adjusted. If the modification time is determined to be older, the changeset will be skipped or cancelled (It means, **deleted**), even if the file spawned in a hidden folder.
+
 ### Advanced settings
 Self-hosted LiveSync using PouchDB and synchronizes with the remote by [this protocol](https://docs.couchdb.org/en/stable/replication/protocol.html).
 So, it splits every entry into chunks to be acceptable by the database with limited payload size and document size.
