@@ -814,6 +814,31 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
+
+        new Setting(containerSyncSettingEl)
+            .setName("Touch hidden files")
+            .setDesc("Update the modified time of all hidden files to the current time.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Touch")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-left")
+                    .onClick(async () => {
+                        const filesAll = await this.plugin.scanInternalFiles();
+                        const targetFiles = await this.plugin.filterTargetFiles(filesAll);
+                        const now = Date.now();
+                        const newFiles = targetFiles.map(e => ({ ...e, mtime: now }));
+                        let i = 0;
+                        const maxFiles = newFiles.length;
+                        for (const file of newFiles) {
+                            i++;
+                            Logger(`Touched:${file.path} (${i}/${maxFiles})`, LOG_LEVEL.NOTICE, "touch-files");
+                            await this.plugin.applyMTimeToFile(file);
+                        }
+                    })
+            )
+
         containerSyncSettingEl.createEl("h3", {
             text: sanitizeHTMLToDom(`Advanced settings`),
         });

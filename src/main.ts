@@ -29,7 +29,7 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 //@ts-ignore
 import PluginPane from "./PluginPane.svelte";
-import { id2path, path2id } from "./utils";
+import { clearAllPeriodic, clearAllTriggers, disposeMemoObject, id2path, memoIfNotExist, memoObject, path2id, retriveMemoObject, setTrigger } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
@@ -545,6 +545,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.localDatabase.closeReplication();
             this.localDatabase.close();
         }
+        clearAllPeriodic();
+        clearAllTriggers();
         window.removeEventListener("visibilitychange", this.watchWindowVisiblity);
         Logger("unloading plugin");
     }
@@ -2328,8 +2330,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
     }
 
+    async filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
+        // const files = await this.scanInternalFiles();
+        return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
+        //if (ignorePatterns.some(e => filename.match(e))) continue;
+        //if (targetFiles !== false && targetFiles.indexOf(filename) == -1) continue;
+    }
+
+    async applyMTimeToFile(file: InternalFileInfo) {
+        await this.app.vault.adapter.append(file.path, "", { ctime: file.ctime, mtime: file.mtime });
+    }
     confirmPopup: WrappedNotice = null;
-    confirmPopupTimer: number = null;
+
+    //TODO: Tidy up. Even though it is experimental feature, So dirty...
     async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
         const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
         Logger("Scanning hidden files.", logLevel, "sync_internal");
@@ -2338,7 +2354,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             .split(",").filter(e => e).map(e => new RegExp(e));
         if (!files) files = await this.scanInternalFiles();
         const filesOnDB = (await this.localDatabase.localDatabase.allDocs({ startkey: "i:", endkey: "i;", include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[];
-        const allFileNames = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(e._id.substring("i:".length))))])];
+        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(e._id.substring("i:".length))))])];
+        const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1))
         function compareMTime(a: number, b: number) {
             const wa = ~~(a / 1000);
             const wb = ~~(b / 1000);
@@ -2351,35 +2368,68 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         let filesChanged = 0;
         const p = Parallels();
         const limit = 10;
-
+        // count updated files up as like this below:
+        // .obsidian: 2
+        // .obsidian/workspace: 1
+        // .obsidian/plugins: 1
+        // .obsidian/plugins/recent-files-obsidian: 1
+        // .obsidian/plugins/recent-files-obsidian/data.json: 1
+        const updatedFolders: { [key: string]: number } = {}
+        const countUpdatedFolder = (path: string) => {
+            const pieces = path.split("/");
+            let c = pieces.shift();
+            let pathPieces = "";
+            filesChanged++;
+            while (c) {
+                pathPieces += (pathPieces != "" ? "/" : "") + c;
+                pathPieces = normalizePath(pathPieces);
+                if (!(pathPieces in updatedFolders)) {
+                    updatedFolders[pathPieces] = 0;
+                }
+                updatedFolders[pathPieces]++;
+                c = pieces.shift();
+            }
+        }
+        // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
+        let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
+        caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches-internal") || {};
         for (const filename of allFileNames) {
-            // Logger(`Processing:${filename}`, LOG_LEVEL.VERBOSE);
             processed++;
             if (processed % 100 == 0) Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
             if (ignorePatterns.some(e => filename.match(e))) continue;
-            if (targetFiles !== false && targetFiles.indexOf(filename) == -1) continue;
 
             const fileOnStorage = files.find(e => e.path == filename);
             const fileOnDatabase = filesOnDB.find(e => e._id == "i:" + id2path(filename));
-            let proc: () => Promise<void> | null = null;
+            // TODO: Fix this somehow smart.
+            let proc: Promise<void> | null;
+
             if (fileOnStorage && fileOnDatabase) {
                 // Both => Synchronize
-
+                const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
+                if (fileOnDatabase.mtime == cache.docMtime && fileOnStorage.mtime == cache.storageMtime) {
+                    continue;
+                }
                 const nw = compareMTime(fileOnStorage.mtime, fileOnDatabase.mtime);
                 if (nw == 0) continue;
 
                 if (nw > 0) {
-                    proc = async () => {
+                    proc = (async (fileOnStorage) => {
                         await this.storeInternaFileToDatabase(fileOnStorage);
-                    }
+                        cache.docMtime = fileOnDatabase.mtime;
+                        cache.storageMtime = fileOnStorage.mtime;
+                        caches[filename] = cache;
+                    })(fileOnStorage);
 
                 }
                 if (nw < 0) {
-                    proc = async () => {
+                    proc = (async (filename) => {
                         if (await this.extractInternaFileFromDatabase(filename)) {
-                            filesChanged++;
+                            cache.docMtime = fileOnDatabase.mtime;
+                            cache.storageMtime = fileOnStorage.mtime;
+                            caches[filename] = cache;
+                            countUpdatedFolder(filename);
                         }
-                    }
+                    })(filename);
 
                 }
             } else if (!fileOnStorage && fileOnDatabase) {
@@ -2387,71 +2437,137 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     if (fileOnDatabase.deleted) {
                         // await this.storeInternaFileToDatabase(fileOnStorage);
                     } else {
-                        proc = async () => {
+                        proc = (async () => {
                             await this.deleteInternaFileOnDatabase(filename);
-                        }
+                        })();
                     }
                 } else if (direction == "pull") {
-                    proc = async () => {
+                    proc = (async () => {
                         if (await this.extractInternaFileFromDatabase(filename)) {
-                            filesChanged++;
+                            countUpdatedFolder(filename);
                         }
-                    }
+                    })();
                 } else if (direction == "safe") {
                     if (fileOnDatabase.deleted) {
                         // await this.storeInternaFileToDatabase(fileOnStorage);
                     } else {
-                        proc = async () => {
+                        proc = (async () => {
                             if (await this.extractInternaFileFromDatabase(filename)) {
-                                filesChanged++;
+                                countUpdatedFolder(filename);
                             }
-                        }
+                        })();
                     }
                 }
             } else if (fileOnStorage && !fileOnDatabase) {
-                proc = async () => {
+                proc = (async () => {
                     await this.storeInternaFileToDatabase(fileOnStorage);
-                }
+                })();
             } else {
                 throw new Error("Invalid state on hidden file sync");
                 // Something corrupted?
             }
-            if (proc) p.add(proc());
-            proc = null;
+            if (proc) p.add(proc);
             await p.wait(limit);
         }
         await p.all();
-        // Show notification to restart obsidian.
+        await this.localDatabase.kvDB.set("diff-caches-internal", caches);
+
+        // When files has been retreived from the database. they must be reloaded.
         if (direction == "pull" && filesChanged != 0) {
+            const configDir = normalizePath(this.app.vault.configDir);
+            // Show notification to restart obsidian when something has been changed in configDir.
+            if (configDir in updatedFolders) {
+                // Numbers of updated files that is below of configDir.
+                let updatedCount = updatedFolders[configDir];
+                try {
+                    //@ts-ignore
+                    const manifests = Object.values(this.app.plugins.manifests) as PluginManifest[];
+                    //@ts-ignore
+                    const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
+                    const enabledPluginManifests = manifests.filter(e => enabledPlugins.has(e.id));
+                    for (const manifest of enabledPluginManifests) {
+                        if (manifest.dir in updatedFolders) {
+                            // If notified about plug-ins, reloading Obsidian may not be necessary.
+                            updatedCount -= updatedFolders[manifest.dir];
+                            const updatePluginId = manifest.id;
+                            const updatePluginName = manifest.name;
+                            const fragment = createFragment((doc) => {
+                                doc.createEl("span", null, (a) => {
+                                    a.appendText(`Files in ${updatePluginName} has been updated, Press `)
+                                    a.appendChild(a.createEl("a", null, (anchor) => {
+                                        anchor.text = "HERE";
+                                        anchor.addEventListener("click", async () => {
+                                            Logger(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL.NOTICE, "pluin-reload-" + updatePluginId);
+                                            // @ts-ignore
+                                            await this.app.plugins.unloadPlugin(updatePluginId);
+                                            // @ts-ignore
+                                            await this.app.plugins.loadPlugin(updatePluginId);
+                                            Logger(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL.NOTICE, "pluin-reload-" + updatePluginId);
+                                        });
+                                    }))
 
-            const fragment = createFragment((doc) => {
-                doc.createEl("span", null, (a) => {
-                    a.appendText(`Hidden files have been synchronized, Press `)
-                    a.appendChild(a.createEl("a", null, (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
-                            // @ts-ignore
-                            this.app.commands.executeCommandById("app:reload")
+                                    a.appendText(` to reload ${updatePluginName}, or press elsewhere to dismiss this message.`)
+                                });
+                            });
+
+                            const updatedPluginKey = "popupUpdated-" + updatePluginId;
+                            setTrigger(updatedPluginKey, 1000, async () => {
+                                const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
+                                //@ts-ignore
+                                const isShown = popup?.noticeEl?.isShown();
+                                if (!isShown) {
+                                    memoObject(updatedPluginKey, new Notice(fragment, 0))
+                                }
+                                setTrigger(updatedPluginKey + "-close", 20000, () => {
+                                    const popup = retriveMemoObject<Notice>(updatedPluginKey)
+                                    if (!popup) return;
+                                    //@ts-ignore
+                                    if (popup?.noticeEl?.isShown()) {
+                                        popup.hide();
+                                    }
+                                    disposeMemoObject(updatedPluginKey);
+                                })
+                            })
+                        }
+                    }
+                } catch (ex) {
+                    Logger("Error on checking plugin status.");
+                    Logger(ex, LOG_LEVEL.VERBOSE);
+
+                }
+
+                // If something changes left, notify for reloading Obsidian.
+                if (updatedCount != 0) {
+                    const fragment = createFragment((doc) => {
+                        doc.createEl("span", null, (a) => {
+                            a.appendText(`Hidden files have been synchronized, Press `)
+                            a.appendChild(a.createEl("a", null, (anchor) => {
+                                anchor.text = "HERE";
+                                anchor.addEventListener("click", () => {
+                                    // @ts-ignore
+                                    this.app.commands.executeCommandById("app:reload")
+                                });
+                            }))
+
+                            a.appendText(` to reload obsidian, or press elsewhere to dismiss this message.`)
                         });
-                    }))
+                    });
 
-                    a.appendText(` to reload obsidian, or press elsewhere to dismiss this message.`)
-                });
-            });
-            //@ts-ignore
-            const isShown = this.confirmPopup?.noticeEl?.isShown();
-            if (!isShown) {
-                this.confirmPopup = new Notice(fragment, 0);
+                    setTrigger("popupUpdated-" + configDir, 1000, () => {
+                        //@ts-ignore
+                        const isShown = this.confirmPopup?.noticeEl?.isShown();
+                        if (!isShown) {
+                            this.confirmPopup = new Notice(fragment, 0);
+                        }
+                        setTrigger("popupClose" + configDir, 20000, () => {
+                            this.confirmPopup?.hide();
+                            this.confirmPopup = null;
+                        })
+                    })
+                }
             }
-            if (this.confirmPopupTimer != null) {
-                clearTimeout(this.confirmPopupTimer);
-            }
-            setTimeout(() => {
-                this.confirmPopup?.hide();
-                this.confirmPopup = null;
-            }, 10000)
         }
 
-        Logger(`Hidden files scanned`, logLevel, "sync_internal");
+        Logger(`Hidden files scanned: ${filesChanged} files had been modified`, logLevel, "sync_internal");
     }
 }
