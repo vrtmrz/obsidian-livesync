@@ -218,6 +218,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
         Logger("loading plugin");
+        //@ts-ignore
+        const manifestVersion = MANIFEST_VERSION || "-";
+        //@ts-ignore
+        const packageVersion = PACKAGE_VERSION || "-";
+        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
         const lsname = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
