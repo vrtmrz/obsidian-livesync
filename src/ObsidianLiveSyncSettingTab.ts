@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl } from "obsidian";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent } from "obsidian";
 import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { delay, runWithLock } from "./lib/src/utils";
@@ -591,6 +591,31 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+        let newDatabaseName = this.plugin.settings.additionalSuffixOfDatabaseName + "";
+        new Setting(containerLocalDatabaseEl)
+            .setName("Database suffix")
+            .setDesc("Set unique name for using same vault name on different directory.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(newDatabaseName)
+                    .onChange((value) => {
+                        newDatabaseName = value;
+
+                    });
+            }).addButton((button) => {
+                button.setButtonText("Change")
+                    .onClick(async () => {
+                        if (this.plugin.settings.additionalSuffixOfDatabaseName == newDatabaseName) {
+                            Logger("Suffix was not changed.", LOG_LEVEL.NOTICE);
+                            return;
+                        }
+                        this.plugin.settings.additionalSuffixOfDatabaseName = newDatabaseName;
+                        await this.plugin.saveSettings();
+                        Logger("Suffix has been changed. Reopening database...", LOG_LEVEL.NOTICE);
+                        await this.plugin.initializeDatabase();
+                    })
+            })
+
 
         addScreenElement("10", containerLocalDatabaseEl);
         const containerGeneralSettingsEl = containerEl.createDiv();
@@ -787,6 +812,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerSyncSettingEl)
             .setName("Scan hidden files periodicaly.")
+            .setDesc("Seconds, zero to disable.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.syncInternalFilesInterval + "")
@@ -800,12 +826,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+        let skipPatternTextArea: TextAreaComponent = null;
+        const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
+        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$";
         new Setting(containerSyncSettingEl)
             .setName("Skip patterns")
             .setDesc(
-                "Regular expression"
+                "Regular expression, If you use hidden file sync between desktop and mobile, adding `workspace$` is recommended."
             )
-            .addTextArea((text) =>
+            .addTextArea((text) => {
                 text
                     .setValue(this.plugin.settings.syncInternalFilesIgnorePatterns)
                     .setPlaceholder("\\/node_modules\\/, \\/\\.git\\/")
@@ -813,7 +842,27 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.syncInternalFilesIgnorePatterns = value;
                         await this.plugin.saveSettings();
                     })
+                skipPatternTextArea = text;
+                return text;
+            }
             );
+        new Setting(containerSyncSettingEl)
+            .setName("Skip patterns defaults")
+            .addButton((button) => {
+                button.setButtonText("Default")
+                    .onClick(async () => {
+                        skipPatternTextArea.setValue(defaultSkipPattern);
+                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPattern;
+                        await this.plugin.saveSettings();
+                    })
+            }).addButton((button) => {
+                button.setButtonText("Cross-platform")
+                    .onClick(async () => {
+                        skipPatternTextArea.setValue(defaultSkipPatternXPlat);
+                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPatternXPlat;
+                        await this.plugin.saveSettings();
+                    })
+            })
 
         new Setting(containerSyncSettingEl)
             .setName("Touch hidden files")

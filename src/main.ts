@@ -189,6 +189,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     deviceAndVaultName: string;
     isMobile = false;
 
+    getVaultName(): string {
+        return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
+    }
+
     setInterval(handler: () => any, timeout?: number): number {
         const timer = window.setInterval(handler, timeout);
         this.registerInterval(timer);
@@ -214,7 +218,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
         Logger("loading plugin");
-        const lsname = "obsidian-live-sync-ver" + this.app.vault.getName();
+        const lsname = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
         //@ts-ignore
@@ -296,6 +300,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings.autoSweepPlugins = false;
                         this.settings.usePluginSync = false;
                         this.settings.suspendFileWatching = true;
+                        this.settings.syncInternalFiles = false;
                         await this.saveSettings();
                         await this.openDatabase();
                         const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
@@ -555,7 +560,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.localDatabase != null) {
             this.localDatabase.close();
         }
-        const vaultName = this.app.vault.getName();
+        const vaultName = this.getVaultName();
         Logger("Open Database...");
         //@ts-ignore
         const isMobile = this.app.isMobile;
@@ -582,7 +587,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // So, use history is always enabled.
         this.settings.useHistory = true;
 
-        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsname)) {
                 this.deviceAndVaultName = this.settings.deviceAndVaultName;
@@ -598,7 +603,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async saveSettings() {
-        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
         localStorage.setItem(lsname, this.deviceAndVaultName || "");
         await this.saveData(this.settings);
@@ -861,7 +866,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL.VERBOSE) {
             return;
         }
-        const valutName = this.app.vault.getName();
+        const valutName = this.getVaultName();
         const timestamp = new Date().toLocaleString();
         const messagecontent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
         const newmessage = timestamp + "->" + messagecontent;
@@ -1115,11 +1120,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     saveQueuedFiles() {
         const saveData = JSON.stringify(this.queuedFiles.filter((e) => !e.done).map((e) => e.entry._id));
-        const lsname = "obsidian-livesync-queuefiles-" + this.app.vault.getName();
+        const lsname = "obsidian-livesync-queuefiles-" + this.getVaultName();
         localStorage.setItem(lsname, saveData);
     }
     async loadQueuedFiles() {
-        const lsname = "obsidian-livesync-queuefiles-" + this.app.vault.getName();
+        const lsname = "obsidian-livesync-queuefiles-" + this.getVaultName();
         const ids = JSON.parse(localStorage.getItem(lsname) || "[]") as string[];
         const ret = await this.localDatabase.localDatabase.allDocs({ keys: ids, include_docs: true });
         for (const doc of ret.rows) {
@@ -2226,7 +2231,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
             }
             await this.localDatabase.putDBEntry(saveData, true);
-            Logger(`internal files STORAGE --> DB:${file.path}: Done`);
+            Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
         });
     }
 
@@ -2330,7 +2335,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
     }
 
-    async filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
+    filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e));
