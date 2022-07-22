@@ -29,7 +29,7 @@
         "eslint-plugin-import": "^2.25.2",
         "obsidian": "^0.15.4",
         "rollup": "^2.32.1",
-        "svelte-preprocess": "^4.10.5",
+        "svelte-preprocess": "^4.10.7",
         "tslib": "^2.2.0",
         "typescript": "^4.2.4"
     },
@@ -37,7 +37,7 @@
         "diff-match-patch": "^1.0.5",
         "esbuild": "0.13.12",
         "esbuild-svelte": "^0.7.0",
-        "svelte-preprocess": "^4.10.5",
+        "svelte-preprocess": "^4.10.7",
         "idb": "^7.0.2",
         "xxhash-wasm": "^0.4.2"
     }
