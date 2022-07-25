@@ -28,6 +28,8 @@
         "eslint-config-airbnb-base": "^14.2.1",
         "eslint-plugin-import": "^2.25.2",
         "obsidian": "^0.15.4",
+        "postcss": "^8.4.14",
+        "postcss-load-config": "^3.1.4",
         "rollup": "^2.32.1",
         "svelte-preprocess": "^4.10.5",
         "tslib": "^2.2.0",
@@ -37,8 +39,8 @@
         "diff-match-patch": "^1.0.5",
         "esbuild": "0.13.12",
         "esbuild-svelte": "^0.7.0",
-        "svelte-preprocess": "^4.10.5",
         "idb": "^7.0.2",
+        "svelte-preprocess": "^4.10.5",
         "xxhash-wasm": "^0.4.2"
     }
 }
