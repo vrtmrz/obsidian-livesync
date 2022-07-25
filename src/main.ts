@@ -1,8 +1,8 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal, Setting } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList } from "./types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo } from "./types";
 import {
     base64ToString,
     arrayBufferToBase64,
@@ -16,8 +16,9 @@ import {
     isPlainText,
     setNoticeClass,
     NewNotice,
-    allSettledWithConcurrencyLimit,
     getLocks,
+    Parallels,
+    WrappedNotice,
 } from "./lib/src/utils";
 import { Logger, setLogger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -28,10 +29,11 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 //@ts-ignore
 import PluginPane from "./PluginPane.svelte";
-import { id2path, path2id } from "./utils";
+import { clearAllPeriodic, clearAllTriggers, disposeMemoObject, id2path, memoIfNotExist, memoObject, path2id, retriveMemoObject, setTrigger } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
+
 setNoticeClass(Notice);
 class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -162,7 +164,21 @@ const askString = (app: App, title: string, key: string, placeholder: string): P
         dialog.open();
     });
 };
-
+let touchedFiles: string[] = [];
+function touch(file: TFile | string) {
+    const f = file instanceof TFile ? file : app.vault.getAbstractFileByPath(file) as TFile;
+    const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
+    touchedFiles.push(key);
+    touchedFiles = touchedFiles.slice(0, 100);
+}
+function recentlyTouched(file: TFile) {
+    const key = `${file.path}-${file.stat.mtime}-${file.stat.size}`;
+    if (touchedFiles.indexOf(key) == -1) return false;
+    return true;
+}
+function clearTouched() {
+    touchedFiles = [];
+}
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
     localDatabase: LocalPouchDB;
@@ -172,6 +188,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     suspended: boolean;
     deviceAndVaultName: string;
     isMobile = false;
+
+    getVaultName(): string {
+        return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
+    }
 
     setInterval(handler: () => any, timeout?: number): number {
         const timer = window.setInterval(handler, timeout);
@@ -198,7 +218,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async onload() {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
         Logger("loading plugin");
-        const lsname = "obsidian-live-sync-ver" + this.app.vault.getName();
+        //@ts-ignore
+        const manifestVersion = MANIFEST_VERSION || "-";
+        //@ts-ignore
+        const packageVersion = PACKAGE_VERSION || "-";
+        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
+        const lsname = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
         //@ts-ignore
@@ -280,6 +305,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings.autoSweepPlugins = false;
                         this.settings.usePluginSync = false;
                         this.settings.suspendFileWatching = true;
+                        this.settings.syncInternalFiles = false;
                         await this.saveSettings();
                         await this.openDatabase();
                         const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
@@ -431,9 +457,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.addCommand({
             id: "livesync-gc",
-            name: "garbage collect now",
+            name: "Check garbages now",
             callback: () => {
-                this.garbageCollect();
+                this.garbageCheck();
             },
         });
         this.addCommand({
@@ -485,6 +511,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.showPluginSyncModal();
             },
         });
+
+        this.addCommand({
+            id: "livesync-scaninternal",
+            name: "Sync hidden files",
+            callback: () => {
+                this.syncInternalFilesAndDatabase("safe", true);
+            },
+        });
     }
 
     pluginDialog: PluginDialogModal = null;
@@ -516,10 +550,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.clearPeriodicSync();
         this.clearPluginSweep();
+        this.clearInternalFileScan();
         if (this.localDatabase != null) {
             this.localDatabase.closeReplication();
             this.localDatabase.close();
         }
+        clearAllPeriodic();
+        clearAllTriggers();
         window.removeEventListener("visibilitychange", this.watchWindowVisiblity);
         Logger("unloading plugin");
     }
@@ -528,7 +565,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.localDatabase != null) {
             this.localDatabase.close();
         }
-        const vaultName = this.app.vault.getName();
+        const vaultName = this.getVaultName();
         Logger("Open Database...");
         //@ts-ignore
         const isMobile = this.app.isMobile;
@@ -539,8 +576,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return await this.localDatabase.initializeDatabase();
     }
 
-    async garbageCollect() {
-        await this.localDatabase.garbageCollect();
+    async garbageCheck() {
+        await this.localDatabase.garbageCheck();
     }
 
     async loadSettings() {
@@ -549,11 +586,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.settings.workingPassphrase = this.settings.passphrase;
         // Delete this feature to avoid problems on mobile.
         this.settings.disableRequestURI = true;
-        // Temporary disabled
-        // TODO: If a new GC is created, a new default value must be created.
-        this.settings.gcDelay = 0;
 
-        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+        // GC is disabled.
+        this.settings.gcDelay = 0;
+        // So, use history is always enabled.
+        this.settings.useHistory = true;
+
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsname)) {
                 this.deviceAndVaultName = this.settings.deviceAndVaultName;
@@ -569,7 +608,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async saveSettings() {
-        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.app.vault.getName();
+        const lsname = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
         localStorage.setItem(lsname, this.deviceAndVaultName || "");
         await this.saveData(this.settings);
@@ -589,7 +628,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         this.gcTimerHandler = setTimeout(() => {
             this.gcTimerHandler = null;
-            this.garbageCollect();
+            this.garbageCheck();
         }, GC_DELAY);
     }
 
@@ -652,11 +691,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     watchVaultCreate(file: TFile, ...args: any[]) {
         if (this.settings.suspendFileWatching) return;
+        if (recentlyTouched(file)) {
+            return;
+        }
         this.watchVaultChangeAsync(file, ...args);
     }
 
     watchVaultChange(file: TAbstractFile, ...args: any[]) {
         if (!(file instanceof TFile)) {
+            return;
+        }
+        if (recentlyTouched(file)) {
             return;
         }
         if (this.settings.suspendFileWatching) return;
@@ -687,20 +732,28 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return await runWithLock("batchSave", false, async () => {
             const batchItems = JSON.parse(JSON.stringify(this.batchFileChange)) as string[];
             this.batchFileChange = [];
-            const promises = batchItems.map(async (e) => {
-                try {
-                    const f = this.app.vault.getAbstractFileByPath(normalizePath(e));
-                    if (f && f instanceof TFile) {
-                        await this.updateIntoDB(f);
-                        Logger(`Batch save:${e}`);
+            const limit = 3;
+            const p = Parallels();
+
+            for (const e of batchItems) {
+                const w = (async () => {
+                    try {
+                        const f = this.app.vault.getAbstractFileByPath(normalizePath(e));
+                        if (f && f instanceof TFile) {
+                            await this.updateIntoDB(f);
+                            Logger(`Batch save:${e}`);
+                        }
+                    } catch (ex) {
+                        Logger(`Batch save error:${e}`, LOG_LEVEL.NOTICE);
+                        Logger(ex, LOG_LEVEL.VERBOSE);
                     }
-                } catch (ex) {
-                    Logger(`Batch save error:${e}`, LOG_LEVEL.NOTICE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
-                }
-            });
+                })();
+                p.add(w);
+                await p.wait(limit)
+            }
             this.refreshStatusText();
-            await allSettledWithConcurrencyLimit(promises, 3);
+            await p.all();
+            this.refreshStatusText();
             return;
         });
     }
@@ -709,6 +762,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async watchVaultChangeAsync(file: TFile, ...args: any[]) {
         if (file instanceof TFile) {
+            if (recentlyTouched(file)) {
+                return;
+            }
             await this.updateIntoDB(file);
             this.gcHook();
         }
@@ -716,7 +772,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     watchVaultDelete(file: TAbstractFile) {
         // When save is delayed, it should be cancelled.
-        this.batchFileChange = this.batchFileChange.filter((e) => e == file.path);
+        this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
         if (this.settings.suspendFileWatching) return;
         this.watchVaultDeleteAsync(file).then(() => { });
     }
@@ -805,7 +861,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     lastLog = "";
     // eslint-disable-next-line require-await
-    async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO) {
+    async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO, key = "") {
         if (level == LOG_LEVEL.DEBUG && !isDebug) {
             return;
         }
@@ -815,7 +871,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL.VERBOSE) {
             return;
         }
-        const valutName = this.app.vault.getName();
+        const valutName = this.getVaultName();
         const timestamp = new Date().toLocaleString();
         const messagecontent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
         const newmessage = timestamp + "->" + messagecontent;
@@ -828,13 +884,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // }
 
         if (level >= LOG_LEVEL.NOTICE) {
-            if (messagecontent in this.notifies) {
-                clearTimeout(this.notifies[messagecontent].timer);
-                this.notifies[messagecontent].count++;
-                this.notifies[messagecontent].notice.setMessage(`(${this.notifies[messagecontent].count}):${messagecontent}`);
-                this.notifies[messagecontent].timer = setTimeout(() => {
-                    const notify = this.notifies[messagecontent].notice;
-                    delete this.notifies[messagecontent];
+            if (!key) key = messagecontent;
+            if (key in this.notifies) {
+                // @ts-ignore
+                const isShown = this.notifies[key].notice.noticeEl?.isShown()
+                if (!isShown) {
+                    this.notifies[key].notice = new Notice(messagecontent, 0);
+                }
+                clearTimeout(this.notifies[key].timer);
+                if (key == messagecontent) {
+                    this.notifies[key].count++;
+                    this.notifies[key].notice.setMessage(`(${this.notifies[key].count}):${messagecontent}`);
+                } else {
+                    this.notifies[key].notice.setMessage(`${messagecontent}`);
+                }
+
+                this.notifies[key].timer = setTimeout(() => {
+                    const notify = this.notifies[key].notice;
+                    delete this.notifies[key];
                     try {
                         notify.hide();
                     } catch (ex) {
@@ -843,11 +910,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }, 5000);
             } else {
                 const notify = new Notice(messagecontent, 0);
-                this.notifies[messagecontent] = {
+                this.notifies[key] = {
                     count: 0,
                     notice: notify,
                     timer: setTimeout(() => {
-                        delete this.notifies[messagecontent];
+                        delete this.notifies[key];
                         notify.hide();
                     }, 5000),
                 };
@@ -884,12 +951,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         const doc = await this.localDatabase.getDBEntry(pathSrc, { rev: docEntry._rev });
         if (doc === false) return;
+        const msg = `DB -> STORAGE (create${force ? ",force" : ""},${doc.datatype}) `;
         const path = id2path(doc._id);
         if (doc.datatype == "newnote") {
             const bin = base64ToArrayBuffer(doc.data);
             if (bin != null) {
                 if (!isValidPath(path)) {
-                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
+                    Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
                     return;
                 }
                 await this.ensureDirectory(path);
@@ -898,16 +966,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         ctime: doc.ctime,
                         mtime: doc.mtime,
                     });
-                    Logger("live : write to local (newfile:b) " + path);
+                    this.batchFileChange = this.batchFileChange.filter((e) => e != newfile.path);
+                    Logger(msg + path);
+                    touch(newfile);
                     this.app.vault.trigger("create", newfile);
                 } catch (ex) {
-                    Logger("could not write to local (newfile:bin) " + path, LOG_LEVEL.NOTICE);
+                    Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
                     Logger(ex, LOG_LEVEL.VERBOSE);
                 }
             }
         } else if (doc.datatype == "plain") {
             if (!isValidPath(path)) {
-                Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
+                Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
                 return;
             }
             await this.ensureDirectory(path);
@@ -916,14 +986,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     ctime: doc.ctime,
                     mtime: doc.mtime,
                 });
-                Logger("live : write to local (newfile:p) " + path);
+                this.batchFileChange = this.batchFileChange.filter((e) => e != newfile.path);
+                Logger(msg + path);
+                touch(newfile);
                 this.app.vault.trigger("create", newfile);
             } catch (ex) {
-                Logger("could not write to local (newfile:plain) " + path, LOG_LEVEL.NOTICE);
+                Logger(msg + "ERROR, Could not parse: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
                 Logger(ex, LOG_LEVEL.VERBOSE);
             }
         } else {
-            Logger("live : New data imcoming, but we cound't parse that." + doc.datatype, LOG_LEVEL.NOTICE);
+            Logger(msg + "ERROR, Could not parse: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
         }
     }
 
@@ -967,41 +1039,46 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const docMtime = ~~(docEntry.mtime / 1000);
         if (localMtime < docMtime || force) {
             const doc = await this.localDatabase.getDBEntry(pathSrc);
-            let msg = "livesync : newer local files so write to local:" + file.path;
-            if (force) msg = "livesync : force write to local:" + file.path;
             if (doc === false) return;
+            const msg = `DB -> STORAGE (modify${force ? ",force" : ""},${doc.datatype}) `;
             const path = id2path(doc._id);
             if (doc.datatype == "newnote") {
                 const bin = base64ToArrayBuffer(doc.data);
                 if (bin != null) {
                     if (!isValidPath(path)) {
-                        Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
+                        Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
                         return;
                     }
                     await this.ensureDirectory(path);
                     try {
                         await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
-                        Logger(msg);
-                        this.app.vault.trigger("modify", file);
+                        this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
+                        Logger(msg + path);
+                        const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
+                        touch(xf);
+                        this.app.vault.trigger("modify", xf);
                     } catch (ex) {
-                        Logger("could not write to local (modify:bin) " + path, LOG_LEVEL.NOTICE);
+                        Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
                     }
                 }
             } else if (doc.datatype == "plain") {
                 if (!isValidPath(path)) {
-                    Logger(`The file that having platform dependent name has been arrived. This file has skipped: ${path}`, LOG_LEVEL.NOTICE);
+                    Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
                     return;
                 }
                 await this.ensureDirectory(path);
                 try {
                     await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
-                    Logger(msg);
-                    this.app.vault.trigger("modify", file);
+                    Logger(msg + path);
+                    this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
+                    const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
+                    touch(xf);
+                    this.app.vault.trigger("modify", xf);
                 } catch (ex) {
-                    Logger("could not write to local (modify:plain) " + path, LOG_LEVEL.NOTICE);
+                    Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
                 }
             } else {
-                Logger("live : New data imcoming, but we cound't parse that.:" + doc.datatype + "-", LOG_LEVEL.NOTICE);
+                Logger(msg + "ERROR, Could not parse: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
             }
         } else if (localMtime > docMtime) {
             // newer local file.
@@ -1046,13 +1123,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }[] = [];
     chunkWaitTimeout = 60000;
 
-    async saveQueuedFiles() {
+    saveQueuedFiles() {
         const saveData = JSON.stringify(this.queuedFiles.filter((e) => !e.done).map((e) => e.entry._id));
-        const lsname = "obsidian-livesync-queuefiles-" + this.app.vault.getName();
+        const lsname = "obsidian-livesync-queuefiles-" + this.getVaultName();
         localStorage.setItem(lsname, saveData);
     }
     async loadQueuedFiles() {
-        const lsname = "obsidian-livesync-queuefiles-" + this.app.vault.getName();
+        const lsname = "obsidian-livesync-queuefiles-" + this.getVaultName();
         const ids = JSON.parse(localStorage.getItem(lsname) || "[]") as string[];
         const ret = await this.localDatabase.localDatabase.allDocs({ keys: ids, include_docs: true });
         for (const doc of ret.rows) {
@@ -1069,9 +1146,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const now = new Date().getTime();
                 if (queue.missingChildren.length == 0) {
                     queue.done = true;
+                    if (queue.entry._id.startsWith("i:")) {
+                        //system file
+                        const filename = id2path(queue.entry._id.substring("i:".length));
+                        Logger(`Applying hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
+                        await this.syncInternalFilesAndDatabase("pull", false, false, [filename])
+                        Logger(`Applied hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
+                    }
                     if (isValidPath(id2path(queue.entry._id))) {
                         Logger(`Applying ${queue.entry._id} (${queue.entry._rev}) change...`);
                         await this.handleDBChanged(queue.entry);
+                        Logger(`Applied ${queue.entry._id} (${queue.entry._rev})`);
                     }
                 } else if (now > queue.timeout) {
                     if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL.NOTICE);
@@ -1106,7 +1191,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
-        if (skipOldFile) {
+        if ((!doc._id.startsWith("i:")) && skipOldFile) {
             const info = this.app.vault.getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
@@ -1128,7 +1213,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if ("children" in doc) {
             const c = await this.localDatabase.localDatabase.allDocs({ keys: doc.children, include_docs: false });
             const missing = c.rows.filter((e) => "error" in e).map((e) => e.key);
-            Logger(`${doc._id}(${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
+            if (missing.length > 0) Logger(`${doc._id}(${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
         } else {
@@ -1248,6 +1333,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.localDatabase.closeReplication();
         this.clearPeriodicSync();
         this.clearPluginSweep();
+        this.clearInternalFileScan();
         await this.applyBatchChange();
         // disable all sync temporary.
         if (this.suspended) return;
@@ -1258,8 +1344,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
             this.refreshStatusText();
         }
+        if (this.settings.syncInternalFiles) {
+            await this.syncInternalFilesAndDatabase("safe", false);
+        }
         this.setPeriodicSync();
         this.setPluginSweep();
+        this.setPeriodicInternalFileScan();
     }
 
     lastMessage = "";
@@ -1332,10 +1422,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.statusBar.setText(newMsg.split("\n")[0]);
 
             if (this.settings.showStatusOnEditor) {
-                const root = document.documentElement;
+                const root = activeDocument.documentElement;
                 root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
             } else {
-                const root = document.documentElement;
+                const root = activeDocument.documentElement;
                 root.style.setProperty("--slsmessage", '""');
             }
             if (this.logHideTimer != null) {
@@ -1350,7 +1440,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async replicate(showMessage?: boolean) {
         if (this.settings.versionUpFlash != "") {
-            NewNotice("Open settings and check message, please.");
+            Logger("Open settings and check message, please.", LOG_LEVEL.NOTICE);
             return;
         }
         await this.applyBatchChange();
@@ -1358,6 +1448,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(false);
         }
         await this.loadQueuedFiles();
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication) {
+            await this.syncInternalFilesAndDatabase("push", showMessage);
+        }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
@@ -1393,16 +1486,21 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async syncAllFiles(showingNotice?: boolean) {
         // synchronize all files between database and storage.
-        let notice: Notice = null;
+        let initialScan = false;
         if (showingNotice) {
-            notice = NewNotice("Initializing", 0);
+            Logger("Initializing", LOG_LEVEL.NOTICE, "syncAll");
         }
 
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && !e.id.startsWith("ps:") && e.id != "obsydian_livesync_version").map((e) => id2path(e.id));
-
+        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && !e.id.startsWith("ps:") && e.id != "obsydian_livesync_version").filter(e => isValidPath(e.id)).map((e) => id2path(e.id));
+        const isInitialized = await (this.localDatabase.kvDB.get<boolean>("initialized")) || false;
+        // Make chunk bigger if it is the initial scan. There must be non-active docs.
+        if (filesDatabase.length == 0 && !isInitialized) {
+            initialScan = true;
+            Logger("Database looks empty, save files as initial sync data");
+        }
         const onlyInStorage = filesStorage.filter((e) => filesDatabase.indexOf(e.path) == -1);
         const onlyInDatabase = filesDatabase.filter((e) => filesStorageName.indexOf(e) == -1);
 
@@ -1418,45 +1516,71 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(procedurename);
             let i = 0;
             // let lastTicks = performance.now() + 2000;
-            let workProcs = 0;
-            const procs = objects.map(async (e) => {
-                try {
-                    workProcs++;
-                    await callback(e);
+            // let workProcs = 0;
+            const p = Parallels();
+            const limit = 10;
+
+            Logger(`${procedurename} exec.`);
+            for (const v of objects) {
+                // workProcs++;
+                if (!this.localDatabase.isReady) throw Error("Database is not ready!");
+                p.add(callback(v).then(() => {
                     i++;
-                    if (i % 25 == 0) {
-                        const notify = `${procedurename} : ${workProcs}/${count} (Pending:${workProcs})`;
-                        if (notice != null) notice.setMessage(notify);
-                        Logger(notify);
+                    if (i % 100 == 0) {
+                        const notify = `${procedurename} : ${i}/${count}`;
+                        if (showingNotice) {
+                            Logger(notify, LOG_LEVEL.NOTICE, "syncAll");
+                        } else {
+                            Logger(notify);
+                        }
                         this.setStatusBarText(notify);
                     }
-                } catch (ex) {
+                }).catch(ex => {
                     Logger(`Error while ${procedurename}`, LOG_LEVEL.NOTICE);
                     Logger(ex);
-                } finally {
-                    workProcs--;
-                }
-            });
-
-            await allSettledWithConcurrencyLimit(procs, 10);
+                }).finally(() => {
+                    // workProcs--;
+                })
+                );
+                await p.wait(limit);
+            }
+            await p.all();
             Logger(`${procedurename} done.`);
         };
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`Update into ${e.path}`);
-            await this.updateIntoDB(e);
+
+            await this.updateIntoDB(e, initialScan);
         });
-        await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
-            Logger(`Pull from db:${e}`);
-            await this.pullFile(e, filesStorage, false, null, false);
-        });
-        await runAll("CHECK FILE STATUS", syncFiles, async (e) => {
-            await this.syncFileBetweenDBandStorage(e, filesStorage);
-        });
+        if (!initialScan) {
+            await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
+                Logger(`Pull from db:${e}`);
+                await this.pullFile(e, filesStorage, false, null, false);
+            });
+        }
+        if (!initialScan) {
+            let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
+            caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
+            const docsCount = syncFiles.length;
+            do {
+                const syncFilesX = syncFiles.splice(0, 100);
+                const docs = await this.localDatabase.localDatabase.allDocs({ keys: syncFilesX.map(e => path2id(e.path)), include_docs: true })
+                const syncFilesToSync = syncFilesX.map((e) => ({ file: e, doc: docs.rows.find(ee => ee.id == path2id(e.path)).doc as LoadedEntry }));
+
+                await runAll(`CHECK FILE STATUS:${syncFiles.length}/${docsCount}`, syncFilesToSync, async (e) => {
+                    caches = await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
+                });
+            } while (syncFiles.length > 0);
+            await this.localDatabase.kvDB.set("diff-caches", caches);
+        }
+
         this.setStatusBarText(`NOW TRACKING!`);
         Logger("Initialized,NOW TRACKING!");
+        if (!isInitialized) {
+            await (this.localDatabase.kvDB.set("initialized", true))
+        }
         if (showingNotice) {
-            notice.hide();
-            Logger("Initialize done!", LOG_LEVEL.NOTICE);
+            Logger("Initialize done!", LOG_LEVEL.NOTICE, "syncAll");
         }
     }
 
@@ -1638,7 +1762,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 } else if (toDelete == null) {
                     Logger("Leave it still conflicted");
                 } else {
-                    Logger(`resolved conflict:${file.path}`);
+                    Logger(`Conflict resolved:${file.path}`);
                     await this.localDatabase.deleteDBEntry(file.path, { rev: toDelete });
                     await this.pullFile(file.path, null, true, toKeep);
                     setTimeout(() => {
@@ -1719,44 +1843,58 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         //when to opened file;
     }
 
-    async syncFileBetweenDBandStorage(file: TFile, fileList?: TFile[]) {
-        const doc = await this.localDatabase.getDBEntryMeta(file.path);
-        if (doc === false) return;
+    async syncFileBetweenDBandStorage(file: TFile, doc: LoadedEntry, initialScan: boolean, caches: { [key: string]: { storageMtime: number; docMtime: number } }) {
+        if (!doc) {
+            throw new Error(`Missing doc:${(file as any).path}`)
+        }
+        if (!(file instanceof TFile) && "path" in file) {
+            const w = this.app.vault.getAbstractFileByPath((file as any).path);
+            if (w instanceof TFile) {
+                file = w;
+            } else {
+                throw new Error(`Missing file:${(file as any).path}`)
+            }
+        }
 
         const storageMtime = ~~(file.stat.mtime / 1000);
         const docMtime = ~~(doc.mtime / 1000);
         const dK = `${file.path}-diff`;
-        const isLastDiff = (await this.localDatabase.kvDB.get<{ storageMtime: number; docMtime: number }>(dK)) || { storageMtime: 0, docMtime: 0 };
+        const isLastDiff = dK in caches ? caches[dK] : { storageMtime: 0, docMtime: 0 };
         if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
-            // Logger("CHECKED       :" + file.path, LOG_LEVEL.VERBOSE);
-        } else {
-            if (storageMtime > docMtime) {
-                //newer local file.
-                Logger("STORAGE -> DB :" + file.path);
-                Logger(`${storageMtime} > ${docMtime}`);
-                await this.updateIntoDB(file);
-            } else if (storageMtime < docMtime) {
-                //newer database file.
-                Logger("STORAGE <- DB :" + file.path);
-                Logger(`${storageMtime} < ${docMtime}`);
-                const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
-                if (docx != false) {
-                    await this.doc2storage_modify(docx, file);
-                }
-            } else {
-                // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
-                // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
-                //eq.case
-            }
-            await this.localDatabase.kvDB.set(dK, { storageMtime, docMtime });
+            caches[dK] = { storageMtime, docMtime };
+            return caches;
         }
+        if (storageMtime > docMtime) {
+            //newer local file.
+            Logger("STORAGE -> DB :" + file.path);
+            Logger(`${storageMtime} > ${docMtime}`);
+            await this.updateIntoDB(file, initialScan);
+            caches[dK] = { storageMtime, docMtime };
+            return caches;
+        } else if (storageMtime < docMtime) {
+            //newer database file.
+            Logger("STORAGE <- DB :" + file.path);
+            Logger(`${storageMtime} < ${docMtime}`);
+            const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
+            if (docx != false) {
+                await this.doc2storage_modify(docx, file);
+            }
+            caches[dK] = { storageMtime, docMtime };
+            return caches;
+        } else {
+            // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
+            // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
+            //eq.case
+        }
+        caches[dK] = { storageMtime, docMtime };
+        return caches;
+
     }
 
-    async updateIntoDB(file: TFile) {
+    async updateIntoDB(file: TFile, initialScan?: boolean) {
         if (shouldBeIgnored(file.path)) {
             return;
         }
-        await this.localDatabase.waitForGCComplete();
         let content = "";
         let datatype: "plain" | "newnote" = "newnote";
         if (!isPlainText(file.name)) {
@@ -1776,15 +1914,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             size: file.stat.size,
             children: [],
             datatype: datatype,
+            type: datatype,
         };
         //upsert should locked
+        const msg = `DB <- STORAGE (${datatype}) `;
         const isNotChanged = await runWithLock("file:" + fullpath, false, async () => {
+            if (recentlyTouched(file)) {
+                return true;
+            }
             const old = await this.localDatabase.getDBEntry(fullpath, null, false, false);
             if (old !== false) {
                 const oldData = { data: old.data, deleted: old._deleted };
                 const newData = { data: d.data, deleted: d._deleted };
                 if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                    Logger("not changed:" + fullpath + (d._deleted ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    Logger(msg + "Skipped (not changed) " + fullpath + (d._deleted ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
                     return true;
                 }
                 // d._rev = old._rev;
@@ -1792,10 +1935,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return false;
         });
         if (isNotChanged) return;
-        await this.localDatabase.putDBEntry(d);
+        await this.localDatabase.putDBEntry(d, initialScan);
         this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
 
-        Logger("put database:" + fullpath + "(" + datatype + ") ");
+
+        Logger(msg + fullpath);
         if (this.settings.syncOnSave && !this.suspended) {
             await this.replicate();
         }
@@ -1818,9 +1962,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async resetLocalDatabase() {
+        clearTouched();
         await this.localDatabase.resetDatabase();
     }
     async resetLocalOldDatabase() {
+        clearTouched();
         await this.localDatabase.resetLocalOldDatabase();
     }
 
@@ -1908,6 +2054,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     size: 0,
                     children: [],
                     datatype: "plain",
+                    type: "plain"
                 };
                 Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
                 await runWithLock("plugin-" + m.id, false, async () => {
@@ -1982,5 +2129,455 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
             }
         });
+    }
+
+
+    periodicInternalFileScanHandler: number = null;
+
+    clearInternalFileScan() {
+        if (this.periodicInternalFileScanHandler != null) {
+            clearInterval(this.periodicInternalFileScanHandler);
+            this.periodicInternalFileScanHandler = null;
+        }
+    }
+
+    setPeriodicInternalFileScan() {
+        if (this.periodicInternalFileScanHandler != null) {
+            this.clearInternalFileScan();
+        }
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval > 0) {
+            this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicInternalFileScan(), this.settings.syncInternalFilesInterval * 1000);
+        }
+    }
+
+    async periodicInternalFileScan() {
+        await this.syncInternalFilesAndDatabase("push", false);
+    }
+
+    async getFiles(
+        path: string,
+        ignoreList: string[],
+        filter: RegExp[]
+    ) {
+        const w = await this.app.vault.adapter.list(path);
+        let files = [
+            ...w.files
+                .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
+                .filter((e) => !filter || filter.some((ee) => e.match(ee))),
+        ];
+        L1: for (const v of w.folders) {
+            for (const ignore of ignoreList) {
+                if (v.endsWith(ignore)) {
+                    continue L1;
+                }
+            }
+            files = files.concat(await this.getFiles(v, ignoreList, filter));
+        }
+        return files;
+    }
+
+    async scanInternalFiles(): Promise<InternalFileInfo[]> {
+        const ignoreFiles = ["node_modules", ".git", "obsidian-pouch"];
+        const root = this.app.vault.getRoot();
+        const findRoot = root.path;
+        const filenames = (await this.getFiles(findRoot, ignoreFiles, null)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
+        const files = filenames.map(async e => {
+            return {
+                path: e,
+                stat: await this.app.vault.adapter.stat(e)
+            }
+        });
+        const result: InternalFileInfo[] = [];
+        for (const f of files) {
+            const w = await f;
+            result.push({
+                ...w,
+                ...w.stat
+            })
+        }
+        return result;
+    }
+
+    async storeInternaFileToDatabase(file: InternalFileInfo, forceWrite = false) {
+        const id = "i:" + path2id(file.path);
+        const contentBin = await this.app.vault.adapter.readBinary(file.path);
+        const content = await arrayBufferToBase64(contentBin);
+        const mtime = file.mtime;
+        await runWithLock("file-" + id, false, async () => {
+            const old = await this.localDatabase.getDBEntry(id, null, false, false);
+            let saveData: LoadedEntry;
+            if (old === false) {
+                saveData = {
+                    _id: id,
+                    data: content,
+                    mtime,
+                    ctime: mtime,
+                    datatype: "newnote",
+                    size: file.size,
+                    children: [],
+                    deleted: false,
+                    type: "newnote",
+                }
+            } else {
+                if (old.data == content && !forceWrite) {
+                    // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
+                    return;
+                }
+                saveData =
+                {
+                    ...old,
+                    data: content,
+                    mtime,
+                    size: file.size,
+                    datatype: "newnote",
+                    children: [],
+                    deleted: false,
+                    type: "newnote",
+                }
+            }
+            await this.localDatabase.putDBEntry(saveData, true);
+            Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
+        });
+    }
+
+    async deleteInternaFileOnDatabase(filename: string, forceWrite = false) {
+        const id = "i:" + path2id(filename);
+        const mtime = new Date().getTime();
+        await runWithLock("file-" + id, false, async () => {
+            const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
+            let saveData: InternalFileEntry;
+            if (old === false) {
+                saveData = {
+                    _id: id,
+                    mtime,
+                    ctime: mtime,
+                    size: 0,
+                    children: [],
+                    deleted: true,
+                    type: "newnote",
+                }
+            } else {
+                if (old.deleted) {
+                    Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
+                    return;
+                }
+                saveData =
+                {
+                    ...old,
+                    mtime,
+                    size: 0,
+                    children: [],
+                    deleted: true,
+                    type: "newnote",
+                }
+            }
+            await this.localDatabase.localDatabase.put(saveData);
+            Logger(`STORAGE -x> DB:${filename}: (hidden) Done`);
+
+        });
+    }
+    async ensureDirectoryEx(fullpath: string) {
+        const pathElements = fullpath.split("/");
+        pathElements.pop();
+        let c = "";
+        for (const v of pathElements) {
+            c += v;
+            try {
+                await this.app.vault.adapter.mkdir(c);
+            } catch (ex) {
+                // basically skip exceptions.
+                if (ex.message && ex.message == "Folder already exists.") {
+                    // especialy this message is.
+                } else {
+                    Logger("Folder Create Error");
+                    Logger(ex);
+                }
+            }
+            c += "/";
+        }
+    }
+    async extractInternaFileFromDatabase(filename: string, force = false) {
+        const isExists = await this.app.vault.adapter.exists(filename);
+        const id = "i:" + path2id(filename);
+
+        return await runWithLock("file-" + id, false, async () => {
+            const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
+            if (fileOnDB === false) throw new Error(`File not found on database.:${id}`);
+            const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
+            if (deleted) {
+                if (!isExists) {
+                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
+                } else {
+                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
+                    await this.app.vault.adapter.remove(filename);
+                }
+                return true;
+            }
+            if (!isExists) {
+                await this.ensureDirectoryEx(filename);
+                await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
+                return true;
+            } else {
+                try {
+                    // const stat = await this.app.vault.adapter.stat(filename);
+                    // const fileMTime = ~~(stat.mtime/1000);
+                    // const docMtime = ~~(old.mtime/1000);
+                    const contentBin = await this.app.vault.adapter.readBinary(filename);
+                    const content = await arrayBufferToBase64(contentBin);
+                    if (content == fileOnDB.data && !force) {
+                        Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`);
+                        return false;
+                    }
+                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""})`);
+                    return true;
+                } catch (ex) {
+                    Logger(ex);
+                    return false;
+                }
+            }
+        });
+    }
+
+    filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
+        // const files = await this.scanInternalFiles();
+        return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
+        //if (ignorePatterns.some(e => filename.match(e))) continue;
+        //if (targetFiles !== false && targetFiles.indexOf(filename) == -1) continue;
+    }
+
+    async applyMTimeToFile(file: InternalFileInfo) {
+        await this.app.vault.adapter.append(file.path, "", { ctime: file.ctime, mtime: file.mtime });
+    }
+    confirmPopup: WrappedNotice = null;
+
+    //TODO: Tidy up. Even though it is experimental feature, So dirty...
+    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
+        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+        Logger("Scanning hidden files.", logLevel, "sync_internal");
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
+        if (!files) files = await this.scanInternalFiles();
+        const filesOnDB = (await this.localDatabase.localDatabase.allDocs({ startkey: "i:", endkey: "i;", include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[];
+        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(e._id.substring("i:".length))))])];
+        const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1))
+        function compareMTime(a: number, b: number) {
+            const wa = ~~(a / 1000);
+            const wb = ~~(b / 1000);
+            const diff = wa - wb;
+            return diff;
+        }
+
+        const fileCount = allFileNames.length;
+        let processed = 0;
+        let filesChanged = 0;
+        const p = Parallels();
+        const limit = 10;
+        // count updated files up as like this below:
+        // .obsidian: 2
+        // .obsidian/workspace: 1
+        // .obsidian/plugins: 1
+        // .obsidian/plugins/recent-files-obsidian: 1
+        // .obsidian/plugins/recent-files-obsidian/data.json: 1
+        const updatedFolders: { [key: string]: number } = {}
+        const countUpdatedFolder = (path: string) => {
+            const pieces = path.split("/");
+            let c = pieces.shift();
+            let pathPieces = "";
+            filesChanged++;
+            while (c) {
+                pathPieces += (pathPieces != "" ? "/" : "") + c;
+                pathPieces = normalizePath(pathPieces);
+                if (!(pathPieces in updatedFolders)) {
+                    updatedFolders[pathPieces] = 0;
+                }
+                updatedFolders[pathPieces]++;
+                c = pieces.shift();
+            }
+        }
+        // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
+        let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
+        caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches-internal") || {};
+        for (const filename of allFileNames) {
+            processed++;
+            if (processed % 100 == 0) Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
+            if (ignorePatterns.some(e => filename.match(e))) continue;
+
+            const fileOnStorage = files.find(e => e.path == filename);
+            const fileOnDatabase = filesOnDB.find(e => e._id == "i:" + id2path(filename));
+            // TODO: Fix this somehow smart.
+            let proc: Promise<void> | null;
+
+            if (fileOnStorage && fileOnDatabase) {
+                // Both => Synchronize
+                const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
+                if (fileOnDatabase.mtime == cache.docMtime && fileOnStorage.mtime == cache.storageMtime) {
+                    continue;
+                }
+                const nw = compareMTime(fileOnStorage.mtime, fileOnDatabase.mtime);
+                if (nw == 0) continue;
+
+                if (nw > 0) {
+                    proc = (async (fileOnStorage) => {
+                        await this.storeInternaFileToDatabase(fileOnStorage);
+                        cache.docMtime = fileOnDatabase.mtime;
+                        cache.storageMtime = fileOnStorage.mtime;
+                        caches[filename] = cache;
+                    })(fileOnStorage);
+
+                }
+                if (nw < 0) {
+                    proc = (async (filename) => {
+                        if (await this.extractInternaFileFromDatabase(filename)) {
+                            cache.docMtime = fileOnDatabase.mtime;
+                            cache.storageMtime = fileOnStorage.mtime;
+                            caches[filename] = cache;
+                            countUpdatedFolder(filename);
+                        }
+                    })(filename);
+
+                }
+            } else if (!fileOnStorage && fileOnDatabase) {
+                if (direction == "push") {
+                    if (fileOnDatabase.deleted) {
+                        // await this.storeInternaFileToDatabase(fileOnStorage);
+                    } else {
+                        proc = (async () => {
+                            await this.deleteInternaFileOnDatabase(filename);
+                        })();
+                    }
+                } else if (direction == "pull") {
+                    proc = (async () => {
+                        if (await this.extractInternaFileFromDatabase(filename)) {
+                            countUpdatedFolder(filename);
+                        }
+                    })();
+                } else if (direction == "safe") {
+                    if (fileOnDatabase.deleted) {
+                        // await this.storeInternaFileToDatabase(fileOnStorage);
+                    } else {
+                        proc = (async () => {
+                            if (await this.extractInternaFileFromDatabase(filename)) {
+                                countUpdatedFolder(filename);
+                            }
+                        })();
+                    }
+                }
+            } else if (fileOnStorage && !fileOnDatabase) {
+                proc = (async () => {
+                    await this.storeInternaFileToDatabase(fileOnStorage);
+                })();
+            } else {
+                throw new Error("Invalid state on hidden file sync");
+                // Something corrupted?
+            }
+            if (proc) p.add(proc);
+            await p.wait(limit);
+        }
+        await p.all();
+        await this.localDatabase.kvDB.set("diff-caches-internal", caches);
+
+        // When files has been retreived from the database. they must be reloaded.
+        if (direction == "pull" && filesChanged != 0) {
+            const configDir = normalizePath(this.app.vault.configDir);
+            // Show notification to restart obsidian when something has been changed in configDir.
+            if (configDir in updatedFolders) {
+                // Numbers of updated files that is below of configDir.
+                let updatedCount = updatedFolders[configDir];
+                try {
+                    //@ts-ignore
+                    const manifests = Object.values(this.app.plugins.manifests) as PluginManifest[];
+                    //@ts-ignore
+                    const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
+                    const enabledPluginManifests = manifests.filter(e => enabledPlugins.has(e.id));
+                    for (const manifest of enabledPluginManifests) {
+                        if (manifest.dir in updatedFolders) {
+                            // If notified about plug-ins, reloading Obsidian may not be necessary.
+                            updatedCount -= updatedFolders[manifest.dir];
+                            const updatePluginId = manifest.id;
+                            const updatePluginName = manifest.name;
+                            const fragment = createFragment((doc) => {
+                                doc.createEl("span", null, (a) => {
+                                    a.appendText(`Files in ${updatePluginName} has been updated, Press `)
+                                    a.appendChild(a.createEl("a", null, (anchor) => {
+                                        anchor.text = "HERE";
+                                        anchor.addEventListener("click", async () => {
+                                            Logger(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL.NOTICE, "pluin-reload-" + updatePluginId);
+                                            // @ts-ignore
+                                            await this.app.plugins.unloadPlugin(updatePluginId);
+                                            // @ts-ignore
+                                            await this.app.plugins.loadPlugin(updatePluginId);
+                                            Logger(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL.NOTICE, "pluin-reload-" + updatePluginId);
+                                        });
+                                    }))
+
+                                    a.appendText(` to reload ${updatePluginName}, or press elsewhere to dismiss this message.`)
+                                });
+                            });
+
+                            const updatedPluginKey = "popupUpdated-" + updatePluginId;
+                            setTrigger(updatedPluginKey, 1000, async () => {
+                                const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
+                                //@ts-ignore
+                                const isShown = popup?.noticeEl?.isShown();
+                                if (!isShown) {
+                                    memoObject(updatedPluginKey, new Notice(fragment, 0))
+                                }
+                                setTrigger(updatedPluginKey + "-close", 20000, () => {
+                                    const popup = retriveMemoObject<Notice>(updatedPluginKey)
+                                    if (!popup) return;
+                                    //@ts-ignore
+                                    if (popup?.noticeEl?.isShown()) {
+                                        popup.hide();
+                                    }
+                                    disposeMemoObject(updatedPluginKey);
+                                })
+                            })
+                        }
+                    }
+                } catch (ex) {
+                    Logger("Error on checking plugin status.");
+                    Logger(ex, LOG_LEVEL.VERBOSE);
+
+                }
+
+                // If something changes left, notify for reloading Obsidian.
+                if (updatedCount != 0) {
+                    const fragment = createFragment((doc) => {
+                        doc.createEl("span", null, (a) => {
+                            a.appendText(`Hidden files have been synchronized, Press `)
+                            a.appendChild(a.createEl("a", null, (anchor) => {
+                                anchor.text = "HERE";
+                                anchor.addEventListener("click", () => {
+                                    // @ts-ignore
+                                    this.app.commands.executeCommandById("app:reload")
+                                });
+                            }))
+
+                            a.appendText(` to reload obsidian, or press elsewhere to dismiss this message.`)
+                        });
+                    });
+
+                    setTrigger("popupUpdated-" + configDir, 1000, () => {
+                        //@ts-ignore
+                        const isShown = this.confirmPopup?.noticeEl?.isShown();
+                        if (!isShown) {
+                            this.confirmPopup = new Notice(fragment, 0);
+                        }
+                        setTrigger("popupClose" + configDir, 20000, () => {
+                            this.confirmPopup?.hide();
+                            this.confirmPopup = null;
+                        })
+                    })
+                }
+            }
+        }
+
+        Logger(`Hidden files scanned: ${filesChanged} files had been modified`, logLevel, "sync_internal");
     }
 }
