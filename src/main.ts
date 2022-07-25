@@ -29,12 +29,14 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 //@ts-ignore
 import PluginPane from "./PluginPane.svelte";
+
 import { clearAllPeriodic, clearAllTriggers, disposeMemoObject, id2path, memoIfNotExist, memoObject, path2id, retriveMemoObject, setTrigger } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
 
 setNoticeClass(Notice);
+
 class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
     logEl: HTMLDivElement;
@@ -118,19 +120,24 @@ class InputStringDialog extends Modal {
         }
     }
 }
-class PopoverYesNo extends FuzzySuggestModal<string> {
+class PopoverSelectString extends FuzzySuggestModal<string> {
     app: App;
     callback: (e: string) => void = () => { };
+    getItemsFun: () => string[] = () => {
+        return ["yes", "no"];
 
-    constructor(app: App, note: string, callback: (e: string) => void) {
+    }
+
+    constructor(app: App, note: string, placeholder: string | null, getItemsFun: () => string[], callback: (e: string) => void) {
         super(app);
         this.app = app;
-        this.setPlaceholder("y/n) " + note);
+        this.setPlaceholder(placeholder ?? "y/n) " + note);
+        if (getItemsFun) this.getItemsFun = getItemsFun;
         this.callback = callback;
     }
 
     getItems(): string[] {
-        return ["yes", "no"];
+        return this.getItemsFun();
     }
 
     getItemText(item: string): string {
@@ -153,10 +160,19 @@ class PopoverYesNo extends FuzzySuggestModal<string> {
 
 const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
-        const popover = new PopoverYesNo(app, message, (result) => res(result as "yes" | "no"));
+        const popover = new PopoverSelectString(app, message, null, null, (result) => res(result as "yes" | "no"));
         popover.open();
     });
 };
+
+const askSelectString = (app: App, message: string, items: string[]): Promise<string> => {
+    const getItemsFun = () => items;
+    return new Promise((res) => {
+        const popover = new PopoverSelectString(app, message, "Select file)", getItemsFun, (result) => res(result));
+        popover.open();
+    });
+};
+
 
 const askString = (app: App, title: string, key: string, placeholder: string): Promise<string | false> => {
     return new Promise((res) => {
@@ -207,11 +223,34 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return false;
     }
 
-    showHistory(file: TFile) {
+    showHistory(file: TFile | string) {
         if (!this.settings.useHistory) {
             Logger("You have to enable Use History in misc.", LOG_LEVEL.NOTICE);
         } else {
             new DocumentHistoryModal(this.app, this, file).open();
+        }
+    }
+
+    async fileHistory() {
+        const pageLimit = 2500;
+        let nextKey = "";
+        const notes = [];
+        do {
+            const docs = await this.localDatabase.localDatabase.allDocs({ limit: pageLimit, startkey: nextKey, include_docs: true });
+            nextKey = "";
+            for (const row of docs.rows) {
+                const doc = row.doc;
+                nextKey = `${row.id}\u{10ffff}`;
+                if (!("type" in doc)) continue;
+                if (doc.type == "newnote" || doc.type == "plain") {
+                    // const docId = doc._id.startsWith("i:") ? doc._id.substring("i:".length) : doc._id;
+                    notes.push(id2path(doc._id))
+                }
+            }
+        } while (nextKey != "");
+        const target = await askSelectString(this.app, "File to view History", notes);
+        if (target) {
+            this.showHistory(target);
         }
     }
 
@@ -499,6 +538,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.showHistory(view.file);
             },
         });
+
         this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
         this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
         setLockNotifier(() => {
@@ -519,6 +559,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.syncInternalFilesAndDatabase("safe", true);
             },
         });
+        this.addCommand({
+            id: "livesync-filehistory",
+            name: "Pick file to show history",
+            callback: () => {
+                this.fileHistory();
+            },
+        })
+
     }
 
     pluginDialog: PluginDialogModal = null;
@@ -1511,7 +1559,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         Logger("Updating database by new files");
         this.setStatusBarText(`UPDATE DATABASE`);
 
-        const runAll = async <T>(procedurename: string, objects: T[], callback: (arg: T) => Promise<void>) => {
+        const runAll = async<T>(procedurename: string, objects: T[], callback: (arg: T) => Promise<void>) => {
             const count = objects.length;
             Logger(procedurename);
             let i = 0;
@@ -1547,6 +1595,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await p.all();
             Logger(`${procedurename} done.`);
         };
+
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`Update into ${e.path}`);
 
@@ -1575,7 +1624,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
 
         this.setStatusBarText(`NOW TRACKING!`);
-        Logger("Initialized,NOW TRACKING!");
+        Logger("Initialized, NOW TRACKING!");
         if (!isInitialized) {
             await (this.localDatabase.kvDB.set("initialized", true))
         }
@@ -2157,30 +2206,39 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async getFiles(
         path: string,
         ignoreList: string[],
-        filter: RegExp[]
+        filter: RegExp[],
+        ignoreFilter: RegExp[],
     ) {
+
         const w = await this.app.vault.adapter.list(path);
         let files = [
             ...w.files
                 .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
-                .filter((e) => !filter || filter.some((ee) => e.match(ee))),
+                .filter((e) => !filter || filter.some((ee) => e.match(ee)))
+                .filter((e) => !ignoreFilter || ignoreFilter.every((ee) => !e.match(ee))),
         ];
+
         L1: for (const v of w.folders) {
             for (const ignore of ignoreList) {
                 if (v.endsWith(ignore)) {
                     continue L1;
                 }
             }
-            files = files.concat(await this.getFiles(v, ignoreList, filter));
+            if (ignoreFilter && ignoreFilter.some(e => v.match(e))) {
+                continue L1;
+            }
+            files = files.concat(await this.getFiles(v, ignoreList, filter, ignoreFilter));
         }
         return files;
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
-        const ignoreFiles = ["node_modules", ".git", "obsidian-pouch"];
+        const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
-        const filenames = (await this.getFiles(findRoot, ignoreFiles, null)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
+        const filenames = (await this.getFiles(findRoot, [], null, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
         const files = filenames.map(async e => {
             return {
                 path: e,
@@ -2344,10 +2402,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e));
-        // const files = await this.scanInternalFiles();
         return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
-        //if (ignorePatterns.some(e => filename.match(e))) continue;
-        //if (targetFiles !== false && targetFiles.indexOf(filename) == -1) continue;
     }
 
     async applyMTimeToFile(file: InternalFileInfo) {

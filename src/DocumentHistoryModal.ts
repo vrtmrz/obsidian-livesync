@@ -1,9 +1,9 @@
 import { TFile, Modal, App } from "obsidian";
 import { path2id } from "./utils";
-import { escapeStringToHTML } from "./lib/src/utils";
+import { base64ToArrayBuffer, base64ToString, escapeStringToHTML, isValidPath } from "./lib/src/utils";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { LOG_LEVEL } from "./lib/src/types";
+import { LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 
 export class DocumentHistoryModal extends Modal {
@@ -17,12 +17,13 @@ export class DocumentHistoryModal extends Modal {
     file: string;
 
     revs_info: PouchDB.Core.RevisionInfo[] = [];
+    currentDoc: LoadedEntry;
     currentText = "";
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile) {
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | string) {
         super(app);
         this.plugin = plugin;
-        this.file = file.path;
+        this.file = (file instanceof TFile) ? file.path : file;
         if (localStorage.getItem("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
         }
@@ -47,9 +48,12 @@ export class DocumentHistoryModal extends Modal {
             this.info.innerHTML = "";
             this.contentView.innerHTML = `Could not read this revision<br>(${rev.rev})`;
         } else {
+            this.currentDoc = w;
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
-            this.currentText = w.data;
+            const w1data = w.datatype == "plain" ? w.data : base64ToString(w.data);
+
+            this.currentText = w1data;
             if (this.showDiff) {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
@@ -57,7 +61,8 @@ export class DocumentHistoryModal extends Modal {
                     const w2 = await db.getDBEntry(path2id(this.file), { rev: oldRev }, false, false);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
-                        const diff = dmp.diff_main(w2.data, w.data);
+                        const w2data = w2.datatype == "plain" ? w2.data : base64ToString(w2.data);
+                        const diff = dmp.diff_main(w2data, w1data);
                         dmp.diff_cleanupSemantic(diff);
                         for (const v of diff) {
                             const x1 = v[0];
@@ -73,13 +78,13 @@ export class DocumentHistoryModal extends Modal {
 
                         result = result.replace(/\n/g, "<br>");
                     } else {
-                        result = escapeStringToHTML(w.data);
+                        result = escapeStringToHTML(w1data);
                     }
                 } else {
-                    result = escapeStringToHTML(w.data);
+                    result = escapeStringToHTML(w1data);
                 }
             } else {
-                result = escapeStringToHTML(w.data);
+                result = escapeStringToHTML(w1data);
             }
             this.contentView.innerHTML = result;
         }
@@ -136,6 +141,25 @@ export class DocumentHistoryModal extends Modal {
             e.addEventListener("click", async () => {
                 await navigator.clipboard.writeText(this.currentText);
                 Logger(`Old content copied to clipboard`, LOG_LEVEL.NOTICE);
+            });
+        });
+        buttons.createEl("button", { text: "Back to this revision" }, (e) => {
+            e.addClass("mod-cta");
+            e.addEventListener("click", async () => {
+                const pathToWrite = this.file.startsWith("i:") ? this.file.substring("i:".length) : this.file;
+                if (!isValidPath(pathToWrite)) {
+                    Logger("Path is not vaild to write content.", LOG_LEVEL.INFO);
+                }
+                if (this.currentDoc?.datatype == "plain") {
+                    await this.app.vault.adapter.write(pathToWrite, this.currentDoc.data);
+                    this.close();
+                } else if (this.currentDoc?.datatype == "newnote") {
+                    await this.app.vault.adapter.writeBinary(pathToWrite, base64ToArrayBuffer(this.currentDoc.data));
+                    this.close();
+                } else {
+
+                    Logger(`Could not parse entry`, LOG_LEVEL.NOTICE);
+                }
             });
         });
     }
