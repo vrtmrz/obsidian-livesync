@@ -1,4 +1,4 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, Modal, App, FuzzySuggestModal, Setting } from "obsidian";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App, } from "obsidian";
 import { diff_match_patch } from "diff-match-patch";
 
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
@@ -27,136 +27,50 @@ import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
-//@ts-ignore
-import PluginPane from "./PluginPane.svelte";
+
 
 import { clearAllPeriodic, clearAllTriggers, disposeMemoObject, id2path, memoIfNotExist, memoObject, path2id, retriveMemoObject, setTrigger } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
 
+import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
+
 setNoticeClass(Notice);
 
-class PluginDialogModal extends Modal {
-    plugin: ObsidianLiveSyncPlugin;
-    logEl: HTMLDivElement;
-    component: PluginPane = null;
+const ICHeader = "i:";
+const ICHeaderEnd = "i;";
+const ICHeaderLength = ICHeader.length;
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
-        super(app);
-        this.plugin = plugin;
-    }
 
-    onOpen() {
-        const { contentEl } = this;
-        if (this.component == null) {
-            this.component = new PluginPane({
-                target: contentEl,
-                props: { plugin: this.plugin },
-            });
-        }
-    }
-
-    onClose() {
-        if (this.component != null) {
-            this.component.$destroy();
-            this.component = null;
-        }
-    }
+/**
+ * returns is internal chunk of file
+ * @param str ID
+ * @returns 
+ */
+function isInteralChunk(str: string): boolean {
+    return str.startsWith(ICHeader);
+}
+function id2filenameInternalChunk(str: string): string {
+    return str.substring(ICHeaderLength);
+}
+function filename2idInternalChunk(str: string): string {
+    return ICHeader + str;
 }
 
-class InputStringDialog extends Modal {
-    result: string | false = false;
-    onSubmit: (result: string | boolean) => void;
-    title: string;
-    key: string;
-    placeholder: string;
-    isManuallyClosed = false;
-
-    constructor(app: App, title: string, key: string, placeholder: string, onSubmit: (result: string | false) => void) {
-        super(app);
-        this.onSubmit = onSubmit;
-        this.title = title;
-        this.placeholder = placeholder;
-        this.key = key;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-
-        contentEl.createEl("h1", { text: this.title });
-
-        new Setting(contentEl).setName(this.key).addText((text) =>
-            text.onChange((value) => {
-                this.result = value;
-            })
-        );
-
-        new Setting(contentEl).addButton((btn) =>
-            btn
-                .setButtonText("Ok")
-                .setCta()
-                .onClick(() => {
-                    this.isManuallyClosed = true;
-                    this.close();
-                })
-        ).addButton((btn) =>
-            btn
-                .setButtonText("Cancel")
-                .setCta()
-                .onClick(() => {
-                    this.close();
-                })
-        );
-    }
-
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-        if (this.isManuallyClosed) {
-            this.onSubmit(this.result);
-        } else {
-            this.onSubmit(false);
-        }
-    }
+const CHeader = "h:";
+const CHeaderEnd = "h;";
+// const CHeaderLength = CHeader.length;
+function isChunk(str: string): boolean {
+    return str.startsWith(CHeader);
 }
-class PopoverSelectString extends FuzzySuggestModal<string> {
-    app: App;
-    callback: (e: string) => void = () => { };
-    getItemsFun: () => string[] = () => {
-        return ["yes", "no"];
 
-    }
-
-    constructor(app: App, note: string, placeholder: string | null, getItemsFun: () => string[], callback: (e: string) => void) {
-        super(app);
-        this.app = app;
-        this.setPlaceholder(placeholder ?? "y/n) " + note);
-        if (getItemsFun) this.getItemsFun = getItemsFun;
-        this.callback = callback;
-    }
-
-    getItems(): string[] {
-        return this.getItemsFun();
-    }
-
-    getItemText(item: string): string {
-        return item;
-    }
-
-    onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
-        // debugger;
-        this.callback(item);
-        this.callback = null;
-    }
-    onClose(): void {
-        setTimeout(() => {
-            if (this.callback != null) {
-                this.callback("");
-            }
-        }, 100);
-    }
+const PSCHeader = "ps:";
+const PSCHeaderEnd = "ps;";
+function isPluginChunk(str: string): boolean {
+    return str.startsWith(PSCHeader);
 }
+
 
 const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
@@ -232,9 +146,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async fileHistory() {
-        const pageLimit = 2500;
+        const pageLimit = 1000;
         let nextKey = "";
-        const notes = [];
+        const notes: { path: string, mtime: number }[] = [];
         do {
             const docs = await this.localDatabase.localDatabase.allDocs({ limit: pageLimit, startkey: nextKey, include_docs: true });
             nextKey = "";
@@ -244,11 +158,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 if (!("type" in doc)) continue;
                 if (doc.type == "newnote" || doc.type == "plain") {
                     // const docId = doc._id.startsWith("i:") ? doc._id.substring("i:".length) : doc._id;
-                    notes.push(id2path(doc._id))
+                    notes.push({ path: id2path(doc._id), mtime: doc.mtime });
+                }
+                if (isChunk(nextKey)) {
+                    // skip the chunk zone.
+                    nextKey = CHeaderEnd;
                 }
             }
         } while (nextKey != "");
-        const target = await askSelectString(this.app, "File to view History", notes);
+
+        notes.sort((a, b) => b.mtime - a.mtime);
+        const notesList = notes.map(e => e.path);
+        const target = await askSelectString(this.app, "File to view History", notesList);
         if (target) {
             this.showHistory(target);
         }
@@ -258,13 +179,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         setLogger(this.addLog.bind(this)); // Logger moved to global.
         Logger("loading plugin");
         //@ts-ignore
-        const manifestVersion = MANIFEST_VERSION || "-";
+        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
         //@ts-ignore
-        const packageVersion = PACKAGE_VERSION || "-";
+        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
+
+
         Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
         const lsname = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsname);
         await this.loadSettings();
+        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
+        if (lastVersion > this.settings.lastReadUpdates) {
+            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL.NOTICE);
+        }
         //@ts-ignore
         if (this.app.isMobile) {
             this.isMobile = true;
@@ -276,7 +203,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.settings.syncOnStart = false;
             this.settings.syncOnFileOpen = false;
             this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = "I changed specifications incompatiblly, so when you enable sync again, be sure to made version up all nother devides.";
+            this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
             this.saveSettings();
         }
         localStorage.setItem(lsname, `${VER}`);
@@ -561,7 +488,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.addCommand({
             id: "livesync-filehistory",
-            name: "Pick file to show history",
+            name: "Pick a file to show history",
             callback: () => {
                 this.fileHistory();
             },
@@ -1069,7 +996,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (shouldBeIgnored(pathSrc)) {
             return;
         }
-        if (docEntry._deleted) {
+        if (docEntry._deleted || docEntry.deleted) {
             //basically pass.
             //but if there are no docs left, delete file.
             const lastDocs = await this.localDatabase.getDBEntry(pathSrc);
@@ -1140,7 +1067,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async handleDBChanged(change: EntryBody) {
         const targetFile = this.app.vault.getAbstractFileByPath(id2path(change._id));
         if (targetFile == null) {
-            if (change._deleted) {
+            if (change._deleted || change.deleted) {
                 return;
             }
             const doc = change;
@@ -1194,9 +1121,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const now = new Date().getTime();
                 if (queue.missingChildren.length == 0) {
                     queue.done = true;
-                    if (queue.entry._id.startsWith("i:")) {
+                    if (isInteralChunk(queue.entry._id)) {
                         //system file
-                        const filename = id2path(queue.entry._id.substring("i:".length));
+                        const filename = id2path(id2filenameInternalChunk(queue.entry._id));
                         Logger(`Applying hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
                         await this.syncInternalFilesAndDatabase("pull", false, false, [filename])
                         Logger(`Applied hidden file, ${queue.entry._id} (${queue.entry._rev}) change...`);
@@ -1239,7 +1166,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
-        if ((!doc._id.startsWith("i:")) && skipOldFile) {
+        if ((!isInteralChunk(doc._id)) && skipOldFile) {
             const info = this.app.vault.getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
@@ -1276,13 +1203,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
         this.refreshStatusText();
         for (const change of docs) {
-            if (change._id.startsWith("ps:")) {
+            if (isPluginChunk(change._id)) {
                 if (this.settings.notifyPluginOrSettingUpdated) {
                     this.triggerCheckPluginUpdate();
                 }
                 continue;
             }
-            if (change._id.startsWith("h:")) {
+            if (isChunk(change._id)) {
                 await this.parseIncomingChunk(change);
                 continue;
             }
@@ -1542,7 +1469,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const filesStorage = this.app.vault.getFiles();
         const filesStorageName = filesStorage.map((e) => e.path);
         const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && !e.id.startsWith("ps:") && e.id != "obsydian_livesync_version").filter(e => isValidPath(e.id)).map((e) => id2path(e.id));
+        const filesDatabase = wf.rows.filter((e) => !isChunk(e.id) && !isPluginChunk(e.id) && e.id != "obsydian_livesync_version").filter(e => isValidPath(e.id)).map((e) => id2path(e.id));
         const isInitialized = await (this.localDatabase.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.
         if (filesDatabase.length == 0 && !isInitialized) {
@@ -1603,7 +1530,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         if (!initialScan) {
             await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
-                Logger(`Pull from db:${e}`);
+                Logger(`Check or pull from db:${e}`);
                 await this.pullFile(e, filesStorage, false, null, false);
             });
         }
@@ -1877,13 +1804,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (targetFile == null) {
             //have to create;
             const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
-            if (doc === false) return;
+            if (doc === false) {
+                Logger(`${filename} Skipped`);
+                return;
+            }
             await this.doc2storage_create(doc, force);
         } else if (targetFile instanceof TFile) {
             //normal case
             const file = targetFile;
             const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
-            if (doc === false) return;
+            if (doc === false) {
+                Logger(`${filename} Skipped`);
+                return;
+            }
             await this.doc2storage_modify(doc, file, force);
         } else {
             Logger(`target files:${filename} is exists as the folder`);
@@ -1927,6 +1860,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
             if (docx != false) {
                 await this.doc2storage_modify(docx, file);
+            } else {
+                Logger("STORAGE <- DB :" + file.path + " Skipped");
             }
             caches[dK] = { storageMtime, docMtime };
             return caches;
@@ -1973,10 +1908,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             const old = await this.localDatabase.getDBEntry(fullpath, null, false, false);
             if (old !== false) {
-                const oldData = { data: old.data, deleted: old._deleted };
-                const newData = { data: d.data, deleted: d._deleted };
+                const oldData = { data: old.data, deleted: old._deleted || old.deleted, };
+                const newData = { data: d.data, deleted: d._deleted || d.deleted };
                 if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                    Logger(msg + "Skipped (not changed) " + fullpath + (d._deleted ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    Logger(msg + "Skipped (not changed) " + fullpath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
                     return true;
                 }
                 // d._rev = old._rev;
@@ -2029,7 +1964,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async getPluginList(): Promise<{ plugins: PluginList; allPlugins: DevicePluginList; thisDevicePlugins: DevicePluginList }> {
         const db = this.localDatabase.localDatabase;
-        const docList = await db.allDocs<PluginDataEntry>({ startkey: `ps:`, endkey: `ps;`, include_docs: false });
+        const docList = await db.allDocs<PluginDataEntry>({ startkey: PSCHeader, endkey: PSCHeaderEnd, include_docs: false });
         const oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(e.data));
         const plugins: { [key: string]: PluginDataEntry[] } = {};
         const allPlugins: { [key: string]: PluginDataEntry } = {};
@@ -2125,7 +2060,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             Logger(`Deleting old plugins`, LOG_LEVEL.VERBOSE);
             const delDocs = oldDocs.rows.map((e) => {
-                e.doc._deleted = true;
+                // e.doc._deleted = true;
+                if (e.doc.type == "newnote" || e.doc.type == "plain") {
+                    e.doc.deleted = true;
+                    if (this.settings.deleteMetadataOfDeletedFiles) {
+                        e.doc._deleted = true;
+                    }
+                } else {
+                    e.doc._deleted = true;
+                }
                 return e.doc;
             });
             await db.bulkDocs(delDocs);
@@ -2257,7 +2200,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async storeInternaFileToDatabase(file: InternalFileInfo, forceWrite = false) {
-        const id = "i:" + path2id(file.path);
+        const id = filename2idInternalChunk(path2id(file.path));
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
         const content = await arrayBufferToBase64(contentBin);
         const mtime = file.mtime;
@@ -2299,7 +2242,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async deleteInternaFileOnDatabase(filename: string, forceWrite = false) {
-        const id = "i:" + path2id(filename);
+        const id = filename2idInternalChunk(path2id(filename));
         const mtime = new Date().getTime();
         await runWithLock("file-" + id, false, async () => {
             const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
@@ -2356,7 +2299,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async extractInternaFileFromDatabase(filename: string, force = false) {
         const isExists = await this.app.vault.adapter.exists(filename);
-        const id = "i:" + path2id(filename);
+        const id = filename2idInternalChunk(path2id(filename));
 
         return await runWithLock("file-" + id, false, async () => {
             const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
@@ -2384,7 +2327,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     const contentBin = await this.app.vault.adapter.readBinary(filename);
                     const content = await arrayBufferToBase64(contentBin);
                     if (content == fileOnDB.data && !force) {
-                        Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`);
+                        // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL.VERBOSE);
                         return false;
                     }
                     await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
@@ -2418,8 +2361,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e));
         if (!files) files = await this.scanInternalFiles();
-        const filesOnDB = (await this.localDatabase.localDatabase.allDocs({ startkey: "i:", endkey: "i;", include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[];
-        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(e._id.substring("i:".length))))])];
+        const filesOnDB = ((await this.localDatabase.localDatabase.allDocs({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
+
+        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(id2filenameInternalChunk(e._id))))])];
         const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1))
         function compareMTime(a: number, b: number) {
             const wa = ~~(a / 1000);
@@ -2464,7 +2408,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (ignorePatterns.some(e => filename.match(e))) continue;
 
             const fileOnStorage = files.find(e => e.path == filename);
-            const fileOnDatabase = filesOnDB.find(e => e._id == "i:" + id2path(filename));
+            const fileOnDatabase = filesOnDB.find(e => e._id == filename2idInternalChunk(id2path(filename)));
             // TODO: Fix this somehow smart.
             let proc: Promise<void> | null;
 

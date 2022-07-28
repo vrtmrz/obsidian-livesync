@@ -13,6 +13,7 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = process.argv[2] === "production";
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json"));
 const packageJson = JSON.parse(fs.readFileSync("./package.json"));
+const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
 esbuild
     .build({
         banner: {
@@ -23,6 +24,7 @@ esbuild
         define: {
             "MANIFEST_VERSION": `"${manifestJson.version}"`,
             "PACKAGE_VERSION": `"${packageJson.version}"`,
+            "UPDATE_INFO": `${updateInfo}`,
         },
         external: ["obsidian", "electron", ...builtins],
         format: "cjs",

@@ -1,7 +1,7 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent } from "obsidian";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer } from "obsidian";
 import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
-import { delay, runWithLock } from "./lib/src/utils";
+import { delay, runWithLock, versionNumberString2Number } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, connectRemoteCouchDBWithSetting } from "./utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
@@ -39,7 +39,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         w.addClass("sls-setting-menu");
         w.innerHTML = `
-<label class='sls-setting-label selected'><input type='radio' name='disp' value='0' class='sls-setting-tab' checked><div class='sls-setting-menu-btn'>🛰️</div></label>
+<label class='sls-setting-label selected'><input type='radio' name='disp' value='100' class='sls-setting-tab' checked><div class='sls-setting-menu-btn'>💬</div></label>
+<label class='sls-setting-label'><input type='radio' name='disp' value='0' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🛰️</div></label>
 <label class='sls-setting-label'><input type='radio' name='disp' value='10' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>📦</div></label>
 <label class='sls-setting-label'><input type='radio' name='disp' value='20' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>⚙️</div></label>
 <label class='sls-setting-label'><input type='radio' name='disp' value='30' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔁</div></label>
@@ -68,6 +69,34 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
         });
 
+        const containerInformationEl = containerEl.createDiv();
+        const h3El = containerInformationEl.createEl("h3", { text: "Updates" });
+        const informationDivEl = containerInformationEl.createEl("div", { text: "" });
+
+        //@ts-ignore
+        const manifestVersion: string = MANIFEST_VERSION || "-";
+        //@ts-ignore
+        const updateInformation: string = UPDATE_INFO || "";
+
+        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
+
+        const tmpDiv = createSpan();
+        tmpDiv.addClass("sls-header-button");
+        tmpDiv.innerHTML = `<button> OK, I read all. </button>`;
+        if (lastVersion > this.plugin.settings.lastReadUpdates) {
+            const informationButtonDiv = h3El.appendChild(tmpDiv);
+            informationButtonDiv.querySelector("button").addEventListener("click", async () => {
+                this.plugin.settings.lastReadUpdates = lastVersion;
+                await this.plugin.saveSettings();
+                informationButtonDiv.remove();
+            });
+
+        }
+
+        MarkdownRenderer.renderMarkdown(updateInformation, informationDivEl, "/", null);
+
+
+        addScreenElement("100", containerInformationEl);
         const containerRemoteDatabaseEl = containerEl.createDiv();
         containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
         const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while automatic synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
@@ -638,6 +667,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     this.plugin.settings.showVerboseLog = value;
                     await this.plugin.saveSettings();
                 })
+            );
+        new Setting(containerGeneralSettingsEl)
+            .setName("Delete metadata of deleted files.")
+            .addToggle((toggle) => {
+                toggle.setValue(this.plugin.settings.deleteMetadataOfDeletedFiles).onChange(async (value) => {
+                    this.plugin.settings.deleteMetadataOfDeletedFiles = value;
+                    await this.plugin.saveSettings();
+                })
+            }
             );
 
         addScreenElement("20", containerGeneralSettingsEl);
@@ -1295,6 +1333,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
         applyDisplayEnabled();
         addScreenElement("70", containerCorruptedDataEl);
-        changeDisplay("0");
+        if (lastVersion != this.plugin.settings.lastReadUpdates) {
+            changeDisplay("100");
+        } else {
+            changeDisplay("0");
+        }
     }
 }

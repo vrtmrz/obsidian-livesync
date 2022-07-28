@@ -93,6 +93,10 @@
     padding-left: 4px;
 }
 
+.sls-header-button {
+    margin-left: 2em;
+}
+
 .sls-hidden {
     display: none;
 }

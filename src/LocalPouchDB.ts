@@ -35,8 +35,8 @@ import { LRUCache } from "./lib/src/LRUCache";
 
 const currentVersionRange: ChunkVersionRange = {
     min: 0,
-    max: 1,
-    current: 1,
+    max: 2,
+    current: 2,
 }
 
 type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>;
@@ -69,7 +69,9 @@ export class LocalPouchDB {
 
     isMobile = false;
 
-    chunkVersion = 0;
+    chunkVersion = -1;
+    maxChunkVersion = -1;
+    minChunkVersion = -1;
 
     cancelHandler<T extends PouchDB.Core.Changes<EntryDoc> | PouchDB.Replication.Sync<EntryDoc> | PouchDB.Replication.Replication<EntryDoc>>(handler: T): T {
         if (handler != null) {
@@ -296,7 +298,7 @@ export class LocalPouchDB {
         }
     }
 
-    async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions): Promise<false | LoadedEntry> {
+    async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions, includeDeleted = false): Promise<false | LoadedEntry> {
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -306,6 +308,7 @@ export class LocalPouchDB {
                 obj = await this.localDatabase.get(id);
             }
             const deleted = "deleted" in obj ? obj.deleted : undefined;
+            if (!includeDeleted && deleted) return false;
             if (obj.type && obj.type == "leaf") {
                 //do nothing for leaf;
                 return false;
@@ -326,7 +329,7 @@ export class LocalPouchDB {
                     ctime: note.ctime,
                     mtime: note.mtime,
                     size: note.size,
-                    _deleted: obj._deleted,
+                    // _deleted: obj._deleted,
                     _rev: obj._rev,
                     _conflicts: obj._conflicts,
                     children: children,
@@ -344,7 +347,7 @@ export class LocalPouchDB {
         }
         return false;
     }
-    async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true): Promise<false | LoadedEntry> {
+    async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true, includeDeleted = false): Promise<false | LoadedEntry> {
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -354,7 +357,7 @@ export class LocalPouchDB {
                 obj = await this.localDatabase.get(id);
             }
             const deleted = "deleted" in obj ? obj.deleted : undefined;
-
+            if (!includeDeleted && deleted) return false;
             if (obj.type && obj.type == "leaf") {
                 //do nothing for leaf;
                 return false;
@@ -369,7 +372,7 @@ export class LocalPouchDB {
                     ctime: note.ctime,
                     mtime: note.mtime,
                     size: note.size,
-                    _deleted: obj._deleted,
+                    // _deleted: obj._deleted,
                     _rev: obj._rev,
                     _conflicts: obj._conflicts,
                     children: [],
@@ -415,7 +418,7 @@ export class LocalPouchDB {
                         ctime: obj.ctime,
                         mtime: obj.mtime,
                         size: obj.size,
-                        _deleted: obj._deleted,
+                        // _deleted: obj._deleted,
                         _rev: obj._rev,
                         children: obj.children,
                         datatype: obj.type,
@@ -476,7 +479,11 @@ export class LocalPouchDB {
                     // simple note
                 }
                 if (obj.type == "newnote" || obj.type == "plain") {
-                    obj._deleted = true;
+                    obj.deleted = true;
+                    if (this.settings.deleteMetadataOfDeletedFiles) {
+                        obj._deleted = true;
+                    }
+                    obj.mtime = Date.now();
                     const r = await this.localDatabase.put(obj);
                     Logger(`entry removed:${obj._id}-${r.rev}`);
                     if (typeof this.corruptedEntries[obj._id] != "undefined") {
@@ -528,7 +535,15 @@ export class LocalPouchDB {
             try {
                 await runWithLock("file:" + v, false, async () => {
                     const item = await this.localDatabase.get(v);
-                    item._deleted = true;
+                    if (item.type == "newnote" || item.type == "plain") {
+                        item.deleted = true;
+                        if (this.settings.deleteMetadataOfDeletedFiles) {
+                            item._deleted = true;
+                        }
+                        item.mtime = Date.now();
+                    } else {
+                        item._deleted = true;
+                    }
                     await this.localDatabase.put(item);
                 });
 
@@ -777,16 +792,31 @@ export class LocalPouchDB {
             remoteMilestone.node_chunk_info = { ...defMilestonePoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
             this.remoteLocked = remoteMilestone.locked;
             this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
-            const writeMilestone = ((remoteMilestone.node_chunk_info[this.nodeid].min != currentVersionRange.min || remoteMilestone.node_chunk_info[this.nodeid].max != currentVersionRange.max)
+            const writeMilestone = (
+                (
+                    remoteMilestone.node_chunk_info[this.nodeid].min != currentVersionRange.min
+                    || remoteMilestone.node_chunk_info[this.nodeid].max != currentVersionRange.max
+                )
                 || typeof remoteMilestone._rev == "undefined");
 
             if (writeMilestone) {
+                remoteMilestone.node_chunk_info[this.nodeid].min = currentVersionRange.min;
+                remoteMilestone.node_chunk_info[this.nodeid].max = currentVersionRange.max;
                 await dbret.db.put(remoteMilestone);
             }
 
+            // Check compatibility and make sure available version
+            // 
+            // v min of A                  v max of A
+            // |   v  min of B             |   v max of B
+            // |   |                       |   |
+            // |   |<---   We can use  --->|   |
+            // |   |                       |   |
+            //If globalMin and globalMax is suitable, we can upgrade.
             let globalMin = currentVersionRange.min;
             let globalMax = currentVersionRange.max;
             for (const nodeid of remoteMilestone.accepted_nodes) {
+                if (nodeid == this.nodeid) continue;
                 if (nodeid in remoteMilestone.node_chunk_info) {
                     const nodeinfo = remoteMilestone.node_chunk_info[nodeid];
                     globalMin = Math.max(nodeinfo.min, globalMin);
@@ -796,7 +826,15 @@ export class LocalPouchDB {
                     globalMax = 0;
                 }
             }
-            //If globalMin and globalMax is suitable, we can upgrade.
+            this.maxChunkVersion = globalMax;
+            this.minChunkVersion = globalMin;
+
+            if (this.chunkVersion >= 0 && (globalMin > this.chunkVersion || globalMax < this.chunkVersion)) {
+                if (!setting.ignoreVersionCheck) {
+                    Logger("The remote database has no compatibility with the running version. Please upgrade the plugin.", LOG_LEVEL.NOTICE);
+                    return false;
+                }
+            }
 
             if (remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1) {
                 Logger("The remote database has been rebuilt or corrupted since we have synchronized last time. Fetch rebuilt DB or explicit unlocking is required. See the settings dialog.", LOG_LEVEL.NOTICE);
@@ -1241,5 +1279,13 @@ export class LocalPouchDB {
                 Logger(`Garbage checking completed, documents:${docNum}. Used chunks:${alive}, Retained chunks:${nonref}. Retained chunks will be reused, but you can rebuild database if you feel there are too much.`, LOG_LEVEL.NOTICE, "gc");
             });
         return;
+    }
+
+    isVersionUpgradable(ver: number) {
+        if (this.maxChunkVersion < 0) return false;
+        if (this.minChunkVersion < 0) return false;
+        if (this.maxChunkVersion > 0 && this.maxChunkVersion < ver) return false;
+        if (this.minChunkVersion > 0 && this.minChunkVersion > ver) return false;
+        return true;
     }
 }

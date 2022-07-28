@@ -19,6 +19,7 @@ export class DocumentHistoryModal extends Modal {
     revs_info: PouchDB.Core.RevisionInfo[] = [];
     currentDoc: LoadedEntry;
     currentText = "";
+    currentDeleted = false;
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | string) {
         super(app);
@@ -41,10 +42,11 @@ export class DocumentHistoryModal extends Modal {
         const db = this.plugin.localDatabase;
         const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
         const rev = this.revs_info[index];
-        const w = await db.getDBEntry(path2id(this.file), { rev: rev.rev }, false, false);
+        const w = await db.getDBEntry(path2id(this.file), { rev: rev.rev }, false, false, true);
         this.currentText = "";
-
+        this.currentDeleted = false;
         if (w === false) {
+            this.currentDeleted = true;
             this.info.innerHTML = "";
             this.contentView.innerHTML = `Could not read this revision<br>(${rev.rev})`;
         } else {
@@ -52,13 +54,13 @@ export class DocumentHistoryModal extends Modal {
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
             const w1data = w.datatype == "plain" ? w.data : base64ToString(w.data);
-
+            this.currentDeleted = w.deleted;
             this.currentText = w1data;
             if (this.showDiff) {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
                     const oldRev = this.revs_info[prevRevIdx].rev;
-                    const w2 = await db.getDBEntry(path2id(this.file), { rev: oldRev }, false, false);
+                    const w2 = await db.getDBEntry(path2id(this.file), { rev: oldRev }, false, false, true);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
                         const w2data = w2.datatype == "plain" ? w2.data : base64ToString(w2.data);
@@ -86,7 +88,8 @@ export class DocumentHistoryModal extends Modal {
             } else {
                 result = escapeStringToHTML(w1data);
             }
-            this.contentView.innerHTML = result;
+            this.contentView.innerHTML = (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
+
         }
     }
 
