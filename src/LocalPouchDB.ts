@@ -462,7 +462,7 @@ export class LocalPouchDB {
                 } else {
                     obj = await this.localDatabase.get(id);
                 }
-                const revDeletion = ("rev" in opt ? opt.rev : "") != "";
+                const revDeletion = opt && (("rev" in opt ? opt.rev : "") != "");
 
                 if (obj.type && obj.type == "leaf") {
                     //do nothing for leaf;

@@ -9,3 +9,4 @@
 
 #### Minors
 - 0.13.1 Fixed on conflict resolution.
+- 0.13.2 Fixed file deletion failures.

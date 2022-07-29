@@ -821,7 +821,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             try {
                 Logger(`file save ${file.path} into db`);
                 await this.updateIntoDB(file);
-                Logger(`deleted ${oldFile} into db`);
+                Logger(`deleted ${oldFile} from db`);
                 await this.deleteFromDBbyPath(oldFile);
             } catch (ex) {
                 Logger(ex);
