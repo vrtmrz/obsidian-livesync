@@ -146,6 +146,17 @@ export class DocumentHistoryModal extends Modal {
                 Logger(`Old content copied to clipboard`, LOG_LEVEL.NOTICE);
             });
         });
+        async function focusFile(path: string) {
+            const targetFile = app.vault
+                .getFiles()
+                .find((f) => f.path === path);
+            if (targetFile) {
+                const leaf = app.workspace.getLeaf(false);
+                await leaf.openFile(targetFile);
+            } else {
+                Logger("The file cound not view on the editor", LOG_LEVEL.NOTICE)
+            }
+        }
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {
             e.addClass("mod-cta");
             e.addEventListener("click", async () => {
@@ -155,9 +166,11 @@ export class DocumentHistoryModal extends Modal {
                 }
                 if (this.currentDoc?.datatype == "plain") {
                     await this.app.vault.adapter.write(pathToWrite, this.currentDoc.data);
+                    await focusFile(pathToWrite);
                     this.close();
                 } else if (this.currentDoc?.datatype == "newnote") {
                     await this.app.vault.adapter.writeBinary(pathToWrite, base64ToArrayBuffer(this.currentDoc.data));
+                    await focusFile(pathToWrite);
                     this.close();
                 } else {
 

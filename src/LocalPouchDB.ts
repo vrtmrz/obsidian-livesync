@@ -462,6 +462,7 @@ export class LocalPouchDB {
                 } else {
                     obj = await this.localDatabase.get(id);
                 }
+                const revDeletion = ("rev" in opt ? opt.rev : "") != "";
 
                 if (obj.type && obj.type == "leaf") {
                     //do nothing for leaf;
@@ -479,11 +480,15 @@ export class LocalPouchDB {
                     // simple note
                 }
                 if (obj.type == "newnote" || obj.type == "plain") {
-                    obj.deleted = true;
-                    if (this.settings.deleteMetadataOfDeletedFiles) {
+                    if (revDeletion) {
                         obj._deleted = true;
+                    } else {
+                        obj.deleted = true;
+                        obj.mtime = Date.now();
+                        if (this.settings.deleteMetadataOfDeletedFiles) {
+                            obj._deleted = true;
+                        }
                     }
-                    obj.mtime = Date.now();
                     const r = await this.localDatabase.put(obj);
                     Logger(`entry removed:${obj._id}-${r.rev}`);
                     if (typeof this.corruptedEntries[obj._id] != "undefined") {
