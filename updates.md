@@ -6,3 +6,6 @@
 - `Pick file to show` was renamed to `Pick a file to show.
 - Files in the `Pick a file to show` are now ordered by their modified date descent.
 - Update information became to be shown on the major upgrade.
+
+#### Minors
+- 0.13.1 Fixed on conflict resolution.
