@@ -1370,7 +1370,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         const procs = getProcessingCounts();
         const procsDisp = procs == 0 ? "" : ` ⏳${procs}`;
-        const message = `Sync:${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}${queued}`;
+        const message = `Sync: ${w} ↑${sent} ↓${arrived}${waiting}${procsDisp}${queued}`;
         const locks = getLocks();
         const pendingTask = locks.pending.length
             ? "\nPending: " +
