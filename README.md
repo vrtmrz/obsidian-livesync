@@ -3,7 +3,7 @@
 [Japanese docs](./README_ja.md).
 
 Self-hosted LiveSync is a community implemented synchronization plugin.  
-A purchased or self-hosted CouchDB acts as the intermediate server. Available on every obsidian-compatible platform.
+A self-hosted or purchased CouchDB acts as the intermediate server. Available on every obsidian-compatible platform.
 
 Note: It has no compatibility with the official "Obsidian Sync".
 
@@ -63,8 +63,8 @@ Note: More information about alternative hosting methods needed! Currently, [usi
 
 ### Subsequent Devices
 
-<!-- what does this line mean? what is a timestamp? could this be too much unnecessary technical details? -->
-Strongly recommend using the vault in which all files are completely synchronized including timestamps. Otherwise, some files will be corrupted if failed to resolve conflicts. To simplify, I recommend using a new empty vault.
+Note: If we are going to synchronize with a non-empty vault, the modification dates and times of the files must match between them. Otherwise, extra transfers may occur or files may become corrupted.
+For simplicity, we strongly recommend that we sync to an empty vault.
 
 1. Install the plug-in.
 2. Open the link that you have exported from the first device.
@@ -100,8 +100,8 @@ Synchronization status is shown in statusbar.
     -   💤 LiveSync enabled. Waiting for changes.
     -   ⚡️ Synchronization in progress.
     -   ⚠ An error occurred.
--   ↑ Uploaded pieces <!-- is a "piece" the same thing as a "chunk"? -->
--   ↓ Downloaded pieces
+-   ↑ Uploaded chunks and metadata
+-   ↓ Downloaded chunks and metadata
 -   ⏳ Number of pending processes
 -   🧩 Number of files waiting for their chunks.
 If you have deleted or renamed files, please wait until ⏳ icon disappeared.
