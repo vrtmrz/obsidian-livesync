@@ -10,7 +10,7 @@ If you feel something, please feel free to inform me.
 |   🛰️   | [Remote Database Configurations](#remote-database-configurations) |
 |   📦   | [Local Database Configurations](#local-database-configurations)   |
 |   ⚙️   | [General Settings](#general-settings)                             |
-|   🔁   | [Sync setting](#sync-setting)                                     |
+|   🔁   | [Sync Settings](#sync-settings)                                     |
 |   🔧   | [Miscellaneous](#miscellaneous)                                   |
 |   🧰   | [Hatch](#miscellaneous)                                           |
 |   🔌   | [Plugin and its settings](#plugin-and-its-settings)               |
@@ -47,10 +47,10 @@ The passphrase to used as the key of encryption. Please use the long text.
 
 ### Apply
 Set the End to End encryption enabled and its passphrase for use in replication.  
-If you change the passphrase with existen database, overwriting remote database is strongly recommended.
+If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.
 
 
-### Overwrite by local DB
+### Overwrite remote database
 Overwrite the remote database by the local database using the passphrase you applied.
 
 
@@ -114,7 +114,7 @@ If you enable this option, log only the entries with the popup.
 
 ### Verbose log
 
-## Sync setting
+## Sync Settings
 
 ### LiveSync
 Do LiveSync.

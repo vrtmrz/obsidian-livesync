@@ -99,7 +99,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         addScreenElement("100", containerInformationEl);
         const containerRemoteDatabaseEl = containerEl.createDiv();
         containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
-        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while automatic synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
+        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
         syncWarn.addClass("op-warn-info");
         syncWarn.addClass("sls-hidden");
 
@@ -116,7 +116,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const applyDisplayEnabled = () => {
             if (isAnySyncEnabled()) {
                 dbsettings.forEach((e) => {
-                    e.setDisabled(true).setTooltip("When any sync is enabled, It cound't be changed.");
+                    e.setDisabled(true).setTooltip("Could not change this while any synchronization options are enabled.");
                 });
                 syncWarn.removeClass("sls-hidden");
             } else {
@@ -197,7 +197,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
         new Setting(containerRemoteDatabaseEl)
             .setName("End to End Encryption")
-            .setDesc("Encrypt contents on the remote database. If you use the plugins synchronizing feature, enabling this is recommend.")
+            .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
                     this.plugin.settings.workingEncrypt = value;
@@ -207,7 +207,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         const phasspharase = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
-            .setDesc("Encrypting passphrase. If you change the passphrase with existen database, overwriting remote database is strongly recommended.")
+            .setDesc("Encrypting passphrase. If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.workingPassphrase)
@@ -277,7 +277,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         new Setting(containerRemoteDatabaseEl)
             .setName("Apply")
-            .setDesc("Apply encryption settinngs")
+            .setDesc("Apply encryption settings")
             .addButton((button) =>
                 button
                     .setButtonText("Apply")
@@ -322,7 +322,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerRemoteDatabaseEl)
-            .setName("Overwrite by local DB")
+            .setName("Overwrite remote database")
             .setDesc("Overwrite remote database with local DB and passphrase.")
             .addButton((button) =>
                 button
@@ -336,7 +336,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             )
 
         new Setting(containerRemoteDatabaseEl)
-            .setName("Rebuild")
+            .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")
             .addButton((button) =>
                 button
@@ -680,7 +680,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         addScreenElement("20", containerGeneralSettingsEl);
         const containerSyncSettingEl = containerEl.createDiv();
-        containerSyncSettingEl.createEl("h3", { text: "Sync setting" });
+        containerSyncSettingEl.createEl("h3", { text: "Sync Settings" });
 
         if (this.plugin.settings.versionUpFlash != "") {
             const c = containerSyncSettingEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
@@ -731,7 +731,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
                 ),
             new Setting(containerSyncSettingEl)
-                .setName("Periodic sync intreval")
+                .setName("Periodic Sync interval")
                 .setDesc("Interval (sec)")
                 .addText((text) => {
                     text.setPlaceholder("")
@@ -770,7 +770,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 ),
             new Setting(containerSyncSettingEl)
                 .setName("Sync on Start")
-                .setDesc("Start synchronization on Obsidian started.")
+                .setDesc("Start synchronization after launching Obsidian.")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
                         this.plugin.settings.syncOnStart = value;
@@ -782,7 +782,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerSyncSettingEl)
             .setName("Use Trash for deleted files")
-            .setDesc("Do not delete files that deleted in remote, just move to trash.")
+            .setDesc("Do not delete files that are deleted in remote, just move to trash.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.trashInsteadDelete).onChange(async (value) => {
                     this.plugin.settings.trashInsteadDelete = value;
@@ -792,7 +792,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerSyncSettingEl)
             .setName("Do not delete empty folder")
-            .setDesc("Normally, folder is deleted When the folder became empty by replication. enable this, leave it as is")
+            .setDesc("Normally, a folder is deleted when it becomes empty after a replication. Enabling this will prevent it from getting deleted")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.doNotDeleteFolder).onChange(async (value) => {
                     this.plugin.settings.doNotDeleteFolder = value;
@@ -820,8 +820,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         //         })
         //     );
         new Setting(containerSyncSettingEl)
-            .setName("Check conflict only on opening file.")
-            .setDesc("Do not check conflict while replication")
+            .setName("Check conflict only on opened files")
+            .setDesc("Do not check conflict for replication")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.checkConflictOnlyOnOpen).onChange(async (value) => {
                     this.plugin.settings.checkConflictOnlyOnOpen = value;
@@ -833,7 +833,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             text: sanitizeHTMLToDom(`Experimental`),
         });
         new Setting(containerSyncSettingEl)
-            .setName("Sync hidden files.")
+            .setName("Sync hidden files")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncInternalFiles).onChange(async (value) => {
                     this.plugin.settings.syncInternalFiles = value;
@@ -841,7 +841,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
         new Setting(containerSyncSettingEl)
-            .setName("Scan hidden files before replication.")
+            .setName("Scan for hidden files before replication")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
                     this.plugin.settings.syncInternalFilesBeforeReplication = value;
@@ -849,8 +849,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
         new Setting(containerSyncSettingEl)
-            .setName("Scan hidden files periodicaly.")
-            .setDesc("Seconds, zero to disable.")
+            .setName("Scan hidden files periodically")
+            .setDesc("Seconds, 0 to disable.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.syncInternalFilesInterval + "")
@@ -930,7 +930,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             text: sanitizeHTMLToDom(`Advanced settings`),
         });
         containerSyncSettingEl.createEl("div", {
-            text: `If you reached the payload size limit when using IBM Cloudant, please set batch size and batch limit to a lower value.`,
+            text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
         });
         new Setting(containerSyncSettingEl)
             .setName("Batch size")
@@ -1127,7 +1127,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
-            .setDesc("If enables it, all file operations are ignored.")
+            .setDesc("Stop watching for file change.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
                     this.plugin.settings.suspendFileWatching = value;
@@ -1221,7 +1221,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerPluginSettings)
             .setName("Scan plugins periodically")
-            .setDesc("Scan plugins each 1 minutes.")
+            .setDesc("Scan plugins every 1 minute.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
                     this.plugin.settings.autoSweepPluginsPeriodic = value;
@@ -1272,7 +1272,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerCorruptedDataEl.createEl("h3", { text: "Corrupted or missing data" });
         containerCorruptedDataEl.createEl("h4", { text: "Corrupted" });
         if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
-            const cx = containerCorruptedDataEl.createEl("div", { text: "If you have copy of these items on any device, simply edit once or twice. Or not, delete this. sorry.." });
+            const cx = containerCorruptedDataEl.createEl("div", { text: "If you have a copy of these files on any device, simply edit them once and sync. If not, there's nothing we can do except deleting them. sorry.." });
             for (const k in this.plugin.localDatabase.corruptedEntries) {
                 const xx = cx.createEl("div", { text: `${k}` });
 
@@ -1302,7 +1302,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerCorruptedDataEl.createEl("h4", { text: "Missing or waiting" });
         if (Object.keys(this.plugin.queuedFiles).length > 0) {
             const cx = containerCorruptedDataEl.createEl("div", {
-                text: "These files have missing or waiting chunks. Perhaps almost chunks will be found in a while after replication. But if there're no chunk, you have to restore database entry from existed file by hitting the button below.",
+                text: "These files have missing or waiting chunks. Perhaps these chunks will arrive in a while after replication. But if they don't, you have to restore it's database entry from a existing local file by hitting the button below.",
             });
             const files = [...new Set([...this.plugin.queuedFiles.map((e) => e.entry._id)])];
             for (const k of files) {

@@ -9,8 +9,8 @@
 3. Another device is watching remote CouchDB's changes, so retrieve new changes.
 4. Self-hosted LiveSync reflects replicated changeset into Obsidian's vault.
 
-Note: The figure is drawn as single-directional, between two devices. But everything occurs bi-directionally between many devices at once in real.
+Note: The figure is drawn as single-directional, between two devices for demonstration purposes. Everything actually occurs bi-directionally between many devices at the same time.
 
-## Techniques to keep bandwidth low.
+## Techniques to keep bandwidth consumption low.
 
 ![dedupe](../images/2.png)

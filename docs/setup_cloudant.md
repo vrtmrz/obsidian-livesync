@@ -71,7 +71,7 @@ In these instructions, create IBM Cloudant Instance for trial.
     follow the figure, it's  
     "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
 
-## Self-hosted LiveSync setting
+## Self-hosted LiveSync settings
 
 ![Setting](../images/remote_db_setting.png)
 
