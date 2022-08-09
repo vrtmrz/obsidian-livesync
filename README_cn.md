@@ -34,7 +34,7 @@ Self-hosted LiveSync (自搭建在线同步) 是一个社区实现的在线同�
 
 首先，准备好你的数据库。IBM Cloudant 是用于测试的首选。或者，您也可以在自己的服务器上安装 CouchDB。有关更多信息，请参阅以下内容：
 1. [Setup IBM Cloudant](docs/setup_cloudant.md)
-2. [Setup your CouchDB](docs/setup_own_server.md)
+2. [Setup your CouchDB](docs/setup_own_server_cn.md)
 
 Note: 正在征集更多搭建方法！目前在讨论的有 [使用 fly.io](https://github.com/vrtmrz/obsidian-livesync/discussions/85)。
 
