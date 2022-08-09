@@ -10,3 +10,8 @@
 #### Minors
 - 0.13.1 Fixed on conflict resolution.
 - 0.13.2 Fixed file deletion failures.
+- 0.13.4
+  - Now, we can synchronise hidden files that conflicted on each devices.
+  - We can search for conflicting docs.
+  - Pending processes can now be run at any time.
+  - Performance improved on synchronising large numbers of files at once.
