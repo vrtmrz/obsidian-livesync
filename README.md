@@ -1,6 +1,6 @@
 # Self-hosted LiveSync
 
-[Japanese docs](./README_ja.md).
+[Japanese docs](./README_ja.md) [Chinese docs](./README_cn.md).
 
 Self-hosted LiveSync is a community implemented synchronization plugin.  
 A self-hosted or purchased CouchDB acts as the intermediate server. Available on every obsidian-compatible platform.
