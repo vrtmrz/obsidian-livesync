@@ -31,14 +31,25 @@ export class DocumentHistoryModal extends Modal {
     }
     async loadFile() {
         const db = this.plugin.localDatabase;
-        const w = await db.localDatabase.get(path2id(this.file), { revs_info: true });
-        this.revs_info = w._revs_info.filter((e) => e.status == "available");
-        this.range.max = `${this.revs_info.length - 1}`;
-        this.range.value = this.range.max;
-        this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
-        await this.loadRevs();
+        try {
+            const w = await db.localDatabase.get(path2id(this.file), { revs_info: true });
+            this.revs_info = w._revs_info.filter((e) => e.status == "available");
+            this.range.max = `${this.revs_info.length - 1}`;
+            this.range.value = this.range.max;
+            this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
+            await this.loadRevs();
+        } catch (ex) {
+            if (ex.status && ex.status == 404) {
+                this.range.max = "0";
+                this.range.value = "";
+                this.range.disabled = true;
+                this.showDiff
+                this.contentView.setText(`History of this file was not recorded.`);
+            }
+        }
     }
     async loadRevs() {
+        if (this.revs_info.length == 0) return;
         const db = this.plugin.localDatabase;
         const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
         const rev = this.revs_info[index];
