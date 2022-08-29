@@ -22,7 +22,7 @@ jobs:
     - name: Get Version
       id: version
       run: |
-        echo "::set-output name=tag::$(git describe --abbrev=0)"
+        echo "::set-output name=tag::$(git describe --abbrev=0 --tags)"
     # Build the plugin
     - name: Build
       id: build
