@@ -40,8 +40,8 @@ export const connectRemoteCouchDBWithSetting = (settings: RemoteDBSettings, isMo
 
 const connectRemoteCouchDB = async (uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> => {
     if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
-    if (uri.toLowerCase() != uri) return "Remote URI and database name cound not contain capital letters.";
-    if (uri.indexOf(" ") !== -1) return "Remote URI and database name cound not contain spaces.";
+    if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
+    if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
     let authHeader = "";
     if (auth.username && auth.password) {
         const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${auth.username}:${auth.password}`));
@@ -225,3 +225,55 @@ export const checkSyncInfo = async (db: PouchDB.Database): Promise<boolean> => {
         }
     }
 };
+
+
+export async function putDesignDocuments(db: PouchDB.Database) {
+    type DesignDoc = {
+        _id: string;
+        _rev: string;
+        ver: number;
+        filters: {
+            default: string,
+            push: string,
+            pull: string,
+        };
+    }
+    const design: DesignDoc = {
+        "_id": "_design/replicate",
+        "_rev": undefined as string | undefined,
+        "ver": 2,
+        "filters": {
+            "default": function (doc: any, req: any) {
+                return !("remote" in doc && doc.remote);
+            }.toString(),
+            "push": function (doc: any, req: any) {
+                return true;
+            }.toString(),
+            "pull": function (doc: any, req: any) {
+                return !(doc.type && doc.type == "leaf")
+            }.toString(),
+        }
+    }
+
+    // We can use the filter on replication :   filter: 'replicate/default',
+
+    try {
+        const w = await db.get<DesignDoc>(design._id);
+        if (w.ver < design.ver) {
+            design._rev = w._rev;
+            //@ts-ignore
+            await db.put(design);
+            return true;
+        }
+    } catch (ex) {
+        if (ex.status && ex.status == 404) {
+            delete design._rev;
+            //@ts-ignore
+            await db.put(design);
+            return true;
+        } else {
+            Logger("Could not make design documents", LOG_LEVEL.INFO);
+        }
+    }
+    return false;
+}

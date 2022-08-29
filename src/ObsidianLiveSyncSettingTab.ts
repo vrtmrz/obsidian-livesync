@@ -115,12 +115,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         const applyDisplayEnabled = () => {
             if (isAnySyncEnabled()) {
-                dbsettings.forEach((e) => {
+                dbSettings.forEach((e) => {
                     e.setDisabled(true).setTooltip("Could not change this while any synchronization options are enabled.");
                 });
                 syncWarn.removeClass("sls-hidden");
             } else {
-                dbsettings.forEach((e) => {
+                dbSettings.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
                 syncWarn.addClass("sls-hidden");
@@ -149,8 +149,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         };
 
-        const dbsettings: Setting[] = [];
-        dbsettings.push(
+        const dbSettings: Setting[] = [];
+        dbSettings.push(
             new Setting(containerRemoteDatabaseEl).setName("URI").addText((text) =>
                 text
                     .setPlaceholder("https://........")
@@ -652,7 +652,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerGeneralSettingsEl)
             .setName("Do not show low-priority Log")
-            .setDesc("Reduce log infomations")
+            .setDesc("Reduce log information")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
                     this.plugin.settings.lessInformationInLog = value;
@@ -661,7 +661,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerGeneralSettingsEl)
             .setName("Verbose Log")
-            .setDesc("Show verbose log ")
+            .setDesc("Show verbose log")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.showVerboseLog).onChange(async (value) => {
                     this.plugin.settings.showVerboseLog = value;
@@ -810,15 +810,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        // new Setting(containerSyncSettingEl)
-        //     .setName("Skip old files on sync")
-        //     .setDesc("Skip old incoming if incoming changes older than storage.")
-        //     .addToggle((toggle) =>
-        //         toggle.setValue(this.plugin.settings.skipOlderFilesOnSync).onChange(async (value) => {
-        //             this.plugin.settings.skipOlderFilesOnSync = value;
-        //             await this.plugin.saveSettings();
-        //         })
-        //     );
         new Setting(containerSyncSettingEl)
             .setName("Check conflict only on opened files")
             .setDesc("Do not check conflict for replication")
@@ -829,9 +820,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        containerSyncSettingEl.createEl("h3", {
-            text: sanitizeHTMLToDom(`Experimental`),
-        });
+
         new Setting(containerSyncSettingEl)
             .setName("Sync hidden files")
             .addToggle((toggle) =>
@@ -926,6 +915,86 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             )
 
+        containerSyncSettingEl.createEl("h3", {
+            text: sanitizeHTMLToDom(`Experimental`),
+        });
+        new Setting(containerSyncSettingEl)
+            .setName("Regular expression to ignore files")
+            .setDesc("If this is set, any changes to local and remote files that match this will be skipped.")
+            .addTextArea((text) => {
+                text
+                    .setValue(this.plugin.settings.syncIgnoreRegEx)
+                    .setPlaceholder("\\.pdf$")
+                    .onChange(async (value) => {
+                        let isValidRegExp = false;
+                        try {
+                            new RegExp(value);
+                            isValidRegExp = true;
+                        } catch (_) {
+                            // NO OP.
+                        }
+                        if (isValidRegExp || value.trim() == "") {
+                            this.plugin.settings.syncIgnoreRegEx = value;
+                            await this.plugin.saveSettings();
+                        }
+                    })
+                return text;
+            }
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Regular expression for restricting synchronization targets")
+            .setDesc("If this is set, changes to local and remote files that only match this will be processed.")
+            .addTextArea((text) => {
+                text
+                    .setValue(this.plugin.settings.syncOnlyRegEx)
+                    .setPlaceholder("\\.md$|\\.txt")
+                    .onChange(async (value) => {
+                        let isValidRegExp = false;
+                        try {
+                            new RegExp(value);
+                            isValidRegExp = true;
+                        } catch (_) {
+                            // NO OP.
+                        }
+                        if (isValidRegExp || value.trim() == "") {
+                            this.plugin.settings.syncOnlyRegEx = value;
+                            await this.plugin.saveSettings();
+                        }
+                    })
+                return text;
+            }
+            );
+
+
+        new Setting(containerSyncSettingEl)
+            .setName("Chunk size")
+            .setDesc("Customize chunk size for binary files (0.1MBytes). This cannot be increased when using IBM Cloudant.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.customChunkSize + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 100) {
+                            v = 100;
+                        }
+                        this.plugin.settings.customChunkSize = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerSyncSettingEl)
+            .setName("Read chunks online.")
+            .setDesc("If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.readChunksOnline)
+                    .onChange(async (value) => {
+                        this.plugin.settings.readChunksOnline = value;
+                        await this.plugin.saveSettings();
+                    })
+                return toggle;
+            }
+            );
         containerSyncSettingEl.createEl("h3", {
             text: sanitizeHTMLToDom(`Advanced settings`),
         });

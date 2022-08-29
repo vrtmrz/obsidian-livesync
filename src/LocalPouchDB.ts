@@ -24,9 +24,9 @@ import {
 } from "./lib/src/types";
 import { RemoteDBSettings } from "./lib/src/types";
 import { resolveWithIgnoreKnownError, runWithLock, shouldSplitAsPlainText, splitPieces2, enableEncryption } from "./lib/src/utils";
-import { path2id } from "./utils";
+import { id2path, path2id } from "./utils";
 import { Logger } from "./lib/src/logger";
-import { checkRemoteVersion, connectRemoteCouchDBWithSetting, getLastPostFailedBySize } from "./utils_couchdb";
+import { checkRemoteVersion, connectRemoteCouchDBWithSetting, getLastPostFailedBySize, putDesignDocuments } from "./utils_couchdb";
 import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 import { LRUCache } from "./lib/src/LRUCache";
 
@@ -72,6 +72,7 @@ export class LocalPouchDB {
     chunkVersion = -1;
     maxChunkVersion = -1;
     minChunkVersion = -1;
+    needScanning = false;
 
     cancelHandler<T extends PouchDB.Core.Changes<EntryDoc> | PouchDB.Replication.Sync<EntryDoc> | PouchDB.Replication.Replication<EntryDoc>>(handler: T): T {
         if (handler != null) {
@@ -160,6 +161,7 @@ export class LocalPouchDB {
                 this.localDatabase.removeAllListeners();
             });
             this.nodeid = nodeinfo.nodeid;
+            await putDesignDocuments(this.localDatabase);
 
             // Traceing the leaf id
             const changes = this.localDatabase
@@ -299,6 +301,10 @@ export class LocalPouchDB {
     }
 
     async getDBEntryMeta(path: string, opt?: PouchDB.Core.GetOptions, includeDeleted = false): Promise<false | LoadedEntry> {
+        // safety valve
+        if (!this.isTargetFile(path)) {
+            return false;
+        }
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -348,6 +354,10 @@ export class LocalPouchDB {
         return false;
     }
     async getDBEntry(path: string, opt?: PouchDB.Core.GetOptions, dump = false, waitForReady = true, includeDeleted = false): Promise<false | LoadedEntry> {
+        // safety valve
+        if (!this.isTargetFile(path)) {
+            return false;
+        }
         const id = path2id(path);
         try {
             let obj: EntryDocResponse = null;
@@ -392,26 +402,51 @@ export class LocalPouchDB {
                 // simple note
             }
             if (obj.type == "newnote" || obj.type == "plain") {
-                // search childrens
+                // search children
                 try {
                     if (dump) {
                         Logger(`Enhanced doc`);
                         Logger(obj);
                     }
-                    let childrens: string[];
-                    try {
-                        childrens = await Promise.all(obj.children.map((e) => this.getDBLeaf(e, waitForReady)));
-                        if (dump) {
-                            Logger(`Chunks:`);
-                            Logger(childrens);
+                    let children: string[] = [];
+
+                    if (this.settings.readChunksOnline) {
+                        const items = await this.fetchLeafFromRemote(obj.children);
+                        if (items) {
+                            for (const v of items) {
+                                if (v.doc && v.doc.type == "leaf") {
+                                    children.push(v.doc.data);
+                                } else {
+                                    if (!opt) {
+                                        Logger(`Chunks of ${obj._id} are not valid.`, LOG_LEVEL.NOTICE);
+                                        this.needScanning = true;
+                                        this.corruptedEntries[obj._id] = obj;
+                                    }
+                                    return false;
+                                }
+                            }
+                        } else {
+                            if (opt) {
+                                Logger(`Could not retrieve chunks of ${obj._id}. we have to `, LOG_LEVEL.NOTICE);
+                                this.needScanning = true;
+                            }
+                            return false;
                         }
-                    } catch (ex) {
-                        Logger(`Something went wrong on reading chunks of ${obj._id} from database, see verbose info for detail.`, LOG_LEVEL.NOTICE);
-                        Logger(ex, LOG_LEVEL.VERBOSE);
-                        this.corruptedEntries[obj._id] = obj;
-                        return false;
+                    } else {
+                        try {
+                            children = await Promise.all(obj.children.map((e) => this.getDBLeaf(e, waitForReady)));
+                            if (dump) {
+                                Logger(`Chunks:`);
+                                Logger(children);
+                            }
+                        } catch (ex) {
+                            Logger(`Something went wrong on reading chunks of ${obj._id} from database, see verbose info for detail.`, LOG_LEVEL.NOTICE);
+                            Logger(ex, LOG_LEVEL.VERBOSE);
+                            this.corruptedEntries[obj._id] = obj;
+                            return false;
+                        }
                     }
-                    const data = childrens.join("");
+                    const data = children.join("");
                     const doc: LoadedEntry & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta = {
                         data: data,
                         _id: obj._id,
@@ -452,6 +487,10 @@ export class LocalPouchDB {
         return false;
     }
     async deleteDBEntry(path: string, opt?: PouchDB.Core.GetOptions): Promise<boolean> {
+        // safety valve
+        if (!this.isTargetFile(path)) {
+            return false;
+        }
         const id = path2id(path);
 
         try {
@@ -521,7 +560,7 @@ export class LocalPouchDB {
                 for (const v of result.rows) {
                     // let doc = v.doc;
                     if (v.id.startsWith(prefix) || v.id.startsWith("/" + prefix)) {
-                        delDocs.push(v.id);
+                        if (this.isTargetFile(id2path(v.id))) delDocs.push(v.id);
                         // console.log("!" + v.id);
                     } else {
                         if (!v.id.startsWith("h:")) {
@@ -566,12 +605,17 @@ export class LocalPouchDB {
         return true;
     }
     async putDBEntry(note: LoadedEntry, saveAsBigChunk?: boolean) {
+        //safety valve
+        if (!this.isTargetFile(id2path(note._id))) {
+            return;
+        }
+
         // let leftData = note.data;
         const savenNotes = [];
         let processed = 0;
         let made = 0;
         let skiped = 0;
-        let pieceSize = MAX_DOC_SIZE_BIN;
+        let pieceSize = MAX_DOC_SIZE_BIN * Math.max(this.settings.customChunkSize, 1);
         let plainSplit = false;
         let cacheUsed = 0;
         const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
@@ -727,7 +771,7 @@ export class LocalPouchDB {
                 }
             });
         } else {
-            Logger(`note coud not saved:${note._id}`);
+            Logger(`note could not saved:${note._id}`);
         }
     }
 
@@ -779,6 +823,7 @@ export class LocalPouchDB {
         }
 
         if (!skipCheck) {
+            await putDesignDocuments(dbret.db);
             if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
                 Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
                 return false;
@@ -850,6 +895,10 @@ export class LocalPouchDB {
             batches_limit: setting.batches_limit,
             batch_size: setting.batch_size,
         };
+        if (setting.readChunksOnline) {
+            syncOptionBase.push = { filter: 'replicate/push' };
+            syncOptionBase.pull = { filter: 'replicate/pull' };
+        }
         const syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
 
         return { db: dbret.db, info: dbret.info, syncOptionBase, syncOption };
@@ -902,6 +951,8 @@ export class LocalPouchDB {
         this.syncStatus = "ERRORED";
         this.syncHandler = this.cancelHandler(this.syncHandler);
         this.updateInfo();
+        Logger("Replication error", LOG_LEVEL.NOTICE, "sync");
+        Logger(e);
     }
     replicationPaused() {
         this.syncStatus = "PAUSED";
@@ -962,7 +1013,7 @@ export class LocalPouchDB {
                     }
                 });
         } else if (syncmode == "pullOnly") {
-            this.syncHandler = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase });
+            this.syncHandler = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase, ...(this.settings.readChunksOnline ? { filter: "replicate/pull" } : {}) });
             this.syncHandler
                 .on("change", async (e) => {
                     await this.replicationChangeDetected({ direction: "pull", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
@@ -982,7 +1033,7 @@ export class LocalPouchDB {
                     }
                 });
         } else if (syncmode == "pushOnly") {
-            this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase });
+            this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase, ...(this.settings.readChunksOnline ? { filter: "replicate/push" } : {}) });
             this.syncHandler.on("change", async (e) => {
                 await this.replicationChangeDetected({ direction: "push", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
                 if (retrying) {
@@ -1293,4 +1344,29 @@ export class LocalPouchDB {
         if (this.minChunkVersion > 0 && this.minChunkVersion > ver) return false;
         return true;
     }
+
+    isTargetFile(file: string) {
+        if (file.includes(":")) return true;
+        if (this.settings.syncOnlyRegEx) {
+            const syncOnly = new RegExp(this.settings.syncOnlyRegEx);
+            if (!file.match(syncOnly)) return false;
+        }
+        if (this.settings.syncIgnoreRegEx) {
+            const syncIgnore = new RegExp(this.settings.syncIgnoreRegEx);
+            if (file.match(syncIgnore)) return false;
+        }
+        return true;
+    }
+    async fetchLeafFromRemote(ids: string[], showResult = false) {
+        const ret = await connectRemoteCouchDBWithSetting(this.settings, this.isMobile);
+        if (typeof (ret) === "string") {
+
+            Logger(`Could not connect to server.${ret} `, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "fetch");
+            return;
+        }
+
+        const leafs = await ret.db.allDocs({ keys: ids, include_docs: true });
+        return leafs.rows;
+    }
+
 }
