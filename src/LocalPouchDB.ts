@@ -411,11 +411,11 @@ export class LocalPouchDB {
                     let children: string[] = [];
 
                     if (this.settings.readChunksOnline) {
-                        const items = await this.fetchLeafFromRemote(obj.children);
+                        const items = await this.CollectChunks(obj.children);
                         if (items) {
                             for (const v of items) {
-                                if (v.doc && v.doc.type == "leaf") {
-                                    children.push(v.doc.data);
+                                if (v && v.type == "leaf") {
+                                    children.push(v.data);
                                 } else {
                                     if (!opt) {
                                         Logger(`Chunks of ${obj._id} are not valid.`, LOG_LEVEL.NOTICE);
@@ -1357,16 +1357,31 @@ export class LocalPouchDB {
         }
         return true;
     }
-    async fetchLeafFromRemote(ids: string[], showResult = false) {
+
+    // Collect chunks from both local and remote.
+    async CollectChunks(ids: string[], showResult = false) {
+        // Fetch local chunks.
+        const localChunks = await this.localDatabase.allDocs({ keys: ids, include_docs: true });
+        const missingChunks = localChunks.rows.filter(e => "error" in e).map(e => e.key);
+        // If we have enough chunks, return them.
+        if (missingChunks.length == 0) {
+            return localChunks.rows.map(e => e.doc);
+        }
+
+        // Fetching remote chunks.
         const ret = await connectRemoteCouchDBWithSetting(this.settings, this.isMobile);
         if (typeof (ret) === "string") {
 
             Logger(`Could not connect to server.${ret} `, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "fetch");
-            return;
+            return false;
         }
 
-        const leafs = await ret.db.allDocs({ keys: ids, include_docs: true });
-        return leafs.rows;
+        const remoteChunks = await ret.db.allDocs({ keys: missingChunks, include_docs: true });
+        if (remoteChunks.rows.some(e => "error" in e)) {
+            return false;
+        }
+        // Merge them
+        const chunkMap: { [key: string]: EntryDoc } = remoteChunks.rows.reduce((p, c) => ({ ...p, [c.key]: c.doc }), {})
+        return localChunks.rows.map(e => ("error" in e) ? (chunkMap[e.key]) : e.doc);
     }
-
 }
