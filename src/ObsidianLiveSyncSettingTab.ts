@@ -469,6 +469,22 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 } else {
                                     addResult("✔ httpd.enable_cors is ok.");
                                 }
+                                // If the server is not cloudant, configure request size
+                                if (!this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                                    // REQUEST SIZE
+                                    if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
+                                        addResult("❗ chttpd.max_http_request_size is low)");
+                                        addConfigFixButton("Set chttpd.max_http_request_size", "chttpd/max_http_request_size", "4294967296");
+                                    } else {
+                                        addResult("✔ chttpd.max_http_request_size is ok.");
+                                    }
+                                    if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
+                                        addResult("❗ couchdb.max_document_size is low)");
+                                        addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
+                                    } else {
+                                        addResult("✔ couchdb.max_document_size is ok.");
+                                    }
+                                }
                                 // CORS check
                                 //  checking connectivity for mobile
                                 if (responseConfig?.cors?.credentials != "true") {

@@ -11,8 +11,12 @@
 
 #### Recommended configuration for Self-hosted CouchDB
 - Set chunk size to around 100 to 250 (10MB - 25MB per chunk)
+- *Set batch size to 100 and batch limit to 20 (0.14.2)*
 - Be sure to `Read chunks online` checked.
 
+#### Minors
+- 0.14.2 Fixed issue about retrieving files if synchronisation has been interrupted or failed
+- 0.14.3 New test items have been added to `Check database configuration`.
 
 ### 0.13.0
 
