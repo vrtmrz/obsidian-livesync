@@ -1928,7 +1928,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async pullFile(filename: string, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
         const targetFile = this.app.vault.getAbstractFileByPath(id2path(filename));
-        if (!this.isTargetFile(targetFile)) return;
+        if (!this.isTargetFile(id2path(filename))) return;
         if (targetFile == null) {
             //have to create;
             const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
