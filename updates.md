@@ -17,6 +17,7 @@
 #### Minors
 - 0.14.2 Fixed issue about retrieving files if synchronisation has been interrupted or failed
 - 0.14.3 New test items have been added to `Check database configuration`.
+- 0.14.4 Fixed issue of importing configurations.
 
 ### 0.13.0
 

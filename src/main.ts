@@ -402,6 +402,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             }
                         }
                         let initDB;
+                        this.settings = newSettingW;
                         await this.saveSettings();
                         if (keepLocalDB == "no") {
                             this.resetLocalOldDatabase();
