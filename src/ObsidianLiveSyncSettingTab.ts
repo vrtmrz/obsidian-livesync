@@ -599,43 +599,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             )
 
-        containerLocalDatabaseEl.createEl("div", {
-            text: sanitizeHTMLToDom(`Advanced settings<br>
-                Configuration of how LiveSync makes chunks from the file.`),
-        });
-        new Setting(containerLocalDatabaseEl)
-            .setName("Minimum chunk size")
-            .setDesc("(letters), minimum chunk size.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.minimumChunkSize + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 10 || v > 1000) {
-                            v = 10;
-                        }
-                        this.plugin.settings.minimumChunkSize = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
 
-        new Setting(containerLocalDatabaseEl)
-            .setName("LongLine Threshold")
-            .setDesc("(letters), If the line is longer than this, make the line to chunk")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.longLineThreshold + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 10 || v > 1000) {
-                            v = 10;
-                        }
-                        this.plugin.settings.longLineThreshold = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
         let newDatabaseName = this.plugin.settings.additionalSuffixOfDatabaseName + "";
         new Setting(containerLocalDatabaseEl)
             .setName("Database suffix")

@@ -1618,18 +1618,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const count = objects.length;
             Logger(procedurename);
             let i = 0;
-            // let lastTicks = performance.now() + 2000;
-            // let workProcs = 0;
             const p = Parallels();
             const limit = 10;
 
             Logger(`${procedurename} exec.`);
             for (const v of objects) {
-                // workProcs++;
                 if (!this.localDatabase.isReady) throw Error("Database is not ready!");
-                p.add(callback(v).then(() => {
+                const addProc = (p: () => Promise<void>): Promise<unknown> => {
+                    return p();
+                }
+                p.add(addProc(async () => {
+                    try {
+                        await callback(v);
                     i++;
-                    if (i % 100 == 0) {
+                        if (i % 50 == 0) {
                         const notify = `${procedurename} : ${i}/${count}`;
                         if (showingNotice) {
                             Logger(notify, LOG_LEVEL.NOTICE, "syncAll");
@@ -1638,13 +1640,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         }
                         this.setStatusBarText(notify);
                     }
-                }).catch(ex => {
+                    } catch (ex) {
                     Logger(`Error while ${procedurename}`, LOG_LEVEL.NOTICE);
                     Logger(ex);
-                }).finally(() => {
-                    // workProcs--;
-                })
-                );
+                    }
+                }));
                 await p.wait(limit);
             }
             await p.all();
@@ -1660,6 +1660,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
                 Logger(`Check or pull from db:${e}`);
                 await this.pullFile(e, filesStorage, false, null, false);
+                Logger(`Check or pull from db:${e} OK`);
             });
         }
         if (!initialScan) {

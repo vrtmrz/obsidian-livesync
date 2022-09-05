@@ -615,7 +615,8 @@ export class LocalPouchDB {
         let processed = 0;
         let made = 0;
         let skiped = 0;
-        let pieceSize = MAX_DOC_SIZE_BIN * Math.max(this.settings.customChunkSize, 1);
+        const maxChunkSize = MAX_DOC_SIZE_BIN * Math.max(this.settings.customChunkSize, 1);
+        let pieceSize = maxChunkSize;
         let plainSplit = false;
         let cacheUsed = 0;
         const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
@@ -624,20 +625,11 @@ export class LocalPouchDB {
             plainSplit = true;
         }
 
+        const minimumChunkSize = Math.min(Math.max(40, ~~(note.data.length / 100)), maxChunkSize);
+        if (pieceSize < minimumChunkSize) pieceSize = minimumChunkSize;
         const newLeafs: EntryLeaf[] = [];
-        // To keep low bandwith and database size,
-        // Dedup pieces on database.
-        // from 0.1.10, for best performance. we use markdown delimiters
-        // 1. \n[^\n]{longLineThreshold}[^\n]*\n -> long sentence shuld break.
-        // 2. \n\n shold break
-        // 3. \r\n\r\n should break
-        // 4. \n# should break.
-        let minimumChunkSize = this.settings.minimumChunkSize;
-        if (minimumChunkSize < 10) minimumChunkSize = 10;
-        let longLineThreshold = this.settings.longLineThreshold;
-        if (longLineThreshold < 100) longLineThreshold = 100;
 
-        const pieces = splitPieces2(note.data, pieceSize, plainSplit, minimumChunkSize, longLineThreshold);
+        const pieces = splitPieces2(note.data, pieceSize, plainSplit, minimumChunkSize, 0);
         for (const piece of pieces()) {
             processed++;
             let leafid = "";
@@ -1380,8 +1372,21 @@ export class LocalPouchDB {
         if (remoteChunks.rows.some(e => "error" in e)) {
             return false;
         }
+
+        const remoteChunkItems = remoteChunks.rows.map(e => e.doc);
+        const max = remoteChunkItems.length;
+        let last = 0;
+        // Chunks should be ordered by as we requested.
+        function findChunk(key: string) {
+            const offset = last;
+            for (let i = 0; i < max; i++) {
+                const idx = (offset + i) % max;
+                last = i;
+                if (remoteChunkItems[idx]._id == key) return remoteChunkItems[idx];
+            }
+            throw Error("Chunk collecting error");
+        }
         // Merge them
-        const chunkMap: { [key: string]: EntryDoc } = remoteChunks.rows.reduce((p, c) => ({ ...p, [c.key]: c.doc }), {})
-        return localChunks.rows.map(e => ("error" in e) ? (chunkMap[e.key]) : e.doc);
+        return localChunks.rows.map(e => ("error" in e) ? (findChunk(e.key)) : e.doc);
     }
 }
