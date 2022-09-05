@@ -2,12 +2,12 @@
     "compilerOptions": {
         "baseUrl": ".",
         "module": "ESNext",
-        "target": "ES6",
+        "target": "ES2018",
         "allowJs": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
         // "importsNotUsedAsValues": "error",
-        "importHelpers": true,
+        "importHelpers": false,
         "alwaysStrict": true,
         "lib": ["es2018", "DOM", "ES5", "ES6", "ES7"]
     },
