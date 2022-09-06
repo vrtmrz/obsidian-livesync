@@ -3,7 +3,7 @@ import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { delay, runWithLock, versionNumberString2Number } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { checkSyncInfo, connectRemoteCouchDBWithSetting } from "./utils_couchdb";
+import { checkSyncInfo } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 
@@ -15,7 +15,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        const db = await connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.localDatabase.isMobile);
+        const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.localDatabase.isMobile);
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
@@ -225,7 +225,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 passphrase: this.plugin.settings.workingPassphrase,
             };
             console.dir(settingForCheck);
-            const db = await connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
+            const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
             if (typeof db === "string") {
                 Logger("Could not connect to the database.", LOG_LEVEL.NOTICE);
                 return false;
