@@ -18,6 +18,9 @@
 - 0.14.2 Fixed issue about retrieving files if synchronisation has been interrupted or failed
 - 0.14.3 New test items have been added to `Check database configuration`.
 - 0.14.4 Fixed issue of importing configurations.
+- 0.14.5 Auto chunk size adjusting implemented.
+- 0.14.6 Change Target to ES2018
+- 0.14.7 Refactor and fix typos.
 
 ### 0.13.0
 
