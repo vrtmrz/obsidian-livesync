@@ -9,8 +9,19 @@
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,
         "alwaysStrict": true,
-        "lib": ["es2018", "DOM", "ES5", "ES6", "ES7"]
+        "lib": [
+            "es2018",
+            "DOM",
+            "ES5",
+            "ES6",
+            "ES7",
+            "es2019.array"
+        ]
     },
-    "include": ["**/*.ts"],
-    "exclude": ["pouchdb-browser-webpack"]
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "pouchdb-browser-webpack"
+    ]
 }
