@@ -43,7 +43,7 @@ Note: More information about alternative hosting methods needed! Currently, [usi
 ### First device
 
 1. Install the plugin on your device.
-2. Configure remote database infomation.
+2. Configure remote database information.
 	1. Fill your server's information into the `Remote Database configuration` pane.
 	2. Enabling `End to End Encryption` is recommended. After entering a passphrase, click `Apply`.
 	3. Click `Test Database Connection` and make sure that the plugin says `Connected to (your-database-name)`.
@@ -53,7 +53,7 @@ Note: More information about alternative hosting methods needed! Currently, [usi
 	2. Or, set up the synchronization as you like. By default, none of the settings are enabled, meaning you would need to manually trigger the synchronization process.
 	3. Additional configurations are also here. I recommend enabling `Use Trash for deleted files`, but you can also leave all configurations as-is.
 4. Configure miscellaneous features.
-	1. Enabling `Show staus inside editor` shows status at the top-right corner of the editor while in editing mode. (Recommended)
+	1. Enabling `Show status inside editor` shows status at the top-right corner of the editor while in editing mode. (Recommended)
 5. Go back to the editor. Wait for the initial scan to complete.
 6. When the status no longer changes and shows a ⏹️ for COMPLETED (No ⏳ and 🧩 icons), you are ready to synchronize with the server.
 7. Press the replicate icon on the Ribbon or run `Replicate now` from the command palette. This will send all your data to the server.
@@ -115,7 +115,7 @@ If you have deleted or renamed files, please wait until ⏳ icon disappeared.
 -   While synchronizing, files are compared by their modification time and the older ones will be overwritten by the newer ones. Then plugin checks for conflicts and if a merge is needed, a dialog will open.
 -   Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case you can delete these items from the settings dialog.
 -   If your database looks corrupted, try "Drop History". Usually, It is the easiest way.
--   To stop the bootup sequence (eg. for fixing problems on databases), you can put a `redflag.md` file at the root of your vault.
+-   To stop the boot up sequence (eg. for fixing problems on databases), you can put a `redflag.md` file at the root of your vault.
 -   Q: Database is growing, how can I shrink it down?
     A: each of the docs is saved with their past 100 revisions for detecting and resolving conflicts. Picturing that one device has been offline for a while, and comes online again. The device has to compare its notes with the remotely saved ones. If there exists a historic revision in which the note used to be identical, it could be updated safely (like git fast-forward). Even if that is not in revision histories, we only have to check the differences after the revision that both devices commonly have. This is like git's conflict resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
 -   And more technical Information are in the [Technical Information](docs/tech_info.md)

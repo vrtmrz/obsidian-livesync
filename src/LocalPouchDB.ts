@@ -31,7 +31,7 @@ import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 import { LRUCache } from "./lib/src/LRUCache";
 
 // when replicated, LiveSync checks chunk versions that every node used.
-// If all minumum version of every devices were up, that means we can convert database automatically.
+// If all minimum version of every devices were up, that means we can convert database automatically.
 
 const currentVersionRange: ChunkVersionRange = {
     min: 0,
@@ -163,7 +163,7 @@ export class LocalPouchDB {
             this.nodeid = nodeinfo.nodeid;
             await putDesignDocuments(this.localDatabase);
 
-            // Traceing the leaf id
+            // Tracings the leaf id
             const changes = this.localDatabase
                 .changes({
                     since: "now",
@@ -188,7 +188,7 @@ export class LocalPouchDB {
             const oi = await old.info();
             if (oi.doc_count == 0) {
                 Logger("Old database is empty, proceed to next step", LOG_LEVEL.VERBOSE);
-                // aleady converted.
+                // already converted.
                 return nextSeq();
             }
             //
@@ -294,7 +294,7 @@ export class LocalPouchDB {
                     throw new Error(`Chunk was not found: ${id}`);
                 }
             } else {
-                Logger(`Something went wrong on retriving chunk`);
+                Logger(`Something went wrong while retrieving chunks`);
                 throw ex;
             }
         }
@@ -611,15 +611,15 @@ export class LocalPouchDB {
         }
 
         // let leftData = note.data;
-        const savenNotes = [];
+        const savedNotes = [];
         let processed = 0;
         let made = 0;
-        let skiped = 0;
+        let skipped = 0;
         const maxChunkSize = MAX_DOC_SIZE_BIN * Math.max(this.settings.customChunkSize, 1);
         let pieceSize = maxChunkSize;
         let plainSplit = false;
         let cacheUsed = 0;
-        const userpasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
+        const userPasswordHash = this.h32Raw(new TextEncoder().encode(this.settings.passphrase));
         if (!saveAsBigChunk && shouldSplitAsPlainText(note._id)) {
             pieceSize = MAX_DOC_SIZE;
             plainSplit = true;
@@ -632,7 +632,7 @@ export class LocalPouchDB {
         const pieces = splitPieces2(note.data, pieceSize, plainSplit, minimumChunkSize, 0);
         for (const piece of pieces()) {
             processed++;
-            let leafid = "";
+            let leafId = "";
             // Get hash of piece.
             let hashedPiece = "";
             let hashQ = 0; // if hash collided, **IF**, count it up.
@@ -641,40 +641,40 @@ export class LocalPouchDB {
             const cache = this.hashCaches.get(piece);
             if (cache) {
                 hashedPiece = "";
-                leafid = cache;
+                leafId = cache;
                 needMake = false;
-                skiped++;
+                skipped++;
                 cacheUsed++;
             } else {
                 if (this.settings.encrypt) {
                     // When encryption has been enabled, make hash to be different between each passphrase to avoid inferring password.
-                    hashedPiece = "+" + (this.h32Raw(new TextEncoder().encode(piece)) ^ userpasswordHash).toString(16);
+                    hashedPiece = "+" + (this.h32Raw(new TextEncoder().encode(piece)) ^ userPasswordHash).toString(16);
                 } else {
                     hashedPiece = this.h32(piece);
                 }
-                leafid = "h:" + hashedPiece;
+                leafId = "h:" + hashedPiece;
                 do {
-                    let nleafid = leafid;
+                    let newLeafId = leafId;
                     try {
-                        nleafid = `${leafid}${hashQ}`;
-                        const pieceData = await this.localDatabase.get<EntryLeaf>(nleafid);
+                        newLeafId = `${leafId}${hashQ}`;
+                        const pieceData = await this.localDatabase.get<EntryLeaf>(newLeafId);
                         if (pieceData.type == "leaf" && pieceData.data == piece) {
-                            leafid = nleafid;
+                            leafId = newLeafId;
                             needMake = false;
                             tryNextHash = false;
-                            this.hashCaches.set(piece, leafid);
+                            this.hashCaches.set(piece, leafId);
                         } else if (pieceData.type == "leaf") {
                             Logger("hash:collision!!");
                             hashQ++;
                             tryNextHash = true;
                         } else {
-                            leafid = nleafid;
+                            leafId = newLeafId;
                             tryNextHash = false;
                         }
                     } catch (ex) {
                         if (ex.status && ex.status == 404) {
                             //not found, we can use it.
-                            leafid = nleafid;
+                            leafId = newLeafId;
                             needMake = true;
                             tryNextHash = false;
                         } else {
@@ -689,18 +689,18 @@ export class LocalPouchDB {
                     const savePiece = piece;
 
                     const d: EntryLeaf = {
-                        _id: leafid,
+                        _id: leafId,
                         data: savePiece,
                         type: "leaf",
                     };
                     newLeafs.push(d);
-                    this.hashCaches.set(piece, leafid);
+                    this.hashCaches.set(piece, leafId);
                     made++;
                 } else {
-                    skiped++;
+                    skipped++;
                 }
             }
-            savenNotes.push(leafid);
+            savedNotes.push(leafId);
         }
         let saved = true;
         if (newLeafs.length > 0) {
@@ -709,7 +709,7 @@ export class LocalPouchDB {
                 for (const item of result) {
                     if (!(item as any).ok) {
                         if ((item as any).status && (item as any).status == 409) {
-                            // conflicted, but it would be ok in childrens.
+                            // conflicted, but it would be ok in children.
                         } else {
                             Logger(`Save failed:id:${item.id} rev:${item.rev}`, LOG_LEVEL.NOTICE);
                             Logger(item);
@@ -724,9 +724,9 @@ export class LocalPouchDB {
             }
         }
         if (saved) {
-            Logger(`Content saved:${note._id} ,pieces:${processed} (new:${made}, skip:${skiped}, cache:${cacheUsed})`);
+            Logger(`Content saved:${note._id} ,pieces:${processed} (new:${made}, skip:${skipped}, cache:${cacheUsed})`);
             const newDoc: PlainEntry | NewEntry = {
-                children: savenNotes,
+                children: savedNotes,
                 _id: note._id,
                 ctime: note.ctime,
                 mtime: note.mtime,
@@ -768,7 +768,7 @@ export class LocalPouchDB {
     }
 
     updateInfo: () => void = () => {
-        console.log("default updinfo");
+        console.log("Update Info default implement");
     };
     // eslint-disable-next-line require-await
     async migrate(from: number, to: number): Promise<boolean> {
@@ -808,15 +808,15 @@ export class LocalPouchDB {
             return false;
         }
 
-        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
-        if (typeof dbret === "string") {
-            Logger(`could not connect to ${uri}: ${dbret}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+        const dbRet = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
+        if (typeof dbRet === "string") {
+            Logger(`could not connect to ${uri}: ${dbRet}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
             return false;
         }
 
         if (!skipCheck) {
-            await putDesignDocuments(dbret.db);
-            if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+            await putDesignDocuments(dbRet.db);
+            if (!(await checkRemoteVersion(dbRet.db, this.migrate.bind(this), VER))) {
                 Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
                 return false;
             }
@@ -830,7 +830,7 @@ export class LocalPouchDB {
                 node_chunk_info: { [this.nodeid]: currentVersionRange }
             };
 
-            const remoteMilestone: EntryMilestoneInfo = { ...defMilestonePoint, ...(await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defMilestonePoint)) };
+            const remoteMilestone: EntryMilestoneInfo = { ...defMilestonePoint, ...(await resolveWithIgnoreKnownError(dbRet.db.get(MILSTONE_DOCID), defMilestonePoint)) };
             remoteMilestone.node_chunk_info = { ...defMilestonePoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
             this.remoteLocked = remoteMilestone.locked;
             this.remoteLockedAndDeviceNotAccepted = remoteMilestone.locked && remoteMilestone.accepted_nodes.indexOf(this.nodeid) == -1;
@@ -844,7 +844,7 @@ export class LocalPouchDB {
             if (writeMilestone) {
                 remoteMilestone.node_chunk_info[this.nodeid].min = currentVersionRange.min;
                 remoteMilestone.node_chunk_info[this.nodeid].max = currentVersionRange.max;
-                await dbret.db.put(remoteMilestone);
+                await dbRet.db.put(remoteMilestone);
             }
 
             // Check compatibility and make sure available version
@@ -893,7 +893,7 @@ export class LocalPouchDB {
         }
         const syncOption: PouchDB.Replication.SyncOptions = keepAlive ? { live: true, retry: true, heartbeat: 30000, ...syncOptionBase } : { ...syncOptionBase };
 
-        return { db: dbret.db, info: dbret.info, syncOptionBase, syncOption };
+        return { db: dbRet.db, info: dbRet.info, syncOptionBase, syncOption };
     }
 
     openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>) {
@@ -932,7 +932,7 @@ export class LocalPouchDB {
         Logger("Replication completed", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, showResult ? "sync" : "");
         this.syncHandler = this.cancelHandler(this.syncHandler);
     }
-    replicationDeniend(e: any) {
+    replicationDenied(e: any) {
         this.syncStatus = "ERRORED";
         this.updateInfo();
         this.syncHandler = this.cancelHandler(this.syncHandler);
@@ -958,13 +958,13 @@ export class LocalPouchDB {
         callback: (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<void>,
         retrying: boolean,
         callbackDone: (e: boolean | any) => void,
-        syncmode: "sync" | "pullOnly" | "pushOnly"
+        syncMode: "sync" | "pullOnly" | "pushOnly"
     ): Promise<boolean> {
         if (this.syncHandler != null) {
             Logger("Replication is already in progress.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
             return;
         }
-        Logger(`Oneshot Sync begin... (${syncmode})`);
+        Logger(`Oneshot Sync begin... (${syncMode})`);
         let thisCallback = callbackDone;
         const ret = await this.checkReplicationConnectivity(setting, true, retrying, showResult);
         if (ret === false) {
@@ -984,17 +984,17 @@ export class LocalPouchDB {
             this.originalSetting = setting;
         }
         this.syncHandler = this.cancelHandler(this.syncHandler);
-        if (syncmode == "sync") {
+        if (syncMode == "sync") {
             this.syncHandler = this.localDatabase.sync(db, { checkpoint: "target", ...syncOptionBase });
             this.syncHandler
                 .on("change", async (e) => {
                     await this.replicationChangeDetected(e, showResult, docSentOnStart, docArrivedOnStart, callback);
                     if (retrying) {
                         if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
-                            // restore configration.
+                            // restore configuration.
                             Logger("Back into original settings once.");
                             this.syncHandler = this.cancelHandler(this.syncHandler);
-                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncMode);
                         }
                     }
                 })
@@ -1004,17 +1004,17 @@ export class LocalPouchDB {
                         thisCallback(true);
                     }
                 });
-        } else if (syncmode == "pullOnly") {
+        } else if (syncMode == "pullOnly") {
             this.syncHandler = this.localDatabase.replicate.from(db, { checkpoint: "target", ...syncOptionBase, ...(this.settings.readChunksOnline ? { filter: "replicate/pull" } : {}) });
             this.syncHandler
                 .on("change", async (e) => {
                     await this.replicationChangeDetected({ direction: "pull", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
                     if (retrying) {
                         if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
-                            // restore configration.
+                            // restore configuration.
                             Logger("Back into original settings once.");
                             this.syncHandler = this.cancelHandler(this.syncHandler);
-                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
+                            this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncMode);
                         }
                     }
                 })
@@ -1024,16 +1024,16 @@ export class LocalPouchDB {
                         thisCallback(true);
                     }
                 });
-        } else if (syncmode == "pushOnly") {
+        } else if (syncMode == "pushOnly") {
             this.syncHandler = this.localDatabase.replicate.to(db, { checkpoint: "target", ...syncOptionBase, ...(this.settings.readChunksOnline ? { filter: "replicate/push" } : {}) });
             this.syncHandler.on("change", async (e) => {
                 await this.replicationChangeDetected({ direction: "push", change: e }, showResult, docSentOnStart, docArrivedOnStart, callback);
                 if (retrying) {
                     if (this.docSent - docSentOnStart + (this.docArrived - docArrivedOnStart) > this.originalSetting.batch_size * 2) {
-                        // restore configration.
+                        // restore configuration.
                         Logger("Back into original settings once.");
                         this.syncHandler = this.cancelHandler(this.syncHandler);
-                        this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncmode);
+                        this.openOneshotReplication(this.originalSetting, showResult, callback, false, callbackDone, syncMode);
                     }
                 }
             })
@@ -1048,7 +1048,7 @@ export class LocalPouchDB {
         this.syncHandler
             .on("active", () => this.replicationActivated(showResult))
             .on("denied", (e) => {
-                this.replicationDeniend(e);
+                this.replicationDenied(e);
                 if (thisCallback != null) {
                     thisCallback(e);
                 }
@@ -1058,15 +1058,15 @@ export class LocalPouchDB {
                 Logger("Replication stopped.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "sync");
                 if (getLastPostFailedBySize()) {
                     // Duplicate settings for smaller batch.
-                    const xsetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
-                    xsetting.batch_size = Math.ceil(xsetting.batch_size / 2) + 2;
-                    xsetting.batches_limit = Math.ceil(xsetting.batches_limit / 2) + 2;
-                    if (xsetting.batch_size <= 5 && xsetting.batches_limit <= 5) {
+                    const tempSetting: RemoteDBSettings = JSON.parse(JSON.stringify(setting));
+                    tempSetting.batch_size = Math.ceil(tempSetting.batch_size / 2) + 2;
+                    tempSetting.batches_limit = Math.ceil(tempSetting.batches_limit / 2) + 2;
+                    if (tempSetting.batch_size <= 5 && tempSetting.batches_limit <= 5) {
                         Logger("We can't replicate more lower value.", showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                     } else {
-                        Logger(`Retry with lower batch size:${xsetting.batch_size}/${xsetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                        Logger(`Retry with lower batch size:${tempSetting.batch_size}/${tempSetting.batches_limit}`, showResult ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                         thisCallback = null;
-                        this.openOneshotReplication(xsetting, showResult, callback, true, callbackDone, syncmode);
+                        this.openOneshotReplication(tempSetting, showResult, callback, true, callbackDone, syncMode);
                     }
                 } else {
                     Logger("Replication error", LOG_LEVEL.NOTICE, "sync");
@@ -1108,7 +1108,7 @@ export class LocalPouchDB {
                 const docArrivedOnStart = this.docArrived;
                 const docSentOnStart = this.docSent;
                 if (!retrying) {
-                    //TODO if successfly saven, roll back org setting.
+                    //TODO if successfully saved, roll back org setting.
                     this.originalSetting = setting;
                 }
                 this.syncHandler = this.cancelHandler(this.syncHandler);
@@ -1135,7 +1135,7 @@ export class LocalPouchDB {
                         }
                     })
                     .on("complete", (e) => this.replicationCompleted(showResult))
-                    .on("denied", (e) => this.replicationDeniend(e))
+                    .on("denied", (e) => this.replicationDenied(e))
                     .on("error", (e) => {
                         this.replicationErrored(e);
                         Logger("Replication stopped.", LOG_LEVEL.NOTICE, "sync");
@@ -1184,7 +1184,7 @@ export class LocalPouchDB {
             Logger("Remote Database Destroyed", LOG_LEVEL.NOTICE);
             await this.tryCreateRemoteDatabase(setting);
         } catch (ex) {
-            Logger("Something happened on Remote Database Destory:", LOG_LEVEL.NOTICE);
+            Logger("Something happened on Remote Database Destroy:", LOG_LEVEL.NOTICE);
             Logger(ex, LOG_LEVEL.NOTICE);
         }
     }
@@ -1197,13 +1197,13 @@ export class LocalPouchDB {
     }
     async markRemoteLocked(setting: RemoteDBSettings, locked: boolean) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
-        if (typeof dbret === "string") {
-            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
+        const dbRet = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
+        if (typeof dbRet === "string") {
+            Logger(`could not connect to ${uri}:${dbRet}`, LOG_LEVEL.NOTICE);
             return;
         }
 
-        if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+        if (!(await checkRemoteVersion(dbRet.db, this.migrate.bind(this), VER))) {
             Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
             return;
         }
@@ -1216,7 +1216,7 @@ export class LocalPouchDB {
             node_chunk_info: { [this.nodeid]: currentVersionRange }
         };
 
-        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint) };
+        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbRet.db.get(MILSTONE_DOCID), defInitPoint) };
         remoteMilestone.node_chunk_info = { ...defInitPoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
         remoteMilestone.accepted_nodes = [this.nodeid];
         remoteMilestone.locked = locked;
@@ -1225,17 +1225,17 @@ export class LocalPouchDB {
         } else {
             Logger("Unlock remote database to prevent data corruption", LOG_LEVEL.NOTICE);
         }
-        await dbret.db.put(remoteMilestone);
+        await dbRet.db.put(remoteMilestone);
     }
     async markRemoteResolved(setting: RemoteDBSettings) {
         const uri = setting.couchDB_URI + (setting.couchDB_DBNAME == "" ? "" : "/" + setting.couchDB_DBNAME);
-        const dbret = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
-        if (typeof dbret === "string") {
-            Logger(`could not connect to ${uri}:${dbret}`, LOG_LEVEL.NOTICE);
+        const dbRet = await connectRemoteCouchDBWithSetting(setting, this.isMobile);
+        if (typeof dbRet === "string") {
+            Logger(`could not connect to ${uri}:${dbRet}`, LOG_LEVEL.NOTICE);
             return;
         }
 
-        if (!(await checkRemoteVersion(dbret.db, this.migrate.bind(this), VER))) {
+        if (!(await checkRemoteVersion(dbRet.db, this.migrate.bind(this), VER))) {
             Logger("Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed", LOG_LEVEL.NOTICE);
             return;
         }
@@ -1248,11 +1248,11 @@ export class LocalPouchDB {
             node_chunk_info: { [this.nodeid]: currentVersionRange }
         };
         // check local database hash status and remote replicate hash status
-        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbret.db.get(MILSTONE_DOCID), defInitPoint) };
+        const remoteMilestone: EntryMilestoneInfo = { ...defInitPoint, ...await resolveWithIgnoreKnownError(dbRet.db.get(MILSTONE_DOCID), defInitPoint) };
         remoteMilestone.node_chunk_info = { ...defInitPoint.node_chunk_info, ...remoteMilestone.node_chunk_info };
         remoteMilestone.accepted_nodes = Array.from(new Set([...remoteMilestone.accepted_nodes, this.nodeid]));
         Logger("Mark this device as 'resolved'.", LOG_LEVEL.NOTICE);
-        await dbret.db.put(remoteMilestone);
+        await dbRet.db.put(remoteMilestone);
     }
     async sanCheck(entry: EntryDoc): Promise<boolean> {
         if (entry.type == "plain" || entry.type == "newnote") {
@@ -1315,16 +1315,16 @@ export class LocalPouchDB {
                 // console.dir(chunks);
 
                 let alive = 0;
-                let nonref = 0;
+                let unreachable = 0;
                 for (const chunk of chunks) {
                     const items = chunk[1];
                     if (items.size == 0) {
-                        nonref++;
+                        unreachable++;
                     } else {
                         alive++;
                     }
                 }
-                Logger(`Garbage checking completed, documents:${docNum}. Used chunks:${alive}, Retained chunks:${nonref}. Retained chunks will be reused, but you can rebuild database if you feel there are too much.`, LOG_LEVEL.NOTICE, "gc");
+                Logger(`Garbage checking completed, documents:${docNum}. Used chunks:${alive}, Retained chunks:${unreachable}. Retained chunks will be reused, but you can rebuild database if you feel there are too much.`, LOG_LEVEL.NOTICE, "gc");
             });
         return;
     }

@@ -9,9 +9,9 @@ export const isValidRemoteCouchDBURI = (uri: string): boolean => {
     if (uri.startsWith("http://")) return true;
     return false;
 };
-let last_post_successed = false;
+let last_successful_post = false;
 export const getLastPostFailedBySize = () => {
-    return !last_post_successed;
+    return !last_successful_post;
 };
 const fetchByAPI = async (request: RequestUrlParam): Promise<RequestUrlResponse> => {
     const ret = await requestUrl(request);
@@ -62,7 +62,7 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
                 if (opts_length > 1024 * 1024 * 10) {
                     // over 10MB
                     if (uri.contains(".cloudantnosqldb.")) {
-                        last_post_successed = false;
+                        last_successful_post = false;
                         Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
                         throw new Error("This request should fail on IBM Cloudant.");
                     }
@@ -91,9 +91,9 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
                 try {
                     const r = await fetchByAPI(requestParam);
                     if (method == "POST" || method == "PUT") {
-                        last_post_successed = r.status - (r.status % 100) == 200;
+                        last_successful_post = r.status - (r.status % 100) == 200;
                     } else {
-                        last_post_successed = true;
+                        last_successful_post = true;
                     }
                     Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.DEBUG);
 
@@ -106,7 +106,7 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
                     Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
                     // limit only in bulk_docs.
                     if (url.toString().indexOf("_bulk_docs") !== -1) {
-                        last_post_successed = false;
+                        last_successful_post = false;
                     }
                     Logger(ex);
                     throw ex;
@@ -116,19 +116,19 @@ const connectRemoteCouchDB = async (uri: string, auth: { username: string; passw
             // -old implementation
 
             try {
-                const responce: Response = await fetch(url, opts);
+                const response: Response = await fetch(url, opts);
                 if (method == "POST" || method == "PUT") {
-                    last_post_successed = responce.ok;
+                    last_successful_post = response.ok;
                 } else {
-                    last_post_successed = true;
+                    last_successful_post = true;
                 }
-                Logger(`HTTP:${method}${size} to:${localURL} -> ${responce.status}`, LOG_LEVEL.DEBUG);
-                return responce;
+                Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL.DEBUG);
+                return response;
             } catch (ex) {
                 Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
                 // limit only in bulk_docs.
                 if (url.toString().indexOf("_bulk_docs") !== -1) {
-                    last_post_successed = false;
+                    last_successful_post = false;
                 }
                 Logger(ex);
                 throw ex;

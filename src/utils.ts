@@ -3,7 +3,7 @@ import { normalizePath } from "obsidian";
 import { path2id_base, id2path_base } from "./lib/src/utils";
 
 // For backward compatibility, using the path for determining id.
-// Only CouchDB nonacceptable ID (that starts with an underscore) has been prefixed with "/".
+// Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
 // The first slash will be deleted when the path is normalized.
 export function path2id(filename: string): string {
     const x = normalizePath(filename);
@@ -63,7 +63,7 @@ export async function memoIfNotExist<T>(key: string, func: () => T | Promise<T>)
     }
     return memos[key] as T;
 }
-export function retriveMemoObject<T>(key: string): T | false {
+export function retrieveMemoObject<T>(key: string): T | false {
     if (key in memos) {
         return memos[key];
     } else {

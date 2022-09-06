@@ -49,7 +49,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 <label class='sls-setting-label'><input type='radio' name='disp' value='60' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔌</div></label>
 <label class='sls-setting-label'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>
         `;
-        const menutabs = w.querySelectorAll(".sls-setting-label");
+        const menuTabs = w.querySelectorAll(".sls-setting-label");
         const changeDisplay = (screen: string) => {
             for (const k in screenElements) {
                 if (k == screen) {
@@ -59,11 +59,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 }
             }
         };
-        menutabs.forEach((element) => {
+        menuTabs.forEach((element) => {
             const e = element.querySelector(".sls-setting-tab");
             if (!e) return;
             e.addEventListener("change", (event) => {
-                menutabs.forEach((element) => element.removeClass("selected"));
+                menuTabs.forEach((element) => element.removeClass("selected"));
                 changeDisplay((event.currentTarget as HTMLInputElement).value);
                 element.addClass("selected");
             });
@@ -201,11 +201,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
                     this.plugin.settings.workingEncrypt = value;
-                    phasspharase.setDisabled(!value);
+                    passphrase.setDisabled(!value);
                     await this.plugin.saveSettings();
                 })
             );
-        const phasspharase = new Setting(containerRemoteDatabaseEl)
+        const passphrase = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
             .setDesc("Encrypting passphrase. If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.")
             .addText((text) => {
@@ -217,7 +217,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "password");
             });
-        phasspharase.setDisabled(!this.plugin.settings.workingEncrypt);
+        passphrase.setDisabled(!this.plugin.settings.workingEncrypt);
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
@@ -417,7 +417,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                         const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
                                         console.dir(res);
                                         if (res.status == 200) {
-                                            Logger(`${title} successfly updated`, LOG_LEVEL.NOTICE);
+                                            Logger(`${title} successfully updated`, LOG_LEVEL.NOTICE);
                                             checkResultDiv.removeChild(x);
                                             checkConfig();
                                         } else {
@@ -531,10 +531,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                         addResult("✔ CORS origin OK");
                                     }
                                 }
-                                addResult("--Done--", ["ob-btn-config-haed"]);
+                                addResult("--Done--", ["ob-btn-config-head"]);
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                             } catch (ex) {
-                                Logger(`Checking configration failed`);
+                                Logger(`Checking configuration failed`);
                                 Logger(ex);
                             }
                         };
@@ -1113,7 +1113,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 c.addClass("op-warn");
             }
         }
-        const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the bootup sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
+        const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
         hatchWarn.addClass("op-warn-info");
 
         new Setting(containerHatchEl)
@@ -1228,7 +1228,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerHatchEl)
             .setName("Drop old encrypted database")
-            .setDesc("WARNING: Please use this button only when you have failed on converting old-style localdatabase at v0.10.0.")
+            .setDesc("WARNING: Please use this button only when you have failed on converting old-style local database at v0.10.0.")
             .addButton((button) =>
                 button
                     .setButtonText("Drop")
@@ -1242,7 +1242,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         addScreenElement("50", containerHatchEl);
         // With great respect, thank you TfTHacker!
-        // refered: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
+        // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         const containerPluginSettings = containerEl.createDiv();
         containerPluginSettings.createEl("h3", { text: "Plugins and settings (beta)" });
 

@@ -165,7 +165,7 @@ export class DocumentHistoryModal extends Modal {
                 const leaf = app.workspace.getLeaf(false);
                 await leaf.openFile(targetFile);
             } else {
-                Logger("The file cound not view on the editor", LOG_LEVEL.NOTICE)
+                Logger("The file could not view on the editor", LOG_LEVEL.NOTICE)
             }
         }
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {
@@ -173,7 +173,7 @@ export class DocumentHistoryModal extends Modal {
             e.addEventListener("click", async () => {
                 const pathToWrite = this.file.startsWith("i:") ? this.file.substring("i:".length) : this.file;
                 if (!isValidPath(pathToWrite)) {
-                    Logger("Path is not vaild to write content.", LOG_LEVEL.INFO);
+                    Logger("Path is not valid to write content.", LOG_LEVEL.INFO);
                 }
                 if (this.currentDoc?.datatype == "plain") {
                     await this.app.vault.adapter.write(pathToWrite, this.currentDoc.data);
