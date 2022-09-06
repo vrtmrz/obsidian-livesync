@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.14.7",
+    "version": "0.14.8",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",

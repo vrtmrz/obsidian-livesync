@@ -21,7 +21,7 @@
 - 0.14.5 Auto chunk size adjusting implemented.
 - 0.14.6 Change Target to ES2018
 - 0.14.7 Refactor and fix typos.
-
+- 0.14.8 Refactored again. There should be no change in behaviour, but please let me know if there is any.
 ### 0.13.0
 
 - The metadata of the deleted files will be kept on the database by default. If you want to delete this as the previous version, please turn on `Delete metadata of deleted files.`. And, if you have upgraded from the older version, please ensure every device has been upgraded.
