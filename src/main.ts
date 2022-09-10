@@ -462,13 +462,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.showIfConflicted(view.file);
             },
         });
-        this.addCommand({
-            id: "livesync-gc",
-            name: "Check garbages now",
-            callback: () => {
-                this.garbageCheck();
-            },
-        });
+
         this.addCommand({
             id: "livesync-toggle",
             name: "Toggle LiveSync",
@@ -614,9 +608,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return await this.localDatabase.initializeDatabase();
     }
 
-    async garbageCheck() {
-        await this.localDatabase.garbageCheck();
-    }
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -656,19 +647,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     gcTimerHandler: any = null;
 
-    gcHook() {
-        if (this.settings.gcDelay == 0) return;
-        if (this.settings.useHistory) return;
-        const GC_DELAY = this.settings.gcDelay * 1000; // if leaving opening window, try GC,
-        if (this.gcTimerHandler != null) {
-            clearTimeout(this.gcTimerHandler);
-            this.gcTimerHandler = null;
-        }
-        this.gcTimerHandler = setTimeout(() => {
-            this.gcTimerHandler = null;
-            this.garbageCheck();
-        }, GC_DELAY);
-    }
 
     registerWatchEvents() {
         this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
@@ -719,7 +697,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 this.setPeriodicSync();
             }
         }
-        this.gcHook();
     }
 
     watchWorkspaceOpen(file: TFile) {
@@ -736,7 +713,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.replicate();
         }
         await this.showIfConflicted(file);
-        this.gcHook();
     }
 
     watchVaultCreate(file: TFile, ...args: any[]) {
@@ -816,7 +792,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return;
             }
             await this.updateIntoDB(file);
-            this.gcHook();
         }
     }
 
@@ -834,7 +809,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else if (file instanceof TFolder) {
             await this.deleteFolderOnDB(file);
         }
-        this.gcHook();
     }
 
     GetAllFilesRecursively(file: TAbstractFile): TFile[] {
@@ -904,7 +878,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(ex);
             }
         }
-        this.gcHook();
     }
 
     addLogHook: () => void = null;
@@ -1352,7 +1325,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL.NOTICE);
                 }
             }
-            this.gcHook();
         }
     }
 
@@ -2077,6 +2049,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async resetLocalDatabase() {
         clearTouched();
         await this.localDatabase.resetDatabase();
+        await this.localDatabase.resetLocalOldDatabase();
     }
     async resetLocalOldDatabase() {
         clearTouched();

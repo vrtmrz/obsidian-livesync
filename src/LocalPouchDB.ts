@@ -1,12 +1,12 @@
 import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
-import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
-import { LocalPouchDBBase } from "./lib/src/LocalPouchDBBase";
-import { Logger } from "./lib/src/logger";
-import { PouchDB } from "./lib/src/pouchdb-browser";
-import { EntryDoc, LOG_LEVEL } from "./lib/src/types";
-import { enableEncryption } from "./lib/src/utils";
-import { isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
-import { id2path, path2id } from "./utils";
+import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB.js";
+import { LocalPouchDBBase } from "./lib/src/LocalPouchDBBase.js";
+import { Logger } from "./lib/src/logger.js";
+import { PouchDB } from "./lib/src/pouchdb-browser.js";
+import { EntryDoc, LOG_LEVEL } from "./lib/src/types.js";
+import { enableEncryption } from "./lib/src/utils.js";
+import { isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
+import { id2path, path2id } from "./utils.js";
 
 export class LocalPouchDB extends LocalPouchDBBase {
 
