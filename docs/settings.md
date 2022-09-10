@@ -10,7 +10,7 @@ If you feel something, please feel free to inform me.
 |   🛰️   | [Remote Database Configurations](#remote-database-configurations) |
 |   📦   | [Local Database Configurations](#local-database-configurations)   |
 |   ⚙️   | [General Settings](#general-settings)                             |
-|   🔁   | [Sync Settings](#sync-settings)                                     |
+|   🔁   | [Sync Settings](#sync-settings)                                   |
 |   🔧   | [Miscellaneous](#miscellaneous)                                   |
 |   🧰   | [Hatch](#miscellaneous)                                           |
 |   🔌   | [Plugin and its settings](#plugin-and-its-settings)               |
@@ -74,14 +74,6 @@ If you have something troubled with other devices, you can protect the vault and
 Delay database update until raise replication, open another file, window visibility changed, or file events except for file modification.  
 This option can not be used with LiveSync at the same time.
 
-### Garbage check
-This plugin saves the file by splitting it into chunks to speed replication up and keep low bandwidth.
-
-They share the chunk if you use the same paragraph in some notes. And if you change the file, only the paragraph you changed is transferred with metadata of the file. And I know that editing notes are not so straight. Sometimes paragraphs will be back into an old phrase. In these cases, we do not have to transfer the chunk again if the chunk will not be deleted. So all chunks will be reused.
-
-As the side effect of this, you can see history the file.
-
-The check will show the number of chunks used or retained. If there are so many retained chunks, you can rebuild the database.
 
 ### Fetch rebuilt DB.
 If one device rebuilds or locks the remote database, every other device will be locked out from the remote database until it fetches rebuilt DB.
@@ -242,46 +234,12 @@ But, there's no problem even if you leave it as it is.
 ### Verify and repair all files
 read all files in the vault, and update them into the database if there's diff or could not read from the database.
 
-### Sanity check
-Make sure that all the files on the local database have all chunks.
-
-### Drop history
-Drop all histories on the local database and the remote database, and initialize When synchronization time has been prolonged to the new device or new vault, or database size became to be much larger. Try this.
-
-Note: When CouchDB deletes entries, to merge confliction, there left old entries as deleted data before compaction. After compaction has been run, deleted data are become "tombstone". "tombstone" uses less disk, But still use some. 
-
-It's the specification, to shrink database size from the root, re-initialization is required, even it's explicit or implicit.
-
-Same as a setting passphrase, database locking is also performed.
-
-
-- Drop and send (Same as "Apply and send")
-1. Initialize the Local Database and set (or clear) passphrase, put all files into the database again.
-2. Initialize the Remote Database.
-3. Lock the Remote Database.
-4. Send it all. 
-
-- Drop and receive (Same as "Apply and receive")
-1. Initialize the Local Database and set (or clear) the passphrase.
-2. Unlock the Remote Database.
-3. Retrieve all and decrypt to file.
-
-
 ### Suspend file watching
 If enable this option, Self-hosted LiveSync dismisses every file change or deletes the event.
 
 From here, these commands are used inside applying encryption passphrases or dropping histories.
 
 Usually, doesn't use it so much. But sometimes it could be handy.
-
-### Reset remote database
-Discard the data stored in the remote database.
-
-### Reset local database
-Discard the data stored in the local database.
-
-### Initialize local database again
-Discard the data stored in the local database and initialize and create the database from the files on storage.
 
 ## Plugins and settings (beta)
 
