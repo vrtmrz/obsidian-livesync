@@ -1,3 +1,9 @@
+### 0.15.0
+- Outdated configuration items have been removed. 
+- Setup wizard has been implemented!
+
+I appreciate for reviewing and giving me advice @Pouhon158!
+
 ### 0.14.1
 - The target selecting filter was implemented.
   Now we can set what files are synchronised by regular expression.
