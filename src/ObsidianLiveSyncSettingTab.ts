@@ -1,9 +1,9 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer } from "obsidian";
-import { EntryDoc, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
-import { delay, runWithLock, versionNumberString2Number } from "./lib/src/utils";
+import { delay, versionNumberString2Number } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { checkSyncInfo } from "./lib/src/utils_couchdb";
+import { checkSyncInfo } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 
@@ -28,6 +28,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
+        containerEl.addClass("sls-setting");
+        containerEl.removeClass("isWizard");
+
 
         const w = containerEl.createDiv("");
         const screenElements: { [key: string]: HTMLElement[] } = {};
@@ -39,15 +42,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         w.addClass("sls-setting-menu");
         w.innerHTML = `
-<label class='sls-setting-label selected'><input type='radio' name='disp' value='100' class='sls-setting-tab' checked><div class='sls-setting-menu-btn'>💬</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='0' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🛰️</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='10' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>📦</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='20' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>⚙️</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='30' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔁</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='40' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔧</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='50' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🧰</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='60' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔌</div></label>
-<label class='sls-setting-label'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>
+<label class='sls-setting-label c-100 wizardHidden'><input type='radio' name='disp' value='100' class='sls-setting-tab'><div class='sls-setting-menu-btn'>💬</div></label>
+<label class='sls-setting-label c-110'><input type='radio' name='disp' value='110' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🪄</div></label>
+<label class='sls-setting-label c-0'><input type='radio' name='disp' value='0' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🛰️</div></label>
+
+<label class='sls-setting-label c-10'><input type='radio' name='disp' value='10' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>📦</div></label>
+<label class='sls-setting-label c-20 wizardHidden'><input type='radio' name='disp' value='20' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>⚙️</div></label>
+<label class='sls-setting-label c-30 wizardHidden'><input type='radio' name='disp' value='30' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔁</div></label>
+<label class='sls-setting-label c-40'><input type='radio' name='disp' value='40' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔧</div></label>
+<label class='sls-setting-label c-50 wizardHidden'><input type='radio' name='disp' value='50' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🧰</div></label>
+<label class='sls-setting-label c-60 wizardHidden'><input type='radio' name='disp' value='60' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔌</div></label>
+<label class='sls-setting-label c-70 wizardHidden'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>
         `;
         const menuTabs = w.querySelectorAll(".sls-setting-label");
         const changeDisplay = (screen: string) => {
@@ -58,6 +63,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     screenElements[k].forEach((element) => element.addClass("setting-collapsed"));
                 }
             }
+            w.querySelectorAll(`.sls-setting-label`).forEach((element) => {
+                element.removeClass("selected");
+                (element.querySelector("input[type=radio]") as HTMLInputElement).checked = false;
+            });
+            console.log(`.sls-setting-label.c-${screen}`)
+            w.querySelectorAll(`.sls-setting-label.c-${screen}`).forEach((element) => {
+                console.log(element)
+                element.addClass("selected");
+                (element.querySelector("input[type=radio]") as HTMLInputElement).checked = true;
+            });
         };
         menuTabs.forEach((element) => {
             const e = element.querySelector(".sls-setting-tab");
@@ -97,12 +112,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
 
         addScreenElement("100", containerInformationEl);
-        const containerRemoteDatabaseEl = containerEl.createDiv();
-        containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
-        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
-        syncWarn.addClass("op-warn-info");
-        syncWarn.addClass("sls-hidden");
-
         const isAnySyncEnabled = (): boolean => {
             if (this.plugin.settings.liveSync) return true;
             if (this.plugin.settings.periodicReplication) return true;
@@ -113,6 +122,55 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (this.plugin.localDatabase.syncStatus == "PAUSED") return true;
             return false;
         };
+        let inWizard = false;
+
+        const setupWizardEl = containerEl.createDiv();
+        setupWizardEl.createEl("h3", { text: "Setup wizard" });
+        new Setting(setupWizardEl)
+            .setName("Discard the existing configuration and set up")
+            .addButton((text) => {
+                text.setButtonText("Next").onClick(async () => {
+                    if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
+                        this.plugin.settings = { ...DEFAULT_SETTINGS };
+                        this.plugin.saveSettings();
+                        Logger("Configuration has been flushed, please open it again", LOG_LEVEL.NOTICE)
+                        this.hide();
+                    } else {
+                        containerEl.addClass("isWizard");
+                        applyDisplayEnabled();
+                        inWizard = true;
+                        changeDisplay("0")
+                    }
+                })
+            })
+        new Setting(setupWizardEl)
+            .setName("Do not discard the existing configuration and set up again")
+            .addButton((text) => {
+                text.setButtonText("Next").onClick(async () => {
+                    await this.plugin.resetLocalDatabase();
+                    this.plugin.settings.liveSync = false;
+                    this.plugin.settings.periodicReplication = false;
+                    this.plugin.settings.syncOnSave = false;
+                    this.plugin.settings.syncOnStart = false;
+                    this.plugin.settings.syncOnFileOpen = false;
+                    await this.plugin.saveSettings();
+                    containerEl.addClass("isWizard");
+                    applyDisplayEnabled();
+                    inWizard = true;
+                    changeDisplay("0")
+
+                })
+            })
+
+        addScreenElement("110", setupWizardEl);
+
+        const containerRemoteDatabaseEl = containerEl.createDiv();
+        containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
+        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
+        syncWarn.addClass("op-warn-info");
+        syncWarn.addClass("sls-hidden");
+
+
         const applyDisplayEnabled = () => {
             if (isAnySyncEnabled()) {
                 dbSettings.forEach((e) => {
@@ -200,11 +258,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
-                    this.plugin.settings.workingEncrypt = value;
-                    passphrase.setDisabled(!value);
-                    await this.plugin.saveSettings();
+                    if (inWizard) {
+                        this.plugin.settings.encrypt = value;
+                        passphrase.setDisabled(!value);
+                        await this.plugin.saveSettings();
+                    } else {
+                        this.plugin.settings.workingEncrypt = value;
+                        passphrase.setDisabled(!value);
+                        await this.plugin.saveSettings();
+                    }
                 })
             );
+
         const passphrase = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
             .setDesc("Encrypting passphrase. If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.")
@@ -212,12 +277,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.workingPassphrase)
                     .onChange(async (value) => {
-                        this.plugin.settings.workingPassphrase = value;
-                        await this.plugin.saveSettings();
+                        if (inWizard) {
+                            this.plugin.settings.passphrase = value;
+                            await this.plugin.saveSettings();
+                        } else {
+                            this.plugin.settings.workingPassphrase = value;
+                            await this.plugin.saveSettings();
+                        }
                     });
                 text.inputEl.setAttribute("type", "password");
             });
         passphrase.setDisabled(!this.plugin.settings.workingEncrypt);
+
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
@@ -263,7 +334,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
 
             await this.plugin.saveSettings();
-            // await this.plugin.resetLocalDatabase();
             if (sendToServer) {
                 await this.plugin.initializeDatabase(true);
                 await this.plugin.markRemoteLocked();
@@ -278,6 +348,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerRemoteDatabaseEl)
             .setName("Apply")
             .setDesc("Apply encryption settings")
+            .setClass("wizardHidden")
             .addButton((button) =>
                 button
                     .setButtonText("Apply")
@@ -285,9 +356,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .setClass("sls-btn-right")
                     .onClick(async () => {
-                        await applyEncryption(false);
+                        await applyEncryption(true);
                     })
             );
+
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
             this.plugin.settings.liveSync = false;
@@ -324,6 +396,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerRemoteDatabaseEl)
             .setName("Overwrite remote database")
             .setDesc("Overwrite remote database with local DB and passphrase.")
+            .setClass("wizardHidden")
             .addButton((button) =>
                 button
                     .setButtonText("Send")
@@ -338,6 +411,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerRemoteDatabaseEl)
             .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")
+            .setClass("wizardHidden")
             .addButton((button) =>
                 button
                     .setButtonText("Rebuild")
@@ -548,6 +622,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerRemoteDatabaseEl)
             .setName("Lock remote database")
             .setDesc("Lock remote database to prevent synchronization with other devices.")
+            .setClass("wizardHidden")
             .addButton((button) =>
                 button
                     .setButtonText("Lock")
@@ -555,6 +630,50 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setWarning()
                     .onClick(async () => {
                         await this.plugin.markRemoteLocked();
+                    })
+            );
+
+        new Setting(containerRemoteDatabaseEl)
+            .setName("")
+            .setClass("wizardOnly")
+            .addButton((button) =>
+                button
+                    .setButtonText("Next")
+                    .setClass("mod-cta")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        if (!this.plugin.settings.encrypt) {
+                            this.plugin.settings.passphrase = "";
+                        }
+                        if (this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                            this.plugin.settings.customChunkSize = 0;
+                        } else {
+                            this.plugin.settings.customChunkSize = 100;
+                        }
+
+                        changeDisplay("10")
+                    })
+            );
+        new Setting(containerRemoteDatabaseEl)
+            .setName("")
+            .setClass("wizardOnly")
+            .addButton((button) =>
+                button
+                    .setButtonText("Discard exist database and proceed")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        if (!this.plugin.settings.encrypt) {
+                            this.plugin.settings.passphrase = "";
+                        }
+                        if (this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                            this.plugin.settings.customChunkSize = 0;
+                        } else {
+                            this.plugin.settings.customChunkSize = 100;
+                        }
+                        this.plugin.saveSettings();
+                        await this.plugin.tryResetRemoteDatabase();
+                        changeDisplay("10")
                     })
             );
         addScreenElement("0", containerRemoteDatabaseEl);
@@ -576,18 +695,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerLocalDatabaseEl).setName("Garbage check").addButton((button) =>
-            button
-                .setButtonText("Check now")
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.plugin.garbageCheck();
-                })
-        );
-
         new Setting(containerLocalDatabaseEl)
             .setName("Fetch rebuilt DB")
             .setDesc("Restore or reconstruct local database from remote database.")
+            .setClass("wizardHidden")
             .addButton((button) =>
                 button
                     .setButtonText("Fetch")
@@ -603,7 +714,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         let newDatabaseName = this.plugin.settings.additionalSuffixOfDatabaseName + "";
         new Setting(containerLocalDatabaseEl)
             .setName("Database suffix")
-            .setDesc("Set unique name for using same vault name on different directory.")
+            .setDesc("Optional: Set unique name for using same vault name on different directory.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(newDatabaseName)
@@ -624,7 +735,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.initializeDatabase();
                     })
             })
-
+        new Setting(containerLocalDatabaseEl)
+            .setName("")
+            .setClass("wizardOnly")
+            .addButton((button) =>
+                button
+                    .setButtonText("Next")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        changeDisplay("40");
+                    })
+            );
 
         addScreenElement("10", containerLocalDatabaseEl);
         const containerGeneralSettingsEl = containerEl.createDiv();
@@ -650,6 +771,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerGeneralSettingsEl)
             .setName("Delete metadata of deleted files.")
+            .setClass("wizardHidden")
             .addToggle((toggle) => {
                 toggle.setValue(this.plugin.settings.deleteMetadataOfDeletedFiles).onChange(async (value) => {
                     this.plugin.settings.deleteMetadataOfDeletedFiles = value;
@@ -661,6 +783,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         addScreenElement("20", containerGeneralSettingsEl);
         const containerSyncSettingEl = containerEl.createDiv();
         containerSyncSettingEl.createEl("h3", { text: "Sync Settings" });
+        containerSyncSettingEl.addClass("wizardHidden")
 
         if (this.plugin.settings.versionUpFlash != "") {
             const c = containerSyncSettingEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
@@ -945,7 +1068,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             );
 
-
         new Setting(containerSyncSettingEl)
             .setName("Chunk size")
             .setDesc("Customize chunk size for binary files (0.1MBytes). This cannot be increased when using IBM Cloudant.")
@@ -962,6 +1084,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+
         new Setting(containerSyncSettingEl)
             .setName("Read chunks online.")
             .setDesc("If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
@@ -1027,24 +1150,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerMiscellaneousEl)
-            .setName("Check integrity on saving")
-            .setDesc("Check database integrity on saving to database")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.checkIntegrityOnSave).onChange(async (value) => {
-                    this.plugin.settings.checkIntegrityOnSave = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        let currentPrest = "NONE";
+        let currentPreset = "NONE";
+
         new Setting(containerMiscellaneousEl)
             .setName("Presets")
             .setDesc("Apply preset configuration")
             .addDropdown((dropdown) =>
                 dropdown
                     .addOptions({ NONE: "", LIVESYNC: "LiveSync", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all sync" })
-                    .setValue(currentPrest)
-                    .onChange((value) => (currentPrest = value))
+                    .setValue(currentPreset)
+                    .onChange((value) => (currentPreset = value))
             )
             .addButton((button) =>
                 button
@@ -1052,7 +1167,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {
-                        if (currentPrest == "") {
+                        if (currentPreset == "") {
                             Logger("Select any preset.", LOG_LEVEL.NOTICE);
                             return;
                         }
@@ -1062,10 +1177,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.syncOnSave = false;
                         this.plugin.settings.syncOnStart = false;
                         this.plugin.settings.syncOnFileOpen = false;
-                        if (currentPrest == "LIVESYNC") {
+                        if (currentPreset == "LIVESYNC") {
                             this.plugin.settings.liveSync = true;
                             Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL.NOTICE);
-                        } else if (currentPrest == "PERIODIC") {
+                        } else if (currentPreset == "PERIODIC") {
                             this.plugin.settings.batchSave = true;
                             this.plugin.settings.periodicReplication = true;
                             this.plugin.settings.syncOnSave = false;
@@ -1077,8 +1192,21 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         }
                         this.plugin.saveSettings();
                         await this.plugin.realizeSettingSyncMode();
+                        if (inWizard) {
+                            this.hide();
+                            await this.plugin.resetLocalDatabase();
+                            await this.plugin.initializeDatabase(true)
+                            await this.plugin.replicate(true);
+                            Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL.NOTICE)
+                        }
+
+
                     })
             );
+
+        const infoApply = containerMiscellaneousEl.createEl("div", { text: `To finish setup, please select one of the presets` });
+        infoApply.addClass("op-warn-info");
+        infoApply.addClass("wizardOnly")
 
         addScreenElement("40", containerMiscellaneousEl);
 
@@ -1143,36 +1271,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         Logger("done", LOG_LEVEL.NOTICE, "verify");
                     })
             );
-        new Setting(containerHatchEl)
-            .setName("Sanity check")
-            .setDesc("Verify")
-            .addButton((button) =>
-                button
-                    .setButtonText("Sanity check")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        // const notice = NewNotice("", 0);
-                        Logger(`Begin sanity check`, LOG_LEVEL.NOTICE, "sancheck");
-                        await runWithLock("sancheck", true, async () => {
-                            const db = this.plugin.localDatabase.localDatabase;
-                            const wf = await db.allDocs();
-                            const filesDatabase = wf.rows.filter((e) => !e.id.startsWith("h:") && !e.id.startsWith("ps:") && e.id != "obsydian_livesync_version").map((e) => e.id);
-                            let count = 0;
-                            for (const id of filesDatabase) {
-                                count++;
-                                Logger(`${count}/${filesDatabase.length}\n${id2path(id)}`, LOG_LEVEL.NOTICE, "sancheck");
-                                const w = await db.get<EntryDoc>(id);
-                                if (!(await this.plugin.localDatabase.sanCheck(w))) {
-                                    Logger(`The file ${id2path(id)} missing child(ren)`, LOG_LEVEL.NOTICE);
-                                }
-                            }
-                        });
-                        Logger(`Done`, LOG_LEVEL.NOTICE, "sancheck");
-                        // Logger("done", LOG_LEVEL.NOTICE);
-                    })
-            );
-
 
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
@@ -1184,58 +1282,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        containerHatchEl.createEl("div", {
-            text: sanitizeHTMLToDom(`Advanced buttons<br>
-                These buttons could break your database easily.`),
-        });
         new Setting(containerHatchEl)
-            .setName("Reset remote database")
-            .setDesc("Reset remote database, this affects only database. If you replicate again, remote database will restored by local database.")
+            .setName("Discard local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>
                 button
-                    .setButtonText("Reset")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        await this.plugin.tryResetRemoteDatabase();
-                    })
-            );
-        new Setting(containerHatchEl)
-            .setName("Reset local database")
-            .setDesc("Reset local database, this affects only database. If you replicate again, local database will restored by remote database.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        await this.plugin.resetLocalDatabase();
-                    })
-            );
-        new Setting(containerHatchEl)
-            .setName("Initialize local database again")
-            .setDesc("WARNING: Reset local database and reconstruct by storage data. It affects local database, but if you replicate remote as is, remote data will be merged or corrupted.")
-            .addButton((button) =>
-                button
-                    .setButtonText("INITIALIZE")
+                    .setButtonText("Discard")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin.resetLocalDatabase();
-                        await this.plugin.initializeDatabase();
-                    })
-            );
-
-        new Setting(containerHatchEl)
-            .setName("Drop old encrypted database")
-            .setDesc("WARNING: Please use this button only when you have failed on converting old-style local database at v0.10.0.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Drop")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin.resetLocalOldDatabase();
                         await this.plugin.initializeDatabase();
                     })
             );
@@ -1383,9 +1438,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         applyDisplayEnabled();
         addScreenElement("70", containerCorruptedDataEl);
         if (lastVersion != this.plugin.settings.lastReadUpdates) {
-            changeDisplay("100");
+            if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
+                changeDisplay("100");
+            } else {
+                changeDisplay("110")
+            }
         } else {
-            changeDisplay("0");
+            if (isAnySyncEnabled()) {
+                changeDisplay("0");
+            } else {
+                changeDisplay("110")
+            }
         }
     }
 }
