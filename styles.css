@@ -156,7 +156,7 @@ div.sls-setting-menu-btn {
 }
 
 .sls-setting-tab:hover~div.sls-setting-menu-btn,
-.sls-setting-tab:checked~div.sls-setting-menu-btn {
+.sls-setting-label.selected .sls-setting-tab:checked~div.sls-setting-menu-btn {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
@@ -241,4 +241,12 @@ div.sls-setting-menu-btn {
     padding: 2px;
     margin: 1px;
     border-radius: 4px;
+}
+
+.isWizard .wizardHidden {
+    display: none;
+}
+
+.sls-setting:not(.isWizard) .wizardOnly {
+    display: none;
 }
