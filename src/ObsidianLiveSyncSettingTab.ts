@@ -635,6 +635,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.markRemoteLocked();
                     })
             );
+        let rebuildRemote = false;
 
         new Setting(containerRemoteDatabaseEl)
             .setName("")
@@ -653,7 +654,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         } else {
                             this.plugin.settings.customChunkSize = 100;
                         }
-
+                        rebuildRemote = false;
                         changeDisplay("10")
                     })
             );
@@ -674,8 +675,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         } else {
                             this.plugin.settings.customChunkSize = 100;
                         }
-                        this.plugin.saveSettings();
-                        await this.plugin.tryResetRemoteDatabase();
+                        rebuildRemote = true;
                         changeDisplay("10")
                     })
             );
@@ -1200,8 +1200,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             // @ts-ignore
                             this.plugin.app.setting.close()
                             await this.plugin.resetLocalDatabase();
-                            await this.plugin.initializeDatabase(true)
+                            await this.plugin.initializeDatabase(true);
+                            if (rebuildRemote) {
+                                await this.plugin.markRemoteLocked();
+                                await this.plugin.tryResetRemoteDatabase();
+                                await this.plugin.markRemoteLocked();
+                                await this.plugin.markRemoteResolved();
+                            }
                             await this.plugin.replicate(true);
+
                             Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL.NOTICE);
                             // @ts-ignore
                             this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-copysetupuri")
