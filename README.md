@@ -40,41 +40,9 @@ First, get your database ready. IBM Cloudant is preferred for testing. Or you ca
 
 Note: More information about alternative hosting methods needed! Currently, [using fly.io](https://github.com/vrtmrz/obsidian-livesync/discussions/85) is being discussed.
 
-### First device
+### Configure the plugin
 
-1. Install the plugin on your device.
-2. Configure remote database information.
-	1. Fill your server's information into the `Remote Database configuration` pane.
-	2. Enabling `End to End Encryption` is recommended. After entering a passphrase, click `Apply`.
-	3. Click `Test Database Connection` and make sure that the plugin says `Connected to (your-database-name)`.
-	4. Click `Check database configuration` and make sure all tests have passed.
-3. Configure when should the synchronization happen in `Sync Settings` tab. (You can also leave them for later)
-	1. If you want to synchronize in real-time, enable `LiveSync`.
-	2. Or, set up the synchronization as you like. By default, none of the settings are enabled, meaning you would need to manually trigger the synchronization process.
-	3. Additional configurations are also here. I recommend enabling `Use Trash for deleted files`, but you can also leave all configurations as-is.
-4. Configure miscellaneous features.
-	1. Enabling `Show status inside editor` shows status at the top-right corner of the editor while in editing mode. (Recommended)
-5. Go back to the editor. Wait for the initial scan to complete.
-6. When the status no longer changes and shows a ⏹️ for COMPLETED (No ⏳ and 🧩 icons), you are ready to synchronize with the server.
-7. Press the replicate icon on the Ribbon or run `Replicate now` from the command palette. This will send all your data to the server.
-8. Open command palette, run `Copy setup URI`, and set a passphrase. This will export your configuration to clipboard as a link for you to import into your other devices.
-
-**IMPORTANT: BE CAREFUL NOT TO SHARE THIS LINK. THE URI CONTAINS ALL YOUR CREDENTIALS.** (even though nobody could read them without the passphrase)
-
-### Subsequent Devices
-
-Note: If we are going to synchronize with a non-empty vault, the modification dates and times of the files must match between them. Otherwise, extra transfers may occur or files may become corrupted.
-For simplicity, we strongly recommend that we sync to an empty vault.
-
-1. Install the plug-in.
-2. Open the link that you have exported from the first device.
-3. The plug-in will ask you whether you are sure to apply the configurations. Answer `Yes`, then follow these instructions:
-	1. Answer `Yes` to `Keep local DB?`.
-		*Note: If you start with an existing vault, you have to answer `No` to this question and also answer `No` to `Rebuild the database?`.*
-	2. Answer `Yes` to `Keep remote DB?`.
-	3. Answer `Yes` to `Replicate once?`.
-	Then, all your settings should be successfully imported from the first device.
-4. Your notes should get synchronized soon.
+See [Quick setup guide](doccs/../docs/quick_setup.md)
 
 ## Something looks corrupted...
 
