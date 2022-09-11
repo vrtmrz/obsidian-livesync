@@ -131,10 +131,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .addButton((text) => {
                 text.setButtonText("Next").onClick(async () => {
                     if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
+                        this.plugin.localDatabase.closeReplication();
                         this.plugin.settings = { ...DEFAULT_SETTINGS };
                         this.plugin.saveSettings();
+
                         Logger("Configuration has been flushed, please open it again", LOG_LEVEL.NOTICE)
-                        this.hide();
+                        // @ts-ignore
+                        this.plugin.app.setting.close()
                     } else {
                         containerEl.addClass("isWizard");
                         applyDisplayEnabled();
@@ -147,12 +150,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .setName("Do not discard the existing configuration and set up again")
             .addButton((text) => {
                 text.setButtonText("Next").onClick(async () => {
-                    await this.plugin.resetLocalDatabase();
                     this.plugin.settings.liveSync = false;
                     this.plugin.settings.periodicReplication = false;
                     this.plugin.settings.syncOnSave = false;
                     this.plugin.settings.syncOnStart = false;
                     this.plugin.settings.syncOnFileOpen = false;
+                    this.plugin.localDatabase.closeReplication();
                     await this.plugin.saveSettings();
                     containerEl.addClass("isWizard");
                     applyDisplayEnabled();
@@ -683,6 +686,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(containerLocalDatabaseEl)
             .setName("Batch database update")
             .setDesc("Delay all changes, save once before replication or opening another file.")
+            .setClass("wizardHidden")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.batchSave).onChange(async (value) => {
                     if (value && this.plugin.settings.liveSync) {
@@ -1193,11 +1197,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.saveSettings();
                         await this.plugin.realizeSettingSyncMode();
                         if (inWizard) {
-                            this.hide();
+                            // @ts-ignore
+                            this.plugin.app.setting.close()
                             await this.plugin.resetLocalDatabase();
                             await this.plugin.initializeDatabase(true)
                             await this.plugin.replicate(true);
-                            Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL.NOTICE)
+                            Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL.NOTICE);
+                            // @ts-ignore
+                            this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-copysetupuri")
                         }
 
 
