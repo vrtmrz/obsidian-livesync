@@ -32,16 +32,18 @@ max_age = 3600
 
 Make `local.ini` and run with docker run like this, you can launch the CouchDB.
 ```
-$ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
+$ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
 ```
+*Remember to replace the path with the path to your local.ini*
 Note: At this time, the file owner of local.ini became 5984:5984. It's the limitation docker image. please change the owner before editing local.ini again.
 
 If you could confirm that Self-hosted LiveSync can sync with the server, launch docker image as background as you like.
 
-example)
+Example to run docker in detached mode:
 ```
-$ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
+$ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
 ```
+*Remember to replace the path with the path to your local.ini*
 
 ## Access from mobile device
 If you want to access Self-hosted LiveSync from mobile devices, you need a valid SSL certificate.
