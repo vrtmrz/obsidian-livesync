@@ -92,9 +92,6 @@ After installing Self-hosted LiveSync on the device, select `Open setup URI` fro
 Answer the following.
 
 - `Yes` to `Importing LiveSync's conf, OK?`
-- `No` to `Keep local DB?`
-- `Yes` to `Keep remote DB?`
-- `No` to `Rebuild the database?`
-- `Yes` to `Replicate once?`
+- `Set it up as secondary or subsequent device` to `How would you like to set it up?`.
 
 Then, The configuration will now take effect and replication will start. Your files will be synchronised soon!

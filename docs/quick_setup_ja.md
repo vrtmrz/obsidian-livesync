@@ -85,13 +85,10 @@ All done! と表示されれば完了です。自動的に、`Copy setup URI`が
 クリップボードにSetup URIが保存されますので、これを2台目以降のデバイスに何らかの方法で転送してください。
 
 # 2台目以降の設定方法
-２台目の端末にSelf-hosted LiveSyncをインストールしたあと、コマンドパレットから`Open setup URI`を選択し、転送したsetup URIを入力します。その後、パスフレーズを入力するとセットアップ用のウィザードが開きます。  
+2台目の端末にSelf-hosted LiveSyncをインストールしたあと、コマンドパレットから`Open setup URI`を選択し、転送したsetup URIを入力します。その後、パスフレーズを入力するとセットアップ用のウィザードが開きます。  
 下記のように答えてください。
 
 - `Importing LiveSync's conf, OK?` に `Yes`
-- `Keep local DB?` に `No`
-- `Keep remote DB?`  に `Yes`
-- `Rebuild the database?` に `No`
-- `Replicate once?` に `Yes`
+- `How would you like to set it up?` に `Set it up as secondary or subsequent device`
 
 これで設定が反映され、レプリケーションが開始されます。
