@@ -9,6 +9,7 @@ I appreciate for reviewing and giving me advice @Pouhon158!
 - 0.15.2 The wizard has been improved and documented!
 - 0.15.3 Fixed the issue about locking/unlocking remote database while rebuilding in the wizard.
 - 0.15.4 Fixed issues about asynchronous processing (e.g., Conflict check or hidden file detection)
+- 0.15.5 Add new features for setting Self-hosted LiveSync up more easier.
 
 ### 0.14.1
 - The target selecting filter was implemented.
