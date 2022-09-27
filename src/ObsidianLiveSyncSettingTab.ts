@@ -164,6 +164,24 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
                 })
             })
+        const infoWarnForSubsequent = setupWizardEl.createEl("div", { text: `To set up second or subsequent device, please use  'Copy setup URI' and 'Open setup URI'` });
+        infoWarnForSubsequent.addClass("op-warn-info");
+        new Setting(setupWizardEl)
+            .setName("Copy setup URI")
+            .addButton((text) => {
+                text.setButtonText("Copy setup URI").onClick(() => {
+                    // @ts-ignore
+                    this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-copysetupuri")
+
+                })
+            })
+            .addButton((text) => {
+                text.setButtonText("Open setup URI").onClick(() => {
+                    // @ts-ignore
+                    this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-opensetupuri")
+
+                })
+            })
 
         addScreenElement("110", setupWizardEl);
 
@@ -361,7 +379,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         await applyEncryption(true);
                     })
-            );
+            )
+            .addButton((button) =>
+            button
+                .setButtonText("Apply w/o rebuilding")
+                .setWarning()
+                .setDisabled(false)
+                .setClass("sls-btn-right")
+                .onClick(async () => {
+                    await applyEncryption(false);
+                })
+        );
 
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {

@@ -98,7 +98,7 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
     constructor(app: App, note: string, placeholder: string | null, getItemsFun: () => string[], callback: (e: string) => void) {
         super(app);
         this.app = app;
-        this.setPlaceholder(placeholder ?? "y/n) " + note);
+        this.setPlaceholder((placeholder ?? "y/n) ") + note);
         if (getItemsFun) this.getItemsFun = getItemsFun;
         this.callback = callback;
     }

@@ -82,7 +82,7 @@ const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
 const askSelectString = (app: App, message: string, items: string[]): Promise<string> => {
     const getItemsFun = () => items;
     return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, "Select file)", getItemsFun, (result) => res(result));
+        const popover = new PopoverSelectString(app, message, "", getItemsFun, (result) => res(result));
         popover.open();
     });
 };
@@ -340,11 +340,31 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const configURIBase = "obsidian://setuplivesync?settings=";
         this.addCommand({
             id: "livesync-copysetupuri",
-            name: "Copy setup URI (beta)",
+            name: "Copy setup URI",
             callback: async () => {
                 const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
                 if (encryptingPassphrase === false) return;
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(this.settings), encryptingPassphrase));
+                const setting = { ...this.settings };
+                const keys = Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[];
+                for (const k of keys) {
+                    if (JSON.stringify(k in setting ? setting[k] : "") == JSON.stringify(k in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[k] : "*")) {
+                        delete setting[k];
+                    }
+                }
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase));
+                const uri = `${configURIBase}${encryptedSetting}`;
+                await navigator.clipboard.writeText(uri);
+                Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
+            },
+        });
+        this.addCommand({
+            id: "livesync-copysetupurifull",
+            name: "Copy setup URI (Full)",
+            callback: async () => {
+                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
+                if (encryptingPassphrase === false) return;
+                const setting = { ...this.settings };
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase));
                 const uri = `${configURIBase}${encryptedSetting}`;
                 await navigator.clipboard.writeText(uri);
                 Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
@@ -352,9 +372,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.addCommand({
             id: "livesync-opensetupuri",
-            name: "Open setup URI (beta)",
+            name: "Open setup URI",
             callback: async () => {
-                const setupURI = await askString(this.app, "Set up manually", "Set up URI", `${configURIBase}aaaaa`);
+                const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
                 if (setupURI === false) return;
                 if (!setupURI.startsWith(`${configURIBase}`)) {
                     Logger("Set up URI looks wrong.", LOG_LEVEL.NOTICE);
@@ -374,58 +394,91 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 if (newConf) {
                     const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
                     if (result == "yes") {
-                        const newSettingW = Object.assign({}, this.settings, newConf);
-                        // stopping once.
+                        const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf);
                         this.localDatabase.closeReplication();
                         this.settings.suspendFileWatching = true;
                         console.dir(newSettingW);
-                        const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
-                        const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
-                        if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
-                            // nothing to do. so peaceful.
+                        const setupJustImport = "Just import setting";
+                        const setupAsNew = "Set it up as secondary or subsequent device";
+                        const setupAgain = "Reconfigure and reconstitute the data";
+                        const setupManually = "Leave everything to me";
+
+                        const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
+                        if (setupType == setupJustImport) {
                             this.settings = newSettingW;
                             await this.saveSettings();
-                            const replicate = await askYesNo(this.app, "Unlock and replicate?");
-                            if (replicate == "yes") {
-                                await this.replicate(true);
-                                await this.markRemoteUnlocked();
-                            }
-                            Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
-                            return;
-                        }
-                        if (keepLocalDB == "no" && keepRemoteDB == "no") {
-                            const reset = await askYesNo(this.app, "Drop everything?");
-                            if (reset != "yes") {
-                                Logger("Cancelled", LOG_LEVEL.NOTICE);
-                                this.settings = oldConf;
+                        } else if (setupType == setupAsNew) {
+                            this.settings = newSettingW;
+                            await this.saveSettings();
+                            await this.resetLocalOldDatabase();
+                            await this.resetLocalDatabase();
+                            await this.localDatabase.initializeDatabase();
+                            await this.markRemoteResolved();
+                            await this.replicate(true);
+                        } else if (setupType == setupAgain) {
+                            const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
+                            if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
                                 return;
                             }
-                        }
-                        let initDB;
-                        this.settings = newSettingW;
-                        await this.saveSettings();
-                        if (keepLocalDB == "no") {
-                            this.resetLocalOldDatabase();
-                            this.resetLocalDatabase();
-                            this.localDatabase.initializeDatabase();
-                            const rebuild = await askYesNo(this.app, "Rebuild the database?");
-                            if (rebuild == "yes") {
-                                initDB = this.initializeDatabase(true);
-                            } else {
-                                this.markRemoteResolved();
-                            }
-                        }
-                        if (keepRemoteDB == "no") {
+                            await this.saveSettings();
+                            await this.resetLocalOldDatabase();
+                            await this.resetLocalDatabase();
+                            await this.localDatabase.initializeDatabase();
+                            await this.initializeDatabase(true);
                             await this.tryResetRemoteDatabase();
                             await this.markRemoteLocked();
-                        }
-                        if (keepLocalDB == "no" || keepRemoteDB == "no") {
-                            const replicate = await askYesNo(this.app, "Replicate once?");
-                            if (replicate == "yes") {
-                                if (initDB != null) {
-                                    await initDB;
+                            await this.markRemoteResolved();
+                            await this.replicate(true);
+
+                        } else if (setupType == setupManually) {
+                            const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
+                            const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
+                            if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
+                                // nothing to do. so peaceful.
+                                this.settings = newSettingW;
+                                await this.saveSettings();
+                                const replicate = await askYesNo(this.app, "Unlock and replicate?");
+                                if (replicate == "yes") {
+                                    await this.replicate(true);
+                                    await this.markRemoteUnlocked();
                                 }
-                                await this.replicate(true);
+                                Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                                return;
+                            }
+                            if (keepLocalDB == "no" && keepRemoteDB == "no") {
+                                const reset = await askYesNo(this.app, "Drop everything?");
+                                if (reset != "yes") {
+                                    Logger("Cancelled", LOG_LEVEL.NOTICE);
+                                    this.settings = oldConf;
+                                    return;
+                                }
+                            }
+                            let initDB;
+                            this.settings = newSettingW;
+                            await this.saveSettings();
+                            if (keepLocalDB == "no") {
+                                this.resetLocalOldDatabase();
+                                this.resetLocalDatabase();
+                                this.localDatabase.initializeDatabase();
+                                const rebuild = await askYesNo(this.app, "Rebuild the database?");
+                                if (rebuild == "yes") {
+                                    initDB = this.initializeDatabase(true);
+                                } else {
+                                    this.markRemoteResolved();
+                                }
+                            }
+                            if (keepRemoteDB == "no") {
+                                await this.tryResetRemoteDatabase();
+                                await this.markRemoteLocked();
+                            }
+                            if (keepLocalDB == "no" || keepRemoteDB == "no") {
+                                const replicate = await askYesNo(this.app, "Replicate once?");
+                                if (replicate == "yes") {
+                                    if (initDB != null) {
+                                        await initDB;
+                                    }
+                                    await this.replicate(true);
+                                }
                             }
                         }
                     }
