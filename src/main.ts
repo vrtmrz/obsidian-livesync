@@ -41,7 +41,7 @@ setNoticeClass(Notice);
 const ICHeader = "i:";
 const ICHeaderEnd = "i;";
 const ICHeaderLength = ICHeader.length;
-
+const FileWatchEventQueueMax = 10;
 
 /**
  * returns is internal chunk of file
@@ -109,6 +109,19 @@ function recentlyTouched(file: TFile) {
 function clearTouched() {
     touchedFiles = [];
 }
+
+type CacheData = string | ArrayBuffer;
+type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME";
+type FileEventArgs = {
+    file: TAbstractFile;
+    cache?: CacheData;
+    oldPath?: string;
+    ctx?: any;
+}
+type FileEventItem = {
+    type: FileEventType,
+    args: FileEventArgs
+}
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
     localDatabase: LocalPouchDB;
@@ -118,6 +131,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     suspended: boolean;
     deviceAndVaultName: string;
     isMobile = false;
+    isReady = false;
+
+    watchedFileEventQueue = [] as FileEventItem[];
 
     getVaultName(): string {
         return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
@@ -277,10 +293,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.refreshStatusText = this.refreshStatusText.bind(this);
 
         this.statusBar2 = this.addStatusBarItem();
-        // this.watchVaultChange = debounce(this.watchVaultChange.bind(this), delay, false);
-        // this.watchVaultDelete = debounce(this.watchVaultDelete.bind(this), delay, false);
-        // this.watchVaultRename = debounce(this.watchVaultRename.bind(this), delay, false);
-
         this.watchVaultChange = this.watchVaultChange.bind(this);
         this.watchVaultCreate = this.watchVaultCreate.bind(this);
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
@@ -298,6 +310,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // this.registerWatchEvents();
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
+        this.registerFileWatchEvents();
         this.app.workspace.onLayoutReady(async () => {
             if (this.localDatabase.isReady)
                 try {
@@ -700,12 +713,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     gcTimerHandler: any = null;
 
-
-    registerWatchEvents() {
+    registerFileWatchEvents() {
         this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
         this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
         this.registerEvent(this.app.vault.on("rename", this.watchVaultRename));
         this.registerEvent(this.app.vault.on("create", this.watchVaultCreate));
+    }
+
+    registerWatchEvents() {
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
         window.addEventListener("visibilitychange", this.watchWindowVisibility);
         window.addEventListener("online", this.watchOnline);
@@ -728,6 +743,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) return;
+        if (!this.isReady) return;
         // if (this.suspended) return;
         const isHidden = document.hidden;
         await this.applyBatchChange();
@@ -752,12 +768,125 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
+    // Cache file and waiting to can be proceed.
+    async appendWatchEvent(type: FileEventType, file: TAbstractFile, oldPath?: string, ctx?: any) {
+        // check really we can process.
+        if (!this.isTargetFile(file)) return;
+        if (this.settings.suspendFileWatching) return;
+
+        let cache: null | string | ArrayBuffer;
+        // new file or something changed, cache the changes.
+        if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
+            if (recentlyTouched(file)) {
+                return;
+            }
+            if (!isPlainText(file.name)) {
+                cache = await this.app.vault.readBinary(file);
+            } else {
+                // cache = await this.app.vault.read(file);
+                cache = await this.app.vault.cachedRead(file);
+                if (!cache) cache = await this.app.vault.read(file);
+            }
+        }
+
+
+        if (this.settings.batchSave) {
+            // if the latest event is the same type, omit that
+            // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
+            // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
+            // a.md MODIFY
+            // a.md CREATE
+            //     : 
+            let i = this.watchedFileEventQueue.length;
+            while (i >= 0) {
+                i--;
+                if (i < 0) break;
+                if (this.watchedFileEventQueue[i].args.file.path != file.path) {
+                    continue;
+                }
+                if (this.watchedFileEventQueue[i].type != type) break;
+                this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
+            }
+        }
+
+        this.watchedFileEventQueue.push({
+            type,
+            args: {
+                file,
+                oldPath,
+                cache,
+                ctx
+            }
+        })
+        this.refreshStatusText();
+        if (this.isReady) {
+            await this.procFileEvent();
+        }
+
+    }
+    async procFileEvent(applyBatch?: boolean) {
+        if (!this.isReady) return;
+        if (this.settings.batchSave) {
+            if (!applyBatch && this.watchedFileEventQueue.length < FileWatchEventQueueMax) {
+                // Defer till applying batch save or queue has been grown enough.
+                // or 120 seconds after.
+                setTrigger("applyBatchAuto", 120000, () => {
+                    this.procFileEvent(true);
+                })
+                return;
+            }
+        }
+        clearTrigger("applyBatchAuto");
+        const ret = await runWithLock("procFiles", false, async () => {
+            const procs = [...this.watchedFileEventQueue];
+            this.watchedFileEventQueue = [];
+            for (const queue of procs) {
+                const file = queue.args.file;
+                const cache = queue.args.cache;
+                if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
+                    await this.updateIntoDB(file, false, cache);
+                }
+                if (queue.type == "DELETE") {
+                    if (file instanceof TFile) {
+                        await this.deleteFromDB(file);
+                    } else if (file instanceof TFolder) {
+                        await this.deleteFolderOnDB(file);
+                    }
+                }
+                if (queue.type == "RENAME") {
+                    await this.watchVaultRenameAsync(file, queue.args.oldPath);
+                }
+            }
+            this.refreshStatusText();
+        })
+        this.refreshStatusText();
+        return ret;
+    }
+
+    watchVaultCreate(file: TAbstractFile, ctx?: any) {
+        this.appendWatchEvent("CREATE", file, null, ctx);
+    }
+
+    watchVaultChange(file: TAbstractFile, ctx?: any) {
+        this.appendWatchEvent("CHANGED", file, null, ctx);
+    }
+
+    watchVaultDelete(file: TAbstractFile, ctx?: any) {
+        this.appendWatchEvent("DELETE", file, null, ctx);
+    }
+    watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
+        this.appendWatchEvent("RENAME", file, oldFile, ctx);
+    }
+
     watchWorkspaceOpen(file: TFile) {
         if (this.settings.suspendFileWatching) return;
+        if (!this.isReady) return;
         this.watchWorkspaceOpenAsync(file);
     }
 
     async watchWorkspaceOpenAsync(file: TFile) {
+        if (this.settings.suspendFileWatching) return;
+        if (!this.isReady) return;
         await this.applyBatchChange();
         if (file == null) {
             return;
@@ -768,100 +897,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.showIfConflicted(file);
     }
 
-    watchVaultCreate(file: TFile, ...args: any[]) {
-        if (!this.isTargetFile(file)) return;
-        if (this.settings.suspendFileWatching) return;
-        if (recentlyTouched(file)) {
-            return;
-        }
-        this.watchVaultChangeAsync(file, ...args);
-    }
-
-    watchVaultChange(file: TAbstractFile, ...args: any[]) {
-        if (!this.isTargetFile(file)) return;
-        if (!(file instanceof TFile)) {
-            return;
-        }
-        if (recentlyTouched(file)) {
-            return;
-        }
-        if (this.settings.suspendFileWatching) return;
-
-        // If batchSave is enabled, queue all changes and do nothing.
-        if (this.settings.batchSave) {
-            ~(async () => {
-                const meta = await this.localDatabase.getDBEntryMeta(file.path);
-                if (meta != false) {
-                    const localMtime = ~~(file.stat.mtime / 1000);
-                    const docMtime = ~~(meta.mtime / 1000);
-                    if (localMtime !== docMtime) {
-                        // Perhaps we have to modify (to using newer doc), but we don't be sure to every device's clock is adjusted.
-                        this.batchFileChange = Array.from(new Set([...this.batchFileChange, file.path]));
-                        this.refreshStatusText();
-                    }
-                }
-            })();
-            return;
-        }
-        this.watchVaultChangeAsync(file, ...args);
-    }
-
     async applyBatchChange() {
-        if (!this.settings.batchSave || this.batchFileChange.length == 0) {
-            return;
-        }
-        return await runWithLock("batchSave", false, async () => {
-            const batchItems = JSON.parse(JSON.stringify(this.batchFileChange)) as string[];
-            this.batchFileChange = [];
-            const semaphore = Semaphore(3);
-
-            const batchProcesses = batchItems.map(e => (async (e) => {
-                const releaser = await semaphore.acquire(1, "batch");
-                try {
-                    const f = this.app.vault.getAbstractFileByPath(normalizePath(e));
-                    if (f && f instanceof TFile) {
-                        await this.updateIntoDB(f);
-                        Logger(`Batch save:${e}`);
-                    }
-                } catch (ex) {
-                    Logger(`Batch save error:${e}`, LOG_LEVEL.NOTICE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
-                } finally {
-                    releaser();
-                }
-            })(e))
-            await Promise.all(batchProcesses);
-
-            this.refreshStatusText();
-            return;
-        });
-    }
-
-    batchFileChange: string[] = [];
-
-    async watchVaultChangeAsync(file: TFile, ...args: any[]) {
-        if (file instanceof TFile) {
-            if (recentlyTouched(file)) {
-                return;
-            }
-            await this.updateIntoDB(file);
-        }
-    }
-
-    watchVaultDelete(file: TAbstractFile) {
-        if (!this.isTargetFile(file)) return;
-        // When save is delayed, it should be cancelled.
-        this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
-        if (this.settings.suspendFileWatching) return;
-        this.watchVaultDeleteAsync(file).then(() => { });
-    }
-
-    async watchVaultDeleteAsync(file: TAbstractFile) {
-        if (file instanceof TFile) {
-            await this.deleteFromDB(file);
-        } else if (file instanceof TFolder) {
-            await this.deleteFolderOnDB(file);
-        }
+        await this.procFileEvent(true);
     }
 
     GetAllFilesRecursively(file: TAbstractFile): TFile[] {
@@ -879,12 +916,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    watchVaultRename(file: TAbstractFile, oldFile: any) {
-        if (!this.isTargetFile(file)) return;
-        if (this.settings.suspendFileWatching) return;
-        this.watchVaultRenameAsync(file, oldFile).then(() => { });
-    }
-
     getFilePath(file: TAbstractFile): string {
         if (file instanceof TFolder) {
             if (file.isRoot()) return "";
@@ -897,7 +928,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return this.getFilePath(file.parent) + "/" + file.name;
     }
 
-    async watchVaultRenameAsync(file: TAbstractFile, oldFile: any) {
+    async watchVaultRenameAsync(file: TAbstractFile, oldFile: any, cache?: CacheData) {
         Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
         try {
             await this.applyBatchChange();
@@ -924,7 +955,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else if (file instanceof TFile) {
             try {
                 Logger(`file save ${file.path} into db`);
-                await this.updateIntoDB(file);
+                await this.updateIntoDB(file, false, cache);
                 Logger(`deleted ${oldFile} from db`);
                 await this.deleteFromDBbyPath(oldFile);
             } catch (ex) {
@@ -1046,7 +1077,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         ctime: doc.ctime,
                         mtime: doc.mtime,
                     });
-                    this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
+                    // this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
                     Logger(msg + path);
                     touch(newFile);
                     this.app.vault.trigger("create", newFile);
@@ -1066,7 +1097,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     ctime: doc.ctime,
                     mtime: doc.mtime,
                 });
-                this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
+                // this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
                 Logger(msg + path);
                 touch(newFile);
                 this.app.vault.trigger("create", newFile);
@@ -1134,7 +1165,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     await this.ensureDirectory(path);
                     try {
                         await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
-                        this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
+                        // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
                         Logger(msg + path);
                         const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
                         touch(xf);
@@ -1152,7 +1183,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 try {
                     await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
                     Logger(msg + path);
-                    this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
+                    // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
                     const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
                     touch(xf);
                     this.app.vault.trigger("modify", xf);
@@ -1508,7 +1539,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.statusBar.title = this.localDatabase.syncStatus;
         let waiting = "";
         if (this.settings.batchSave) {
-            waiting = " " + this.batchFileChange.map((e) => "🛫").join("");
+            waiting = " " + this.watchedFileEventQueue.map((e) => "🛫").join("");
             waiting = waiting.replace(/(🛫){10}/g, "🚀");
         }
         let queued = "";
@@ -1581,17 +1612,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async initializeDatabase(showingNotice?: boolean) {
+        this.isReady = false;
         if (await this.openDatabase()) {
             if (this.localDatabase.isReady) {
                 await this.syncAllFiles(showingNotice);
             }
+            this.isReady = true;
+            // run queued event once.
+            await this.procFileEvent(true);
             return true;
         } else {
+            this.isReady = false;
             return false;
         }
     }
 
     async replicateAllToServer(showingNotice?: boolean) {
+        if (!this.isReady) return false;
         if (this.settings.autoSweepPlugins) {
             await this.sweepPlugin(showingNotice);
         }
@@ -1754,23 +1791,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
     }
-
-    async renameFolder(folder: TFolder, oldFile: any) {
-        for (const v of folder.children) {
-            const entry = v as TFile & TFolder;
-            if (entry.children) {
-                await this.deleteFolderOnDB(entry);
-                if (this.settings.trashInsteadDelete) {
-                    await this.app.vault.trash(entry, false);
-                } else {
-                    await this.app.vault.delete(entry);
-                }
-            } else {
-                await this.deleteFromDB(entry);
-            }
-        }
-    }
-
     // --> conflict resolving
     async getConflictedDoc(path: string, rev: string): Promise<false | diff_result_leaf> {
         try {
@@ -2027,20 +2047,30 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     }
 
-    async updateIntoDB(file: TFile, initialScan?: boolean) {
+    async updateIntoDB(file: TFile, initialScan?: boolean, cache?: CacheData) {
         if (!this.isTargetFile(file)) return;
         if (shouldBeIgnored(file.path)) {
             return;
         }
         let content = "";
         let datatype: "plain" | "newnote" = "newnote";
-        if (!isPlainText(file.name)) {
-            const contentBin = await this.app.vault.readBinary(file);
-            content = await arrayBufferToBase64(contentBin);
-            datatype = "newnote";
+        if (!cache) {
+            if (!isPlainText(file.name)) {
+                const contentBin = await this.app.vault.readBinary(file);
+                content = await arrayBufferToBase64(contentBin);
+                datatype = "newnote";
+            } else {
+                content = await this.app.vault.read(file);
+                datatype = "plain";
+            }
         } else {
-            content = await this.app.vault.read(file);
-            datatype = "plain";
+            if (cache instanceof ArrayBuffer) {
+                content = await arrayBufferToBase64(cache);
+                datatype = "newnote"
+            } else {
+                content = cache;
+                datatype = "plain";
+            }
         }
         const fullPath = path2id(file.path);
         const d: LoadedEntry = {
