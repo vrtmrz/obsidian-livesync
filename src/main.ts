@@ -898,7 +898,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async applyBatchChange() {
-        await this.procFileEvent(true);
+        return await this.procFileEvent(true);
     }
 
     GetAllFilesRecursively(file: TAbstractFile): TFile[] {
@@ -930,11 +930,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async watchVaultRenameAsync(file: TAbstractFile, oldFile: any, cache?: CacheData) {
         Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
-        try {
-            await this.applyBatchChange();
-        } catch (ex) {
-            Logger(ex);
-        }
         if (file instanceof TFolder) {
             const newFiles = this.GetAllFilesRecursively(file);
             // for guard edge cases. this won't happen and each file's event will be raise.
@@ -1717,9 +1712,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         if (!initialScan) {
             await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
-                Logger(`Check or pull from db:${e}`);
-                await this.pullFile(e, filesStorage, false, null, false);
-                Logger(`Check or pull from db:${e} OK`);
+                const w = await this.localDatabase.getDBEntryMeta(e);
+                if (w) {
+                    Logger(`Check or pull from db:${e}`);
+                    await this.pullFile(e, filesStorage, false, null, false);
+                    Logger(`Check or pull from db:${e} OK`);
+                } else {
+                    Logger(`entry not found, maybe deleted:${e}`);
+                }
             });
         }
         if (!initialScan) {
