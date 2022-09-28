@@ -11,6 +11,7 @@ I appreciate for reviewing and giving me advice @Pouhon158!
 - 0.15.4 Fixed issues about asynchronous processing (e.g., Conflict check or hidden file detection)
 - 0.15.5 Add new features for setting Self-hosted LiveSync up more easier.
 - 0.15.6 File tracking logic has been refined.
+- 0.15.7 Fixed bug about renaming file.
 
 ### 0.14.1
 - The target selecting filter was implemented.
