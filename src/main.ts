@@ -842,6 +842,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.watchedFileEventQueue = [];
             for (const queue of procs) {
                 const file = queue.args.file;
+                const key = `file-last-proc-${queue.type}-${file.path}`;
+                const last = Number(await this.localDatabase.kvDB.get(key) || 0);
+                if (file instanceof TFile && file.stat.mtime == last) {
+                    Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
+                    continue;
+                }
                 const cache = queue.args.cache;
                 if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
                     await this.updateIntoDB(file, false, cache);
@@ -855,6 +861,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
                 if (queue.type == "RENAME") {
                     await this.watchVaultRenameAsync(file, queue.args.oldPath);
+                }
+                if (file instanceof TFile) {
+                    await this.localDatabase.kvDB.set(key, file.stat.mtime);
                 }
             }
             this.refreshStatusText();
@@ -1106,7 +1115,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async deleteVaultItem(file: TFile | TFolder) {
-        if (!this.isTargetFile(file)) return;
+        if (file instanceof TFile) {
+            if (!this.isTargetFile(file)) return;
+        }
         const dir = file.parent;
         if (this.settings.trashInsteadDelete) {
             await this.app.vault.trash(file, false);
@@ -1718,7 +1729,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     await this.pullFile(e, filesStorage, false, null, false);
                     Logger(`Check or pull from db:${e} OK`);
                 } else {
-                    Logger(`entry not found, maybe deleted:${e}`);
+                    Logger(`entry not found, maybe deleted (it is normal behavior):${e}`);
                 }
             });
         }
