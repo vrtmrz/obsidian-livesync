@@ -67,9 +67,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 element.removeClass("selected");
                 (element.querySelector("input[type=radio]") as HTMLInputElement).checked = false;
             });
-            console.log(`.sls-setting-label.c-${screen}`)
             w.querySelectorAll(`.sls-setting-label.c-${screen}`).forEach((element) => {
-                console.log(element)
                 element.addClass("selected");
                 (element.querySelector("input[type=radio]") as HTMLInputElement).checked = true;
             });
@@ -381,15 +379,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             )
             .addButton((button) =>
-            button
-                .setButtonText("Apply w/o rebuilding")
-                .setWarning()
-                .setDisabled(false)
-                .setClass("sls-btn-right")
-                .onClick(async () => {
-                    await applyEncryption(false);
-                })
-        );
+                button
+                    .setButtonText("Apply w/o rebuilding")
+                    .setWarning()
+                    .setDisabled(false)
+                    .setClass("sls-btn-right")
+                    .onClick(async () => {
+                        await applyEncryption(false);
+                    })
+            );
 
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
