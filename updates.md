@@ -13,6 +13,7 @@ I appreciate for reviewing and giving me advice @Pouhon158!
 - 0.15.6 File tracking logic has been refined.
 - 0.15.7 Fixed bug about renaming file.
 - 0.15.8 Fixed bug about deleting empty directory, weird behaviour on boot-sequence on mobile devices.
+- 0.15.9 Improved chunk retrieving, now chunks are retrieved in batch on continuous requests.
 
 ### 0.14.1
 - The target selecting filter was implemented.
