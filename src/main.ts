@@ -310,8 +310,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         // this.registerWatchEvents();
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
-        this.registerFileWatchEvents();
         this.app.workspace.onLayoutReady(async () => {
+            this.registerFileWatchEvents();
             if (this.localDatabase.isReady)
                 try {
                     if (this.isRedFlagRaised()) {
@@ -830,7 +830,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (!applyBatch && this.watchedFileEventQueue.length < FileWatchEventQueueMax) {
                 // Defer till applying batch save or queue has been grown enough.
                 // or 120 seconds after.
-                setTrigger("applyBatchAuto", 120000, () => {
+                setTrigger("applyBatchAuto", 30000, () => {
                     this.procFileEvent(true);
                 })
                 return;
