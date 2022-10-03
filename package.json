@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.15.9",
+    "version": "0.15.10",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -27,7 +27,7 @@
         "eslint": "^7.32.0",
         "eslint-config-airbnb-base": "^14.2.1",
         "eslint-plugin-import": "^2.25.2",
-        "obsidian": "^0.15.4",
+        "obsidian": "^0.16.3",
         "postcss": "^8.4.14",
         "postcss-load-config": "^3.1.4",
         "rollup": "^2.32.1",
