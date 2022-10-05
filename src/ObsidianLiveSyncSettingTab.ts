@@ -963,7 +963,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
         new Setting(containerSyncSettingEl)
+            .setName("Monitor changes to internal files")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.watchInternalFileChanges).onChange(async (value) => {
+                    this.plugin.settings.watchInternalFileChanges = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
             .setName("Scan for hidden files before replication")
+            .setDesc("This configuration will be ignored if monitoring changes is enabled.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
                     this.plugin.settings.syncInternalFilesBeforeReplication = value;
@@ -972,7 +981,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
         new Setting(containerSyncSettingEl)
             .setName("Scan hidden files periodically")
-            .setDesc("Seconds, 0 to disable.")
+            .setDesc("Seconds, 0 to disable. This configuration will be ignored if monitoring changes is enabled.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.syncInternalFilesInterval + "")
@@ -988,7 +997,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
         let skipPatternTextArea: TextAreaComponent = null;
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
-        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$";
+        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$";
         new Setting(containerSyncSettingEl)
             .setName("Skip patterns")
             .setDesc(
@@ -1007,7 +1016,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             );
         new Setting(containerSyncSettingEl)
-            .setName("Skip patterns defaults")
+            .setName("Restore the skip pattern to default")
             .addButton((button) => {
                 button.setButtonText("Default")
                     .onClick(async () => {

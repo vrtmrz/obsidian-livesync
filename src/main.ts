@@ -98,7 +98,7 @@ let touchedFiles: string[] = [];
 function touch(file: TFile | string) {
     const f = file instanceof TFile ? file : app.vault.getAbstractFileByPath(file) as TFile;
     const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
-    touchedFiles.push(key);
+    touchedFiles.unshift(key);
     touchedFiles = touchedFiles.slice(0, 100);
 }
 function recentlyTouched(file: TFile) {
@@ -111,9 +111,9 @@ function clearTouched() {
 }
 
 type CacheData = string | ArrayBuffer;
-type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME";
+type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME" | "INTERNAL";
 type FileEventArgs = {
-    file: TAbstractFile;
+    file: TAbstractFile | InternalFileInfo;
     cache?: CacheData;
     oldPath?: string;
     ctx?: any;
@@ -297,14 +297,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.watchVaultCreate = this.watchVaultCreate.bind(this);
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
         this.watchVaultRename = this.watchVaultRename.bind(this);
+        this.watchVaultRawEvents = this.watchVaultRawEvents.bind(this);
         this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
         this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
         this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
 
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
-        this.periodicSync = this.periodicSync.bind(this);
         this.setPeriodicSync = this.setPeriodicSync.bind(this);
+        this.periodicSync = this.periodicSync.bind(this);
+        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
 
         this.getPluginList = this.getPluginList.bind(this);
         // this.registerWatchEvents();
@@ -718,6 +720,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
         this.registerEvent(this.app.vault.on("rename", this.watchVaultRename));
         this.registerEvent(this.app.vault.on("create", this.watchVaultCreate));
+        //@ts-ignore : Internal API
+        this.registerEvent(this.app.vault.on("raw", this.watchVaultRawEvents));
     }
 
     registerWatchEvents() {
@@ -769,9 +773,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     // Cache file and waiting to can be proceed.
-    async appendWatchEvent(type: FileEventType, file: TAbstractFile, oldPath?: string, ctx?: any) {
+    async appendWatchEvent(type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string, ctx?: any) {
         // check really we can process.
-        if (!this.isTargetFile(file)) return;
+        if (file instanceof TFile && !this.isTargetFile(file)) return;
         if (this.settings.suspendFileWatching) return;
 
         let cache: null | string | ArrayBuffer;
@@ -848,6 +852,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
                     continue;
                 }
+
                 const cache = queue.args.cache;
                 if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
                     await this.updateIntoDB(file, false, cache);
@@ -860,7 +865,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     }
                 }
                 if (queue.type == "RENAME") {
-                    await this.watchVaultRenameAsync(file, queue.args.oldPath);
+                    if (file instanceof TFile) {
+                        await this.watchVaultRenameAsync(file, queue.args.oldPath);
+                    }
+                }
+                if (queue.type == "INTERNAL") {
+                    await this.watchVaultRawEventsAsync(file.path);
                 }
                 if (file instanceof TFile) {
                     await this.localDatabase.kvDB.set(key, file.stat.mtime);
@@ -909,6 +919,50 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async applyBatchChange() {
         return await this.procFileEvent(true);
     }
+
+    // Watch raw events (Internal API)
+    watchVaultRawEvents(path: string) {
+        if (!this.settings.syncInternalFiles) return;
+        if (!this.settings.watchInternalFileChanges) return;
+        if (!path.startsWith(this.app.vault.configDir)) return;
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e));
+        if (ignorePatterns.some(e => path.match(e))) return;
+        this.appendWatchEvent("INTERNAL", { path, mtime: 0, ctime: 0, size: 0 }, "", null);
+    }
+    recentProcessedInternalFiles = [] as string[];
+    async watchVaultRawEventsAsync(path: string) {
+
+        const stat = await this.app.vault.adapter.stat(path);
+        // sometimes folder is coming.
+        if (stat && stat.type != "file") return;
+        const storageMTime = ~~((stat && stat.mtime || 0) / 1000);
+        const key = `${path}-${storageMTime}`;
+        if (this.recentProcessedInternalFiles.contains(key)) {
+            //If recently processed, it may caused by self.
+            return;
+        }
+        this.recentProcessedInternalFiles = [key, ...this.recentProcessedInternalFiles].slice(0, 100);
+        const id = filename2idInternalChunk(path);
+        const filesOnDB = await this.localDatabase.getDBEntryMeta(id);
+        const dbMTime = ~~((filesOnDB && filesOnDB.mtime || 0) / 1000);
+
+        // Skip unchanged file.
+        if (dbMTime == storageMTime) {
+            // Logger(`STORAGE --> DB:${path}: (hidden) Nothing changed`);
+            return;
+        }
+
+        // Do not compare timestamp. Always local data should be preferred except this plugin wrote one.
+        if (storageMTime == 0) {
+            await this.deleteInternalFileOnDatabase(path);
+        } else {
+            await this.storeInternalFileToDatabase({ path: path, ...stat });
+        }
+
+    }
+
 
     GetAllFilesRecursively(file: TAbstractFile): TFile[] {
         if (file instanceof TFile) {
@@ -1236,6 +1290,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         );
+        this.refreshStatusText();
     }
     async handleDBChangedAsync(change: EntryBody) {
 
@@ -1296,6 +1351,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.syncInternalFilesAndDatabase("pull", false, false, w);
             Logger(`Applying hidden ${w.length} files changed`);
         });
+        this.refreshStatusText();
     }
     procInternalFile(filename: string) {
         this.procInternalFiles.push(filename);
@@ -1602,6 +1658,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     updateStatusBarText() { }
 
     async replicate(showMessage?: boolean) {
+        if (!this.isReady) return;
         if (this.settings.versionUpFlash != "") {
             Logger("Open settings and check message, please.", LOG_LEVEL.NOTICE);
             return;
@@ -1611,7 +1668,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(false);
         }
         await this.loadQueuedFiles();
-        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication) {
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
             await this.syncInternalFilesAndDatabase("push", showMessage);
         }
         this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
@@ -2333,7 +2390,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.periodicInternalFileScanHandler != null) {
             this.clearInternalFileScan();
         }
-        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval > 0) {
+        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval > 0 && !this.settings.watchInternalFileChanges) {
             this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicInternalFileScan(), this.settings.syncInternalFilesInterval * 1000);
         }
     }
