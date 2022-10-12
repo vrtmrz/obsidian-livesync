@@ -40,7 +40,7 @@
         "diff-match-patch": "^1.0.5",
         "esbuild": "0.13.12",
         "esbuild-svelte": "^0.7.0",
-        "idb": "^7.0.2",
+        "idb": "^7.1.0",
         "xxhash-wasm": "^0.4.2"
     }
 }
