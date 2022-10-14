@@ -3,6 +3,10 @@
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
   - Due to using an internal API, this feature may become unusable with a major update. If this happens, please disable this once.
 
+#### Minors
+
+- 0.16.1 Added missing log updates.
+
 ### 0.15.0
 - Outdated configuration items have been removed. 
 - Setup wizard has been implemented!
