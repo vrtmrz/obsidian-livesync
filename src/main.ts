@@ -841,42 +841,45 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         clearTrigger("applyBatchAuto");
-        const ret = await runWithLock("procFiles", false, async () => {
-            const procs = [...this.watchedFileEventQueue];
-            this.watchedFileEventQueue = [];
-            for (const queue of procs) {
-                const file = queue.args.file;
-                const key = `file-last-proc-${queue.type}-${file.path}`;
-                const last = Number(await this.localDatabase.kvDB.get(key) || 0);
-                if (file instanceof TFile && file.stat.mtime == last) {
-                    Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
-                    continue;
-                }
+        const ret = await runWithLock("procFiles", true, async () => {
+            do {
+                const procs = [...this.watchedFileEventQueue];
+                this.watchedFileEventQueue = [];
+                for (const queue of procs) {
+                    const file = queue.args.file;
+                    const key = `file-last-proc-${queue.type}-${file.path}`;
+                    const last = Number(await this.localDatabase.kvDB.get(key) || 0);
+                    if (file instanceof TFile && file.stat.mtime == last) {
+                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
+                        continue;
+                    }
 
-                const cache = queue.args.cache;
-                if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
-                    await this.updateIntoDB(file, false, cache);
-                }
-                if (queue.type == "DELETE") {
+                    const cache = queue.args.cache;
+                    if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
+                        await this.updateIntoDB(file, false, cache);
+                    }
+                    if (queue.type == "DELETE") {
+                        if (file instanceof TFile) {
+                            await this.deleteFromDB(file);
+                        } else if (file instanceof TFolder) {
+                            await this.deleteFolderOnDB(file);
+                        }
+                    }
+                    if (queue.type == "RENAME") {
+                        if (file instanceof TFile) {
+                            await this.watchVaultRenameAsync(file, queue.args.oldPath);
+                        }
+                    }
+                    if (queue.type == "INTERNAL") {
+                        await this.watchVaultRawEventsAsync(file.path);
+                    }
                     if (file instanceof TFile) {
-                        await this.deleteFromDB(file);
-                    } else if (file instanceof TFolder) {
-                        await this.deleteFolderOnDB(file);
+                        await this.localDatabase.kvDB.set(key, file.stat.mtime);
                     }
                 }
-                if (queue.type == "RENAME") {
-                    if (file instanceof TFile) {
-                        await this.watchVaultRenameAsync(file, queue.args.oldPath);
-                    }
-                }
-                if (queue.type == "INTERNAL") {
-                    await this.watchVaultRawEventsAsync(file.path);
-                }
-                if (file instanceof TFile) {
-                    await this.localDatabase.kvDB.set(key, file.stat.mtime);
-                }
-            }
-            this.refreshStatusText();
+                this.refreshStatusText();
+            } while (this.watchedFileEventQueue.length != 0);
+            return true;
         })
         this.refreshStatusText();
         return ret;
@@ -917,7 +920,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async applyBatchChange() {
-        return await this.procFileEvent(true);
+        if (this.settings.batchSave) {
+            return await this.procFileEvent(true);
+        }
     }
 
     // Watch raw events (Internal API)
