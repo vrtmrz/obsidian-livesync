@@ -6,9 +6,10 @@
 #### Minors
 
 - 0.16.1 Added missing log updates.
+- 0.16.2 Fixed many problems caused by combinations of `Sync On Save` and the tracking logic that changed at 0.15.6.
 
 ### 0.15.0
-- Outdated configuration items have been removed. 
+- Outdated configuration items have been removed.
 - Setup wizard has been implemented!
 
 I appreciate for reviewing and giving me advice @Pouhon158!
