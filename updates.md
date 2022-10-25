@@ -10,6 +10,7 @@
 - 0.16.3
   - Fixed detection of IBM Cloudant (And if there are some issues, be fixed automatically).
   - A configuration information reporting tool has been implemented.
+- 0.16.4 Fixed detection failure. Please set the `Chunk size` again when using a self-hosted database.
 
 ### 0.15.0
 - Outdated configuration items have been removed.
