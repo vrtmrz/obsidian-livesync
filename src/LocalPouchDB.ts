@@ -5,7 +5,7 @@ import { Logger } from "./lib/src/logger.js";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { EntryDoc, LOG_LEVEL } from "./lib/src/types.js";
 import { enableEncryption } from "./lib/src/utils.js";
-import { isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
+import { isCloudantURI, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
 import { id2path, path2id } from "./utils.js";
 
 export class LocalPouchDB extends LocalPouchDBBase {
@@ -77,7 +77,7 @@ export class LocalPouchDB extends LocalPouchDBBase {
                     const opts_length = opts.body.toString().length;
                     if (opts_length > 1024 * 1024 * 10) {
                         // over 10MB
-                        if (uri.contains(".cloudantnosqldb.")) {
+                        if (isCloudantURI(uri)) {
                             this.last_successful_post = false;
                             Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
                             throw new Error("This request should fail on IBM Cloudant.");

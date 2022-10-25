@@ -35,6 +35,7 @@ import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 const isDebug = false;
 
 import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
+import { isCloudantURI } from "./lib/src/utils_couchdb";
 
 setNoticeClass(Notice);
 
@@ -696,6 +697,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 localStorage.setItem(lsKey, this.deviceAndVaultName);
                 this.settings.deviceAndVaultName = "";
             }
+        }
+        if (isCloudantURI(this.settings.couchDB_URI) && this.settings.customChunkSize != 0) {
+            Logger("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL.NOTICE)
+            this.settings.customChunkSize = 0;
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
     }

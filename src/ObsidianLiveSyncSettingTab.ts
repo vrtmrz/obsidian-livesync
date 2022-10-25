@@ -1,12 +1,29 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer } from "obsidian";
-import { DEFAULT_SETTINGS, LOG_LEVEL, RemoteDBSettings } from "./lib/src/types";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "obsidian";
+import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { delay, versionNumberString2Number } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { checkSyncInfo } from "./lib/src/utils_couchdb.js";
+import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 
+const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string) => {
+    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
+    const encoded = window.btoa(utf8str);
+    const authHeader = "Basic " + encoded;
+    // const origin = "capacitor://localhost";
+    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };
+    const uri = `${baseUri}/_node/_local/_config${key ? "/" + key : ""}`;
+
+    const requestParam: RequestUrlParam = {
+        url: uri,
+        method: body ? "PUT" : "GET",
+        headers: transformedHeaders,
+        contentType: "application/json",
+        body: body ? JSON.stringify(body) : undefined,
+    };
+    return await requestUrl(requestParam);
+};
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
 
@@ -474,23 +491,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         const checkConfig = async () => {
                             try {
-                                const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string) => {
-                                    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
-                                    const encoded = window.btoa(utf8str);
-                                    const authHeader = "Basic " + encoded;
-                                    // const origin = "capacitor://localhost";
-                                    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };
-                                    const uri = `${baseUri}/_node/_local/_config${key ? "/" + key : ""}`;
-
-                                    const requestParam: RequestUrlParam = {
-                                        url: uri,
-                                        method: body ? "PUT" : "GET",
-                                        headers: transformedHeaders,
-                                        contentType: "application/json",
-                                        body: body ? JSON.stringify(body) : undefined,
-                                    };
-                                    return await requestUrl(requestParam);
-                                };
+                                if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
+                                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL.NOTICE);
+                                    return;
+                                }
 
                                 const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
 
@@ -573,7 +577,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                     addResult("✔ httpd.enable_cors is ok.");
                                 }
                                 // If the server is not cloudant, configure request size
-                                if (!this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                                if (!isCloudantURI(this.plugin.settings.couchDB_URI)) {
                                     // REQUEST SIZE
                                     if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
                                         addResult("❗ chttpd.max_http_request_size is low)");
@@ -637,7 +641,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 addResult("--Done--", ["ob-btn-config-head"]);
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                             } catch (ex) {
-                                Logger(`Checking configuration failed`);
+                                Logger(`Checking configuration failed`, LOG_LEVEL.NOTICE);
                                 Logger(ex);
                             }
                         };
@@ -675,7 +679,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         if (!this.plugin.settings.encrypt) {
                             this.plugin.settings.passphrase = "";
                         }
-                        if (this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                        if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
                             this.plugin.settings.customChunkSize = 0;
                         } else {
                             this.plugin.settings.customChunkSize = 100;
@@ -696,7 +700,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         if (!this.plugin.settings.encrypt) {
                             this.plugin.settings.passphrase = "";
                         }
-                        if (this.plugin.settings.couchDB_URI.contains(".cloudantnosqldb.")) {
+                        if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
                             this.plugin.settings.customChunkSize = 0;
                         } else {
                             this.plugin.settings.customChunkSize = 100;
@@ -1262,6 +1266,50 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const containerHatchEl = containerEl.createDiv();
 
         containerHatchEl.createEl("h3", { text: "Hatch" });
+
+
+        new Setting(containerHatchEl)
+            .setName("Make report to inform the issue")
+            .setDesc("Verify and repair all files and update database without restoring")
+            .addButton((button) =>
+                button
+                    .setButtonText("Make report")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        let responseConfig: any = {};
+                        const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
+                        try {
+                            const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+
+                            Logger(JSON.stringify(r.json, null, 2));
+
+                            responseConfig = r.json;
+                            responseConfig["couch_httpd_auth"].secret = REDACTED;
+                            responseConfig["couch_httpd_auth"].authentication_db = REDACTED;
+                            responseConfig["couch_httpd_auth"].authentication_redirect = REDACTED;
+                            responseConfig["couchdb"].uuid = REDACTED;
+                            responseConfig["admins"] = REDACTED;
+
+                        } catch (ex) {
+                            responseConfig = "Requesting information to the remote CouchDB has been failed. If you are using IBM Cloudant, it is the normal behaviour."
+                        }
+                        const pluginConfig = JSON.parse(JSON.stringify(this.plugin.settings)) as ObsidianLiveSyncSettings;
+                        pluginConfig.couchDB_DBNAME = REDACTED;
+                        pluginConfig.couchDB_PASSWORD = REDACTED;
+                        pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI) ? "cloudant" : "self-hosted";
+                        pluginConfig.couchDB_USER = REDACTED;
+                        pluginConfig.passphrase = REDACTED;
+                        pluginConfig.workingPassphrase = REDACTED;
+
+                        const msgConfig = `----remote config----
+${stringifyYaml(responseConfig)}
+---- Plug-in config ---
+${stringifyYaml(pluginConfig)}`;
+                        console.log(msgConfig);
+                        await navigator.clipboard.writeText(msgConfig);
+                        Logger(`Information has been copied to clipboard`, LOG_LEVEL.NOTICE);
+                    })
+            );
 
         if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
             const c = containerHatchEl.createEl("div", {
