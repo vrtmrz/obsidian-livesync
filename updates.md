@@ -7,6 +7,9 @@
 
 - 0.16.1 Added missing log updates.
 - 0.16.2 Fixed many problems caused by combinations of `Sync On Save` and the tracking logic that changed at 0.15.6.
+- 0.16.3
+  - Fixed detection of IBM Cloudant (And if there are some issues, be fixed automatically).
+  - A configuration information reporting tool has been implemented.
 
 ### 0.15.0
 - Outdated configuration items have been removed.
