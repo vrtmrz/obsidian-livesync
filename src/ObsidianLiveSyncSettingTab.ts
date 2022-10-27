@@ -813,6 +813,24 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             }
             );
+        new Setting(containerGeneralSettingsEl)
+            .setName("Delete old metadata of deleted files on start-up")
+            .setClass("wizardHidden")
+            .setDesc("(Days passed, 0 to disable automatic-deletion)")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.automaticallyDeleteMetadataOfDeletedFiles + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v)) {
+                            v = 0;
+                        }
+                        this.plugin.settings.automaticallyDeleteMetadataOfDeletedFiles = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+
 
         addScreenElement("20", containerGeneralSettingsEl);
         const containerSyncSettingEl = containerEl.createDiv();

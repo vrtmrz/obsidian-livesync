@@ -38,8 +38,8 @@ export class ConflictResolveModal extends Modal {
         diff = diff.replace(/\n/g, "<br>");
         div.innerHTML = diff;
         const div2 = contentEl.createDiv("");
-        const date1 = new Date(this.result.left.mtime).toLocaleString();
-        const date2 = new Date(this.result.right.mtime).toLocaleString();
+        const date1 = new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
+        const date2 = new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
         div2.innerHTML = `
 <span class='deleted'>A:${date1}</span><br /><span class='added'>B:${date2}</span><br> 
         `;
