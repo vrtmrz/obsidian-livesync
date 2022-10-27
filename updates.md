@@ -11,6 +11,14 @@
   - Fixed detection of IBM Cloudant (And if there are some issues, be fixed automatically).
   - A configuration information reporting tool has been implemented.
 - 0.16.4 Fixed detection failure. Please set the `Chunk size` again when using a self-hosted database.
+- 0.16.5
+  - Fixed
+    - Conflict detection and merging now be able to treat deleted files.
+    - Logs while the boot-up sequence has been tidied up.
+    - Fixed incorrect log entries.
+  - New Feature
+    - The feature of automatically deleting old expired metadata has been implemented.
+    We can configure it in `Delete old metadata of deleted files on start-up` in the `General Settings` pane.
 
 ### 0.15.0
 - Outdated configuration items have been removed.
