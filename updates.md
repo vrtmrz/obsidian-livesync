@@ -19,6 +19,16 @@
   - New Feature
     - The feature of automatically deleting old expired metadata has been implemented.
     We can configure it in `Delete old metadata of deleted files on start-up` in the `General Settings` pane.
+- 0.16.6
+  - Fixed
+    - Automatic (temporary) batch size adjustment has been restored to work correctly.
+    - Chunk splitting has been backed to the previous behaviour for saving them correctly.
+  - Improved
+    - Corrupted chunks will be detected automatically.
+    - Now on the case-insensitive system, `aaa.md` and `AAA.md` will be treated as the same file or path at applying changesets.
+
+Note:
+Before 0.16.5, LiveSync had some issues making chunks. In this case, synchronisation had became been always failing after a corrupted one should be made. After 0.16.6, the corrupted chunk is automatically detected. Sorry for troubling you but please do `rebuild everything` when this plug-in notified so.
 
 ### 0.15.0
 - Outdated configuration items have been removed.
