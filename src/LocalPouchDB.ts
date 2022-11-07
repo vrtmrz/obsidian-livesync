@@ -35,7 +35,7 @@ export class LocalPouchDB extends LocalPouchDBBase {
 
     last_successful_post = false;
     getLastPostFailedBySize() {
-        return this.last_successful_post;
+        return !this.last_successful_post;
     }
     async fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
         const ret = await requestUrl(request);
@@ -75,7 +75,7 @@ export class LocalPouchDB extends LocalPouchDBBase {
                 const method = opts.method ?? "GET";
                 if (opts.body) {
                     const opts_length = opts.body.toString().length;
-                    if (opts_length > 1024 * 1024 * 10) {
+                    if (opts_length > 1000 * 1000 * 10) {
                         // over 10MB
                         if (isCloudantURI(uri)) {
                             this.last_successful_post = false;

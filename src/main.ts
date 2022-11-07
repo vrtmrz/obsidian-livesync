@@ -44,6 +44,16 @@ const ICHeaderEnd = "i;";
 const ICHeaderLength = ICHeader.length;
 const FileWatchEventQueueMax = 10;
 
+function getAbstractFileByPath(path: string): TAbstractFile | null {
+    // Hidden API but so useful.
+    if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
+        // @ts-ignore
+        return app.vault.getAbstractFileByPathInsensitive(path);
+    } else {
+        return app.vault.getAbstractFileByPath(path);
+    }
+}
+
 /**
  * returns is internal chunk of file
  * @param str ID
@@ -97,7 +107,7 @@ const askString = (app: App, title: string, key: string, placeholder: string): P
 };
 let touchedFiles: string[] = [];
 function touch(file: TFile | string) {
-    const f = file instanceof TFile ? file : app.vault.getAbstractFileByPath(file) as TFile;
+    const f = file instanceof TFile ? file : getAbstractFileByPath(file) as TFile;
     const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
     touchedFiles.unshift(key);
     touchedFiles = touchedFiles.slice(0, 100);
@@ -147,7 +157,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     isRedFlagRaised(): boolean {
-        const redflag = this.app.vault.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
+        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
         if (redflag != null) {
             return true;
         }
@@ -1050,7 +1060,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             for (const i of newFiles) {
                 try {
                     const newFilePath = normalizePath(this.getFilePath(i));
-                    const newFile = this.app.vault.getAbstractFileByPath(newFilePath);
+                    const newFile = getAbstractFileByPath(newFilePath);
                     if (newFile instanceof TFile) {
                         Logger(`save ${newFile.path} into db`);
                         await this.updateIntoDB(newFile);
@@ -1278,7 +1288,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
                         // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
                         Logger(msg + path);
-                        const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
+                        const xf = getAbstractFileByPath(file.path) as TFile;
                         touch(xf);
                         this.app.vault.trigger("modify", xf);
                     } catch (ex) {
@@ -1295,7 +1305,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
                     Logger(msg + path);
                     // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
-                    const xf = this.app.vault.getAbstractFileByPath(file.path) as TFile;
+                    const xf = getAbstractFileByPath(file.path) as TFile;
                     touch(xf);
                     this.app.vault.trigger("modify", xf);
                 } catch (ex) {
@@ -1345,7 +1355,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async handleDBChangedAsync(change: EntryBody) {
 
-        const targetFile = this.app.vault.getAbstractFileByPath(id2path(change._id));
+        const targetFile = getAbstractFileByPath(id2path(change._id));
         if (targetFile == null) {
             if (change._deleted || change.deleted) {
                 return;
@@ -1461,7 +1471,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!this.isTargetFile(id2path(doc._id))) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         if ((!isInternalChunk(doc._id)) && skipOldFile) {
-            const info = this.app.vault.getAbstractFileByPath(id2path(doc._id));
+            const info = getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
                 const localMtime = ~~((info as TFile).stat.mtime / 1000);
@@ -2027,7 +2037,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     const p = conflictCheckResult.diff.map((e) => e[1]).join("");
                     await this.localDatabase.deleteDBEntry(filename, { rev: conflictCheckResult.left.rev });
                     await this.localDatabase.deleteDBEntry(filename, { rev: conflictCheckResult.right.rev });
-                    const file = this.app.vault.getAbstractFileByPath(filename) as TFile;
+                    const file = getAbstractFileByPath(filename) as TFile;
                     if (file) {
                         await this.app.vault.modify(file, p);
                         await this.updateIntoDB(file);
@@ -2074,7 +2084,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const checkFiles = JSON.parse(JSON.stringify(this.conflictedCheckFiles)) as string[];
             for (const filename of checkFiles) {
                 try {
-                    const file = this.app.vault.getAbstractFileByPath(filename);
+                    const file = getAbstractFileByPath(filename);
                     if (file != null && file instanceof TFile) {
                         await this.showIfConflicted(file.path);
                     }
@@ -2106,7 +2116,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async pullFile(filename: string, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
-        const targetFile = this.app.vault.getAbstractFileByPath(id2path(filename));
+        const targetFile = getAbstractFileByPath(id2path(filename));
         if (!this.isTargetFile(id2path(filename))) return;
         if (targetFile == null) {
             //have to create;
@@ -2137,7 +2147,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             throw new Error(`Missing doc:${(file as any).path}`)
         }
         if (!(file instanceof TFile) && "path" in file) {
-            const w = this.app.vault.getAbstractFileByPath((file as any).path);
+            const w = getAbstractFileByPath((file as any).path);
             if (w instanceof TFile) {
                 file = w;
             } else {
