@@ -10,9 +10,11 @@ But some additional configurations are required in `local.ini` to use from Self-
 ```
 [couchdb]
 single_node=true
+max_document_size = 50000000
 
 [chttpd]
 require_valid_user = true
+max_http_request_size = 4294967296
 
 [chttpd_auth]
 require_valid_user = true
