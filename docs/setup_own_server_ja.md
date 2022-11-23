@@ -8,12 +8,14 @@ CouchDBを構築するには、[Dockerのイメージ](https://hub.docker.com/_/
 ```
 [couchdb]
 single_node=true
+max_document_size = 50000000
 
 [chttpd]
 require_valid_user = true
 
 [chttpd_auth]
 require_valid_user = true
+max_http_request_size = 4294967296
 authentication_redirect = /_utils/session.html
 
 [httpd]
