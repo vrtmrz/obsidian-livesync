@@ -1288,7 +1288,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerHatchEl)
             .setName("Make report to inform the issue")
-            .setDesc("Verify and repair all files and update database without restoring")
             .addButton((button) =>
                 button
                     .setButtonText("Make report")

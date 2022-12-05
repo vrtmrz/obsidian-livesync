@@ -709,7 +709,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         clearAllPeriodic();
         clearAllTriggers();
         window.removeEventListener("visibilitychange", this.watchWindowVisibility);
-        window.removeEventListener("online", this.watchOnline)
+        window.removeEventListener("online", this.watchOnline);
         Logger("unloading plugin");
     }
 
