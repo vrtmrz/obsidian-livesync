@@ -7,6 +7,7 @@ import { EntryDoc, LOG_LEVEL } from "./lib/src/types.js";
 import { enableEncryption } from "./lib/src/utils.js";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
 import { id2path, path2id } from "./utils.js";
+import XXH from "xxhashjs";
 
 export class LocalPouchDB extends LocalPouchDBBase {
 
@@ -31,6 +32,13 @@ export class LocalPouchDB extends LocalPouchDBBase {
     }
     async onResetDatabase(): Promise<void> {
         await this.kvDB.destroy();
+    }
+
+    async prepareHashFunctions() {
+        if (this.h32 != null) return;
+        // const { h32, h32Raw } = await xxhash();
+        this.h32 = (input: string, seed: number) => (XXH.h32(input, seed).toString(16))// h32;
+        this.h32Raw = (input: Uint8Array, seed: number) => (XXH.h32(input.buffer, seed).toNumber())// h32;
     }
 
     last_successful_post = false;
