@@ -2192,7 +2192,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     }
 
-    async updateIntoDB(file: TFile, initialScan?: boolean, cache?: CacheData) {
+    async updateIntoDB(file: TFile, initialScan?: boolean, cache?: CacheData, force?: boolean) {
         if (!this.isTargetFile(file)) return;
         if (shouldBeIgnored(file.path)) {
             return;
@@ -2234,15 +2234,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (recentlyTouched(file)) {
                 return true;
             }
-            const old = await this.localDatabase.getDBEntry(fullPath, null, false, false);
-            if (old !== false) {
-                const oldData = { data: old.data, deleted: old._deleted || old.deleted, };
-                const newData = { data: d.data, deleted: d._deleted || d.deleted };
-                if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                    Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
-                    return true;
+            try {
+                const old = await this.localDatabase.getDBEntry(fullPath, null, false, false);
+                if (old !== false) {
+                    const oldData = { data: old.data, deleted: old._deleted || old.deleted, };
+                    const newData = { data: d.data, deleted: d._deleted || d.deleted };
+                    if (JSON.stringify(oldData) == JSON.stringify(newData)) {
+                        Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                        return true;
+                    }
+                    // d._rev = old._rev;
                 }
-                // d._rev = old._rev;
+            } catch (ex) {
+                if (force) {
+                    Logger(msg + "Error, Could not check the diff for the old one." + (force ? "force writing." : "") + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                } else {
+                    Logger(msg + "Error, Could not check the diff for the old one." + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                }
+                return !force;
             }
             return false;
         });

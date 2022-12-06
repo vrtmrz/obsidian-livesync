@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "obsidian";
 import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
-import { delay, versionNumberString2Number } from "./lib/src/utils";
+import { delay, Semaphore, versionNumberString2Number } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
@@ -1367,21 +1367,28 @@ ${stringifyYaml(pluginConfig)}`;
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
+                        const semaphore = Semaphore(10);
                         const files = this.app.vault.getFiles();
-                        Logger("Verify and repair all files started", LOG_LEVEL.NOTICE, "verify");
-                        // const notice = NewNotice("", 0);
                         let i = 0;
-                        for (const file of files) {
-                            i++;
-                            Logger(`Update into ${file.path}`);
-                            Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL.NOTICE, "verify");
+                        const processes = files.map(e => (async (file) => {
+                            const releaser = await semaphore.acquire(1, "verifyAndRepair");
+
                             try {
-                                await this.plugin.updateIntoDB(file);
+                                Logger(`Update into ${file.path}`);
+                                await this.plugin.updateIntoDB(file, false, null, true);
+                                i++;
+                                Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL.NOTICE, "verify");
+
                             } catch (ex) {
-                                Logger("could not update:");
+                                i++;
+                                Logger(`Error while verifyAndRepair`, LOG_LEVEL.NOTICE);
                                 Logger(ex);
+                            } finally {
+                                releaser();
                             }
                         }
+                        )(e));
+                        await Promise.all(processes);
                         Logger("done", LOG_LEVEL.NOTICE, "verify");
                     })
             );
