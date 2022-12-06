@@ -9,6 +9,10 @@
   - Changed:
     - Chunk ID numbering rules
 
+#### Minors
+- 0.17.1
+  - Fixed: Now we can verify and repair the database.
+  - Refactored inside.
 
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
