@@ -14,6 +14,12 @@
   - Fixed: Now we can verify and repair the database.
   - Refactored inside.
 
+- 0.17.2
+  - New feature
+    - We can merge conflicted documents automatically if sensible.
+  - Fixed
+    - Writing to the storage will be pended while they have conflicts after replication.
+
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
