@@ -974,6 +974,24 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerSyncSettingEl)
+            .setName("Disable sensible auto merging on markdown files")
+            .setDesc("If this switch is turned on, a merge dialog will be displayed, even if the sensible-merge is possible automatically. (Turn on to previous behavior)")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.disableMarkdownAutoMerge).onChange(async (value) => {
+                    this.plugin.settings.disableMarkdownAutoMerge = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Write documents after synchronization even if they have conflict")
+            .setDesc("Turn on to previous behavior")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.writeDocumentsIfConflicted).onChange(async (value) => {
+                    this.plugin.settings.writeDocumentsIfConflicted = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
 
         new Setting(containerSyncSettingEl)

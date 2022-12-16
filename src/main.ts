@@ -1,5 +1,5 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App, } from "obsidian";
-import { diff_match_patch } from "diff-match-patch";
+import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo } from "./types";
@@ -1365,13 +1365,30 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else if (targetFile instanceof TFile) {
             const doc = change;
             const file = targetFile;
-            await this.doc2storage_modify(doc, file);
-            if (!this.settings.checkConflictOnlyOnOpen) {
-                this.queueConflictedCheck(file);
-            } else {
-                const af = app.workspace.getActiveFile();
-                if (af && af.path == file.path) {
+            const queueConflictCheck = () => {
+                if (!this.settings.checkConflictOnlyOnOpen) {
                     this.queueConflictedCheck(file);
+                    return true;
+                } else {
+                    const af = app.workspace.getActiveFile();
+                    if (af && af.path == file.path) {
+                        this.queueConflictedCheck(file);
+                        return true;
+                    }
+                }
+                return false;
+            }
+            if (this.settings.writeDocumentsIfConflicted) {
+                await this.doc2storage_modify(doc, file);
+                queueConflictCheck();
+            } else {
+                const d = await this.localDatabase.getDBEntryMeta(id2path(change._id), { conflicts: true })
+                if (d && !d._conflicts) {
+                    await this.doc2storage_modify(doc, file);
+                } else {
+                    if (!queueConflictCheck()) {
+                        Logger(`${id2path(change._id)} is conflicted, write to the storage has been pended.`, LOG_LEVEL.NOTICE);
+                    }
                 }
             }
         } else {
@@ -1954,6 +1971,163 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return false;
     }
+    //TODO: TIDY UP
+    async mergeSensibly(path: string, baseRev: string, currentRev: string, conflictedRev: string): Promise<Diff[] | false> {
+        const baseLeaf = await this.getConflictedDoc(path, baseRev);
+        const leftLeaf = await this.getConflictedDoc(path, currentRev);
+        const rightLeaf = await this.getConflictedDoc(path, conflictedRev);
+        let autoMerge = false;
+        if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
+            return false;
+        }
+        // diff between base and each revision
+        const dmp = new diff_match_patch();
+        const mapLeft = dmp.diff_linesToChars_(baseLeaf.data, leftLeaf.data);
+        const diffLeftSrc = dmp.diff_main(mapLeft.chars1, mapLeft.chars2, false);
+        dmp.diff_charsToLines_(diffLeftSrc, mapLeft.lineArray);
+        const mapRight = dmp.diff_linesToChars_(baseLeaf.data, rightLeaf.data);
+        const diffRightSrc = dmp.diff_main(mapRight.chars1, mapRight.chars2, false);
+        dmp.diff_charsToLines_(diffRightSrc, mapRight.lineArray);
+        function splitDiffPiece(src: Diff[]): Diff[] {
+            const ret = [] as Diff[];
+            do {
+                const d = src.shift();
+                const pieces = d[1].split(/([^\n]*\n)/).filter(f => f != "");
+                if (typeof (d) == "undefined") {
+                    break;
+                }
+                if (d[0] != DIFF_DELETE) {
+                    ret.push(...(pieces.map(e => [d[0], e] as Diff)));
+                }
+                if (d[0] == DIFF_DELETE) {
+                    const nd = src.shift();
+
+                    if (typeof (nd) != "undefined") {
+                        const piecesPair = nd[1].split(/([^\n]*\n)/).filter(f => f != "");
+                        if (nd[0] == DIFF_INSERT) {
+                            // it might be pair
+                            for (const pt of pieces) {
+                                ret.push([d[0], pt]);
+                                const pairP = piecesPair.shift();
+                                if (typeof (pairP) != "undefined") ret.push([DIFF_INSERT, pairP]);
+                            }
+                            ret.push(...(piecesPair.map(e => [nd[0], e] as Diff)));
+                        } else {
+                            ret.push(...(pieces.map(e => [d[0], e] as Diff)));
+                            ret.push(...(piecesPair.map(e => [nd[0], e] as Diff)));
+
+                        }
+                    } else {
+                        ret.push(...(pieces.map(e => [0, e] as Diff)));
+                    }
+                }
+            } while (src.length > 0);
+            return ret;
+        }
+
+        const diffLeft = splitDiffPiece(diffLeftSrc);
+        const diffRight = splitDiffPiece(diffRightSrc);
+
+        let rightIdx = 0;
+        let leftIdx = 0;
+        const merged = [] as Diff[];
+        autoMerge = true;
+        LOOP_MERGE:
+        do {
+            if (leftIdx >= diffLeft.length && rightIdx >= diffRight.length) {
+                break LOOP_MERGE;
+            }
+            const leftItem = diffLeft[leftIdx] ?? [0, ""];
+            const rightItem = diffRight[rightIdx] ?? [0, ""];
+            leftIdx++;
+            rightIdx++;
+            // when completely same, leave it .
+            if (leftItem[0] == DIFF_EQUAL && rightItem[0] == DIFF_EQUAL && leftItem[1] == rightItem[1]) {
+                merged.push(leftItem);
+                continue;
+            }
+            if (leftItem[0] == DIFF_DELETE && rightItem[0] == DIFF_DELETE && leftItem[1] == rightItem[1]) {
+                // when deleted evenly,
+                const nextLeftIdx = leftIdx;
+                const nextRightIdx = rightIdx;
+                const [nextLeftItem, nextRightItem] = [diffLeft[nextLeftIdx] ?? [0, ""], diffRight[nextRightIdx] ?? [0, ""]];
+                if ((nextLeftItem[0] == DIFF_INSERT && nextRightItem[0] == DIFF_INSERT) && nextLeftItem[1] != nextRightItem[1]) {
+                    //but next line looks like different
+                    autoMerge = false;
+                    break;
+                } else {
+                    merged.push(leftItem);
+                    continue;
+                }
+            }
+            // when inserted evenly
+            if (leftItem[0] == DIFF_INSERT && rightItem[0] == DIFF_INSERT) {
+                if (leftItem[1] == rightItem[1]) {
+                    merged.push(leftItem);
+                    continue;
+                } else {
+                    // sort by file date.
+                    if (leftLeaf.mtime <= rightLeaf.mtime) {
+                        merged.push(leftItem);
+                        merged.push(rightItem);
+                        continue;
+                    } else {
+                        merged.push(rightItem);
+                        merged.push(leftItem);
+                        continue;
+                    }
+                }
+
+            }
+            // when on inserting, index should be fixed again.
+            if (leftItem[0] == DIFF_INSERT) {
+                rightIdx--;
+                merged.push(leftItem);
+                continue;
+            }
+            if (rightItem[0] == DIFF_INSERT) {
+                leftIdx--;
+                merged.push(rightItem);
+                continue;
+            }
+            // except insertion, the line should not be different.
+            if (rightItem[1] != leftItem[1]) {
+                //TODO: SHOULD BE PANIC.
+                Logger(`MERGING PANIC:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL.VERBOSE);
+                autoMerge = false;
+                break LOOP_MERGE;
+            }
+            if (leftItem[0] == DIFF_DELETE) {
+                if (rightItem[0] == DIFF_EQUAL) {
+                    merged.push(leftItem);
+                    continue;
+                } else {
+                    //we cannot perform auto merge.
+                    autoMerge = false;
+                    break LOOP_MERGE;
+                }
+            }
+            if (rightItem[0] == DIFF_DELETE) {
+                if (leftItem[0] == DIFF_EQUAL) {
+                    merged.push(rightItem);
+                    continue;
+                } else {
+                    //we cannot perform auto merge.
+                    autoMerge = false;
+                    break LOOP_MERGE;
+                }
+            }
+            Logger(`Weird condition:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL.VERBOSE);
+            // here is the exception
+            break LOOP_MERGE;
+        } while (leftIdx < diffLeft.length || rightIdx < diffRight.length);
+        if (autoMerge) {
+            Logger(`Sensibly merge available`, LOG_LEVEL.VERBOSE);
+            return merged;
+        } else {
+            return false;
+        }
+    }
 
     /**
      * Getting file conflicted status.
@@ -1966,9 +2140,39 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (test == null) return false;
         if (!test._conflicts) return false;
         if (test._conflicts.length == 0) return false;
+        const conflicts = test._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
+
+        if (path.endsWith(".md") && !this.settings.disableMarkdownAutoMerge) {
+            const conflictedRev = conflicts[0];
+            const conflictedRevNo = Number(conflictedRev.split("-")[0]);
+            //Search 
+            const revFrom = (await this.localDatabase.localDatabase.get(id2path(path), { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
+            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first().rev ?? "";
+            if (commonBase) {
+                const result = await this.mergeSensibly(path, commonBase, test._rev, conflictedRev);
+                if (result) {
+                    // can be merged.
+                    Logger(`Sensible merge:${path}`, LOG_LEVEL.INFO);
+                    // remove conflicted revision.
+                    await this.localDatabase.deleteDBEntry(path, { rev: conflictedRev });
+                    const p = result.filter(e => e[0] != DIFF_DELETE).map((e) => e[1]).join("");
+                    const file = getAbstractFileByPath(path) as TFile;
+                    if (file) {
+                        await this.app.vault.modify(file, p);
+                        await this.updateIntoDB(file);
+                    } else {
+                        const newFile = await this.app.vault.create(path, p);
+                        await this.updateIntoDB(newFile);
+                    }
+                    await this.pullFile(path);
+                    Logger(`Automatically merged (sensible) :${path}`, LOG_LEVEL.INFO);
+                    return true;
+                }
+            }
+        }
         // should be one or more conflicts;
         const leftLeaf = await this.getConflictedDoc(path, test._rev);
-        const rightLeaf = await this.getConflictedDoc(path, test._conflicts[0]);
+        const rightLeaf = await this.getConflictedDoc(path, conflicts[0]);
         if (leftLeaf == false) {
             // what's going on..
             Logger(`could not get current revisions:${path}`, LOG_LEVEL.NOTICE);
@@ -1976,7 +2180,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         if (rightLeaf == false) {
             // Conflicted item could not load, delete this.
-            await this.localDatabase.deleteDBEntry(path, { rev: test._conflicts[0] });
+            await this.localDatabase.deleteDBEntry(path, { rev: conflicts[0] });
             await this.pullFile(path, null, true);
             Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL.NOTICE);
             return true;
@@ -2032,11 +2236,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const toDelete = selected;
                 const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
                 if (toDelete == "") {
-                    //concat both,
-                    // write data,and delete both old rev.
+                    // concat both,
+                    // delete conflicted revision and write a new file, store it again.
                     const p = conflictCheckResult.diff.map((e) => e[1]).join("");
-                    await this.localDatabase.deleteDBEntry(filename, { rev: conflictCheckResult.left.rev });
-                    await this.localDatabase.deleteDBEntry(filename, { rev: conflictCheckResult.right.rev });
+                    await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
                     const file = getAbstractFileByPath(filename) as TFile;
                     if (file) {
                         await this.app.vault.modify(file, p);
@@ -2092,7 +2295,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     Logger(ex);
                 }
             }
-        }, 1000);
+        }, 100);
     }
 
     async showIfConflicted(filename: string) {
