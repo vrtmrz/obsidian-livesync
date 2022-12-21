@@ -29,7 +29,7 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 
 
 
-import { clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, id2path, memoIfNotExist, memoObject, path2id, retrieveMemoObject, setTrigger } from "./utils";
+import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
@@ -2129,6 +2129,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
+    async mergeObject(path: string, baseRev: string, currentRev: string, conflictedRev: string): Promise<string | false> {
+        const baseLeaf = await this.getConflictedDoc(path, baseRev);
+        const leftLeaf = await this.getConflictedDoc(path, currentRev);
+        const rightLeaf = await this.getConflictedDoc(path, conflictedRev);
+        if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
+            return false;
+        }
+        const baseObj = { data: tryParseJSON(baseLeaf.data, {}) } as Record<string | number | symbol, any>;
+        const leftObj = { data: tryParseJSON(leftLeaf.data, {}) } as Record<string | number | symbol, any>;
+        const rightObj = { data: tryParseJSON(rightLeaf.data, {}) } as Record<string | number | symbol, any>;
+
+        const diffLeft = generatePatchObj(baseObj, leftObj);
+        const diffRight = generatePatchObj(baseObj, rightObj);
+        const patches = [
+            { mtime: leftLeaf.mtime, patch: diffLeft },
+            { mtime: rightLeaf.mtime, patch: diffRight }
+        ].sort((a, b) => a.mtime - b.mtime);
+        let newObj = { ...baseObj };
+        try {
+            for (const patch of patches) {
+                newObj = applyPatch(newObj, patch.patch);
+            }
+            return JSON.stringify(newObj.data);
+        } catch (ex) {
+            Logger("Could not merge object");
+            Logger(ex, LOG_LEVEL.VERBOSE)
+            return false;
+        }
+    }
+
     /**
      * Getting file conflicted status.
      * @param path the file location
@@ -2141,21 +2171,38 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!test._conflicts) return false;
         if (test._conflicts.length == 0) return false;
         const conflicts = test._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
-
-        if (path.endsWith(".md") && !this.settings.disableMarkdownAutoMerge) {
+        if ((isSensibleMargeApplicable(path) || isObjectMargeApplicable(path)) && !this.settings.disableMarkdownAutoMerge) {
             const conflictedRev = conflicts[0];
             const conflictedRevNo = Number(conflictedRev.split("-")[0]);
             //Search 
             const revFrom = (await this.localDatabase.localDatabase.get(id2path(path), { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
             const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first().rev ?? "";
+            let p = undefined;
             if (commonBase) {
-                const result = await this.mergeSensibly(path, commonBase, test._rev, conflictedRev);
-                if (result) {
+                if (isSensibleMargeApplicable(path)) {
+                    const result = await this.mergeSensibly(path, commonBase, test._rev, conflictedRev);
+                    if (result) {
+                        p = result.filter(e => e[0] != DIFF_DELETE).map((e) => e[1]).join("");
+                        // can be merged.
+                        Logger(`Sensible merge:${path}`, LOG_LEVEL.INFO);
+                    } else {
+                        Logger(`Sensible merge is not applicable.`, LOG_LEVEL.VERBOSE);
+                    }
+                } else if (isObjectMargeApplicable(path)) {
                     // can be merged.
-                    Logger(`Sensible merge:${path}`, LOG_LEVEL.INFO);
+                    const result = await this.mergeObject(path, commonBase, test._rev, conflictedRev);
+                    if (result) {
+                        Logger(`Object merge:${path}`, LOG_LEVEL.INFO);
+                        p = result;
+                    } else {
+                        Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
+                    }
+                }
+
+                if (p != undefined) {
                     // remove conflicted revision.
                     await this.localDatabase.deleteDBEntry(path, { rev: conflictedRev });
-                    const p = result.filter(e => e[0] != DIFF_DELETE).map((e) => e[1]).join("");
+
                     const file = getAbstractFileByPath(path) as TFile;
                     if (file) {
                         await this.app.vault.modify(file, p);
@@ -2914,8 +2961,33 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!("_conflicts" in doc)) return false;
         if (doc._conflicts.length == 0) return false;
         Logger(`Hidden file conflicted:${id2filenameInternalChunk(id)}`);
+        const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
+
         const revA = doc._rev;
-        const revB = doc._conflicts[0];
+        const revB = conflicts[0];
+
+        const conflictedRev = conflicts[0];
+        const conflictedRevNo = Number(conflictedRev.split("-")[0]);
+        //Search 
+        const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
+        const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first().rev ?? "";
+        const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
+        if (result) {
+            Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
+            const filename = id2filenameInternalChunk(id);
+            const isExists = await this.app.vault.adapter.exists(filename);
+            if (!isExists) {
+                await this.ensureDirectoryEx(filename);
+            }
+            await this.app.vault.adapter.write(filename, result);
+            const stat = await this.app.vault.adapter.stat(filename);
+            await this.storeInternalFileToDatabase({ path: filename, ...stat });
+            await this.extractInternalFileFromDatabase(filename);
+            await this.localDatabase.localDatabase.remove(id, revB);
+            return this.resolveConflictOnInternalFile(id);
+        } else {
+            Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
+        }
 
         const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
         // determine which revision should been deleted.

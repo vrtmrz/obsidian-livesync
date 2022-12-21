@@ -106,7 +106,8 @@
 }
 
 .CodeMirror-wrap::before,
-.cm-s-obsidian>.cm-editor::before {
+.cm-s-obsidian>.cm-editor::before,
+.canvas-wrapper::before {
     content: var(--slsmessage);
     text-align: right;
     white-space: pre-wrap;
@@ -120,6 +121,10 @@
     font-size: 80%;
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);
+}
+
+.canvas-wrapper::before {
+    right: 48px;
 }
 
 .CodeMirror-wrap::before {
