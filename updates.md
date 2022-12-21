@@ -20,6 +20,9 @@
   - Fixed
     - Writing to the storage will be pended while they have conflicts after replication.
 
+- 0.17.3
+  - Now we supported canvas! And conflicted JSON files are also synchronised with merging its content if they are obvious.
+
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
