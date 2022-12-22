@@ -52,7 +52,7 @@ export class LocalPouchDB extends LocalPouchDBBase {
     }
 
 
-    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
+    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | boolean, useDynamicIterationCount: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
@@ -155,7 +155,7 @@ export class LocalPouchDB extends LocalPouchDBBase {
 
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
         if (passphrase && typeof passphrase === "string") {
-            enableEncryption(db, passphrase);
+            enableEncryption(db, passphrase, useDynamicIterationCount);
         }
         try {
             const info = await db.info();

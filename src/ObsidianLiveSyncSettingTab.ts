@@ -297,10 +297,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     if (inWizard) {
                         this.plugin.settings.encrypt = value;
                         passphrase.setDisabled(!value);
+                        dynamicIteration.setDisabled(!value);
                         await this.plugin.saveSettings();
                     } else {
                         this.plugin.settings.workingEncrypt = value;
                         passphrase.setDisabled(!value);
+                        dynamicIteration.setDisabled(!value);
                         await this.plugin.saveSettings();
                     }
                 })
@@ -325,11 +327,30 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
         passphrase.setDisabled(!this.plugin.settings.workingEncrypt);
 
+        const dynamicIteration = new Setting(containerRemoteDatabaseEl)
+            .setName("Use dynamic iteration count (experimental)")
+            .setDesc("Balancing the encryption/decryption load against the length of the passphrase if toggled. (v0.17.5 or higher required)")
+            .addToggle((toggle) => {
+                toggle.setValue(this.plugin.settings.workingUseDynamicIterationCount)
+                    .onChange(async (value) => {
+                        if (inWizard) {
+                            this.plugin.settings.useDynamicIterationCount = value;
+                            await this.plugin.saveSettings();
+                        } else {
+                            this.plugin.settings.workingUseDynamicIterationCount = value;
+                            await this.plugin.saveSettings();
+                        }
+                    });
+            })
+            .setClass("wizardHidden");
+        dynamicIteration.setDisabled(!this.plugin.settings.workingEncrypt);
+
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
                 encrypt: this.plugin.settings.workingEncrypt,
                 passphrase: this.plugin.settings.workingPassphrase,
+                useDynamicIterationCount: this.plugin.settings.workingUseDynamicIterationCount,
             };
             console.dir(settingForCheck);
             const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
@@ -355,7 +376,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
                 return;
             }
-            if (!(await checkWorkingPassphrase())) {
+            if (!(await checkWorkingPassphrase()) && !sendToServer) {
                 return;
             }
             if (!this.plugin.settings.workingEncrypt) {
@@ -368,6 +389,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncOnFileOpen = false;
             this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
             this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
+            this.plugin.settings.useDynamicIterationCount = this.plugin.settings.workingUseDynamicIterationCount;
 
             await this.plugin.saveSettings();
             if (sendToServer) {

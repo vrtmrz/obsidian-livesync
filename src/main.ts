@@ -418,7 +418,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         delete setting[k];
                     }
                 }
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase));
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
                 const uri = `${configURIBase}${encryptedSetting}`;
                 await navigator.clipboard.writeText(uri);
                 Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
@@ -431,7 +431,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
                 if (encryptingPassphrase === false) return;
                 const setting = { ...this.settings };
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase));
+                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
                 const uri = `${configURIBase}${encryptedSetting}`;
                 await navigator.clipboard.writeText(uri);
                 Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
@@ -457,7 +457,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const oldConf = JSON.parse(JSON.stringify(this.settings));
                 const encryptingPassphrase = await askString(this.app, "Passphrase", "Passphrase for your settings", "");
                 if (encryptingPassphrase === false) return;
-                const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase));
+                const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
                 if (newConf) {
                     const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
                     if (result == "yes") {
