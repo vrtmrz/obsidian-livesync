@@ -17,14 +17,14 @@ If you feel something, please feel free to inform me.
 |   🚑   | [Corrupted data](#corrupted-data)                                 |
 
 ## Remote Database Configurations
-Configure settings of synchronize server. If any synchronization is enabled, you can't edit this section. Please disable all synchronization to change.
+Configure the settings of synchronize server. If any synchronization is enabled, you can't edit this section. Please disable all synchronization to change.
 
 ### URI
 URI of CouchDB. In the case of Cloudant, It's "External Endpoint(preferred)".  
 **Do not end it up with a slash** when it doesn't contain the database name.
 
 ### Username
-Your CouchDB's Username. With administrator's privilege is preferred.
+Your CouchDB's Username. Administrator's privilege is preferred.
 
 ### Password
 Your CouchDB's Password.  
@@ -47,11 +47,11 @@ The passphrase to used as the key of encryption. Please use the long text.
 
 ### Apply
 Set the End to End encryption enabled and its passphrase for use in replication.  
-If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.
+If you change the passphrase of an existing database, overwriting the remote database is strongly recommended.
 
 
 ### Overwrite remote database
-Overwrite the remote database by the local database using the passphrase you applied.
+Overwrite the remote database with the local database using the passphrase you applied.
 
 
 ### Rebuild
@@ -61,17 +61,17 @@ Rebuild remote and local databases with local files. It will delete all document
 You can check the connection by clicking this button.
 
 ### Check database configuration
-You can check and modify your CouchDB's configuration from here directly.
+You can check and modify your CouchDB configuration from here directly.
 
 ### Lock remote database.
 Other devices are banned from the database when you have locked the database.  
-If you have something troubled with other devices, you can protect the vault and remote database by your device.
+If you have something troubled with other devices, you can protect the vault and remote database with your device.
 
 ## Local Database Configurations
 "Local Database" is created inside your obsidian.
 
 ### Batch database update
-Delay database update until raise replication, open another file, window visibility changed, or file events except for file modification.  
+Delay database update until raise replication, open another file, window visibility changes, or file events except for file modification.  
 This option can not be used with LiveSync at the same time.
 
 
@@ -81,23 +81,23 @@ If one device rebuilds or locks the remote database, every other device will be 
 ### minimum chunk size and LongLine threshold
 The configuration of chunk splitting.
 
-Self-hosted LiveSync splits the note into chunks for efficient synchronization. This chunk should be longer than "Minimum chunk size".
+Self-hosted LiveSync splits the note into chunks for efficient synchronization. This chunk should be longer than the "Minimum chunk size".
 
 Specifically, the length of the chunk is determined by the following orders.
 
 1. Find the nearest newline character, and if it is farther than LongLineThreshold, this piece becomes an independent chunk.
 
-2. If not, find nearest to these items.
-    1. Newline character
-    2. Empty line (Windows style)
-    3. Empty line (non-Windows style)
-3. Compare the farther in these 3 positions and next "\[newline\]#" position, pick a shorter piece to as chunk.
+2. If not, find the nearest to these items.
+    1. A newline character
+    2. An empty line (Windows style)
+    3. An empty line (non-Windows style)
+3. Compare the farther in these 3 positions and the next "newline\]#" position, and pick a shorter piece as a chunk.
 
 This rule was made empirically from my dataset. If this rule acts as badly on your data. Please give me the information.
 
-You can dump saved note structure to `Dump informations of this doc`. Replace every character to x except newline and "#" when sending information to me.
+You can dump saved note structure to `Dump informations of this doc`. Replace every character with x except newline and "#" when sending information to me.
 
-Default values are 20 letters and 250 letters.
+The default values are 20 letters and 250 letters.
 
 ## General Settings
 

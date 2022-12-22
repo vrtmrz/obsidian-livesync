@@ -1,5 +1,5 @@
 # Quick setup
-The Setup wizard has been implemented since v0.15.0. This simplifies the initial set-up.
+The Setup wizard has been implemented since v0.15.0. This simplifies the initial setup.
 
 Note: The subsequent devices should be set up using the `Copy setup URI` and `Open setup URI`.
 
@@ -34,18 +34,18 @@ Enter the information in the database we have set up.
 
 ![](../images/quick_setup_4.png)
 
-If End to End encryption is enabled, the possibility of a third party who does not know the Passphrase being able to read the contents of the Remote database in the event that they are leaked is reduced. So we strongly recommend to enable it.  
+If End to End encryption is enabled, the possibility of a third party who does not know the Passphrase being able to read the contents of the Remote database if they are leaked is reduced. So we strongly recommend enabling it.  
 Encryption is based on 256-bit AES-GCM.  
 This setting can be disabled if you are inside a closed network and it is clear that you will not be accessed by third parties.
 
-### Test database connectionとCheck database configuraion
+### Test database connection and Check database configuration
 
 Here we can check the status of the connection to the database and the database settings.  
 
 ![](../images/quick_setup_5.png)  
 
 #### Test Database Connection
-Check whether we can connect to the database. If it fails, there are a number of reasons, but once you have done the `Check database configuration`, check if it fails there too.
+Check whether we can connect to the database. If it fails, there are several reasons, but once you have done the `Check database configuration`, check if it fails there too.
 
 #### Check database configuration
 
@@ -64,11 +64,11 @@ Go to the Local Database configuration.
 ### Discard exist database and proceed
 Discard the contents of the Remote database and go to the Local Database configuration.
 
-## Local Database confiuration
+## Local Database configuration
 
 ![](../images/quick_setup_8.png)
 
-Configure the local database. If we already have a Vaults with Self-hosted LiveSync installed and having same directory name as currently we are setting up, please specify a different suffix than the Vault you have already set up here.
+Configure the local database. If we already have a Vaults with Self-hosted LiveSync installed and having the same directory name as currently we are setting up, please specify a different suffix than the Vault you have already set up here.
 
 ## Miscellaneous
 Finally, finish the miscellaneous configurations and select a preset for synchronisation.

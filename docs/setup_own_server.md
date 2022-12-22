@@ -1,7 +1,7 @@
 # Setup CouchDB to your server
 
 
-## Install CouchDB and access from PC or Mac
+## Install CouchDB and access from a PC or Mac
 
 The easiest way to set up the CouchDB is using the [docker image]((https://hub.docker.com/_/couchdb)).
 
@@ -39,7 +39,7 @@ $ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /pat
 *Remember to replace the path with the path to your local.ini*
 Note: At this time, the file owner of local.ini became 5984:5984. It's the limitation docker image. please change the owner before editing local.ini again.
 
-If you could confirm that Self-hosted LiveSync can sync with the server, launch docker image as background as you like.
+If you could confirm that Self-hosted LiveSync can sync with the server, launch the docker image as a background as you like.
 
 Example to run docker in detached mode:
 ```
@@ -47,10 +47,10 @@ $ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=passw
 ```
 *Remember to replace the path with the path to your local.ini*
 
-## Access from mobile device
+## Access from a mobile device
 If you want to access Self-hosted LiveSync from mobile devices, you need a valid SSL certificate.
 
-### Testing from mobile
+### Testing from a mobile
 In the testing phase, [localhost.run](http://localhost.run/) or something like services is very useful.
 
 example on using localhost.run)
@@ -94,6 +94,6 @@ Set the A record of your domain to point to your server, and host reverse proxy 
 Note: Mounting CouchDB on the top directory is not recommended.  
 Using Caddy is a handy way to serve the server with SSL automatically.
 
-I have published [docker-compose.yml and ini files](https://github.com/vrtmrz/self-hosted-livesync-server) that launches Caddy and CouchDB at once. Please try it out.
+I have published [docker-compose.yml and ini files](https://github.com/vrtmrz/self-hosted-livesync-server) that launch Caddy and CouchDB at once. Please try it out.
 
 And, be sure to check the server log and be careful of malicious access.
