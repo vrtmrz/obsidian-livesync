@@ -25,6 +25,9 @@
 
 - 0.17.4
   - Canvases are now treated as a sort of plain text file. now we transfer only the metadata and chunks that have differences.
+
+- 0.17.5 Now `read chunks online` had been fixed, and a new feature: `Use dynamic iteration count` to reduce the load on encryption/decryption.
+  Note: `Use dynamic iteration count` is not compatible with earlier versions.
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
