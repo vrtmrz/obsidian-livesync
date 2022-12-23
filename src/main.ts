@@ -1382,7 +1382,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.doc2storage_modify(doc, file);
                 queueConflictCheck();
             } else {
-                const d = await this.localDatabase.getDBEntryMeta(id2path(change._id), { conflicts: true })
+                const d = await this.localDatabase.getDBEntryMeta(id2path(change._id), { conflicts: true }, true);
                 if (d && !d._conflicts) {
                     await this.doc2storage_modify(doc, file);
                 } else {
