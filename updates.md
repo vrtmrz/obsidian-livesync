@@ -29,6 +29,12 @@
 - 0.17.5 Now `read chunks online` had been fixed, and a new feature: `Use dynamic iteration count` to reduce the load on encryption/decryption.
   Note: `Use dynamic iteration count` is not compatible with earlier versions.
 - 0.17.6 Now our renamed/deleted files have been surely deleted again.
+- 0.17.7
+  - Fixed:
+    - Fixed merging issues.
+    - Fixed button styling.
+  - Changed:
+    - Conflict checking on synchronising has been enabled for every note in default.
 
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
