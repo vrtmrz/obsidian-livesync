@@ -412,7 +412,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Apply")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-right")
                     .onClick(async () => {
                         await applyEncryption(true);
                     })
@@ -422,7 +421,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Apply w/o rebuilding")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-right")
                     .onClick(async () => {
                         await applyEncryption(false);
                     })
@@ -470,7 +468,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Send")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         await rebuildDB("remoteOnly");
                     })
@@ -485,7 +482,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Rebuild")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         await rebuildDB("rebuildBothByThisDevice");
                     })
@@ -760,7 +756,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Fetch")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         await rebuildDB("localOnly");
                     })
@@ -1103,7 +1098,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Touch")
                     .setWarning()
                     .setDisabled(false)
-                    .setClass("sls-btn-left")
                     .onClick(async () => {
                         const filesAll = await this.plugin.scanInternalFiles();
                         const targetFiles = await this.plugin.filterTargetFiles(filesAll);

@@ -2176,7 +2176,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const conflictedRevNo = Number(conflictedRev.split("-")[0]);
             //Search 
             const revFrom = (await this.localDatabase.localDatabase.get(id2path(path), { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
-            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first().rev ?? "";
+            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
             let p = undefined;
             if (commonBase) {
                 if (isSensibleMargeApplicable(path)) {
