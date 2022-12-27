@@ -36,6 +36,11 @@
   - Changed:
     - Conflict checking on synchronising has been enabled for every note in default.
 
+- 0.17.8
+  - Improved: Performance improved. Prebuilt PouchDB is no longer used.
+  - Fixed: Merging hidden files is also fixed.
+  - New Feature: Now we can synchronise automatically after merging conflicts.
+
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
