@@ -309,6 +309,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.settings.syncOnSave = false;
             this.settings.syncOnStart = false;
             this.settings.syncOnFileOpen = false;
+            this.settings.syncAfterMerge = false;
             this.settings.periodicReplication = false;
             this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
             this.saveSettings();
@@ -375,6 +376,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings.syncOnSave = false;
                         this.settings.syncOnStart = false;
                         this.settings.syncOnFileOpen = false;
+                        this.settings.syncAfterMerge = false;
                         this.settings.autoSweepPlugins = false;
                         this.settings.usePluginSync = false;
                         this.settings.suspendFileWatching = true;
@@ -2297,6 +2299,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     }
                     await this.pullFile(filename);
                     Logger("concat both file");
+                    if (this.settings.syncAfterMerge && !this.suspended) {
+                        await this.replicate();
+                    }
                     setTimeout(() => {
                         //resolved, check again.
                         this.showIfConflicted(filename);
@@ -2304,9 +2309,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 } else if (toDelete == null) {
                     Logger("Leave it still conflicted");
                 } else {
-                    Logger(`Conflict resolved:${filename}`);
                     await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
                     await this.pullFile(filename, null, true, toKeep);
+                    Logger(`Conflict resolved:${filename}`);
+                    if (this.settings.syncAfterMerge && !this.suspended) {
+                        await this.replicate();
+                    }
                     setTimeout(() => {
                         //resolved, check again.
                         this.showIfConflicted(filename);
@@ -2354,6 +2362,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             if (conflictCheckResult === true) {
                 //auto resolved, but need check again;
+                if (this.settings.syncAfterMerge && !this.suspended) {
+                    await this.replicate();
+                }
                 Logger("conflict:Automatically merged, but we have to check it again");
                 setTimeout(() => {
                     this.showIfConflicted(filename);
@@ -2970,7 +2981,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const conflictedRevNo = Number(conflictedRev.split("-")[0]);
         //Search 
         const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
-        const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first().rev ?? "";
+        const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
         const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
         if (result) {
             Logger(`Object merge:${id}`, LOG_LEVEL.INFO);

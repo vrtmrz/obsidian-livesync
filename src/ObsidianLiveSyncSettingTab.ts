@@ -133,6 +133,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.syncOnFileOpen) return true;
             if (this.plugin.settings.syncOnSave) return true;
             if (this.plugin.settings.syncOnStart) return true;
+            if (this.plugin.settings.syncAfterMerge) return true;
             if (this.plugin.localDatabase.syncStatus == "CONNECTED") return true;
             if (this.plugin.localDatabase.syncStatus == "PAUSED") return true;
             return false;
@@ -144,7 +145,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(setupWizardEl)
             .setName("Discard the existing configuration and set up")
             .addButton((text) => {
-                text.setButtonText("Next").onClick(async () => {
+                text.setButtonText("Next").onClick(() => {
                     if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
                         this.plugin.localDatabase.closeReplication();
                         this.plugin.settings = { ...DEFAULT_SETTINGS };
@@ -170,6 +171,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     this.plugin.settings.syncOnSave = false;
                     this.plugin.settings.syncOnStart = false;
                     this.plugin.settings.syncOnFileOpen = false;
+                    this.plugin.settings.syncAfterMerge = false;
                     this.plugin.localDatabase.closeReplication();
                     await this.plugin.saveSettings();
                     containerEl.addClass("isWizard");
@@ -226,7 +228,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 syncLive.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
-            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication) {
+            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
                 syncNonLive.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
@@ -387,6 +389,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncOnSave = false;
             this.plugin.settings.syncOnStart = false;
             this.plugin.settings.syncOnFileOpen = false;
+            this.plugin.settings.syncAfterMerge = false;
             this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
             this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
             this.plugin.settings.useDynamicIterationCount = this.plugin.settings.workingUseDynamicIterationCount;
@@ -433,7 +436,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncOnSave = false;
             this.plugin.settings.syncOnStart = false;
             this.plugin.settings.syncOnFileOpen = false;
-
+            this.plugin.settings.syncAfterMerge = false;
             await this.plugin.saveSettings();
 
             applyDisplayEnabled();
@@ -693,7 +696,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Next")
                     .setClass("mod-cta")
                     .setDisabled(false)
-                    .onClick(async () => {
+                    .onClick(() => {
                         if (!this.plugin.settings.encrypt) {
                             this.plugin.settings.passphrase = "";
                         }
@@ -714,7 +717,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setButtonText("Discard exist database and proceed")
                     .setDisabled(false)
                     .setWarning()
-                    .onClick(async () => {
+                    .onClick(() => {
                         if (!this.plugin.settings.encrypt) {
                             this.plugin.settings.passphrase = "";
                         }
@@ -793,7 +796,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 button
                     .setButtonText("Next")
                     .setDisabled(false)
-                    .onClick(async () => {
+                    .onClick(() => {
                         changeDisplay("40");
                     })
             );
@@ -949,7 +952,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         applyDisplayEnabled();
                     })
-                )
+                ),
+            new Setting(containerSyncSettingEl)
+                .setName("Sync after merging file")
+                .setDesc("Sync automatically after merging files")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncAfterMerge).onChange(async (value) => {
+                        this.plugin.settings.syncAfterMerge = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                ),
         );
 
         new Setting(containerSyncSettingEl)
@@ -1272,6 +1285,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.syncOnSave = false;
                         this.plugin.settings.syncOnStart = false;
                         this.plugin.settings.syncOnFileOpen = false;
+                        this.plugin.settings.syncAfterMerge = false;
                         if (currentPreset == "LIVESYNC") {
                             this.plugin.settings.liveSync = true;
                             Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL.NOTICE);
@@ -1281,6 +1295,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             this.plugin.settings.syncOnSave = false;
                             this.plugin.settings.syncOnStart = true;
                             this.plugin.settings.syncOnFileOpen = true;
+                            this.plugin.settings.syncAfterMerge = true;
                             Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL.NOTICE);
                         } else {
                             Logger("All synchronization disabled.", LOG_LEVEL.NOTICE);

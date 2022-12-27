@@ -25,14 +25,16 @@ esbuild
             "MANIFEST_VERSION": `"${manifestJson.version}"`,
             "PACKAGE_VERSION": `"${packageJson.version}"`,
             "UPDATE_INFO": `${updateInfo}`,
+            "global":"window",
         },
-        external: ["obsidian", "electron", ...builtins],
+        external: ["obsidian", "electron", "crypto"],
         format: "cjs",
         watch: !prod,
         target: "es2018",
         logLevel: "info",
         sourcemap: prod ? false : "inline",
         treeShaking: true,
+        platform: "browser",
         plugins: [
             sveltePlugin({
                 preprocess: sveltePreprocess(),
