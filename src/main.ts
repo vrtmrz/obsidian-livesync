@@ -1722,10 +1722,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
             if (this.settings.showStatusOnEditor) {
                 const root = activeDocument.documentElement;
-                root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
+                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
+                // root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
             } else {
                 const root = activeDocument.documentElement;
-                root.style.setProperty("--slsmessage", '""');
+                // root.style.setProperty("--slsmessage", '""');
+                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                q.forEach(e => e.setAttr("data-log", ''))
             }
             if (this.logHideTimer != null) {
                 clearTimeout(this.logHideTimer);
@@ -2973,33 +2977,33 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (doc._conflicts.length == 0) return false;
         Logger(`Hidden file conflicted:${id2filenameInternalChunk(id)}`);
         const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
-
         const revA = doc._rev;
         const revB = conflicts[0];
 
-        const conflictedRev = conflicts[0];
-        const conflictedRevNo = Number(conflictedRev.split("-")[0]);
-        //Search 
-        const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
-        const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
-        const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
-        if (result) {
-            Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
-            const filename = id2filenameInternalChunk(id);
-            const isExists = await this.app.vault.adapter.exists(filename);
-            if (!isExists) {
-                await this.ensureDirectoryEx(filename);
+        if (doc._id.endsWith(".json")) {
+            const conflictedRev = conflicts[0];
+            const conflictedRevNo = Number(conflictedRev.split("-")[0]);
+            //Search 
+            const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
+            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
+            const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
+            if (result) {
+                Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
+                const filename = id2filenameInternalChunk(id);
+                const isExists = await this.app.vault.adapter.exists(filename);
+                if (!isExists) {
+                    await this.ensureDirectoryEx(filename);
+                }
+                await this.app.vault.adapter.write(filename, result);
+                const stat = await this.app.vault.adapter.stat(filename);
+                await this.storeInternalFileToDatabase({ path: filename, ...stat });
+                await this.extractInternalFileFromDatabase(filename);
+                await this.localDatabase.localDatabase.remove(id, revB);
+                return this.resolveConflictOnInternalFile(id);
+            } else {
+                Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
             }
-            await this.app.vault.adapter.write(filename, result);
-            const stat = await this.app.vault.adapter.stat(filename);
-            await this.storeInternalFileToDatabase({ path: filename, ...stat });
-            await this.extractInternalFileFromDatabase(filename);
-            await this.localDatabase.localDatabase.remove(id, revB);
-            return this.resolveConflictOnInternalFile(id);
-        } else {
-            Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
         }
-
         const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
         // determine which revision should been deleted.
         // simply check modified time

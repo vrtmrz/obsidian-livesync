@@ -101,7 +101,7 @@
 .CodeMirror-wrap::before,
 .cm-s-obsidian>.cm-editor::before,
 .canvas-wrapper::before {
-    content: var(--slsmessage);
+    content: attr(data-log);
     text-align: right;
     white-space: pre-wrap;
     position: absolute;
