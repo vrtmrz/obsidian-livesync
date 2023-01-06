@@ -41,6 +41,10 @@
   - Fixed: Merging hidden files is also fixed.
   - New Feature: Now we can synchronise automatically after merging conflicts.
 
+- 0.17.9
+   - Fixed: Conflict merge of internal files is no longer broken.
+   - Improved: Smoother status display inside the editor.
+
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
