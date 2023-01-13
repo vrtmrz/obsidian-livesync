@@ -19,6 +19,8 @@ import {
     getLocks,
     WrappedNotice,
     Semaphore,
+    getDocData,
+    isDocContentSame,
 } from "./lib/src/utils";
 import { Logger, setLogger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -1214,7 +1216,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             await this.ensureDirectory(path);
             try {
-                const newFile = await this.app.vault.create(normalizePath(path), doc.data, {
+                const newFile = await this.app.vault.create(normalizePath(path), getDocData(doc.data), {
                     ctime: doc.ctime,
                     mtime: doc.mtime,
                 });
@@ -1304,7 +1306,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
                 await this.ensureDirectory(path);
                 try {
-                    await this.app.vault.modify(file, doc.data, { ctime: doc.ctime, mtime: doc.mtime });
+                    await this.app.vault.modify(file, getDocData(doc.data), { ctime: doc.ctime, mtime: doc.mtime });
                     Logger(msg + path);
                     // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
                     const xf = getAbstractFileByPath(file.path) as TFile;
@@ -1866,7 +1868,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         };
 
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
-            Logger(`Update into ${e.path}`);
+            Logger(`UPDATE DATABASE ${e.path}`);
             await this.updateIntoDB(e, initialScan);
         });
         if (!initialScan) {
@@ -1957,18 +1959,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         try {
             const doc = await this.localDatabase.getDBEntry(path, { rev: rev }, false, false, true);
             if (doc === false) return false;
-            let data = doc.data;
+            let data = getDocData(doc.data)
             if (doc.datatype == "newnote") {
-                data = base64ToString(doc.data);
+                data = base64ToString(data);
             } else if (doc.datatype == "plain") {
-                data = doc.data;
+                // NO OP.
             }
             return {
                 deleted: doc.deleted || doc._deleted,
                 ctime: doc.ctime,
                 mtime: doc.mtime,
                 rev: rev,
-                data: data,
+                data: data
             };
         } catch (ex) {
             if (ex.status && ex.status == 404) {
@@ -2462,11 +2464,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (shouldBeIgnored(file.path)) {
             return;
         }
-        let content = "";
+        let content: string | string[];
         let datatype: "plain" | "newnote" = "newnote";
         if (!cache) {
             if (!isPlainText(file.name)) {
+                Logger(`Reading   : ${file.path}`, LOG_LEVEL.VERBOSE);
                 const contentBin = await this.app.vault.readBinary(file);
+                Logger(`Processing: ${file.path}`, LOG_LEVEL.VERBOSE);
                 content = await arrayBufferToBase64(contentBin);
                 datatype = "newnote";
             } else {
@@ -2502,8 +2506,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             try {
                 const old = await this.localDatabase.getDBEntry(fullPath, null, false, false);
                 if (old !== false) {
-                    const oldData = { data: old.data, deleted: old._deleted || old.deleted, };
+                    const oldData = { data: old.data, deleted: old._deleted || old.deleted };
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
+                    if (oldData.deleted != newData.deleted) return false;
+                    if (!isDocContentSame(old.data, newData.data)) return false;
                     if (JSON.stringify(oldData) == JSON.stringify(newData)) {
                         Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
                         return true;
@@ -2569,7 +2575,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async getPluginList(): Promise<{ plugins: PluginList; allPlugins: DevicePluginList; thisDevicePlugins: DevicePluginList }> {
         const db = this.localDatabase.localDatabase;
         const docList = await db.allDocs<PluginDataEntry>({ startkey: PSCHeader, endkey: PSCHeaderEnd, include_docs: false });
-        const oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(e.data));
+        const oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(getDocData(e.data)));
         const plugins: { [key: string]: PluginDataEntry[] } = {};
         const allPlugins: { [key: string]: PluginDataEntry } = {};
         const thisDevicePlugins: { [key: string]: PluginDataEntry } = {};

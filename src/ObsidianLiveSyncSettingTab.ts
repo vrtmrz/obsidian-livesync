@@ -1423,7 +1423,7 @@ ${stringifyYaml(pluginConfig)}`;
                             const releaser = await semaphore.acquire(1, "verifyAndRepair");
 
                             try {
-                                Logger(`Update into ${file.path}`);
+                                Logger(`UPDATE DATABASE ${file.path}`);
                                 await this.plugin.updateIntoDB(file, false, null, true);
                                 i++;
                                 Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL.NOTICE, "verify");
