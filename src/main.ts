@@ -2510,10 +2510,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
                     if (oldData.deleted != newData.deleted) return false;
                     if (!isDocContentSame(old.data, newData.data)) return false;
-                    if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                        Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
-                        return true;
-                    }
+                    Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    return true;
                     // d._rev = old._rev;
                 }
             } catch (ex) {
