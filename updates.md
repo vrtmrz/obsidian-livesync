@@ -42,9 +42,12 @@
   - New Feature: Now we can synchronise automatically after merging conflicts.
 
 - 0.17.9
-   - Fixed: Conflict merge of internal files is no longer broken.
-   - Improved: Smoother status display inside the editor.
+  - Fixed: Conflict merge of internal files is no longer broken.
+  - Improved: Smoother status display inside the editor.
 
+- 0.17.10
+  - Fixed: Large file synchronising has been now addressed!
+  Note: When synchronising large files, we have to set `Chunk size` to lower than 50, disable `Read chunks online`, `Batch size` should be set 50-100, and `Batch limit` could be around 20.
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
