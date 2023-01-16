@@ -1,5 +1,5 @@
 import { PluginManifest } from "obsidian";
-import { DatabaseEntry } from "./lib/src/types";
+import { DatabaseEntry, EntryBody } from "./lib/src/types";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;
@@ -30,3 +30,11 @@ export interface InternalFileInfo {
     size: number;
     deleted?: boolean;
 }
+
+export type queueItem = {
+    entry: EntryBody;
+    missingChildren: string[];
+    timeout?: number;
+    done?: boolean;
+    warned?: boolean;
+};

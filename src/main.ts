@@ -2,7 +2,7 @@ import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbst
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo } from "./types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem } from "./types";
 import {
     base64ToString,
     arrayBufferToBase64,
@@ -11,12 +11,9 @@ import {
     versionNumberString2Number,
     runWithLock,
     shouldBeIgnored,
-    getProcessingCounts,
-    setLockNotifier,
     isPlainText,
     setNoticeClass,
     NewNotice,
-    getLocks,
     WrappedNotice,
     Semaphore,
     getDocData,
@@ -38,6 +35,8 @@ const isDebug = false;
 
 import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
 import { isCloudantURI } from "./lib/src/utils_couchdb";
+import { getGlobalStore, observeStores } from "./lib/src/store";
+import { lockStore } from "./lib/src/stores";
 
 setNoticeClass(Notice);
 
@@ -345,7 +344,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.statusBar = this.addStatusBarItem();
         this.statusBar.addClass("syncstatusbar");
-        this.refreshStatusText = this.refreshStatusText.bind(this);
 
         this.statusBar2 = this.addStatusBarItem();
         this.watchVaultChange = this.watchVaultChange.bind(this);
@@ -360,6 +358,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
         this.setPeriodicSync = this.setPeriodicSync.bind(this);
+        this.clearPeriodicSync = this.clearPeriodicSync.bind(this);
         this.periodicSync = this.periodicSync.bind(this);
         this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
 
@@ -634,9 +633,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
         this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
-        setLockNotifier(() => {
-            this.refreshStatusText();
-        });
+
         this.addCommand({
             id: "livesync-plugin-dialog",
             name: "Show Plugins and their settings",
@@ -726,9 +723,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         //@ts-ignore
         const isMobile = this.app.isMobile;
         this.localDatabase = new LocalPouchDB(this.settings, vaultName, isMobile);
-        this.localDatabase.updateInfo = () => {
-            this.refreshStatusText();
-        };
+        this.observeForLogs();
         return await this.localDatabase.initializeDatabase();
     }
 
@@ -870,6 +865,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
                 if (this.watchedFileEventQueue[i].type != type) break;
                 this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
+                this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
             }
         }
 
@@ -882,7 +878,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 ctx
             }
         })
-        this.refreshStatusText();
+        this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
         if (this.isReady) {
             await this.procFileEvent();
         }
@@ -921,8 +917,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     if (queue.type == "DELETE") {
                         if (file instanceof TFile) {
                             await this.deleteFromDB(file);
-                        } else if (file instanceof TFolder) {
-                            await this.deleteFolderOnDB(file);
                         }
                     }
                     if (queue.type == "RENAME") {
@@ -937,11 +931,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         await this.localDatabase.kvDB.set(key, file.stat.mtime);
                     }
                 }
-                this.refreshStatusText();
             } while (this.watchedFileEventQueue.length != 0);
             return true;
         })
-        this.refreshStatusText();
         return ret;
     }
 
@@ -1056,30 +1048,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return this.getFilePath(file.parent) + "/" + file.name;
     }
 
-    async watchVaultRenameAsync(file: TAbstractFile, oldFile: any, cache?: CacheData) {
+    async watchVaultRenameAsync(file: TFile, oldFile: any, cache?: CacheData) {
         Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
-        if (file instanceof TFolder) {
-            const newFiles = this.GetAllFilesRecursively(file);
-            // for guard edge cases. this won't happen and each file's event will be raise.
-            for (const i of newFiles) {
-                try {
-                    const newFilePath = normalizePath(this.getFilePath(i));
-                    const newFile = getAbstractFileByPath(newFilePath);
-                    if (newFile instanceof TFile) {
-                        Logger(`save ${newFile.path} into db`);
-                        await this.updateIntoDB(newFile);
-                    }
-                } catch (ex) {
-                    Logger(ex);
-                }
-            }
-            Logger(`delete below ${oldFile} from db`);
-            await this.deleteFromDBbyPath(oldFile);
-        } else if (file instanceof TFile) {
+        if (file instanceof TFile) {
             try {
-                Logger(`file save ${file.path} into db`);
+                // Logger(`RENAMING.. ${file.path} into db`);
                 await this.updateIntoDB(file, false, cache);
-                Logger(`deleted ${oldFile} from db`);
+                // Logger(`deleted ${oldFile} from db`);
                 await this.deleteFromDBbyPath(oldFile);
             } catch (ex) {
                 Logger(ex);
@@ -1200,7 +1175,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         ctime: doc.ctime,
                         mtime: doc.mtime,
                     });
-                    // this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
                     Logger(msg + path);
                     touch(newFile);
                     this.app.vault.trigger("create", newFile);
@@ -1220,7 +1194,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     ctime: doc.ctime,
                     mtime: doc.mtime,
                 });
-                // this.batchFileChange = this.batchFileChange.filter((e) => e != newFile.path);
                 Logger(msg + path);
                 touch(newFile);
                 this.app.vault.trigger("create", newFile);
@@ -1243,11 +1216,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         } else {
             await this.app.vault.delete(file);
         }
-        Logger(`deleted:${file.path}`);
-        Logger(`other items:${dir.children.length}`);
+        Logger(`xxx <- STORAGE (deleted) ${file.path}`);
+        Logger(`files: ${dir.children.length}`);
         if (dir.children.length == 0) {
             if (!this.settings.doNotDeleteFolder) {
-                Logger(`all files deleted by replication, so delete dir`);
+                Logger(`All files under the parent directory (${dir}) have been deleted, so delete this one.`);
                 await this.deleteVaultItem(dir);
             }
         }
@@ -1355,7 +1328,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         );
-        this.refreshStatusText();
     }
     async handleDBChangedAsync(change: EntryBody) {
 
@@ -1400,13 +1372,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    queuedFiles: {
-        entry: EntryBody;
-        missingChildren: string[];
-        timeout?: number;
-        done?: boolean;
-        warned?: boolean;
-    }[] = [];
+    queuedFiles = [] as queueItem[];
+    queuedFilesStore = getGlobalStore("queuedFiles", { queuedItems: [] as queueItem[], fileEventItems: [] as FileEventItem[] });
     chunkWaitTimeout = 60000;
 
     saveQueuedFiles() {
@@ -1433,7 +1400,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.syncInternalFilesAndDatabase("pull", false, false, w);
             Logger(`Applying hidden ${w.length} files changed`);
         });
-        this.refreshStatusText();
     }
     procInternalFile(filename: string) {
         this.procInternalFiles.push(filename);
@@ -1465,6 +1431,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         this.queuedFiles = this.queuedFiles.filter((e) => !e.done);
+        this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
         this.saveQueuedFiles();
     }
     parseIncomingChunk(chunk: PouchDB.Core.ExistingDocument<EntryDoc>) {
@@ -1528,7 +1495,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
-        this.refreshStatusText();
         for (const change of docs) {
             if (isPluginChunk(change._id)) {
                 if (this.settings.notifyPluginOrSettingUpdated) {
@@ -1600,8 +1566,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     setPeriodicSync() {
+        this.clearPeriodicSync();
         if (this.settings.periodicReplication && this.settings.periodicReplicationInterval > 0) {
-            this.clearPeriodicSync();
             this.periodicSyncHandler = this.setInterval(async () => await this.periodicSync(), Math.max(this.settings.periodicReplicationInterval, 30) * 1000);
         }
     }
@@ -1643,7 +1609,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         if (this.settings.liveSync) {
             this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
-            this.refreshStatusText();
         }
         if (this.settings.syncInternalFiles) {
             await this.syncInternalFilesAndDatabase("safe", false);
@@ -1655,63 +1620,80 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     lastMessage = "";
 
+    observeForLogs() {
+        const observer__ = observeStores(this.queuedFilesStore, lockStore);
+        const observer = observeStores(observer__, this.localDatabase.stat);
+
+        observer.observe(e => {
+            const sent = e.sent;
+            const arrived = e.arrived;
+            const maxPullSeq = e.maxPullSeq;
+            const maxPushSeq = e.maxPushSeq;
+            const lastSyncPullSeq = e.lastSyncPullSeq;
+            const lastSyncPushSeq = e.lastSyncPushSeq;
+            let pushLast = "";
+            let pullLast = "";
+            let w = "";
+            switch (e.syncStatus) {
+                case "CLOSED":
+                case "COMPLETED":
+                case "NOT_CONNECTED":
+                    w = "⏹";
+                    break;
+                case "STARTED":
+                    w = "🌀";
+                    break;
+                case "PAUSED":
+                    w = "💤";
+                    break;
+                case "CONNECTED":
+                    w = "⚡";
+                    pushLast = ((lastSyncPushSeq == 0) ? "" : (lastSyncPushSeq >= maxPushSeq ? " (LIVE)" : ` (${maxPushSeq - lastSyncPushSeq})`));
+                    pullLast = ((lastSyncPullSeq == 0) ? "" : (lastSyncPullSeq >= maxPullSeq ? " (LIVE)" : ` (${maxPullSeq - lastSyncPullSeq})`));
+                    break;
+                case "ERRORED":
+                    w = "⚠";
+                    break;
+                default:
+                    w = "?";
+            }
+            this.statusBar.title = e.syncStatus;
+            let waiting = "";
+            if (this.settings.batchSave) {
+                waiting = " " + this.watchedFileEventQueue.map((e) => "🛫").join("");
+                waiting = waiting.replace(/(🛫){10}/g, "🚀");
+            }
+            let queued = "";
+            const queue = Object.entries(e.queuedItems).filter((e) => !e[1].warned);
+            const queuedCount = queue.length;
+
+            if (queuedCount) {
+                const pieces = queue.map((e) => e[1].missingChildren).reduce((prev, cur) => prev + cur.length, 0);
+                queued = ` 🧩 ${queuedCount} (${pieces})`;
+            }
+            const processes = e.count;
+            const processesDisp = processes == 0 ? "" : ` ⏳${processes}`;
+            const message = `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting}${processesDisp}${queued}`;
+            // const locks = getLocks();
+            const pendingTask = e.pending.length
+                ? "\nPending: " +
+                Object.entries(e.pending.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
+                    .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                    .join(", ")
+                : "";
+
+            const runningTask = e.running.length
+                ? "\nRunning: " +
+                Object.entries(e.running.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
+                    .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                    .join(", ")
+                : "";
+            this.setStatusBarText(message + pendingTask + runningTask);
+        })
+    }
+
     refreshStatusText() {
-        const sent = this.localDatabase.docSent;
-        const arrived = this.localDatabase.docArrived;
-        let w = "";
-        switch (this.localDatabase.syncStatus) {
-            case "CLOSED":
-            case "COMPLETED":
-            case "NOT_CONNECTED":
-                w = "⏹";
-                break;
-            case "STARTED":
-                w = "🌀";
-                break;
-            case "PAUSED":
-                w = "💤";
-                break;
-            case "CONNECTED":
-                w = "⚡";
-                break;
-            case "ERRORED":
-                w = "⚠";
-                break;
-            default:
-                w = "?";
-        }
-        this.statusBar.title = this.localDatabase.syncStatus;
-        let waiting = "";
-        if (this.settings.batchSave) {
-            waiting = " " + this.watchedFileEventQueue.map((e) => "🛫").join("");
-            waiting = waiting.replace(/(🛫){10}/g, "🚀");
-        }
-        let queued = "";
-        const queue = Object.entries(this.queuedFiles).filter((e) => !e[1].warned);
-        const queuedCount = queue.length;
-
-        if (queuedCount) {
-            const pieces = queue.map((e) => e[1].missingChildren).reduce((prev, cur) => prev + cur.length, 0);
-            queued = ` 🧩 ${queuedCount} (${pieces})`;
-        }
-        const processes = getProcessingCounts();
-        const processesDisp = processes == 0 ? "" : ` ⏳${processes}`;
-        const message = `Sync: ${w} ↑${sent} ↓${arrived}${waiting}${processesDisp}${queued}`;
-        const locks = getLocks();
-        const pendingTask = locks.pending.length
-            ? "\nPending: " +
-            Object.entries(locks.pending.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
-                .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                .join(", ")
-            : "";
-
-        const runningTask = locks.running.length
-            ? "\nRunning: " +
-            Object.entries(locks.running.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
-                .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                .join(", ")
-            : "";
-        this.setStatusBarText(message + pendingTask + runningTask);
+        return;
     }
 
     logHideTimer: NodeJS.Timeout = null;
@@ -1726,10 +1708,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const root = activeDocument.documentElement;
                 const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
                 q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
-                // root.style.setProperty("--slsmessage", '"' + (newMsg + "\n" + newLog).split("\n").join("\\a ") + '"');
             } else {
                 const root = activeDocument.documentElement;
-                // root.style.setProperty("--slsmessage", '""');
                 const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
                 q.forEach(e => e.setAttr("data-log", ''))
             }

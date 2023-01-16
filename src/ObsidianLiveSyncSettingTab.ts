@@ -1184,8 +1184,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.customChunkSize + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 100) {
-                            v = 100;
+                        if (isNaN(v) || v < 1) {
+                            v = 1;
                         }
                         this.plugin.settings.customChunkSize = v;
                         await this.plugin.saveSettings();
