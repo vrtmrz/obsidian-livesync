@@ -4,7 +4,7 @@ import { LocalPouchDBBase } from "./lib/src/LocalPouchDBBase.js";
 import { Logger } from "./lib/src/logger.js";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { EntryDoc, LOG_LEVEL } from "./lib/src/types.js";
-import { enableEncryption } from "./lib/src/utils.js";
+import { enableEncryption } from "./lib/src/utils_couchdb.js";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
 import { id2path, path2id } from "./utils.js";
 

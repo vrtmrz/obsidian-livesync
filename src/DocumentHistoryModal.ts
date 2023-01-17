@@ -1,10 +1,12 @@
 import { TFile, Modal, App } from "obsidian";
 import { path2id } from "./utils";
-import { base64ToArrayBuffer, base64ToString, escapeStringToHTML, isValidPath } from "./lib/src/utils";
+import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
+import { isValidPath } from "./lib/src/path";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
+import { getDocData } from "./lib/src/utils";
 
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -64,7 +66,7 @@ export class DocumentHistoryModal extends Modal {
             this.currentDoc = w;
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
-            const w1data = w.datatype == "plain" ? w.data : base64ToString(w.data);
+            const w1data = w.datatype == "plain" ? getDocData(w.data) : base64ToString(w.data);
             this.currentDeleted = w.deleted;
             this.currentText = w1data;
             if (this.showDiff) {
@@ -74,7 +76,7 @@ export class DocumentHistoryModal extends Modal {
                     const w2 = await db.getDBEntry(path2id(this.file), { rev: oldRev }, false, false, true);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
-                        const w2data = w2.datatype == "plain" ? w2.data : base64ToString(w2.data);
+                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : base64ToString(w2.data);
                         const diff = dmp.diff_main(w2data, w1data);
                         dmp.diff_cleanupSemantic(diff);
                         for (const v of diff) {
@@ -176,7 +178,7 @@ export class DocumentHistoryModal extends Modal {
                     Logger("Path is not valid to write content.", LOG_LEVEL.INFO);
                 }
                 if (this.currentDoc?.datatype == "plain") {
-                    await this.app.vault.adapter.write(pathToWrite, this.currentDoc.data);
+                    await this.app.vault.adapter.write(pathToWrite, getDocData(this.currentDoc.data));
                     await focusFile(pathToWrite);
                     this.close();
                 } else if (this.currentDoc?.datatype == "newnote") {

@@ -2,7 +2,7 @@
     import ObsidianLiveSyncPlugin from "./main";
     import { onMount } from "svelte";
     import { DevicePluginList, PluginDataEntry } from "./types";
-    import { versionNumberString2Number } from "./lib/src/utils";
+    import { versionNumberString2Number } from "./lib/src/strbin";
 
     type JudgeResult = "" | "NEWER" | "EVEN" | "EVEN_BUT_DIFFERENT" | "OLDER" | "REMOTE_ONLY";
 

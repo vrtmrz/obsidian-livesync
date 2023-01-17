@@ -1,33 +1,14 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App, } from "obsidian";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem } from "./types";
-import {
-    base64ToString,
-    arrayBufferToBase64,
-    base64ToArrayBuffer,
-    isValidPath,
-    versionNumberString2Number,
-    runWithLock,
-    shouldBeIgnored,
-    isPlainText,
-    setNoticeClass,
-    NewNotice,
-    WrappedNotice,
-    Semaphore,
-    getDocData,
-    isDocContentSame,
-} from "./lib/src/utils";
-import { Logger, setLogger } from "./lib/src/logger";
+import { getDocData, isDocContentSame } from "./lib/src/utils";
+import { Logger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-
-
-
 import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 
@@ -36,7 +17,12 @@ const isDebug = false;
 import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
 import { isCloudantURI } from "./lib/src/utils_couchdb";
 import { getGlobalStore, observeStores } from "./lib/src/store";
-import { lockStore } from "./lib/src/stores";
+import { lockStore, logMessageStore, logStore } from "./lib/src/stores";
+import { NewNotice, setNoticeClass, WrappedNotice } from "./lib/src/wrapper";
+import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
+import { isPlainText, isValidPath, shouldBeIgnored } from "./lib/src/path";
+import { runWithLock } from "./lib/src/lock";
+import { Semaphore } from "./lib/src/semaphore";
 
 setNoticeClass(Notice);
 
@@ -47,6 +33,7 @@ const FileWatchEventQueueMax = 10;
 
 function getAbstractFileByPath(path: string): TAbstractFile | null {
     // Hidden API but so useful.
+    // @ts-ignore
     if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
         // @ts-ignore
         return app.vault.getAbstractFileByPathInsensitive(path);
@@ -134,10 +121,10 @@ type FileEventItem = {
     type: FileEventType,
     args: FileEventArgs
 }
+
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
     localDatabase: LocalPouchDB;
-    logMessage: string[] = [];
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
     suspended: boolean;
@@ -284,7 +271,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async onload() {
-        setLogger(this.addLog.bind(this)); // Logger moved to global.
+        logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
         Logger("loading plugin");
         //@ts-ignore
         const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
@@ -1062,7 +1049,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    addLogHook: () => void = null;
     //--> Basic document Functions
     notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
 
@@ -1083,12 +1069,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const messageContent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
         const newMessage = timestamp + "->" + messageContent;
 
-        this.logMessage = [].concat(this.logMessage).concat([newMessage]).slice(-100);
         console.log(vaultName + ":" + newMessage);
+        logMessageStore.apply(e => [...e, newMessage].slice(-100));
         this.setStatusBarText(null, messageContent.substring(0, 30));
-        // if (message instanceof Error) {
-        //     console.trace(message);
-        // }
 
         if (level >= LOG_LEVEL.NOTICE) {
             if (!key) key = messageContent;
@@ -1127,7 +1110,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 };
             }
         }
-        if (this.addLogHook != null) this.addLogHook();
     }
 
     async ensureDirectory(fullPath: string) {

@@ -1,7 +1,9 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "obsidian";
 import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
-import { delay, Semaphore, versionNumberString2Number } from "./lib/src/utils";
+import { delay } from "./lib/src/utils";
+import { Semaphore } from "./lib/src/semaphore";
+import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";

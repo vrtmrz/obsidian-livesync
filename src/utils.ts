@@ -1,6 +1,6 @@
 import { normalizePath } from "obsidian";
 
-import { path2id_base, id2path_base } from "./lib/src/utils";
+import { path2id_base, id2path_base } from "./lib/src/path";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
