@@ -51,6 +51,10 @@
     - Now `Chunk size` can be set to under one hundred.
   - New feature:
     - The number of transfers required before replication stabilises is now displayed.
+- 0.17.12: Skipped.
+- 0.17.13
+  - Fixed: Document history is now displayed again.
+  - Reorganised: Many files have been refactored.
 
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
