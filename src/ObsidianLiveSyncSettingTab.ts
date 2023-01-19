@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "obsidian";
-import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, RemoteDBSettings } from "./lib/src/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, ConfigPassphraseStore, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
@@ -43,6 +43,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
     display(): void {
         const { containerEl } = this;
+        let encrypt = this.plugin.settings.encrypt;
+        let passphrase = this.plugin.settings.passphrase;
+        let useDynamicIterationCount = this.plugin.settings.useDynamicIterationCount;
 
         containerEl.empty();
 
@@ -293,68 +296,78 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             )
 
         );
-        new Setting(containerRemoteDatabaseEl)
+        const e2e = new Setting(containerRemoteDatabaseEl)
             .setName("End to End Encryption")
             .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
             .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.workingEncrypt).onChange(async (value) => {
+                toggle.setValue(encrypt).onChange(async (value) => {
                     if (inWizard) {
                         this.plugin.settings.encrypt = value;
-                        passphrase.setDisabled(!value);
+                        passphraseSetting.setDisabled(!value);
                         dynamicIteration.setDisabled(!value);
                         await this.plugin.saveSettings();
                     } else {
-                        this.plugin.settings.workingEncrypt = value;
-                        passphrase.setDisabled(!value);
+                        encrypt = value;
+                        passphraseSetting.setDisabled(!value);
                         dynamicIteration.setDisabled(!value);
                         await this.plugin.saveSettings();
+                        markDirtyControl();
                     }
                 })
             );
 
-        const passphrase = new Setting(containerRemoteDatabaseEl)
+
+        const markDirtyControl = () => {
+            passphraseSetting.controlEl.toggleClass("sls-item-dirty", passphrase != this.plugin.settings.passphrase);
+            e2e.controlEl.toggleClass("sls-item-dirty", encrypt != this.plugin.settings.encrypt);
+            dynamicIteration.controlEl.toggleClass("sls-item-dirty", useDynamicIterationCount != this.plugin.settings.useDynamicIterationCount)
+        }
+
+        const passphraseSetting = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
             .setDesc("Encrypting passphrase. If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.")
             .addText((text) => {
                 text.setPlaceholder("")
-                    .setValue(this.plugin.settings.workingPassphrase)
+                    .setValue(passphrase)
                     .onChange(async (value) => {
                         if (inWizard) {
                             this.plugin.settings.passphrase = value;
                             await this.plugin.saveSettings();
                         } else {
-                            this.plugin.settings.workingPassphrase = value;
+                            passphrase = value;
                             await this.plugin.saveSettings();
+                            markDirtyControl();
                         }
                     });
                 text.inputEl.setAttribute("type", "password");
             });
-        passphrase.setDisabled(!this.plugin.settings.workingEncrypt);
+        passphraseSetting.setDisabled(!encrypt);
 
         const dynamicIteration = new Setting(containerRemoteDatabaseEl)
             .setName("Use dynamic iteration count (experimental)")
             .setDesc("Balancing the encryption/decryption load against the length of the passphrase if toggled. (v0.17.5 or higher required)")
             .addToggle((toggle) => {
-                toggle.setValue(this.plugin.settings.workingUseDynamicIterationCount)
+                toggle.setValue(useDynamicIterationCount)
                     .onChange(async (value) => {
                         if (inWizard) {
                             this.plugin.settings.useDynamicIterationCount = value;
                             await this.plugin.saveSettings();
                         } else {
-                            this.plugin.settings.workingUseDynamicIterationCount = value;
+                            useDynamicIterationCount = value;
                             await this.plugin.saveSettings();
+                            markDirtyControl();
                         }
                     });
             })
             .setClass("wizardHidden");
-        dynamicIteration.setDisabled(!this.plugin.settings.workingEncrypt);
+        dynamicIteration.setDisabled(!encrypt);
 
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
-                encrypt: this.plugin.settings.workingEncrypt,
-                passphrase: this.plugin.settings.workingPassphrase,
-                useDynamicIterationCount: this.plugin.settings.workingUseDynamicIterationCount,
+                encrypt: encrypt,
+                passphrase: passphrase,
+                useDynamicIterationCount: useDynamicIterationCount,
             };
             console.dir(settingForCheck);
             const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
@@ -372,19 +385,19 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         };
         const applyEncryption = async (sendToServer: boolean) => {
-            if (this.plugin.settings.workingEncrypt && this.plugin.settings.workingPassphrase == "") {
+            if (encrypt && passphrase == "") {
                 Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
                 return;
             }
-            if (this.plugin.settings.workingEncrypt && !(await testCrypt())) {
+            if (encrypt && !(await testCrypt())) {
                 Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
                 return;
             }
             if (!(await checkWorkingPassphrase()) && !sendToServer) {
                 return;
             }
-            if (!this.plugin.settings.workingEncrypt) {
-                this.plugin.settings.workingPassphrase = "";
+            if (!encrypt) {
+                passphrase = "";
             }
             this.plugin.settings.liveSync = false;
             this.plugin.settings.periodicReplication = false;
@@ -392,11 +405,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncOnStart = false;
             this.plugin.settings.syncOnFileOpen = false;
             this.plugin.settings.syncAfterMerge = false;
-            this.plugin.settings.encrypt = this.plugin.settings.workingEncrypt;
-            this.plugin.settings.passphrase = this.plugin.settings.workingPassphrase;
-            this.plugin.settings.useDynamicIterationCount = this.plugin.settings.workingUseDynamicIterationCount;
+            this.plugin.settings.encrypt = encrypt;
+            this.plugin.settings.passphrase = passphrase;
+            this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
 
             await this.plugin.saveSettings();
+            markDirtyControl();
             if (sendToServer) {
                 await this.plugin.initializeDatabase(true);
                 await this.plugin.markRemoteLocked();
@@ -1326,6 +1340,45 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        const passphrase_options: Record<ConfigPassphraseStore, string> = {
+            "": "Default",
+            LOCALSTORAGE: "Use a custom passphrase",
+            ASK_AT_LAUNCH: "Ask an passphrase at every launch",
+        }
+        new Setting(containerMiscellaneousEl)
+            .setName("Encrypting sensitive configuration items")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOptions(passphrase_options)
+                    .setValue(this.plugin.settings.configPassphraseStore)
+                    .onChange(async (value) => {
+                        this.plugin.settings.configPassphraseStore = value as ConfigPassphraseStore;
+                        this.plugin.usedPassphrase = "";
+                        confPassphraseSetting.setDisabled(this.plugin.settings.configPassphraseStore != "LOCALSTORAGE");
+                        await this.plugin.saveSettings();
+                    })
+            )
+            .setClass("wizardHidden");
+
+
+        const confPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
+        const confPassphraseSetting = new Setting(containerMiscellaneousEl)
+            .setName("Passphrase of sensitive configuration items")
+            .setDesc("This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(confPassphrase)
+                    .onChange(async (value) => {
+                        this.plugin.usedPassphrase = "";
+                        localStorage.setItem("ls-setting-passphrase", value);
+                        await this.plugin.saveSettings();
+                        markDirtyControl();
+                    });
+                text.inputEl.setAttribute("type", "password");
+            })
+            .setClass("wizardHidden");
+        confPassphraseSetting.setDisabled(this.plugin.settings.configPassphraseStore != "LOCALSTORAGE");
+
         const infoApply = containerMiscellaneousEl.createEl("div", { text: `To finish setup, please select one of the presets` });
         infoApply.addClass("op-warn-info");
         infoApply.addClass("wizardOnly")
@@ -1367,7 +1420,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI) ? "cloudant" : "self-hosted";
                         pluginConfig.couchDB_USER = REDACTED;
                         pluginConfig.passphrase = REDACTED;
-                        pluginConfig.workingPassphrase = REDACTED;
+                        pluginConfig.encryptedPassphrase = REDACTED;
+                        pluginConfig.encryptedCouchDBConnection = REDACTED;
 
                         const msgConfig = `----remote config----
 ${stringifyYaml(responseConfig)}

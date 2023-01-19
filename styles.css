@@ -248,3 +248,7 @@ div.sls-setting-menu-btn {
 .sls-setting:not(.isWizard) .wizardOnly {
     display: none;
 }
+
+.sls-item-dirty::before {
+    content: "✏";
+}

@@ -1,6 +1,6 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -10,7 +10,7 @@ import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
-import { decrypt, encrypt } from "./lib/src/e2ee_v2";
+import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
 
@@ -398,11 +398,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const configURIBase = "obsidian://setuplivesync?settings=";
         this.addCommand({
             id: "livesync-copysetupuri",
-            name: "Copy setup URI",
+            name: "Copy the setup URI",
             callback: async () => {
-                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
+                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
                 if (encryptingPassphrase === false) return;
-                const setting = { ...this.settings };
+                const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
                 const keys = Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[];
                 for (const k of keys) {
                     if (JSON.stringify(k in setting ? setting[k] : "") == JSON.stringify(k in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[k] : "*")) {
@@ -417,11 +417,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.addCommand({
             id: "livesync-copysetupurifull",
-            name: "Copy setup URI (Full)",
+            name: "Copy the setup URI (Full)",
             callback: async () => {
-                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "Passphrase", "");
+                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
                 if (encryptingPassphrase === false) return;
-                const setting = { ...this.settings };
+                const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
                 const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
                 const uri = `${configURIBase}${encryptedSetting}`;
                 await navigator.clipboard.writeText(uri);
@@ -430,7 +430,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
         this.addCommand({
             id: "livesync-opensetupuri",
-            name: "Open setup URI",
+            name: "Open the setup URI",
             callback: async () => {
                 const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
                 if (setupURI === false) return;
@@ -446,16 +446,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const setupWizard = async (confString: string) => {
             try {
                 const oldConf = JSON.parse(JSON.stringify(this.settings));
-                const encryptingPassphrase = await askString(this.app, "Passphrase", "Passphrase for your settings", "");
+                const encryptingPassphrase = await askString(this.app, "Passphrase", "The passphrase to decrypt your setup URI", "");
                 if (encryptingPassphrase === false) return;
                 const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
                 if (newConf) {
                     const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
                     if (result == "yes") {
-                        const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf);
+                        const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
                         this.localDatabase.closeReplication();
                         this.settings.suspendFileWatching = true;
                         console.dir(newSettingW);
+                        // Back into the default method once.
+                        newSettingW.configPassphraseStore = "";
+                        newSettingW.encryptedPassphrase = "";
+                        newSettingW.encryptedCouchDBConnection = "";
                         const setupJustImport = "Just import setting";
                         const setupAsNew = "Set it up as secondary or subsequent device";
                         const setupAgain = "Reconfigure and reconstitute the data";
@@ -464,9 +468,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
                         if (setupType == setupJustImport) {
                             this.settings = newSettingW;
+                            this.usedPassphrase = "";
                             await this.saveSettings();
                         } else if (setupType == setupAsNew) {
                             this.settings = newSettingW;
+                            this.usedPassphrase = "";
                             await this.saveSettings();
                             await this.resetLocalOldDatabase();
                             await this.resetLocalDatabase();
@@ -478,6 +484,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
                                 return;
                             }
+                            this.settings = newSettingW;
+                            this.usedPassphrase = "";
                             await this.saveSettings();
                             await this.resetLocalOldDatabase();
                             await this.resetLocalDatabase();
@@ -494,6 +502,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
                                 // nothing to do. so peaceful.
                                 this.settings = newSettingW;
+                                this.usedPassphrase = "";
                                 await this.saveSettings();
                                 const replicate = await askYesNo(this.app, "Unlock and replicate?");
                                 if (replicate == "yes") {
@@ -513,6 +522,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             }
                             let initDB;
                             this.settings = newSettingW;
+                            this.usedPassphrase = "";
                             await this.saveSettings();
                             if (keepLocalDB == "no") {
                                 this.resetLocalOldDatabase();
@@ -715,11 +725,93 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return await this.localDatabase.initializeDatabase();
     }
 
+    usedPassphrase = "";
+
+    getPassphrase(settings: ObsidianLiveSyncSettings) {
+        const methods: Record<ConfigPassphraseStore, (() => Promise<string | false>)> = {
+            "": () => Promise.resolve("*"),
+            "LOCALSTORAGE": () => Promise.resolve(localStorage.getItem("ls-setting-passphrase") ?? false),
+            "ASK_AT_LAUNCH": () => askString(this.app, "Passphrase", "passphrase", "")
+        }
+        const method = settings.configPassphraseStore;
+        const methodFunc = method in methods ? methods[method] : methods[""];
+        return methodFunc();
+    }
+
+    async decryptConfigurationItem(encrypted: string, passphrase: string) {
+        const dec = await tryDecrypt(encrypted, passphrase + SALT_OF_PASSPHRASE, false);
+            if (dec) {
+                this.usedPassphrase = passphrase;
+                return dec;
+            }
+        return false;
+    }
+    tryDecodeJson(encoded: string | false): object | false {
+        try {
+            if (!encoded) return false;
+            return JSON.parse(encoded);
+        } catch (ex) {
+            return false;
+        }
+    }
+
+    async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
+        if (this.usedPassphrase != "") {
+            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
+        }
+
+        const passphrase = await this.getPassphrase(settings);
+        if (passphrase === false) {
+            Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL.URGENT);
+            return "";
+        }
+        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
+            if (dec) {
+                this.usedPassphrase = passphrase;
+                return dec;
+            }
+
+        return "";
+    }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        this.settings.workingEncrypt = this.settings.encrypt;
-        this.settings.workingPassphrase = this.settings.passphrase;
+        const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as ObsidianLiveSyncSettings;
+        const passphrase = await this.getPassphrase(settings);
+        if (passphrase === false) {
+            Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+        } else {
+            if (settings.encryptedCouchDBConnection) {
+                const keys = ["couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"] as (keyof CouchDBConnection)[];
+                const decrypted = this.tryDecodeJson(await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)) as CouchDBConnection;
+                if (decrypted) {
+                    for (const key of keys) {
+                        if (key in decrypted) {
+                            settings[key] = decrypted[key]
+                        }
+                    }
+                } else {
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    for (const key of keys) {
+                        settings[key] = "";
+                    }
+                }
+            }
+            if (settings.encrypt && settings.encryptedPassphrase) {
+                const encrypted = settings.encryptedPassphrase;
+                const decrypted = await this.decryptConfigurationItem(encrypted, passphrase);
+            if (decrypted) {
+                settings.passphrase = decrypted;
+            } else {
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    settings.passphrase = "";
+                }
+            }
+
+        }
+        this.settings = settings;
+        if ("workingEncrypt" in this.settings) delete this.settings.workingEncrypt;
+        if ("workingPassphrase" in this.settings) delete this.settings.workingPassphrase;
+
         // Delete this feature to avoid problems on mobile.
         this.settings.disableRequestURI = true;
 
@@ -751,7 +843,29 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
         localStorage.setItem(lsKey, this.deviceAndVaultName || "");
-        await this.saveData(this.settings);
+        const settings = { ...this.settings };
+        if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
+            Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL.NOTICE);
+        } else {
+            if (settings.couchDB_PASSWORD != "" || settings.couchDB_URI != "" || settings.couchDB_USER != "" || settings.couchDB_DBNAME) {
+                const connectionSetting: CouchDBConnection = {
+                    couchDB_DBNAME: settings.couchDB_DBNAME,
+                    couchDB_PASSWORD: settings.couchDB_PASSWORD,
+                    couchDB_URI: settings.couchDB_URI,
+                    couchDB_USER: settings.couchDB_USER,
+                };
+                settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(JSON.stringify(connectionSetting), settings);
+                settings.couchDB_PASSWORD = "";
+                settings.couchDB_DBNAME = "";
+                settings.couchDB_URI = "";
+                settings.couchDB_USER = "";
+            }
+            if (settings.encrypt && settings.passphrase != "") {
+                settings.encryptedPassphrase = await this.encryptConfigurationItem(settings.passphrase, settings);
+                settings.passphrase = "";
+            }
+        }
+        await this.saveData(settings);
         this.localDatabase.settings = this.settings;
         this.triggerRealizeSettingSyncMode();
     }
@@ -1020,7 +1134,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: string) {
-
         const stat = await this.app.vault.adapter.stat(path);
         // sometimes folder is coming.
         if (stat && stat.type != "file") return;

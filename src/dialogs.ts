@@ -52,14 +52,14 @@ export class InputStringDialog extends Modal {
         const { contentEl } = this;
 
         contentEl.createEl("h1", { text: this.title });
-
-        new Setting(contentEl).setName(this.key).addText((text) =>
+        // For enter to submit
+        const formEl = contentEl.createEl("form");
+        new Setting(formEl).setName(this.key).addText((text) =>
             text.onChange((value) => {
                 this.result = value;
             })
         );
-
-        new Setting(contentEl).addButton((btn) =>
+        new Setting(formEl).addButton((btn) =>
             btn
                 .setButtonText("Ok")
                 .setCta()
