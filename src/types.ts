@@ -1,4 +1,4 @@
-import { PluginManifest } from "obsidian";
+import { PluginManifest, TFile } from "obsidian";
 import { DatabaseEntry, EntryBody } from "./lib/src/types";
 
 export interface PluginDataEntry extends DatabaseEntry {
@@ -29,6 +29,15 @@ export interface InternalFileInfo {
     ctime: number;
     size: number;
     deleted?: boolean;
+}
+
+export interface FileInfo {
+    path: string;
+    mtime: number;
+    ctime: number;
+    size: number;
+    deleted?: boolean;
+    file: TFile;
 }
 
 export type queueItem = {

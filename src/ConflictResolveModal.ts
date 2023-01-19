@@ -6,12 +6,14 @@ import { escapeStringToHTML } from "./lib/src/strbin";
 export class ConflictResolveModal extends Modal {
     // result: Array<[number, string]>;
     result: diff_result;
+    filename: string;
     callback: (remove_rev: string) => Promise<void>;
 
-    constructor(app: App, diff: diff_result, callback: (remove_rev: string) => Promise<void>) {
+    constructor(app: App, filename: string, diff: diff_result, callback: (remove_rev: string) => Promise<void>) {
         super(app);
         this.result = diff;
         this.callback = callback;
+        this.filename = filename;
     }
 
     onOpen() {
@@ -20,6 +22,7 @@ export class ConflictResolveModal extends Modal {
         contentEl.empty();
 
         contentEl.createEl("h2", { text: "This document has conflicted changes." });
+        contentEl.createEl("span", this.filename);
         const div = contentEl.createDiv("");
         div.addClass("op-scrollable");
         let diff = "";

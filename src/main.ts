@@ -1,7 +1,7 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem } from "./types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -112,14 +112,15 @@ function clearTouched() {
 type CacheData = string | ArrayBuffer;
 type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME" | "INTERNAL";
 type FileEventArgs = {
-    file: TAbstractFile | InternalFileInfo;
+    file: FileInfo | InternalFileInfo;
     cache?: CacheData;
     oldPath?: string;
     ctx?: any;
 }
 type FileEventItem = {
     type: FileEventType,
-    args: FileEventArgs
+    args: FileEventArgs,
+    key: string,
 }
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
@@ -815,59 +816,79 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     // Cache file and waiting to can be proceed.
-    async appendWatchEvent(type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string, ctx?: any) {
-        // check really we can process.
-        if (file instanceof TFile && !this.isTargetFile(file)) return;
-        if (this.settings.suspendFileWatching) return;
+    async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
+        let forcePerform = false;
+        for (const param of params) {
+            const atomicKey = [0, 0, 0, 0, 0, 0].map(e => `${Math.floor(Math.random() * 100000)}`).join("-");
+            const type = param.type;
+            const file = param.file;
+            const oldPath = param.oldPath;
+            if (file instanceof TFolder) continue;
+            if (!this.isTargetFile(file.path)) continue;
+            if (this.settings.suspendFileWatching) continue;
 
-        let cache: null | string | ArrayBuffer;
-        // new file or something changed, cache the changes.
-        if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
-            if (recentlyTouched(file)) {
-                return;
-            }
-            if (!isPlainText(file.name)) {
-                cache = await this.app.vault.readBinary(file);
-            } else {
-                // cache = await this.app.vault.read(file);
-                cache = await this.app.vault.cachedRead(file);
-                if (!cache) cache = await this.app.vault.read(file);
-            }
-        }
-
-
-        if (this.settings.batchSave) {
-            // if the latest event is the same type, omit that
-            // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
-            // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
-            // a.md MODIFY
-            // a.md CREATE
-            //     : 
-            let i = this.watchedFileEventQueue.length;
-            while (i >= 0) {
-                i--;
-                if (i < 0) break;
-                if (this.watchedFileEventQueue[i].args.file.path != file.path) {
+            let cache: null | string | ArrayBuffer;
+            // new file or something changed, cache the changes.
+            if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
+                if (recentlyTouched(file)) {
                     continue;
                 }
-                if (this.watchedFileEventQueue[i].type != type) break;
-                this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
-                this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
+                if (!isPlainText(file.name)) {
+                    cache = await this.app.vault.readBinary(file);
+                } else {
+                    // cache = await this.app.vault.read(file);
+                    cache = await this.app.vault.cachedRead(file);
+                    if (!cache) cache = await this.app.vault.read(file);
+                }
             }
-        }
+            if (type == "DELETE" || type == "RENAME") {
+                forcePerform = true;
+            }
 
-        this.watchedFileEventQueue.push({
-            type,
-            args: {
-                file,
-                oldPath,
-                cache,
-                ctx
+
+            if (this.settings.batchSave) {
+                // if the latest event is the same type, omit that
+                // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
+                // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
+                // a.md MODIFY
+                // a.md CREATE
+                //     : 
+                let i = this.watchedFileEventQueue.length;
+                L1:
+                while (i >= 0) {
+                    i--;
+                    if (i < 0) break L1;
+                    if (this.watchedFileEventQueue[i].args.file.path != file.path) {
+                        continue L1;
+                    }
+                    if (this.watchedFileEventQueue[i].type != type) break L1;
+                    this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
+                    this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
+                }
             }
-        })
+
+            const fileInfo = file instanceof TFile ? {
+                ctime: file.stat.ctime,
+                mtime: file.stat.mtime,
+                file: file,
+                path: file.path,
+                size: file.stat.size
+            } as FileInfo : file as InternalFileInfo;
+            this.watchedFileEventQueue.push({
+                type,
+                args: {
+                    file: fileInfo,
+                    oldPath,
+                    cache,
+                    ctx
+                },
+                key: atomicKey
+            })
+        }
         this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
+        console.dir([...this.watchedFileEventQueue]);
         if (this.isReady) {
-            await this.procFileEvent();
+            await this.procFileEvent(forcePerform);
         }
 
     }
@@ -885,39 +906,52 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         clearTrigger("applyBatchAuto");
         const ret = await runWithLock("procFiles", true, async () => {
+            L2:
             do {
                 const procs = [...this.watchedFileEventQueue];
                 this.watchedFileEventQueue = [];
-                for (const queue of procs) {
+
+                L1:
+                do {
+                    const queue = procs.shift();
+                    if (queue === undefined) break L1;
+                    console.warn([queue.type, { ...queue.args, cache: undefined }]);
+
                     const file = queue.args.file;
                     const key = `file-last-proc-${queue.type}-${file.path}`;
                     const last = Number(await this.localDatabase.kvDB.get(key) || 0);
-                    if (file instanceof TFile && file.stat.mtime == last) {
-                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
-                        continue;
-                    }
-
-                    const cache = queue.args.cache;
-                    if ((queue.type == "CREATE" || queue.type == "CHANGED") && file instanceof TFile) {
-                        await this.updateIntoDB(file, false, cache);
-                    }
                     if (queue.type == "DELETE") {
-                        if (file instanceof TFile) {
-                            await this.deleteFromDB(file);
-                        }
-                    }
-                    if (queue.type == "RENAME") {
-                        if (file instanceof TFile) {
-                            await this.watchVaultRenameAsync(file, queue.args.oldPath);
-                        }
-                    }
-                    if (queue.type == "INTERNAL") {
+                        await this.deleteFromDBbyPath(file.path);
+                    } else if (queue.type == "INTERNAL") {
                         await this.watchVaultRawEventsAsync(file.path);
+                    } else {
+                        const targetFile = this.app.vault.getAbstractFileByPath(file.path);
+                        if (!(targetFile instanceof TFile)) {
+                            Logger(`Target file was not found: ${file.path}`, LOG_LEVEL.INFO);
+                            continue L1;
+                        }
+                        //TODO: check from cache time.
+                        if (file.mtime == last) {
+                            Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
+                            continue L1;
+                        }
+
+                        const cache = queue.args.cache;
+                        if (queue.type == "CREATE" || queue.type == "CHANGED") {
+                            if (!await this.updateIntoDB(targetFile, false, cache)) {
+                                Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL.INFO);
+                                // cancel running queues and remove one of atomic operation
+                                this.watchedFileEventQueue = [...procs, ...this.watchedFileEventQueue].filter(e => e.key != queue.key);
+                                continue L2;
+                            }
+                        }
+                        if (queue.type == "RENAME") {
+                            // Obsolete
+                            await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
+                        }
                     }
-                    if (file instanceof TFile) {
-                        await this.localDatabase.kvDB.set(key, file.stat.mtime);
-                    }
-                }
+                    await this.localDatabase.kvDB.set(key, file.mtime);
+                } while (procs.length > 0);
             } while (this.watchedFileEventQueue.length != 0);
             return true;
         })
@@ -925,18 +959,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     watchVaultCreate(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent("CREATE", file, null, ctx);
+        this.appendWatchEvent([{ type: "CREATE", file }], ctx);
     }
 
     watchVaultChange(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent("CHANGED", file, null, ctx);
+        this.appendWatchEvent([{ type: "CHANGED", file }], ctx);
     }
 
     watchVaultDelete(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent("DELETE", file, null, ctx);
+        this.appendWatchEvent([{ type: "DELETE", file }], ctx);
     }
     watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
-        this.appendWatchEvent("RENAME", file, oldFile, ctx);
+        if (file instanceof TFile) {
+            this.appendWatchEvent([
+                { type: "CREATE", file },
+                { type: "DELETE", file: { path: oldFile, mtime: file.stat.mtime, ctime: file.stat.ctime, size: file.stat.size, deleted: true } }
+            ], ctx);
+        }
     }
 
     watchWorkspaceOpen(file: TFile) {
@@ -973,7 +1012,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e));
         if (ignorePatterns.some(e => path.match(e))) return;
-        this.appendWatchEvent("INTERNAL", { path, mtime: 0, ctime: 0, size: 0 }, "", null);
+        this.appendWatchEvent(
+            [{
+                type: "INTERNAL",
+                file: { path, mtime: 0, ctime: 0, size: 0 }
+            }], null);
     }
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: string) {
@@ -1040,9 +1083,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (file instanceof TFile) {
             try {
                 // Logger(`RENAMING.. ${file.path} into db`);
-                await this.updateIntoDB(file, false, cache);
-                // Logger(`deleted ${oldFile} from db`);
-                await this.deleteFromDBbyPath(oldFile);
+                if (await this.updateIntoDB(file, false, cache)) {
+                    // Logger(`deleted ${oldFile} from db`);
+                    await this.deleteFromDBbyPath(oldFile);
+                } else {
+                    Logger(`Could not save new file: ${file.path} `, LOG_LEVEL.NOTICE);
+                }
             } catch (ex) {
                 Logger(ex);
             }
@@ -2240,7 +2286,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     showMergeDialog(filename: string, conflictCheckResult: diff_result): Promise<boolean> {
         return new Promise((res, rej) => {
             Logger("open conflict dialog", LOG_LEVEL.VERBOSE);
-            new ConflictResolveModal(this.app, conflictCheckResult, async (selected) => {
+            new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
                 const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
                 if (testDoc === false) {
                     Logger("Missing file..", LOG_LEVEL.VERBOSE);
@@ -2422,9 +2468,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async updateIntoDB(file: TFile, initialScan?: boolean, cache?: CacheData, force?: boolean) {
-        if (!this.isTargetFile(file)) return;
+        if (!this.isTargetFile(file)) return true;
         if (shouldBeIgnored(file.path)) {
-            return;
+            return true;
         }
         let content: string | string[];
         let datatype: "plain" | "newnote" = "newnote";
@@ -2486,15 +2532,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             return false;
         });
-        if (isNotChanged) return;
-        await this.localDatabase.putDBEntry(d, initialScan);
+        if (isNotChanged) return true;
+        const ret = await this.localDatabase.putDBEntry(d, initialScan);
         this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
-
 
         Logger(msg + fullPath);
         if (this.settings.syncOnSave && !this.suspended) {
             await this.replicate();
         }
+        return ret != false;
     }
 
     async deleteFromDB(file: TFile) {
