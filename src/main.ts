@@ -740,10 +740,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async decryptConfigurationItem(encrypted: string, passphrase: string) {
         const dec = await tryDecrypt(encrypted, passphrase + SALT_OF_PASSPHRASE, false);
-            if (dec) {
-                this.usedPassphrase = passphrase;
-                return dec;
-            }
+        if (dec) {
+            this.usedPassphrase = passphrase;
+            return dec;
+        }
         return false;
     }
     tryDecodeJson(encoded: string | false): object | false {
@@ -766,10 +766,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return "";
         }
         const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
-            if (dec) {
-                this.usedPassphrase = passphrase;
-                return dec;
-            }
+        if (dec) {
+            this.usedPassphrase = passphrase;
+            return dec;
+        }
 
         return "";
     }
@@ -799,9 +799,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (settings.encrypt && settings.encryptedPassphrase) {
                 const encrypted = settings.encryptedPassphrase;
                 const decrypted = await this.decryptConfigurationItem(encrypted, passphrase);
-            if (decrypted) {
-                settings.passphrase = decrypted;
-            } else {
+                if (decrypted) {
+                    settings.passphrase = decrypted;
+                } else {
                     Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
                     settings.passphrase = "";
                 }
@@ -1000,7 +1000,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             })
         }
         this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
-        console.dir([...this.watchedFileEventQueue]);
         if (this.isReady) {
             await this.procFileEvent(forcePerform);
         }
@@ -1029,7 +1028,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 do {
                     const queue = procs.shift();
                     if (queue === undefined) break L1;
-                    console.warn([queue.type, { ...queue.args, cache: undefined }]);
 
                     const file = queue.args.file;
                     const key = `file-last-proc-${queue.type}-${file.path}`;
