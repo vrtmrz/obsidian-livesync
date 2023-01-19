@@ -55,7 +55,8 @@
 - 0.17.13
   - Fixed: Document history is now displayed again.
   - Reorganised: Many files have been refactored.
-- 0.17.14
+- 0.17.14: Skipped.
+- 0.17.15
   - Improved:
     - Confidential information has no longer stored in data.json as is.
     - Synchronising progress has been shown in the notification.
