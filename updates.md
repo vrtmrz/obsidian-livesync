@@ -66,6 +66,8 @@
   - Fixed:
     - Hidden files have been synchronised again.
     - Rename of files has been fixed again.
+  And, minor changes have been included.
+
 - 0.17.16:
   - Improved:
     - Plugins and their settings no longer need scanning if changes are monitored.
@@ -78,8 +80,8 @@
     - The default batch size is smaller again.
     - Plugins and their setting can be synchronised again.
     - Hidden files and plugins are correctly scanned while rebuilding.
-    - Files with the name started `_` are also being performed conflict-checking.
-    
-  And, minor changes have been included.
+    - Files with the name started `_` are also being performed conflict-checking.    
+- 0.17.17
+  - Fixed: Now we can merge JSON files even if we failed to compare items like null.
 
 ... To continue on to `updates_old.md`.
