@@ -2297,24 +2297,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async mergeObject(path: string, baseRev: string, currentRev: string, conflictedRev: string): Promise<string | false> {
-        const baseLeaf = await this.getConflictedDoc(path, baseRev);
-        const leftLeaf = await this.getConflictedDoc(path, currentRev);
-        const rightLeaf = await this.getConflictedDoc(path, conflictedRev);
-        if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
-            return false;
-        }
-        const baseObj = { data: tryParseJSON(baseLeaf.data, {}) } as Record<string | number | symbol, any>;
-        const leftObj = { data: tryParseJSON(leftLeaf.data, {}) } as Record<string | number | symbol, any>;
-        const rightObj = { data: tryParseJSON(rightLeaf.data, {}) } as Record<string | number | symbol, any>;
-
-        const diffLeft = generatePatchObj(baseObj, leftObj);
-        const diffRight = generatePatchObj(baseObj, rightObj);
-        const patches = [
-            { mtime: leftLeaf.mtime, patch: diffLeft },
-            { mtime: rightLeaf.mtime, patch: diffRight }
-        ].sort((a, b) => a.mtime - b.mtime);
-        let newObj = { ...baseObj };
         try {
+            const baseLeaf = await this.getConflictedDoc(path, baseRev);
+            const leftLeaf = await this.getConflictedDoc(path, currentRev);
+            const rightLeaf = await this.getConflictedDoc(path, conflictedRev);
+            if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
+                return false;
+            }
+            const baseObj = { data: tryParseJSON(baseLeaf.data, {}) } as Record<string | number | symbol, any>;
+            const leftObj = { data: tryParseJSON(leftLeaf.data, {}) } as Record<string | number | symbol, any>;
+            const rightObj = { data: tryParseJSON(rightLeaf.data, {}) } as Record<string | number | symbol, any>;
+
+            const diffLeft = generatePatchObj(baseObj, leftObj);
+            const diffRight = generatePatchObj(baseObj, rightObj);
+            const patches = [
+                { mtime: leftLeaf.mtime, patch: diffLeft },
+                { mtime: rightLeaf.mtime, patch: diffRight }
+            ].sort((a, b) => a.mtime - b.mtime);
+            let newObj = { ...baseObj };
             for (const patch of patches) {
                 newObj = applyPatch(newObj, patch.patch);
             }
