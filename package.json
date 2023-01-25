@@ -30,6 +30,7 @@
         "postcss-load-config": "^4.0.1",
         "pouchdb-adapter-http": "^8.0.0",
         "pouchdb-adapter-idb": "^8.0.0",
+        "pouchdb-adapter-indexeddb": "^8.0.0",
         "pouchdb-core": "^8.0.0",
         "pouchdb-find": "^8.0.0",
         "pouchdb-mapreduce": "^8.0.0",

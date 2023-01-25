@@ -1,6 +1,6 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection } from "./lib/src/types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2 } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -41,19 +41,22 @@ function getAbstractFileByPath(path: string): TAbstractFile | null {
         return app.vault.getAbstractFileByPath(path);
     }
 }
+function trimPrefix(target: string, prefix: string) {
+    return target.startsWith(prefix) ? target.substring(prefix.length) : target;
+}
 
 /**
  * returns is internal chunk of file
  * @param str ID
  * @returns 
  */
-function isInternalChunk(str: string): boolean {
+function isInternalMetadata(str: string): boolean {
     return str.startsWith(ICHeader);
 }
-function id2filenameInternalChunk(str: string): string {
+function id2filenameInternalMetadata(str: string): string {
     return str.substring(ICHeaderLength);
 }
-function filename2idInternalChunk(str: string): string {
+function filename2idInternalMetadata(str: string): string {
     return ICHeader + str;
 }
 
@@ -66,7 +69,7 @@ function isChunk(str: string): boolean {
 
 const PSCHeader = "ps:";
 const PSCHeaderEnd = "ps;";
-function isPluginChunk(str: string): boolean {
+function isPluginMetadata(str: string): boolean {
     return str.startsWith(PSCHeader);
 }
 
@@ -152,6 +155,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         return false;
     }
+    isRedFlag2Raised(): boolean {
+        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
+        if (redflag != null) {
+            return true;
+        }
+        return false;
+    }
+    async deleteRedFlag2() {
+        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
+        if (redflag != null) {
+            await app.vault.delete(redflag, true);
+        }
+    }
 
     showHistory(file: TFile | string) {
         if (!this.settings.useHistory) {
@@ -199,8 +215,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             for (const row of docs.rows) {
                 const doc = row.doc;
                 nextKey = `${row.id}\u{10ffff}`;
+                if (isChunk(nextKey)) {
+                    // skip the chunk zone.
+                    nextKey = CHeaderEnd;
+                }
                 if (!("_conflicts" in doc)) continue;
-                if (isInternalChunk(row.id)) continue;
+                if (isInternalMetadata(row.id)) continue;
                 // We have to check also deleted files.
                 // if (doc._deleted) continue;
                 // if ("deleted" in doc && doc.deleted) continue;
@@ -208,10 +228,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     // const docId = doc._id.startsWith("i:") ? doc._id.substring("i:".length) : doc._id;
                     notes.push({ path: id2path(doc._id), mtime: doc.mtime });
                 }
-                if (isChunk(nextKey)) {
-                    // skip the chunk zone.
-                    nextKey = CHeaderEnd;
-                }
+
             }
         } while (nextKey != "");
         notes.sort((a, b) => b.mtime - a.mtime);
@@ -222,7 +239,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         const target = await askSelectString(this.app, "File to view History", notesList);
         if (target) {
-            if (isInternalChunk(target)) {
+            if (isInternalMetadata(target)) {
                 //NOP
             } else {
                 await this.showIfConflicted(target);
@@ -358,7 +375,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.registerFileWatchEvents();
             if (this.localDatabase.isReady)
                 try {
-                    if (this.isRedFlagRaised()) {
+                    if (this.isRedFlagRaised() || this.isRedFlag2Raised()) {
                         this.settings.batchSave = false;
                         this.settings.liveSync = false;
                         this.settings.periodicReplication = false;
@@ -371,10 +388,21 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings.suspendFileWatching = true;
                         this.settings.syncInternalFiles = false;
                         await this.saveSettings();
-                        await this.openDatabase();
-                        const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
-                        Logger(warningMessage, LOG_LEVEL.NOTICE);
-                        this.setStatusBarText(warningMessage);
+                        if (this.isRedFlag2Raised()) {
+                            Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL.NOTICE);
+                            await this.resetLocalDatabase();
+                            await this.initializeDatabase(true);
+                            await this.markRemoteLocked();
+                            await this.tryResetRemoteDatabase();
+                            await this.markRemoteLocked();
+                            await this.replicateAllToServer(true);
+                            await this.deleteRedFlag2();
+                        } else {
+                            await this.openDatabase();
+                            const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
+                            Logger(warningMessage, LOG_LEVEL.NOTICE);
+                            this.setStatusBarText(warningMessage);
+                        }
                     } else {
                         if (this.settings.suspendFileWatching) {
                             Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
@@ -714,7 +742,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async openDatabase() {
         if (this.localDatabase != null) {
-            this.localDatabase.close();
+            await this.localDatabase.close();
         }
         const vaultName = this.getVaultName();
         Logger("Open Database...");
@@ -1142,7 +1170,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return;
         }
         this.recentProcessedInternalFiles = [key, ...this.recentProcessedInternalFiles].slice(0, 100);
-        const id = filename2idInternalChunk(path);
+        const id = filename2idInternalMetadata(path);
         const filesOnDB = await this.localDatabase.getDBEntryMeta(id);
         const dbMTime = ~~((filesOnDB && filesOnDB.mtime || 0) / 1000);
 
@@ -1157,6 +1185,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.deleteInternalFileOnDatabase(path);
         } else {
             await this.storeInternalFileToDatabase({ path: path, ...stat });
+            const pluginDir = this.app.vault.configDir + "/plugins/";
+            const pluginFiles = ["manifest.json", "data.json", "style.css", "main.js"];
+            if (path.startsWith(pluginDir) && pluginFiles.some(e => path.endsWith(e)) && this.settings.usePluginSync) {
+                const pluginName = trimPrefix(path, pluginDir).split("/")[0]
+                await this.sweepPlugin(false, pluginName);
+            }
         }
 
     }
@@ -1554,9 +1588,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const now = new Date().getTime();
             if (queue.missingChildren.length == 0) {
                 queue.done = true;
-                if (isInternalChunk(queue.entry._id)) {
+                if (isInternalMetadata(queue.entry._id)) {
                     //system file
-                    const filename = id2path(id2filenameInternalChunk(queue.entry._id));
+                    const filename = id2path(id2filenameInternalMetadata(queue.entry._id));
                     // await this.syncInternalFilesAndDatabase("pull", false, false, [filename])
                     this.procInternalFile(filename);
                 }
@@ -1597,7 +1631,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         if (!this.isTargetFile(id2path(doc._id))) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
-        if ((!isInternalChunk(doc._id)) && skipOldFile) {
+        if ((!isInternalMetadata(doc._id)) && skipOldFile) {
             const info = getAbstractFileByPath(id2path(doc._id));
 
             if (info && info instanceof TFile) {
@@ -1635,7 +1669,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
         for (const change of docs) {
-            if (isPluginChunk(change._id)) {
+            if (isPluginMetadata(change._id)) {
                 if (this.settings.notifyPluginOrSettingUpdated) {
                     this.triggerCheckPluginUpdate();
                 }
@@ -1725,7 +1759,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     setPluginSweep() {
-        if (this.settings.autoSweepPluginsPeriodic) {
+        if (this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges) {
             this.clearPluginSweep();
             this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicPluginSweep(), PERIODIC_PLUGIN_SWEEP * 1000);
         }
@@ -1870,7 +1904,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         await this.applyBatchChange();
         if (this.settings.autoSweepPlugins) {
-            await this.sweepPlugin(false);
+            await this.sweepPlugin(showMessage);
         }
         await this.loadQueuedFiles();
         if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
@@ -1884,6 +1918,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (await this.openDatabase()) {
             if (this.localDatabase.isReady) {
                 await this.syncAllFiles(showingNotice);
+            }
+            if (this.settings.syncInternalFiles) {
+                await this.syncInternalFilesAndDatabase("push", showingNotice);
+            }
+            if (this.settings.usePluginSync) {
+                await this.sweepPlugin(showingNotice);
             }
             this.isReady = true;
             // run queued event once.
@@ -1929,7 +1969,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const wf = await this.localDatabase.localDatabase.allDocs();
         const filesDatabase = wf.rows.filter((e) =>
             !isChunk(e.id) &&
-            !isPluginChunk(e.id) &&
+            !isPluginMetadata(e.id) &&
             e.id != "obsydian_livesync_version" &&
             e.id != "_design/replicate"
         )
@@ -1954,7 +1994,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             // const count = objects.length;
             Logger(procedureName);
             // let i = 0;
-            const semaphore = Semaphore(10);
+            const semaphore = Semaphore(25);
 
             // Logger(`${procedureName} exec.`);
             if (!this.localDatabase.isReady) throw Error("Database is not ready!");
@@ -2292,7 +2332,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
      * @returns true -> resolved, false -> nothing to do, or check result.
      */
     async getConflictedStatus(path: string): Promise<diff_check_result> {
-        const test = await this.localDatabase.getDBEntry(path, { conflicts: true }, false, false, true);
+        const test = await this.localDatabase.getDBEntry(path, { conflicts: true, revs_info: true }, false, false, true);
         if (test === false) return false;
         if (test == null) return false;
         if (!test._conflicts) return false;
@@ -2302,7 +2342,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const conflictedRev = conflicts[0];
             const conflictedRevNo = Number(conflictedRev.split("-")[0]);
             //Search 
-            const revFrom = (await this.localDatabase.localDatabase.get(id2path(path), { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
+            const revFrom = (await this.localDatabase.localDatabase.get(path2id(path), { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
             const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
             let p = undefined;
             if (commonBase) {
@@ -2709,9 +2749,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         return { plugins, allPlugins, thisDevicePlugins };
     }
 
-    async sweepPlugin(showMessage = false) {
+    async sweepPlugin(showMessage = false, specificPluginPath = "") {
         if (!this.settings.usePluginSync) return;
         if (!this.localDatabase.isReady) return;
+        // @ts-ignore
+        const pl = this.app.plugins;
+        const manifests: PluginManifest[] = Object.values(pl.manifests);
+        let specificPlugin = "";
+        if (specificPluginPath != "") {
+            specificPlugin = manifests.find(e => e.dir.endsWith("/" + specificPluginPath))?.id ?? "";
+        }
         await runWithLock("sweepplugin", true, async () => {
             const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
             if (!this.deviceAndVaultName) {
@@ -2721,71 +2768,81 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger("Scanning plugins", logLevel);
             const db = this.localDatabase.localDatabase;
             const oldDocs = await db.allDocs({
-                startkey: `ps:${this.deviceAndVaultName}-`,
-                endkey: `ps:${this.deviceAndVaultName}.`,
+                startkey: `ps:${this.deviceAndVaultName}-${specificPlugin}`,
+                endkey: `ps:${this.deviceAndVaultName}-${specificPlugin}\u{10ffff}`,
                 include_docs: true,
             });
             // Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
             // sweep current plugin.
-            // @ts-ignore
-            const pl = this.app.plugins;
-            const manifests: PluginManifest[] = Object.values(pl.manifests);
-            for (const m of manifests) {
-                Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
-                const path = normalizePath(m.dir) + "/";
-                const adapter = this.app.vault.adapter;
-                const files = ["manifest.json", "main.js", "styles.css", "data.json"];
-                const pluginData: { [key: string]: string } = {};
-                for (const file of files) {
-                    const thePath = path + file;
-                    if (await adapter.exists(thePath)) {
-                        pluginData[file] = await adapter.read(thePath);
+
+            const procs = manifests.map(async m => {
+                const pluginDataEntryID = `ps:${this.deviceAndVaultName}-${m.id}`;
+                try {
+                    if (specificPlugin && m.id != specificPlugin) {
+                        return;
                     }
-                }
-                let mtime = 0;
-                if (await adapter.exists(path + "/data.json")) {
-                    mtime = (await adapter.stat(path + "/data.json")).mtime;
-                }
-                const p: PluginDataEntry = {
-                    _id: `ps:${this.deviceAndVaultName}-${m.id}`,
-                    dataJson: pluginData["data.json"],
-                    deviceVaultName: this.deviceAndVaultName,
-                    mainJs: pluginData["main.js"],
-                    styleCss: pluginData["styles.css"],
-                    manifest: m,
-                    manifestJson: pluginData["manifest.json"],
-                    mtime: mtime,
-                    type: "plugin",
-                };
-                const d: LoadedEntry = {
-                    _id: p._id,
-                    data: JSON.stringify(p),
-                    ctime: mtime,
-                    mtime: mtime,
-                    size: 0,
-                    children: [],
-                    datatype: "plain",
-                    type: "plain"
-                };
-                Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
-                await runWithLock("plugin-" + m.id, false, async () => {
-                    const old = await this.localDatabase.getDBEntry(p._id, null, false, false);
-                    if (old !== false) {
-                        const oldData = { data: old.data, deleted: old._deleted };
-                        const newData = { data: d.data, deleted: d._deleted };
-                        if (JSON.stringify(oldData) == JSON.stringify(newData)) {
-                            oldDocs.rows = oldDocs.rows.filter((e) => e.id != d._id);
-                            Logger(`Nothing changed:${m.name}`);
-                            return;
+                    Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+                    const path = normalizePath(m.dir) + "/";
+                    const adapter = this.app.vault.adapter;
+                    const files = ["manifest.json", "main.js", "styles.css", "data.json"];
+                    const pluginData: { [key: string]: string } = {};
+                    for (const file of files) {
+                        const thePath = path + file;
+                        if (await adapter.exists(thePath)) {
+                            pluginData[file] = await adapter.read(thePath);
                         }
                     }
-                    await this.localDatabase.putDBEntry(d);
-                    oldDocs.rows = oldDocs.rows.filter((e) => e.id != d._id);
-                    Logger(`Plugin saved:${m.name}`, logLevel);
-                });
+                    let mtime = 0;
+                    if (await adapter.exists(path + "/data.json")) {
+                        mtime = (await adapter.stat(path + "/data.json")).mtime;
+                    }
+
+                    const p: PluginDataEntry = {
+                        _id: pluginDataEntryID,
+                        dataJson: pluginData["data.json"],
+                        deviceVaultName: this.deviceAndVaultName,
+                        mainJs: pluginData["main.js"],
+                        styleCss: pluginData["styles.css"],
+                        manifest: m,
+                        manifestJson: pluginData["manifest.json"],
+                        mtime: mtime,
+                        type: "plugin",
+                    };
+                    const d: LoadedEntry = {
+                        _id: p._id,
+                        data: JSON.stringify(p),
+                        ctime: mtime,
+                        mtime: mtime,
+                        size: 0,
+                        children: [],
+                        datatype: "plain",
+                        type: "plain"
+                    };
+                    Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+                    await runWithLock("plugin-" + m.id, false, async () => {
+                        const old = await this.localDatabase.getDBEntry(p._id, null, false, false);
+                        if (old !== false) {
+                            const oldData = { data: old.data, deleted: old._deleted };
+                            const newData = { data: d.data, deleted: d._deleted };
+                            if (isDocContentSame(oldData.data, newData.data) && oldData.deleted == newData.deleted) {
+                                Logger(`Nothing changed:${m.name}`);
+                                return;
+                            }
+                        }
+                        await this.localDatabase.putDBEntry(d);
+                        Logger(`Plugin saved:${m.name}`, logLevel);
+                    });
+                } catch (ex) {
+                    Logger(`Plugin save failed:${m.name}`, LOG_LEVEL.NOTICE)
+                } finally {
+                    oldDocs.rows = oldDocs.rows.filter((e) => e.id != pluginDataEntryID);
+                }
                 //remove saved plugin data.
             }
-            Logger(`Deleting old plugins`, LOG_LEVEL.VERBOSE);
+            );
+
+            await Promise.all(procs);
+
             const delDocs = oldDocs.rows.map((e) => {
                 // e.doc._deleted = true;
                 if (e.doc.type == "newnote" || e.doc.type == "plain") {
@@ -2798,6 +2855,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 }
                 return e.doc;
             });
+            Logger(`Deleting old plugin:(${delDocs.length})`, LOG_LEVEL.VERBOSE);
             await db.bulkDocs(delDocs);
             Logger(`Scan plugin done.`, logLevel);
         });
@@ -2927,11 +2985,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo, forceWrite = false) {
-        const id = filename2idInternalChunk(path2id(file.path));
+        const id = filename2idInternalMetadata(path2id(file.path));
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
         const content = await arrayBufferToBase64(contentBin);
         const mtime = file.mtime;
-        await runWithLock("file-" + id, false, async () => {
+        return await runWithLock("file-" + id, false, async () => {
             const old = await this.localDatabase.getDBEntry(id, null, false, false);
             let saveData: LoadedEntry;
             if (old === false) {
@@ -2947,7 +3005,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     type: "newnote",
                 }
             } else {
-                if (old.data == content && !forceWrite) {
+                if (isDocContentSame(old.data, content) && !forceWrite) {
                     // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
                     return;
                 }
@@ -2963,13 +3021,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     type: "newnote",
                 }
             }
-            await this.localDatabase.putDBEntry(saveData, true);
+
+            const ret = await this.localDatabase.putDBEntry(saveData, true);
             Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
+            return ret;
         });
     }
 
     async deleteInternalFileOnDatabase(filename: string, forceWrite = false) {
-        const id = filename2idInternalChunk(path2id(filename));
+        const id = filename2idInternalMetadata(path2id(filename));
         const mtime = new Date().getTime();
         await runWithLock("file-" + id, false, async () => {
             const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
@@ -3026,7 +3086,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async extractInternalFileFromDatabase(filename: string, force = false) {
         const isExists = await this.app.vault.adapter.exists(filename);
-        const id = filename2idInternalChunk(path2id(filename));
+        const id = filename2idInternalMetadata(path2id(filename));
 
         return await runWithLock("file-" + id, false, async () => {
             const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
@@ -3087,18 +3147,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         for (const row of docs.rows) {
             const doc = row.doc;
             if (!("_conflicts" in doc)) continue;
-            if (isInternalChunk(row.id)) {
+            if (isInternalMetadata(row.id)) {
                 await this.resolveConflictOnInternalFile(row.id);
             }
         }
     }
+
     async resolveConflictOnInternalFile(id: string): Promise<boolean> {
         // Retrieve data
         const doc = await this.localDatabase.localDatabase.get(id, { conflicts: true });
         // If there is no conflict, return with false.
         if (!("_conflicts" in doc)) return false;
         if (doc._conflicts.length == 0) return false;
-        Logger(`Hidden file conflicted:${id2filenameInternalChunk(id)}`);
+        Logger(`Hidden file conflicted:${id2filenameInternalMetadata(id)}`);
         const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
         const revA = doc._rev;
         const revB = conflicts[0];
@@ -3112,7 +3173,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
             if (result) {
                 Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
-                const filename = id2filenameInternalChunk(id);
+                const filename = id2filenameInternalMetadata(id);
                 const isExists = await this.app.vault.adapter.exists(filename);
                 if (!isExists) {
                     await this.ensureDirectoryEx(filename);
@@ -3137,7 +3198,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const delRev = mtimeA < mtimeB ? revA : revB;
         // delete older one.
         await this.localDatabase.localDatabase.remove(id, delRev);
-        Logger(`Older one has been deleted:${id2filenameInternalChunk(id)}`);
+        Logger(`Older one has been deleted:${id2filenameInternalMetadata(id)}`);
         // check the file again 
         return this.resolveConflictOnInternalFile(id);
 
@@ -3153,7 +3214,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!files) files = await this.scanInternalFiles();
         const filesOnDB = ((await this.localDatabase.localDatabase.allDocs({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
 
-        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(id2filenameInternalChunk(e._id))))])];
+        const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => normalizePath(id2path(id2filenameInternalMetadata(e._id))))])];
         const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1))
         function compareMTime(a: number, b: number) {
             const wa = ~~(a / 1000);
@@ -3198,7 +3259,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (ignorePatterns.some(e => filename.match(e))) continue;
 
             const fileOnStorage = files.find(e => e.path == filename);
-            const fileOnDatabase = filesOnDB.find(e => e._id == filename2idInternalChunk(id2path(filename)));
+            const fileOnDatabase = filesOnDB.find(e => e._id == filename2idInternalMetadata(id2path(filename)));
             const addProc = async (p: () => Promise<void>): Promise<void> => {
                 const releaser = await semaphore.acquire(1);
                 try {
@@ -3234,7 +3295,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 } else if (!fileOnStorage && fileOnDatabase) {
                     if (direction == "push") {
                         if (fileOnDatabase.deleted) return;
-                        await this.deleteInternalFileOnDatabase(filename);
+                        await this.deleteInternalFileOnDatabase(filename, false);
                     } else if (direction == "pull") {
                         if (await this.extractInternalFileFromDatabase(filename)) {
                             countUpdatedFolder(filename);

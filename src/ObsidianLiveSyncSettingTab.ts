@@ -817,6 +817,23 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             );
 
+        containerLocalDatabaseEl.createEl("h3", {
+            text: sanitizeHTMLToDom(`Experimental`),
+            cls: "wizardHidden"
+        });
+
+        new Setting(containerLocalDatabaseEl)
+            .setName("Use new adapter")
+            .setDesc("This option is not compatible with a database made by older versions. Changing this configuration will fetch the remote database again.")
+            .setClass("wizardHidden")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.useIndexedDBAdapter).onChange(async (value) => {
+                    this.plugin.settings.useIndexedDBAdapter = value;
+                    await this.plugin.saveSettings();
+                    await rebuildDB("localOnly");
+                })
+            );
+
         addScreenElement("10", containerLocalDatabaseEl);
         const containerGeneralSettingsEl = containerEl.createDiv();
         containerGeneralSettingsEl.createEl("h3", { text: "General Settings" });
@@ -866,6 +883,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
+        new Setting(containerGeneralSettingsEl)
+            .setName("Monitor changes to hidden files and plugin")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.watchInternalFileChanges).onChange(async (value) => {
+                    this.plugin.settings.watchInternalFileChanges = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
 
         addScreenElement("20", containerGeneralSettingsEl);
@@ -1039,7 +1064,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-
         new Setting(containerSyncSettingEl)
             .setName("Sync hidden files")
             .addToggle((toggle) =>
@@ -1048,14 +1072,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerSyncSettingEl)
-            .setName("Monitor changes to internal files")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.watchInternalFileChanges).onChange(async (value) => {
-                    this.plugin.settings.watchInternalFileChanges = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+
         new Setting(containerSyncSettingEl)
             .setName("Scan for hidden files before replication")
             .setDesc("This configuration will be ignored if monitoring changes is enabled.")
@@ -1551,7 +1568,7 @@ ${stringifyYaml(pluginConfig)}`;
 
         new Setting(containerPluginSettings)
             .setName("Scan plugins periodically")
-            .setDesc("Scan plugins every 1 minute.")
+            .setDesc("Scan plugins every 1 minute. This configuration will be ignored if monitoring changes of hidden files has been enabled.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
                     this.plugin.settings.autoSweepPluginsPeriodic = value;

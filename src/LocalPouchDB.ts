@@ -3,7 +3,7 @@ import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB.js";
 import { LocalPouchDBBase } from "./lib/src/LocalPouchDBBase.js";
 import { Logger } from "./lib/src/logger.js";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { EntryDoc, LOG_LEVEL } from "./lib/src/types.js";
+import { EntryDoc, LOG_LEVEL, ObsidianLiveSyncSettings } from "./lib/src/types.js";
 import { enableEncryption } from "./lib/src/utils_couchdb.js";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb.js";
 import { id2path, path2id } from "./utils.js";
@@ -11,6 +11,7 @@ import { id2path, path2id } from "./utils.js";
 export class LocalPouchDB extends LocalPouchDBBase {
 
     kvDB: KeyValueDatabase;
+    settings: ObsidianLiveSyncSettings;
     id2path(filename: string): string {
         return id2path(filename);
     }
@@ -18,6 +19,10 @@ export class LocalPouchDB extends LocalPouchDBBase {
         return path2id(filename);
     }
     CreatePouchDBInstance<T>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
+        if (this.settings.useIndexedDBAdapter) {
+            options.adapter = "indexeddb";
+            return new PouchDB(name + "-indexeddb", options);
+        }
         return new PouchDB(name, options);
     }
     beforeOnUnload(): void {
