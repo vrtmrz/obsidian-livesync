@@ -66,7 +66,20 @@
   - Fixed:
     - Hidden files have been synchronised again.
     - Rename of files has been fixed again.
-  
+- 0.17.16:
+  - Improved:
+    - Plugins and their settings no longer need scanning if changes are monitored.
+    - Now synchronising plugins and their settings are performed parallelly and faster.
+    - We can place `redflag2.md` to rebuild the database automatically while the boot sequence.
+  - Experimental:
+    - We can use a new adapter on PouchDB. This will make us smoother. 
+      - Note: Not compatible with the older version. 
+  - Fixed:
+    - The default batch size is smaller again.
+    - Plugins and their setting can be synchronised again.
+    - Hidden files and plugins are correctly scanned while rebuilding.
+    - Files with the name started `_` are also being performed conflict-checking.
+    
   And, minor changes have been included.
 
 ... To continue on to `updates_old.md`.
