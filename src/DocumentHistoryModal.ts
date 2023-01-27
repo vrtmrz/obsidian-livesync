@@ -6,6 +6,7 @@ import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
+import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getDocData } from "./lib/src/utils";
 
 export class DocumentHistoryModal extends Modal {
@@ -35,13 +36,13 @@ export class DocumentHistoryModal extends Modal {
         const db = this.plugin.localDatabase;
         try {
             const w = await db.localDatabase.get(path2id(this.file), { revs_info: true });
-            this.revs_info = w._revs_info.filter((e) => e.status == "available");
+            this.revs_info = w._revs_info.filter((e) => e?.status == "available");
             this.range.max = `${this.revs_info.length - 1}`;
             this.range.value = this.range.max;
             this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
             await this.loadRevs();
         } catch (ex) {
-            if (ex.status && ex.status == 404) {
+            if (isErrorOfMissingDoc(ex)) {
                 this.range.max = "0";
                 this.range.value = "";
                 this.range.disabled = true;

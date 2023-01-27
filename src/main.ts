@@ -15,7 +15,7 @@ import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 const isDebug = false;
 
 import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
-import { isCloudantURI } from "./lib/src/utils_couchdb";
+import { isCloudantURI, isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getGlobalStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore } from "./lib/src/stores";
 import { NewNotice, setNoticeClass, WrappedNotice } from "./lib/src/wrapper";
@@ -2132,7 +2132,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 data: data
             };
         } catch (ex) {
-            if (ex.status && ex.status == 404) {
+            if (isErrorOfMissingDoc(ex)) {
                 return false;
             }
         }
