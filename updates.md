@@ -80,8 +80,10 @@
     - The default batch size is smaller again.
     - Plugins and their setting can be synchronised again.
     - Hidden files and plugins are correctly scanned while rebuilding.
-    - Files with the name started `_` are also being performed conflict-checking.    
+    - Files with the name started `_` are also being performed conflict-checking.
 - 0.17.17
   - Fixed: Now we can merge JSON files even if we failed to compare items like null.
+- 0.17.18
+  - Fixed: Fixed lack of error handling.
 
 ... To continue on to `updates_old.md`.
