@@ -1920,10 +1920,25 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.syncAllFiles(showingNotice);
             }
             if (this.settings.syncInternalFiles) {
-                await this.syncInternalFilesAndDatabase("push", showingNotice);
+                try {
+                    Logger("Synchronizing hidden files...");
+                    await this.syncInternalFilesAndDatabase("push", showingNotice);
+                    Logger("Synchronizing hidden files done");
+                } catch (ex) {
+                    Logger("Synchronizing hidden files failed");
+                    Logger(ex, LOG_LEVEL.VERBOSE)
+                }
             }
             if (this.settings.usePluginSync) {
-                await this.sweepPlugin(showingNotice);
+                try {
+                    Logger("Scanning plugins...");
+                    await this.sweepPlugin(showingNotice);
+                    Logger("Scanning plugins done");
+                } catch (ex) {
+                    Logger("Scanning plugins  failed");
+                    Logger(ex, LOG_LEVEL.VERBOSE)
+                }
+
             }
             this.isReady = true;
             // run queued event once.
@@ -2990,41 +3005,47 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const content = await arrayBufferToBase64(contentBin);
         const mtime = file.mtime;
         return await runWithLock("file-" + id, false, async () => {
-            const old = await this.localDatabase.getDBEntry(id, null, false, false);
-            let saveData: LoadedEntry;
-            if (old === false) {
-                saveData = {
-                    _id: id,
-                    data: content,
-                    mtime,
-                    ctime: mtime,
-                    datatype: "newnote",
-                    size: file.size,
-                    children: [],
-                    deleted: false,
-                    type: "newnote",
+            try {
+                const old = await this.localDatabase.getDBEntry(id, null, false, false);
+                let saveData: LoadedEntry;
+                if (old === false) {
+                    saveData = {
+                        _id: id,
+                        data: content,
+                        mtime,
+                        ctime: mtime,
+                        datatype: "newnote",
+                        size: file.size,
+                        children: [],
+                        deleted: false,
+                        type: "newnote",
+                    }
+                } else {
+                    if (isDocContentSame(old.data, content) && !forceWrite) {
+                        // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
+                        return;
+                    }
+                    saveData =
+                    {
+                        ...old,
+                        data: content,
+                        mtime,
+                        size: file.size,
+                        datatype: "newnote",
+                        children: [],
+                        deleted: false,
+                        type: "newnote",
+                    }
                 }
-            } else {
-                if (isDocContentSame(old.data, content) && !forceWrite) {
-                    // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
-                    return;
-                }
-                saveData =
-                {
-                    ...old,
-                    data: content,
-                    mtime,
-                    size: file.size,
-                    datatype: "newnote",
-                    children: [],
-                    deleted: false,
-                    type: "newnote",
-                }
-            }
 
-            const ret = await this.localDatabase.putDBEntry(saveData, true);
-            Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
-            return ret;
+                const ret = await this.localDatabase.putDBEntry(saveData, true);
+                Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
+                return ret;
+            } catch (ex) {
+                Logger(`STORAGE --> DB:${file.path}: (hidden) Failed`);
+                Logger(ex, LOG_LEVEL.VERBOSE);
+                return false;
+            }
         });
     }
 
@@ -3032,36 +3053,41 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const id = filename2idInternalMetadata(path2id(filename));
         const mtime = new Date().getTime();
         await runWithLock("file-" + id, false, async () => {
-            const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
-            let saveData: InternalFileEntry;
-            if (old === false) {
-                saveData = {
-                    _id: id,
-                    mtime,
-                    ctime: mtime,
-                    size: 0,
-                    children: [],
-                    deleted: true,
-                    type: "newnote",
+            try {
+                const old = await this.localDatabase.getDBEntry(id, null, false, false) as InternalFileEntry | false;
+                let saveData: InternalFileEntry;
+                if (old === false) {
+                    saveData = {
+                        _id: id,
+                        mtime,
+                        ctime: mtime,
+                        size: 0,
+                        children: [],
+                        deleted: true,
+                        type: "newnote",
+                    }
+                } else {
+                    if (old.deleted) {
+                        Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
+                        return;
+                    }
+                    saveData =
+                    {
+                        ...old,
+                        mtime,
+                        size: 0,
+                        children: [],
+                        deleted: true,
+                        type: "newnote",
+                    }
                 }
-            } else {
-                if (old.deleted) {
-                    Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
-                    return;
-                }
-                saveData =
-                {
-                    ...old,
-                    mtime,
-                    size: 0,
-                    children: [],
-                    deleted: true,
-                    type: "newnote",
-                }
+                await this.localDatabase.localDatabase.put(saveData);
+                Logger(`STORAGE -x> DB:${filename}: (hidden) Done`);
+            } catch (ex) {
+                Logger(`STORAGE -x> DB:${filename}: (hidden) Failed`);
+                Logger(ex, LOG_LEVEL.VERBOSE);
+                return false;
             }
-            await this.localDatabase.localDatabase.put(saveData);
-            Logger(`STORAGE -x> DB:${filename}: (hidden) Done`);
-
         });
     }
     async ensureDirectoryEx(fullPath: string) {
@@ -3089,28 +3115,25 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const id = filename2idInternalMetadata(path2id(filename));
 
         return await runWithLock("file-" + id, false, async () => {
-            const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
-            if (fileOnDB === false) throw new Error(`File not found on database.:${id}`);
-            const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
-            if (deleted) {
-                if (!isExists) {
-                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
-                } else {
-                    Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
-                    await this.app.vault.adapter.remove(filename);
+            try {
+                const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
+                if (fileOnDB === false) throw new Error(`File not found on database.:${id}`);
+                const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
+                if (deleted) {
+                    if (!isExists) {
+                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
+                    } else {
+                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
+                        await this.app.vault.adapter.remove(filename);
+                    }
+                    return true;
                 }
-                return true;
-            }
-            if (!isExists) {
-                await this.ensureDirectoryEx(filename);
-                await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
-                Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
-                return true;
-            } else {
-                try {
-                    // const stat = await this.app.vault.adapter.stat(filename);
-                    // const fileMTime = ~~(stat.mtime/1000);
-                    // const docMtime = ~~(old.mtime/1000);
+                if (!isExists) {
+                    await this.ensureDirectoryEx(filename);
+                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
+                    return true;
+                } else {
                     const contentBin = await this.app.vault.adapter.readBinary(filename);
                     const content = await arrayBufferToBase64(contentBin);
                     if (content == fileOnDB.data && !force) {
@@ -3120,10 +3143,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""})`);
                     return true;
-                } catch (ex) {
-                    Logger(ex);
-                    return false;
+
                 }
+            } catch (ex) {
+                Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""}) Failed`);
+                Logger(ex, LOG_LEVEL.VERBOSE);
+                return false;
             }
         });
     }
@@ -3154,54 +3179,58 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async resolveConflictOnInternalFile(id: string): Promise<boolean> {
-        // Retrieve data
-        const doc = await this.localDatabase.localDatabase.get(id, { conflicts: true });
-        // If there is no conflict, return with false.
-        if (!("_conflicts" in doc)) return false;
-        if (doc._conflicts.length == 0) return false;
-        Logger(`Hidden file conflicted:${id2filenameInternalMetadata(id)}`);
-        const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
-        const revA = doc._rev;
-        const revB = conflicts[0];
+        try {// Retrieve data
+            const doc = await this.localDatabase.localDatabase.get(id, { conflicts: true });
+            // If there is no conflict, return with false.
+            if (!("_conflicts" in doc)) return false;
+            if (doc._conflicts.length == 0) return false;
+            Logger(`Hidden file conflicted:${id2filenameInternalMetadata(id)}`);
+            const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
+            const revA = doc._rev;
+            const revB = conflicts[0];
 
-        if (doc._id.endsWith(".json")) {
-            const conflictedRev = conflicts[0];
-            const conflictedRevNo = Number(conflictedRev.split("-")[0]);
-            //Search 
-            const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
-            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
-            const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
-            if (result) {
-                Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
-                const filename = id2filenameInternalMetadata(id);
-                const isExists = await this.app.vault.adapter.exists(filename);
-                if (!isExists) {
-                    await this.ensureDirectoryEx(filename);
+            if (doc._id.endsWith(".json")) {
+                const conflictedRev = conflicts[0];
+                const conflictedRevNo = Number(conflictedRev.split("-")[0]);
+                //Search 
+                const revFrom = (await this.localDatabase.localDatabase.get(id, { revs_info: true })) as unknown as LoadedEntry & PouchDB.Core.GetMeta;
+                const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
+                const result = await this.mergeObject(id, commonBase, doc._rev, conflictedRev);
+                if (result) {
+                    Logger(`Object merge:${id}`, LOG_LEVEL.INFO);
+                    const filename = id2filenameInternalMetadata(id);
+                    const isExists = await this.app.vault.adapter.exists(filename);
+                    if (!isExists) {
+                        await this.ensureDirectoryEx(filename);
+                    }
+                    await this.app.vault.adapter.write(filename, result);
+                    const stat = await this.app.vault.adapter.stat(filename);
+                    await this.storeInternalFileToDatabase({ path: filename, ...stat });
+                    await this.extractInternalFileFromDatabase(filename);
+                    await this.localDatabase.localDatabase.remove(id, revB);
+                    return this.resolveConflictOnInternalFile(id);
+                } else {
+                    Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
                 }
-                await this.app.vault.adapter.write(filename, result);
-                const stat = await this.app.vault.adapter.stat(filename);
-                await this.storeInternalFileToDatabase({ path: filename, ...stat });
-                await this.extractInternalFileFromDatabase(filename);
-                await this.localDatabase.localDatabase.remove(id, revB);
-                return this.resolveConflictOnInternalFile(id);
-            } else {
-                Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
             }
+            const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
+            // determine which revision should been deleted.
+            // simply check modified time
+            const mtimeA = ("mtime" in doc && doc.mtime) || 0;
+            const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
+            // Logger(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
+            // console.log(`mtime:${mtimeA} - ${mtimeB}`);
+            const delRev = mtimeA < mtimeB ? revA : revB;
+            // delete older one.
+            await this.localDatabase.localDatabase.remove(id, delRev);
+            Logger(`Older one has been deleted:${id2filenameInternalMetadata(id)}`);
+            // check the file again 
+            return this.resolveConflictOnInternalFile(id);
+        } catch (ex) {
+            Logger("Failed to resolve conflict (Hidden)")
+            Logger(ex, LOG_LEVEL.VERBOSE);
+            return false;
         }
-        const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
-        // determine which revision should been deleted.
-        // simply check modified time
-        const mtimeA = ("mtime" in doc && doc.mtime) || 0;
-        const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
-        // Logger(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
-        // console.log(`mtime:${mtimeA} - ${mtimeB}`);
-        const delRev = mtimeA < mtimeB ? revA : revB;
-        // delete older one.
-        await this.localDatabase.localDatabase.remove(id, delRev);
-        Logger(`Older one has been deleted:${id2filenameInternalMetadata(id)}`);
-        // check the file again 
-        return this.resolveConflictOnInternalFile(id);
-
     }
     //TODO: Tidy up. Even though it is experimental feature, So dirty...
     async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
