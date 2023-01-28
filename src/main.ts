@@ -23,6 +23,7 @@ import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayB
 import { isPlainText, isValidPath, shouldBeIgnored } from "./lib/src/path";
 import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
+import { PatternSet } from "./PatternSet";
 
 setNoticeClass(Notice);
 
@@ -127,6 +128,8 @@ type FileEventItem = {
 }
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
+    internalFilesIgnorePatterns: PatternSet;
+
     settings: ObsidianLiveSyncSettings;
     localDatabase: LocalPouchDB;
     statusBar: HTMLElement;
@@ -861,6 +864,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.settings.customChunkSize = 0;
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
+
+        // Migrate settings.
+        this.settings = this.migrateSettings(this.settings);
+    }
+
+    migrateSettings(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
+        // Migrate 'syncInternalFilesIgnorePatterns' from 'string' to 'Pattern[]'
+        if (typeof settings.syncInternalFilesIgnorePatterns === 'string') {
+            settings = {
+                ...settings,
+                syncInternalFilesIgnorePatterns: settings.syncInternalFilesIgnorePatterns
+                    .replace(/\n| /g, "")
+                    .split(",")
+                    .map(regex => ({regex}))
+            }
+        }
+
+        return settings;
     }
 
     triggerRealizeSettingSyncMode() {
@@ -1148,10 +1169,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!this.settings.syncInternalFiles) return;
         if (!this.settings.watchInternalFileChanges) return;
         if (!path.startsWith(this.app.vault.configDir)) return;
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
-        if (ignorePatterns.some(e => path.match(e))) return;
+        if (this.internalFilesIgnorePatterns.isMatched(path)) return;
         this.appendWatchEvent(
             [{
                 type: "INTERNAL",
@@ -2935,7 +2953,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         path: string,
         ignoreList: string[],
         filter: RegExp[],
-        ignoreFilter: RegExp[],
+        ignoreFilter: PatternSet,
     ) {
 
         const w = await this.app.vault.adapter.list(path);
@@ -2943,7 +2961,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             ...w.files
                 .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
                 .filter((e) => !filter || filter.some((ee) => e.match(ee)))
-                .filter((e) => !ignoreFilter || ignoreFilter.every((ee) => !e.match(ee))),
+                .filter((e) => !ignoreFilter.isMatched(e)),
         ];
 
         L1: for (const v of w.folders) {
@@ -2952,7 +2970,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     continue L1;
                 }
             }
-            if (ignoreFilter && ignoreFilter.some(e => v.match(e))) {
+            if (ignoreFilter && ignoreFilter.isMatched(v)) {
                 continue L1;
             }
             files = files.concat(await this.getFiles(v, ignoreList, filter, ignoreFilter));
@@ -2961,9 +2979,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
-        const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
+        const ignoreFilter = this.internalFilesIgnorePatterns;
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
         const filenames = (await this.getFiles(findRoot, [], null, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
@@ -3129,10 +3145,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
-        return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
+        return files
+            .filter(file => !this.internalFilesIgnorePatterns.isMatched(file.path))
+            .filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
     }
 
     async applyMTimeToFile(file: InternalFileInfo) {
@@ -3208,9 +3223,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.resolveConflictOnInternalFiles();
         const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
         Logger("Scanning hidden files.", logLevel, "sync_internal");
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
         if (!files) files = await this.scanInternalFiles();
         const filesOnDB = ((await this.localDatabase.localDatabase.allDocs({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
 
@@ -3256,7 +3268,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         for (const filename of allFileNames) {
             processed++;
             if (processed % 100 == 0) Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
-            if (ignorePatterns.some(e => filename.match(e))) continue;
+            if (this.internalFilesIgnorePatterns.isMatched(filename)) continue;
 
             const fileOnStorage = files.find(e => e.path == filename);
             const fileOnDatabase = filesOnDB.find(e => e._id == filename2idInternalMetadata(id2path(filename)));
