@@ -85,5 +85,7 @@
   - Fixed: Now we can merge JSON files even if we failed to compare items like null.
 - 0.17.18
   - Fixed: Fixed lack of error handling.
+- 0.17.19 
+  - Fixed: Error reporting has been ensured.
 
 ... To continue on to `updates_old.md`.
