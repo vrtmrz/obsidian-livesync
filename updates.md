@@ -87,5 +87,7 @@
   - Fixed: Fixed lack of error handling.
 - 0.17.19 
   - Fixed: Error reporting has been ensured.
+- 0.17.20
+  - Improved: Changes of hidden files will be notified to Obsidian.
 
 ... To continue on to `updates_old.md`.
