@@ -3125,12 +3125,26 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     } else {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
                         await this.app.vault.adapter.remove(filename);
+                    try {
+                        //@ts-ignore internalAPI
+                        await app.vault.adapter.reconcileInternalFile(filename);
+                    } catch (ex) {
+                        Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
+                        Logger(ex, LOG_LEVEL.VERBOSE);
+                    }
                     }
                     return true;
                 }
                 if (!isExists) {
                     await this.ensureDirectoryEx(filename);
                     await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                try {
+                    //@ts-ignore internalAPI
+                    await app.vault.adapter.reconcileInternalFile(filename);
+                } catch (ex) {
+                    Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
+                    Logger(ex, LOG_LEVEL.VERBOSE);
+                }
                     Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
                     return true;
                 } else {
@@ -3141,6 +3155,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         return true;
                     }
                     await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    try {
+                        //@ts-ignore internalAPI
+                        await app.vault.adapter.reconcileInternalFile(filename);
+                    } catch (ex) {
+                        Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
+                        Logger(ex, LOG_LEVEL.VERBOSE);
+                    }
                     Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""})`);
                     return true;
 
