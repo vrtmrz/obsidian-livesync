@@ -1279,6 +1279,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
+        new Setting(containerSyncSettingEl)
+            .setName("Use timeouts instead of heartbeats")
+            .setDesc("If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.")
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.useTimeouts)
+                    .onChange(async (value) => {
+                        this.plugin.settings.useTimeouts = value;
+                        await this.plugin.saveSettings();
+                    })
+                return toggle;
+            }
+        );
+
         addScreenElement("30", containerSyncSettingEl);
         const containerMiscellaneousEl = containerEl.createDiv();
         containerMiscellaneousEl.createEl("h3", { text: "Miscellaneous" });
