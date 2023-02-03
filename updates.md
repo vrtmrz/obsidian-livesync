@@ -89,5 +89,12 @@
   - Fixed: Error reporting has been ensured.
 - 0.17.20
   - Improved: Changes of hidden files will be notified to Obsidian.
+- 0.17.21
+  - Fixed: Skip patterns now handle capital letters.
+  - Improved
+    - New configuration to avoid exceeding throttle capacity.
+      - We have been grateful to @karasevm!
+    - The conflicted `data.json` is no longer merged automatically.
+      - This behaviour is not configurable, unlike the `Use newer file if conflicted` of normal files.
 
 ... To continue on to `updates_old.md`.
