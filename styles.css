@@ -252,3 +252,42 @@ div.sls-setting-menu-btn {
 .sls-item-dirty::before {
     content: "✏";
 }
+
+/* Vertical setting items. */
+.sls-setting-vertical {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sls-setting-vertical > .setting-item-info {
+    margin-right: unset;
+}
+
+.sls-setting-vertical > .setting-item-control {
+    width: 100%;
+}
+
+.sls-setting-group {
+    padding: 0.75em 0;
+    flex: 1 1 auto;
+}
+
+.sls-setting-group-row {
+    display: flex;
+    align-items: center;
+    margin: var(--size-2-2);
+    gap: var(--size-2-2);
+}
+
+/* Pattern settings. */
+.sls-setting-group-row[data-sls-pattern-type] input[type="text"] {
+    flex: 1 1 auto;
+}
+
+.sls-setting-group-row[data-sls-pattern-type] div.sls-pattern-status {
+    width: 20px;
+}
+
+.sls-setting-group-row[data-sls-pattern-type][data-sls-pattern-status="ok"] div.sls-pattern-status {
+
+}

@@ -8,6 +8,7 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
+import { createPatternSetSetting, Pattern, PatternSetSetting } from "./PatternSet";
 
 const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string) => {
     const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
@@ -1098,41 +1099,34 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-        let skipPatternTextArea: TextAreaComponent = null;
-        const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
-        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$";
+
+        const defaultSkipPattern = [{regex: "\\/node_modules\\/"}, {regex: "\\/\\.git\\/"}, {regex: "\\/obsidian-livesync\\/"}];
+        const defaultSkipPatternXPlat = [...defaultSkipPattern, {regex: "\\/workspace$"} ,{regex: "\\/workspace.json$"}];
+        let patternSetSetting: PatternSetSetting = null;
         new Setting(containerSyncSettingEl)
             .setName("Skip patterns")
             .setDesc(
-                "Regular expression, If you use hidden file sync between desktop and mobile, adding `workspace$` is recommended."
+                "Files that will not be synced to the database. If you use hidden file sync between desktop and mobile, adding `workspace$` is recommended."
             )
-            .addTextArea((text) => {
-                text
-                    .setValue(this.plugin.settings.syncInternalFilesIgnorePatterns)
-                    .setPlaceholder("\\/node_modules\\/, \\/\\.git\\/")
-                    .onChange(async (value) => {
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = value;
-                        await this.plugin.saveSettings();
-                    })
-                skipPatternTextArea = text;
-                return text;
-            }
-            );
+            .then(createPatternSetSetting(this.plugin.settings.syncInternalFilesIgnorePatterns as Pattern[], (component) => {
+                patternSetSetting = component;
+                component.onChange(async (patterns) => {
+                    this.plugin.internalFilesIgnorePatterns = patterns;
+                    this.plugin.settings.syncInternalFilesIgnorePatterns = patterns.entries();
+                    await this.plugin.saveSettings();
+                })
+            }));
         new Setting(containerSyncSettingEl)
             .setName("Restore the skip pattern to default")
             .addButton((button) => {
                 button.setButtonText("Default")
                     .onClick(async () => {
-                        skipPatternTextArea.setValue(defaultSkipPattern);
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPattern;
-                        await this.plugin.saveSettings();
+                        patternSetSetting.resetTo(defaultSkipPattern);
                     })
             }).addButton((button) => {
                 button.setButtonText("Cross-platform")
                     .onClick(async () => {
-                        skipPatternTextArea.setValue(defaultSkipPatternXPlat);
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPatternXPlat;
-                        await this.plugin.saveSettings();
+                        patternSetSetting.resetTo(defaultSkipPatternXPlat);
                     })
             })
 
