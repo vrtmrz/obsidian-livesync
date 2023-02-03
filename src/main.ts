@@ -2,14 +2,14 @@ import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbst
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2 } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
-import { getDocData, isDocContentSame } from "./lib/src/utils";
+import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
 import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
+import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
 import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
@@ -23,6 +23,7 @@ import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayB
 import { isPlainText, isValidPath, shouldBeIgnored } from "./lib/src/path";
 import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
+import { JsonResolveModal } from "./JsonResolveModal";
 
 setNoticeClass(Notice);
 
@@ -1148,9 +1149,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (!this.settings.syncInternalFiles) return;
         if (!this.settings.watchInternalFileChanges) return;
         if (!path.startsWith(this.app.vault.configDir)) return;
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
         if (ignorePatterns.some(e => path.match(e))) return;
         this.appendWatchEvent(
             [{
@@ -2325,6 +2326,26 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
             const diffLeft = generatePatchObj(baseObj, leftObj);
             const diffRight = generatePatchObj(baseObj, rightObj);
+
+            // If each value of the same key has been modified, the automatic merge should be prevented.
+            //TODO Does it have to be a configurable item?
+            const diffSetLeft = new Map(flattenObject(diffLeft));
+            const diffSetRight = new Map(flattenObject(diffRight));
+            for (const [key, value] of diffSetLeft) {
+                if (diffSetRight.has(key)) {
+                    if (diffSetRight.get(key) == value) {
+                        // No matter, if changed to the same value.
+                        diffSetRight.delete(key);
+                    }
+                }
+            }
+            for (const [key, value] of diffSetRight) {
+                if (diffSetLeft.has(key) && diffSetLeft.get(key) != value) {
+                    // Some changes are conflicted
+                    return false;
+                }
+            }
+
             const patches = [
                 { mtime: leftLeaf.mtime, patch: diffLeft },
                 { mtime: rightLeaf.mtime, patch: diffRight }
@@ -2505,7 +2526,60 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }).open();
         });
     }
-
+    showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
+        return new Promise((res) => {
+            Logger("Opening data-merging dialog", LOG_LEVEL.VERBOSE);
+            const docs = [docA, docB];
+            const modal = new JsonResolveModal(this.app, id2path(docA._id), [docA, docB], async (keep, result) => {
+                // modal.close();
+                try {
+                    const filename = id2filenameInternalMetadata(docA._id);
+                    let needFlush = false;
+                    if (!result && !keep) {
+                        Logger(`Skipped merging: ${filename}`);
+                    }
+                    //Delete old revisions
+                    if (result || keep) {
+                        for (const doc of docs) {
+                            if (doc._rev != keep) {
+                                if (await this.localDatabase.deleteDBEntry(doc._id, { rev: doc._rev })) {
+                                    Logger(`Conflicted revision has been deleted: ${filename}`);
+                                    needFlush = true;
+                                }
+                            }
+                        }
+                    }
+                    if (!keep && result) {
+                        const isExists = await this.app.vault.adapter.exists(filename);
+                        if (!isExists) {
+                            await this.ensureDirectoryEx(filename);
+                        }
+                        await this.app.vault.adapter.write(filename, result);
+                        const stat = await this.app.vault.adapter.stat(filename);
+                        await this.storeInternalFileToDatabase({ path: filename, ...stat }, true);
+                        try {
+                            //@ts-ignore internalAPI
+                            await app.vault.adapter.reconcileInternalFile(filename);
+                        } catch (ex) {
+                            Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
+                            Logger(ex, LOG_LEVEL.VERBOSE);
+                        }
+                        Logger(`STORAGE <-- DB:${filename}: written (hidden,merged)`);
+                    }
+                    if (needFlush) {
+                        await this.extractInternalFileFromDatabase(filename, false);
+                        Logger(`STORAGE --> DB:${filename}: extracted (hidden,merged)`);
+                    }
+                    res(true);
+                } catch (ex) {
+                    Logger("Could not merge conflicted json");
+                    Logger(ex, LOG_LEVEL.VERBOSE)
+                    res(false);
+                }
+            })
+            modal.open();
+        });
+    }
     conflictedCheckFiles: string[] = [];
 
     // queueing the conflicted file check
@@ -2976,9 +3050,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
-        const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+        const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
         const filenames = (await this.getFiles(findRoot, [], null, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
@@ -3116,8 +3190,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         return await runWithLock("file-" + id, false, async () => {
             try {
-                const fileOnDB = await this.localDatabase.getDBEntry(id, null, false, false) as false | LoadedEntry;
+                // Check conflicted status 
+                //TODO option
+                const fileOnDB = await this.localDatabase.getDBEntry(id, { conflicts: true }, false, false) as false | LoadedEntry;
                 if (fileOnDB === false) throw new Error(`File not found on database.:${id}`);
+                // Prevent overrite for Prevent overwriting while some conflicted revision exists.
+                if (fileOnDB?._conflicts?.length) {
+                    Logger(`Hidden file ${id} has conflicted revisions, to keep in safe, writing to storage has been prevented`, LOG_LEVEL.INFO);
+                    return;
+                }
                 const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
                 if (deleted) {
                     if (!isExists) {
@@ -3125,6 +3206,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     } else {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
                         await this.app.vault.adapter.remove(filename);
+                        try {
+                            //@ts-ignore internalAPI
+                            await app.vault.adapter.reconcileInternalFile(filename);
+                        } catch (ex) {
+                            Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
+                            Logger(ex, LOG_LEVEL.VERBOSE);
+                        }
+                    }
+                    return true;
+                }
+                if (!isExists) {
+                    await this.ensureDirectoryEx(filename);
+                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await app.vault.adapter.reconcileInternalFile(filename);
@@ -3132,19 +3226,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
                         Logger(ex, LOG_LEVEL.VERBOSE);
                     }
-                    }
-                    return true;
-                }
-                if (!isExists) {
-                    await this.ensureDirectoryEx(filename);
-                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
-                try {
-                    //@ts-ignore internalAPI
-                    await app.vault.adapter.reconcileInternalFile(filename);
-                } catch (ex) {
-                    Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL.VERBOSE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
-                }
                     Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
                     return true;
                 } else {
@@ -3175,9 +3256,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
         return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
     }
 
@@ -3200,7 +3281,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async resolveConflictOnInternalFile(id: string): Promise<boolean> {
-        try {// Retrieve data
+        try {
+            // Retrieve data
             const doc = await this.localDatabase.localDatabase.get(id, { conflicts: true });
             // If there is no conflict, return with false.
             if (!("_conflicts" in doc)) return false;
@@ -3233,6 +3315,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 } else {
                     Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
                 }
+
+                const docAMerge = await this.localDatabase.getDBEntry(id, { rev: revA });
+                const docBMerge = await this.localDatabase.getDBEntry(id, { rev: revB });
+                if (docAMerge != false && docBMerge != false) {
+                    if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
+                        await delay(200);
+                        // Again for other conflicted revisions.
+                        return this.resolveConflictOnInternalFile(id);
+                    }
+                    return false;
+                }
             }
             const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
             // determine which revision should been deleted.
@@ -3258,9 +3351,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.resolveConflictOnInternalFiles();
         const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
         Logger("Scanning hidden files.", logLevel, "sync_internal");
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns.toLocaleLowerCase()
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e));
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
         if (!files) files = await this.scanInternalFiles();
         const filesOnDB = ((await this.localDatabase.localDatabase.allDocs({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
 
@@ -3299,7 +3392,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         const p = [] as Promise<void>[];
-        const semaphore = Semaphore(15);
+        const semaphore = Semaphore(10);
         // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
         let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
         caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches-internal") || {};

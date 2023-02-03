@@ -198,3 +198,65 @@ export function applyPatch(from: Record<string | number | symbol, any>, patch: R
     }
     return ret;
 }
+
+export function mergeObject(
+    objA: Record<string | number | symbol, any>,
+    objB: Record<string | number | symbol, any>
+) {
+    const newEntries = Object.entries(objB);
+    const ret: any = { ...objA };
+    if (
+        typeof objA !== typeof objB ||
+        Array.isArray(objA) !== Array.isArray(objB)
+    ) {
+        return objB;
+    }
+
+    for (const [key, v] of newEntries) {
+        if (key in ret) {
+            const value = ret[key];
+            if (
+                typeof v !== typeof value ||
+                Array.isArray(v) !== Array.isArray(value)
+            ) {
+                //if type is not match, replace completely.
+                ret[key] = v;
+            } else {
+                if (
+                    typeof v == "object" &&
+                    typeof value == "object" &&
+                    !Array.isArray(v) &&
+                    !Array.isArray(value)
+                ) {
+                    ret[key] = mergeObject(v, value);
+                } else if (
+                    typeof v == "object" &&
+                    typeof value == "object" &&
+                    Array.isArray(v) &&
+                    Array.isArray(value)
+                ) {
+                    ret[key] = [...new Set([...v, ...value])];
+                } else {
+                    ret[key] = v;
+                }
+            }
+        } else {
+            ret[key] = v;
+        }
+    }
+    return Object.entries(ret)
+        .sort()
+        .reduce((p, [key, value]) => ({ ...p, [key]: value }), {});
+}
+
+export function flattenObject(obj: Record<string | number | symbol, any>, path: string[] = []): [string, any][] {
+    if (typeof (obj) != "object") return [[path.join("."), obj]];
+    if (Array.isArray(obj)) return [[path.join("."), JSON.stringify(obj)]];
+    const e = Object.entries(obj);
+    const ret = []
+    for (const [key, value] of e) {
+        const p = flattenObject(value, [...path, key]);
+        ret.push(...p);
+    }
+    return ret;
+}
