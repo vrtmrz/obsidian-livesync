@@ -1,6 +1,6 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2 } from "./lib/src/types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3 } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
 import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -165,6 +165,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async deleteRedFlag2() {
         const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
+        if (redflag != null) {
+            await app.vault.delete(redflag, true);
+        }
+    }
+    isRedFlag3Raised(): boolean {
+        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
+        if (redflag != null) {
+            return true;
+        }
+        return false;
+    }
+    async deleteRedFlag3() {
+        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
         if (redflag != null) {
             await app.vault.delete(redflag, true);
         }
@@ -376,7 +389,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.registerFileWatchEvents();
             if (this.localDatabase.isReady)
                 try {
-                    if (this.isRedFlagRaised() || this.isRedFlag2Raised()) {
+                    if (this.isRedFlagRaised() || this.isRedFlag2Raised() || this.isRedFlag3Raised()) {
                         this.settings.batchSave = false;
                         this.settings.liveSync = false;
                         this.settings.periodicReplication = false;
@@ -398,6 +411,26 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             await this.markRemoteLocked();
                             await this.replicateAllToServer(true);
                             await this.deleteRedFlag2();
+                            if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                                this.settings.suspendFileWatching = false;
+                                await this.saveSettings();
+                                // @ts-ignore
+                                this.app.commands.executeCommandById("app:reload");
+                            }
+                        } else if (this.isRedFlag3Raised()) {
+                            Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
+                            await this.resetLocalDatabase();
+                            await this.markRemoteResolved();
+                            await this.openDatabase();
+                            this.isReady = true;
+                            await this.replicate(true);
+                            await this.deleteRedFlag3();
+                            if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                                this.settings.suspendFileWatching = false;
+                                await this.saveSettings();
+                                // @ts-ignore
+                                this.app.commands.executeCommandById("app:reload");
+                            }
                         } else {
                             await this.openDatabase();
                             const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
@@ -1632,6 +1665,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         if (!this.isTargetFile(id2path(doc._id))) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
+        // Do not handle internal files if the feature has not been enabled.
+        if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) return;
+        // It is better for your own safety, not to handle the following files
+        const ignoreFiles = [
+            "_design/replicate",
+            FLAGMD_REDFLAG,
+            FLAGMD_REDFLAG2,
+            FLAGMD_REDFLAG3
+        ];
+        if (!isInternalMetadata(doc._id) && ignoreFiles.contains(id2path(doc._id))) {
+            return;
+
+        }
         if ((!isInternalMetadata(doc._id)) && skipOldFile) {
             const info = getAbstractFileByPath(id2path(doc._id));
 
@@ -1911,7 +1957,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
             await this.syncInternalFilesAndDatabase("push", showMessage);
         }
-        this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
+        await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
     async initializeDatabase(showingNotice?: boolean) {
