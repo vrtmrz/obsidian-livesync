@@ -1,6 +1,8 @@
-import { normalizePath } from "obsidian";
+import { DataWriteOptions, normalizePath, TFile, Platform } from "obsidian";
+import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid } from "./lib/src/path";
 
-import { path2id_base, id2path_base } from "./lib/src/path";
+import { Logger } from "./lib/src/logger";
+import { LOG_LEVEL } from "./lib/src/types";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
@@ -259,4 +261,33 @@ export function flattenObject(obj: Record<string | number | symbol, any>, path: 
         ret.push(...p);
     }
     return ret;
+}
+
+export function modifyFile(file: TFile, data: string | ArrayBuffer, options?: DataWriteOptions) {
+    if (typeof (data) === "string") {
+        return app.vault.modify(file, data, options);
+    } else {
+        return app.vault.modifyBinary(file, data, options);
+    }
+}
+export function createFile(path: string, data: string | ArrayBuffer, options?: DataWriteOptions): Promise<TFile> {
+    if (typeof (data) === "string") {
+        return app.vault.create(path, data, options);
+    } else {
+        return app.vault.createBinary(path, data, options);
+    }
+}
+
+export function isValidPath(filename: string) {
+    if (Platform.isDesktop) {
+        // if(Platform.isMacOS) return isValidFilenameInDarwin(filename);
+        if (process.platform == "darwin") return isValidFilenameInDarwin(filename);
+        if (process.platform == "linux") return isValidFilenameInLinux(filename);
+        return isValidFilenameInWidows(filename);
+    }
+    if (Platform.isAndroidApp) return isValidFilenameInAndroid(filename);
+    if (Platform.isIosApp) return isValidFilenameInDarwin(filename);
+    //Fallback
+    Logger("Could not determine platform for checking filename", LOG_LEVEL.VERBOSE);
+    return isValidFilenameInWidows(filename);
 }

@@ -1291,7 +1291,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
                 return toggle;
             }
-        );
+            );
 
         addScreenElement("30", containerSyncSettingEl);
         const containerMiscellaneousEl = containerEl.createDiv();
@@ -1535,6 +1535,15 @@ ${stringifyYaml(pluginConfig)}`;
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
                     this.plugin.settings.suspendFileWatching = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerHatchEl)
+            .setName("Write logs into the file")
+            .setDesc("Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.writeLogToTheFile).onChange(async (value) => {
+                    this.plugin.settings.writeLogToTheFile = value;
                     await this.plugin.saveSettings();
                 })
             );

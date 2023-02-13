@@ -1,7 +1,6 @@
 import { TFile, Modal, App } from "obsidian";
-import { path2id } from "./utils";
+import { isValidPath, path2id } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
-import { isValidPath } from "./lib/src/path";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { LoadedEntry, LOG_LEVEL } from "./lib/src/types";

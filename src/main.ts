@@ -1,6 +1,6 @@
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3 } from "./lib/src/types";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
 import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -9,7 +9,7 @@ import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON } from "./utils";
+import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON, createFile, modifyFile, isValidPath } from "./utils";
 import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 
 const isDebug = false;
@@ -20,7 +20,7 @@ import { getGlobalStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore } from "./lib/src/stores";
 import { NewNotice, setNoticeClass, WrappedNotice } from "./lib/src/wrapper";
 import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
-import { isPlainText, isValidPath, shouldBeIgnored } from "./lib/src/path";
+import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { JsonResolveModal } from "./JsonResolveModal";
@@ -31,6 +31,8 @@ const ICHeader = "i:";
 const ICHeaderEnd = "i;";
 const ICHeaderLength = ICHeader.length;
 const FileWatchEventQueueMax = 10;
+
+const configURIBase = "obsidian://setuplivesync?settings=";
 
 function getAbstractFileByPath(path: string): TAbstractFile | null {
     // Hidden API but so useful.
@@ -301,7 +303,231 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         Logger(`Checking expired file history done`);
     }
+    async onLayoutReady() {
+        this.registerFileWatchEvents();
+        if (this.localDatabase.isReady)
+            try {
+                if (this.isRedFlagRaised() || this.isRedFlag2Raised() || this.isRedFlag3Raised()) {
+                    this.settings.batchSave = false;
+                    this.settings.liveSync = false;
+                    this.settings.periodicReplication = false;
+                    this.settings.syncOnSave = false;
+                    this.settings.syncOnStart = false;
+                    this.settings.syncOnFileOpen = false;
+                    this.settings.syncAfterMerge = false;
+                    this.settings.autoSweepPlugins = false;
+                    this.settings.usePluginSync = false;
+                    this.settings.suspendFileWatching = true;
+                    this.settings.syncInternalFiles = false;
+                    await this.saveSettings();
+                    if (this.isRedFlag2Raised()) {
+                        Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL.NOTICE);
+                        await this.resetLocalDatabase();
+                        await this.initializeDatabase(true);
+                        await this.markRemoteLocked();
+                        await this.tryResetRemoteDatabase();
+                        await this.markRemoteLocked();
+                        await this.replicateAllToServer(true);
+                        await this.deleteRedFlag2();
+                        if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                            this.settings.suspendFileWatching = false;
+                            await this.saveSettings();
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        }
+                    } else if (this.isRedFlag3Raised()) {
+                        Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
+                        await this.resetLocalDatabase();
+                        await this.markRemoteResolved();
+                        await this.openDatabase();
+                        this.isReady = true;
+                        await this.replicate(true);
+                        await this.deleteRedFlag3();
+                        if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                            this.settings.suspendFileWatching = false;
+                            await this.saveSettings();
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        }
+                    } else {
+                        this.settings.writeLogToTheFile = true;
+                        await this.openDatabase();
+                        const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
+                        Logger(warningMessage, LOG_LEVEL.NOTICE);
+                        this.setStatusBarText(warningMessage);
+                    }
+                } else {
+                    if (this.settings.suspendFileWatching) {
+                        Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+                    }
+                    const isInitialized = await this.initializeDatabase();
+                    if (!isInitialized) {
+                        //TODO:stop all sync.
+                        return false;
+                    }
+                }
+                await this.realizeSettingSyncMode();
+                this.registerWatchEvents();
+                if (this.settings.syncOnStart) {
+                    this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                }
+            } catch (ex) {
+                Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
+                Logger(ex, LOG_LEVEL.VERBOSE);
+            }
+    }
 
+    async command_copySetupURI() {
+        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
+        if (encryptingPassphrase === false) return;
+        const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
+        const keys = Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[];
+        for (const k of keys) {
+            if (JSON.stringify(k in setting ? setting[k] : "") == JSON.stringify(k in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[k] : "*")) {
+                delete setting[k];
+            }
+        }
+        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
+        const uri = `${configURIBase}${encryptedSetting}`;
+        await navigator.clipboard.writeText(uri);
+        Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
+    }
+    async command_copySetupURIFull() {
+        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
+        if (encryptingPassphrase === false) return;
+        const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
+        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
+        const uri = `${configURIBase}${encryptedSetting}`;
+        await navigator.clipboard.writeText(uri);
+        Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
+    }
+    async command_openSetupURI() {
+        const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
+        if (setupURI === false) return;
+        if (!setupURI.startsWith(`${configURIBase}`)) {
+            Logger("Set up URI looks wrong.", LOG_LEVEL.NOTICE);
+            return;
+        }
+        const config = decodeURIComponent(setupURI.substring(configURIBase.length));
+        console.dir(config)
+        await this.setupWizard(config);
+    }
+    async setupWizard(confString: string) {
+        try {
+            const oldConf = JSON.parse(JSON.stringify(this.settings));
+            const encryptingPassphrase = await askString(this.app, "Passphrase", "The passphrase to decrypt your setup URI", "");
+            if (encryptingPassphrase === false) return;
+            const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
+            if (newConf) {
+                const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
+                if (result == "yes") {
+                    const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
+                    this.localDatabase.closeReplication();
+                    this.settings.suspendFileWatching = true;
+                    console.dir(newSettingW);
+                    // Back into the default method once.
+                    newSettingW.configPassphraseStore = "";
+                    newSettingW.encryptedPassphrase = "";
+                    newSettingW.encryptedCouchDBConnection = "";
+                    const setupJustImport = "Just import setting";
+                    const setupAsNew = "Set it up as secondary or subsequent device";
+                    const setupAgain = "Reconfigure and reconstitute the data";
+                    const setupManually = "Leave everything to me";
+
+                    const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
+                    if (setupType == setupJustImport) {
+                        this.settings = newSettingW;
+                        this.usedPassphrase = "";
+                        await this.saveSettings();
+                    } else if (setupType == setupAsNew) {
+                        this.settings = newSettingW;
+                        this.usedPassphrase = "";
+                        await this.saveSettings();
+                        await this.resetLocalOldDatabase();
+                        await this.resetLocalDatabase();
+                        await this.localDatabase.initializeDatabase();
+                        await this.markRemoteResolved();
+                        await this.replicate(true);
+                    } else if (setupType == setupAgain) {
+                        const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
+                        if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
+                            return;
+                        }
+                        this.settings = newSettingW;
+                        this.usedPassphrase = "";
+                        await this.saveSettings();
+                        await this.resetLocalOldDatabase();
+                        await this.resetLocalDatabase();
+                        await this.localDatabase.initializeDatabase();
+                        await this.initializeDatabase(true);
+                        await this.tryResetRemoteDatabase();
+                        await this.markRemoteLocked();
+                        await this.markRemoteResolved();
+                        await this.replicate(true);
+
+                    } else if (setupType == setupManually) {
+                        const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
+                        const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
+                        if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
+                            // nothing to do. so peaceful.
+                            this.settings = newSettingW;
+                            this.usedPassphrase = "";
+                            await this.saveSettings();
+                            const replicate = await askYesNo(this.app, "Unlock and replicate?");
+                            if (replicate == "yes") {
+                                await this.replicate(true);
+                                await this.markRemoteUnlocked();
+                            }
+                            Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                            return;
+                        }
+                        if (keepLocalDB == "no" && keepRemoteDB == "no") {
+                            const reset = await askYesNo(this.app, "Drop everything?");
+                            if (reset != "yes") {
+                                Logger("Cancelled", LOG_LEVEL.NOTICE);
+                                this.settings = oldConf;
+                                return;
+                            }
+                        }
+                        let initDB;
+                        this.settings = newSettingW;
+                        this.usedPassphrase = "";
+                        await this.saveSettings();
+                        if (keepLocalDB == "no") {
+                            this.resetLocalOldDatabase();
+                            this.resetLocalDatabase();
+                            this.localDatabase.initializeDatabase();
+                            const rebuild = await askYesNo(this.app, "Rebuild the database?");
+                            if (rebuild == "yes") {
+                                initDB = this.initializeDatabase(true);
+                            } else {
+                                this.markRemoteResolved();
+                            }
+                        }
+                        if (keepRemoteDB == "no") {
+                            await this.tryResetRemoteDatabase();
+                            await this.markRemoteLocked();
+                        }
+                        if (keepLocalDB == "no" || keepRemoteDB == "no") {
+                            const replicate = await askYesNo(this.app, "Replicate once?");
+                            if (replicate == "yes") {
+                                if (initDB != null) {
+                                    await initDB;
+                                }
+                                await this.replicate(true);
+                            }
+                        }
+                    }
+                }
+
+                Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+            } else {
+                Logger("Cancelled.", LOG_LEVEL.NOTICE);
+            }
+        } catch (ex) {
+            Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL.NOTICE);
+        }
+    }
     async onload() {
         logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
         Logger("loading plugin");
@@ -337,6 +563,34 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         localStorage.setItem(lsKey, `${VER}`);
         await this.openDatabase();
 
+        this.watchVaultChange = this.watchVaultChange.bind(this);
+        this.watchVaultCreate = this.watchVaultCreate.bind(this);
+        this.watchVaultDelete = this.watchVaultDelete.bind(this);
+        this.watchVaultRename = this.watchVaultRename.bind(this);
+        this.watchVaultRawEvents = this.watchVaultRawEvents.bind(this);
+        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
+        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
+        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
+
+        this.parseReplicationResult = this.parseReplicationResult.bind(this);
+
+        this.setPeriodicSync = this.setPeriodicSync.bind(this);
+        this.clearPeriodicSync = this.clearPeriodicSync.bind(this);
+        this.periodicSync = this.periodicSync.bind(this);
+        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
+
+        this.getPluginList = this.getPluginList.bind(this);
+
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+        this.triggerCheckPluginUpdate = debounce(this.triggerCheckPluginUpdate.bind(this), 3000);
+        this.setupWizard = this.setupWizard.bind(this);
+
+        this.statusBar = this.addStatusBarItem();
+        this.statusBar.addClass("syncstatusbar");
+
+        this.statusBar2 = this.addStatusBarItem();
+
+
         addIcon(
             "replicate",
             `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
@@ -361,268 +615,27 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             new LogDisplayModal(this.app, this).open();
         });
 
-        this.statusBar = this.addStatusBarItem();
-        this.statusBar.addClass("syncstatusbar");
-
-        this.statusBar2 = this.addStatusBarItem();
-        this.watchVaultChange = this.watchVaultChange.bind(this);
-        this.watchVaultCreate = this.watchVaultCreate.bind(this);
-        this.watchVaultDelete = this.watchVaultDelete.bind(this);
-        this.watchVaultRename = this.watchVaultRename.bind(this);
-        this.watchVaultRawEvents = this.watchVaultRawEvents.bind(this);
-        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
-        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
-        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
-
-        this.parseReplicationResult = this.parseReplicationResult.bind(this);
-
-        this.setPeriodicSync = this.setPeriodicSync.bind(this);
-        this.clearPeriodicSync = this.clearPeriodicSync.bind(this);
-        this.periodicSync = this.periodicSync.bind(this);
-        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
-
-        this.getPluginList = this.getPluginList.bind(this);
-        // this.registerWatchEvents();
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
 
-        this.app.workspace.onLayoutReady(async () => {
-            this.registerFileWatchEvents();
-            if (this.localDatabase.isReady)
-                try {
-                    if (this.isRedFlagRaised() || this.isRedFlag2Raised() || this.isRedFlag3Raised()) {
-                        this.settings.batchSave = false;
-                        this.settings.liveSync = false;
-                        this.settings.periodicReplication = false;
-                        this.settings.syncOnSave = false;
-                        this.settings.syncOnStart = false;
-                        this.settings.syncOnFileOpen = false;
-                        this.settings.syncAfterMerge = false;
-                        this.settings.autoSweepPlugins = false;
-                        this.settings.usePluginSync = false;
-                        this.settings.suspendFileWatching = true;
-                        this.settings.syncInternalFiles = false;
-                        await this.saveSettings();
-                        if (this.isRedFlag2Raised()) {
-                            Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL.NOTICE);
-                            await this.resetLocalDatabase();
-                            await this.initializeDatabase(true);
-                            await this.markRemoteLocked();
-                            await this.tryResetRemoteDatabase();
-                            await this.markRemoteLocked();
-                            await this.replicateAllToServer(true);
-                            await this.deleteRedFlag2();
-                            if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
-                                this.settings.suspendFileWatching = false;
-                                await this.saveSettings();
-                                // @ts-ignore
-                                this.app.commands.executeCommandById("app:reload");
-                            }
-                        } else if (this.isRedFlag3Raised()) {
-                            Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
-                            await this.resetLocalDatabase();
-                            await this.markRemoteResolved();
-                            await this.openDatabase();
-                            this.isReady = true;
-                            await this.replicate(true);
-                            await this.deleteRedFlag3();
-                            if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
-                                this.settings.suspendFileWatching = false;
-                                await this.saveSettings();
-                                // @ts-ignore
-                                this.app.commands.executeCommandById("app:reload");
-                            }
-                        } else {
-                            await this.openDatabase();
-                            const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
-                            Logger(warningMessage, LOG_LEVEL.NOTICE);
-                            this.setStatusBarText(warningMessage);
-                        }
-                    } else {
-                        if (this.settings.suspendFileWatching) {
-                            Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
-                        }
-                        const isInitialized = await this.initializeDatabase();
-                        if (!isInitialized) {
-                            //TODO:stop all sync.
-                            return false;
-                        }
-                    }
-                    await this.realizeSettingSyncMode();
-                    this.registerWatchEvents();
-                    if (this.settings.syncOnStart) {
-                        this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
-                    }
-                } catch (ex) {
-                    Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
-                }
-        });
-        const configURIBase = "obsidian://setuplivesync?settings=";
+        this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
+        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => await this.setupWizard(conf.settings));
+
         this.addCommand({
             id: "livesync-copysetupuri",
             name: "Copy the setup URI",
-            callback: async () => {
-                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
-                if (encryptingPassphrase === false) return;
-                const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
-                const keys = Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[];
-                for (const k of keys) {
-                    if (JSON.stringify(k in setting ? setting[k] : "") == JSON.stringify(k in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[k] : "*")) {
-                        delete setting[k];
-                    }
-                }
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
-                const uri = `${configURIBase}${encryptedSetting}`;
-                await navigator.clipboard.writeText(uri);
-                Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
-            },
+            callback: this.command_copySetupURI.bind(this),
         });
+
         this.addCommand({
             id: "livesync-copysetupurifull",
             name: "Copy the setup URI (Full)",
-            callback: async () => {
-                const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
-                if (encryptingPassphrase === false) return;
-                const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
-                const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
-                const uri = `${configURIBase}${encryptedSetting}`;
-                await navigator.clipboard.writeText(uri);
-                Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
-            },
+            callback: this.command_copySetupURIFull.bind(this),
         });
+
         this.addCommand({
             id: "livesync-opensetupuri",
             name: "Open the setup URI",
-            callback: async () => {
-                const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
-                if (setupURI === false) return;
-                if (!setupURI.startsWith(`${configURIBase}`)) {
-                    Logger("Set up URI looks wrong.", LOG_LEVEL.NOTICE);
-                    return;
-                }
-                const config = decodeURIComponent(setupURI.substring(configURIBase.length));
-                console.dir(config)
-                await setupWizard(config);
-            },
-        });
-        const setupWizard = async (confString: string) => {
-            try {
-                const oldConf = JSON.parse(JSON.stringify(this.settings));
-                const encryptingPassphrase = await askString(this.app, "Passphrase", "The passphrase to decrypt your setup URI", "");
-                if (encryptingPassphrase === false) return;
-                const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
-                if (newConf) {
-                    const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
-                    if (result == "yes") {
-                        const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
-                        this.localDatabase.closeReplication();
-                        this.settings.suspendFileWatching = true;
-                        console.dir(newSettingW);
-                        // Back into the default method once.
-                        newSettingW.configPassphraseStore = "";
-                        newSettingW.encryptedPassphrase = "";
-                        newSettingW.encryptedCouchDBConnection = "";
-                        const setupJustImport = "Just import setting";
-                        const setupAsNew = "Set it up as secondary or subsequent device";
-                        const setupAgain = "Reconfigure and reconstitute the data";
-                        const setupManually = "Leave everything to me";
-
-                        const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
-                        if (setupType == setupJustImport) {
-                            this.settings = newSettingW;
-                            this.usedPassphrase = "";
-                            await this.saveSettings();
-                        } else if (setupType == setupAsNew) {
-                            this.settings = newSettingW;
-                            this.usedPassphrase = "";
-                            await this.saveSettings();
-                            await this.resetLocalOldDatabase();
-                            await this.resetLocalDatabase();
-                            await this.localDatabase.initializeDatabase();
-                            await this.markRemoteResolved();
-                            await this.replicate(true);
-                        } else if (setupType == setupAgain) {
-                            const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
-                            if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
-                                return;
-                            }
-                            this.settings = newSettingW;
-                            this.usedPassphrase = "";
-                            await this.saveSettings();
-                            await this.resetLocalOldDatabase();
-                            await this.resetLocalDatabase();
-                            await this.localDatabase.initializeDatabase();
-                            await this.initializeDatabase(true);
-                            await this.tryResetRemoteDatabase();
-                            await this.markRemoteLocked();
-                            await this.markRemoteResolved();
-                            await this.replicate(true);
-
-                        } else if (setupType == setupManually) {
-                            const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
-                            const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
-                            if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
-                                // nothing to do. so peaceful.
-                                this.settings = newSettingW;
-                                this.usedPassphrase = "";
-                                await this.saveSettings();
-                                const replicate = await askYesNo(this.app, "Unlock and replicate?");
-                                if (replicate == "yes") {
-                                    await this.replicate(true);
-                                    await this.markRemoteUnlocked();
-                                }
-                                Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
-                                return;
-                            }
-                            if (keepLocalDB == "no" && keepRemoteDB == "no") {
-                                const reset = await askYesNo(this.app, "Drop everything?");
-                                if (reset != "yes") {
-                                    Logger("Cancelled", LOG_LEVEL.NOTICE);
-                                    this.settings = oldConf;
-                                    return;
-                                }
-                            }
-                            let initDB;
-                            this.settings = newSettingW;
-                            this.usedPassphrase = "";
-                            await this.saveSettings();
-                            if (keepLocalDB == "no") {
-                                this.resetLocalOldDatabase();
-                                this.resetLocalDatabase();
-                                this.localDatabase.initializeDatabase();
-                                const rebuild = await askYesNo(this.app, "Rebuild the database?");
-                                if (rebuild == "yes") {
-                                    initDB = this.initializeDatabase(true);
-                                } else {
-                                    this.markRemoteResolved();
-                                }
-                            }
-                            if (keepRemoteDB == "no") {
-                                await this.tryResetRemoteDatabase();
-                                await this.markRemoteLocked();
-                            }
-                            if (keepLocalDB == "no" || keepRemoteDB == "no") {
-                                const replicate = await askYesNo(this.app, "Replicate once?");
-                                if (replicate == "yes") {
-                                    if (initDB != null) {
-                                        await initDB;
-                                    }
-                                    await this.replicate(true);
-                                }
-                            }
-                        }
-                    }
-
-                    Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
-                } else {
-                    Logger("Cancelled.", LOG_LEVEL.NOTICE);
-                }
-            } catch (ex) {
-                Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL.NOTICE);
-            }
-        };
-        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
-            await setupWizard(conf.settings);
+            callback: this.command_openSetupURI.bind(this),
         });
         this.addCommand({
             id: "livesync-replicate",
@@ -995,6 +1008,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
         let forcePerform = false;
         for (const param of params) {
+            if (shouldBeIgnored(param.file.path)) {
+                continue;
+            }
             const atomicKey = [0, 0, 0, 0, 0, 0].map(e => `${Math.floor(Math.random() * 100000)}`).join("-");
             const type = param.type;
             const file = param.file;
@@ -1290,11 +1306,24 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return;
         }
         const vaultName = this.getVaultName();
-        const timestamp = new Date().toLocaleString();
+        const now = new Date();
+        const timestamp = now.toLocaleString();
         const messageContent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
+        if (message instanceof Error) {
+            // debugger;
+        }
         const newMessage = timestamp + "->" + messageContent;
 
         console.log(vaultName + ":" + newMessage);
+        if (this.settings.writeLogToTheFile) {
+            const time = now.toISOString().split("T")[0];
+            const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
+            const file = this.app.vault.getAbstractFileByPath(normalizePath(logDate));
+            if (!file) {
+                this.app.vault.adapter.append(normalizePath(logDate), "```\n");
+            }
+            this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
+        }
         logMessageStore.apply(e => [...e, newMessage].slice(-100));
         this.setStatusBarText(null, messageContent.substring(0, 30));
 
@@ -1358,58 +1387,61 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    async doc2storage_create(docEntry: EntryBody, force?: boolean) {
+    async doc2storage(docEntry: EntryBody, file?: TFile, force?: boolean) {
+        const mode = file == undefined ? "create" : "modify";
+
         const pathSrc = id2path(docEntry._id);
         if (shouldBeIgnored(pathSrc)) {
             return;
         }
         if (!this.isTargetFile(pathSrc)) return;
+        if (docEntry._deleted || docEntry.deleted) {
+            // This occurs not only when files are deleted, but also when conflicts are resolved.
+            // We have to check no other revisions are left.
+            const lastDocs = await this.localDatabase.getDBEntry(pathSrc);
+            if (lastDocs === false) {
+                await this.deleteVaultItem(file);
+            } else {
+                // it perhaps delete some revisions.
+                // may be we have to reload this
+                await this.pullFile(pathSrc, null, true);
+                Logger(`delete skipped:${lastDocs._id}`, LOG_LEVEL.VERBOSE);
+            }
+            return;
+        }
+        const localMtime = ~~(file?.stat?.mtime || 0 / 1000);
+        const docMtime = ~~(docEntry.mtime / 1000);
 
         const doc = await this.localDatabase.getDBEntry(pathSrc, { rev: docEntry._rev });
         if (doc === false) return;
-        const msg = `DB -> STORAGE (create${force ? ",force" : ""},${doc.datatype}) `;
         const path = id2path(doc._id);
-        if (doc.datatype == "newnote") {
-            const bin = base64ToArrayBuffer(doc.data);
-            if (bin != null) {
-                if (!isValidPath(path)) {
-                    Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
-                    return;
-                }
-                await this.ensureDirectory(path);
-                try {
-                    const newFile = await this.app.vault.createBinary(normalizePath(path), bin, {
-                        ctime: doc.ctime,
-                        mtime: doc.mtime,
-                    });
-                    Logger(msg + path);
-                    touch(newFile);
-                    this.app.vault.trigger("create", newFile);
-                } catch (ex) {
-                    Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
-                }
+        const msg = `DB -> STORAGE (${mode}${force ? ",force" : ""},${doc.datatype}) `;
+        if (doc.datatype != "newnote" && doc.datatype != "plain") {
+            Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
+            return;
+        }
+        if (!force && localMtime >= docMtime) return;
+        if (!isValidPath(path)) {
+            Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
+            return;
+        }
+        const writeData = doc.datatype == "newnote" ? base64ToArrayBuffer(doc.data) : getDocData(doc.data);
+        await this.ensureDirectoryEx(path);
+        try {
+            let outFile;
+            if (mode == "create") {
+                outFile = await createFile(normalizePath(path), writeData, { ctime: doc.ctime, mtime: doc.mtime, });
+            } else {
+                await modifyFile(file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
+                outFile = getAbstractFileByPath(file.path) as TFile;
             }
-        } else if (doc.datatype == "plain") {
-            if (!isValidPath(path)) {
-                Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
-                return;
-            }
-            await this.ensureDirectory(path);
-            try {
-                const newFile = await this.app.vault.create(normalizePath(path), getDocData(doc.data), {
-                    ctime: doc.ctime,
-                    mtime: doc.mtime,
-                });
-                Logger(msg + path);
-                touch(newFile);
-                this.app.vault.trigger("create", newFile);
-            } catch (ex) {
-                Logger(msg + "ERROR, Could not create: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
-                Logger(ex, LOG_LEVEL.VERBOSE);
-            }
-        } else {
-            Logger(msg + "ERROR, Could not parse: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
+            Logger(msg + path);
+            touch(outFile);
+            this.app.vault.trigger(mode, outFile);
+
+        } catch (ex) {
+            Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
+            Logger(ex, LOG_LEVEL.VERBOSE);
         }
     }
 
@@ -1433,79 +1465,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    async doc2storage_modify(docEntry: EntryBody, file: TFile, force?: boolean) {
-        const pathSrc = id2path(docEntry._id);
-        if (shouldBeIgnored(pathSrc)) {
-            return;
-        }
-        if (!this.isTargetFile(pathSrc)) return;
-        if (docEntry._deleted || docEntry.deleted) {
-            // This occurs not only when files are deleted, but also when conflicts are resolved.
-            // We have to check no other revisions are left.
-            const lastDocs = await this.localDatabase.getDBEntry(pathSrc);
-            if (lastDocs === false) {
-                await this.deleteVaultItem(file);
-            } else {
-                // it perhaps delete some revisions.
-                // may be we have to reload this
-                await this.pullFile(pathSrc, null, true);
-                Logger(`delete skipped:${lastDocs._id}`, LOG_LEVEL.VERBOSE);
-            }
-            return;
-        }
-        const localMtime = ~~(file.stat.mtime / 1000);
-        const docMtime = ~~(docEntry.mtime / 1000);
-        if (localMtime < docMtime || force) {
-            const doc = await this.localDatabase.getDBEntry(pathSrc);
-            if (doc === false) return;
-            const msg = `DB -> STORAGE (modify${force ? ",force" : ""},${doc.datatype}) `;
-            const path = id2path(doc._id);
-            if (doc.datatype == "newnote") {
-                const bin = base64ToArrayBuffer(doc.data);
-                if (bin != null) {
-                    if (!isValidPath(path)) {
-                        Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
-                        return;
-                    }
-                    await this.ensureDirectory(path);
-                    try {
-                        await this.app.vault.modifyBinary(file, bin, { ctime: doc.ctime, mtime: doc.mtime });
-                        // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
-                        Logger(msg + path);
-                        const xf = getAbstractFileByPath(file.path) as TFile;
-                        touch(xf);
-                        this.app.vault.trigger("modify", xf);
-                    } catch (ex) {
-                        Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
-                    }
-                }
-            } else if (doc.datatype == "plain") {
-                if (!isValidPath(path)) {
-                    Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
-                    return;
-                }
-                await this.ensureDirectory(path);
-                try {
-                    await this.app.vault.modify(file, getDocData(doc.data), { ctime: doc.ctime, mtime: doc.mtime });
-                    Logger(msg + path);
-                    // this.batchFileChange = this.batchFileChange.filter((e) => e != file.path);
-                    const xf = getAbstractFileByPath(file.path) as TFile;
-                    touch(xf);
-                    this.app.vault.trigger("modify", xf);
-                } catch (ex) {
-                    Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
-                }
-            } else {
-                Logger(msg + "ERROR, Could not parse: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
-            }
-        } else if (localMtime > docMtime) {
-            // newer local file.
-            // ?
-        } else {
-            //Nothing have to op.
-            //eq.case
-        }
-    }
 
     queuedEntries: EntryBody[] = [];
     handleDBChanged(change: EntryBody) {
@@ -1544,7 +1503,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return;
             }
             const doc = change;
-            await this.doc2storage_create(doc);
+            await this.doc2storage(doc);
         } else if (targetFile instanceof TFile) {
             const doc = change;
             const file = targetFile;
@@ -1562,12 +1521,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return false;
             }
             if (this.settings.writeDocumentsIfConflicted) {
-                await this.doc2storage_modify(doc, file);
+                await this.doc2storage(doc, file);
                 queueConflictCheck();
             } else {
                 const d = await this.localDatabase.getDBEntryMeta(id2path(change._id), { conflicts: true }, true);
                 if (d && !d._conflicts) {
-                    await this.doc2storage_modify(doc, file);
+                    await this.doc2storage(doc, file);
                 } else {
                     if (!queueConflictCheck()) {
                         Logger(`${id2path(change._id)} is conflicted, write to the storage has been pended.`, LOG_LEVEL.NOTICE);
@@ -2686,7 +2645,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`${filename} Skipped`);
                 return;
             }
-            await this.doc2storage_create(doc, force);
+            await this.doc2storage(doc, undefined, force);
         } else if (targetFile instanceof TFile) {
             //normal case
             const file = targetFile;
@@ -2695,7 +2654,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`${filename} Skipped`);
                 return;
             }
-            await this.doc2storage_modify(doc, file, force);
+            await this.doc2storage(doc, file, force);
         } else {
             Logger(`target files:${filename} is exists as the folder`);
             //something went wrong..
@@ -2737,7 +2696,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger(`${storageMtime} < ${docMtime}`);
             const docx = await this.localDatabase.getDBEntry(file.path, null, false, false);
             if (docx != false) {
-                await this.doc2storage_modify(docx, file);
+                await this.doc2storage(docx, file);
             } else {
                 Logger("STORAGE <- DB :" + file.path + " Skipped");
             }
