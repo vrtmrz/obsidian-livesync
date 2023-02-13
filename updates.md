@@ -46,5 +46,13 @@
     - Some processes could start without waiting for synchronisation to complete, but now they will wait for.
   - Improved
     - Now, by placing `redflag3.md`, we can discard the local database and fetch again.
+    - The document has been updated! Thanks to @hilsonp!
+- 0.17.23
+  - Improved:
+    - Now we can preserve the logs into the file.
+      - Note: This option will be enabled automatically also when we flagging a red flag.
+    - File names can now be made platform-appropriate.
+  - Refactored:
+    - Some redundant implementations have been sorted out.
 
 ... To continue on to `updates_old.md`.
