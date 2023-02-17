@@ -1292,6 +1292,38 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 return toggle;
             }
             );
+        new Setting(containerSyncSettingEl)
+            .setName("A number of hashes to be cached")
+            .setDesc("")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.hashCacheMaxCount + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10) {
+                            v = 10;
+                        }
+                        this.plugin.settings.hashCacheMaxCount = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerSyncSettingEl)
+            .setName("The total length of hashes to be cached")
+            .setDesc("(Mega chars)")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.hashCacheMaxAmount + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 1) {
+                            v = 1;
+                        }
+                        this.plugin.settings.hashCacheMaxAmount = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
 
         addScreenElement("30", containerSyncSettingEl);
         const containerMiscellaneousEl = containerEl.createDiv();

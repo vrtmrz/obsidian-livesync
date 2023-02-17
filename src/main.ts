@@ -138,6 +138,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     deviceAndVaultName: string;
     isMobile = false;
     isReady = false;
+    packageVersion = "";
+    manifestVersion = "";
 
     watchedFileEventQueue = [] as FileEventItem[];
 
@@ -194,26 +196,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async fileHistory() {
-        const pageLimit = 1000;
-        let nextKey = "";
         const notes: { path: string, mtime: number }[] = [];
-        do {
-            const docs = await this.localDatabase.localDatabase.allDocs({ limit: pageLimit, startkey: nextKey, include_docs: true });
-            nextKey = "";
-            for (const row of docs.rows) {
-                const doc = row.doc;
-                nextKey = `${row.id}\u{10ffff}`;
-                if (!("type" in doc)) continue;
-                if (doc.type == "newnote" || doc.type == "plain") {
-                    notes.push({ path: id2path(doc._id), mtime: doc.mtime });
-                }
-                if (isChunk(nextKey)) {
-                    // skip the chunk zone.
-                    nextKey = CHeaderEnd;
-                }
-            }
-        } while (nextKey != "");
-
+        for await (const doc of this.localDatabase.findAllDocs()) {
+            notes.push({ path: id2path(doc._id), mtime: doc.mtime });
+        }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map(e => e.path);
         const target = await askSelectString(this.app, "File to view History", notesList);
@@ -222,31 +208,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
     async pickFileForResolve() {
-        const pageLimit = 1000;
-        let nextKey = "";
         const notes: { path: string, mtime: number }[] = [];
-        do {
-            const docs = await this.localDatabase.localDatabase.allDocs({ limit: pageLimit, startkey: nextKey, conflicts: true, include_docs: true });
-            nextKey = "";
-            for (const row of docs.rows) {
-                const doc = row.doc;
-                nextKey = `${row.id}\u{10ffff}`;
-                if (isChunk(nextKey)) {
-                    // skip the chunk zone.
-                    nextKey = CHeaderEnd;
-                }
-                if (!("_conflicts" in doc)) continue;
-                if (isInternalMetadata(row.id)) continue;
-                // We have to check also deleted files.
-                // if (doc._deleted) continue;
-                // if ("deleted" in doc && doc.deleted) continue;
-                if (doc.type == "newnote" || doc.type == "plain") {
-                    // const docId = doc._id.startsWith("i:") ? doc._id.substring("i:".length) : doc._id;
-                    notes.push({ path: id2path(doc._id), mtime: doc.mtime });
-                }
-
-            }
-        } while (nextKey != "");
+        for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
+            if (!("_conflicts" in doc)) continue;
+            notes.push({ path: id2path(doc._id), mtime: doc.mtime });
+        }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map(e => e.path);
         if (notesList.length == 0) {
@@ -257,6 +223,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (target) {
             if (isInternalMetadata(target)) {
                 //NOP
+                await this.resolveConflictOnInternalFile(target);
             } else {
                 await this.showIfConflicted(target);
             }
@@ -371,12 +338,33 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 if (this.settings.syncOnStart) {
                     this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
                 }
+                this.scanStat();
             } catch (ex) {
                 Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
                 Logger(ex, LOG_LEVEL.VERBOSE);
             }
     }
 
+    /**
+     * Scan status 
+     */
+    async scanStat() {
+        const notes: { path: string, mtime: number }[] = [];
+        Logger(`Additional safety scan..`, LOG_LEVEL.VERBOSE);
+        for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
+            if (!("_conflicts" in doc)) continue;
+            notes.push({ path: id2path(doc._id), mtime: doc.mtime });
+        }
+        if (notes.length > 0) {
+            Logger(`Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`, LOG_LEVEL.NOTICE);
+            for (const note of notes) {
+                Logger(`Conflicted: ${note.path}`);
+            }
+        } else {
+            Logger(`There are no conflicted files`, LOG_LEVEL.VERBOSE);
+        }
+        Logger(`Additional safety scan done`, LOG_LEVEL.VERBOSE);
+    }
     async command_copySetupURI() {
         const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
         if (encryptingPassphrase === false) return;
@@ -536,6 +524,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         //@ts-ignore
         const packageVersion: string = PACKAGE_VERSION || "0.0.0";
 
+        this.manifestVersion = manifestVersion;
+        this.packageVersion = packageVersion;
 
         Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
@@ -1315,7 +1305,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const newMessage = timestamp + "->" + messageContent;
 
         console.log(vaultName + ":" + newMessage);
-        if (this.settings.writeLogToTheFile) {
+        if (this.settings?.writeLogToTheFile) {
             const time = now.toISOString().split("T")[0];
             const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
             const file = this.app.vault.getAbstractFileByPath(normalizePath(logDate));
