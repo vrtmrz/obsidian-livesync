@@ -54,5 +54,14 @@
     - File names can now be made platform-appropriate.
   - Refactored:
     - Some redundant implementations have been sorted out.
+- 0.17.24
+  - New feature:
+    - If any conflicted files have been left, they will be reported.
+  - Fixed:
+    - Now the name of the conflicting file is shown on the conflict-resolving dialogue.
+    - Hidden files are now able to be merged again.
+    - No longer error caused at plug-in being loaded.
+  - Improved:
+    - Caching chunks are now limited in total size of cached chunks.
 
 ... To continue on to `updates_old.md`.
