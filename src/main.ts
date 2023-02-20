@@ -2714,7 +2714,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 Logger(`Reading   : ${file.path}`, LOG_LEVEL.VERBOSE);
                 const contentBin = await this.app.vault.readBinary(file);
                 Logger(`Processing: ${file.path}`, LOG_LEVEL.VERBOSE);
-                content = await arrayBufferToBase64(contentBin);
+                try {
+                    content = await arrayBufferToBase64(contentBin);
+                } catch (ex) {
+                    Logger(`The file ${file.path} could not be encoded`);
+                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    return false;
+                }
                 datatype = "newnote";
             } else {
                 content = await this.app.vault.read(file);
@@ -2722,7 +2728,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         } else {
             if (cache instanceof ArrayBuffer) {
-                content = await arrayBufferToBase64(cache);
+                Logger(`Processing: ${file.path}`, LOG_LEVEL.VERBOSE);
+                try {
+                    content = await arrayBufferToBase64(cache);
+                } catch (ex) {
+                    Logger(`The file ${file.path} could not be encoded`);
+                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    return false;
+                }
                 datatype = "newnote"
             } else {
                 content = cache;
@@ -3071,7 +3084,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async storeInternalFileToDatabase(file: InternalFileInfo, forceWrite = false) {
         const id = filename2idInternalMetadata(path2id(file.path));
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
-        const content = await arrayBufferToBase64(contentBin);
+        let content: string[];
+        try {
+            content = await arrayBufferToBase64(contentBin);
+        } catch (ex) {
+            Logger(`The file ${file.path} could not be encoded`);
+            Logger(ex, LOG_LEVEL.VERBOSE);
+            return false;
+        }
         const mtime = file.mtime;
         return await runWithLock("file-" + id, false, async () => {
             try {
