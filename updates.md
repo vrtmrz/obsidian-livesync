@@ -63,5 +63,8 @@
     - No longer error caused at plug-in being loaded.
   - Improved:
     - Caching chunks are now limited in total size of cached chunks.
+- 0.17.25
+  - Fixed:
+    - Now reading error will be reported.
 
 ... To continue on to `updates_old.md`.
