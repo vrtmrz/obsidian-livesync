@@ -66,5 +66,8 @@
 - 0.17.25
   - Fixed:
     - Now reading error will be reported.
+- 0.17.26
+  - Fixed(Urgent):
+    - The modified document will be reflected in the storage now.
 
 ... To continue on to `updates_old.md`.
