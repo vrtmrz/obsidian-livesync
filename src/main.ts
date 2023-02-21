@@ -1399,7 +1399,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             return;
         }
-        const localMtime = ~~(file?.stat?.mtime || 0 / 1000);
+        const localMtime = ~~((file?.stat?.mtime || 0) / 1000);
         const docMtime = ~~(docEntry.mtime / 1000);
 
         const doc = await this.localDatabase.getDBEntry(pathSrc, { rev: docEntry._rev });
