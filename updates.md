@@ -69,5 +69,11 @@
 - 0.17.26
   - Fixed(Urgent):
     - The modified document will be reflected in the storage now.
+- 0.17.27
+  - Improved:
+    - Now, the filename of the conflicted settings will be shown on the merging dialogue
+    - The plugin data can be resolved when conflicted.
+    - The semaphore status display has been changed to count only.
+    - Applying to the storage will be concurrent with a few files.
 
 ... To continue on to `updates_old.md`.
