@@ -221,12 +221,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         const target = await askSelectString(this.app, "File to view History", notesList);
         if (target) {
-            if (isInternalMetadata(target)) {
-                //NOP
-                await this.resolveConflictOnInternalFile(target);
-            } else {
-                await this.showIfConflicted(target);
-            }
+            await this.resolveConflicted(target);
+        }
+    }
+    async resolveConflicted(target: string) {
+        if (isInternalMetadata(target)) {
+            await this.resolveConflictOnInternalFile(target);
+        } else if (isPluginMetadata(target)) {
+            await this.resolveConflictByNewerEntry(target);
+        } else {
+            await this.showIfConflicted(target);
         }
     }
 
@@ -606,7 +610,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
 
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
-
         this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
         this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => await this.setupWizard(conf.settings));
 
@@ -1315,7 +1318,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
         logMessageStore.apply(e => [...e, newMessage].slice(-100));
-        this.setStatusBarText(null, messageContent.substring(0, 30));
+        this.setStatusBarText(null, messageContent);
 
         if (level >= LOG_LEVEL.NOTICE) {
             if (!key) key = messageContent;
@@ -1457,33 +1460,40 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
 
     queuedEntries: EntryBody[] = [];
+    dbChangeProcRunning = false;
     handleDBChanged(change: EntryBody) {
-        // If queued same file, cancel previous one.
-        this.queuedEntries.remove(this.queuedEntries.find(e => e._id == change._id));
         // If the file is opened, we have to apply immediately
         const af = app.workspace.getActiveFile();
         if (af && af.path == id2path(change._id)) {
+            this.queuedEntries = this.queuedEntries.filter(e => e._id != change._id);
             return this.handleDBChangedAsync(change);
         }
         this.queuedEntries.push(change);
-        if (this.queuedEntries.length > 50) {
-            clearTrigger("dbchanged");
-            this.execDBchanged();
-        }
-        setTrigger("dbchanged", 500, () => this.execDBchanged());
+        this.execDBchanged();
     }
     async execDBchanged() {
-        await runWithLock("dbchanged", false, async () => {
-            const w = [...this.queuedEntries];
-            this.queuedEntries = [];
-            Logger(`Applying ${w.length} files`);
-            for (const entry of w) {
-                Logger(`Applying ${entry._id} (${entry._rev}) change...`, LOG_LEVEL.VERBOSE);
-                await this.handleDBChangedAsync(entry);
-                Logger(`Applied ${entry._id} (${entry._rev}) change...`);
-            }
+        if (this.dbChangeProcRunning) return false;
+        this.dbChangeProcRunning = true;
+        const semaphore = Semaphore(4);
+        try {
+            do {
+                const entry = this.queuedEntries.shift();
+                // If the same file is to be manipulated, leave it to the last process.
+                if (this.queuedEntries.some(e => e._id == entry._id)) continue;
+                try {
+                    const releaser = await semaphore.acquire(1);
+                    runWithLock(`dbchanged-${entry._id}`, false, async () => {
+                        Logger(`Applying ${entry._id} (${entry._rev}) change...`, LOG_LEVEL.VERBOSE);
+                        await this.handleDBChangedAsync(entry);
+                        Logger(`Applied ${entry._id} (${entry._rev}) change...`);
+                    }).finally(() => { releaser(); });
+                } catch (ex) {
+                    Logger(`Failed to apply the change of ${entry._id} (${entry._rev})`);
+                }
+            } while (this.queuedEntries.length > 0);
+        } finally {
+            this.dbChangeProcRunning = false;
         }
-        );
     }
     async handleDBChangedAsync(change: EntryBody) {
 
@@ -1843,17 +1853,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             const processes = e.count;
             const processesDisp = processes == 0 ? "" : ` ⏳${processes}`;
             const message = `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting}${processesDisp}${queued}`;
-            // const locks = getLocks();
+            function getProcKind(proc: string) {
+                const p = proc.indexOf("-");
+                if (p == -1) {
+                    return proc;
+                }
+                return proc.substring(0, p);
+            }
             const pendingTask = e.pending.length
                 ? "\nPending: " +
-                Object.entries(e.pending.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
+                Object.entries(e.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
                     .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
                     .join(", ")
                 : "";
 
             const runningTask = e.running.length
                 ? "\nRunning: " +
-                Object.entries(e.running.reduce((p, c) => ({ ...p, [c]: (p[c] ?? 0) + 1 }), {} as { [key: string]: number }))
+                Object.entries(e.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
                     .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
                     .join(", ")
                 : "";
@@ -2755,7 +2771,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         };
         //upsert should locked
         const msg = `DB <- STORAGE (${datatype}) `;
-        const isNotChanged = await runWithLock("file:" + fullPath, false, async () => {
+        const isNotChanged = await runWithLock("file-" + fullPath, false, async () => {
             if (recentlyTouched(file)) {
                 return true;
             }
@@ -3285,14 +3301,34 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     async resolveConflictOnInternalFiles() {
         // Scan all conflicted internal files
-        const docs = await this.localDatabase.localDatabase.allDocs({ startkey: ICHeader, endkey: ICHeaderEnd, conflicts: true, include_docs: true });
-        for (const row of docs.rows) {
-            const doc = row.doc;
+        const conflicted = this.localDatabase.findEntries(ICHeader, ICHeaderEnd, { conflicts: true });
+        for await (const doc of conflicted) {
             if (!("_conflicts" in doc)) continue;
-            if (isInternalMetadata(row.id)) {
-                await this.resolveConflictOnInternalFile(row.id);
+            if (isInternalMetadata(doc._id)) {
+                await this.resolveConflictOnInternalFile(doc._id);
             }
         }
+    }
+
+    async resolveConflictByNewerEntry(id: string) {
+        const doc = await this.localDatabase.localDatabase.get(id, { conflicts: true });
+        // If there is no conflict, return with false.
+        if (!("_conflicts" in doc)) return false;
+        if (doc._conflicts.length == 0) return false;
+        Logger(`Hidden file conflicted:${id2filenameInternalMetadata(id)}`);
+        const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
+        const revA = doc._rev;
+        const revB = conflicts[0];
+        const revBDoc = await this.localDatabase.localDatabase.get(id, { rev: revB });
+        // determine which revision should been deleted.
+        // simply check modified time
+        const mtimeA = ("mtime" in doc && doc.mtime) || 0;
+        const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
+        const delRev = mtimeA < mtimeB ? revA : revB;
+        // delete older one.
+        await this.localDatabase.localDatabase.remove(id, delRev);
+        Logger(`Older one has been deleted:${id2filenameInternalMetadata(id)}`);
+        return true;
     }
 
     async resolveConflictOnInternalFile(id: string): Promise<boolean> {

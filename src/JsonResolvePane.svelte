@@ -3,7 +3,7 @@
     import type { LoadedEntry } from "./lib/src/types";
     import { base64ToString } from "./lib/src/strbin";
     import { getDocData } from "./lib/src/utils";
-    import { mergeObject } from "./utils";
+    import { id2path, mergeObject } from "./utils";
 
     export let docs: LoadedEntry[] = [];
     export let callback: (keepRev: string, mergedStr?: string) => Promise<void> = async (_, __) => {
@@ -93,9 +93,11 @@
         diffs = getJsonDiff(objA, selectedObj);
         console.dir(selectedObj);
     }
+    $: filename = id2path(docA?._id ?? "");
 </script>
 
-<h1>File Conflicted</h1>
+<h1>Conflicted settings</h1>
+<div><span>{filename}</span></div>
 {#if !docA || !docB}
     <div class="message">Just for a minute, please!</div>
     <div class="buttons">
