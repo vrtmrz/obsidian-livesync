@@ -64,7 +64,6 @@ function filename2idInternalMetadata(str: string): string {
 }
 
 const CHeader = "h:";
-const CHeaderEnd = "h;";
 // const CHeaderLength = CHeader.length;
 function isChunk(str: string): boolean {
     return str.startsWith(CHeader);
@@ -235,30 +234,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async collectDeletedFiles() {
-        const pageLimit = 1000;
-        let nextKey = "";
         const limitDays = this.settings.automaticallyDeleteMetadataOfDeletedFiles;
         if (limitDays <= 0) return;
         Logger(`Checking expired file history`);
         const limit = Date.now() - (86400 * 1000 * limitDays);
         const notes: { path: string, mtime: number, ttl: number, doc: PouchDB.Core.ExistingDocument<EntryDoc & PouchDB.Core.AllDocsMeta> }[] = [];
-        do {
-            const docs = await this.localDatabase.localDatabase.allDocs({ limit: pageLimit, startkey: nextKey, conflicts: true, include_docs: true });
-            nextKey = "";
-            for (const row of docs.rows) {
-                const doc = row.doc;
-                nextKey = `${row.id}\u{10ffff}`;
-                if (doc.type == "newnote" || doc.type == "plain") {
-                    if (doc.deleted && (doc.mtime - limit) < 0) {
-                        notes.push({ path: id2path(doc._id), mtime: doc.mtime, ttl: (doc.mtime - limit) / 1000 / 86400, doc: doc });
-                    }
-                }
-                if (isChunk(nextKey)) {
-                    // skip the chunk zone.
-                    nextKey = CHeaderEnd;
+        for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
+            if (doc.type == "newnote" || doc.type == "plain") {
+                if (doc.deleted && (doc.mtime - limit) < 0) {
+                    notes.push({ path: id2path(doc._id), mtime: doc.mtime, ttl: (doc.mtime - limit) / 1000 / 86400, doc: doc });
                 }
             }
-        } while (nextKey != "");
+        }
         if (notes.length == 0) {
             Logger("There are no old documents");
             Logger(`Checking expired file history done`);
@@ -331,7 +318,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     if (this.settings.suspendFileWatching) {
                         Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
                     }
-                    const isInitialized = await this.initializeDatabase();
+                    const isInitialized = await this.initializeDatabase(false, false);
                     if (!isInitialized) {
                         //TODO:stop all sync.
                         return false;
@@ -435,7 +422,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings = newSettingW;
                         this.usedPassphrase = "";
                         await this.saveSettings();
-                        await this.resetLocalOldDatabase();
                         await this.resetLocalDatabase();
                         await this.localDatabase.initializeDatabase();
                         await this.markRemoteResolved();
@@ -448,7 +434,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.settings = newSettingW;
                         this.usedPassphrase = "";
                         await this.saveSettings();
-                        await this.resetLocalOldDatabase();
                         await this.resetLocalDatabase();
                         await this.localDatabase.initializeDatabase();
                         await this.initializeDatabase(true);
@@ -486,7 +471,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.usedPassphrase = "";
                         await this.saveSettings();
                         if (keepLocalDB == "no") {
-                            this.resetLocalOldDatabase();
                             this.resetLocalDatabase();
                             this.localDatabase.initializeDatabase();
                             const rebuild = await askYesNo(this.app, "Rebuild the database?");
@@ -535,6 +519,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
         await this.loadSettings();
+
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates) {
             Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL.NOTICE);
@@ -785,7 +770,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.localDatabase.close();
         }
         const vaultName = this.getVaultName();
-        Logger("Open Database...");
+        Logger("Waiting for ready...");
         //@ts-ignore
         const isMobile = this.app.isMobile;
         this.localDatabase = new LocalPouchDB(this.settings, vaultName, isMobile);
@@ -1925,9 +1910,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
-    async initializeDatabase(showingNotice?: boolean) {
+    async initializeDatabase(showingNotice?: boolean, reopenDatabase = true) {
         this.isReady = false;
-        if (await this.openDatabase()) {
+        if ((!reopenDatabase) || await this.openDatabase()) {
             if (this.localDatabase.isReady) {
                 await this.syncAllFiles(showingNotice);
             }
@@ -1989,18 +1974,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger("Initializing", LOG_LEVEL.NOTICE, "syncAll");
         }
 
+        Logger("Initialize and checking database files");
+        Logger("Checking deleted files");
         await this.collectDeletedFiles();
 
+        Logger("Collecting local files on the storage", LOG_LEVEL.VERBOSE);
         const filesStorage = this.app.vault.getFiles().filter(e => this.isTargetFile(e));
         const filesStorageName = filesStorage.map((e) => e.path);
-        const wf = await this.localDatabase.localDatabase.allDocs();
-        const filesDatabase = wf.rows.filter((e) =>
-            !isChunk(e.id) &&
-            !isPluginMetadata(e.id) &&
-            e.id != "obsydian_livesync_version" &&
-            e.id != "_design/replicate"
-        )
-            .filter(e => isValidPath(e.id)).map((e) => id2path(e.id)).filter(e => this.isTargetFile(e));
+        Logger("Collecting local files on the DB", LOG_LEVEL.VERBOSE);
+        const filesDatabase = [] as string[]
+        for await (const doc of this.localDatabase.findAllDocs()) {
+            const path = id2path(doc._id);
+            if (isValidPath(doc._id) && this.isTargetFile(path)) {
+                filesDatabase.push(path);
+            }
+        }
+        Logger("Opening the key-value database", LOG_LEVEL.VERBOSE);
         const isInitialized = await (this.localDatabase.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.
         if (filesDatabase.length == 0 && !isInitialized) {
@@ -2013,7 +2002,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const onlyInStorageNames = onlyInStorage.map((e) => e.path);
 
         const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
-        Logger("Initialize and checking database files");
         Logger("Updating database by new files");
         this.setStatusBarText(`UPDATE DATABASE`);
 
@@ -2827,11 +2815,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     async resetLocalDatabase() {
         clearTouched();
         await this.localDatabase.resetDatabase();
-        await this.localDatabase.resetLocalOldDatabase();
-    }
-    async resetLocalOldDatabase() {
-        clearTouched();
-        await this.localDatabase.resetLocalOldDatabase();
     }
 
     async tryResetRemoteDatabase() {
