@@ -75,5 +75,12 @@
     - The plugin data can be resolved when conflicted.
     - The semaphore status display has been changed to count only.
     - Applying to the storage will be concurrent with a few files.
+- 0.17.28
+  -Fixed:
+    - Some messages have been refined.
+    - Boot sequence has been speeded up.
+    - Opening the local database multiple times in a short duration has been suppressed.
+    - Older migration logic. 
+      - Note: If you have used 0.10.0 or lower and have not upgraded, you will need to run 0.17.27 or earlier once or reinstall Obsidian.
 
 ... To continue on to `updates_old.md`.
