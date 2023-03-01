@@ -1302,7 +1302,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
-        logMessageStore.apply(e => [...e, newMessage].slice(-100));
+        logMessageStore.apply(e => [...e, newMessage].slice(this.settings.showVerboseLog ? -1000 : -100));
         this.setStatusBarText(null, messageContent);
 
         if (level >= LOG_LEVEL.NOTICE) {
@@ -1571,9 +1571,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     const filename = id2path(id2filenameInternalMetadata(queue.entry._id));
                     // await this.syncInternalFilesAndDatabase("pull", false, false, [filename])
                     this.procInternalFile(filename);
-                }
-                if (isValidPath(id2path(queue.entry._id))) {
+                } else if (isValidPath(id2path(queue.entry._id))) {
                     this.handleDBChanged(queue.entry);
+                } else {
+                    Logger(`Skipped: ${queue.entry._id}`, LOG_LEVEL.VERBOSE);
                 }
             } else if (now > queue.timeout) {
                 if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL.NOTICE);
@@ -1983,12 +1984,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const filesStorageName = filesStorage.map((e) => e.path);
         Logger("Collecting local files on the DB", LOG_LEVEL.VERBOSE);
         const filesDatabase = [] as string[]
-        for await (const doc of this.localDatabase.findAllDocs()) {
-            const path = id2path(doc._id);
-            if (isValidPath(doc._id) && this.isTargetFile(path)) {
+        for await (const docId of this.localDatabase.findAllDocNames()) {
+            const path = id2path(docId);
+            if (isValidPath(docId) && this.isTargetFile(path)) {
                 filesDatabase.push(path);
             }
         }
+
         Logger("Opening the key-value database", LOG_LEVEL.VERBOSE);
         const isInitialized = await (this.localDatabase.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.
@@ -2006,28 +2008,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.setStatusBarText(`UPDATE DATABASE`);
 
         const runAll = async<T>(procedureName: string, objects: T[], callback: (arg: T) => Promise<void>) => {
-            // const count = objects.length;
             Logger(procedureName);
-            // let i = 0;
             const semaphore = Semaphore(25);
-
-            // Logger(`${procedureName} exec.`);
             if (!this.localDatabase.isReady) throw Error("Database is not ready!");
             const processes = objects.map(e => (async (v) => {
                 const releaser = await semaphore.acquire(1, procedureName);
 
                 try {
                     await callback(v);
-                    // i++;
-                    // if (i % 50 == 0) {
-                    //     const notify = `${procedureName} : ${i}/${count}`;
-                    //     if (showingNotice) {
-                    //         Logger(notify, LOG_LEVEL.NOTICE, "syncAll");
-                    //     } else {
-                    //         Logger(notify);
-                    //     }
-                    // this.setStatusBarText(notify);
-                    // }
                 } catch (ex) {
                     Logger(`Error while ${procedureName}`, LOG_LEVEL.NOTICE);
                     Logger(ex);
@@ -2067,7 +2055,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const syncFilesX = syncFiles.splice(0, 100);
                 const docs = await this.localDatabase.localDatabase.allDocs({ keys: syncFilesX.map(e => path2id(e.path)), include_docs: true })
                 const syncFilesToSync = syncFilesX.map((e) => ({ file: e, doc: docs.rows.find(ee => ee.id == path2id(e.path)).doc as LoadedEntry }));
-
                 await runAll(`CHECK FILE STATUS:${syncFiles.length}/${docsCount}`, syncFilesToSync, async (e) => {
                     caches = await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
                 });
@@ -2674,6 +2661,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const dK = `${file.path}-diff`;
         const isLastDiff = dK in caches ? caches[dK] : { storageMtime: 0, docMtime: 0 };
         if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
+            Logger("STORAGE .. DB :" + file.path, LOG_LEVEL.VERBOSE);
             caches[dK] = { storageMtime, docMtime };
             return caches;
         }
@@ -2696,11 +2684,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             caches[dK] = { storageMtime, docMtime };
             return caches;
-        } else {
-            // Logger("EVEN :" + file.path, LOG_LEVEL.VERBOSE);
-            // Logger(`${storageMtime} = ${docMtime}`, LOG_LEVEL.VERBOSE);
-            //eq.case
         }
+        Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL.VERBOSE);
         caches[dK] = { storageMtime, docMtime };
         return caches;
 

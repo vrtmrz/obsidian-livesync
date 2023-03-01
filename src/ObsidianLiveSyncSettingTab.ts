@@ -453,6 +453,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncOnStart = false;
             this.plugin.settings.syncOnFileOpen = false;
             this.plugin.settings.syncAfterMerge = false;
+            this.plugin.settings.syncInternalFiles = false;
+            this.plugin.settings.usePluginSync = false;
+            Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
             await this.plugin.saveSettings();
 
             applyDisplayEnabled();
@@ -1324,7 +1327,38 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-
+        new Setting(containerSyncSettingEl)
+            .setName("The maximum number of reading chunks online concurrently")
+            .setDesc("")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.concurrencyOfReadChunksOnline + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10) {
+                            v = 10;
+                        }
+                        this.plugin.settings.concurrencyOfReadChunksOnline = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
+        new Setting(containerSyncSettingEl)
+            .setName("The minimum interval for reading chunks online")
+            .setDesc("")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.minimumIntervalOfReadChunksOnline + "")
+                    .onChange(async (value) => {
+                        let v = Number(value);
+                        if (isNaN(v) || v < 10) {
+                            v = 10;
+                        }
+                        this.plugin.settings.minimumIntervalOfReadChunksOnline = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
         addScreenElement("30", containerSyncSettingEl);
         const containerMiscellaneousEl = containerEl.createDiv();
         containerMiscellaneousEl.createEl("h3", { text: "Miscellaneous" });
