@@ -82,5 +82,14 @@
     - Opening the local database multiple times in a short duration has been suppressed.
     - Older migration logic. 
       - Note: If you have used 0.10.0 or lower and have not upgraded, you will need to run 0.17.27 or earlier once or reinstall Obsidian.
-
+- 0.17.29
+  - Fixed:
+    - Requests of reading chunks online are now split into a reasonable(and configurable) size.
+    - No longer error message will be shown on Linux devices with hidden file synchronisation.
+  - Improved:
+    - The interval of reading chunks online is now configurable.
+    - Boot sequence has been speeded up, more.
+  - Misc:
+    - Messages on the boot sequence will now be more detailed. If you want to see them, please enable the verbose log.
+    - Logs became be kept for 1000 lines while the verbose log is enabled.
 ... To continue on to `updates_old.md`.
