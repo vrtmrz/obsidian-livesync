@@ -216,12 +216,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const notesList = notes.map(e => e.path);
         if (notesList.length == 0) {
             Logger("There are no conflicted documents", LOG_LEVEL.NOTICE);
-            return;
+            return false;
         }
         const target = await askSelectString(this.app, "File to view History", notesList);
         if (target) {
             await this.resolveConflicted(target);
+            return true;
         }
+        return false;
     }
     async resolveConflicted(target: string) {
         if (isInternalMetadata(target)) {
@@ -712,6 +714,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             name: "Pick a file to resolve conflict",
             callback: () => {
                 this.pickFileForResolve();
+            },
+        })
+        this.addCommand({
+            id: "livesync-all-conflictcheck",
+            name: "Resolve all conflicted files",
+            callback: async () => {
+                while (await this.pickFileForResolve());
             },
         })
         this.addCommand({
@@ -1302,7 +1311,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
-        logMessageStore.apply(e => [...e, newMessage].slice(this.settings.showVerboseLog ? -1000 : -100));
+        logMessageStore.apply(e => [...e, newMessage].slice(-100));
         this.setStatusBarText(null, messageContent);
 
         if (level >= LOG_LEVEL.NOTICE) {
