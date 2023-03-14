@@ -298,10 +298,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     } else if (this.isRedFlag3Raised()) {
                         Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
                         await this.resetLocalDatabase();
+                        await delay(1000);
                         await this.markRemoteResolved();
                         await this.openDatabase();
                         this.isReady = true;
-                        await this.replicate(true);
+                        await this.replicateAllFromServer(true);
                         await this.deleteRedFlag3();
                         if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
                             this.settings.suspendFileWatching = false;
@@ -473,13 +474,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         this.usedPassphrase = "";
                         await this.saveSettings();
                         if (keepLocalDB == "no") {
-                            this.resetLocalDatabase();
-                            this.localDatabase.initializeDatabase();
+                            await this.resetLocalDatabase();
+                            await this.localDatabase.initializeDatabase();
                             const rebuild = await askYesNo(this.app, "Rebuild the database?");
                             if (rebuild == "yes") {
                                 initDB = this.initializeDatabase(true);
                             } else {
-                                this.markRemoteResolved();
+                                await this.markRemoteResolved();
                             }
                         }
                         if (keepRemoteDB == "no") {
@@ -728,6 +729,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             name: "Run pended batch processes",
             callback: async () => {
                 await this.applyBatchChange();
+            },
+        })
+        this.addCommand({
+            id: "livesync-abortsync",
+            name: "Abort synchronization immediately",
+            callback: () => {
+                this.localDatabase.terminateSync();
             },
         })
 
@@ -1917,7 +1925,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
             await this.syncInternalFilesAndDatabase("push", showMessage);
         }
-        await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
+        return await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
     }
 
     async initializeDatabase(showingNotice?: boolean, reopenDatabase = true) {
@@ -1963,6 +1971,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(showingNotice);
         }
         return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
+    }
+    async replicateAllFromServer(showingNotice?: boolean) {
+        if (!this.isReady) return false;
+        return await this.localDatabase.replicateAllFromServer(this.settings, this.parseReplicationResult, showingNotice);
     }
 
     async markRemoteLocked() {
