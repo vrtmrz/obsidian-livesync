@@ -44,4 +44,9 @@
     - Fixed a problem about reading chunks online when a file has more chunks than the concurrency limit.
   - Rollbacked:
     - Logs are kept only for 100 lines, again.
+- 0.17.31
+  - Fixed:
+    - Now `redflag3` can be run surely.
+    - Synchronisation can now be aborted.
+  - Note: The synchronisation flow has been rewritten drastically. Please do not haste to inform me if you have noticed anything.
 ... To continue on to `updates_old.md`.
