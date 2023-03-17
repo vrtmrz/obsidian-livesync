@@ -49,4 +49,14 @@
     - Now `redflag3` can be run surely.
     - Synchronisation can now be aborted.
   - Note: The synchronisation flow has been rewritten drastically. Please do not haste to inform me if you have noticed anything.
+- 0.17.32
+  - Fixed:
+    - Now periodic internal file scanning works well.
+    - The handler of Window-visibility-changed has been fixed.
+    - And minor fixes possibly included.
+  - Refactored:
+    - Unused logic has been removed.
+    - Some utility functions have been moved into suitable files.
+    - Function names have been renamed.
+
 ... To continue on to `updates_old.md`.
