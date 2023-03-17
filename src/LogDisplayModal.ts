@@ -1,4 +1,4 @@
-import { App, Modal } from "obsidian";
+import { App, Modal } from "./deps";
 import { logMessageStore } from "./lib/src/stores";
 import { escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";

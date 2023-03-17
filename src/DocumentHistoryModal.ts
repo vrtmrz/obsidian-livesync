@@ -1,4 +1,4 @@
-import { TFile, Modal, App } from "obsidian";
+import { TFile, Modal, App } from "./deps";
 import { isValidPath, path2id } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";

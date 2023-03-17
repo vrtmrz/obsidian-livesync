@@ -1,8 +1,10 @@
-import { DataWriteOptions, normalizePath, TFile, Platform } from "obsidian";
+import { DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin_2 } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
 import { LOG_LEVEL } from "./lib/src/types";
+import { CHeader, ICHeader, ICHeaderLength, PSCHeader } from "./types";
+import { InputStringDialog, PopoverSelectString } from "./dialogs";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
@@ -15,40 +17,44 @@ export function id2path(filename: string): string {
     return id2path_base(normalizePath(filename));
 }
 
-const triggers: { [key: string]: ReturnType<typeof setTimeout> } = {};
-export function setTrigger(key: string, timeout: number, proc: (() => Promise<any> | void)) {
-    clearTrigger(key);
-    triggers[key] = setTimeout(async () => {
-        delete triggers[key];
+const tasks: { [key: string]: ReturnType<typeof setTimeout> } = {};
+export function scheduleTask(key: string, timeout: number, proc: (() => Promise<any> | void)) {
+    cancelTask(key);
+    tasks[key] = setTimeout(async () => {
+        delete tasks[key];
         await proc();
     }, timeout);
 }
-export function clearTrigger(key: string) {
-    if (key in triggers) {
-        clearTimeout(triggers[key]);
+export function cancelTask(key: string) {
+    if (key in tasks) {
+        clearTimeout(tasks[key]);
+        delete tasks[key];
     }
 }
-export function clearAllTriggers() {
-    for (const v in triggers) {
-        clearTimeout(triggers[v]);
+export function cancelAllTasks() {
+    for (const v in tasks) {
+        clearTimeout(tasks[v]);
+        delete tasks[v];
     }
 }
 const intervals: { [key: string]: ReturnType<typeof setInterval> } = {};
-export function setPeriodic(key: string, timeout: number, proc: (() => Promise<any> | void)) {
-    clearPeriodic(key);
+export function setPeriodicTask(key: string, timeout: number, proc: (() => Promise<any> | void)) {
+    cancelPeriodicTask(key);
     intervals[key] = setInterval(async () => {
         delete intervals[key];
         await proc();
     }, timeout);
 }
-export function clearPeriodic(key: string) {
+export function cancelPeriodicTask(key: string) {
     if (key in intervals) {
         clearInterval(intervals[key]);
+        delete intervals[key];
     }
 }
-export function clearAllPeriodic() {
+export function cancelAllPeriodicTask() {
     for (const v in intervals) {
         clearInterval(intervals[v]);
+        delete intervals[v];
     }
 }
 
@@ -290,4 +296,109 @@ export function isValidPath(filename: string) {
     //Fallback
     Logger("Could not determine platform for checking filename", LOG_LEVEL.VERBOSE);
     return isValidFilenameInWidows(filename);
+}
+
+let touchedFiles: string[] = [];
+
+export function getAbstractFileByPath(path: string): TAbstractFile | null {
+    // Hidden API but so useful.
+    // @ts-ignore
+    if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
+        // @ts-ignore
+        return app.vault.getAbstractFileByPathInsensitive(path);
+    } else {
+        return app.vault.getAbstractFileByPath(path);
+    }
+}
+export function trimPrefix(target: string, prefix: string) {
+    return target.startsWith(prefix) ? target.substring(prefix.length) : target;
+}
+
+export function touch(file: TFile | string) {
+    const f = file instanceof TFile ? file : getAbstractFileByPath(file) as TFile;
+    const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
+    touchedFiles.unshift(key);
+    touchedFiles = touchedFiles.slice(0, 100);
+}
+export function recentlyTouched(file: TFile) {
+    const key = `${file.path}-${file.stat.mtime}-${file.stat.size}`;
+    if (touchedFiles.indexOf(key) == -1) return false;
+    return true;
+}
+export function clearTouched() {
+    touchedFiles = [];
+}
+
+/**
+ * returns is internal chunk of file
+ * @param str ID
+ * @returns 
+ */
+export function isInternalMetadata(str: string): boolean {
+    return str.startsWith(ICHeader);
+}
+export function id2filenameInternalMetadata(str: string): string {
+    return str.substring(ICHeaderLength);
+}
+export function filename2idInternalMetadata(str: string): string {
+    return ICHeader + str;
+}
+
+// const CHeaderLength = CHeader.length;
+export function isChunk(str: string): boolean {
+    return str.startsWith(CHeader);
+}
+
+export function isPluginMetadata(str: string): boolean {
+    return str.startsWith(PSCHeader);
+}
+
+export const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
+    return new Promise((res) => {
+        const popover = new PopoverSelectString(app, message, null, null, (result) => res(result as "yes" | "no"));
+        popover.open();
+    });
+};
+
+export const askSelectString = (app: App, message: string, items: string[]): Promise<string> => {
+    const getItemsFun = () => items;
+    return new Promise((res) => {
+        const popover = new PopoverSelectString(app, message, "", getItemsFun, (result) => res(result));
+        popover.open();
+    });
+};
+
+
+export const askString = (app: App, title: string, key: string, placeholder: string): Promise<string | false> => {
+    return new Promise((res) => {
+        const dialog = new InputStringDialog(app, title, key, placeholder, (result) => res(result));
+        dialog.open();
+    });
+};
+
+
+export class PeriodicProcessor {
+    _process: () => Promise<any>;
+    _timer?: number;
+    _plugin: Plugin_2;
+    constructor(plugin: Plugin_2, process: () => Promise<any>) {
+        this._plugin = plugin;
+        this._process = process;
+    }
+    async process() {
+        try {
+            await this._process();
+        } catch (ex) {
+            Logger(ex);
+        }
+    }
+    enable(interval: number) {
+        this.disable();
+        if (interval == 0) return;
+        this._timer = window.setInterval(() => this._process().then(() => { }), interval);
+        this._plugin.registerInterval(this._timer);
+    }
+    disable() {
+        if (this._timer) clearInterval(this._timer);
+    }
 }

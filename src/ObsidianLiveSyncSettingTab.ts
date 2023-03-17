@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "obsidian";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
 import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, ConfigPassphraseStore, RemoteDBSettings } from "./lib/src/types";
 import { path2id, id2path } from "./utils";
 import { delay } from "./lib/src/utils";
@@ -28,6 +28,7 @@ const requestToCouchDB = async (baseUri: string, username: string, password: str
 };
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
+    selectedScreen = "";
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
         super(app, plugin);
@@ -93,6 +94,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 element.addClass("selected");
                 (element.querySelector("input[type=radio]") as HTMLInputElement).checked = true;
             });
+            this.selectedScreen = screen;
         };
         menuTabs.forEach((element) => {
             const e = element.querySelector(".sls-setting-tab");
@@ -1392,29 +1394,51 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             Logger("Select any preset.", LOG_LEVEL.NOTICE);
                             return;
                         }
-                        this.plugin.settings.batchSave = false;
-                        this.plugin.settings.liveSync = false;
-                        this.plugin.settings.periodicReplication = false;
-                        this.plugin.settings.syncOnSave = false;
-                        this.plugin.settings.syncOnStart = false;
-                        this.plugin.settings.syncOnFileOpen = false;
-                        this.plugin.settings.syncAfterMerge = false;
+                        const presetAllDisabled = {
+                            batchSave: false,
+                            liveSync: false,
+                            periodicReplication: false,
+                            syncOnSave: false,
+                            syncOnStart: false,
+                            syncOnFileOpen: false,
+                            syncAfterMerge: false,
+                        } as Partial<ObsidianLiveSyncSettings>;
+                        const presetLiveSync = {
+                            ...presetAllDisabled,
+                            liveSync: true
+                        } as Partial<ObsidianLiveSyncSettings>;
+                        const presetPeriodic = {
+                            ...presetAllDisabled,
+                            batchSave: true,
+                            periodicReplication: true,
+                            syncOnSave: false,
+                            syncOnStart: true,
+                            syncOnFileOpen: true,
+                            syncAfterMerge: true,
+                        } as Partial<ObsidianLiveSyncSettings>;
+
                         if (currentPreset == "LIVESYNC") {
-                            this.plugin.settings.liveSync = true;
+                            this.plugin.settings = {
+                                ...this.plugin.settings,
+                                ...presetLiveSync
+                            }
                             Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL.NOTICE);
                         } else if (currentPreset == "PERIODIC") {
-                            this.plugin.settings.batchSave = true;
-                            this.plugin.settings.periodicReplication = true;
-                            this.plugin.settings.syncOnSave = false;
-                            this.plugin.settings.syncOnStart = true;
-                            this.plugin.settings.syncOnFileOpen = true;
-                            this.plugin.settings.syncAfterMerge = true;
+                            this.plugin.settings = {
+                                ...this.plugin.settings,
+                                ...presetPeriodic
+                            }
                             Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL.NOTICE);
                         } else {
                             Logger("All synchronization disabled.", LOG_LEVEL.NOTICE);
+                            this.plugin.settings = {
+                                ...this.plugin.settings,
+                                ...presetAllDisabled
+                            }
                         }
                         this.plugin.saveSettings();
                         await this.plugin.realizeSettingSyncMode();
+                        this.display();
                         if (inWizard) {
                             // @ts-ignore
                             this.plugin.app.setting.close()
@@ -1432,8 +1456,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             // @ts-ignore
                             this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-copysetupuri")
                         }
-
-
                     })
             );
 
@@ -1769,18 +1791,22 @@ ${stringifyYaml(pluginConfig)}`;
         }
         applyDisplayEnabled();
         addScreenElement("70", containerCorruptedDataEl);
-        if (lastVersion != this.plugin.settings.lastReadUpdates) {
-            if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
-                changeDisplay("100");
+        if (this.selectedScreen == "") {
+            if (lastVersion != this.plugin.settings.lastReadUpdates) {
+                if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
+                    changeDisplay("100");
+                } else {
+                    changeDisplay("110")
+                }
             } else {
-                changeDisplay("110")
+                if (isAnySyncEnabled()) {
+                    changeDisplay("0");
+                } else {
+                    changeDisplay("110")
+                }
             }
         } else {
-            if (isAnySyncEnabled()) {
-                changeDisplay("0");
-            } else {
-                changeDisplay("110")
-            }
+            changeDisplay(this.selectedScreen);
         }
     }
 }

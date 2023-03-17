@@ -1,4 +1,4 @@
-import { requestUrl, RequestUrlParam, RequestUrlResponse } from "obsidian";
+import { requestUrl, RequestUrlParam, RequestUrlResponse } from "./deps";
 import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB.js";
 import { LocalPouchDBBase } from "./lib/src/LocalPouchDBBase.js";
 import { Logger } from "./lib/src/logger.js";

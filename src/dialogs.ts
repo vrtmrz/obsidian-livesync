@@ -1,4 +1,4 @@
-import { App, FuzzySuggestModal, Modal, Setting } from "obsidian";
+import { App, FuzzySuggestModal, Modal, Setting } from "./deps";
 import ObsidianLiveSyncPlugin from "./main";
 
 //@ts-ignore

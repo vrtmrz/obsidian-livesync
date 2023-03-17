@@ -1,7 +1,8 @@
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, App } from "obsidian";
+const isDebug = false;
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest } from "./deps";
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, FileInfo } from "./types";
+import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, CacheData, FileEventItem, configURIBase, FileWatchEventQueueMax, PSCHeader, PSCHeaderEnd, ICHeader, ICHeaderEnd } from "./types";
 import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { LocalPouchDB } from "./LocalPouchDB";
@@ -9,12 +10,9 @@ import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, clearAllPeriodic, clearAllTriggers, clearTrigger, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, setTrigger, tryParseJSON, createFile, modifyFile, isValidPath } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, trimPrefix, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, filename2idInternalMetadata, id2filenameInternalMetadata, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched } from "./utils";
 import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
-
-const isDebug = false;
-
-import { InputStringDialog, PluginDialogModal, PopoverSelectString } from "./dialogs";
+import { PluginDialogModal } from "./dialogs";
 import { isCloudantURI, isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getGlobalStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore } from "./lib/src/stores";
@@ -24,109 +22,9 @@ import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { JsonResolveModal } from "./JsonResolveModal";
+import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 
 setNoticeClass(Notice);
-
-const ICHeader = "i:";
-const ICHeaderEnd = "i;";
-const ICHeaderLength = ICHeader.length;
-const FileWatchEventQueueMax = 10;
-
-const configURIBase = "obsidian://setuplivesync?settings=";
-
-function getAbstractFileByPath(path: string): TAbstractFile | null {
-    // Hidden API but so useful.
-    // @ts-ignore
-    if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
-        // @ts-ignore
-        return app.vault.getAbstractFileByPathInsensitive(path);
-    } else {
-        return app.vault.getAbstractFileByPath(path);
-    }
-}
-function trimPrefix(target: string, prefix: string) {
-    return target.startsWith(prefix) ? target.substring(prefix.length) : target;
-}
-
-/**
- * returns is internal chunk of file
- * @param str ID
- * @returns 
- */
-function isInternalMetadata(str: string): boolean {
-    return str.startsWith(ICHeader);
-}
-function id2filenameInternalMetadata(str: string): string {
-    return str.substring(ICHeaderLength);
-}
-function filename2idInternalMetadata(str: string): string {
-    return ICHeader + str;
-}
-
-const CHeader = "h:";
-// const CHeaderLength = CHeader.length;
-function isChunk(str: string): boolean {
-    return str.startsWith(CHeader);
-}
-
-const PSCHeader = "ps:";
-const PSCHeaderEnd = "ps;";
-function isPluginMetadata(str: string): boolean {
-    return str.startsWith(PSCHeader);
-}
-
-
-const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
-    return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, null, null, (result) => res(result as "yes" | "no"));
-        popover.open();
-    });
-};
-
-const askSelectString = (app: App, message: string, items: string[]): Promise<string> => {
-    const getItemsFun = () => items;
-    return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, "", getItemsFun, (result) => res(result));
-        popover.open();
-    });
-};
-
-
-const askString = (app: App, title: string, key: string, placeholder: string): Promise<string | false> => {
-    return new Promise((res) => {
-        const dialog = new InputStringDialog(app, title, key, placeholder, (result) => res(result));
-        dialog.open();
-    });
-};
-let touchedFiles: string[] = [];
-function touch(file: TFile | string) {
-    const f = file instanceof TFile ? file : getAbstractFileByPath(file) as TFile;
-    const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
-    touchedFiles.unshift(key);
-    touchedFiles = touchedFiles.slice(0, 100);
-}
-function recentlyTouched(file: TFile) {
-    const key = `${file.path}-${file.stat.mtime}-${file.stat.size}`;
-    if (touchedFiles.indexOf(key) == -1) return false;
-    return true;
-}
-function clearTouched() {
-    touchedFiles = [];
-}
-
-type CacheData = string | ArrayBuffer;
-type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME" | "INTERNAL";
-type FileEventArgs = {
-    file: FileInfo | InternalFileInfo;
-    cache?: CacheData;
-    oldPath?: string;
-    ctx?: any;
-}
-type FileEventItem = {
-    type: FileEventType,
-    args: FileEventArgs,
-    key: string,
-}
 
 export default class ObsidianLiveSyncPlugin extends Plugin {
     settings: ObsidianLiveSyncSettings;
@@ -140,7 +38,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     packageVersion = "";
     manifestVersion = "";
 
-    watchedFileEventQueue = [] as FileEventItem[];
+    periodicSyncProcessor = new PeriodicProcessor(this, async () => await this.replicate());
+    periodicPluginSweepProcessor = new PeriodicProcessor(this, async () => await this.sweepPlugin(false));
+    periodicInternalFileScanProcessor = new PeriodicProcessor(this, async () => await this.syncInternalFilesAndDatabase("push", false));
 
     getVaultName(): string {
         return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
@@ -544,21 +444,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         localStorage.setItem(lsKey, `${VER}`);
         await this.openDatabase();
-
-        this.watchVaultChange = this.watchVaultChange.bind(this);
-        this.watchVaultCreate = this.watchVaultCreate.bind(this);
-        this.watchVaultDelete = this.watchVaultDelete.bind(this);
-        this.watchVaultRename = this.watchVaultRename.bind(this);
-        this.watchVaultRawEvents = this.watchVaultRawEvents.bind(this);
         this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
         this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
         this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
 
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
-        this.setPeriodicSync = this.setPeriodicSync.bind(this);
-        this.clearPeriodicSync = this.clearPeriodicSync.bind(this);
-        this.periodicSync = this.periodicSync.bind(this);
         this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
 
         this.getPluginList = this.getPluginList.bind(this);
@@ -764,21 +655,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.localDatabase != null) {
             this.localDatabase.onunload();
         }
-        if (this.gcTimerHandler != null) {
-            clearTimeout(this.gcTimerHandler);
-            this.gcTimerHandler = null;
-        }
-        this.clearPeriodicSync();
-        this.clearPluginSweep();
-        this.clearInternalFileScan();
+
+        this.periodicSyncProcessor?.disable();
+        this.periodicPluginSweepProcessor?.disable();
+        this.periodicInternalFileScanProcessor?.disable();
         if (this.localDatabase != null) {
             this.localDatabase.closeReplication();
             this.localDatabase.close();
         }
-        clearAllPeriodic();
-        clearAllTriggers();
-        window.removeEventListener("visibilitychange", this.watchWindowVisibility);
-        window.removeEventListener("online", this.watchOnline);
+        cancelAllPeriodicTask();
+        cancelAllTasks();
         Logger("unloading plugin");
     }
 
@@ -940,21 +826,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.triggerRealizeSettingSyncMode();
     }
 
-    gcTimerHandler: any = null;
-
+    vaultManager: StorageEventManager;
     registerFileWatchEvents() {
-        this.registerEvent(this.app.vault.on("modify", this.watchVaultChange));
-        this.registerEvent(this.app.vault.on("delete", this.watchVaultDelete));
-        this.registerEvent(this.app.vault.on("rename", this.watchVaultRename));
-        this.registerEvent(this.app.vault.on("create", this.watchVaultCreate));
-        //@ts-ignore : Internal API
-        this.registerEvent(this.app.vault.on("raw", this.watchVaultRawEvents));
+        this.vaultManager = new StorageEventManagerObsidian(this)
     }
 
     registerWatchEvents() {
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
-        window.addEventListener("visibilitychange", this.watchWindowVisibility);
-        window.addEventListener("online", this.watchOnline);
+        this.registerDomEvent(document, "visibilitychange", this.watchWindowVisibility);
+        this.registerDomEvent(window, "online", this.watchOnline);
+        this.registerDomEvent(window, "offline", this.watchOnline);
     }
 
 
@@ -963,6 +844,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     async watchOnlineAsync() {
         // If some files were failed to retrieve, scan files again.
+        // TODO:FIXME AT V0.17.31, this logic has been disabled.
         if (navigator.onLine && this.localDatabase.needScanning) {
             this.localDatabase.needScanning = false;
             await this.syncAllFiles();
@@ -980,7 +862,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         await this.applyBatchChange();
         if (isHidden) {
             this.localDatabase.closeReplication();
-            this.clearPeriodicSync();
+            this.periodicSyncProcessor?.disable();
         } else {
             // suspend all temporary.
             if (this.suspended) return;
@@ -993,175 +875,68 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             if (this.settings.syncOnStart) {
                 this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
             }
-            if (this.settings.periodicReplication) {
-                this.setPeriodicSync();
-            }
+            this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);
         }
     }
 
-    // Cache file and waiting to can be proceed.
-    async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
-        let forcePerform = false;
-        for (const param of params) {
-            if (shouldBeIgnored(param.file.path)) {
-                continue;
-            }
-            const atomicKey = [0, 0, 0, 0, 0, 0].map(e => `${Math.floor(Math.random() * 100000)}`).join("-");
-            const type = param.type;
-            const file = param.file;
-            const oldPath = param.oldPath;
-            if (file instanceof TFolder) continue;
-            if (!this.isTargetFile(file.path)) continue;
-            if (this.settings.suspendFileWatching) continue;
-
-            let cache: null | string | ArrayBuffer;
-            // new file or something changed, cache the changes.
-            if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
-                if (recentlyTouched(file)) {
-                    continue;
-                }
-                if (!isPlainText(file.name)) {
-                    cache = await this.app.vault.readBinary(file);
-                } else {
-                    // cache = await this.app.vault.read(file);
-                    cache = await this.app.vault.cachedRead(file);
-                    if (!cache) cache = await this.app.vault.read(file);
-                }
-            }
-            if (type == "DELETE" || type == "RENAME") {
-                forcePerform = true;
-            }
-
-
-            if (this.settings.batchSave) {
-                // if the latest event is the same type, omit that
-                // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
-                // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
-                // a.md MODIFY
-                // a.md CREATE
-                //     : 
-                let i = this.watchedFileEventQueue.length;
-                L1:
-                while (i >= 0) {
-                    i--;
-                    if (i < 0) break L1;
-                    if (this.watchedFileEventQueue[i].args.file.path != file.path) {
-                        continue L1;
-                    }
-                    if (this.watchedFileEventQueue[i].type != type) break L1;
-                    this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
-                    this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
-                }
-            }
-
-            const fileInfo = file instanceof TFile ? {
-                ctime: file.stat.ctime,
-                mtime: file.stat.mtime,
-                file: file,
-                path: file.path,
-                size: file.stat.size
-            } as FileInfo : file as InternalFileInfo;
-            this.watchedFileEventQueue.push({
-                type,
-                args: {
-                    file: fileInfo,
-                    oldPath,
-                    cache,
-                    ctx
-                },
-                key: atomicKey
-            })
-        }
-        this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
-        if (this.isReady) {
-            await this.procFileEvent(forcePerform);
-        }
-
-    }
     async procFileEvent(applyBatch?: boolean) {
         if (!this.isReady) return;
         if (this.settings.batchSave) {
-            if (!applyBatch && this.watchedFileEventQueue.length < FileWatchEventQueueMax) {
+            if (!applyBatch && this.vaultManager.getQueueLength() < FileWatchEventQueueMax) {
                 // Defer till applying batch save or queue has been grown enough.
-                // or 120 seconds after.
-                setTrigger("applyBatchAuto", 30000, () => {
+                // or 30 seconds after.
+                scheduleTask("applyBatchAuto", 30000, () => {
                     this.procFileEvent(true);
                 })
                 return;
             }
         }
-        clearTrigger("applyBatchAuto");
+        cancelTask("applyBatchAuto");
         const ret = await runWithLock("procFiles", true, async () => {
-            L2:
             do {
-                const procs = [...this.watchedFileEventQueue];
-                this.watchedFileEventQueue = [];
+                const queue = this.vaultManager.fetchEvent();
+                if (queue === false) break;
+                if (queue === undefined) break;
+                const file = queue.args.file;
+                const key = `file-last-proc-${queue.type}-${file.path}`;
+                const last = Number(await this.localDatabase.kvDB.get(key) || 0);
+                if (queue.type == "DELETE") {
+                    await this.deleteFromDBbyPath(file.path);
+                } else if (queue.type == "INTERNAL") {
+                    await this.watchVaultRawEventsAsync(file.path);
+                } else {
+                    const targetFile = this.app.vault.getAbstractFileByPath(file.path);
+                    if (!(targetFile instanceof TFile)) {
+                        Logger(`Target file was not found: ${file.path}`, LOG_LEVEL.INFO);
+                        continue;
+                    }
+                    //TODO: check from cache time.
+                    if (file.mtime == last) {
+                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
+                        continue;
+                    }
 
-                L1:
-                do {
-                    const queue = procs.shift();
-                    if (queue === undefined) break L1;
-
-                    const file = queue.args.file;
-                    const key = `file-last-proc-${queue.type}-${file.path}`;
-                    const last = Number(await this.localDatabase.kvDB.get(key) || 0);
-                    if (queue.type == "DELETE") {
-                        await this.deleteFromDBbyPath(file.path);
-                    } else if (queue.type == "INTERNAL") {
-                        await this.watchVaultRawEventsAsync(file.path);
-                    } else {
-                        const targetFile = this.app.vault.getAbstractFileByPath(file.path);
-                        if (!(targetFile instanceof TFile)) {
-                            Logger(`Target file was not found: ${file.path}`, LOG_LEVEL.INFO);
-                            continue L1;
-                        }
-                        //TODO: check from cache time.
-                        if (file.mtime == last) {
-                            Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
-                            continue L1;
-                        }
-
-                        const cache = queue.args.cache;
-                        if (queue.type == "CREATE" || queue.type == "CHANGED") {
-                            if (!await this.updateIntoDB(targetFile, false, cache)) {
-                                Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL.INFO);
-                                // cancel running queues and remove one of atomic operation
-                                this.watchedFileEventQueue = [...procs, ...this.watchedFileEventQueue].filter(e => e.key != queue.key);
-                                continue L2;
-                            }
-                        }
-                        if (queue.type == "RENAME") {
-                            // Obsolete
-                            await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
+                    const cache = queue.args.cache;
+                    if (queue.type == "CREATE" || queue.type == "CHANGED") {
+                        if (!await this.updateIntoDB(targetFile, false, cache)) {
+                            Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL.INFO);
+                            // cancel running queues and remove one of atomic operation
+                            this.vaultManager.cancelRelativeEvent(queue);
+                            continue;
                         }
                     }
-                    await this.localDatabase.kvDB.set(key, file.mtime);
-                } while (procs.length > 0);
-            } while (this.watchedFileEventQueue.length != 0);
+                    if (queue.type == "RENAME") {
+                        // Obsolete
+                        await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
+                    }
+                }
+                await this.localDatabase.kvDB.set(key, file.mtime);
+            } while (this.vaultManager.getQueueLength() > 0);
             return true;
         })
         return ret;
     }
 
-    watchVaultCreate(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent([{ type: "CREATE", file }], ctx);
-    }
-
-    watchVaultChange(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent([{ type: "CHANGED", file }], ctx);
-    }
-
-    watchVaultDelete(file: TAbstractFile, ctx?: any) {
-        this.appendWatchEvent([{ type: "DELETE", file }], ctx);
-    }
-    watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
-        if (file instanceof TFile) {
-            this.appendWatchEvent([
-                { type: "CREATE", file },
-                { type: "DELETE", file: { path: oldFile, mtime: file.stat.mtime, ctime: file.stat.ctime, size: file.stat.size, deleted: true } }
-            ], ctx);
-        }
-    }
 
     watchWorkspaceOpen(file: TFile) {
         if (this.settings.suspendFileWatching) return;
@@ -1188,21 +963,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
     }
 
-    // Watch raw events (Internal API)
-    watchVaultRawEvents(path: string) {
-        if (!this.settings.syncInternalFiles) return;
-        if (!this.settings.watchInternalFileChanges) return;
-        if (!path.startsWith(this.app.vault.configDir)) return;
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
-        if (ignorePatterns.some(e => path.match(e))) return;
-        this.appendWatchEvent(
-            [{
-                type: "INTERNAL",
-                file: { path, mtime: 0, ctime: 0, size: 0 }
-            }], null);
-    }
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: string) {
         const stat = await this.app.vault.adapter.stat(path);
@@ -1571,7 +1331,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
     procInternalFile(filename: string) {
         this.procInternalFiles.push(filename);
-        setTrigger("procInternal", 500, async () => {
+        scheduleTask("procInternal", 500, async () => {
             await this.execInternalFile();
         });
     }
@@ -1600,7 +1360,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
         }
         this.queuedFiles = this.queuedFiles.filter((e) => !e.done);
-        this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
+        this.queuedFilesStore.apply((value) => ({ ...value, queuedItems: this.queuedFiles }));
         this.saveQueuedFiles();
     }
     parseIncomingChunk(chunk: PouchDB.Core.ExistingDocument<EntryDoc>) {
@@ -1673,7 +1433,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.saveQueuedFiles();
         this.procQueuedFiles();
     }
-    periodicSyncHandler: number = null;
 
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
@@ -1739,50 +1498,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             Logger("Everything is up to date.", LOG_LEVEL.NOTICE);
         }
     }
-
-    clearPeriodicSync() {
-        if (this.periodicSyncHandler != null) {
-            clearInterval(this.periodicSyncHandler);
-            this.periodicSyncHandler = null;
-        }
-    }
-
-    setPeriodicSync() {
-        this.clearPeriodicSync();
-        if (this.settings.periodicReplication && this.settings.periodicReplicationInterval > 0) {
-            this.periodicSyncHandler = this.setInterval(async () => await this.periodicSync(), Math.max(this.settings.periodicReplicationInterval, 30) * 1000);
-        }
-    }
-
-    async periodicSync() {
-        await this.replicate();
-    }
-
-    periodicPluginSweepHandler: number = null;
-
-    clearPluginSweep() {
-        if (this.periodicPluginSweepHandler != null) {
-            clearInterval(this.periodicPluginSweepHandler);
-            this.periodicPluginSweepHandler = null;
-        }
-    }
-
-    setPluginSweep() {
-        if (this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges) {
-            this.clearPluginSweep();
-            this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicPluginSweep(), PERIODIC_PLUGIN_SWEEP * 1000);
-        }
-    }
-
     async periodicPluginSweep() {
         await this.sweepPlugin(false);
     }
 
     async realizeSettingSyncMode() {
         this.localDatabase.closeReplication();
-        this.clearPeriodicSync();
-        this.clearPluginSweep();
-        this.clearInternalFileScan();
+        this.periodicSyncProcessor?.disable();
+        this.periodicPluginSweepProcessor?.disable();
+        this.periodicInternalFileScanProcessor?.disable();
         await this.applyBatchChange();
         // disable all sync temporary.
         if (this.suspended) return;
@@ -1795,9 +1519,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.syncInternalFiles) {
             await this.syncInternalFilesAndDatabase("safe", false);
         }
-        this.setPeriodicSync();
-        this.setPluginSweep();
-        this.setPeriodicInternalFileScan();
+        this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);
+        this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0)
+        this.periodicInternalFileScanProcessor.enable(this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0)
     }
 
     lastMessage = "";
@@ -1842,7 +1566,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             this.statusBar.title = e.syncStatus;
             let waiting = "";
             if (this.settings.batchSave) {
-                waiting = " " + this.watchedFileEventQueue.map((e) => "🛫").join("");
+                waiting = " " + "🛫".repeat(this.vaultManager.getQueueLength());
                 waiting = waiting.replace(/(🛫){10}/g, "🚀");
             }
             let queued = "";
@@ -3011,27 +2735,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
 
-    periodicInternalFileScanHandler: number = null;
-
-    clearInternalFileScan() {
-        if (this.periodicInternalFileScanHandler != null) {
-            clearInterval(this.periodicInternalFileScanHandler);
-            this.periodicInternalFileScanHandler = null;
-        }
-    }
-
-    setPeriodicInternalFileScan() {
-        if (this.periodicInternalFileScanHandler != null) {
-            this.clearInternalFileScan();
-        }
-        if (this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval > 0 && !this.settings.watchInternalFileChanges) {
-            this.periodicPluginSweepHandler = this.setInterval(async () => await this.periodicInternalFileScan(), this.settings.syncInternalFilesInterval * 1000);
-        }
-    }
-
-    async periodicInternalFileScan() {
-        await this.syncInternalFilesAndDatabase("push", false);
-    }
 
     async getFiles(
         path: string,
@@ -3539,14 +3242,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                             });
 
                             const updatedPluginKey = "popupUpdated-" + updatePluginId;
-                            setTrigger(updatedPluginKey, 1000, async () => {
+                            scheduleTask(updatedPluginKey, 1000, async () => {
                                 const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
                                 //@ts-ignore
                                 const isShown = popup?.noticeEl?.isShown();
                                 if (!isShown) {
                                     memoObject(updatedPluginKey, new Notice(fragment, 0))
                                 }
-                                setTrigger(updatedPluginKey + "-close", 20000, () => {
+                                scheduleTask(updatedPluginKey + "-close", 20000, () => {
                                     const popup = retrieveMemoObject<Notice>(updatedPluginKey)
                                     if (!popup) return;
                                     //@ts-ignore
@@ -3581,13 +3284,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         });
                     });
 
-                    setTrigger("popupUpdated-" + configDir, 1000, () => {
+                    scheduleTask("popupUpdated-" + configDir, 1000, () => {
                         //@ts-ignore
                         const isShown = this.confirmPopup?.noticeEl?.isShown();
                         if (!isShown) {
                             this.confirmPopup = new Notice(fragment, 0);
                         }
-                        setTrigger("popupClose" + configDir, 20000, () => {
+                        scheduleTask("popupClose" + configDir, 20000, () => {
                             this.confirmPopup?.hide();
                             this.confirmPopup = null;
                         })
@@ -3608,3 +3311,4 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
 }
+

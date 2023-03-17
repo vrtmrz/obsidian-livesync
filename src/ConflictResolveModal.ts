@@ -1,4 +1,4 @@
-import { App, Modal } from "obsidian";
+import { App, Modal } from "./deps";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
 import { diff_result } from "./lib/src/types";
 import { escapeStringToHTML } from "./lib/src/strbin";

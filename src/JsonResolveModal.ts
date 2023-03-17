@@ -1,4 +1,4 @@
-import { App, Modal } from "obsidian";
+import { App, Modal } from "./deps";
 import { LoadedEntry } from "./lib/src/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 

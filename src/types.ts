@@ -1,4 +1,4 @@
-import { PluginManifest, TFile } from "obsidian";
+import { PluginManifest, TFile } from "./deps";
 import { DatabaseEntry, EntryBody } from "./lib/src/types";
 
 export interface PluginDataEntry extends DatabaseEntry {
@@ -47,3 +47,27 @@ export type queueItem = {
     done?: boolean;
     warned?: boolean;
 };
+
+export type CacheData = string | ArrayBuffer;
+export type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME" | "INTERNAL";
+export type FileEventArgs = {
+    file: FileInfo | InternalFileInfo;
+    cache?: CacheData;
+    oldPath?: string;
+    ctx?: any;
+}
+export type FileEventItem = {
+    type: FileEventType,
+    args: FileEventArgs,
+    key: string,
+}
+
+export const CHeader = "h:";
+export const PSCHeader = "ps:";
+export const PSCHeaderEnd = "ps;";
+export const ICHeader = "i:";
+export const ICHeaderEnd = "i;";
+export const ICHeaderLength = ICHeader.length;
+
+export const FileWatchEventQueueMax = 10;
+export const configURIBase = "obsidian://setuplivesync?settings=";
