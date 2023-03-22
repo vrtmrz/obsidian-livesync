@@ -1,11 +1,12 @@
 const isDebug = false;
+
 import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest } from "./deps";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE } from "./lib/src/types";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, PluginManifest, RequestUrlParam, RequestUrlResponse, requestUrl } from "./deps";
+import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, InternalFileEntry, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, DatabaseConnectingStatus } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, InternalFileInfo, queueItem, CacheData, FileEventItem, configURIBase, FileWatchEventQueueMax, PSCHeader, PSCHeaderEnd, ICHeader, ICHeaderEnd } from "./types";
 import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { LocalPouchDB } from "./LocalPouchDB";
+import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
@@ -13,8 +14,8 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, disposeMemoObject, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, memoIfNotExist, memoObject, flattenObject, path2id, retrieveMemoObject, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, trimPrefix, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, filename2idInternalMetadata, id2filenameInternalMetadata, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched } from "./utils";
 import { decrypt, encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { PluginDialogModal } from "./dialogs";
-import { isCloudantURI, isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
-import { getGlobalStore, observeStores } from "./lib/src/store";
+import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
+import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore } from "./lib/src/stores";
 import { NewNotice, setNoticeClass, WrappedNotice } from "./lib/src/wrapper";
 import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
@@ -23,12 +24,21 @@ import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
+import { LiveSyncLocalDB, LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
+import { LiveSyncDBReplicator, LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
+import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 
 setNoticeClass(Notice);
 
-export default class ObsidianLiveSyncPlugin extends Plugin {
+
+
+export default class ObsidianLiveSyncPlugin extends Plugin
+    implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv {
+
     settings: ObsidianLiveSyncSettings;
-    localDatabase: LocalPouchDB;
+    localDatabase: LiveSyncLocalDB;
+    replicator: LiveSyncDBReplicator;
+
     statusBar: HTMLElement;
     statusBar2: HTMLElement;
     suspended: boolean;
@@ -41,6 +51,196 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     periodicSyncProcessor = new PeriodicProcessor(this, async () => await this.replicate());
     periodicPluginSweepProcessor = new PeriodicProcessor(this, async () => await this.sweepPlugin(false));
     periodicInternalFileScanProcessor = new PeriodicProcessor(this, async () => await this.syncInternalFilesAndDatabase("push", false));
+
+    // implementing interfaces
+    kvDB: KeyValueDatabase;
+    last_successful_post = false;
+    getLastPostFailedBySize() {
+        return !this.last_successful_post;
+    }
+
+    async fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
+        const ret = await requestUrl(request);
+        if (ret.status - (ret.status % 100) !== 200) {
+            const er: Error & { status?: number } = new Error(`Request Error:${ret.status}`);
+            if (ret.json) {
+                er.message = ret.json.reason;
+                er.name = `${ret.json.error ?? ""}:${ret.json.message ?? ""}`;
+            }
+            er.status = ret.status;
+            throw er;
+        }
+        return ret;
+    }
+    getDatabase(): PouchDB.Database<EntryDoc> {
+        return this.localDatabase.localDatabase;
+    }
+    getSettings(): ObsidianLiveSyncSettings {
+        return this.settings;
+    }
+    getIsMobile(): boolean {
+        return this.isMobile;
+    }
+
+    processReplication = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => this.parseReplicationResult(e);
+    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
+        if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
+        if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
+        if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
+        let authHeader = "";
+        if (auth.username && auth.password) {
+            const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${auth.username}:${auth.password}`));
+            const encoded = window.btoa(utf8str);
+            authHeader = "Basic " + encoded;
+        } else {
+            authHeader = "";
+        }
+        // const _this = this;
+
+        const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
+            adapter: "http",
+            auth,
+            fetch: async (url: string | Request, opts: RequestInit) => {
+                let size = "";
+                const localURL = url.toString().substring(uri.length);
+                const method = opts.method ?? "GET";
+                if (opts.body) {
+                    const opts_length = opts.body.toString().length;
+                    if (opts_length > 1000 * 1000 * 10) {
+                        // over 10MB
+                        if (isCloudantURI(uri)) {
+                            this.last_successful_post = false;
+                            Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
+                            throw new Error("This request should fail on IBM Cloudant.");
+                        }
+                    }
+                    size = ` (${opts_length})`;
+                }
+
+                if (!disableRequestURI && typeof url == "string" && typeof (opts.body ?? "") == "string") {
+                    const body = opts.body as string;
+
+                    const transformedHeaders = { ...(opts.headers as Record<string, string>) };
+                    if (authHeader != "") transformedHeaders["authorization"] = authHeader;
+                    delete transformedHeaders["host"];
+                    delete transformedHeaders["Host"];
+                    delete transformedHeaders["content-length"];
+                    delete transformedHeaders["Content-Length"];
+                    const requestParam: RequestUrlParam = {
+                        url: url as string,
+                        method: opts.method,
+                        body: body,
+                        headers: transformedHeaders,
+                        contentType: "application/json",
+                        // contentType: opts.headers,
+                    };
+
+                    try {
+                        const r = await this.fetchByAPI(requestParam);
+                        if (method == "POST" || method == "PUT") {
+                            this.last_successful_post = r.status - (r.status % 100) == 200;
+                        } else {
+                            this.last_successful_post = true;
+                        }
+                        Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.DEBUG);
+
+                        return new Response(r.arrayBuffer, {
+                            headers: r.headers,
+                            status: r.status,
+                            statusText: `${r.status}`,
+                        });
+                    } catch (ex) {
+                        Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                        // limit only in bulk_docs.
+                        if (url.toString().indexOf("_bulk_docs") !== -1) {
+                            this.last_successful_post = false;
+                        }
+                        Logger(ex);
+                        throw ex;
+                    }
+                }
+
+                // -old implementation
+
+                try {
+                    const response: Response = await fetch(url, opts);
+                    if (method == "POST" || method == "PUT") {
+                        this.last_successful_post = response.ok;
+                    } else {
+                        this.last_successful_post = true;
+                    }
+                    Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL.DEBUG);
+                    return response;
+                } catch (ex) {
+                    Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                    // limit only in bulk_docs.
+                    if (url.toString().indexOf("_bulk_docs") !== -1) {
+                        this.last_successful_post = false;
+                    }
+                    Logger(ex);
+                    throw ex;
+                }
+                // return await fetch(url, opts);
+            },
+        };
+
+        const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
+        if (passphrase !== "false" && typeof passphrase === "string") {
+            enableEncryption(db, passphrase, useDynamicIterationCount);
+        }
+        try {
+            const info = await db.info();
+            return { db: db, info: info };
+        } catch (ex) {
+            let msg = `${ex.name}:${ex.message}`;
+            if (ex.name == "TypeError" && ex.message == "Failed to fetch") {
+                msg += "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
+            }
+            Logger(ex, LOG_LEVEL.VERBOSE);
+            return msg;
+        }
+    }
+
+    id2path(filename: string): string {
+        return id2path(filename);
+    }
+    path2id(filename: string): string {
+        return path2id(filename);
+    }
+    createPouchDBInstance<T>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
+        if (this.settings.useIndexedDBAdapter) {
+            options.adapter = "indexeddb";
+            return new PouchDB(name + "-indexeddb", options);
+        }
+        return new PouchDB(name, options);
+    }
+    beforeOnUnload(db: LiveSyncLocalDB): void {
+        this.kvDB.close();
+    }
+    onClose(db: LiveSyncLocalDB): void {
+        this.kvDB.close();
+    }
+    async onInitializeDatabase(db: LiveSyncLocalDB): Promise<void> {
+        this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
+        this.replicator = new LiveSyncDBReplicator(this);
+    }
+    async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
+        await this.kvDB.destroy();
+        this.replicator = new LiveSyncDBReplicator(this);
+    }
+    getReplicator() {
+        return this.replicator;
+    }
+    replicationStat = new ObservableStore({
+        sent: 0,
+        arrived: 0,
+        maxPullSeq: 0,
+        maxPushSeq: 0,
+        lastSyncPullSeq: 0,
+        lastSyncPushSeq: 0,
+        syncStatus: "CLOSED" as DatabaseConnectingStatus
+    });
+    // end interfaces
 
     getVaultName(): string {
         return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
@@ -87,11 +287,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     showHistory(file: TFile | string) {
-        if (!this.settings.useHistory) {
-            Logger("You have to enable Use History in misc.", LOG_LEVEL.NOTICE);
-        } else {
-            new DocumentHistoryModal(this.app, this, file).open();
-        }
+        new DocumentHistoryModal(this.app, this, file).open();
     }
 
     async fileHistory() {
@@ -230,7 +426,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.realizeSettingSyncMode();
                 this.registerWatchEvents();
                 if (this.settings.syncOnStart) {
-                    this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                    this.replicator.openReplication(this.settings, false, false);
                 }
                 this.scanStat();
             } catch (ex) {
@@ -304,7 +500,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const result = await askYesNo(this.app, "Importing LiveSync's conf, OK?");
                 if (result == "yes") {
                     const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
-                    this.localDatabase.closeReplication();
+                    this.replicator.closeReplication();
                     this.settings.suspendFileWatching = true;
                     console.dir(newSettingW);
                     // Back into the default method once.
@@ -626,7 +822,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             id: "livesync-abortsync",
             name: "Abort synchronization immediately",
             callback: () => {
-                this.localDatabase.terminateSync();
+                this.replicator.terminateSync();
             },
         })
 
@@ -660,7 +856,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         this.periodicPluginSweepProcessor?.disable();
         this.periodicInternalFileScanProcessor?.disable();
         if (this.localDatabase != null) {
-            this.localDatabase.closeReplication();
+            this.replicator.closeReplication();
             this.localDatabase.close();
         }
         cancelAllPeriodicTask();
@@ -675,8 +871,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const vaultName = this.getVaultName();
         Logger("Waiting for ready...");
         //@ts-ignore
-        const isMobile = this.app.isMobile;
-        this.localDatabase = new LocalPouchDB(this.settings, vaultName, isMobile);
+        this.isMobile = this.app.isMobile;
+        this.localDatabase = new LiveSyncLocalDB(vaultName, this);
         this.observeForLogs();
         return await this.localDatabase.initializeDatabase();
     }
@@ -861,7 +1057,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const isHidden = document.hidden;
         await this.applyBatchChange();
         if (isHidden) {
-            this.localDatabase.closeReplication();
+            this.replicator.closeReplication();
             this.periodicSyncProcessor?.disable();
         } else {
             // suspend all temporary.
@@ -870,10 +1066,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 await this.sweepPlugin(false);
             }
             if (this.settings.liveSync) {
-                this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+                this.replicator.openReplication(this.settings, true, false);
             }
             if (this.settings.syncOnStart) {
-                this.localDatabase.openReplication(this.settings, false, false, this.parseReplicationResult);
+                this.replicator.openReplication(this.settings, false, false);
             }
             this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);
         }
@@ -899,7 +1095,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 if (queue === undefined) break;
                 const file = queue.args.file;
                 const key = `file-last-proc-${queue.type}-${file.path}`;
-                const last = Number(await this.localDatabase.kvDB.get(key) || 0);
+                const last = Number(await this.kvDB.get(key) || 0);
                 if (queue.type == "DELETE") {
                     await this.deleteFromDBbyPath(file.path);
                 } else if (queue.type == "INTERNAL") {
@@ -930,7 +1126,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                         await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
                     }
                 }
-                await this.localDatabase.kvDB.set(key, file.mtime);
+                await this.kvDB.set(key, file.mtime);
             } while (this.vaultManager.getQueueLength() > 0);
             return true;
         })
@@ -1456,7 +1652,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }
             if (change.type == "versioninfo") {
                 if (change.version > VER) {
-                    this.localDatabase.closeReplication();
+                    this.replicator.closeReplication();
                     Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL.NOTICE);
                 }
             }
@@ -1503,10 +1699,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async realizeSettingSyncMode() {
-        this.localDatabase.closeReplication();
+        this.replicator.closeReplication();
         this.periodicSyncProcessor?.disable();
         this.periodicPluginSweepProcessor?.disable();
         this.periodicInternalFileScanProcessor?.disable();
+        this.localDatabase.refreshSettings();
         await this.applyBatchChange();
         // disable all sync temporary.
         if (this.suspended) return;
@@ -1514,7 +1711,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             await this.sweepPlugin(false);
         }
         if (this.settings.liveSync) {
-            this.localDatabase.openReplication(this.settings, true, false, this.parseReplicationResult);
+            this.replicator.openReplication(this.settings, true, false);
         }
         if (this.settings.syncInternalFiles) {
             await this.syncInternalFilesAndDatabase("safe", false);
@@ -1528,7 +1725,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     observeForLogs() {
         const observer__ = observeStores(this.queuedFilesStore, lockStore);
-        const observer = observeStores(observer__, this.localDatabase.stat);
+        const observer = observeStores(observer__, this.replicationStat);
 
         observer.observe(e => {
             const sent = e.sent;
@@ -1649,7 +1846,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.syncInternalFiles && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
             await this.syncInternalFilesAndDatabase("push", showMessage);
         }
-        return await this.localDatabase.openReplication(this.settings, false, showMessage, this.parseReplicationResult);
+        return await this.replicator.openReplication(this.settings, false, showMessage);
     }
 
     async initializeDatabase(showingNotice?: boolean, reopenDatabase = true) {
@@ -1694,23 +1891,23 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         if (this.settings.autoSweepPlugins) {
             await this.sweepPlugin(showingNotice);
         }
-        return await this.localDatabase.replicateAllToServer(this.settings, showingNotice);
+        return await this.replicator.replicateAllToServer(this.settings, showingNotice);
     }
     async replicateAllFromServer(showingNotice?: boolean) {
         if (!this.isReady) return false;
-        return await this.localDatabase.replicateAllFromServer(this.settings, this.parseReplicationResult, showingNotice);
+        return await this.replicator.replicateAllFromServer(this.settings, showingNotice);
     }
 
     async markRemoteLocked() {
-        return await this.localDatabase.markRemoteLocked(this.settings, true);
+        return await this.replicator.markRemoteLocked(this.settings, true);
     }
 
     async markRemoteUnlocked() {
-        return await this.localDatabase.markRemoteLocked(this.settings, false);
+        return await this.replicator.markRemoteLocked(this.settings, false);
     }
 
     async markRemoteResolved() {
-        return await this.localDatabase.markRemoteResolved(this.settings);
+        return await this.replicator.markRemoteResolved(this.settings);
     }
 
     async syncAllFiles(showingNotice?: boolean) {
@@ -1737,7 +1934,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
 
         Logger("Opening the key-value database", LOG_LEVEL.VERBOSE);
-        const isInitialized = await (this.localDatabase.kvDB.get<boolean>("initialized")) || false;
+        const isInitialized = await (this.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.
         if (filesDatabase.length == 0 && !isInitialized) {
             initialScan = true;
@@ -1794,7 +1991,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         }
         if (!initialScan) {
             let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
-            caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
+            caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
             const docsCount = syncFiles.length;
             do {
                 const syncFilesX = syncFiles.splice(0, 100);
@@ -1804,13 +2001,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     caches = await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
                 });
             } while (syncFiles.length > 0);
-            await this.localDatabase.kvDB.set("diff-caches", caches);
+            await this.kvDB.set("diff-caches", caches);
         }
 
         this.setStatusBarText(`NOW TRACKING!`);
         Logger("Initialized, NOW TRACKING!");
         if (!isInitialized) {
-            await (this.localDatabase.kvDB.set("initialized", true))
+            await (this.kvDB.set("initialized", true))
         }
         if (showingNotice) {
             Logger("Initialize done!", LOG_LEVEL.NOTICE, "syncAll");
@@ -2548,11 +2745,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     async tryResetRemoteDatabase() {
-        await this.localDatabase.tryResetRemoteDatabase(this.settings);
+        await this.replicator.tryResetRemoteDatabase(this.settings);
     }
 
     async tryCreateRemoteDatabase() {
-        await this.localDatabase.tryCreateRemoteDatabase(this.settings);
+        await this.replicator.tryCreateRemoteDatabase(this.settings);
     }
 
     async getPluginList(): Promise<{ plugins: PluginList; allPlugins: DevicePluginList; thisDevicePlugins: DevicePluginList }> {
@@ -3138,7 +3335,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         const semaphore = Semaphore(10);
         // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
         let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
-        caches = await this.localDatabase.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches-internal") || {};
+        caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches-internal") || {};
         for (const filename of allFileNames) {
             processed++;
             if (processed % 100 == 0) Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
@@ -3201,7 +3398,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             }));
         }
         await Promise.all(p);
-        await this.localDatabase.kvDB.set("diff-caches-internal", caches);
+        await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.
         if (direction == "pull" && filesChanged != 0) {

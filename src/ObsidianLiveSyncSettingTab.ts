@@ -35,7 +35,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.localDatabase.isMobile);
+        const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile);
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
@@ -141,8 +141,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.syncOnSave) return true;
             if (this.plugin.settings.syncOnStart) return true;
             if (this.plugin.settings.syncAfterMerge) return true;
-            if (this.plugin.localDatabase.syncStatus == "CONNECTED") return true;
-            if (this.plugin.localDatabase.syncStatus == "PAUSED") return true;
+            if (this.plugin.replicator.syncStatus == "CONNECTED") return true;
+            if (this.plugin.replicator.syncStatus == "PAUSED") return true;
             return false;
         };
         let inWizard = false;
@@ -154,7 +154,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .addButton((text) => {
                 text.setButtonText("Next").onClick(() => {
                     if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
-                        this.plugin.localDatabase.closeReplication();
+                        this.plugin.replicator.closeReplication();
                         this.plugin.settings = { ...DEFAULT_SETTINGS };
                         this.plugin.saveSettings();
 
@@ -179,7 +179,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     this.plugin.settings.syncOnStart = false;
                     this.plugin.settings.syncOnFileOpen = false;
                     this.plugin.settings.syncAfterMerge = false;
-                    this.plugin.localDatabase.closeReplication();
+                    this.plugin.replicator.closeReplication();
                     await this.plugin.saveSettings();
                     containerEl.addClass("isWizard");
                     applyDisplayEnabled();
@@ -372,7 +372,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 useDynamicIterationCount: useDynamicIterationCount,
             };
             console.dir(settingForCheck);
-            const db = await this.plugin.localDatabase.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.localDatabase.isMobile);
+            const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile);
             if (typeof db === "string") {
                 Logger("Could not connect to the database.", LOG_LEVEL.NOTICE);
                 return false;
@@ -1552,7 +1552,7 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             );
 
-        if (this.plugin.localDatabase.remoteLockedAndDeviceNotAccepted) {
+        if (this.plugin.replicator.remoteLockedAndDeviceNotAccepted) {
             const c = containerHatchEl.createEl("div", {
                 text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. it caused by some operations like this. re-initialized. Local database initialization should be required. please back your vault up, reset local database, and press 'Mark this device as resolved'. ",
             });
@@ -1565,7 +1565,7 @@ ${stringifyYaml(pluginConfig)}`;
             });
             c.addClass("op-warn");
         } else {
-            if (this.plugin.localDatabase.remoteLocked) {
+            if (this.plugin.replicator.remoteLocked) {
                 const c = containerHatchEl.createEl("div", {
                     text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
                 });
