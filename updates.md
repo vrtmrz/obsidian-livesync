@@ -58,5 +58,7 @@
     - Unused logic has been removed.
     - Some utility functions have been moved into suitable files.
     - Function names have been renamed.
+- 0.17.33
+  - Maintenance update: Refactored; the responsibilities that `LocalDatabase` had were shared. (Hoping) No changes in behaviour.
 
 ... To continue on to `updates_old.md`.
