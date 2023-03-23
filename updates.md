@@ -10,40 +10,7 @@
     - Chunk ID numbering rules
 
 #### Minors
-- __0.17.1 to 0.17.25 has been moved into `update_old.md`__
-- 0.17.26
-  - Fixed(Urgent):
-    - The modified document will be reflected in the storage now.
-- 0.17.27
-  - Improved:
-    - Now, the filename of the conflicted settings will be shown on the merging dialogue
-    - The plugin data can be resolved when conflicted.
-    - The semaphore status display has been changed to count only.
-    - Applying to the storage will be concurrent with a few files.
-- 0.17.28
-  -Fixed:
-    - Some messages have been refined.
-    - Boot sequence has been speeded up.
-    - Opening the local database multiple times in a short duration has been suppressed.
-    - Older migration logic. 
-      - Note: If you have used 0.10.0 or lower and have not upgraded, you will need to run 0.17.27 or earlier once or reinstall Obsidian.
-- 0.17.29
-  - Fixed:
-    - Requests of reading chunks online are now split into a reasonable(and configurable) size.
-    - No longer error message will be shown on Linux devices with hidden file synchronisation.
-  - Improved:
-    - The interval of reading chunks online is now configurable.
-    - Boot sequence has been speeded up, more.
-  - Misc:
-    - Messages on the boot sequence will now be more detailed. If you want to see them, please enable the verbose log.
-    - Logs became be kept for 1000 lines while the verbose log is enabled.
-- 0.17.30
-  - Implemented:
-    - `Resolve all conflicted files` has been implemented.
-  - Fixed:
-    - Fixed a problem about reading chunks online when a file has more chunks than the concurrency limit.
-  - Rollbacked:
-    - Logs are kept only for 100 lines, again.
+- __0.17.1 to 0.17.30 has been moved into `update_old.md`__
 - 0.17.31
   - Fixed:
     - Now `redflag3` can be run surely.
@@ -60,5 +27,7 @@
     - Function names have been renamed.
 - 0.17.33
   - Maintenance update: Refactored; the responsibilities that `LocalDatabase` had were shared. (Hoping) No changes in behaviour.
-
+- 0.17.34
+  - Fixed: The `Fetch` that was broken at 0.17.33 has been fixed.
+  - Refactored again: Internal file sync, plug-in sync and Set up URI have been moved into each file.
 ... To continue on to `updates_old.md`.
