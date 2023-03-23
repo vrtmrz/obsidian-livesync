@@ -464,8 +464,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             await delay(2000);
             if (method == "localOnly") {
                 await this.plugin.resetLocalDatabase();
+                await delay(1000);
                 await this.plugin.markRemoteResolved();
-                await this.plugin.replicate(true);
+                await this.plugin.openDatabase();
+                this.plugin.isReady = true;
+                await this.plugin.replicateAllFromServer(true);
             }
             if (method == "remoteOnly") {
                 await this.plugin.markRemoteLocked();
@@ -475,6 +478,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             if (method == "rebuildBothByThisDevice") {
                 await this.plugin.resetLocalDatabase();
+                await delay(1000);
                 await this.plugin.initializeDatabase(true);
                 await this.plugin.markRemoteLocked();
                 await this.plugin.tryResetRemoteDatabase();
@@ -1150,7 +1154,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        const filesAll = await this.plugin.scanInternalFiles();
+                        const filesAll = await this.plugin.addOnHiddenFileSync.scanInternalFiles();
                         const targetFiles = await this.plugin.filterTargetFiles(filesAll);
                         const now = Date.now();
                         const newFiles = targetFiles.map(e => ({ ...e, mtime: now }));
@@ -1717,7 +1721,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .setButtonText("Open")
                     .setDisabled(false)
                     .onClick(() => {
-                        this.plugin.showPluginSyncModal();
+                        this.plugin.addOnPluginAndTheirSettings.showPluginSyncModal();
                     });
             });
 

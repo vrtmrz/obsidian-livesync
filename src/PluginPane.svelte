@@ -1,8 +1,9 @@
 <script lang="ts">
-    import ObsidianLiveSyncPlugin from "./main";
     import { onMount } from "svelte";
     import { DevicePluginList, PluginDataEntry } from "./types";
     import { versionNumberString2Number } from "./lib/src/strbin";
+    import ObsidianLiveSyncPlugin from "./main";
+    import { PluginAndTheirSettings } from "./CmdPluginAndTheirSettings";
 
     type JudgeResult = "" | "NEWER" | "EVEN" | "EVEN_BUT_DIFFERENT" | "OLDER" | "REMOTE_ONLY";
 
@@ -21,6 +22,13 @@
     let showOwnPlugins = false;
     let targetList: { [key: string]: boolean } = {};
 
+    let addOn: PluginAndTheirSettings;
+    $: {
+        const f = plugin.addOns.filter((e) => e instanceof PluginAndTheirSettings);
+        if (f && f.length > 0) {
+            addOn = f[0] as PluginAndTheirSettings;
+        }
+    }
     function saveTargetList() {
         window.localStorage.setItem("ols-plugin-targetlist", JSON.stringify(targetList));
     }
@@ -39,7 +47,7 @@
     }
 
     async function updateList() {
-        let x = await plugin.getPluginList();
+        let x = await addOn.getPluginList();
         ownPlugins = x.thisDevicePlugins;
         plugins = Object.values(x.allPlugins);
         let targetListItems = Array.from(new Set(plugins.map((e) => e.deviceVaultName + "---" + e.manifest.id)));
@@ -62,7 +70,13 @@
             if (!(p.deviceVaultName in deviceAndPlugins)) {
                 deviceAndPlugins[p.deviceVaultName] = [];
             }
-            let dispInfo: PluginDataEntryDisp = { ...p, versionInfo: "", mtimeInfo: "", versionFlag: "", mtimeFlag: "" };
+            let dispInfo: PluginDataEntryDisp = {
+                ...p,
+                versionInfo: "",
+                mtimeInfo: "",
+                versionFlag: "",
+                mtimeFlag: "",
+            };
             dispInfo.versionInfo = p.manifest.version;
             let x = new Date().getTime() / 1000;
             let mtime = p.mtime / 1000;
@@ -157,7 +171,7 @@
     async function sweepPlugins() {
         //@ts-ignore
         await plugin.app.plugins.loadManifests();
-        await plugin.sweepPlugin(true);
+        await addOn.sweepPlugin(true);
         updateList();
     }
 
@@ -169,9 +183,9 @@
                     const entry = deviceAndPlugins[deviceAndVault].find((e) => e.manifest.id == id);
                     if (entry) {
                         if (opt == "plugin") {
-                            if (entry.versionFlag != "EVEN") await plugin.applyPlugin(entry);
+                            if (entry.versionFlag != "EVEN") await addOn.applyPlugin(entry);
                         } else if (opt == "setting") {
-                            if (entry.mtimeFlag != "EVEN") await plugin.applyPluginData(entry);
+                            if (entry.mtimeFlag != "EVEN") await addOn.applyPluginData(entry);
                         }
                     }
                 }
@@ -179,12 +193,12 @@
         }
         //@ts-ignore
         await plugin.app.plugins.loadManifests();
-        await plugin.sweepPlugin(true);
+        await addOn.sweepPlugin(true);
         updateList();
     }
 
     async function checkUpdates() {
-        await plugin.checkPluginUpdate();
+        await addOn.checkPluginUpdate();
     }
     async function replicateAndRefresh() {
         await plugin.replicate(true);
