@@ -56,7 +56,8 @@ If you answered `No` to both, your databases will be rebuilt by the content on y
 
 ## Test Server
 
-~~Setting up an instance of Cloudant or local CouchDB is a little complicated, so I set up a [Tasting server for self-hosted-livesync](https://olstaste.vrtmrz.net/). Try it out for free!~~ Now (30 May 2023) is suspending while the server transfer.
+~~Setting up an instance of Cloudant or local CouchDB is a little complicated, so I set up a [Tasting server for self-hosted-livesync](https://olstaste.vrtmrz.net/). Try it out for free!~~   
+Now (30 May 2023) is suspending while the server transfer.  
 Note: Please read "Limitations" carefully. Do not send your private vault.
 
 ## Information in StatusBar
