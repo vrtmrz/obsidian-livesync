@@ -1,15 +1,15 @@
 import { App, Modal } from "./deps";
-import { LoadedEntry } from "./lib/src/types";
+import { FilePath, LoadedEntry } from "./lib/src/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;
-    filename: string;
+    filename: FilePath;
     callback: (keepRev: string, mergedStr?: string) => Promise<void>;
     docs: LoadedEntry[];
     component: JsonResolvePane;
 
-    constructor(app: App, filename: string, docs: LoadedEntry[], callback: (keepRev: string, mergedStr?: string) => Promise<void>) {
+    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev: string, mergedStr?: string) => Promise<void>) {
         super(app);
         this.callback = callback;
         this.filename = filename;
@@ -31,6 +31,7 @@ export class JsonResolveModal extends Modal {
                 target: contentEl,
                 props: {
                     docs: this.docs,
+                    filename: this.filename,
                     callback: (keepRev, mergedStr) => this.UICallback(keepRev, mergedStr),
                 },
             });

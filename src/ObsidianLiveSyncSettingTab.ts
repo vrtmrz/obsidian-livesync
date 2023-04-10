@@ -1,6 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
 import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, ConfigPassphraseStore, RemoteDBSettings } from "./lib/src/types";
-import { path2id, id2path } from "./utils";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -75,7 +74,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 <label class='sls-setting-label c-40'><input type='radio' name='disp' value='40' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔧</div></label>
 <label class='sls-setting-label c-50 wizardHidden'><input type='radio' name='disp' value='50' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🧰</div></label>
 <label class='sls-setting-label c-60 wizardHidden'><input type='radio' name='disp' value='60' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🔌</div></label>
-<label class='sls-setting-label c-70 wizardHidden'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>
+<!-- <label class='sls-setting-label c-70 wizardHidden'><input type='radio' name='disp' value='70' class='sls-setting-tab' ><div class='sls-setting-menu-btn'>🚑</div></label>-->
         `;
         const menuTabs = w.querySelectorAll(".sls-setting-label");
         const changeDisplay = (screen: string) => {
@@ -88,11 +87,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             w.querySelectorAll(`.sls-setting-label`).forEach((element) => {
                 element.removeClass("selected");
-                (element.querySelector("input[type=radio]") as HTMLInputElement).checked = false;
+                (element.querySelector<HTMLInputElement>("input[type=radio]")).checked = false;
             });
             w.querySelectorAll(`.sls-setting-label.c-${screen}`).forEach((element) => {
                 element.addClass("selected");
-                (element.querySelector("input[type=radio]") as HTMLInputElement).checked = true;
+                (element.querySelector<HTMLInputElement>("input[type=radio]")).checked = true;
             });
             this.selectedScreen = screen;
         };
@@ -307,11 +306,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         this.plugin.settings.encrypt = value;
                         passphraseSetting.setDisabled(!value);
                         dynamicIteration.setDisabled(!value);
+                        usePathObfuscationEl.setDisabled(!value);
                         await this.plugin.saveSettings();
                     } else {
                         encrypt = value;
                         passphraseSetting.setDisabled(!value);
                         dynamicIteration.setDisabled(!value);
+                        usePathObfuscationEl.setDisabled(!value);
                         await this.plugin.saveSettings();
                         markDirtyControl();
                     }
@@ -322,7 +323,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const markDirtyControl = () => {
             passphraseSetting.controlEl.toggleClass("sls-item-dirty", passphrase != this.plugin.settings.passphrase);
             e2e.controlEl.toggleClass("sls-item-dirty", encrypt != this.plugin.settings.encrypt);
-            dynamicIteration.controlEl.toggleClass("sls-item-dirty", useDynamicIterationCount != this.plugin.settings.useDynamicIterationCount)
+            dynamicIteration.controlEl.toggleClass("sls-item-dirty", useDynamicIterationCount != this.plugin.settings.useDynamicIterationCount);
+            usePathObfuscationEl.controlEl.toggleClass("sls-item-dirty", usePathObfuscation != this.plugin.settings.usePathObfuscation);
         }
 
         const passphraseSetting = new Setting(containerRemoteDatabaseEl)
@@ -344,6 +346,23 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "password");
             });
         passphraseSetting.setDisabled(!encrypt);
+
+        let usePathObfuscation = this.plugin.settings.usePathObfuscation;
+        const usePathObfuscationEl = new Setting(containerRemoteDatabaseEl)
+            .setName("Path Obfuscation")
+            .setDesc("(Experimental) Obfuscate paths of files. If we configured, we should rebuild the database.")
+            .addToggle((toggle) =>
+                toggle.setValue(usePathObfuscation).onChange(async (value) => {
+                    if (inWizard) {
+                        this.plugin.settings.usePathObfuscation = value;
+                        await this.plugin.saveSettings();
+                    } else {
+                        usePathObfuscation = value;
+                        await this.plugin.saveSettings();
+                        markDirtyControl();
+                    }
+                })
+            );
 
         const dynamicIteration = new Setting(containerRemoteDatabaseEl)
             .setName("Use dynamic iteration count (experimental)")
@@ -410,6 +429,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.encrypt = encrypt;
             this.plugin.settings.passphrase = passphrase;
             this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
+            this.plugin.settings.usePathObfuscation = usePathObfuscation;
 
             await this.plugin.saveSettings();
             markDirtyControl();
@@ -430,25 +450,45 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .setClass("wizardHidden")
             .addButton((button) =>
                 button
-                    .setButtonText("Apply")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await applyEncryption(true);
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Apply w/o rebuilding")
+                    .setButtonText("Just apply")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await applyEncryption(false);
                     })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and Fetch")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await rebuildDB("localOnly");
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and Rebuild")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await rebuildDB("rebuildBothByThisDevice");
+                    })
             );
 
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
+            if (encrypt && passphrase == "") {
+                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (encrypt && !(await testCrypt())) {
+                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
+                return;
+            }
+            if (!encrypt) {
+                passphrase = "";
+            }
             this.plugin.settings.liveSync = false;
             this.plugin.settings.periodicReplication = false;
             this.plugin.settings.syncOnSave = false;
@@ -457,10 +497,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.syncAfterMerge = false;
             this.plugin.settings.syncInternalFiles = false;
             this.plugin.settings.usePluginSync = false;
+            this.plugin.settings.encrypt = encrypt;
+            this.plugin.settings.passphrase = passphrase;
+            this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
+            this.plugin.settings.usePathObfuscation = usePathObfuscation;
             Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
             await this.plugin.saveSettings();
-
+            markDirtyControl();
             applyDisplayEnabled();
+            // @ts-ignore
+            this.plugin.app.setting.close()
             await delay(2000);
             if (method == "localOnly") {
                 await this.plugin.resetLocalDatabase();
@@ -1729,72 +1775,75 @@ ${stringifyYaml(pluginConfig)}`;
 
         addScreenElement("60", containerPluginSettings);
 
-        const containerCorruptedDataEl = containerEl.createDiv();
+        // const containerCorruptedDataEl = containerEl.createDiv();
 
-        containerCorruptedDataEl.createEl("h3", { text: "Corrupted or missing data" });
-        containerCorruptedDataEl.createEl("h4", { text: "Corrupted" });
-        if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
-            const cx = containerCorruptedDataEl.createEl("div", { text: "If you have a copy of these files on any device, simply edit them once and sync. If not, there's nothing we can do except deleting them. sorry.." });
-            for (const k in this.plugin.localDatabase.corruptedEntries) {
-                const xx = cx.createEl("div", { text: `${k}` });
+        // containerCorruptedDataEl.createEl("h3", { text: "Corrupted or missing data" });
+        // containerCorruptedDataEl.createEl("h4", { text: "Corrupted" });
+        // if (Object.keys(this.plugin.localDatabase.corruptedEntries).length > 0) {
+        //     const cx = containerCorruptedDataEl.createEl("div", { text: "If you have a copy of these files on any device, simply edit them once and sync. If not, there's nothing we can do except deleting them. sorry.." });
+        //     for (const k in this.plugin.localDatabase.corruptedEntries) {
+        //         const xx = cx.createEl("div", { text: `${k}` });
 
-                const ba = xx.createEl("button", { text: `Delete this` }, (e) => {
-                    e.addEventListener("click", async () => {
-                        await this.plugin.localDatabase.deleteDBEntry(k);
-                        xx.remove();
-                    });
-                });
-                ba.addClass("mod-warning");
-                xx.createEl("button", { text: `Restore from file` }, (e) => {
-                    e.addEventListener("click", async () => {
-                        const f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
-                        if (f.length == 0) {
-                            Logger("Not found in vault", LOG_LEVEL.NOTICE);
-                            return;
-                        }
-                        await this.plugin.updateIntoDB(f[0]);
-                        xx.remove();
-                    });
-                });
-                xx.addClass("mod-warning");
-            }
-        } else {
-            containerCorruptedDataEl.createEl("div", { text: "There is no corrupted data." });
-        }
-        containerCorruptedDataEl.createEl("h4", { text: "Missing or waiting" });
-        if (Object.keys(this.plugin.queuedFiles).length > 0) {
-            const cx = containerCorruptedDataEl.createEl("div", {
-                text: "These files have missing or waiting chunks. Perhaps these chunks will arrive in a while after replication. But if they don't, you have to restore it's database entry from a existing local file by hitting the button below.",
-            });
-            const files = [...new Set([...this.plugin.queuedFiles.map((e) => e.entry._id)])];
-            for (const k of files) {
-                const xx = cx.createEl("div", { text: `${id2path(k)}` });
+        //         const ba = xx.createEl("button", { text: `Delete this` }, (e) => {
+        //             e.addEventListener("click", async () => {
+        //                 await this.plugin.localDatabase.deleteDBEntry(k as string as FilePathWithPrefix /* should be explained */);
+        //                 xx.remove();
+        //             });
+        //         });
+        //         ba.addClass("mod-warning");
+        //         //TODO: FIX LATER
+        //         // xx.createEl("button", { text: `Restore from file` }, (e) => {
+        //         //     e.addEventListener("click", async () => {
+        //         //         const f = await this.app.vault.getFiles().filter((e) => this.plugin.path2id(e.path) == k);
+        //         //         if (f.length == 0) {
+        //         //             Logger("Not found in vault", LOG_LEVEL.NOTICE);
+        //         //             return;
+        //         //         }
+        //         //         await this.plugin.updateIntoDB(f[0]);
+        //         //         xx.remove();
+        //         //     });
+        //         // });
+        //         // xx.addClass("mod-warning");
+        //     }
+        // } else {
+        //     containerCorruptedDataEl.createEl("div", { text: "There is no corrupted data." });
+        // }
+        // containerCorruptedDataEl.createEl("h4", { text: "Missing or waiting" });
+        // if (Object.keys(this.plugin.queuedFiles).length > 0) {
+        //     const cx = containerCorruptedDataEl.createEl("div", {
+        //         text: "These files have missing or waiting chunks. Perhaps these chunks will arrive in a while after replication. But if they don't, you have to restore it's database entry from a existing local file by hitting the button below.",
+        //     });
+        //     const files = [...new Set([...this.plugin.queuedFiles.map((e) => e.entry._id)])];
+        //     for (const k of files) {
+        //         const xx = cx.createEl("div", { text: `${this.plugin.id2path(k)}` });
 
-                const ba = xx.createEl("button", { text: `Delete this` }, (e) => {
-                    e.addEventListener("click", async () => {
-                        await this.plugin.localDatabase.deleteDBEntry(k);
-                        xx.remove();
-                    });
-                });
-                ba.addClass("mod-warning");
-                xx.createEl("button", { text: `Restore from file` }, (e) => {
-                    e.addEventListener("click", async () => {
-                        const f = await this.app.vault.getFiles().filter((e) => path2id(e.path) == k);
-                        if (f.length == 0) {
-                            Logger("Not found in vault", LOG_LEVEL.NOTICE);
-                            return;
-                        }
-                        await this.plugin.updateIntoDB(f[0]);
-                        xx.remove();
-                    });
-                });
-                xx.addClass("mod-warning");
-            }
-        } else {
-            containerCorruptedDataEl.createEl("div", { text: "There is no missing or waiting chunk." });
-        }
+        //         const ba = xx.createEl("button", { text: `Delete this` }, (e) => {
+        //             e.addEventListener("click", async () => {
+        //                 await this.plugin.localDatabase.deleteDBEntry(k);
+        //                 xx.remove();
+        //             });
+        //         });
+        //         ba.addClass("mod-warning");
+        //         xx.createEl("button", { text: `Restore from file` }, (e) => {
+        //             e.addEventListener("click", async () => {
+        //                 const f = await this.app.vault.getFiles().filter((e) => this.plugin.path2id(e.path) == k);
+        //                 if (f.length == 0) {
+        //                     Logger("Not found in vault", LOG_LEVEL.NOTICE);
+        //                     return;
+        //                 }
+        //                 await this.plugin.updateIntoDB(f[0]);
+        //                 xx.remove();
+        //             });
+        //         });
+        //         xx.addClass("mod-warning");
+        //     }
+        // } else {
+        //     containerCorruptedDataEl.createEl("div", { text: "There is no missing or waiting chunk." });
+        // }
+        // applyDisplayEnabled();
+        // addScreenElement("70", containerCorruptedDataEl);
+
         applyDisplayEnabled();
-        addScreenElement("70", containerCorruptedDataEl);
         if (this.selectedScreen == "") {
             if (lastVersion != this.plugin.settings.lastReadUpdates) {
                 if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {

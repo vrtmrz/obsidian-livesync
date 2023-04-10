@@ -1,12 +1,13 @@
 import { TFile, Modal, App } from "./deps";
-import { isValidPath, path2id } from "./utils";
+import { getPathFromTFile, isValidPath } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { LoadedEntry, LOG_LEVEL } from "./lib/src/types";
+import { DocumentID, FilePathWithPrefix, LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getDocData } from "./lib/src/utils";
+import { stripPrefix } from "./lib/src/path";
 
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -15,26 +16,35 @@ export class DocumentHistoryModal extends Modal {
     info: HTMLDivElement;
     fileInfo: HTMLDivElement;
     showDiff = false;
+    id: DocumentID;
 
-    file: string;
+    file: FilePathWithPrefix;
 
     revs_info: PouchDB.Core.RevisionInfo[] = [];
     currentDoc: LoadedEntry;
     currentText = "";
     currentDeleted = false;
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | string) {
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id: DocumentID) {
         super(app);
         this.plugin = plugin;
-        this.file = (file instanceof TFile) ? file.path : file;
+        this.file = (file instanceof TFile) ? getPathFromTFile(file) : file;
+        this.id = id;
+        if (!file) {
+            this.file = this.plugin.id2path(id, null);
+        }
         if (localStorage.getItem("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
         }
     }
+
     async loadFile() {
+        if (!this.id) {
+            this.id = await this.plugin.path2id(this.file);
+        }
         const db = this.plugin.localDatabase;
         try {
-            const w = await db.localDatabase.get(path2id(this.file), { revs_info: true });
+            const w = await db.localDatabase.get(this.id, { revs_info: true });
             this.revs_info = w._revs_info.filter((e) => e?.status == "available");
             this.range.max = `${this.revs_info.length - 1}`;
             this.range.value = this.range.max;
@@ -47,6 +57,9 @@ export class DocumentHistoryModal extends Modal {
                 this.range.disabled = true;
                 this.showDiff
                 this.contentView.setText(`History of this file was not recorded.`);
+            } else {
+                this.contentView.setText(`Error occurred.`);
+                Logger(ex, LOG_LEVEL.VERBOSE);
             }
         }
     }
@@ -55,7 +68,7 @@ export class DocumentHistoryModal extends Modal {
         const db = this.plugin.localDatabase;
         const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
         const rev = this.revs_info[index];
-        const w = await db.getDBEntry(path2id(this.file), { rev: rev.rev }, false, false, true);
+        const w = await db.getDBEntry(this.file, { rev: rev.rev }, false, false, true);
         this.currentText = "";
         this.currentDeleted = false;
         if (w === false) {
@@ -73,7 +86,7 @@ export class DocumentHistoryModal extends Modal {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
                     const oldRev = this.revs_info[prevRevIdx].rev;
-                    const w2 = await db.getDBEntry(path2id(this.file), { rev: oldRev }, false, false, true);
+                    const w2 = await db.getDBEntry(this.file, { rev: oldRev }, false, false, true);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
                         const w2data = w2.datatype == "plain" ? getDocData(w2.data) : base64ToString(w2.data);
@@ -102,7 +115,6 @@ export class DocumentHistoryModal extends Modal {
                 result = escapeStringToHTML(w1data);
             }
             this.contentView.innerHTML = (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
-
         }
     }
 
@@ -173,7 +185,8 @@ export class DocumentHistoryModal extends Modal {
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {
             e.addClass("mod-cta");
             e.addEventListener("click", async () => {
-                const pathToWrite = this.file.startsWith("i:") ? this.file.substring("i:".length) : this.file;
+                // const pathToWrite = this.plugin.id2path(this.id, true);
+                const pathToWrite = stripPrefix(this.file);
                 if (!isValidPath(pathToWrite)) {
                     Logger("Path is not valid to write content.", LOG_LEVEL.INFO);
                 }

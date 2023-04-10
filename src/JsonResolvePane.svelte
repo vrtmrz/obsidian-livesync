@@ -1,14 +1,15 @@
 <script lang="ts">
     import { Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-    import type { LoadedEntry } from "./lib/src/types";
+    import type { FilePath, LoadedEntry } from "./lib/src/types";
     import { base64ToString } from "./lib/src/strbin";
     import { getDocData } from "./lib/src/utils";
-    import { id2path, mergeObject } from "./utils";
+    import { mergeObject } from "./utils";
 
     export let docs: LoadedEntry[] = [];
     export let callback: (keepRev: string, mergedStr?: string) => Promise<void> = async (_, __) => {
         Promise.resolve();
     };
+    export let filename: FilePath = "" as FilePath;
 
     let docA: LoadedEntry = undefined;
     let docB: LoadedEntry = undefined;
@@ -93,7 +94,6 @@
         diffs = getJsonDiff(objA, selectedObj);
         console.dir(selectedObj);
     }
-    $: filename = id2path(docA?._id ?? "");
 </script>
 
 <h1>Conflicted settings</h1>

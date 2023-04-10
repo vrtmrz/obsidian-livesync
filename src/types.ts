@@ -1,5 +1,5 @@
 import { PluginManifest, TFile } from "./deps";
-import { DatabaseEntry, EntryBody } from "./lib/src/types";
+import { DatabaseEntry, EntryBody, FilePath } from "./lib/src/types";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;
@@ -24,7 +24,7 @@ export interface DevicePluginList {
 export const PERIODIC_PLUGIN_SWEEP = 60;
 
 export interface InternalFileInfo {
-    path: string;
+    path: FilePath;
     mtime: number;
     ctime: number;
     size: number;
@@ -32,7 +32,7 @@ export interface InternalFileInfo {
 }
 
 export interface FileInfo {
-    path: string;
+    path: FilePath;
     mtime: number;
     ctime: number;
     size: number;
@@ -71,3 +71,4 @@ export const ICHeaderLength = ICHeader.length;
 
 export const FileWatchEventQueueMax = 10;
 export const configURIBase = "obsidian://setuplivesync?settings=";
+

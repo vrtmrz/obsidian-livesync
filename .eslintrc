@@ -1,19 +1,34 @@
 {
     "root": true,
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint"],
-    "extends": ["eslint:recommended", "plugin:@typescript-eslint/eslint-recommended", "plugin:@typescript-eslint/recommended"],
+    "plugins": [
+        "@typescript-eslint"
+    ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
     "parserOptions": {
-        "sourceType": "module"
+        "sourceType": "module",
+        "project": [
+            "tsconfig.json"
+        ]
     },
     "rules": {
         "no-unused-vars": "off",
-        "@typescript-eslint/no-unused-vars": ["error", { "args": "none" }],
+        "@typescript-eslint/no-unused-vars": [
+            "error",
+            {
+                "args": "none"
+            }
+        ],
         "@typescript-eslint/ban-ts-comment": "off",
         "no-prototype-builtins": "off",
         "@typescript-eslint/no-empty-function": "off",
         "require-await": "warn",
         "no-async-promise-executor": "off",
-        "@typescript-eslint/no-explicit-any": "off"
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unnecessary-type-assertion": "error"
     }
 }

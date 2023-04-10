@@ -1,20 +1,44 @@
 import { DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin_2 } from "./deps";
-import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid } from "./lib/src/path";
+import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
-import { LOG_LEVEL } from "./lib/src/types";
+import { AnyEntry, DocumentID, EntryHasPath, FilePath, FilePathWithPrefix, LOG_LEVEL } from "./lib/src/types";
 import { CHeader, ICHeader, ICHeaderLength, PSCHeader } from "./types";
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
 // The first slash will be deleted when the path is normalized.
-export function path2id(filename: string): string {
-    const x = normalizePath(filename);
-    return path2id_base(x);
+export async function path2id(filename: FilePathWithPrefix | FilePath, obfuscatePassphrase: string | false): Promise<DocumentID> {
+    const temp = filename.split(":");
+    const path = temp.pop();
+    const normalizedPath = normalizePath(path as FilePath);
+    temp.push(normalizedPath);
+    const fixedPath = temp.join(":") as FilePathWithPrefix;
+
+    const out = await path2id_base(fixedPath, obfuscatePassphrase);
+    return out;
 }
-export function id2path(filename: string): string {
-    return id2path_base(normalizePath(filename));
+export function id2path(id: DocumentID, entry?: EntryHasPath): FilePathWithPrefix {
+    const filename = id2path_base(id, entry);
+    const temp = filename.split(":");
+    const path = temp.pop();
+    const normalizedPath = normalizePath(path as FilePath);
+    temp.push(normalizedPath);
+    const fixedPath = temp.join(":") as FilePathWithPrefix;
+    return fixedPath;
+}
+export function getPath(entry: AnyEntry) {
+    return id2path(entry._id, entry);
+
+}
+export function getPathWithoutPrefix(entry: AnyEntry) {
+    const f = getPath(entry);
+    return stripAllPrefixes(f);
+}
+
+export function getPathFromTFile(file: TAbstractFile) {
+    return file.path as FilePath;
 }
 
 const tasks: { [key: string]: ReturnType<typeof setTimeout> } = {};
@@ -300,7 +324,7 @@ export function isValidPath(filename: string) {
 
 let touchedFiles: string[] = [];
 
-export function getAbstractFileByPath(path: string): TAbstractFile | null {
+export function getAbstractFileByPath(path: FilePath): TAbstractFile | null {
     // Hidden API but so useful.
     // @ts-ignore
     if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
@@ -314,7 +338,7 @@ export function trimPrefix(target: string, prefix: string) {
     return target.startsWith(prefix) ? target.substring(prefix.length) : target;
 }
 
-export function touch(file: TFile | string) {
+export function touch(file: TFile | FilePath) {
     const f = file instanceof TFile ? file : getAbstractFileByPath(file) as TFile;
     const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
     touchedFiles.unshift(key);
@@ -331,17 +355,17 @@ export function clearTouched() {
 
 /**
  * returns is internal chunk of file
- * @param str ID
+ * @param id ID
  * @returns 
  */
-export function isInternalMetadata(str: string): boolean {
-    return str.startsWith(ICHeader);
+export function isIdOfInternalMetadata(id: FilePath | FilePathWithPrefix | DocumentID): boolean {
+    return id.startsWith(ICHeader);
 }
-export function id2filenameInternalMetadata(str: string): string {
-    return str.substring(ICHeaderLength);
+export function stripInternalMetadataPrefix<T extends FilePath | FilePathWithPrefix | DocumentID>(id: T): T {
+    return id.substring(ICHeaderLength) as T;
 }
-export function filename2idInternalMetadata(str: string): string {
-    return ICHeader + str;
+export function id2InternalMetadataId(id: DocumentID): DocumentID {
+    return ICHeader + id as DocumentID;
 }
 
 // const CHeaderLength = CHeader.length;

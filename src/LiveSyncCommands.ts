@@ -1,4 +1,4 @@
-import { EntryDoc } from "./lib/src/types";
+import { AnyEntry, DocumentID, EntryDoc, EntryHasPath, FilePath, FilePathWithPrefix } from "./lib/src/types";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import type ObsidianLiveSyncPlugin from "./main";
 
@@ -14,6 +14,16 @@ export abstract class LiveSyncCommands {
     get localDatabase() {
         return this.plugin.localDatabase;
     }
+    id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
+        return this.plugin.id2path(id, entry, stripPrefix);
+    }
+    async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
+        return await this.plugin.path2id(filename, prefix);
+    }
+    getPath(entry: AnyEntry): FilePathWithPrefix {
+        return this.plugin.getPath(entry);
+    }
+
     constructor(plugin: ObsidianLiveSyncPlugin) {
         this.plugin = plugin;
     }

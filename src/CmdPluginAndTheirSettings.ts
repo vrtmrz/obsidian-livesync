@@ -1,5 +1,5 @@
 import { normalizePath, PluginManifest } from "./deps";
-import { EntryDoc, LoadedEntry, LOG_LEVEL } from "./lib/src/types";
+import { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, PSCHeader, PSCHeaderEnd } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -99,9 +99,8 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
 
 
     async getPluginList(): Promise<{ plugins: PluginList; allPlugins: DevicePluginList; thisDevicePlugins: DevicePluginList; }> {
-        const db = this.localDatabase.localDatabase;
-        const docList = await db.allDocs<PluginDataEntry>({ startkey: PSCHeader, endkey: PSCHeaderEnd, include_docs: false });
-        const oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(getDocData(e.data)));
+        const docList = await this.localDatabase.allDocsRaw<PluginDataEntry>({ startkey: PSCHeader, endkey: PSCHeaderEnd, include_docs: false });
+        const oldDocs: PluginDataEntry[] = ((await Promise.all(docList.rows.map(async (e) => await this.localDatabase.getDBEntry(e.id as FilePathWithPrefix /* WARN!! THIS SHOULD BE WRAPPED */)))).filter((e) => e !== false) as LoadedEntry[]).map((e) => JSON.parse(getDocData(e.data)));
         const plugins: { [key: string]: PluginDataEntry[]; } = {};
         const allPlugins: { [key: string]: PluginDataEntry; } = {};
         const thisDevicePlugins: { [key: string]: PluginDataEntry; } = {};
@@ -170,8 +169,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 return;
             }
             Logger("Scanning plugins", logLevel);
-            const db = this.localDatabase.localDatabase;
-            const oldDocs = await db.allDocs({
+            const oldDocs = await this.localDatabase.allDocsRaw<EntryDoc>({
                 startkey: `ps:${this.deviceAndVaultName}-${specificPlugin}`,
                 endkey: `ps:${this.deviceAndVaultName}-${specificPlugin}\u{10ffff}`,
                 include_docs: true,
@@ -179,7 +177,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             // Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
             // sweep current plugin.
             const procs = manifests.map(async (m) => {
-                const pluginDataEntryID = `ps:${this.deviceAndVaultName}-${m.id}`;
+                const pluginDataEntryID = `ps:${this.deviceAndVaultName}-${m.id}` as DocumentID;
                 try {
                     if (specificPlugin && m.id != specificPlugin) {
                         return;
@@ -213,6 +211,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                     };
                     const d: LoadedEntry = {
                         _id: p._id,
+                        path: p._id as string as FilePathWithPrefix,
                         data: JSON.stringify(p),
                         ctime: mtime,
                         mtime: mtime,
@@ -223,7 +222,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                     };
                     Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
                     await runWithLock("plugin-" + m.id, false, async () => {
-                        const old = await this.localDatabase.getDBEntry(p._id, null, false, false);
+                        const old = await this.localDatabase.getDBEntry(p._id as string as FilePathWithPrefix /* This also should be explained */, null, false, false);
                         if (old !== false) {
                             const oldData = { data: old.data, deleted: old._deleted };
                             const newData = { data: d.data, deleted: d._deleted };
@@ -259,7 +258,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 return e.doc;
             });
             Logger(`Deleting old plugin:(${delDocs.length})`, LOG_LEVEL.VERBOSE);
-            await db.bulkDocs(delDocs);
+            await this.localDatabase.bulkDocsRaw(delDocs);
             Logger(`Scan plugin done.`, logLevel);
         });
     }
