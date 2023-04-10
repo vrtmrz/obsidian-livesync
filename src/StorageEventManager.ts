@@ -1,7 +1,7 @@
 import { Plugin_2, TAbstractFile, TFile, TFolder } from "./deps";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import { getGlobalStore } from "./lib/src/store";
-import { ObsidianLiveSyncSettings } from "./lib/src/types";
+import { FilePath, ObsidianLiveSyncSettings } from "./lib/src/types";
 import { FileEventItem, FileEventType, FileInfo, InternalFileInfo, queueItem } from "./types";
 import { recentlyTouched } from "./utils";
 
@@ -58,12 +58,12 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         if (file instanceof TFile) {
             this.appendWatchEvent([
                 { type: "CREATE", file },
-                { type: "DELETE", file: { path: oldFile, mtime: file.stat.mtime, ctime: file.stat.ctime, size: file.stat.size, deleted: true } }
+                { type: "DELETE", file: { path: oldFile as FilePath, mtime: file.stat.mtime, ctime: file.stat.ctime, size: file.stat.size, deleted: true } },
             ], ctx);
         }
     }
     // Watch raw events (Internal API)
-    watchVaultRawEvents(path: string) {
+    watchVaultRawEvents(path: FilePath) {
         if (!this.plugin.settings.syncInternalFiles) return;
         if (!this.plugin.settings.watchInternalFileChanges) return;
         if (!path.startsWith(app.vault.configDir)) return;
