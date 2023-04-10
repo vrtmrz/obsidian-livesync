@@ -1,3 +1,13 @@
+### 0.18.0
+
+#### Now, paths of files in the database can now be obfuscated. (Experimental Feature)
+At before v0.18.0, Self-hosted LiveSync used the path of files, to detect and resolve conflicts. In naive. The ID of the document stored in the CouchDB was naturally the filename.
+However, it means a sort of lacking confidentiality. If the credentials of the database have been leaked, the attacker (or an innocent bystander) can read the path of files. So we could not use confidential things in the filename in some environments.
+Since v0.18.0, they can be obfuscated. so it is no longer possible to decipher the path from the ID. Instead of that, it costs a bit CPU load than before, and the data structure has been changed a bit.
+
+We can configure the `Path Obfuscation` in the `Remote database configuration` pane.  
+Note: **When changing this configuration, we need to rebuild both of the local and the remote databases**.
+
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
   Please rebuild databases once if you have been worried about storage usage.
