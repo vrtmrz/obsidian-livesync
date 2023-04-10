@@ -8,6 +8,12 @@ Since v0.18.0, they can be obfuscated. so it is no longer possible to decipher t
 We can configure the `Path Obfuscation` in the `Remote database configuration` pane.  
 Note: **When changing this configuration, we need to rebuild both of the local and the remote databases**.
 
+#### Minors 
+- 0.18.1
+- Fixed:
+  - Some messages are fixed (Typo)
+  - File type detection now works fine!
+
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
   Please rebuild databases once if you have been worried about storage usage.
