@@ -10,9 +10,14 @@ Note: **When changing this configuration, we need to rebuild both of the local a
 
 #### Minors 
 - 0.18.1
-- Fixed:
-  - Some messages are fixed (Typo)
-  - File type detection now works fine!
+  - Fixed:
+    - Some messages are fixed (Typo)
+    - File type detection now works fine!
+- 0.18.2
+  - Improved:
+    - The setting pane has been refined.
+    - We can enable `hidden files sync` with several initial behaviours; `Merge`, `Fetch` remote, and `Overwrite` remote.
+    - No longer `Touch hidden files`.
 
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
