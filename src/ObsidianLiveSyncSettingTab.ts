@@ -966,7 +966,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
             c.addClass("op-warn");
         }
-
+        containerSyncSettingEl.createEl("h3", { text: "Synchronization Methods" });
         const syncLive: Setting[] = [];
         const syncNonLive: Setting[] = [];
         syncLive.push(
@@ -1019,6 +1019,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     text.inputEl.setAttribute("type", "number");
                 }),
 
+
             new Setting(containerSyncSettingEl)
                 .setName("Sync on Save")
                 .setDesc("When you save file, sync automatically")
@@ -1060,7 +1061,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
                 ),
         );
-
+        containerSyncSettingEl.createEl("h3", { text: "File deletion" });
         new Setting(containerSyncSettingEl)
             .setName("Use Trash for deleted files")
             .setDesc("Do not delete files that are deleted in remote, just move to trash.")
@@ -1081,6 +1082,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
+        containerSyncSettingEl.createEl("h3", { text: "Conflict resolution" });
         new Setting(containerSyncSettingEl)
             .setName("Use newer file if conflicted (beta)")
             .setDesc("Resolve conflicts by newer files automatically.")
@@ -1119,14 +1121,63 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerSyncSettingEl)
-            .setName("Sync hidden files")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.syncInternalFiles).onChange(async (value) => {
-                    this.plugin.settings.syncInternalFiles = value;
-                    await this.plugin.saveSettings();
+        containerSyncSettingEl.createEl("h3", { text: "Hidden files" });
+        const LABEL_ENABLED = "🔁 : Enabled";
+        const LABEL_DISABLED = "⏹️ : Disabled"
+
+        const hiddenFileSyncSetting = new Setting(containerSyncSettingEl)
+            .setName("Hidden file synchronization")
+        const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl
+        const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
+        hiddenFileSyncSettingDiv.innerText = this.plugin.settings.syncInternalFiles ? LABEL_ENABLED : LABEL_DISABLED;
+
+        if (this.plugin.settings.syncInternalFiles) {
+            new Setting(containerSyncSettingEl)
+                .setName("Disable Hidden files sync")
+                .addButton((button) => {
+                    button.setButtonText("Disable")
+                        .onClick(async () => {
+                            this.plugin.settings.syncInternalFiles = false;
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
                 })
-            );
+        } else {
+
+            new Setting(containerSyncSettingEl)
+                .setName("Enable Hidden files sync")
+                .addButton((button) => {
+                    button.setButtonText("Merge")
+                        .onClick(async () => {
+                            this.plugin.settings.syncInternalFiles = true;
+                            this.display();
+                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
+                })
+                .addButton((button) => {
+                    button.setButtonText("Fetch")
+                        .onClick(async () => {
+                            this.plugin.settings.syncInternalFiles = true;
+                            this.display();
+                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
+                            await this.plugin.saveSettings();
+                            Logger(`Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
+                            this.display();
+                        })
+                })
+                .addButton((button) => {
+                    button.setButtonText("Overwrite")
+                        .onClick(async () => {
+                            this.plugin.settings.syncInternalFiles = true;
+                            this.display();
+                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
+                });
+        }
 
         new Setting(containerSyncSettingEl)
             .setName("Scan for hidden files before replication")
@@ -1191,31 +1242,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             })
 
-        new Setting(containerSyncSettingEl)
-            .setName("Touch hidden files")
-            .setDesc("Update the modified time of all hidden files to the current time.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Touch")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        const filesAll = await this.plugin.addOnHiddenFileSync.scanInternalFiles();
-                        const targetFiles = await this.plugin.filterTargetFiles(filesAll);
-                        const now = Date.now();
-                        const newFiles = targetFiles.map(e => ({ ...e, mtime: now }));
-                        let i = 0;
-                        const maxFiles = newFiles.length;
-                        for (const file of newFiles) {
-                            i++;
-                            Logger(`Touched:${file.path} (${i}/${maxFiles})`, LOG_LEVEL.NOTICE, "touch-files");
-                            await this.plugin.applyMTimeToFile(file);
-                        }
-                    })
-            )
 
         containerSyncSettingEl.createEl("h3", {
-            text: sanitizeHTMLToDom(`Experimental`),
+            text: sanitizeHTMLToDom(`Synchronization filters`),
         });
         new Setting(containerSyncSettingEl)
             .setName("Regular expression to ignore files")
@@ -1263,7 +1292,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 return text;
             }
             );
-
+        containerSyncSettingEl.createEl("h3", { text: "Efficiency" });
         new Setting(containerSyncSettingEl)
             .setName("Chunk size")
             .setDesc("Customize chunk size for binary files (0.1MBytes). This cannot be increased when using IBM Cloudant.")
@@ -1282,7 +1311,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerSyncSettingEl)
-            .setName("Read chunks online.")
+            .setName("Read chunks online")
             .setDesc("If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
             .addToggle((toggle) => {
                 toggle
@@ -1292,8 +1321,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
                 return toggle;
-            }
-            );
+            });
         containerSyncSettingEl.createEl("h3", {
             text: sanitizeHTMLToDom(`Advanced settings`),
         });
@@ -1487,8 +1515,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             }
                         }
                         this.plugin.saveSettings();
-                        await this.plugin.realizeSettingSyncMode();
                         this.display();
+                        await this.plugin.realizeSettingSyncMode();
                         if (inWizard) {
                             // @ts-ignore
                             this.plugin.app.setting.close()

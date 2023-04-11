@@ -215,7 +215,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     //TODO: Tidy up. Even though it is experimental feature, So dirty...
-    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
+    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe" | "pullForce" | "pushForce", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
         await this.resolveConflictOnInternalFiles();
         const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
         Logger("Scanning hidden files.", logLevel, "sync_internal");
@@ -289,43 +289,43 @@ export class HiddenFileSync extends LiveSyncCommands {
 
             p.push(addProc(async () => {
                 const xFileOnStorage = fileOnStorage;
-                const xfileOnDatabase = fileOnDatabase;
-                if (xFileOnStorage && xfileOnDatabase) {
+                const xFileOnDatabase = fileOnDatabase;
+                if (xFileOnStorage && xFileOnDatabase) {
                     // Both => Synchronize
-                    if (xfileOnDatabase.mtime == cache.docMtime && xFileOnStorage.mtime == cache.storageMtime) {
+                    if ((direction != "pullForce" && direction != "pushForce") && xFileOnDatabase.mtime == cache.docMtime && xFileOnStorage.mtime == cache.storageMtime) {
                         return;
                     }
-                    const nw = compareMTime(xFileOnStorage.mtime, xfileOnDatabase.mtime);
-                    if (nw > 0) {
+                    const nw = compareMTime(xFileOnStorage.mtime, xFileOnDatabase.mtime);
+                    if (nw > 0 || direction == "pushForce") {
                         await this.storeInternalFileToDatabase(xFileOnStorage);
                     }
-                    if (nw < 0) {
+                    if (nw < 0 || direction == "pullForce") {
                         // skip if not extraction performed.
                         if (!await this.extractInternalFileFromDatabase(filename))
                             return;
                     }
                     // If process successfully updated or file contents are same, update cache.
-                    cache.docMtime = xfileOnDatabase.mtime;
+                    cache.docMtime = xFileOnDatabase.mtime;
                     cache.storageMtime = xFileOnStorage.mtime;
                     caches[filename] = cache;
                     countUpdatedFolder(filename);
-                } else if (!xFileOnStorage && xfileOnDatabase) {
-                    if (direction == "push") {
-                        if (xfileOnDatabase.deleted)
+                } else if (!xFileOnStorage && xFileOnDatabase) {
+                    if (direction == "push" || direction == "pushForce") {
+                        if (xFileOnDatabase.deleted)
                             return;
                         await this.deleteInternalFileOnDatabase(filename, false);
-                    } else if (direction == "pull") {
+                    } else if (direction == "pull" || direction == "pullForce") {
                         if (await this.extractInternalFileFromDatabase(filename)) {
                             countUpdatedFolder(filename);
                         }
                     } else if (direction == "safe") {
-                        if (xfileOnDatabase.deleted)
+                        if (xFileOnDatabase.deleted)
                             return;
                         if (await this.extractInternalFileFromDatabase(filename)) {
                             countUpdatedFolder(filename);
                         }
                     }
-                } else if (xFileOnStorage && !xfileOnDatabase) {
+                } else if (xFileOnStorage && !xFileOnDatabase) {
                     await this.storeInternalFileToDatabase(xFileOnStorage);
                 } else {
                     throw new Error("Invalid state on hidden file sync");
@@ -337,7 +337,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.
-        if (direction == "pull" && filesChanged != 0) {
+        if (direction == "pull" || direction == "pullForce" && filesChanged != 0) {
             const configDir = normalizePath(this.app.vault.configDir);
             // Show notification to restart obsidian when something has been changed in configDir.
             if (configDir in updatedFolders) {
@@ -468,7 +468,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     };
                 } else {
                     if (isDocContentSame(old.data, content) && !forceWrite) {
-                        // Logger(`internal files STORAGE --> DB:${file.path}: Not changed`);
+                        // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL.VERBOSE);
                         return;
                     }
                     saveData =
