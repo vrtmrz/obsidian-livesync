@@ -337,7 +337,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.
-        if (direction == "pull" || direction == "pullForce" && filesChanged != 0) {
+        if ((direction == "pull" || direction == "pullForce") && filesChanged != 0) {
             const configDir = normalizePath(this.app.vault.configDir);
             // Show notification to restart obsidian when something has been changed in configDir.
             if (configDir in updatedFolders) {

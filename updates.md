@@ -18,6 +18,8 @@ Note: **When changing this configuration, we need to rebuild both of the local a
     - The setting pane has been refined.
     - We can enable `hidden files sync` with several initial behaviours; `Merge`, `Fetch` remote, and `Overwrite` remote.
     - No longer `Touch hidden files`.
+- 0.18.3
+  - Fixed Pop-up is now correctly shown after hidden file synchronisation.
 
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
