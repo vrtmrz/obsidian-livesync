@@ -5,6 +5,7 @@ import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { askSelectString, askYesNo, askString } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 import { LiveSyncCommands } from "./LiveSyncCommands";
+import { delay } from "./lib/src/utils";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }
@@ -97,7 +98,8 @@ export class SetupLiveSync extends LiveSyncCommands {
                     const setupAsNew = "Set it up as secondary or subsequent device";
                     const setupAgain = "Reconfigure and reconstitute the data";
                     const setupManually = "Leave everything to me";
-
+                    newSettingW.syncInternalFiles = false;
+                    newSettingW.usePluginSync = false;
                     const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
                     if (setupType == setupJustImport) {
                         this.plugin.settings = newSettingW;
@@ -106,11 +108,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                     } else if (setupType == setupAsNew) {
                         this.plugin.settings = newSettingW;
                         this.plugin.usedPassphrase = "";
-                        await this.plugin.saveSettings();
-                        await this.plugin.resetLocalDatabase();
-                        await this.plugin.localDatabase.initializeDatabase();
-                        await this.plugin.markRemoteResolved();
-                        await this.plugin.replicate(true);
+                        await this.fetchLocal();
                     } else if (setupType == setupAgain) {
                         const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
                         if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
@@ -118,15 +116,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                         }
                         this.plugin.settings = newSettingW;
                         this.plugin.usedPassphrase = "";
-                        await this.plugin.saveSettings();
-                        await this.plugin.resetLocalDatabase();
-                        await this.plugin.localDatabase.initializeDatabase();
-                        await this.plugin.initializeDatabase(true);
-                        await this.plugin.tryResetRemoteDatabase();
-                        await this.plugin.markRemoteLocked();
-                        await this.plugin.markRemoteResolved();
-                        await this.plugin.replicate(true);
-
+                        await this.rebuildEverything();
                     } else if (setupType == setupManually) {
                         const keepLocalDB = await askYesNo(this.app, "Keep local DB?");
                         const keepRemoteDB = await askYesNo(this.app, "Keep remote DB?");
@@ -134,6 +124,8 @@ export class SetupLiveSync extends LiveSyncCommands {
                             // nothing to do. so peaceful.
                             this.plugin.settings = newSettingW;
                             this.plugin.usedPassphrase = "";
+                            this.suspendAllSync();
+                            this.suspendExtraSync();
                             await this.plugin.saveSettings();
                             const replicate = await askYesNo(this.app, "Unlock and replicate?");
                             if (replicate == "yes") {
@@ -188,5 +180,53 @@ export class SetupLiveSync extends LiveSyncCommands {
         } catch (ex) {
             Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL.NOTICE);
         }
+    }
+
+    suspendExtraSync() {
+        Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
+        this.plugin.settings.syncInternalFiles = false;
+        this.plugin.settings.usePluginSync = false;
+        this.plugin.settings.autoSweepPlugins = false;
+    }
+    suspendAllSync() {
+        this.plugin.settings.liveSync = false;
+        this.plugin.settings.periodicReplication = false;
+        this.plugin.settings.syncOnSave = false;
+        this.plugin.settings.syncOnStart = false;
+        this.plugin.settings.syncOnFileOpen = false;
+        this.plugin.settings.syncAfterMerge = false;
+        //this.suspendExtraSync();
+    }
+    async fetchLocal() {
+        this.suspendExtraSync();
+        await this.plugin.realizeSettingSyncMode();
+        await this.plugin.resetLocalDatabase();
+        await delay(1000);
+        await this.plugin.markRemoteResolved();
+        await this.plugin.openDatabase();
+        this.plugin.isReady = true;
+        await delay(500);
+        await this.plugin.replicateAllFromServer(true);
+    }
+    async rebuildRemote() {
+        this.suspendExtraSync();
+        await this.plugin.realizeSettingSyncMode();
+        await this.plugin.markRemoteLocked();
+        await this.plugin.tryResetRemoteDatabase();
+        await this.plugin.markRemoteLocked();
+        await delay(500);
+        await this.plugin.replicateAllToServer(true);
+    }
+    async rebuildEverything() {
+        this.suspendExtraSync();
+        await this.plugin.realizeSettingSyncMode();
+        await this.plugin.resetLocalDatabase();
+        await delay(1000);
+        await this.plugin.initializeDatabase(true);
+        await this.plugin.markRemoteLocked();
+        await this.plugin.tryResetRemoteDatabase();
+        await this.plugin.markRemoteLocked();
+        await delay(500);
+        await this.plugin.replicateAllToServer(true);
     }
 }

@@ -420,25 +420,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (!encrypt) {
                 passphrase = "";
             }
-            this.plugin.settings.liveSync = false;
-            this.plugin.settings.periodicReplication = false;
-            this.plugin.settings.syncOnSave = false;
-            this.plugin.settings.syncOnStart = false;
-            this.plugin.settings.syncOnFileOpen = false;
-            this.plugin.settings.syncAfterMerge = false;
+            this.plugin.addOnSetup.suspendAllSync();
+            this.plugin.addOnSetup.suspendExtraSync();
             this.plugin.settings.encrypt = encrypt;
             this.plugin.settings.passphrase = passphrase;
             this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
             this.plugin.settings.usePathObfuscation = usePathObfuscation;
-
             await this.plugin.saveSettings();
             markDirtyControl();
             if (sendToServer) {
-                await this.plugin.initializeDatabase(true);
-                await this.plugin.markRemoteLocked();
-                await this.plugin.tryResetRemoteDatabase();
-                await this.plugin.markRemoteLocked();
-                await this.plugin.replicateAllToServer(true);
+                await this.plugin.addOnSetup.rebuildRemote()
             } else {
                 await this.plugin.markRemoteResolved();
                 await this.plugin.replicate(true);
@@ -489,47 +480,27 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (!encrypt) {
                 passphrase = "";
             }
-            this.plugin.settings.liveSync = false;
-            this.plugin.settings.periodicReplication = false;
-            this.plugin.settings.syncOnSave = false;
-            this.plugin.settings.syncOnStart = false;
-            this.plugin.settings.syncOnFileOpen = false;
-            this.plugin.settings.syncAfterMerge = false;
-            this.plugin.settings.syncInternalFiles = false;
-            this.plugin.settings.usePluginSync = false;
+            this.plugin.addOnSetup.suspendAllSync();
+            this.plugin.addOnSetup.suspendExtraSync();
             this.plugin.settings.encrypt = encrypt;
             this.plugin.settings.passphrase = passphrase;
             this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
             this.plugin.settings.usePathObfuscation = usePathObfuscation;
-            Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
+            Logger("All synchronizations have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
             await this.plugin.saveSettings();
             markDirtyControl();
             applyDisplayEnabled();
             // @ts-ignore
-            this.plugin.app.setting.close()
+            this.plugin.app.setting.close();
             await delay(2000);
             if (method == "localOnly") {
-                await this.plugin.resetLocalDatabase();
-                await delay(1000);
-                await this.plugin.markRemoteResolved();
-                await this.plugin.openDatabase();
-                this.plugin.isReady = true;
-                await this.plugin.replicateAllFromServer(true);
+                await this.plugin.addOnSetup.fetchLocal();
             }
             if (method == "remoteOnly") {
-                await this.plugin.markRemoteLocked();
-                await this.plugin.tryResetRemoteDatabase();
-                await this.plugin.markRemoteLocked();
-                await this.plugin.replicateAllToServer(true);
+                await this.plugin.addOnSetup.rebuildRemote();
             }
             if (method == "rebuildBothByThisDevice") {
-                await this.plugin.resetLocalDatabase();
-                await delay(1000);
-                await this.plugin.initializeDatabase(true);
-                await this.plugin.markRemoteLocked();
-                await this.plugin.tryResetRemoteDatabase();
-                await this.plugin.markRemoteLocked();
-                await this.plugin.replicateAllToServer(true);
+                await this.plugin.addOnSetup.rebuildEverything();
             }
         }
 
@@ -1149,32 +1120,42 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 .addButton((button) => {
                     button.setButtonText("Merge")
                         .onClick(async () => {
-                            this.plugin.settings.syncInternalFiles = true;
+                            this.plugin.addOnSetup.suspendExtraSync();
                             this.display();
+                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
                             await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
+                            this.plugin.settings.syncInternalFiles = true;
                             await this.plugin.saveSettings();
-                            this.display();
+                            Logger(`Done!`, LOG_LEVEL.NOTICE);
                         })
                 })
                 .addButton((button) => {
                     button.setButtonText("Fetch")
                         .onClick(async () => {
-                            this.plugin.settings.syncInternalFiles = true;
-                            this.display();
+                            this.plugin.addOnSetup.suspendExtraSync();
+                            // @ts-ignore
+                            this.plugin.app.setting.close()
+                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
                             await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
+                            this.plugin.settings.syncInternalFiles = true;
                             await this.plugin.saveSettings();
-                            Logger(`Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
-                            this.display();
+                            Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
+                            // this.display();
                         })
                 })
                 .addButton((button) => {
                     button.setButtonText("Overwrite")
                         .onClick(async () => {
-                            this.plugin.settings.syncInternalFiles = true;
-                            this.display();
+                            this.plugin.addOnSetup.suspendExtraSync();
+                            // @ts-ignore
+                            this.plugin.app.setting.close()
+                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
+                            // this.display();
                             await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
+                            this.plugin.settings.syncInternalFiles = true;
                             await this.plugin.saveSettings();
-                            this.display();
+                            Logger(`Done!`, LOG_LEVEL.NOTICE);
+                            // this.display();
                         })
                 });
         }

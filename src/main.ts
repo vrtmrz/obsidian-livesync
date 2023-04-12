@@ -4,7 +4,7 @@ import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "di
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, RequestUrlParam, RequestUrlResponse, requestUrl } from "./deps";
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, DatabaseConnectingStatus, EntryHasPath, DocumentID, FilePathWithPrefix, FilePath, AnyEntry } from "./lib/src/types";
 import { InternalFileInfo, queueItem, CacheData, FileEventItem, FileWatchEventQueueMax } from "./types";
-import { delay, getDocData, isDocContentSame } from "./lib/src/utils";
+import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { LogDisplayModal } from "./LogDisplayModal";
@@ -387,25 +387,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         try {
             if (this.isRedFlagRaised() || this.isRedFlag2Raised() || this.isRedFlag3Raised()) {
                 this.settings.batchSave = false;
-                this.settings.liveSync = false;
-                this.settings.periodicReplication = false;
-                this.settings.syncOnSave = false;
-                this.settings.syncOnStart = false;
-                this.settings.syncOnFileOpen = false;
-                this.settings.syncAfterMerge = false;
-                this.settings.autoSweepPlugins = false;
-                this.settings.usePluginSync = false;
+                this.addOnSetup.suspendAllSync();
+                this.addOnSetup.suspendExtraSync();
                 this.settings.suspendFileWatching = true;
-                this.settings.syncInternalFiles = false;
                 await this.saveSettings();
                 if (this.isRedFlag2Raised()) {
                     Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL.NOTICE);
-                    await this.resetLocalDatabase();
-                    await this.initializeDatabase(true);
-                    await this.markRemoteLocked();
-                    await this.tryResetRemoteDatabase();
-                    await this.markRemoteLocked();
-                    await this.replicateAllToServer(true);
+                    await this.addOnSetup.rebuildEverything();
                     await this.deleteRedFlag2();
                     if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
                         this.settings.suspendFileWatching = false;
@@ -415,12 +403,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     }
                 } else if (this.isRedFlag3Raised()) {
                     Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
-                    await this.resetLocalDatabase();
-                    await delay(1000);
-                    await this.markRemoteResolved();
-                    await this.openDatabase();
-                    this.isReady = true;
-                    await this.replicateAllFromServer(true);
+                    await this.addOnSetup.fetchLocal();
                     await this.deleteRedFlag3();
                     if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
                         this.settings.suspendFileWatching = false;
@@ -912,8 +895,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 const file = queue.args.file;
                 const key = `file-last-proc-${queue.type}-${file.path}`;
                 const last = Number(await this.kvDB.get(key) || 0);
+                let mtime = file.mtime;
                 if (queue.type == "DELETE") {
                     await this.deleteFromDBbyPath(file.path);
+                    mtime = file.mtime - 1;
+                    const keyD1 = `file-last-proc-CREATE-${file.path}`;
+                    const keyD2 = `file-last-proc-CHANGED-${file.path}`;
+                    await this.kvDB.set(keyD1, mtime);
+                    await this.kvDB.set(keyD2, mtime);
                 } else if (queue.type == "INTERNAL") {
                     await this.addOnHiddenFileSync.watchVaultRawEventsAsync(file.path);
                 } else {
@@ -930,6 +919,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
                     const cache = queue.args.cache;
                     if (queue.type == "CREATE" || queue.type == "CHANGED") {
+                        const keyD1 = `file-last-proc-DELETED-${file.path}`;
+                        await this.kvDB.set(keyD1, mtime);
                         if (!await this.updateIntoDB(targetFile, false, cache)) {
                             Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL.INFO);
                             // cancel running queues and remove one of atomic operation
@@ -942,7 +933,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
                     }
                 }
-                await this.kvDB.set(key, file.mtime);
+                await this.kvDB.set(key, mtime);
             } while (this.vaultManager.getQueueLength() > 0);
             return true;
         })
@@ -1114,13 +1105,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             // This occurs not only when files are deleted, but also when conflicts are resolved.
             // We have to check no other revisions are left.
             const lastDocs = await this.localDatabase.getDBEntry(path);
+            if (path != file.path) {
+                Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL.VERBOSE);
+            }
             if (lastDocs === false) {
                 await this.deleteVaultItem(file);
             } else {
                 // it perhaps delete some revisions.
                 // may be we have to reload this
                 await this.pullFile(path, null, true);
-                Logger(`delete skipped:${lastDocs._id}`, LOG_LEVEL.VERBOSE);
+                Logger(`delete skipped:${file.path}`, LOG_LEVEL.VERBOSE);
             }
             return;
         }
@@ -1381,8 +1375,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
+        const docsSorted = docs.sort((a, b) => b.mtime - a.mtime);
         L1:
-        for (const change of docs) {
+        for (const change of docsSorted) {
             for (const proc of this.addOns) {
                 if (await proc.parseReplicationResultItem(change)) {
                     continue L1;

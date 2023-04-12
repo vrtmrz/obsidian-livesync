@@ -325,14 +325,16 @@ export function isValidPath(filename: string) {
 let touchedFiles: string[] = [];
 
 export function getAbstractFileByPath(path: FilePath): TAbstractFile | null {
-    // Hidden API but so useful.
-    // @ts-ignore
-    if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
-        // @ts-ignore
-        return app.vault.getAbstractFileByPathInsensitive(path);
-    } else {
-        return app.vault.getAbstractFileByPath(path);
-    }
+    // Disabled temporary.
+    return app.vault.getAbstractFileByPath(path);
+    // // Hidden API but so useful.
+    // // @ts-ignore
+    // if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
+    //     // @ts-ignore
+    //     return app.vault.getAbstractFileByPathInsensitive(path);
+    // } else {
+    //    return app.vault.getAbstractFileByPath(path);
+    // }
 }
 export function trimPrefix(target: string, prefix: string) {
     return target.startsWith(prefix) ? target.substring(prefix.length) : target;

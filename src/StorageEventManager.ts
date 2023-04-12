@@ -57,8 +57,8 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
         if (file instanceof TFile) {
             this.appendWatchEvent([
-                { type: "CREATE", file },
                 { type: "DELETE", file: { path: oldFile as FilePath, mtime: file.stat.mtime, ctime: file.stat.ctime, size: file.stat.size, deleted: true } },
+                { type: "CREATE", file },
             ], ctx);
         }
     }
