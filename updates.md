@@ -20,6 +20,11 @@ Note: **When changing this configuration, we need to rebuild both of the local a
     - No longer `Touch hidden files`.
 - 0.18.3
   - Fixed Pop-up is now correctly shown after hidden file synchronisation.
+- 0.18.4
+  - Fixed:
+      - `Fetch` and `Rebuild database` will work more safely.
+      - Case-sensitive renaming now works fine.
+        Revoked the logic which was made at #130, however, looks fine now.
 
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
