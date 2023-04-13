@@ -25,6 +25,13 @@ Note: **When changing this configuration, we need to rebuild both of the local a
       - `Fetch` and `Rebuild database` will work more safely.
       - Case-sensitive renaming now works fine.
         Revoked the logic which was made at #130, however, looks fine now.
+- 0.18.5
+  - Improved:
+    - Actions for maintaining databases moved to the `🎛️Maintain databases`.
+    - Clean-up of unreferenced chunks has been implemented on an **experimental**.
+      - This feature requires enabling `Use new adapter`.
+      - Be sure to fully all devices synchronised before perform it.
+      - After cleaning up the remote, all devices will be locked out. If we are sure had it be synchronised, we can perform only cleaning-up locally. If not, we have to perform `Fetch`.
 
 ### 0.17.0
 - 0.17.0 has no surfaced changes but the design of saving chunks has been changed. They have compatibility but changing files after upgrading makes different chunks than before 0.16.x.
