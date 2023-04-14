@@ -11,7 +11,7 @@ import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isIdOfInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isIdOfInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, localDatabaseCleanUp, balanceChunks, performRebuildDB } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
@@ -29,6 +29,7 @@ import { LiveSyncCommands } from "./LiveSyncCommands";
 import { PluginAndTheirSettings } from "./CmdPluginAndTheirSettings";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
 import { SetupLiveSync } from "./CmdSetupLiveSync";
+import { confirmWithMessage } from "./dialogs";
 
 setNoticeClass(Notice);
 
@@ -1542,7 +1543,43 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         await this.applyBatchChange();
         await Promise.all(this.addOns.map(e => e.beforeReplicate(showMessage)));
         await this.loadQueuedFiles();
-        return await this.replicator.openReplication(this.settings, false, showMessage);
+        const ret = await this.replicator.openReplication(this.settings, false, showMessage);
+        if (!ret) {
+            if (this.replicator.remoteLockedAndDeviceNotAccepted) {
+                if (this.replicator.remoteCleaned) {
+                    const message = `
+The remote database has been cleaned up.
+To synchronize, this device must also be cleaned up or fetch everything again once.
+Fetching may takes some time. Cleaning up is not stable yet but fast.
+`
+                    const CHOICE_CLEANUP = "Clean up";
+                    const CHOICE_FETCH = "Fetch again";
+                    const CHOICE_DISMISS = "Dismiss";
+                    const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_CLEANUP, CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
+                    if (ret == CHOICE_CLEANUP) {
+                        await localDatabaseCleanUp(this, true, false);
+                        await balanceChunks(this, false);
+                    }
+                    if (ret == CHOICE_FETCH) {
+                        await performRebuildDB(this, "localOnly");
+                    }
+                } else {
+                    const message = `
+The remote database has been rebuilt.
+To synchronize, this device must fetch everything again once.
+Or if you are sure know what had been happened, we can unlock the database from the setting dialog.
+                    `
+                    const CHOICE_FETCH = "Fetch again";
+                    const CHOICE_DISMISS = "Dismiss";
+                    const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
+                    if (ret == CHOICE_FETCH) {
+                        await performRebuildDB(this, "localOnly");
+                    }
+                }
+            }
+        }
+
+        return ret;
     }
 
     async initializeDatabase(showingNotice?: boolean, reopenDatabase = true) {
@@ -1573,12 +1610,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return await this.replicator.replicateAllFromServer(this.settings, showingNotice);
     }
 
-    async markRemoteLocked() {
-        return await this.replicator.markRemoteLocked(this.settings, true);
+    async markRemoteLocked(lockByClean?: boolean) {
+        return await this.replicator.markRemoteLocked(this.settings, true, lockByClean);
     }
 
     async markRemoteUnlocked() {
-        return await this.replicator.markRemoteLocked(this.settings, false);
+        return await this.replicator.markRemoteLocked(this.settings, false, false);
     }
 
     async markRemoteResolved() {
@@ -2038,60 +2075,62 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     showMergeDialog(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
-        return new Promise((res, rej) => {
-            Logger("open conflict dialog", LOG_LEVEL.VERBOSE);
-            new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
-                const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
-                if (testDoc === false) {
-                    Logger("Missing file..", LOG_LEVEL.VERBOSE);
-                    return res(true);
-                }
-                if (!testDoc._conflicts) {
-                    Logger("Nothing have to do with this conflict", LOG_LEVEL.VERBOSE);
-                    return res(true);
-                }
-                const toDelete = selected;
-                const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
-                if (toDelete == "") {
-                    // concat both,
-                    // delete conflicted revision and write a new file, store it again.
-                    const p = conflictCheckResult.diff.map((e) => e[1]).join("");
-                    await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
-                    const file = getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
-                    if (file) {
-                        await this.app.vault.modify(file, p);
-                        await this.updateIntoDB(file);
+        return runWithLock("resolve-conflict:" + filename, false, () =>
+            new Promise((res, rej) => {
+                Logger("open conflict dialog", LOG_LEVEL.VERBOSE);
+                new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
+                    const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
+                    if (testDoc === false) {
+                        Logger("Missing file..", LOG_LEVEL.VERBOSE);
+                        return res(true);
+                    }
+                    if (!testDoc._conflicts) {
+                        Logger("Nothing have to do with this conflict", LOG_LEVEL.VERBOSE);
+                        return res(true);
+                    }
+                    const toDelete = selected;
+                    const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
+                    if (toDelete == "") {
+                        // concat both,
+                        // delete conflicted revision and write a new file, store it again.
+                        const p = conflictCheckResult.diff.map((e) => e[1]).join("");
+                        await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
+                        const file = getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
+                        if (file) {
+                            await this.app.vault.modify(file, p);
+                            await this.updateIntoDB(file);
+                        } else {
+                            const newFile = await this.app.vault.create(filename, p);
+                            await this.updateIntoDB(newFile);
+                        }
+                        await this.pullFile(filename);
+                        Logger("concat both file");
+                        if (this.settings.syncAfterMerge && !this.suspended) {
+                            await this.replicate();
+                        }
+                        setTimeout(() => {
+                            //resolved, check again.
+                            this.showIfConflicted(filename);
+                        }, 500);
+                    } else if (toDelete == null) {
+                        Logger("Leave it still conflicted");
                     } else {
-                        const newFile = await this.app.vault.create(filename, p);
-                        await this.updateIntoDB(newFile);
+                        await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
+                        await this.pullFile(filename, null, true, toKeep);
+                        Logger(`Conflict resolved:${filename}`);
+                        if (this.settings.syncAfterMerge && !this.suspended) {
+                            await this.replicate();
+                        }
+                        setTimeout(() => {
+                            //resolved, check again.
+                            this.showIfConflicted(filename);
+                        }, 500);
                     }
-                    await this.pullFile(filename);
-                    Logger("concat both file");
-                    if (this.settings.syncAfterMerge && !this.suspended) {
-                        await this.replicate();
-                    }
-                    setTimeout(() => {
-                        //resolved, check again.
-                        this.showIfConflicted(filename);
-                    }, 500);
-                } else if (toDelete == null) {
-                    Logger("Leave it still conflicted");
-                } else {
-                    await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
-                    await this.pullFile(filename, null, true, toKeep);
-                    Logger(`Conflict resolved:${filename}`);
-                    if (this.settings.syncAfterMerge && !this.suspended) {
-                        await this.replicate();
-                    }
-                    setTimeout(() => {
-                        //resolved, check again.
-                        this.showIfConflicted(filename);
-                    }, 500);
-                }
 
-                return res(true);
-            }).open();
-        });
+                    return res(true);
+                }).open();
+            })
+        );
     }
     conflictedCheckFiles: FilePath[] = [];
 

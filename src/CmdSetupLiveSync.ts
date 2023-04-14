@@ -6,6 +6,7 @@ import { askSelectString, askYesNo, askString } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { delay } from "./lib/src/utils";
+import { confirmWithMessage } from "./dialogs";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }
@@ -188,6 +189,54 @@ export class SetupLiveSync extends LiveSyncCommands {
         this.plugin.settings.usePluginSync = false;
         this.plugin.settings.autoSweepPlugins = false;
     }
+    async askHiddenFileConfiguration(opt: { enableFetch?: boolean, enableOverwrite?: boolean }) {
+        this.plugin.addOnSetup.suspendExtraSync();
+        const message = `Would you like to enable \`Hidden File Synchronization\`?
+${opt.enableFetch ? " - Fetch: Use files stored from other devices. \n" : ""}${opt.enableOverwrite ? "- Overwrite: Use files from this device. \n" : ""}- Keep it disabled: Do not use hidden file synchronization.
+
+Of course, we are able to disable this feature.`
+        const CHOICE_FETCH = "Fetch";
+        const CHOICE_OVERWRITE = "Overwrite";
+        const CHOICE_DISMISS = "keep it disabled";
+        const choices = [];
+        if (opt?.enableFetch) {
+            choices.push(CHOICE_FETCH);
+        }
+        if (opt?.enableOverwrite) {
+            choices.push(CHOICE_OVERWRITE);
+        }
+        choices.push(CHOICE_DISMISS);
+
+        const ret = await confirmWithMessage(this.plugin, "Hidden file sync", message, choices, CHOICE_DISMISS, 40);
+        if (ret == CHOICE_FETCH) {
+            await this.configureHiddenFileSync("FETCH");
+        } else if (ret == CHOICE_OVERWRITE) {
+            await this.configureHiddenFileSync("OVERWRITE");
+        } else if (ret == CHOICE_DISMISS) {
+            await this.configureHiddenFileSync("DISABLE");
+        }
+    }
+    async configureHiddenFileSync(mode: "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE") {
+        this.plugin.addOnSetup.suspendExtraSync();
+        if (mode == "DISABLE") {
+            this.plugin.settings.syncInternalFiles = false;
+            await this.plugin.saveSettings();
+            return;
+        }
+        Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
+        if (mode == "FETCH") {
+            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
+        } else if (mode == "OVERWRITE") {
+            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
+        } else if (mode == "MERGE") {
+            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
+        }
+        this.plugin.settings.syncInternalFiles = true;
+        await this.plugin.saveSettings();
+        Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
+
+    }
+
     suspendAllSync() {
         this.plugin.settings.liveSync = false;
         this.plugin.settings.periodicReplication = false;
@@ -207,6 +256,9 @@ export class SetupLiveSync extends LiveSyncCommands {
         this.plugin.isReady = true;
         await delay(500);
         await this.plugin.replicateAllFromServer(true);
+        await delay(1000);
+        await this.plugin.replicateAllFromServer(true);
+        await this.askHiddenFileConfiguration({ enableFetch: true });
     }
     async rebuildRemote() {
         this.suspendExtraSync();
@@ -215,6 +267,10 @@ export class SetupLiveSync extends LiveSyncCommands {
         await this.plugin.tryResetRemoteDatabase();
         await this.plugin.markRemoteLocked();
         await delay(500);
+        await this.askHiddenFileConfiguration({ enableOverwrite: true });
+        await delay(1000);
+        await this.plugin.replicateAllToServer(true);
+        await delay(1000);
         await this.plugin.replicateAllToServer(true);
     }
     async rebuildEverything() {
@@ -227,6 +283,11 @@ export class SetupLiveSync extends LiveSyncCommands {
         await this.plugin.tryResetRemoteDatabase();
         await this.plugin.markRemoteLocked();
         await delay(500);
+        await this.askHiddenFileConfiguration({ enableOverwrite: true });
+        await delay(1000);
         await this.plugin.replicateAllToServer(true);
+        await delay(1000);
+        await this.plugin.replicateAllToServer(true);
+
     }
 }

@@ -1,5 +1,5 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, RequestUrlParam, requestUrl, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, ConfigPassphraseStore, RemoteDBSettings, NewEntry } from "./lib/src/types";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
+import { DEFAULT_SETTINGS, LOG_LEVEL, ObsidianLiveSyncSettings, ConfigPassphraseStore, RemoteDBSettings } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -7,27 +7,9 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
+import { balanceChunks, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
 
-const _requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, path?: string, body?: any, method?: string) => {
-    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
-    const encoded = window.btoa(utf8str);
-    const authHeader = "Basic " + encoded;
-    // const origin = "capacitor://localhost";
-    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };
-    const uri = `${baseUri}/${path}`;
-    const requestParam: RequestUrlParam = {
-        url: uri,
-        method: method || (body ? "PUT" : "GET"),
-        headers: transformedHeaders,
-        contentType: "application/json",
-        body: body ? JSON.stringify(body) : undefined,
-    };
-    return await requestUrl(requestParam);
-}
-const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string, method?: string) => {
-    const uri = `_node/_local/_config${key ? "/" + key : ""}`;
-    return await _requestToCouchDB(baseUri, username, password, origin, uri, body, method);
-};
+
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
     selectedScreen = "";
@@ -496,15 +478,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             // @ts-ignore
             this.plugin.app.setting.close();
             await delay(2000);
-            if (method == "localOnly") {
-                await this.plugin.addOnSetup.fetchLocal();
-            }
-            if (method == "remoteOnly") {
-                await this.plugin.addOnSetup.rebuildRemote();
-            }
-            if (method == "rebuildBothByThisDevice") {
-                await this.plugin.addOnSetup.rebuildEverything();
-            }
+            await performRebuildDB(this.plugin, method);
         }
 
         new Setting(containerRemoteDatabaseEl)
@@ -1067,42 +1041,25 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 .addButton((button) => {
                     button.setButtonText("Merge")
                         .onClick(async () => {
-                            this.plugin.addOnSetup.suspendExtraSync();
-                            this.display();
-                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
-                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
-                            this.plugin.settings.syncInternalFiles = true;
-                            await this.plugin.saveSettings();
-                            Logger(`Done!`, LOG_LEVEL.NOTICE);
+                            // @ts-ignore
+                            this.plugin.app.setting.close()
+                            await this.plugin.addOnSetup.configureHiddenFileSync("MERGE");
                         })
                 })
                 .addButton((button) => {
                     button.setButtonText("Fetch")
                         .onClick(async () => {
-                            this.plugin.addOnSetup.suspendExtraSync();
                             // @ts-ignore
                             this.plugin.app.setting.close()
-                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
-                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
-                            this.plugin.settings.syncInternalFiles = true;
-                            await this.plugin.saveSettings();
-                            Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
-                            // this.display();
+                            await this.plugin.addOnSetup.configureHiddenFileSync("FETCH");
                         })
                 })
                 .addButton((button) => {
                     button.setButtonText("Overwrite")
                         .onClick(async () => {
-                            this.plugin.addOnSetup.suspendExtraSync();
                             // @ts-ignore
                             this.plugin.app.setting.close()
-                            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
-                            // this.display();
-                            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
-                            this.plugin.settings.syncInternalFiles = true;
-                            await this.plugin.saveSettings();
-                            Logger(`Done!`, LOG_LEVEL.NOTICE);
-                            // this.display();
+                            await this.plugin.addOnSetup.configureHiddenFileSync("OVERWRITE");
                         })
                 });
         }
@@ -1642,59 +1599,8 @@ ${stringifyYaml(pluginConfig)}`;
                 })
             );
 
-        const localDatabaseCleanUp = async (force: boolean) => {
-
-            const usedMap = new Map();
-            const existMap = new Map();
-            const db = this.plugin.localDatabase.localDatabase;
-            if ((db as any)?.adapter != "indexeddb") {
-                if (force) {
-                    Logger("Fetch from the remote database", LOG_LEVEL.NOTICE, "clean-up-db");
-                    await rebuildDB("localOnly");
-                    return;
-                } else {
-                    Logger("This feature requires enabling `Use new adapter`. Please enable it", LOG_LEVEL.NOTICE, "clean-up-db");
-                    return;
-                }
-            }
-            Logger(`The remote database locked for garbage collection`, LOG_LEVEL.NOTICE, "clean-up-db");
-            Logger(`Gathering chunk usage information`, LOG_LEVEL.NOTICE, "clean-up-db");
-
-            const xx = await db.allDocs({ startkey: "h:", endkey: `h:\u{10ffff}` });
-            for (const xxd of xx.rows) {
-                const chunk = xxd.id
-                existMap.set(chunk, xxd.value.rev);
-            }
-
-            const x = await db.find({ limit: 999999999, selector: { children: { $exists: true, $type: "array" } }, fields: ["_id", "mtime", "children"] });
-            for (const temp of x.docs) {
-                for (const chunk of (temp as NewEntry).children) {
-                    usedMap.set(chunk, (usedMap.has(chunk) ? usedMap.get(chunk) : 0) + 1);
-                    existMap.delete(chunk);
-                }
-            }
 
 
-            const payload = {} as Record<string, string[]>;
-            for (const [id, rev] of existMap) {
-                payload[id] = [rev];
-            }
-            const removeItems = Object.keys(payload).length;
-            if (removeItems == 0) {
-                Logger(`No unreferenced chunks found`, LOG_LEVEL.NOTICE, "clean-up-db");
-                return;
-            }
-            Logger(`Deleting unreferenced chunks: ${removeItems}`, LOG_LEVEL.NOTICE, "clean-up-db");
-            for (const [id, rev] of existMap) {
-                //@ts-ignore
-                const ret = await db.purge(id, rev);
-                Logger(ret, LOG_LEVEL.VERBOSE);
-            }
-            this.plugin.localDatabase.refreshSettings();
-            Logger(`Compacting local database...`, LOG_LEVEL.NOTICE, "clean-up-db");
-            await db.compact();
-            Logger("Done!", LOG_LEVEL.NOTICE, "clean-up-db");
-        }
 
         addScreenElement("50", containerHatchEl);
         // With great respect, thank you TfTHacker!
@@ -1805,75 +1711,23 @@ ${stringifyYaml(pluginConfig)}`;
             )
 
         new Setting(containerMaintenanceEl)
-            .setName("(Experimental) Clean the remote database")
+            .setName("(Beta) Clean the remote database")
             .setDesc("")
             .addButton((button) =>
+                button.setButtonText("Count")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await remoteDatabaseCleanup(this.plugin, true);
+                    })
+            ).addButton((button) =>
                 button.setButtonText("Perform cleaning")
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
                         // @ts-ignore
                         this.plugin.app.setting.close()
-                        try {
-                            const usedMap = new Map();
-                            const existMap = new Map();
-                            const ret = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile);
-                            if (typeof ret === "string") {
-                                Logger(`Connect error: ${ret}`, LOG_LEVEL.NOTICE, "clean-up-db");
-                                return;
-                            }
-                            const info = ret.info;
-                            Logger(JSON.stringify(info), LOG_LEVEL.VERBOSE, "clean-up-db");
-                            Logger(`Database data-size:${(info as any)?.data_size ?? "-"}, disk-size: ${(info as any)?.disk_size ?? "-"}`);
-                            Logger(`The remote database locked for garbage collection`, LOG_LEVEL.NOTICE, "clean-up-db");
-                            await this.plugin.markRemoteLocked();
-                            Logger(`Gathering chunk usage information`, LOG_LEVEL.NOTICE, "clean-up-db");
-                            const db = ret.db;
-
-                            const xx = await db.allDocs({ startkey: "h:", endkey: `h:\u{10ffff}` });
-                            for (const xxd of xx.rows) {
-                                const chunk = xxd.id
-                                existMap.set(chunk, xxd.value.rev);
-                            }
-
-                            const x = await db.find({ limit: 999999999, selector: { children: { $exists: true, $type: "array" } }, fields: ["_id", "mtime", "children"] });
-                            for (const temp of x.docs) {
-                                for (const chunk of (temp as NewEntry).children) {
-                                    usedMap.set(chunk, (usedMap.has(chunk) ? usedMap.get(chunk) : 0) + 1);
-                                    existMap.delete(chunk);
-                                }
-                            }
-
-                            const payload = {} as Record<string, string[]>;
-                            for (const [id, rev] of existMap) {
-                                payload[id] = [rev];
-                            }
-                            const removeItems = Object.keys(payload).length;
-                            if (removeItems == 0) {
-                                Logger(`No unreferenced chunk found`, LOG_LEVEL.NOTICE, "clean-up-db");
-                                return;
-                            }
-                            Logger(`Deleting unreferenced chunks: ${removeItems}`, LOG_LEVEL.NOTICE, "clean-up-db");
-                            const rets = await _requestToCouchDB(
-                                `${this.plugin.settings.couchDB_URI}/${this.plugin.settings.couchDB_DBNAME}`,
-                                this.plugin.settings.couchDB_USER,
-                                this.plugin.settings.couchDB_PASSWORD,
-                                undefined,
-                                "_purge",
-                                payload, "POST");
-                            // const result = await rets();
-                            Logger(JSON.stringify(rets.text), LOG_LEVEL.VERBOSE);
-                            Logger(`Compacting database...`, LOG_LEVEL.NOTICE, "clean-up-db");
-                            await db.compact();
-                            const endInfo = await db.info();
-                            Logger(`Result database data-size:${(endInfo as any)?.data_size ?? "-"}, disk-size: ${(endInfo as any)?.disk_size ?? "-"}`);
-                            Logger(JSON.stringify(endInfo), LOG_LEVEL.VERBOSE, "clean-up-db");
-                            Logger(`Local database cleaning up...`);
-                            await localDatabaseCleanUp(true);
-                        } catch (ex) {
-                            Logger("Failed to clean up db.")
-                            Logger(ex, LOG_LEVEL.VERBOSE);
-                        }
+                        await remoteDatabaseCleanup(this.plugin, false);
+                        await balanceChunks(this.plugin, false);
                     })
             );
 
@@ -1893,17 +1747,22 @@ ${stringifyYaml(pluginConfig)}`;
             )
 
         new Setting(containerMaintenanceEl)
-            .setName("(Experimental) Clean the local database")
-            .setDesc("")
+            .setName("(Beta) Clean the local database")
+            .setDesc("This feature requires enabling 'Use new Adapter'")
             .addButton((button) =>
+                button.setButtonText("Count")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await localDatabaseCleanUp(this.plugin, false, true);
+                    })
+            ).addButton((button) =>
                 button.setButtonText("Perform cleaning")
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
                         // @ts-ignore
                         this.plugin.app.setting.close()
-                        await localDatabaseCleanUp(false);
-                        await this.plugin.markRemoteResolved();
+                        await localDatabaseCleanUp(this.plugin, false, false);
                     })
             );
 
@@ -1935,6 +1794,18 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
+        new Setting(containerMaintenanceEl)
+            .setName("(Beta) Complement each other with possible missing chunks.")
+            .setDesc("")
+            .addButton((button) =>
+                button
+                    .setButtonText("Balance")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await balanceChunks(this.plugin, false);
+                    })
+            )
         applyDisplayEnabled();
         addScreenElement("70", containerMaintenanceEl);
 

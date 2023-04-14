@@ -613,7 +613,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
 
     showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
-        return new Promise((res) => {
+        return runWithLock("conflict:merge-data", false, () => new Promise((res) => {
             Logger("Opening data-merging dialog", LOG_LEVEL.VERBOSE);
             const docs = [docA, docB];
             const path = stripAllPrefixes(docA.path);
@@ -624,6 +624,8 @@ export class HiddenFileSync extends LiveSyncCommands {
                     let needFlush = false;
                     if (!result && !keep) {
                         Logger(`Skipped merging: ${filename}`);
+                        res(false);
+                        return;
                     }
                     //Delete old revisions
                     if (result || keep) {
@@ -665,7 +667,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
             });
             modal.open();
-        });
+        }));
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {

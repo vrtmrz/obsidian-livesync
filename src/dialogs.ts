@@ -1,4 +1,5 @@
-import { App, FuzzySuggestModal, Modal, Setting } from "./deps";
+import { ButtonComponent } from "obsidian";
+import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "./deps";
 import ObsidianLiveSyncPlugin from "./main";
 
 //@ts-ignore
@@ -124,3 +125,102 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
         }, 100);
     }
 }
+
+export class MessageBox extends Modal {
+
+    plugin: Plugin;
+    title: string;
+    contentMd: string;
+    buttons: string[];
+    result: string;
+    isManuallyClosed = false;
+    defaultAction: string | undefined;
+    timeout: number | undefined;
+    timer: ReturnType<typeof setInterval> = undefined;
+    defaultButtonComponent: ButtonComponent | undefined;
+
+    onSubmit: (result: string | boolean) => void;
+
+    constructor(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout: number, onSubmit: (result: (typeof buttons)[number] | false) => void) {
+        super(plugin.app);
+        this.plugin = plugin;
+        this.title = title;
+        this.contentMd = contentMd;
+        this.buttons = buttons;
+        this.onSubmit = onSubmit;
+        this.defaultAction = defaultAction;
+        this.timeout = timeout;
+        if (this.timeout) {
+            this.timer = setInterval(() => {
+                this.timeout--;
+                if (this.timeout < 0) {
+                    if (this.timer) {
+                        clearInterval(this.timer);
+                        this.timer = undefined;
+                    }
+                    this.result = defaultAction;
+                    this.isManuallyClosed = true;
+                    this.close();
+                } else {
+                    this.defaultButtonComponent.setButtonText(`( ${this.timeout} ) ${defaultAction}`);
+                }
+            }, 1000);
+        }
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addEventListener("click", () => {
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = undefined;
+            }
+        })
+        contentEl.createEl("h1", { text: this.title });
+        const div = contentEl.createDiv();
+        MarkdownRenderer.renderMarkdown(this.contentMd, div, "/", null);
+        const buttonSetting = new Setting(contentEl);
+        for (const button of this.buttons) {
+            buttonSetting.addButton((btn) => {
+                btn
+                    .setButtonText(button)
+                    .onClick(() => {
+                        this.isManuallyClosed = true;
+                        this.result = button;
+                        if (this.timer) {
+                            clearInterval(this.timer);
+                            this.timer = undefined;
+                        }
+                        this.close();
+                    })
+                if (button == this.defaultAction) {
+                    this.defaultButtonComponent = btn;
+                }
+                return btn;
+            }
+            )
+        }
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = undefined;
+        }
+        if (this.isManuallyClosed) {
+            this.onSubmit(this.result);
+        } else {
+            this.onSubmit(false);
+        }
+    }
+}
+
+
+export function confirmWithMessage(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction?: (typeof buttons)[number], timeout?: number): Promise<(typeof buttons)[number] | false> {
+    return new Promise((res) => {
+        const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, (result) => res(result));
+        dialog.open();
+    });
+};
