@@ -155,6 +155,26 @@
     - Fixed a problem about reading chunks online when a file has more chunks than the concurrency limit.
   - Rollbacked:
     - Logs are kept only for 100 lines, again.
+- 0.17.31
+  - Fixed:
+    - Now `redflag3` can be run surely.
+    - Synchronisation can now be aborted.
+  - Note: The synchronisation flow has been rewritten drastically. Please do not haste to inform me if you have noticed anything.
+- 0.17.32
+  - Fixed:
+    - Now periodic internal file scanning works well.
+    - The handler of Window-visibility-changed has been fixed.
+    - And minor fixes possibly included.
+  - Refactored:
+    - Unused logic has been removed.
+    - Some utility functions have been moved into suitable files.
+    - Function names have been renamed.
+- 0.17.33
+  - Maintenance update: Refactored; the responsibilities that `LocalDatabase` had were shared. (Hoping) No changes in behaviour.
+- 0.17.34
+  - Fixed: The `Fetch` that was broken at 0.17.33 has been fixed.
+  - Refactored again: Internal file sync, plug-in sync and Set up URI have been moved into each file.
+
 ### 0.16.0
 - Now hidden files need not be scanned. Changes will be detected automatically.
   - If you want it to back to its previous behaviour, please disable `Monitor changes to internal files`.
