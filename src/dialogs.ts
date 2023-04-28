@@ -9,6 +9,9 @@ export class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
     logEl: HTMLDivElement;
     component: PluginPane = null;
+    isOpened() {
+        return this.component != null;
+    }
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
         super(app);
@@ -223,4 +226,4 @@ export function confirmWithMessage(plugin: Plugin, title: string, contentMd: str
         const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, (result) => res(result));
         dialog.open();
     });
-};
+}

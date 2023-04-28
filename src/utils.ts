@@ -234,8 +234,8 @@ export function applyPatch(from: Record<string | number | symbol, any>, patch: R
 }
 
 export function mergeObject(
-    objA: Record<string | number | symbol, any>,
-    objB: Record<string | number | symbol, any>
+    objA: Record<string | number | symbol, any> | [any],
+    objB: Record<string | number | symbol, any> | [any]
 ) {
     const newEntries = Object.entries(objB);
     const ret: any = { ...objA };
@@ -277,6 +277,11 @@ export function mergeObject(
         } else {
             ret[key] = v;
         }
+    }
+    if (Array.isArray(objA) && Array.isArray(objB)) {
+        return Object.values(Object.entries(ret)
+            .sort()
+            .reduce((p, [key, value]) => ({ ...p, [key]: value }), {}));
     }
     return Object.entries(ret)
         .sort()
@@ -362,7 +367,7 @@ export function clearTouched() {
  * @param id ID
  * @returns 
  */
-export function isIdOfInternalMetadata(id: FilePath | FilePathWithPrefix | DocumentID): boolean {
+export function isInternalMetadata(id: FilePath | FilePathWithPrefix | DocumentID): boolean {
     return id.startsWith(ICHeader);
 }
 export function stripInternalMetadataPrefix<T extends FilePath | FilePathWithPrefix | DocumentID>(id: T): T {

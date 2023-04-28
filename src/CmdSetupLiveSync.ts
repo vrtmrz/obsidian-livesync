@@ -7,6 +7,7 @@ import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { delay } from "./lib/src/utils";
 import { confirmWithMessage } from "./dialogs";
+import { Platform } from "./deps";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }
@@ -191,13 +192,14 @@ export class SetupLiveSync extends LiveSyncCommands {
     }
     async askHiddenFileConfiguration(opt: { enableFetch?: boolean, enableOverwrite?: boolean }) {
         this.plugin.addOnSetup.suspendExtraSync();
-        const message = `Would you like to enable \`Hidden File Synchronization\`?
-${opt.enableFetch ? " - Fetch: Use files stored from other devices. \n" : ""}${opt.enableOverwrite ? "- Overwrite: Use files from this device. \n" : ""}- Keep it disabled: Do not use hidden file synchronization.
-
-Of course, we are able to disable this feature.`
+        const message = `Would you like to enable \`Hidden File Synchronization\` or \`Customization sync\`?
+${opt.enableFetch ? " - Fetch: Use files stored from other devices. \n" : ""}${opt.enableOverwrite ? "- Overwrite: Use files from this device. \n" : ""}- Custom: Synchronize only customization files with a dedicated interface.
+- Keep them disabled: Do not use hidden file synchronization.
+Of course, we are able to disable these features.`
         const CHOICE_FETCH = "Fetch";
         const CHOICE_OVERWRITE = "Overwrite";
-        const CHOICE_DISMISS = "keep it disabled";
+        const CHOICE_CUSTOMIZE = "Custom";
+        const CHOICE_DISMISS = "keep them disabled";
         const choices = [];
         if (opt?.enableFetch) {
             choices.push(CHOICE_FETCH);
@@ -205,6 +207,7 @@ Of course, we are able to disable this feature.`
         if (opt?.enableOverwrite) {
             choices.push(CHOICE_OVERWRITE);
         }
+        choices.push(CHOICE_CUSTOMIZE);
         choices.push(CHOICE_DISMISS);
 
         const ret = await confirmWithMessage(this.plugin, "Hidden file sync", message, choices, CHOICE_DISMISS, 40);
@@ -214,26 +217,61 @@ Of course, we are able to disable this feature.`
             await this.configureHiddenFileSync("OVERWRITE");
         } else if (ret == CHOICE_DISMISS) {
             await this.configureHiddenFileSync("DISABLE");
+        } else if (ret == CHOICE_CUSTOMIZE) {
+            await this.configureHiddenFileSync("CUSTOMIZE");
         }
     }
-    async configureHiddenFileSync(mode: "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE") {
+    async configureHiddenFileSync(mode: "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE" | "CUSTOMIZE") {
         this.plugin.addOnSetup.suspendExtraSync();
         if (mode == "DISABLE") {
             this.plugin.settings.syncInternalFiles = false;
+            this.plugin.settings.usePluginSync = false;
             await this.plugin.saveSettings();
             return;
         }
-        Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
-        if (mode == "FETCH") {
-            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
-        } else if (mode == "OVERWRITE") {
-            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
-        } else if (mode == "MERGE") {
-            await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
+        if (mode != "CUSTOMIZE") {
+            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
+            if (mode == "FETCH") {
+                await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
+            } else if (mode == "OVERWRITE") {
+                await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pushForce", true);
+            } else if (mode == "MERGE") {
+                await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("safe", true);
+            }
+            this.plugin.settings.syncInternalFiles = true;
+            await this.plugin.saveSettings();
+            Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
+        } else if (mode == "CUSTOMIZE") {
+            if (!this.plugin.deviceAndVaultName) {
+                let name = await askString(this.app, "Device name", "Please set this device name", `desktop`);
+                if (!name) {
+                    if (Platform.isAndroidApp) {
+                        name = "android-app"
+                    } else if (Platform.isIosApp) {
+                        name = "ios"
+                    } else if (Platform.isMacOS) {
+                        name = "macos"
+                    } else if (Platform.isMobileApp) {
+                        name = "mobile-app"
+                    } else if (Platform.isMobile) {
+                        name = "mobile"
+                    } else if (Platform.isSafari) {
+                        name = "safari"
+                    } else if (Platform.isDesktop) {
+                        name = "desktop"
+                    } else if (Platform.isDesktopApp) {
+                        name = "desktop-app"
+                    } else {
+                        name = "unknown"
+                    }
+                    name = name + Math.random().toString(36).slice(-4);
+                }
+                this.plugin.deviceAndVaultName = name;
+            }
+            this.plugin.settings.usePluginSync = true;
+            await this.plugin.saveSettings();
+            await this.plugin.addOnConfigSync.scanAllConfigFiles(true);
         }
-        this.plugin.settings.syncInternalFiles = true;
-        await this.plugin.saveSettings();
-        Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
 
     }
 

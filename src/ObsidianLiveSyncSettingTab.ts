@@ -1606,13 +1606,13 @@ ${stringifyYaml(pluginConfig)}`;
         // With great respect, thank you TfTHacker!
         // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         const containerPluginSettings = containerEl.createDiv();
-        containerPluginSettings.createEl("h3", { text: "Plugins and settings (beta)" });
+        containerPluginSettings.createEl("h3", { text: "Customization sync (beta)" });
 
         const updateDisabledOfDeviceAndVaultName = () => {
             vaultName.setDisabled(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic);
             vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto scan." : "");
         };
-        new Setting(containerPluginSettings).setName("Enable plugin synchronization").addToggle((toggle) =>
+        new Setting(containerPluginSettings).setName("Enable customization sync").addToggle((toggle) =>
             toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
                 this.plugin.settings.usePluginSync = value;
                 await this.plugin.saveSettings();
@@ -1620,8 +1620,8 @@ ${stringifyYaml(pluginConfig)}`;
         );
 
         new Setting(containerPluginSettings)
-            .setName("Scan plugins automatically")
-            .setDesc("Scan plugins before replicating.")
+            .setName("Scan customization automatically")
+            .setDesc("Scan customization before replicating.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPlugins).onChange(async (value) => {
                     this.plugin.settings.autoSweepPlugins = value;
@@ -1631,8 +1631,8 @@ ${stringifyYaml(pluginConfig)}`;
             );
 
         new Setting(containerPluginSettings)
-            .setName("Scan plugins periodically")
-            .setDesc("Scan plugins every 1 minute. This configuration will be ignored if monitoring changes of hidden files has been enabled.")
+            .setName("Scan customization periodically")
+            .setDesc("Scan customization every 1 minute. This configuration will be ignored if monitoring changes of hidden files has been enabled.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
                     this.plugin.settings.autoSweepPluginsPeriodic = value;
@@ -1642,8 +1642,8 @@ ${stringifyYaml(pluginConfig)}`;
             );
 
         new Setting(containerPluginSettings)
-            .setName("Notify updates")
-            .setDesc("Notify when any device has a newer plugin or its setting.")
+            .setName("Notify customized")
+            .setDesc("Notify when other device has newly customized.")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.notifyPluginOrSettingUpdated).onChange(async (value) => {
                     this.plugin.settings.notifyPluginOrSettingUpdated = value;
@@ -1651,10 +1651,10 @@ ${stringifyYaml(pluginConfig)}`;
                 })
             );
         const vaultName = new Setting(containerPluginSettings)
-            .setName("Device and Vault name")
+            .setName("Device name")
             .setDesc("")
             .addText((text) => {
-                text.setPlaceholder("desktop-main")
+                text.setPlaceholder("desktop")
                     .setValue(this.plugin.deviceAndVaultName)
                     .onChange(async (value) => {
                         this.plugin.deviceAndVaultName = value;
@@ -1664,13 +1664,13 @@ ${stringifyYaml(pluginConfig)}`;
             });
         new Setting(containerPluginSettings)
             .setName("Open")
-            .setDesc("Open the plugin dialog")
+            .setDesc("Open the dialog")
             .addButton((button) => {
                 button
                     .setButtonText("Open")
                     .setDisabled(false)
                     .onClick(() => {
-                        this.plugin.addOnPluginAndTheirSettings.showPluginSyncModal();
+                        this.plugin.addOnConfigSync.showPluginSyncModal();
                     });
             });
 

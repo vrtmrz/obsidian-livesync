@@ -64,7 +64,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Watch raw events (Internal API)
     watchVaultRawEvents(path: FilePath) {
-        if (!this.plugin.settings.syncInternalFiles) return;
+        if (!this.plugin.settings.syncInternalFiles && !this.plugin.settings.usePluginSync) return;
         if (!this.plugin.settings.watchInternalFileChanges) return;
         if (!path.startsWith(app.vault.configDir)) return;
         const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns

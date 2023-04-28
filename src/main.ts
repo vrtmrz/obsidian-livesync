@@ -11,7 +11,7 @@ import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isIdOfInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, localDatabaseCleanUp, balanceChunks, performRebuildDB } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, localDatabaseCleanUp, balanceChunks, performRebuildDB } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
@@ -26,9 +26,9 @@ import { LiveSyncLocalDB, LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
 import { LiveSyncDBReplicator, LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
 import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 import { LiveSyncCommands } from "./LiveSyncCommands";
-import { PluginAndTheirSettings } from "./CmdPluginAndTheirSettings";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
 import { SetupLiveSync } from "./CmdSetupLiveSync";
+import { ConfigSync } from "./CmdConfigSync";
 import { confirmWithMessage } from "./dialogs";
 
 setNoticeClass(Notice);
@@ -48,10 +48,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     packageVersion = "";
     manifestVersion = "";
 
-    addOnPluginAndTheirSettings = new PluginAndTheirSettings(this);
+    // addOnPluginAndTheirSettings = new PluginAndTheirSettings(this);
     addOnHiddenFileSync = new HiddenFileSync(this);
     addOnSetup = new SetupLiveSync(this);
-    addOns = [this.addOnPluginAndTheirSettings, this.addOnHiddenFileSync, this.addOnSetup] as LiveSyncCommands[];
+    addOnConfigSync = new ConfigSync(this);
+    addOns = [this.addOnHiddenFileSync, this.addOnSetup, this.addOnConfigSync] as LiveSyncCommands[];
 
     periodicSyncProcessor = new PeriodicProcessor(this, async () => await this.replicate());
 
@@ -206,7 +207,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     id2path(id: DocumentID, entry: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
         const tempId = id2path(id, entry);
-        if (stripPrefix && isIdOfInternalMetadata(tempId)) {
+        if (stripPrefix && isInternalMetadata(tempId)) {
             const out = stripInternalMetadataPrefix(tempId);
             return out;
         }
@@ -342,7 +343,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     async resolveConflicted(target: FilePathWithPrefix) {
-        if (isIdOfInternalMetadata(target)) {
+        if (isInternalMetadata(target)) {
             await this.addOnHiddenFileSync.resolveConflictOnInternalFile(target);
         } else if (isPluginMetadata(target)) {
             await this.resolveConflictByNewerEntry(target);
@@ -906,6 +907,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     await this.kvDB.set(keyD2, mtime);
                 } else if (queue.type == "INTERNAL") {
                     await this.addOnHiddenFileSync.watchVaultRawEventsAsync(file.path);
+                    await this.addOnConfigSync.watchVaultRawEventsAsync(file.path);
                 } else {
                     const targetFile = this.app.vault.getAbstractFileByPath(file.path);
                     if (!(targetFile instanceof TFile)) {
@@ -1283,7 +1285,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             const now = new Date().getTime();
             if (queue.missingChildren.length == 0) {
                 queue.done = true;
-                if (isIdOfInternalMetadata(queue.entry._id)) {
+                if (isInternalMetadata(queue.entry._id)) {
                     //system file
                     const filename = this.getPathWithoutPrefix(queue.entry);
                     this.addOnHiddenFileSync.procInternalFile(filename);
@@ -1328,7 +1330,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (!this.isTargetFile(path)) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         // Do not handle internal files if the feature has not been enabled.
-        if (isIdOfInternalMetadata(doc._id) && !this.settings.syncInternalFiles) return;
+        if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) return;
         // It is better for your own safety, not to handle the following files
         const ignoreFiles = [
             "_design/replicate",
@@ -1336,11 +1338,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             FLAGMD_REDFLAG2,
             FLAGMD_REDFLAG3
         ];
-        if (!isIdOfInternalMetadata(doc._id) && ignoreFiles.contains(path)) {
+        if (!isInternalMetadata(doc._id) && ignoreFiles.contains(path)) {
             return;
 
         }
-        if ((!isIdOfInternalMetadata(doc._id)) && skipOldFile) {
+        if ((!isInternalMetadata(doc._id)) && skipOldFile) {
             const info = getAbstractFileByPath(stripAllPrefixes(path));
 
             if (info && info instanceof TFile) {
@@ -2227,7 +2229,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const dK = `${file.path}-diff`;
         const isLastDiff = dK in caches ? caches[dK] : { storageMtime: 0, docMtime: 0 };
         if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
-            Logger("STORAGE .. DB :" + file.path, LOG_LEVEL.VERBOSE);
+            // Logger("STORAGE .. DB :" + file.path, LOG_LEVEL.VERBOSE);
             caches[dK] = { storageMtime, docMtime };
             return caches;
         }

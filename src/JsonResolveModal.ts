@@ -8,12 +8,18 @@ export class JsonResolveModal extends Modal {
     callback: (keepRev: string, mergedStr?: string) => Promise<void>;
     docs: LoadedEntry[];
     component: JsonResolvePane;
+    nameA: string;
+    nameB: string;
+    defaultSelect: string;
 
-    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev: string, mergedStr?: string) => Promise<void>) {
+    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev: string, mergedStr?: string) => Promise<void>, nameA?: string, nameB?: string, defaultSelect?: string) {
         super(app);
         this.callback = callback;
         this.filename = filename;
         this.docs = docs;
+        this.nameA = nameA;
+        this.nameB = nameB;
+        this.defaultSelect = defaultSelect;
     }
     async UICallback(keepRev: string, mergedStr?: string) {
         this.close();
@@ -32,6 +38,9 @@ export class JsonResolveModal extends Modal {
                 props: {
                     docs: this.docs,
                     filename: this.filename,
+                    nameA: this.nameA,
+                    nameB: this.nameB,
+                    defaultSelect: this.defaultSelect,
                     callback: (keepRev, mergedStr) => this.UICallback(keepRev, mergedStr),
                 },
             });

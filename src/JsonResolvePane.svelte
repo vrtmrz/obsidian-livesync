@@ -10,7 +10,9 @@
         Promise.resolve();
     };
     export let filename: FilePath = "" as FilePath;
-
+    export let nameA: string = "A";
+    export let nameB: string = "B";
+    export let defaultSelect: string = "";
     let docA: LoadedEntry = undefined;
     let docB: LoadedEntry = undefined;
     let docAContent = "";
@@ -20,14 +22,8 @@
     let objAB: any = {};
     let objBA: any = {};
     let diffs: Diff[];
-    const modes = [
-        ["", "Not now"],
-        ["A", "A"],
-        ["B", "B"],
-        ["AB", "A + B"],
-        ["BA", "B + A"],
-    ] as ["" | "A" | "B" | "AB" | "BA", string][];
-    let mode: "" | "A" | "B" | "AB" | "BA" = "";
+    type SelectModes = "" | "A" | "B" | "AB" | "BA";
+    let mode: SelectModes = defaultSelect as SelectModes;
 
     function docToString(doc: LoadedEntry) {
         return doc.datatype == "plain" ? getDocData(doc.data) : base64ToString(doc.data);
@@ -47,8 +43,13 @@
         return getDiff(JSON.stringify(a, null, 2), JSON.stringify(b, null, 2));
     }
     function apply() {
-        if (mode == "A") return callback(docA._rev, null);
-        if (mode == "B") return callback(docB._rev, null);
+        if (docA._id == docB._id) {
+            if (mode == "A") return callback(docA._rev, null);
+            if (mode == "B") return callback(docB._rev, null);
+        } else {
+            if (mode == "A") return callback(null, docToString(docA));
+            if (mode == "B") return callback(null, docToString(docB));
+        }
         if (mode == "BA") return callback(null, JSON.stringify(objBA, null, 2));
         if (mode == "AB") return callback(null, JSON.stringify(objAB, null, 2));
         callback(null, null);
@@ -92,12 +93,19 @@
     $: selectedObj = mode in mergedObjs ? mergedObjs[mode] : {};
     $: {
         diffs = getJsonDiff(objA, selectedObj);
-        console.dir(selectedObj);
     }
+
+    $: modes = [
+        ["", "Not now"],
+        ["A", nameA || "A"],
+        ["B", nameB || "B"],
+        ["AB", `${nameA || "A"} + ${nameB || "B"}`],
+        ["BA", `${nameB || "B"} + ${nameA || "A"}`],
+    ] as ["" | "A" | "B" | "AB" | "BA", string][];
 </script>
 
 <h1>Conflicted settings</h1>
-<div><span>{filename}</span></div>
+<h2>{filename}</h2>
 {#if !docA || !docB}
     <div class="message">Just for a minute, please!</div>
     <div class="buttons">
@@ -125,12 +133,14 @@
         NO PREVIEW
     {/if}
     <div>
-        A Rev:{revStringToRevNumber(docA._rev)} ,{new Date(docA.mtime).toLocaleString()}
+        {nameA}
+        {#if docA._id == docB._id} Rev:{revStringToRevNumber(docA._rev)} {/if} ,{new Date(docA.mtime).toLocaleString()}
         {docAContent.length} letters
     </div>
 
     <div>
-        B Rev:{revStringToRevNumber(docB._rev)} ,{new Date(docB.mtime).toLocaleString()}
+        {nameB}
+        {#if docA._id == docB._id} Rev:{revStringToRevNumber(docB._rev)} {/if} ,{new Date(docB.mtime).toLocaleString()}
         {docBContent.length} letters
     </div>
 

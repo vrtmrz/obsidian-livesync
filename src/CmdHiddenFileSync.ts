@@ -4,7 +4,7 @@ import { InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
 import { delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask, trimPrefix, isIdOfInternalMetadata, PeriodicProcessor } from "./utils";
+import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
@@ -28,7 +28,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
     }
-    onload(): void | Promise<void> {
+    onload() {
         this.plugin.addCommand({
             id: "livesync-scaninternal",
             name: "Sync hidden files",
@@ -78,7 +78,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     procInternalFiles: string[] = [];
     async execInternalFile() {
-        await runWithLock("execinternal", false, async () => {
+        await runWithLock("execInternal", false, async () => {
             const w = [...this.procInternalFiles];
             this.procInternalFiles = [];
             Logger(`Applying hidden ${w.length} files change...`);
@@ -95,6 +95,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: FilePath) {
+        if (!this.settings.syncInternalFiles) return;
         const stat = await this.app.vault.adapter.stat(path);
         // sometimes folder is coming.
         if (stat && stat.type != "file")
@@ -122,12 +123,6 @@ export class HiddenFileSync extends LiveSyncCommands {
             await this.deleteInternalFileOnDatabase(path);
         } else {
             await this.storeInternalFileToDatabase({ path: path, ...stat });
-            const pluginDir = this.app.vault.configDir + "/plugins/";
-            const pluginFiles = ["manifest.json", "data.json", "style.css", "main.js"];
-            if (path.startsWith(pluginDir) && pluginFiles.some(e => path.endsWith(e)) && this.settings.usePluginSync) {
-                const pluginName = trimPrefix(path, pluginDir).split("/")[0];
-                await this.plugin.addOnPluginAndTheirSettings.sweepPlugin(false, pluginName);
-            }
         }
 
     }
@@ -138,7 +133,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         for await (const doc of conflicted) {
             if (!("_conflicts" in doc))
                 continue;
-            if (isIdOfInternalMetadata(doc._id)) {
+            if (isInternalMetadata(doc._id)) {
                 await this.resolveConflictOnInternalFile(doc.path);
             }
         }

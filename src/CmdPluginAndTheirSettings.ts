@@ -42,6 +42,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 this.showPluginSyncModal();
             },
         });
+        this.showPluginSyncModal();
     }
     onunload() {
         this.hidePluginSyncModal();
@@ -165,7 +166,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
         await runWithLock("sweepplugin", true, async () => {
             const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
             if (!this.deviceAndVaultName) {
-                Logger("You have to set your device and vault name.", LOG_LEVEL.NOTICE);
+                Logger("You have to set your device name.", LOG_LEVEL.NOTICE);
                 return;
             }
             Logger("Scanning plugins", logLevel);
