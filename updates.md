@@ -14,4 +14,8 @@ I hope you will give it a try.
 
 #### Minors
 
+- 0.19.1
+  - Fixed: Fixed hidden file handling on Linux
+  - Improved: Now customization sync works more smoothly.
+
 ... To continue on to `updates_old.md`.
