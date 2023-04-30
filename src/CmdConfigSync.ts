@@ -10,7 +10,7 @@ import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64, readString, writeString, uint8ArrayToHexString } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
-import { addPrefix, stripAllPrefixes } from "./lib/src/path";
+import { stripAllPrefixes } from "./lib/src/path";
 import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "./utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { PluginDialogModal } from "./dialogs";
@@ -67,6 +67,7 @@ export class ConfigSync extends LiveSyncCommands {
     pluginDialog: PluginDialogModal = null;
     periodicPluginSweepProcessor = new PeriodicProcessor(this.plugin, async () => await this.scanAllConfigFiles(false));
 
+    pluginList: PluginDataExDisplay[] = [];
     showPluginSyncModal() {
         if (!this.settings.usePluginSync) {
             return;
@@ -141,27 +142,31 @@ export class ConfigSync extends LiveSyncCommands {
         }
     }
     async onResume() {
-        if (this.plugin.suspended)
+        if (this.plugin.suspended) {
             return;
+        }
         if (this.settings.autoSweepPlugins) {
-            await this.scanAllConfigFiles(true);
+            await this.scanAllConfigFiles(false);
         }
         this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0);
-    }
 
-    async reloadPluginList() {
-        pluginList.set([])
-        await this.updatePluginList();
     }
-    async updatePluginList(updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
+    async reloadPluginList(showMessage: boolean) {
+        this.pluginList = [];
+        pluginList.set(this.pluginList)
+        await this.updatePluginList(showMessage);
+    }
+    async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
+        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
         // pluginList.set([]);
         if (!this.settings.usePluginSync) {
-            pluginList.set([]);
+            this.pluginList = [];
+            pluginList.set(this.pluginList)
             return;
         }
 
         await runWithLock("update-plugin-list", false, async () => {
-            if (updatedDocumentPath != "") pluginList.update(e => e.filter(ee => ee.documentPath != updatedDocumentPath));
+            // if (updatedDocumentPath != "") pluginList.update(e => e.filter(ee => ee.documentPath != updatedDocumentPath));
             // const work: Record<string, Record<string, Record<string, Record<string, PluginDataEntryEx>>>> = {};
             const entries = [] as PluginDataExDisplay[]
             const plugins = this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
@@ -169,16 +174,21 @@ export class ConfigSync extends LiveSyncCommands {
             const processes = [] as Promise<void>[];
             let count = 0;
             pluginIsEnumerating.set(true);
+            let processed = false;
             try {
                 for await (const plugin of plugins) {
                     const path = plugin.path || this.getPath(plugin);
                     if (updatedDocumentPath && updatedDocumentPath != path) {
                         continue;
                     }
+                    processed = true;
+                    const oldEntry = (this.pluginList.find(e => e.documentPath == path));
+                    if (oldEntry && oldEntry.mtime == plugin.mtime) continue;
                     processes.push((async (v) => {
+
                         const release = await semaphore.acquire(1);
                         try {
-                            Logger(`Enumerating files... ${count++}`, LOG_LEVEL.NOTICE, "get-plugins");
+                            Logger(`Enumerating files... ${count++}`, logLevel, "get-plugins");
 
                             Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
                             const wx = await this.localDatabase.getDBEntry(path, null, false, false);
@@ -199,7 +209,7 @@ export class ConfigSync extends LiveSyncCommands {
                             }
                         } catch (ex) {
                             //TODO
-                            Logger(`Something happened at enumerating customization :${v.path}`);
+                            Logger(`Something happened at enumerating customization :${v.path}`, LOG_LEVEL.NOTICE);
                             console.warn(ex);
                         } finally {
                             release();
@@ -208,16 +218,18 @@ export class ConfigSync extends LiveSyncCommands {
                     )(plugin));
                 }
                 await Promise.all(processes);
-                pluginList.update(e => {
-                    let newList = [...e];
-                    for (const item of entries) {
-                        console.log(item.documentPath);
-                        newList = newList.filter(x => x.documentPath != item.documentPath);
-                        newList.push(item)
-                    }
-                    return newList;
-                })
-                Logger(`All files enumerated`, LOG_LEVEL.NOTICE, "get-plugins");
+                let newList = [...this.pluginList];
+                for (const item of entries) {
+                    newList = newList.filter(x => x.documentPath != item.documentPath);
+                    newList.push(item)
+                }
+                if (updatedDocumentPath != "" && !processed) newList = newList.filter(e => e.documentPath != updatedDocumentPath);
+
+                this.pluginList = newList;
+                pluginList.set(newList);
+
+
+                Logger(`All files enumerated`, logLevel, "get-plugins");
             } finally {
                 pluginIsEnumerating.set(false);
             }
@@ -293,7 +305,7 @@ export class ConfigSync extends LiveSyncCommands {
             }
             const uPath = `${baseDir}/${loadedData.files[0].filename}` as FilePath;
             await this.storeCustomizationFiles(uPath);
-            await this.updatePluginList(uPath);
+            await this.updatePluginList(true, uPath);
             await delay(100);
             Logger(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL.NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
@@ -329,6 +341,7 @@ export class ConfigSync extends LiveSyncCommands {
         try {
             if (data.documentPath) {
                 await this.deleteConfigOnDatabase(data.documentPath);
+                await this.updatePluginList(false, data.documentPath);
                 Logger(`Delete: ${data.documentPath}`, LOG_LEVEL.NOTICE);
             }
             return true;
@@ -338,8 +351,11 @@ export class ConfigSync extends LiveSyncCommands {
 
         }
     }
-    parseReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
+    async parseReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (docs._id.startsWith(ICXHeader)) {
+            if (this.plugin.settings.usePluginSync) {
+                await this.updatePluginList(false, docs.path ? docs.path : this.getPath(docs));
+            }
             if (this.plugin.settings.usePluginSync && this.plugin.settings.notifyPluginOrSettingUpdated) {
                 if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                     const fragment = createFragment((doc) => {
@@ -347,7 +363,7 @@ export class ConfigSync extends LiveSyncCommands {
                             a.appendText(`Some configuration has been arrived, Press `);
                             a.appendChild(a.createEl("a", null, (anchor) => {
                                 anchor.text = "HERE";
-                                anchor.addEventListener("click", async () => {
+                                anchor.addEventListener("click", () => {
                                     this.showPluginSyncModal();
                                 });
                             }));
@@ -375,10 +391,7 @@ export class ConfigSync extends LiveSyncCommands {
                             disposeMemoObject(updatedPluginKey);
                         });
                     });
-                } else {
-                    this.updatePluginList(docs.path ? docs.path : this.getPath(docs));
                 }
-
             }
             return true;
         }
@@ -502,7 +515,9 @@ export class ConfigSync extends LiveSyncCommands {
             // Logger(`Configuration saving: ${prefixedFileName}`);
             if (dt.files.length == 0) {
                 Logger(`Nothing left: deleting.. ${path}`);
-                return await this.deleteConfigOnDatabase(prefixedFileName);
+                await this.deleteConfigOnDatabase(prefixedFileName);
+                await this.updatePluginList(false, prefixedFileName);
+                return
             }
 
             const content = stringifyYaml(dt);
@@ -540,6 +555,7 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
+                await this.updatePluginList(false, saveData.path);
                 Logger(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
                 return ret;
             } catch (ex) {
@@ -548,7 +564,6 @@ export class ConfigSync extends LiveSyncCommands {
                 return false;
             }
         })
-        // })
 
     }
     async watchVaultRawEventsAsync(path: FilePath) {
@@ -591,6 +606,7 @@ export class ConfigSync extends LiveSyncCommands {
         for (const vp of deleteCandidate) {
             await this.deleteConfigOnDatabase(vp);
         }
+        this.updatePluginList(false).then(/* fire and forget */);
     }
     async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false) {
 
@@ -618,6 +634,7 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 }
                 await this.localDatabase.putRaw(saveData);
+                await this.updatePluginList(false, prefixedFileName);
                 Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
             } catch (ex) {
                 Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);

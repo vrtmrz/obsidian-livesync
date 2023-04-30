@@ -18,10 +18,10 @@
     let applyAllPluse = 0;
     let isMaintenanceMode = false;
     async function requestUpdate() {
-        await addOn.updatePluginList();
+        await addOn.updatePluginList(true);
     }
     async function requestReload() {
-        await addOn.reloadPluginList();
+        await addOn.reloadPluginList(true);
     }
     pluginList.subscribe((e) => {
         list = e;
@@ -169,6 +169,7 @@
         align-items: center;
         border-top: 1px solid var(--background-modifier-border);
         padding: 4px;
+        flex-wrap: wrap;
     }
     .filerow {
         margin-left: 1.25em;
@@ -176,6 +177,7 @@
         justify-content: flex-start;
         align-items: center;
         padding-right: 4px;
+        flex-wrap: wrap;
     }
     .filerow.hideeven:has(.even),
     .labelrow.hideeven:has(.even) {
@@ -199,9 +201,11 @@
         flex-direction: row;
         justify-content: flex-end;
         margin-top: 8px;
+        flex-wrap: wrap;
     }
     .buttons > button {
         margin-left: 4px;
+        width: auto;
     }
 
     label {
@@ -212,6 +216,11 @@
     label > span {
         margin-right: 0.25em;
     }
+    :global(.is-mobile) .title,
+    :global(.is-mobile) .filetitle {
+        width: 100%;
+    }
+
     .center {
         display: flex;
         justify-content: center;

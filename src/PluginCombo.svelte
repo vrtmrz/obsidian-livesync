@@ -207,21 +207,21 @@
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
         if (selectedItem && (await applyData(selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(local.documentPath));
+            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(true, local.documentPath));
         }
     }
     async function compareSelected() {
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
         if (local && selectedItem && (await compareData(local, selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(local.documentPath));
+            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(true, local.documentPath));
         }
     }
     async function deleteSelected() {
         const selectedItem = list.find((e) => e.term == selected);
-        const deletedPath = selectedItem.documentPath;
+        // const deletedPath = selectedItem.documentPath;
         if (selectedItem && (await deleteData(selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(deletedPath));
+            scheduleTask("update-plugin-list", 250, () => addOn.reloadPluginList(true));
         }
     }
     async function duplicateItem() {
@@ -234,7 +234,7 @@
             }
             const key = `${plugin.app.vault.configDir}/${local.files[0].filename}`;
             await addOn.storeCustomizationFiles(key as FilePath, duplicateTermName);
-            await addOn.updatePluginList(addOn.filenameToUnifiedKey(key, duplicateTermName));
+            await addOn.updatePluginList(false, addOn.filenameToUnifiedKey(key, duplicateTermName));
         }
     }
 </script>
@@ -281,6 +281,7 @@
 
 <style>
     .spacer {
+        min-width: 1px;
         flex-grow: 1;
     }
     button {
@@ -310,5 +311,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+    }
+    :global(.is-mobile) .spacer {
+        margin-left: auto;
     }
 </style>
