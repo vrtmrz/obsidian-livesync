@@ -17,5 +17,12 @@ I hope you will give it a try.
 - 0.19.1
   - Fixed: Fixed hidden file handling on Linux
   - Improved: Now customization sync works more smoothly.
+- 0.19.2
+  - Fixed:
+    - Fixed garbage collection error while unreferenced chunks exist many.
+    - Fixed filename validation on Linux.
+  - Improved:
+    - Showing status is now thinned for performance.
+    - Enhance caching while collecting chunks.
 
 ... To continue on to `updates_old.md`.
