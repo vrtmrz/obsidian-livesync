@@ -44,7 +44,10 @@ export function getPathFromTFile(file: TAbstractFile) {
 }
 
 const tasks: { [key: string]: ReturnType<typeof setTimeout> } = {};
-export function scheduleTask(key: string, timeout: number, proc: (() => Promise<any> | void)) {
+export function scheduleTask(key: string, timeout: number, proc: (() => Promise<any> | void), skipIfTaskExist?: boolean) {
+    if (skipIfTaskExist && key in tasks) {
+        return;
+    }
     cancelTask(key);
     tasks[key] = setTimeout(async () => {
         delete tasks[key];
@@ -663,6 +666,14 @@ export const remoteDatabaseCleanup = async (plugin: ObsidianLiveSyncPlugin, dryR
         return Number.parseInt((info as any)?.sizes?.[key] ?? 0);
     }
     await runWithLock("clean-up:remote", true, async () => {
+        const CHUNK_SIZE = 100;
+        function makeChunkedArrayFromArray<T>(items: T[]): T[][] {
+            const chunked = [];
+            for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+                chunked.push(items.slice(i, i + CHUNK_SIZE));
+            }
+            return chunked;
+        }
         try {
             const ret = await plugin.replicator.connectRemoteCouchDBWithSetting(plugin.settings, plugin.isMobile);
             if (typeof ret === "string") {
@@ -701,14 +712,17 @@ export const remoteDatabaseCleanup = async (plugin: ObsidianLiveSyncPlugin, dryR
                 return;
             }
             Logger(`Deleting unreferenced chunks: ${removeItems}`, LOG_LEVEL.NOTICE, "clean-up-db");
-            const rets = await _requestToCouchDBFetch(
-                `${plugin.settings.couchDB_URI}/${plugin.settings.couchDB_DBNAME}`,
-                plugin.settings.couchDB_USER,
-                plugin.settings.couchDB_PASSWORD,
-                "_purge",
-                payload, "POST");
-            // const result = await rets();
-            Logger(JSON.stringify(await rets.json()), LOG_LEVEL.VERBOSE);
+            const buffer = makeChunkedArrayFromArray(Object.entries(payload));
+            for (const chunkedPayload of buffer) {
+                const rets = await _requestToCouchDBFetch(
+                    `${plugin.settings.couchDB_URI}/${plugin.settings.couchDB_DBNAME}`,
+                    plugin.settings.couchDB_USER,
+                    plugin.settings.couchDB_PASSWORD,
+                    "_purge",
+                    chunkedPayload.reduce((p, c) => ({ ...p, [c[0]]: c[1] }), {}), "POST");
+                // const result = await rets();
+                Logger(JSON.stringify(await rets.json()), LOG_LEVEL.VERBOSE);
+            }
             Logger(`Compacting database...`, LOG_LEVEL.NOTICE, "clean-up-db");
             await db.compact();
             const endInfo = await db.info();

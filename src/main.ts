@@ -1350,7 +1350,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 const docMtime = ~~(doc.mtime / 1000);
                 //TODO: some margin required.
                 if (localMtime >= docMtime) {
-                    Logger(`${doc._id} Skipped, older than storage.`, LOG_LEVEL.VERBOSE);
+                    Logger(`${path} (${doc._id}, ${doc._rev}) Skipped, older than storage.`, LOG_LEVEL.VERBOSE);
                     return;
                 }
             }
@@ -1361,12 +1361,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             missingChildren: [] as string[],
             timeout: now + this.chunkWaitTimeout,
         };
-        // If `Read chunks online` is enabled, retrieve chunks from the remote CouchDB directly.
+        // If `Read chunks online` is disabled, chunks should be transferred before here.
+        // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
         if ((!this.settings.readChunksOnline) && "children" in doc) {
-            const c = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: doc.children, include_docs: false });
-            const missing = c.rows.filter((e) => "error" in e).map((e) => e.key);
-            // fetch from remote
-            if (missing.length > 0) Logger(`${doc._id}(${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
+            const c = await this.localDatabase.collectChunksWithCache(doc.children)
+            const missing = c.filter((e) => !e.chunk).map((e) => e.id);
+            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
         } else {
@@ -1509,27 +1509,25 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return;
     }
 
-    logHideTimer: NodeJS.Timeout = null;
     setStatusBarText(message: string = null, log: string = null) {
         if (!this.statusBar) return;
         const newMsg = typeof message == "string" ? message : this.lastMessage;
         const newLog = typeof log == "string" ? log : this.lastLog;
         if (`${this.lastMessage}-${this.lastLog}` != `${newMsg}-${newLog}`) {
-            this.statusBar.setText(newMsg.split("\n")[0]);
+            scheduleTask("update-display", 50, () => {
+                this.statusBar.setText(newMsg.split("\n")[0]);
 
-            if (this.settings.showStatusOnEditor) {
-                const root = activeDocument.documentElement;
-                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
-            } else {
-                const root = activeDocument.documentElement;
-                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                q.forEach(e => e.setAttr("data-log", ''))
-            }
-            if (this.logHideTimer != null) {
-                clearTimeout(this.logHideTimer);
-            }
-            this.logHideTimer = setTimeout(() => this.setStatusBarText(null, ""), 3000);
+                if (this.settings.showStatusOnEditor) {
+                    const root = activeDocument.documentElement;
+                    const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                    q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
+                } else {
+                    const root = activeDocument.documentElement;
+                    const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                    q.forEach(e => e.setAttr("data-log", ''))
+                }
+            }, true);
+            scheduleTask("log-hide", 3000, () => this.setStatusBarText(null, ""));
             this.lastMessage = newMsg;
             this.lastLog = newLog;
         }
@@ -2137,16 +2135,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
     conflictedCheckFiles: FilePath[] = [];
 
     // queueing the conflicted file check
-    conflictedCheckTimer: number;
-
     queueConflictedCheck(file: TFile) {
         this.conflictedCheckFiles = this.conflictedCheckFiles.filter((e) => e != file.path);
         this.conflictedCheckFiles.push(getPathFromTFile(file));
-        if (this.conflictedCheckTimer != null) {
-            window.clearTimeout(this.conflictedCheckTimer);
-        }
-        this.conflictedCheckTimer = window.setTimeout(async () => {
-            this.conflictedCheckTimer = null;
+        scheduleTask("check-conflict", 100, async () => {
             const checkFiles = JSON.parse(JSON.stringify(this.conflictedCheckFiles)) as FilePath[];
             for (const filename of checkFiles) {
                 try {
@@ -2158,7 +2150,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     Logger(ex);
                 }
             }
-        }, 100);
+        });
     }
 
     async showIfConflicted(filename: FilePathWithPrefix) {
