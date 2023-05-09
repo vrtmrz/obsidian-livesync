@@ -1599,6 +1599,16 @@ ${stringifyYaml(pluginConfig)}`;
                 })
             );
 
+        new Setting(containerHatchEl)
+            .setName("Do not pace synchronization")
+            .setDesc("If this toggle enabled, synchronisation will not be paced by queued entries. If synchronisation has been deadlocked, please make this enabled once.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.doNotPaceReplication).onChange(async (value) => {
+                    this.plugin.settings.doNotPaceReplication = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
 
 
 
