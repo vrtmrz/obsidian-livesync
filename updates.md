@@ -24,5 +24,8 @@ I hope you will give it a try.
   - Improved:
     - Showing status is now thinned for performance.
     - Enhance caching while collecting chunks.
+- 0.19.3
+  - Improved:
+    - Now replication will be paced by collecting chunks. If synchronisation has been deadlocked, please enable `Do not pace synchronization` once.
 
 ... To continue on to `updates_old.md`.
