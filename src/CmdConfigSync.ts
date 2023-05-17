@@ -145,7 +145,7 @@ export class ConfigSync extends LiveSyncCommands {
         if (this.plugin.suspended) {
             return;
         }
-        if (this.settings.autoSweepPlugins) {
+        if (this.settings.autoSweepPlugins && this.settings.usePluginSync) {
             await this.scanAllConfigFiles(false);
         }
         this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0);
@@ -567,6 +567,7 @@ export class ConfigSync extends LiveSyncCommands {
 
     }
     async watchVaultRawEventsAsync(path: FilePath) {
+        if (!this.settings.usePluginSync) return false;
         if (!this.isTargetPath(path)) return false;
         const stat = await this.app.vault.adapter.stat(path);
         // Make sure that target is a file.

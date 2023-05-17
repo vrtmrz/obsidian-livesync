@@ -495,7 +495,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         const mtime = new Date().getTime();
         await runWithLock("file-" + prefixedFileName, false, async () => {
             try {
-                const old = await this.localDatabase.getDBEntry(prefixedFileName, null, false, false) as InternalFileEntry | false;
+                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, true) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;
                 if (old === false) {
                     saveData = {
@@ -541,7 +541,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             try {
                 // Check conflicted status 
                 //TODO option
-                const fileOnDB = await this.localDatabase.getDBEntry(prefixedFileName, { conflicts: true }, false, false);
+                const fileOnDB = await this.localDatabase.getDBEntry(prefixedFileName, { conflicts: true }, false, true);
                 if (fileOnDB === false)
                     throw new Error(`File not found on database.:${filename}`);
                 // Prevent overwrite for Prevent overwriting while some conflicted revision exists.

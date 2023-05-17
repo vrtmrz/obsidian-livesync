@@ -19,7 +19,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
     async testConnection(): Promise<void> {
-        const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile);
+        const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile, true);
         if (typeof db === "string") {
             this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
             return;
@@ -376,7 +376,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 useDynamicIterationCount: useDynamicIterationCount,
             };
             console.dir(settingForCheck);
-            const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile);
+            const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile, true);
             if (typeof db === "string") {
                 Logger("Could not connect to the database.", LOG_LEVEL.NOTICE);
                 return false;

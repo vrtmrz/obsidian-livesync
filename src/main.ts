@@ -87,7 +87,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     processReplication = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => this.parseReplicationResult(e);
-    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
+    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
@@ -104,6 +104,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
             adapter: "http",
             auth,
+            skip_setup: !performSetup,
             fetch: async (url: string | Request, opts: RequestInit) => {
                 let size = "";
                 const localURL = url.toString().substring(uri.length);
@@ -191,6 +192,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
         if (passphrase !== "false" && typeof passphrase === "string") {
             enableEncryption(db, passphrase, useDynamicIterationCount);
+        }
+        if (skipInfo) {
+            return { db: db, info: {} };
         }
         try {
             const info = await db.info();
@@ -1364,8 +1368,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         // If `Read chunks online` is disabled, chunks should be transferred before here.
         // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
         if ((!this.settings.readChunksOnline) && "children" in doc) {
-            const c = await this.localDatabase.collectChunksWithCache(doc.children)
-            const missing = c.filter((e) => !e.chunk).map((e) => e.id);
+            const c = await this.localDatabase.collectChunksWithCache(doc.children);
+            const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
             if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
@@ -1381,14 +1385,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const docsSorted = docs.sort((a, b) => b.mtime - a.mtime);
         L1:
         for (const change of docsSorted) {
+            if (isChunk(change._id)) {
+                await this.parseIncomingChunk(change);
+                continue;
+            }
             for (const proc of this.addOns) {
                 if (await proc.parseReplicationResultItem(change)) {
                     continue L1;
                 }
-            }
-            if (isChunk(change._id)) {
-                await this.parseIncomingChunk(change);
-                continue;
             }
             if (change._id == SYNCINFO_ID) {
                 continue;
