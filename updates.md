@@ -27,5 +27,13 @@ I hope you will give it a try.
 - 0.19.3
   - Improved:
     - Now replication will be paced by collecting chunks. If synchronisation has been deadlocked, please enable `Do not pace synchronization` once.
+- 0.19.4
+  - Improved:
+    - Reduced remote database checking to improve speed and reduce bandwidth.
+  - Fixed:
+    - Chunks which previously misinterpreted are now interpreted correctly.
+      - No more missing chunks which not be found forever, except if it has been actually missing.
+    - Deleted file detection on hidden file synchronising now works fine.
+    - Now the Customisation sync is surely quiet while it has been disabled.
 
 ... To continue on to `updates_old.md`.
