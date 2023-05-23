@@ -35,5 +35,11 @@ I hope you will give it a try.
       - No more missing chunks which not be found forever, except if it has been actually missing.
     - Deleted file detection on hidden file synchronising now works fine.
     - Now the Customisation sync is surely quiet while it has been disabled.
+- 0.19.5
+  - Fixed:
+    - Now hidden file synchronisation would not be hanged, even if so many files exist.
+  - Improved:
+    - Customisation sync works more smoothly.
+  - Note: Concurrent processing has been rollbacked into the original implementation. As a result, the total number of processes is no longer shown next to the hourglass icon. However, only the processes that are running concurrently are shown.
 
 ... To continue on to `updates_old.md`.
