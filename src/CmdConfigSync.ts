@@ -1,13 +1,13 @@
 import { writable } from 'svelte/store';
-import { Notice, PluginManifest, stringifyYaml, parseYaml } from "./deps";
+import { Notice, PluginManifest, parseYaml } from "./deps";
 
 import { EntryDoc, LoadedEntry, LOG_LEVEL, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { delay, getDocData } from "./lib/src/utils";
+import { Parallels, delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { WrappedNotice } from "./lib/src/wrapper";
-import { base64ToArrayBuffer, arrayBufferToBase64, readString, writeString, uint8ArrayToHexString } from "./lib/src/strbin";
+import { base64ToArrayBuffer, arrayBufferToBase64, readString, uint8ArrayToHexString } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
@@ -17,13 +17,29 @@ import { PluginDialogModal } from "./dialogs";
 import { JsonResolveModal } from "./JsonResolveModal";
 
 
+function serialize<T>(obj: T): string {
+    return JSON.stringify(obj, null, 1);
+}
+function deserialize<T>(str: string, def: T) {
+    try {
+        return JSON.parse(str) as T;
+    } catch (ex) {
+        try {
+            return parseYaml(str);
+        } catch (ex) {
+            return def;
+        }
+    }
+}
 
 
 export const pluginList = writable([] as PluginDataExDisplay[]);
 export const pluginIsEnumerating = writable(false);
 
+const encoder = new TextEncoder();
 const hashString = (async (key: string) => {
-    const buff = writeString(key);
+    // const buff = writeString(key);
+    const buff = encoder.encode(key);
     const digest = await crypto.subtle.digest('SHA-256', buff);
     return uint8ArrayToHexString(new Uint8Array(digest));
 })
@@ -171,7 +187,7 @@ export class ConfigSync extends LiveSyncCommands {
             const entries = [] as PluginDataExDisplay[]
             const plugins = this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             const semaphore = Semaphore(4);
-            const processes = [] as Promise<void>[];
+            const para = Parallels();
             let count = 0;
             pluginIsEnumerating.set(true);
             let processed = false;
@@ -184,7 +200,8 @@ export class ConfigSync extends LiveSyncCommands {
                     processed = true;
                     const oldEntry = (this.pluginList.find(e => e.documentPath == path));
                     if (oldEntry && oldEntry.mtime == plugin.mtime) continue;
-                    processes.push((async (v) => {
+                    await para.wait(5);
+                    para.add((async (v) => {
 
                         const release = await semaphore.acquire(1);
                         try {
@@ -193,7 +210,7 @@ export class ConfigSync extends LiveSyncCommands {
                             Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
                             const wx = await this.localDatabase.getDBEntry(path, null, false, false);
                             if (wx) {
-                                const data = parseYaml(getDocData(wx.data)) as PluginDataEx;
+                                const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
                                 const xFiles = [] as PluginDataExFile[];
                                 for (const file of data.files) {
                                     const work = { ...file };
@@ -217,7 +234,7 @@ export class ConfigSync extends LiveSyncCommands {
                     }
                     )(plugin));
                 }
-                await Promise.all(processes);
+                await para.all();
                 let newList = [...this.pluginList];
                 for (const item of entries) {
                     newList = newList.filter(x => x.documentPath != item.documentPath);
@@ -241,9 +258,9 @@ export class ConfigSync extends LiveSyncCommands {
         const docB = await this.localDatabase.getDBEntry(dataB.documentPath);
 
         if (docA && docB) {
-            const pluginDataA = parseYaml(getDocData(docA.data)) as PluginDataEx;
+            const pluginDataA = deserialize(getDocData(docA.data), {}) as PluginDataEx;
             pluginDataA.documentPath = dataA.documentPath;
-            const pluginDataB = parseYaml(getDocData(docB.data)) as PluginDataEx;
+            const pluginDataB = deserialize(getDocData(docB.data), {}) as PluginDataEx;
             pluginDataB.documentPath = dataB.documentPath;
 
             // Use outer structure to wrap each data.
@@ -282,7 +299,7 @@ export class ConfigSync extends LiveSyncCommands {
             if (dx == false) {
                 throw "Not found on database"
             }
-            const loadedData = parseYaml(getDocData(dx.data)) as PluginDataEx;
+            const loadedData = deserialize(getDocData(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
                 Logger(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                 try {
@@ -520,7 +537,7 @@ export class ConfigSync extends LiveSyncCommands {
                 return
             }
 
-            const content = stringifyYaml(dt);
+            const content = serialize(dt);
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, false);
                 let saveData: LoadedEntry;

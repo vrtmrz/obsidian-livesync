@@ -4,7 +4,7 @@ import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "di
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, RequestUrlParam, RequestUrlResponse, requestUrl } from "./deps";
 import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, DatabaseConnectingStatus, EntryHasPath, DocumentID, FilePathWithPrefix, FilePath, AnyEntry } from "./lib/src/types";
 import { InternalFileInfo, queueItem, CacheData, FileEventItem, FileWatchEventQueueMax } from "./types";
-import { getDocData, isDocContentSame } from "./lib/src/utils";
+import { getDocData, isDocContentSame, Parallels } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { LogDisplayModal } from "./LogDisplayModal";
@@ -1492,19 +1492,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 }
                 return proc.substring(0, p);
             }
+
             const pendingTask = e.pending.length
-                ? "\nPending: " +
-                Object.entries(e.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                    .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                    .join(", ")
-                : "";
+                ? e.pending.length < 10 ? ("\nPending: " +
+                    Object.entries(e.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
+                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                        .join(", ")
+                ) : `\n Pending: ${e.pending.length}` : "";
 
             const runningTask = e.running.length
-                ? "\nRunning: " +
-                Object.entries(e.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                    .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                    .join(", ")
-                : "";
+                ? e.running.length < 10 ? ("\nRunning: " +
+                    Object.entries(e.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
+                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                        .join(", ")
+                ) : `\n Running: ${e.running.length}` : "";
             this.setStatusBarText(message + pendingTask + runningTask);
         })
     }
@@ -1667,25 +1668,23 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
         const runAll = async<T>(procedureName: string, objects: T[], callback: (arg: T) => Promise<void>) => {
             Logger(procedureName);
-            const semaphore = Semaphore(25);
             if (!this.localDatabase.isReady) throw Error("Database is not ready!");
-            const processes = objects.map(e => (async (v) => {
-                const releaser = await semaphore.acquire(1, procedureName);
+            const para = Parallels();
+            for (const v of objects) {
+                await para.wait(10);
+                para.add((async (v) => {
+                    try {
+                        await callback(v);
+                    } catch (ex) {
+                        Logger(`Error while ${procedureName}`, LOG_LEVEL.NOTICE);
+                        Logger(ex);
+                    }
+                })(v));
 
-                try {
-                    await callback(v);
-                } catch (ex) {
-                    Logger(`Error while ${procedureName}`, LOG_LEVEL.NOTICE);
-                    Logger(ex);
-                } finally {
-                    releaser();
-                }
             }
-            )(e));
-            await Promise.all(processes);
-
+            await para.all();
             Logger(`${procedureName} done.`);
-        };
+        }
 
         await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             Logger(`UPDATE DATABASE ${e.path}`);

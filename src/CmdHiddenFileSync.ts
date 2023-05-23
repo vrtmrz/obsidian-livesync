@@ -1,14 +1,13 @@
 import { Notice, normalizePath, PluginManifest } from "./deps";
 import { EntryDoc, LoadedEntry, LOG_LEVEL, InternalFileEntry, FilePathWithPrefix, FilePath } from "./lib/src/types";
 import { InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { delay, isDocContentSame } from "./lib/src/utils";
+import { Parallels, delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
-import { Semaphore } from "./lib/src/semaphore";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { addPrefix, stripAllPrefixes } from "./lib/src/path";
@@ -254,37 +253,35 @@ export class HiddenFileSync extends LiveSyncCommands {
                 c = pieces.shift();
             }
         };
-        const p = [] as Promise<void>[];
-        const semaphore = Semaphore(10);
         // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
         let caches: { [key: string]: { storageMtime: number; docMtime: number; }; } = {};
         caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number; }; }>("diff-caches-internal") || {};
+        const filesMap = files.reduce((acc, cur) => {
+            acc[cur.path] = cur;
+            return acc;
+        }, {} as { [key: string]: InternalFileInfo; });
+        const filesOnDBMap = filesOnDB.reduce((acc, cur) => {
+            acc[stripAllPrefixes(this.getPath(cur))] = cur;
+            return acc;
+        }, {} as { [key: string]: InternalFileEntry; });
+        const para = Parallels();
         for (const filename of allFileNames) {
-            if (!filename) continue;
             processed++;
-            if (processed % 100 == 0)
+            if (processed % 100 == 0) {
                 Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
+            }
+            if (!filename) continue;
             if (ignorePatterns.some(e => filename.match(e)))
                 continue;
 
-            const fileOnStorage = files.find(e => e.path == filename);
-            const fileOnDatabase = filesOnDB.find(e => stripAllPrefixes(this.getPath(e)) == filename);
-            const addProc = async (p: () => Promise<void>): Promise<void> => {
-                const releaser = await semaphore.acquire(1);
-                try {
-                    return p();
-                } catch (ex) {
-                    Logger("Some process failed", logLevel);
-                    Logger(ex);
-                } finally {
-                    releaser();
-                }
-            };
+            const fileOnStorage = filename in filesMap ? filesMap[filename] : undefined;
+            const fileOnDatabase = filename in filesOnDBMap ? filesOnDBMap[filename] : undefined;
+
             const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
 
-            p.push(addProc(async () => {
-                const xFileOnStorage = fileOnStorage;
-                const xFileOnDatabase = fileOnDatabase;
+            await para.wait(5);
+            const proc = (async (xFileOnStorage: InternalFileInfo, xFileOnDatabase: InternalFileEntry) => {
+
                 if (xFileOnStorage && xFileOnDatabase) {
                     // Both => Synchronize
                     if ((direction != "pullForce" && direction != "pushForce") && xFileOnDatabase.mtime == cache.docMtime && xFileOnStorage.mtime == cache.storageMtime) {
@@ -326,9 +323,11 @@ export class HiddenFileSync extends LiveSyncCommands {
                     throw new Error("Invalid state on hidden file sync");
                     // Something corrupted?
                 }
-            }));
+
+            });
+            para.add(proc(fileOnStorage, fileOnDatabase))
         }
-        await Promise.all(p);
+        await para.all();
         await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.
