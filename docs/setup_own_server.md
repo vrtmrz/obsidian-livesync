@@ -1,13 +1,12 @@
-# Setup CouchDB to your server
+# Setup a CouchDB server
 
+## Configure
 
-## Install CouchDB and access from a PC or Mac
+The easiest way to set up a CouchDB instance is using the official [docker image](https://hub.docker.com/_/couchdb).
 
-The easiest way to set up the CouchDB is using the [docker image]((https://hub.docker.com/_/couchdb)).
+Some initial configuration is required. Create a `local.ini` to use Self-hosted LiveSync as follows:
 
-But some additional configurations are required in `local.ini` to use from Self-hosted LiveSync, like below:
-
-```
+```ini
 [couchdb]
 single_node=true
 max_document_size = 50000000
@@ -32,28 +31,62 @@ methods = GET, PUT, POST, HEAD, DELETE
 max_age = 3600
 ```
 
-Make `local.ini` and run with docker run like this, you can launch the CouchDB.
+## Run
+
+### Docker CLI
+
+You can launch CouchDB using your `local.ini` like this:
 ```
 $ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
 ```
 *Remember to replace the path with the path to your local.ini*
-Note: At this time, the file owner of local.ini became 5984:5984. It's the limitation docker image. please change the owner before editing local.ini again.
 
-If you could confirm that Self-hosted LiveSync can sync with the server, launch the docker image as a background as you like.
-
-Example to run docker in detached mode:
+Run in detached mode:
 ```
 $ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
 ```
 *Remember to replace the path with the path to your local.ini*
 
+### Docker Compose
+Create a directory, place your `local.ini` within it, and create a `docker-compose.yml` alongside it. The directory structure should look similar to this:
+```
+obsidian-livesync
+├── docker-compose.yml
+└── local.ini
+```
+
+A good place to start for `docker-compose.yml`:
+```yaml
+version: "2.1"
+services:
+  couchdb:
+    image: couchdb
+    container_name: obsidian-livesync
+    user: 1000:1000
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=password
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./local.ini:/opt/couchdb/etc/local.ini
+    ports:
+      - 5984:5984
+    restart: unless-stopped
+```
+
+And finally launch the container
+```
+# -d will launch detached so the container runs in background
+docker compose up -d
+```
+
 ## Access from a mobile device
 If you want to access Self-hosted LiveSync from mobile devices, you need a valid SSL certificate.
 
 ### Testing from a mobile
-In the testing phase, [localhost.run](http://localhost.run/) or something like services is very useful.
+In the testing phase, [localhost.run](https://localhost.run/) or something like services is very useful.
 
-example on using localhost.run)
+example using localhost.run:
 ```
 $ ssh -R 80:localhost:5984 nokey@localhost.run
 Warning: Permanently added the RSA host key for IP address '35.171.254.69' to the list of known hosts.
