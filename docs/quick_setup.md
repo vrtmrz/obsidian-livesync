@@ -1,17 +1,17 @@
 # Quick setup
-The Setup wizard has been implemented since v0.15.0 simplifying the initial setup.
+The plugin has so many configuration options to deal with different circumstances. However, there are not so many settings that are actually used. Therefore, `The Setup wizard` has been implemented to simplify the initial setup.
 
-Note: Subsequent devices should be set up using the `Copy setup URI` and `Open setup URI` functionality.
+Note: Subsequent devices are recommended to be set up using the `Copy setup URI` and `Open setup URI`.
 
-## How to open and use the wizard
-Open the `🪄 Setup wizard` in the settings dialogue. If the plugin has not been configured before, it should already be open.
+## The Setup wizard
+Open the `🧙‍♂️ Setup wizard` in the settings dialogue. If the plugin has not been configured before, it should already be open.
 
 ![](../images/quick_setup_1.png)
 
-### Discard the existing configuration and set up
+- Discard the existing configuration and set up  
 If you have changed any settings, this button allows you to discard all changes before setting up.
 
-### Do not discard the existing configuration and set up
+- Do not discard the existing configuration and set up  
 Simply reconfigure. Be careful. In wizard mode, you cannot see all configuration items, even if they have been configured.
 
 Pressing `Next` on one of the above options will put the configuration dialog into wizard mode.
@@ -30,17 +30,10 @@ Enter the information for the database we have set up.
 
 ![](../images/quick_setup_3.png)  
 
-### End to End Encryption
 
-![](../images/quick_setup_4.png)
+#### Test database connection and Check database configuration
 
-When End to End encryption is enabled, a third party will be less likely to be able to read your Remote database in the event of a data breach/leak (assuming they do not know the Passphrase). We strongly recommend enabling it.  
-Encryption is based on 256-bit AES-GCM.  
-This setting can be disabled if you are inside a closed network and it is clear that you will not be accessed by third parties.
-
-### Test database connection and Check database configuration
-
-Here we can check the status of the connection to the database and the database settings.  
+We can check the connectivity to the database, and the database settings.
 
 ![](../images/quick_setup_5.png)  
 
@@ -49,38 +42,36 @@ Check whether we can connect to the database. If it fails, there are several pos
 
 #### Check database configuration
 
-Check the database settings and fix any deficiencies on the spot.
+Check the database settings and fix any problems on the spot.
 
 ![](../images/quick_setup_6.png)
 
 This item may vary depending on the connection. In the above case, press all three Fix buttons.  
 If the Fix buttons disappear and all become check marks, we are done.
 
+
+### Confidentiality configuration
+
+![](../images/quick_setup_4.png)
+
+Encrypt your database in case of unintended database exposure; enable End to End encryption and the contents of your notes will be encrypted at the moment it leaves the device. We strongly recommend enabling it. And `Path Obfuscation` also obfuscates filenames. Now stable and recommended.  
+Encryption is based on 256-bit AES-GCM.  
+These setting can be disabled if you are inside a closed network and it is clear that you will not be accessed by third parties.
+
 ![](../images/quick_setup_7.png)
 
-### Next 
-Go to the Local Database configuration.
+#### Next 
+Go to the Sync Settings.
 
-### Discard existing database and proceed
-Discard the contents of the Remote database and go to the Local Database configuration.
+#### Discard existing database and proceed
+Discard the contents of the Remote database and go to the Sync Settings.
 
-## Local Database configuration
-
-![](../images/quick_setup_8.png)
-
-Configure the local database. If we already have a Vault with Self-hosted LiveSync installed which has the same directory name as the one we are currently setting up, please specify a different suffix than the Vault you have already set up here.
-
-## Miscellaneous
-Finally, finish the miscellaneous configurations and select a preset for synchronisation.
+### Sync Settings
+Finally, finish the wizard by selecting a preset for synchronisation.
 
 ![](../images/quick_setup_9_1.png)
 
-The `Show status inside editor` can be enabled to your liking. If enabled, the status is displayed in the top right-hand corner of the editor. Learn how to read the status bar [here](/README.md#information-in-statusbar).
-
-![](../images/quick_setup_9_2.png)
-
-From Presets, select the synchronisation method we want to use and `Apply` to initialise and build the local and remote databases as required.  
-If `All done!' is displayed, we are done. Automatically, `Copy setup URI` will open and we will be asked for a passphrase to encrypt the `Setup URI`.
+Select any synchronisation methods we want to use and `Apply` to initialise and build the local and remote databases as required. If `All done!` is displayed, we are done. Automatically, `Copy setup URI` will open and we will be asked for a passphrase to encrypt the `Setup URI`.
 
 ![](../images/quick_setup_10.png)
 
