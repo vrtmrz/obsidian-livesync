@@ -94,6 +94,9 @@ If you have deleted or renamed files, please wait until ⏳ icon disappeared.
 
 Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are a work in progress.)
 
+## Troubleshooting
+If you are having problems getting the plugin working see: [Troubleshooting](docs/troubleshooting.md)
+
 ## License
 
 The source code is licensed under the MIT License.
