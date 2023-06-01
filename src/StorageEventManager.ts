@@ -112,7 +112,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             }
 
 
-            if (this.plugin.settings.batchSave) {
+            if (this.plugin.settings.batchSave && !this.plugin.settings.liveSync) {
                 // if the latest event is the same type, omit that
                 // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
                 // b.md MODIFY    <- this should be cancelled when b.md MODIFIED

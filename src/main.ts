@@ -1,9 +1,9 @@
 const isDebug = false;
 
-import { Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, RequestUrlParam, RequestUrlResponse, requestUrl } from "./deps";
-import { EntryDoc, LoadedEntry, ObsidianLiveSyncSettings, diff_check_result, diff_result_leaf, EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, ConfigPassphraseStore, CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, DatabaseConnectingStatus, EntryHasPath, DocumentID, FilePathWithPrefix, FilePath, AnyEntry } from "./lib/src/types";
-import { InternalFileInfo, queueItem, CacheData, FileEventItem, FileWatchEventQueueMax } from "./types";
+import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl } from "./deps";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry } from "./lib/src/types";
+import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { getDocData, isDocContentSame, Parallels } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -22,9 +22,9 @@ import { addPrefix, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib
 import { runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
-import { LiveSyncLocalDB, LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
-import { LiveSyncDBReplicator, LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
-import { KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
+import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
+import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
+import { type KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
 import { SetupLiveSync } from "./CmdSetupLiveSync";
@@ -194,7 +194,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             enableEncryption(db, passphrase, useDynamicIterationCount);
         }
         if (skipInfo) {
-            return { db: db, info: {} };
+            return { db: db, info: { db_name: "", doc_count: 0, update_seq: "" } };
         }
         try {
             const info = await db.info();
@@ -882,7 +882,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async procFileEvent(applyBatch?: boolean) {
         if (!this.isReady) return;
-        if (this.settings.batchSave) {
+        if (this.settings.batchSave && !this.settings.liveSync) {
             if (!applyBatch && this.vaultManager.getQueueLength() < FileWatchEventQueueMax) {
                 // Defer till applying batch save or queue has been grown enough.
                 // or 30 seconds after.
@@ -968,7 +968,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     async applyBatchChange() {
-        if (this.settings.batchSave) {
+        if (this.settings.batchSave && !this.settings.liveSync) {
             return await this.procFileEvent(true);
         }
     }
@@ -1368,7 +1368,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         // If `Read chunks online` is disabled, chunks should be transferred before here.
         // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
         if ((!this.settings.readChunksOnline) && "children" in doc) {
-            const c = await this.localDatabase.collectChunksWithCache(doc.children);
+            const c = await this.localDatabase.collectChunksWithCache(doc.children as DocumentID[]);
             const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
             if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
             newQueue.missingChildren = missing;
@@ -1470,9 +1470,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             }
             this.statusBar.title = e.syncStatus;
             let waiting = "";
-            if (this.settings.batchSave) {
-                waiting = " " + "🛫".repeat(this.vaultManager.getQueueLength());
-                waiting = waiting.replace(/(🛫){10}/g, "🚀");
+            if (this.settings.batchSave && !this.settings.liveSync) {
+                const len = this.vaultManager.getQueueLength();
+                if (len != 0) {
+                    waiting = ` 🛫${len}`;
+                }
             }
             let queued = "";
             const queue = Object.entries(e.queuedItems).filter((e) => !e[1].warned);
@@ -1480,7 +1482,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
             if (queuedCount) {
                 const pieces = queue.map((e) => e[1].missingChildren).reduce((prev, cur) => prev + cur.length, 0);
-                queued = ` 🧩 ${queuedCount} (${pieces})`;
+                queued = ` 🧩${queuedCount} (${pieces})`;
             }
             const processes = e.count;
             const processesDisp = processes == 0 ? "" : ` ⏳${processes}`;
@@ -1643,13 +1645,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const filesStorageName = filesStorage.map((e) => e.path);
         Logger("Collecting local files on the DB", LOG_LEVEL.VERBOSE);
         const filesDatabase = [] as FilePathWithPrefix[]
+        let count = 0;
         for await (const doc of this.localDatabase.findAllNormalDocs()) {
+            count++;
+            if (count % 25 == 0) Logger(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "syncAll");
             const path = getPath(doc);
             if (isValidPath(path) && this.isTargetFile(path)) {
                 filesDatabase.push(path);
             }
         }
-
         Logger("Opening the key-value database", LOG_LEVEL.VERBOSE);
         const isInitialized = await (this.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.

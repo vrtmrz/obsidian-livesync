@@ -1,4 +1,4 @@
-import { EntryDoc, ObsidianLiveSyncSettings, LOG_LEVEL, DEFAULT_SETTINGS } from "./lib/src/types";
+import { type EntryDoc, type ObsidianLiveSyncSettings, LOG_LEVEL, DEFAULT_SETTINGS } from "./lib/src/types";
 import { configURIBase } from "./types";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -284,8 +284,22 @@ Of course, we are able to disable these features.`
         this.plugin.settings.syncAfterMerge = false;
         //this.suspendExtraSync();
     }
+    async askUseNewAdapter() {
+        if (!this.plugin.settings.useIndexedDBAdapter) {
+            const message = `Now this plugin has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
+            const CHOICE_YES = "Yes, disable and use latest";
+            const CHOICE_NO = "No, keep compatibility";
+            const choices = [CHOICE_YES, CHOICE_NO];
+
+            const ret = await confirmWithMessage(this.plugin, "Database adapter", message, choices, CHOICE_YES, 10);
+            if (ret == CHOICE_YES) {
+                this.plugin.settings.useIndexedDBAdapter = false;
+            }
+        }
+    }
     async fetchLocal() {
         this.suspendExtraSync();
+        this.askUseNewAdapter();
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.resetLocalDatabase();
         await delay(1000);
@@ -313,6 +327,7 @@ Of course, we are able to disable these features.`
     }
     async rebuildEverything() {
         this.suspendExtraSync();
+        this.askUseNewAdapter();
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.resetLocalDatabase();
         await delay(1000);

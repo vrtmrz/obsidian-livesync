@@ -1,4 +1,6 @@
 {
+    "extends": "@tsconfig/svelte/tsconfig.json",
+    "inlineSourceMap": true,
     "compilerOptions": {
         "baseUrl": ".",
         "module": "ESNext",
@@ -6,6 +8,10 @@
         "allowJs": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
+        "types": [
+            "svelte",
+            "node"
+        ],
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,
         "alwaysStrict": true,

@@ -13,7 +13,9 @@
     "author": "vorotamoroz",
     "license": "MIT",
     "devDependencies": {
+        "@tsconfig/svelte": "^4.0.1",
         "@types/diff-match-patch": "^1.0.32",
+        "@types/node": "^20.2.5",
         "@types/pouchdb": "^6.4.0",
         "@types/pouchdb-browser": "^6.1.3",
         "@typescript-eslint/eslint-plugin": "^5.54.0",
@@ -36,16 +38,14 @@
         "pouchdb-mapreduce": "^8.0.1",
         "pouchdb-replication": "^8.0.1",
         "pouchdb-utils": "^8.0.1",
-        "svelte": "^3.55.1",
-        "svelte-preprocess": "^5.0.1",
+        "svelte": "^3.59.1",
+        "svelte-preprocess": "^5.0.3",
         "transform-pouch": "^2.0.0",
         "tslib": "^2.5.0",
-        "typescript": "^4.9.5"
+        "typescript": "^5.0.4"
     },
     "dependencies": {
         "diff-match-patch": "^1.0.5",
-        "esbuild": "0.15.15",
-        "esbuild-svelte": "^0.7.3",
         "idb": "^7.1.1",
         "xxhash-wasm": "^0.4.2"
     }
