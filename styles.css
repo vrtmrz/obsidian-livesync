@@ -252,3 +252,7 @@ div.sls-setting-menu-btn {
 .sls-item-dirty::before {
     content: "✏";
 }
+
+.sls-setting-hidden {
+    display: none;
+}
