@@ -41,5 +41,22 @@ I hope you will give it a try.
   - Improved:
     - Customisation sync works more smoothly.
   - Note: Concurrent processing has been rollbacked into the original implementation. As a result, the total number of processes is no longer shown next to the hourglass icon. However, only the processes that are running concurrently are shown.
+- 0.19.6
+  - Fixed:
+    - Logging has been tweaked.
+    - No more too many planes and rockets.
+    - The batch database update now surely only works in non-live mode.
+  - Internal things:
+    - Some frameworks has been upgraded.
+    - Import declaration has been fixed.
+  - Improved:
+    - The plug-in now asks to enable a new adaptor, when rebuilding, if it is not enabled yet.
+    - The setting dialogue refined.
+      - Configurations for compatibilities have been moved under the hatch.
+      - Made it clear that disabled is the default.
+      - Ambiguous names configuration have been renamed.
+      - Items that have no meaning in the settings are no longer displayed.
+      - Some items have been reordered for clarity.
+      - Each configuration has been grouped.
 
 ... To continue on to `updates_old.md`.
