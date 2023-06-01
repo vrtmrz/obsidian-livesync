@@ -137,11 +137,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
                         this.plugin.replicator.closeReplication();
                         this.plugin.settings = { ...DEFAULT_SETTINGS };
-                        await this.plugin.saveSettings();
-                        changeDisplay("0")
-                        await this.display();
-                        containerEl.addClass("isWizard");
-                        inWizard = true;
+                        this.plugin.saveSettings();
+                        Logger("Configuration has been flushed, please open it again", LOG_LEVEL.NOTICE)
+                        // @ts-ignore
+                        this.plugin.app.setting.close()
                     } else {
                         containerEl.addClass("isWizard");
                         applyDisplayEnabled();
@@ -1879,7 +1878,7 @@ ${stringifyYaml(pluginConfig)}`;
                 }
             } else {
                 if (isAnySyncEnabled()) {
-                    changeDisplay("0");
+                    changeDisplay("20");
                 } else {
                     changeDisplay("110")
                 }
