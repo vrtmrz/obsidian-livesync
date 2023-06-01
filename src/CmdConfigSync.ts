@@ -1,11 +1,11 @@
 import { writable } from 'svelte/store';
-import { Notice, PluginManifest, parseYaml } from "./deps";
+import { Notice, type PluginManifest, parseYaml } from "./deps";
 
-import { EntryDoc, LoadedEntry, LOG_LEVEL, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID } from "./lib/src/types";
+import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry } from "./lib/src/types";
+import { LOG_LEVEL } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
 import { Parallels, delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
-import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64, readString, uint8ArrayToHexString } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
@@ -205,7 +205,8 @@ export class ConfigSync extends LiveSyncCommands {
 
                         const release = await semaphore.acquire(1);
                         try {
-                            Logger(`Enumerating files... ${count++}`, logLevel, "get-plugins");
+                            count++;
+                            if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
 
                             Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
                             const wx = await this.localDatabase.getDBEntry(path, null, false, false);
@@ -371,7 +372,7 @@ export class ConfigSync extends LiveSyncCommands {
     async parseReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (docs._id.startsWith(ICXHeader)) {
             if (this.plugin.settings.usePluginSync) {
-                await this.updatePluginList(false, docs.path ? docs.path : this.getPath(docs));
+                await this.updatePluginList(false, (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath((docs as AnyEntry)));
             }
             if (this.plugin.settings.usePluginSync && this.plugin.settings.notifyPluginOrSettingUpdated) {
                 if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
@@ -514,7 +515,7 @@ export class ConfigSync extends LiveSyncCommands {
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target);
                 if (data == false) {
-                    Logger(`Config: skipped: ${target} `, LOG_LEVEL.VERBOSE);
+                    // Logger(`Config: skipped: ${target} `, LOG_LEVEL.VERBOSE);
                     continue;
                 }
                 if (data.version) {

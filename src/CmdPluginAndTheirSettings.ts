@@ -1,6 +1,7 @@
-import { normalizePath, PluginManifest } from "./deps";
-import { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry, LOG_LEVEL } from "./lib/src/types";
-import { PluginDataEntry, PERIODIC_PLUGIN_SWEEP, PluginList, DevicePluginList, PSCHeader, PSCHeaderEnd } from "./types";
+import { normalizePath, type PluginManifest } from "./deps";
+import type { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry } from "./lib/src/types";
+import { LOG_LEVEL } from "./lib/src/types";
+import { type PluginDataEntry, PERIODIC_PLUGIN_SWEEP, type PluginList, type DevicePluginList, PSCHeader, PSCHeaderEnd } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";

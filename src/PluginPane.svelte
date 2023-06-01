@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import ObsidianLiveSyncPlugin from "./main";
-    import { PluginDataExDisplay, pluginIsEnumerating, pluginList } from "./CmdConfigSync";
+    import { type PluginDataExDisplay, pluginIsEnumerating, pluginList } from "./CmdConfigSync";
     import PluginCombo from "./PluginCombo.svelte";
     export let plugin: ObsidianLiveSyncPlugin;
 

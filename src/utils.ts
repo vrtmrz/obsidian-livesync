@@ -1,8 +1,8 @@
-import { DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin_2, RequestUrlParam, requestUrl } from "./deps";
+import { type DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin_2, type RequestUrlParam, requestUrl } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
-import { AnyEntry, DocumentID, EntryDoc, EntryHasPath, FilePath, FilePathWithPrefix, LOG_LEVEL, NewEntry } from "./lib/src/types";
+import { type AnyEntry, type DocumentID, type EntryDoc, type EntryHasPath, type FilePath, type FilePathWithPrefix, LOG_LEVEL, type NewEntry } from "./lib/src/types";
 import { CHeader, ICHeader, ICHeaderLength, PSCHeader } from "./types";
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
 import ObsidianLiveSyncPlugin from "./main";
@@ -535,7 +535,7 @@ export const localDatabaseCleanUp = async (plugin: ObsidianLiveSyncPlugin, force
                 await performRebuildDB(plugin, "localOnly");
                 return;
             } else {
-                Logger("This feature requires enabling `Use new adapter`. Please enable it", LOG_LEVEL.NOTICE, "clean-up-db");
+                Logger("This feature requires disabling `Use an old adapter for compatibility`.", LOG_LEVEL.NOTICE, "clean-up-db");
                 return;
             }
         }

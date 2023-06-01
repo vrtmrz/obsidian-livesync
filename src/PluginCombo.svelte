@@ -2,7 +2,7 @@
     import type { PluginDataExDisplay } from "./CmdConfigSync";
     import { Logger } from "./lib/src/logger";
     import { versionNumberString2Number } from "./lib/src/strbin";
-    import { FilePath, LOG_LEVEL } from "./lib/src/types";
+    import { type FilePath, LOG_LEVEL } from "./lib/src/types";
     import { getDocData } from "./lib/src/utils";
     import type ObsidianLiveSyncPlugin from "./main";
     import { askString, scheduleTask } from "./utils";
