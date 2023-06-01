@@ -58,5 +58,9 @@ I hope you will give it a try.
       - Items that have no meaning in the settings are no longer displayed.
       - Some items have been reordered for clarity.
       - Each configuration has been grouped.
+- 0.19.7
+  - Fixed:
+    - The initial pane of Setting dialogue is now changed to General Settings.
+    - The Setup Wizard is now able to flush existing settings and get into the mode again.
 
 ... To continue on to `updates_old.md`.
