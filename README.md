@@ -34,11 +34,10 @@ Useful for researchers, engineers and developers with a need to keep their notes
 
 ### Get your database ready.
 
-First, get your database ready. IBM Cloudant is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
-1. [Setup IBM Cloudant](docs/setup_cloudant.md)
-2. [Setup your CouchDB](docs/setup_own_server.md)
-
-Note: More information about alternative hosting methods is needed! Currently, [using fly.io](https://github.com/vrtmrz/obsidian-livesync/discussions/85) is being discussed.
+First, get your database ready. fly.io is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
+1. [Setup fly.io](docs/setup_flyio.md)
+2. [Setup IBM Cloudant](docs/setup_cloudant.md)
+3. [Setup your CouchDB](docs/setup_own_server.md)
 
 ### Configure the plugin
 
@@ -53,12 +52,6 @@ Please open the configuration link again and Answer below:
 	- Answer `No` to `Keep remote DB?`
 
 If you answered `No` to both, your databases will be rebuilt by the content on your device. And the remote database will lock out other devices. You have to synchronize all your devices again. (When this time, almost all your files should be synchronized with a timestamp. So you can use an existing vault).
-
-## Test Server
-
-~~Setting up an instance of Cloudant or local CouchDB is a little complicated, so I set up a [Tasting server for self-hosted-livesync](https://olstaste.vrtmrz.net/). Try it out for free!~~   
-Now (30 May 2023) suspending while the server transfer.  
-Note: Please read "Limitations" carefully. Do not send your private vault.
 
 ## Information in StatusBar
 
