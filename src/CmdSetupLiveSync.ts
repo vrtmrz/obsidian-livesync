@@ -41,7 +41,7 @@ export class SetupLiveSync extends LiveSyncCommands {
     async realizeSettingSyncMode() { }
 
     async command_copySetupURI() {
-        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
+        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "", true);
         if (encryptingPassphrase === false)
             return;
         const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
@@ -57,7 +57,7 @@ export class SetupLiveSync extends LiveSyncCommands {
         Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
     }
     async command_copySetupURIFull() {
-        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "");
+        const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "", true);
         if (encryptingPassphrase === false)
             return;
         const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
@@ -81,7 +81,7 @@ export class SetupLiveSync extends LiveSyncCommands {
     async setupWizard(confString: string) {
         try {
             const oldConf = JSON.parse(JSON.stringify(this.settings));
-            const encryptingPassphrase = await askString(this.app, "Passphrase", "The passphrase to decrypt your setup URI", "");
+            const encryptingPassphrase = await askString(this.app, "Passphrase", "The passphrase to decrypt your setup URI", "", true);
             if (encryptingPassphrase === false)
                 return;
             const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
