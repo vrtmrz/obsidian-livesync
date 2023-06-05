@@ -256,3 +256,7 @@ div.sls-setting-menu-btn {
 .sls-setting-hidden {
     display: none;
 }
+
+.password-input > .setting-item-control >input {
+  -webkit-text-security: disc;
+}

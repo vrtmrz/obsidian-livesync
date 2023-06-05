@@ -43,13 +43,15 @@ export class InputStringDialog extends Modal {
     key: string;
     placeholder: string;
     isManuallyClosed = false;
+    isPassword: boolean = false;
 
-    constructor(app: App, title: string, key: string, placeholder: string, onSubmit: (result: string | false) => void) {
+    constructor(app: App, title: string, key: string, placeholder: string, isPassword: boolean, onSubmit: (result: string | false) => void) {
         super(app);
         this.onSubmit = onSubmit;
         this.title = title;
         this.placeholder = placeholder;
         this.key = key;
+        this.isPassword = isPassword;
     }
 
     onOpen() {
@@ -58,7 +60,7 @@ export class InputStringDialog extends Modal {
         contentEl.createEl("h1", { text: this.title });
         // For enter to submit
         const formEl = contentEl.createEl("form");
-        new Setting(formEl).setName(this.key).addText((text) =>
+        new Setting(formEl).setName(this.key).setClass(this.isPassword ? "password-input" : "normal-input").addText((text) =>
             text.onChange((value) => {
                 this.result = value;
             })

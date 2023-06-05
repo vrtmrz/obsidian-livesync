@@ -405,9 +405,9 @@ export const askSelectString = (app: App, message: string, items: string[]): Pro
 };
 
 
-export const askString = (app: App, title: string, key: string, placeholder: string): Promise<string | false> => {
+export const askString = (app: App, title: string, key: string, placeholder: string, isPassword?: boolean): Promise<string | false> => {
     return new Promise((res) => {
-        const dialog = new InputStringDialog(app, title, key, placeholder, (result) => res(result));
+        const dialog = new InputStringDialog(app, title, key, placeholder, isPassword, (result) => res(result));
         dialog.open();
     });
 };
