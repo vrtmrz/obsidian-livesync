@@ -62,5 +62,13 @@ I hope you will give it a try.
   - Fixed:
     - The initial pane of Setting dialogue is now changed to General Settings.
     - The Setup Wizard is now able to flush existing settings and get into the mode again.
+- 0.19.8
+  - New feature:
+    - Vault history: A tab has been implemented to give a birds-eye view of the changes that have occurred in the vault.
+  - Improved:
+    - Now the passphrases on the dialogue masked out. Thank you @antoKeinanen!
+    - Log dialogue is now shown as one of tabs.
+  - Fixed:
+    - Some minor issues has been fixed.
 
 ... To continue on to `updates_old.md`.
