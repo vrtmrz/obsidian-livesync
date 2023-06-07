@@ -482,6 +482,10 @@ export class ConfigSync extends LiveSyncCommands {
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         const term = termOverRide || this.plugin.deviceAndVaultName;
+        if (term == "") {
+            Logger("We have to configure the device name", LOG_LEVEL.NOTICE);
+            return;
+        }
         const vf = this.filenameToUnifiedKey(path, term);
         return await runWithLock(`plugin-${vf}`, false, async () => {
             const category = this.getFileCategory(path);

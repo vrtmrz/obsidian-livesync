@@ -43,7 +43,7 @@ export class InputStringDialog extends Modal {
     key: string;
     placeholder: string;
     isManuallyClosed = false;
-    isPassword: boolean = false;
+    isPassword = false;
 
     constructor(app: App, title: string, key: string, placeholder: string, isPassword: boolean, onSubmit: (result: string | false) => void) {
         super(app);

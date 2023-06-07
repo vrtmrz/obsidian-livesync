@@ -7,7 +7,6 @@ import { type InternalFileInfo, type queueItem, type CacheData, type FileEventIt
 import { getDocData, isDocContentSame, Parallels } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { LogDisplayModal } from "./LogDisplayModal";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
@@ -30,6 +29,8 @@ import { HiddenFileSync } from "./CmdHiddenFileSync";
 import { SetupLiveSync } from "./CmdSetupLiveSync";
 import { ConfigSync } from "./CmdConfigSync";
 import { confirmWithMessage } from "./dialogs";
+import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView";
+import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
 
 setNoticeClass(Notice);
 
@@ -539,7 +540,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         });
 
         this.addRibbonIcon("view-log", "Show log", () => {
-            new LogDisplayModal(this.app, this).open();
+            this.showView(VIEW_TYPE_LOG);
         });
 
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
@@ -650,8 +651,44 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             },
         })
 
+        this.registerView(
+            VIEW_TYPE_GLOBAL_HISTORY,
+            (leaf) => new GlobalHistoryView(leaf, this)
+        );
+        this.registerView(
+            VIEW_TYPE_LOG,
+            (leaf) => new LogPaneView(leaf, this)
+        );
+        this.addCommand({
+            id: "livesync-global-history",
+            name: "Show vault history",
+            callback: () => {
+                this.showGlobalHistory()
+            }
+        })
     }
-
+    async showView(viewType: string) {
+        const leaves = this.app.workspace.getLeavesOfType(viewType);
+        if (leaves.length == 0) {
+            await this.app.workspace.getLeaf(true).setViewState({
+                type: viewType,
+                active: true,
+            });
+        } else {
+            leaves[0].setViewState({
+                type: viewType,
+                active: true,
+            })
+        }
+        if (leaves.length > 0) {
+            this.app.workspace.revealLeaf(
+                leaves[0]
+            );
+        }
+    }
+    showGlobalHistory() {
+        this.showView(VIEW_TYPE_GLOBAL_HISTORY);
+    }
 
     onunload() {
         for (const addOn of this.addOns) {
@@ -1003,7 +1040,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     //--> Basic document Functions
-    notifies: { [key: string]: { notice: Notice; timer: NodeJS.Timeout; count: number } } = {};
+    notifies: { [key: string]: { notice: Notice; timer: ReturnType<typeof setTimeout>; count: number } } = {};
 
     lastLog = "";
     // eslint-disable-next-line require-await
@@ -1382,7 +1419,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     //---> Sync
     async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
-        const docsSorted = docs.sort((a, b) => b.mtime - a.mtime);
+        const docsSorted = docs.sort((a: any, b: any) => b?.mtime ?? 0 - a?.mtime ?? 0);
         L1:
         for (const change of docsSorted) {
             if (isChunk(change._id)) {
@@ -1471,7 +1508,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             this.statusBar.title = e.syncStatus;
             let waiting = "";
             if (this.settings.batchSave && !this.settings.liveSync) {
-                const len = this.vaultManager.getQueueLength();
+                const len = this.vaultManager?.getQueueLength();
                 if (len != 0) {
                     waiting = ` 🛫${len}`;
                 }

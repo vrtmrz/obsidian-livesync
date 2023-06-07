@@ -3,7 +3,7 @@ import { getPathFromTFile, isValidPath } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
-import { DocumentID, FilePathWithPrefix, LoadedEntry, LOG_LEVEL } from "./lib/src/types";
+import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getDocData } from "./lib/src/utils";
@@ -24,12 +24,14 @@ export class DocumentHistoryModal extends Modal {
     currentDoc: LoadedEntry;
     currentText = "";
     currentDeleted = false;
+    initialRev: string;
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id: DocumentID) {
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id: DocumentID, revision?: string) {
         super(app);
         this.plugin = plugin;
         this.file = (file instanceof TFile) ? getPathFromTFile(file) : file;
         this.id = id;
+        this.initialRev = revision;
         if (!file) {
             this.file = this.plugin.id2path(id, null);
         }
@@ -38,7 +40,7 @@ export class DocumentHistoryModal extends Modal {
         }
     }
 
-    async loadFile() {
+    async loadFile(initialRev: string) {
         if (!this.id) {
             this.id = await this.plugin.path2id(this.file);
         }
@@ -49,7 +51,7 @@ export class DocumentHistoryModal extends Modal {
             this.range.max = `${this.revs_info.length - 1}`;
             this.range.value = this.range.max;
             this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
-            await this.loadRevs();
+            await this.loadRevs(initialRev);
         } catch (ex) {
             if (isErrorOfMissingDoc(ex)) {
                 this.range.max = "0";
@@ -63,18 +65,27 @@ export class DocumentHistoryModal extends Modal {
             }
         }
     }
-    async loadRevs() {
+    async loadRevs(initialRev?: string) {
         if (this.revs_info.length == 0) return;
-        const db = this.plugin.localDatabase;
+        if (initialRev) {
+            const rIndex = this.revs_info.findIndex(e => e.rev == initialRev);
+            if (rIndex >= 0) {
+                this.range.value = `${this.revs_info.length - 1 - rIndex}`;
+            }
+        }
         const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
         const rev = this.revs_info[index];
-        const w = await db.getDBEntry(this.file, { rev: rev.rev }, false, false, true);
+        await this.showExactRev(rev.rev);
+    }
+    async showExactRev(rev: string) {
+        const db = this.plugin.localDatabase;
+        const w = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
         this.currentText = "";
         this.currentDeleted = false;
         if (w === false) {
             this.currentDeleted = true;
             this.info.innerHTML = "";
-            this.contentView.innerHTML = `Could not read this revision<br>(${rev.rev})`;
+            this.contentView.innerHTML = `Could not read this revision<br>(${rev})`;
         } else {
             this.currentDoc = w;
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
@@ -158,7 +169,7 @@ export class DocumentHistoryModal extends Modal {
             .addClass("op-info");
         this.info = contentEl.createDiv("");
         this.info.addClass("op-info");
-        this.loadFile();
+        this.loadFile(this.initialRev);
         const div = contentEl.createDiv({ text: "Loading old revisions..." });
         this.contentView = div;
         div.addClass("op-scrollable");
