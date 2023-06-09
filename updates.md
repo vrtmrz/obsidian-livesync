@@ -70,5 +70,10 @@ I hope you will give it a try.
     - Log dialogue is now shown as one of tabs.
   - Fixed:
     - Some minor issues has been fixed.
+- 0.19.9
+  - New feature (For fixing a problem):
+    - We can fix the database obfuscated and plain paths that have been mixed up.
+  - Improvements
+    - Customisation Sync performance has been improved.
 
 ... To continue on to `updates_old.md`.
