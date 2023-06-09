@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings } from "./lib/src/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -111,7 +111,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         }
 
-        MarkdownRenderer.renderMarkdown(updateInformation, informationDivEl, "/", null);
+        MarkdownRenderer.renderMarkdown(updateInformation, informationDivEl, "/", this.plugin);
 
 
         addScreenElement("100", containerInformationEl);
@@ -1536,7 +1536,65 @@ ${stringifyYaml(pluginConfig)}`;
                         Logger("done", LOG_LEVEL.NOTICE, "verify");
                     })
             );
-
+        new Setting(containerHatchEl)
+            .setName("Check and convert non-path-obfuscated files")
+            .setDesc("")
+            .addButton((button) =>
+                button
+                    .setButtonText("Perform")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        for await (const docName of this.plugin.localDatabase.findAllDocNames()) {
+                            if (!docName.startsWith("f:")) {
+                                const idEncoded = await this.plugin.path2id(docName as FilePathWithPrefix);
+                                const doc = await this.plugin.localDatabase.getDBEntry(docName as FilePathWithPrefix);
+                                if (!doc) continue;
+                                if (doc.type != "newnote" && doc.type != "plain") {
+                                    continue;
+                                }
+                                const newDoc = { ...doc };
+                                //Prepare converted data
+                                newDoc._id = idEncoded;
+                                newDoc.path = this.plugin.getPath(newDoc);
+                                try {
+                                    const obfuscatedDoc = await this.plugin.localDatabase.getRaw(idEncoded, { revs_info: true });
+                                    // Unfortunately we have to delete one of them.
+                                    // Just now, save it as a conflicted document.
+                                    obfuscatedDoc._revs_info?.shift(); // Drop latest revision.
+                                    const previousRev = obfuscatedDoc._revs_info?.shift(); // Use second revision.
+                                    newDoc._rev = previousRev.rev;
+                                    const ret = await this.plugin.localDatabase.putRaw(newDoc, { force: true });
+                                    if (ret.ok) {
+                                        Logger(`${docName} has been converted as conflicted document`, LOG_LEVEL.NOTICE);
+                                        doc._deleted = true;
+                                        if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
+                                            Logger(`Old ${docName} has been deleted`, LOG_LEVEL.NOTICE);
+                                        }
+                                        await this.plugin.showIfConflicted(docName as FilePathWithPrefix);
+                                    } else {
+                                        Logger(`Converting ${docName} Failed!`, LOG_LEVEL.NOTICE);
+                                        Logger(ret, LOG_LEVEL.VERBOSE);
+                                    }
+                                } catch (ex) {
+                                    if (ex?.status == 404) {
+                                        // We can perform this safely
+                                        if ((await this.plugin.localDatabase.putRaw(newDoc)).ok) {
+                                            Logger(`${docName} has been converted`, LOG_LEVEL.NOTICE);
+                                            doc._deleted = true;
+                                            if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
+                                                Logger(`Old ${docName} has been deleted`, LOG_LEVEL.NOTICE);
+                                            }
+                                        }
+                                    } else {
+                                        Logger(`Something went wrong on converting ${docName}`, LOG_LEVEL.NOTICE);
+                                        Logger(ex, LOG_LEVEL.VERBOSE);
+                                        // Something wrong.
+                                    }
+                                }
+                            }
+                        }
+                    }));
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
             .setDesc("Stop watching for file change.")

@@ -12,7 +12,6 @@ import { runWithLock } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
 import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "./utils";
-import { Semaphore } from "./lib/src/semaphore";
 import { PluginDialogModal } from "./dialogs";
 import { JsonResolveModal } from "./JsonResolveModal";
 
@@ -180,77 +179,70 @@ export class ConfigSync extends LiveSyncCommands {
             pluginList.set(this.pluginList)
             return;
         }
-
-        await runWithLock("update-plugin-list", false, async () => {
-            // if (updatedDocumentPath != "") pluginList.update(e => e.filter(ee => ee.documentPath != updatedDocumentPath));
-            // const work: Record<string, Record<string, Record<string, Record<string, PluginDataEntryEx>>>> = {};
-            const entries = [] as PluginDataExDisplay[]
-            const plugins = this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
-            const semaphore = Semaphore(4);
-            const para = Parallels();
-            let count = 0;
-            pluginIsEnumerating.set(true);
-            let processed = false;
-            try {
-                for await (const plugin of plugins) {
-                    const path = plugin.path || this.getPath(plugin);
-                    if (updatedDocumentPath && updatedDocumentPath != path) {
-                        continue;
-                    }
-                    processed = true;
-                    const oldEntry = (this.pluginList.find(e => e.documentPath == path));
-                    if (oldEntry && oldEntry.mtime == plugin.mtime) continue;
-                    await para.wait(5);
-                    para.add((async (v) => {
-
-                        const release = await semaphore.acquire(1);
-                        try {
-                            count++;
-                            if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
-
-                            Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
-                            const wx = await this.localDatabase.getDBEntry(path, null, false, false);
-                            if (wx) {
-                                const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
-                                const xFiles = [] as PluginDataExFile[];
-                                for (const file of data.files) {
-                                    const work = { ...file };
-                                    const tempStr = getDocData(work.data);
-                                    work.data = [await hashString(tempStr)];
-                                    xFiles.push(work);
-                                }
-                                entries.push({
-                                    ...data,
-                                    documentPath: this.getPath(wx),
-                                    files: xFiles
-                                });
-                            }
-                        } catch (ex) {
-                            //TODO
-                            Logger(`Something happened at enumerating customization :${v.path}`, LOG_LEVEL.NOTICE);
-                            console.warn(ex);
-                        } finally {
-                            release();
+        scheduleTask("update-plugin-list-task", 200, async () => {
+            await runWithLock("update-plugin-list", false, async () => {
+                const entries = [] as PluginDataExDisplay[]
+                const plugins = this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
+                const para = Parallels();
+                let count = 0;
+                pluginIsEnumerating.set(true);
+                let processed = false;
+                try {
+                    for await (const plugin of plugins) {
+                        const path = plugin.path || this.getPath(plugin);
+                        if (updatedDocumentPath && updatedDocumentPath != path) {
+                            continue;
                         }
+                        processed = true;
+                        const oldEntry = (this.pluginList.find(e => e.documentPath == path));
+                        if (oldEntry && oldEntry.mtime == plugin.mtime) continue;
+                        await para.wait(15);
+                        para.add((async (v) => {
+                            try {
+                                count++;
+                                if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
+                                Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
+                                const wx = await this.localDatabase.getDBEntry(path, null, false, false);
+                                if (wx) {
+                                    const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
+                                    const xFiles = [] as PluginDataExFile[];
+                                    for (const file of data.files) {
+                                        const work = { ...file };
+                                        const tempStr = getDocData(work.data);
+                                        work.data = [await hashString(tempStr)];
+                                        xFiles.push(work);
+                                    }
+                                    entries.push({
+                                        ...data,
+                                        documentPath: this.getPath(wx),
+                                        files: xFiles
+                                    });
+                                }
+                            } catch (ex) {
+                                //TODO
+                                Logger(`Something happened at enumerating customization :${v.path}`, LOG_LEVEL.NOTICE);
+                                console.warn(ex);
+                            }
+                        }
+                        )(plugin));
                     }
-                    )(plugin));
+                    await para.all();
+                    let newList = [...this.pluginList];
+                    for (const item of entries) {
+                        newList = newList.filter(x => x.documentPath != item.documentPath);
+                        newList.push(item)
+                    }
+                    if (updatedDocumentPath != "" && !processed) newList = newList.filter(e => e.documentPath != updatedDocumentPath);
+
+                    this.pluginList = newList;
+                    pluginList.set(newList);
+
+
+                    Logger(`All files enumerated`, logLevel, "get-plugins");
+                } finally {
+                    pluginIsEnumerating.set(false);
                 }
-                await para.all();
-                let newList = [...this.pluginList];
-                for (const item of entries) {
-                    newList = newList.filter(x => x.documentPath != item.documentPath);
-                    newList.push(item)
-                }
-                if (updatedDocumentPath != "" && !processed) newList = newList.filter(e => e.documentPath != updatedDocumentPath);
-
-                this.pluginList = newList;
-                pluginList.set(newList);
-
-
-                Logger(`All files enumerated`, logLevel, "get-plugins");
-            } finally {
-                pluginIsEnumerating.set(false);
-            }
+            });
         });
         // return entries;
     }
