@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix } from "./lib/src/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type DocumentID } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -7,7 +7,8 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
-import { balanceChunks, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
+import { balanceChunks, isChunk, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
+import { stripAllPrefixes } from "./lib/src/path";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -1548,22 +1549,29 @@ ${stringifyYaml(pluginConfig)}`;
                         for await (const docName of this.plugin.localDatabase.findAllDocNames()) {
                             if (!docName.startsWith("f:")) {
                                 const idEncoded = await this.plugin.path2id(docName as FilePathWithPrefix);
-                                const doc = await this.plugin.localDatabase.getDBEntry(docName as FilePathWithPrefix);
+                                const doc = await this.plugin.localDatabase.getRaw(docName as DocumentID);
                                 if (!doc) continue;
                                 if (doc.type != "newnote" && doc.type != "plain") {
                                     continue;
                                 }
+                                if (doc?.deleted ?? false) continue;
                                 const newDoc = { ...doc };
                                 //Prepare converted data
                                 newDoc._id = idEncoded;
-                                newDoc.path = this.plugin.getPath(newDoc);
+                                newDoc.path = docName as FilePathWithPrefix;
+                                delete newDoc._rev;
                                 try {
                                     const obfuscatedDoc = await this.plugin.localDatabase.getRaw(idEncoded, { revs_info: true });
                                     // Unfortunately we have to delete one of them.
                                     // Just now, save it as a conflicted document.
                                     obfuscatedDoc._revs_info?.shift(); // Drop latest revision.
                                     const previousRev = obfuscatedDoc._revs_info?.shift(); // Use second revision.
-                                    newDoc._rev = previousRev.rev;
+                                    if (previousRev) {
+                                        newDoc._rev = previousRev.rev;
+                                    } else {
+                                        //If there are no revisions, set the possibly unique one
+                                        newDoc._rev = "1-" + (`00000000000000000000000000000000${~~(Math.random() * 1e9)}${~~(Math.random() * 1e9)}${~~(Math.random() * 1e9)}${~~(Math.random() * 1e9)}`.slice(-32));
+                                    }
                                     const ret = await this.plugin.localDatabase.putRaw(newDoc, { force: true });
                                     if (ret.ok) {
                                         Logger(`${docName} has been converted as conflicted document`, LOG_LEVEL.NOTICE);
@@ -1594,6 +1602,7 @@ ${stringifyYaml(pluginConfig)}`;
                                 }
                             }
                         }
+                        Logger(`Converting finished`, LOG_LEVEL.NOTICE);
                     }));
         new Setting(containerHatchEl)
             .setName("Suspend file watching")

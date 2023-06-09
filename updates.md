@@ -75,5 +75,8 @@ I hope you will give it a try.
     - We can fix the database obfuscated and plain paths that have been mixed up.
   - Improvements
     - Customisation Sync performance has been improved.
+- 0.19.10
+  - Fixed
+    - Fixed the issue about fixing the database.
 
 ... To continue on to `updates_old.md`.
