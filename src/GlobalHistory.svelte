@@ -3,7 +3,7 @@
     import { onDestroy, onMount } from "svelte";
     import type { AnyEntry, FilePathWithPrefix } from "./lib/src/types";
     import { getDocData, isDocContentSame } from "./lib/src/utils";
-    import { diff_match_patch } from "diff-match-patch";
+    import { diff_match_patch } from "./deps";
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
     import { isPlainText, stripAllPrefixes } from "./lib/src/path";
     import { TFile } from "./deps";

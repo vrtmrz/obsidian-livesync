@@ -1,8 +1,7 @@
-import { TFile, Modal, App } from "./deps";
+import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { getPathFromTFile, isValidPath } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";
-import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
 import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";

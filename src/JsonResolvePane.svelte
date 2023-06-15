@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
+    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "./deps";
     import type { FilePath, LoadedEntry } from "./lib/src/types";
     import { base64ToString } from "./lib/src/strbin";
     import { getDocData } from "./lib/src/utils";

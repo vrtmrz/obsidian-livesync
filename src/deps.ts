@@ -10,3 +10,4 @@ import {
 } from "obsidian";
 const normalizePath = normalizePath_ as <T extends string | FilePath>(from: T) => T;
 export { normalizePath }
+export { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "diff-match-patch";
