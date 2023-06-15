@@ -47,6 +47,7 @@
     "dependencies": {
         "diff-match-patch": "^1.0.5",
         "idb": "^7.1.1",
-        "xxhash-wasm": "^0.4.2"
+        "xxhash-wasm": "^0.4.2",
+        "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }
 }

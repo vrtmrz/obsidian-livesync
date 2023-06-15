@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type DocumentID } from "./lib/src/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -7,8 +7,7 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
-import { balanceChunks, isChunk, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
-import { stripAllPrefixes } from "./lib/src/path";
+import { balanceChunks, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -1716,6 +1715,22 @@ ${stringifyYaml(pluginConfig)}`;
                         await this.plugin.initializeDatabase();
                     })
             })
+
+        new Setting(containerHatchEl)
+            .setName("The Hash algorithm for chunk IDs")
+            .setDesc("xxhash64 is the current default.")
+            .setClass("wizardHidden")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOptions({ "": "Old Algorithm", "xxhash32": "xxhash32 (Fast)", "xxhash64": "xxhash64 (Fastest)" } as Record<HashAlgorithm, string>)
+                    .setValue(this.plugin.settings.hashAlg)
+                    .onChange(async (value: HashAlgorithm) => {
+                        this.plugin.settings.hashAlg = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+            .setClass("wizardHidden");
+
         addScreenElement("50", containerHatchEl);
 
 

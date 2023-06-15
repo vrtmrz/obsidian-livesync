@@ -7,7 +7,7 @@ import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
 import { Parallels, delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
-import { base64ToArrayBuffer, arrayBufferToBase64, readString, uint8ArrayToHexString } from "./lib/src/strbin";
+import { base64ToArrayBuffer, arrayBufferToBase64, readString, crc32CKHash } from "./lib/src/strbin";
 import { runWithLock } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
@@ -34,14 +34,6 @@ function deserialize<T>(str: string, def: T) {
 
 export const pluginList = writable([] as PluginDataExDisplay[]);
 export const pluginIsEnumerating = writable(false);
-
-const encoder = new TextEncoder();
-const hashString = (async (key: string) => {
-    // const buff = writeString(key);
-    const buff = encoder.encode(key);
-    const digest = await crypto.subtle.digest('SHA-256', buff);
-    return uint8ArrayToHexString(new Uint8Array(digest));
-})
 
 export type PluginDataExFile = {
     filename: string,
@@ -209,7 +201,7 @@ export class ConfigSync extends LiveSyncCommands {
                                     for (const file of data.files) {
                                         const work = { ...file };
                                         const tempStr = getDocData(work.data);
-                                        work.data = [await hashString(tempStr)];
+                                        work.data = [crc32CKHash(tempStr)];
                                         xFiles.push(work);
                                     }
                                     entries.push({

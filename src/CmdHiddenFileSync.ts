@@ -1,6 +1,6 @@
-import { Notice, normalizePath, PluginManifest } from "./deps";
-import { EntryDoc, LoadedEntry, LOG_LEVEL, InternalFileEntry, FilePathWithPrefix, FilePath } from "./lib/src/types";
-import { InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
+import { Notice, normalizePath, type PluginManifest } from "./deps";
+import { type EntryDoc, type LoadedEntry, LOG_LEVEL, type InternalFileEntry, type FilePathWithPrefix, type FilePath } from "./lib/src/types";
+import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
 import { Parallels, delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";

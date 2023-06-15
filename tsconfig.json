@@ -21,7 +21,8 @@
             "ES5",
             "ES6",
             "ES7",
-            "es2019.array"
+            "es2019.array",
+            "ES2020.BigInt",
         ]
     },
     "include": [
