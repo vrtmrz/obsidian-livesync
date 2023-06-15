@@ -14,50 +14,7 @@ I hope you will give it a try.
 
 #### Minors
 
-- 0.19.1
-  - Fixed: Fixed hidden file handling on Linux
-  - Improved: Now customization sync works more smoothly.
-- 0.19.2
-  - Fixed:
-    - Fixed garbage collection error while unreferenced chunks exist many.
-    - Fixed filename validation on Linux.
-  - Improved:
-    - Showing status is now thinned for performance.
-    - Enhance caching while collecting chunks.
-- 0.19.3
-  - Improved:
-    - Now replication will be paced by collecting chunks. If synchronisation has been deadlocked, please enable `Do not pace synchronization` once.
-- 0.19.4
-  - Improved:
-    - Reduced remote database checking to improve speed and reduce bandwidth.
-  - Fixed:
-    - Chunks which previously misinterpreted are now interpreted correctly.
-      - No more missing chunks which not be found forever, except if it has been actually missing.
-    - Deleted file detection on hidden file synchronising now works fine.
-    - Now the Customisation sync is surely quiet while it has been disabled.
-- 0.19.5
-  - Fixed:
-    - Now hidden file synchronisation would not be hanged, even if so many files exist.
-  - Improved:
-    - Customisation sync works more smoothly.
-  - Note: Concurrent processing has been rollbacked into the original implementation. As a result, the total number of processes is no longer shown next to the hourglass icon. However, only the processes that are running concurrently are shown.
-- 0.19.6
-  - Fixed:
-    - Logging has been tweaked.
-    - No more too many planes and rockets.
-    - The batch database update now surely only works in non-live mode.
-  - Internal things:
-    - Some frameworks has been upgraded.
-    - Import declaration has been fixed.
-  - Improved:
-    - The plug-in now asks to enable a new adaptor, when rebuilding, if it is not enabled yet.
-    - The setting dialogue refined.
-      - Configurations for compatibilities have been moved under the hatch.
-      - Made it clear that disabled is the default.
-      - Ambiguous names configuration have been renamed.
-      - Items that have no meaning in the settings are no longer displayed.
-      - Some items have been reordered for clarity.
-      - Each configuration has been grouped.
+- 0.19.1 to 0.19.6 has been moved into the updates_old.md
 - 0.19.7
   - Fixed:
     - The initial pane of Setting dialogue is now changed to General Settings.
@@ -78,5 +35,11 @@ I hope you will give it a try.
 - 0.19.10
   - Fixed
     - Fixed the issue about fixing the database.
+- 0.19.11
+  - Improvements:
+    - Hashing ChunkID has been improved.
+    - Logging keeps 400 lines now.
+  - Refactored:
+    - Import statement has been fixed about types.
 
 ... To continue on to `updates_old.md`.
