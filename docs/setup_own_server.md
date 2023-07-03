@@ -1,5 +1,17 @@
 # Setup a CouchDB server
 
+## Table of Contents
+- [Configure](#configure)
+- [Run](#run)
+  - [Docker CLI](#docker-cli)
+  - [Docker Compose](#docker-compose)
+- [Access from a mobile device](#access-from-a-mobile-device)
+  - [Testing from a mobile](#testing-from-a-mobile)
+  - [Setting up your domain](#setting-up-your-domain)
+- [Reverse Proxies](#reverse-proxies)
+  - [Traefik](#traefik)
+---
+
 ## Configure
 
 The easiest way to set up a CouchDB instance is using the official [docker image](https://hub.docker.com/_/couchdb).
@@ -128,6 +140,77 @@ Set the A record of your domain to point to your server, and host reverse proxy 
 Note: Mounting CouchDB on the top directory is not recommended.  
 Using Caddy is a handy way to serve the server with SSL automatically.
 
-I have published [docker-compose.yml and ini files](https://github.com/vrtmrz/self-hosted-livesync-server) that launch Caddy and CouchDB at once. Please try it out.
+I have published [docker-compose.yml and ini files](https://github.com/vrtmrz/self-hosted-livesync-server) that launch Caddy and CouchDB at once. If you are using Traefik you can check the [Reverse Proxies](#reverse-proxies) section below.
 
 And, be sure to check the server log and be careful of malicious access.
+
+
+## Reverse Proxies
+
+### Traefik
+
+If you are using Traefik, this [docker-compose.yml](https://github.com/vrtmrz/obsidian-livesync/blob/main/docker-compose.traefik.yml) file (also pasted below) has all the right CORS parameters set. It assumes you have an external network called `proxy`.
+
+```yaml
+version: "2.1"
+services:
+  couchdb:
+    image: couchdb:latest
+    container_name: obsidian-livesync
+    user: 1000:1000
+    environment:
+      - COUCHDB_USER=username
+      - COUCHDB_PASSWORD=password
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./local.ini:/opt/couchdb/etc/local.ini
+    # Ports not needed when already passed to Traefik
+    #ports:
+    #  - 5984:5984
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # The Traefik Network
+      - "traefik.docker.network=proxy"
+      # Don't forget to replace 'obsidian-livesync.example.org' with your own domain
+      - "traefik.http.routers.obsidian-livesync.rule=Host(`obsidian-livesync.example.org`)"
+      # The 'websecure' entryPoint is basically your HTTPS entrypoint. Check the next code snippet if you are encountering problems only; you probably have a working traefik configuration if this is not your first container you are reverse proxying.
+      - "traefik.http.routers.obsidian-livesync.entrypoints=websecure"
+      - "traefik.http.routers.obsidian-livesync.service=obsidian-livesync"
+      - "traefik.http.services.obsidian-livesync.loadbalancer.server.port=5984"
+      - "traefik.http.routers.obsidian-livesync.tls=true"
+      # Replace the string 'letsencrypt' with your own certificate resolver
+      - "traefik.http.routers.obsidian-livesync.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.obsidian-livesync.middlewares=obsidiancors"
+      # The part needed for CORS to work on Traefik 2.x starts here
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolallowmethods=GET,PUT,POST,HEAD,DELETE"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolallowheaders=accept,authorization,content-type,origin,referer"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolalloworiginlist=app://obsidian.md,capacitor://localhost,http://localhost"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolmaxage=3600"
+      - "traefik.http.middlewares.obsidiancors.headers.addvaryheader=true"
+      - "traefik.http.middlewares.obsidiancors.headers.accessControlAllowCredentials=true"
+
+networks:
+  proxy:
+    external: true
+```
+
+Partial `traefik.yml` config file mentioned in above:
+```yml
+...
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: "websecure"
+          scheme: "https"
+  websecure:
+    address: ":443"
+
+...
+```
