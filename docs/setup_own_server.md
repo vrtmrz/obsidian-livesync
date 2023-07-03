@@ -4,7 +4,7 @@
 
 The easiest way to set up a CouchDB instance is using the official [docker image](https://hub.docker.com/_/couchdb).
 
-Some initial configuration is required. Create a `local.ini` to use Self-hosted LiveSync as follows:
+Some initial configuration is required. Create a `local.ini` to use Self-hosted LiveSync as follows ([CouchDB has to be version 3.2 or higher](https://docs.couchdb.org/en/latest/config/http.html#chttpd/enable_cors), if lower `enable_cors = true` has to be under section `[httpd]` ):
 
 ```ini
 [couchdb]
@@ -14,6 +14,7 @@ max_document_size = 50000000
 [chttpd]
 require_valid_user = true
 max_http_request_size = 4294967296
+enable_cors = true
 
 [chttpd_auth]
 require_valid_user = true
@@ -21,13 +22,13 @@ authentication_redirect = /_utils/session.html
 
 [httpd]
 WWW-Authenticate = Basic realm="couchdb"
-enable_cors = true
+bind_address = 0.0.0.0
 
 [cors]
-origins = app://obsidian.md,capacitor://localhost,http://localhost
+origins = app://obsidian.md, capacitor://localhost, http://localhost
 credentials = true
 headers = accept, authorization, content-type, origin, referer
-methods = GET, PUT, POST, HEAD, DELETE
+methods = GET,PUT,POST,HEAD,DELETE
 max_age = 3600
 ```
 
@@ -48,7 +49,7 @@ $ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=passw
 *Remember to replace the path with the path to your local.ini*
 
 ### Docker Compose
-Create a directory, place your `local.ini` within it, and create a `docker-compose.yml` alongside it. The directory structure should look similar to this:
+Create a directory, place your `local.ini` within it, and create a `docker-compose.yml` alongside it. Make sure to have write permissions for `local.ini` and the about to be created `data` folder after the container start. The directory structure should look similar to this:
 ```
 obsidian-livesync
 ├── docker-compose.yml
