@@ -372,6 +372,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 } else {
                                     addResult("✔ chttpd_auth.require_valid_user is ok.");
                                 }
+                                if (responseConfig?.chttpd?.enable_cors != "true") {
+                                    addResult("❗ chttpd.enable_cors is wrong");
+                                    addConfigFixButton("Set chttpd.enable_cors", "chttpd/enable_cors", "true");
+                                } else {
+                                    addResult("✔ chttpd.enable_cors is ok.");
+                                }
                                 // HTTPD check
                                 //  Check Authentication header
                                 if (!responseConfig?.httpd["WWW-Authenticate"]) {
@@ -379,12 +385,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                     addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
                                 } else {
                                     addResult("✔ httpd.WWW-Authenticate is ok.");
-                                }
-                                if (responseConfig?.httpd?.enable_cors != "true") {
-                                    addResult("❗ httpd.enable_cors is wrong");
-                                    addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
-                                } else {
-                                    addResult("✔ httpd.enable_cors is ok.");
                                 }
                                 // If the server is not cloudant, configure request size
                                 if (!isCloudantURI(this.plugin.settings.couchDB_URI)) {
