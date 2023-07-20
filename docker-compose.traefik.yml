@@ -1,0 +1,46 @@
+# For details and other explanations about this file refer to:
+# https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/setup_own_server.md#traefik
+
+version: "2.1"
+services:
+  couchdb:
+    image: couchdb:latest
+    container_name: obsidian-livesync
+    user: 1000:1000
+    environment:
+      - COUCHDB_USER=username
+      - COUCHDB_PASSWORD=password
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./local.ini:/opt/couchdb/etc/local.ini
+    # Ports not needed when already passed to Traefik
+    #ports:
+    #  - 5984:5984
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # The Traefik Network
+      - "traefik.docker.network=proxy"
+      # Don't forget to replace 'obsidian-livesync.example.org' with your own domain
+      - "traefik.http.routers.obsidian-livesync.rule=Host(`obsidian-livesync.example.org`)"
+      # The 'websecure' entryPoint is basically your HTTPS entrypoint. Check the next code snippet if you are encountering problems only; you probably have a working traefik configuration if this is not your first container you are reverse proxying.
+      - "traefik.http.routers.obsidian-livesync.entrypoints=websecure"
+      - "traefik.http.routers.obsidian-livesync.service=obsidian-livesync"
+      - "traefik.http.services.obsidian-livesync.loadbalancer.server.port=5984"
+      - "traefik.http.routers.obsidian-livesync.tls=true"
+      # Replace the string 'letsencrypt' with your own certificate resolver
+      - "traefik.http.routers.obsidian-livesync.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.obsidian-livesync.middlewares=obsidiancors"
+      # The part needed for CORS to work on Traefik 2.x starts here
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolallowmethods=GET,PUT,POST,HEAD,DELETE"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolallowheaders=accept,authorization,content-type,origin,referer"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolalloworiginlist=app://obsidian.md,capacitor://localhost,http://localhost"
+      - "traefik.http.middlewares.obsidiancors.headers.accesscontrolmaxage=3600"
+      - "traefik.http.middlewares.obsidiancors.headers.addvaryheader=true"
+      - "traefik.http.middlewares.obsidiancors.headers.accessControlAllowCredentials=true"
+
+networks:
+  proxy:
+    external: true
