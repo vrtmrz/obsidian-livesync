@@ -10,9 +10,9 @@ import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, localDatabaseCleanUp, balanceChunks, performRebuildDB } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
-import { enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI } from "./lib/src/utils_couchdb";
+import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
@@ -240,6 +240,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     createPouchDBInstance<T>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
         if (this.settings.useIndexedDBAdapter) {
             options.adapter = "indexeddb";
+            options.purged_infos_limit = 1;
             return new PouchDB(name + "-indexeddb", options);
         }
         return new PouchDB(name, options);
@@ -1566,19 +1567,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const newMsg = typeof message == "string" ? message : this.lastMessage;
         const newLog = typeof log == "string" ? log : this.lastLog;
         if (`${this.lastMessage}-${this.lastLog}` != `${newMsg}-${newLog}`) {
-            scheduleTask("update-display", 50, () => {
-                this.statusBar.setText(newMsg.split("\n")[0]);
+            // scheduleTask("update-display", 50, () => {
+            this.statusBar.setText(newMsg.split("\n")[0]);
 
-                if (this.settings.showStatusOnEditor) {
-                    const root = activeDocument.documentElement;
-                    const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                    q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
-                } else {
-                    const root = activeDocument.documentElement;
-                    const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                    q.forEach(e => e.setAttr("data-log", ''))
-                }
-            }, true);
+            if (this.settings.showStatusOnEditor) {
+                const root = activeDocument.documentElement;
+                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
+            } else {
+                const root = activeDocument.documentElement;
+                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+                q.forEach(e => e.setAttr("data-log", ''))
+            }
+            // }, true);
             scheduleTask("log-hide", 3000, () => this.setStatusBarText(null, ""));
             this.lastMessage = newMsg;
             this.lastLog = newLog;
@@ -1599,22 +1600,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (!ret) {
             if (this.replicator.remoteLockedAndDeviceNotAccepted) {
                 if (this.replicator.remoteCleaned) {
-                    const message = `
-The remote database has been cleaned up.
-To synchronize, this device must also be cleaned up or fetch everything again once.
-Fetching may takes some time. Cleaning up is not stable yet but fast.
-`
-                    const CHOICE_CLEANUP = "Clean up";
-                    const CHOICE_FETCH = "Fetch again";
-                    const CHOICE_DISMISS = "Dismiss";
-                    const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_CLEANUP, CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
-                    if (ret == CHOICE_CLEANUP) {
-                        await localDatabaseCleanUp(this, true, false);
-                        await balanceChunks(this, false);
+                    Logger(`The remote database has been cleaned up. The local database of this device also should be done.`, showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                    const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
+                    if (typeof remoteDB == "string") {
+                        Logger(remoteDB, LOG_LEVEL.NOTICE);
+                        return false;
                     }
-                    if (ret == CHOICE_FETCH) {
-                        await performRebuildDB(this, "localOnly");
-                    }
+                    // TODO Check actually sent.
+                    await runWithLock("cleanup", true, async () => {
+                        await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                        await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                        await this.getReplicator().markRemoteResolved(this.settings);
+                    });
+                    Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
                 } else {
                     const message = `
 The remote database has been rebuilt.
@@ -2490,6 +2488,33 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return this.localDatabase.isTargetFile(file);
         }
     }
+    async dryRunGC() {
+        await runWithLock("cleanup", true, async () => {
+            const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
+            if (typeof (remoteDBConn) == "string") {
+                Logger(remoteDBConn);
+                return;
+            }
+            await purgeUnreferencedChunks(remoteDBConn.db, true, this.settings, false);
+            await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
+        });
+    }
 
+    async dbGC() {
+        // Lock the remote completely once.
+        await runWithLock("cleanup", true, async () => {
+            this.getReplicator().markRemoteLocked(this.settings, true, true);
+            const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
+            if (typeof (remoteDBConn) == "string") {
+                Logger(remoteDBConn);
+                return;
+            }
+            await purgeUnreferencedChunks(remoteDBConn.db, false, this.settings, true);
+            await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+            await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDBConn.db);
+            this.localDatabase.refreshSettings();
+            Logger("The remote database has been cleaned up! Other devices will be cleaned up on the next synchronisation.")
+        });
+    }
 }
 

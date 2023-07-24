@@ -7,7 +7,7 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
-import { balanceChunks, localDatabaseCleanUp, performRebuildDB, remoteDatabaseCleanup, requestToCouchDB } from "./utils";
+import { performRebuildDB, requestToCouchDB } from "./utils";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -1851,26 +1851,6 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
-        new Setting(containerMaintenanceEl)
-            .setName("(Beta) Clean the remote database")
-            .setDesc("")
-            .addButton((button) =>
-                button.setButtonText("Count")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await remoteDatabaseCleanup(this.plugin, true);
-                    })
-            ).addButton((button) =>
-                button.setButtonText("Perform cleaning")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        // @ts-ignore
-                        this.plugin.app.setting.close()
-                        await remoteDatabaseCleanup(this.plugin, false);
-                        await balanceChunks(this.plugin, false);
-                    })
-            );
 
         containerMaintenanceEl.createEl("h4", { text: "The local database" });
 
@@ -1888,26 +1868,6 @@ ${stringifyYaml(pluginConfig)}`;
             )
 
         new Setting(containerMaintenanceEl)
-            .setName("(Beta) Clean the local database")
-            .setDesc("This feature requires disabling 'Use an old adapter for compatibility'")
-            .addButton((button) =>
-                button.setButtonText("Count")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await localDatabaseCleanUp(this.plugin, false, true);
-                    })
-            ).addButton((button) =>
-                button.setButtonText("Perform cleaning")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        // @ts-ignore
-                        this.plugin.app.setting.close()
-                        await localDatabaseCleanUp(this.plugin, false, false);
-                    })
-            );
-
-        new Setting(containerMaintenanceEl)
             .setName("Discard local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>
                 button
@@ -1923,6 +1883,25 @@ ${stringifyYaml(pluginConfig)}`;
         containerMaintenanceEl.createEl("h4", { text: "Both databases" });
 
         new Setting(containerMaintenanceEl)
+            .setName("(Beta2) Clean up databases")
+            .setDesc("Delete unused chunks to shrink the database. This feature requires disabling 'Use an old adapter for compatibility'")
+            .addButton((button) =>
+                button.setButtonText("DryRun")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.dryRunGC();
+                    })
+            ).addButton((button) =>
+                button.setButtonText("Perform cleaning")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        // @ts-ignore
+                        this.plugin.app.setting.close()
+                        await this.plugin.dbGC();
+                    })
+            );
+        new Setting(containerMaintenanceEl)
             .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")
             .addButton((button) =>
@@ -1932,19 +1911,6 @@ ${stringifyYaml(pluginConfig)}`;
                     .setDisabled(false)
                     .onClick(async () => {
                         await rebuildDB("rebuildBothByThisDevice");
-                    })
-            )
-
-        new Setting(containerMaintenanceEl)
-            .setName("(Beta) Complement each other with possible missing chunks.")
-            .setDesc("")
-            .addButton((button) =>
-                button
-                    .setButtonText("Balance")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await balanceChunks(this.plugin, false);
                     })
             )
         applyDisplayEnabled();
