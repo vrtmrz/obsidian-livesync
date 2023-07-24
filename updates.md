@@ -41,5 +41,18 @@ I hope you will give it a try.
     - Logging keeps 400 lines now.
   - Refactored:
     - Import statement has been fixed about types.
+- 0.19.12
+  - Improved:
+    - Boot-up performance has been improved.
+    - Customisation sync performance has been improved.
+    - Synchronising performance has been improved.
+- 0.19.13
+  - Implemented:
+    - Database clean-up is now in beta 2!
+      We can shrink the remote database by deleting unused chunks, with keeping history.
+      Note: Local database is not cleaned up totally. We have to `Fetch` again to let it done.
+      **Note2**: Still in beta. Please back your vault up anything before.
+  - Fixed:
+    - The log updates are not thinned out now.
 
 ... To continue on to `updates_old.md`.
