@@ -430,11 +430,12 @@ export class PeriodicProcessor {
     enable(interval: number) {
         this.disable();
         if (interval == 0) return;
-        this._timer = window.setInterval(() => this._process().then(() => { }), interval);
+        this._timer = window.setInterval(() => this.process().then(() => { }), interval);
         this._plugin.registerInterval(this._timer);
     }
     disable() {
-        if (this._timer) clearInterval(this._timer);
+        if (this._timer !== undefined) window.clearInterval(this._timer);
+        this._timer = undefined;
     }
 }
 

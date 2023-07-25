@@ -7,7 +7,7 @@ import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
-import { performRebuildDB, requestToCouchDB } from "./utils";
+import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -1610,6 +1610,27 @@ ${stringifyYaml(pluginConfig)}`;
                 toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
                     this.plugin.settings.suspendFileWatching = value;
                     await this.plugin.saveSettings();
+                    scheduleTask("configReload", 250, async () => {
+                        if (await askYesNo(this.app, "Do you want to restart and reload Obsidian now?") == "yes") {
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        }
+                    })
+                })
+            );
+        new Setting(containerHatchEl)
+            .setName("Suspend database reflecting")
+            .setDesc("Stop reflecting database changes to storage files.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.suspendParseReplicationResult).onChange(async (value) => {
+                    this.plugin.settings.suspendParseReplicationResult = value;
+                    await this.plugin.saveSettings();
+                    scheduleTask("configReload", 250, async () => {
+                        if (await askYesNo(this.app, "Do you want to restart and reload Obsidian now?") == "yes") {
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        }
+                    })
                 })
             );
         new Setting(containerHatchEl)
@@ -1731,6 +1752,16 @@ ${stringifyYaml(pluginConfig)}`;
             )
             .setClass("wizardHidden");
 
+
+        new Setting(containerHatchEl)
+            .setName("Fetch database with previous behaviour")
+            .setDesc("")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.doNotSuspendOnFetching).onChange(async (value) => {
+                    this.plugin.settings.doNotSuspendOnFetching = value;
+                    await this.plugin.saveSettings();
+                })
+            );
         addScreenElement("50", containerHatchEl);
 
 

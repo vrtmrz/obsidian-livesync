@@ -8,6 +8,7 @@ import { LiveSyncCommands } from "./LiveSyncCommands";
 import { delay } from "./lib/src/utils";
 import { confirmWithMessage } from "./dialogs";
 import { Platform } from "./deps";
+import { fetchAllUsedChunks } from "./lib/src/utils_couchdb";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }
@@ -284,6 +285,26 @@ Of course, we are able to disable these features.`
         this.plugin.settings.syncAfterMerge = false;
         //this.suspendExtraSync();
     }
+    async suspendReflectingDatabase() {
+        if (this.plugin.settings.doNotSuspendOnFetching) return;
+        Logger(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL.NOTICE);
+        this.plugin.settings.suspendParseReplicationResult = true;
+        this.plugin.settings.suspendFileWatching = true;
+        await this.plugin.saveSettings();
+    }
+    async resumeReflectingDatabase() {
+        if (this.plugin.settings.doNotSuspendOnFetching) return;
+        Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL.NOTICE);
+        this.plugin.settings.suspendParseReplicationResult = false;
+        this.plugin.settings.suspendFileWatching = false;
+        await this.plugin.saveSettings();
+        if (this.plugin.settings.readChunksOnline) {
+            await this.plugin.syncAllFiles(true);
+            await this.plugin.loadQueuedFiles();
+            // Start processing
+            this.plugin.procQueuedFiles();
+        }
+    }
     async askUseNewAdapter() {
         if (!this.plugin.settings.useIndexedDBAdapter) {
             const message = `Now this plugin has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
@@ -297,9 +318,22 @@ Of course, we are able to disable these features.`
             }
         }
     }
+    async fetchRemoteChunks() {
+        if (!this.plugin.settings.doNotSuspendOnFetching && this.plugin.settings.readChunksOnline) {
+            Logger(`Fetching chunks`, LOG_LEVEL.NOTICE);
+            const remoteDB = await this.plugin.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.plugin.getIsMobile(), true);
+            if (typeof remoteDB == "string") {
+                Logger(remoteDB, LOG_LEVEL.NOTICE);
+            } else {
+                await fetchAllUsedChunks(this.localDatabase.localDatabase, remoteDB.db);
+            }
+            Logger(`Fetching chunks done`, LOG_LEVEL.NOTICE);
+        }
+    }
     async fetchLocal() {
         this.suspendExtraSync();
         this.askUseNewAdapter();
+        await this.suspendReflectingDatabase();
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.resetLocalDatabase();
         await delay(1000);
@@ -310,6 +344,8 @@ Of course, we are able to disable these features.`
         await this.plugin.replicateAllFromServer(true);
         await delay(1000);
         await this.plugin.replicateAllFromServer(true);
+        await this.fetchRemoteChunks();
+        await this.resumeReflectingDatabase();
         await this.askHiddenFileConfiguration({ enableFetch: true });
     }
     async rebuildRemote() {

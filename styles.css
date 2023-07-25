@@ -260,3 +260,14 @@ div.sls-setting-menu-btn {
 .password-input > .setting-item-control >input {
   -webkit-text-security: disc;
 }
+
+span.ls-mark-cr::after {
+    user-select: none;
+    content: "↲";
+    color: var(--text-muted);
+    font-size: 0.8em;
+}
+
+.deleted span.ls-mark-cr::after {
+    color: var(--text-on-accent);
+}

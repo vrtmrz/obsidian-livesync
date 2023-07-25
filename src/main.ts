@@ -18,7 +18,7 @@ import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/s
 import { setNoticeClass } from "./lib/src/wrapper";
 import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
 import { addPrefix, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
-import { runWithLock } from "./lib/src/lock";
+import { isLockAcquired, runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
@@ -240,6 +240,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     createPouchDBInstance<T>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
         if (this.settings.useIndexedDBAdapter) {
             options.adapter = "indexeddb";
+            //@ts-ignore :missing def
             options.purged_infos_limit = 1;
             return new PouchDB(name + "-indexeddb", options);
         }
@@ -421,11 +422,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
                     await this.addOnSetup.fetchLocal();
                     await this.deleteRedFlag3();
-                    if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
-                        this.settings.suspendFileWatching = false;
-                        await this.saveSettings();
-                        // @ts-ignore
-                        this.app.commands.executeCommandById("app:reload")
+                    if (this.settings.suspendFileWatching) {
+                        if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                            this.settings.suspendFileWatching = false;
+                            await this.saveSettings();
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload")
+                        }
                     }
                 } else {
                     this.settings.writeLogToTheFile = true;
@@ -437,6 +440,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             } else {
                 if (this.settings.suspendFileWatching) {
                     Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+                }
+                if (this.settings.suspendParseReplicationResult) {
+                    Logger("'Suspend database reflecting' turned on. Are you sure this is what you intended? Every replicated change will be postponed until disabling this option.", LOG_LEVEL.NOTICE);
                 }
                 const isInitialized = await this.initializeDatabase(false, false);
                 if (!isInitialized) {
@@ -1317,12 +1323,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         localStorage.setItem(lsKey, saveData);
     }
     async loadQueuedFiles() {
-        const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
-        const ids = JSON.parse(localStorage.getItem(lsKey) || "[]") as string[];
-        const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: ids, include_docs: true });
-        for (const doc of ret.rows) {
-            if (doc.doc && !this.queuedFiles.some((e) => e.entry._id == doc.doc._id)) {
-                await this.parseIncomingDoc(doc.doc as PouchDB.Core.ExistingDocument<EntryBody & PouchDB.Core.AllDocsMeta>);
+        if (!this.settings.suspendParseReplicationResult) {
+            const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
+            const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
+            const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: ids, include_docs: true });
+            for (const doc of ret.rows) {
+                if (doc.doc && !this.queuedFiles.some((e) => e.entry._id == doc.doc._id)) {
+                    await this.parseIncomingDoc(doc.doc as PouchDB.Core.ExistingDocument<EntryBody & PouchDB.Core.AllDocsMeta>);
+                }
             }
         }
     }
@@ -1384,6 +1392,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         // It is better for your own safety, not to handle the following files
         const ignoreFiles = [
             "_design/replicate",
+            "_design/chunks",
             FLAGMD_REDFLAG,
             FLAGMD_REDFLAG2,
             FLAGMD_REDFLAG3
@@ -1432,20 +1441,40 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         L1:
         for (const change of docsSorted) {
             if (isChunk(change._id)) {
-                await this.parseIncomingChunk(change);
+                if (!this.settings.suspendParseReplicationResult) {
+                    await this.parseIncomingChunk(change);
+                }
                 continue;
             }
-            for (const proc of this.addOns) {
-                if (await proc.parseReplicationResultItem(change)) {
-                    continue L1;
+            if (!this.settings.suspendParseReplicationResult) {
+                for (const proc of this.addOns) {
+                    if (await proc.parseReplicationResultItem(change)) {
+                        continue L1;
+                    }
                 }
             }
             if (change._id == SYNCINFO_ID) {
                 continue;
             }
-            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
-                await this.parseIncomingDoc(change);
+            if (change._id.startsWith("_design")) {
                 continue;
+            }
+
+            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
+                if (this.settings.suspendParseReplicationResult) {
+                    const newQueue = {
+                        entry: change,
+                        missingChildren: [] as string[],
+                        timeout: 0,
+                    };
+                    Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL.INFO);
+                    this.queuedFiles.push(newQueue);
+                    this.saveQueuedFiles();
+                    continue;
+                } else {
+                    await this.parseIncomingDoc(change);
+                    continue;
+                }
             }
             if (change.type == "versioninfo") {
                 if (change.version > VER) {
@@ -1589,8 +1618,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async replicate(showMessage?: boolean) {
         if (!this.isReady) return;
+        if (isLockAcquired("cleanup")) {
+            Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL.NOTICE);
+            return;
+        }
         if (this.settings.versionUpFlash != "") {
-            Logger("Open settings and check message, please.", LOG_LEVEL.NOTICE);
+            Logger("Open settings and check message, please. replication has been cancelled.", LOG_LEVEL.NOTICE);
             return;
         }
         await this.applyBatchChange();
@@ -1600,19 +1633,41 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (!ret) {
             if (this.replicator.remoteLockedAndDeviceNotAccepted) {
                 if (this.replicator.remoteCleaned) {
-                    Logger(`The remote database has been cleaned up. The local database of this device also should be done.`, showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
-                    const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
-                    if (typeof remoteDB == "string") {
-                        Logger(remoteDB, LOG_LEVEL.NOTICE);
-                        return false;
-                    }
-                    // TODO Check actually sent.
+                    Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
                     await runWithLock("cleanup", true, async () => {
-                        await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
-                        await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                        await this.getReplicator().markRemoteResolved(this.settings);
+                        const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
+                        const message = `The remote database has been cleaned up.
+To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
+However, If there are many chunks to be deleted, maybe fetching again is faster.
+We will lose the history of this device if we fetch the remote database again.
+Even if you choose to clean up, you will see this option again if you exit Obsidian and then synchronise again.`
+                        const CHOICE_FETCH = "Fetch again";
+                        const CHOICE_CLEAN = "Cleanup";
+                        const CHOICE_DISMISS = "Dismiss";
+                        const ret = await confirmWithMessage(this, "Cleaned", message, [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS], CHOICE_DISMISS, 30);
+                        if (ret == CHOICE_FETCH) {
+                            await performRebuildDB(this, "localOnly");
+                        }
+                        if (ret == CHOICE_CLEAN) {
+                            const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
+                            if (typeof remoteDB == "string") {
+                                Logger(remoteDB, LOG_LEVEL.NOTICE);
+                                return false;
+                            }
+
+                            await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                            // Perform the synchronisation once.
+                            if (await this.replicator.openReplication(this.settings, false, showMessage, true)) {
+                                await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                                await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                                await this.getReplicator().markRemoteResolved(this.settings);
+                                Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
+                            } else {
+                                Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
+                            }
+
+                        }
                     });
-                    Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
                 } else {
                     const message = `
 The remote database has been rebuilt.
@@ -2164,7 +2219,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         setTimeout(() => {
                             //resolved, check again.
                             this.showIfConflicted(filename);
-                        }, 500);
+                        }, 50);
                     } else if (toDelete == null) {
                         Logger("Leave it still conflicted");
                     } else {
@@ -2177,7 +2232,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         setTimeout(() => {
                             //resolved, check again.
                             this.showIfConflicted(filename);
-                        }, 500);
+                        }, 50);
                     }
 
                     return res(true);
@@ -2221,7 +2276,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 Logger("conflict:Automatically merged, but we have to check it again");
                 setTimeout(() => {
                     this.showIfConflicted(filename);
-                }, 500);
+                }, 50);
                 return;
             }
             //there conflicts, and have to resolve ;

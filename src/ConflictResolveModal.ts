@@ -30,11 +30,11 @@ export class ConflictResolveModal extends Modal {
             const x1 = v[0];
             const x2 = v[1];
             if (x1 == DIFF_DELETE) {
-                diff += "<span class='deleted'>" + escapeStringToHTML(x2) + "</span>";
+                diff += "<span class='deleted'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
             } else if (x1 == DIFF_EQUAL) {
-                diff += "<span class='normal'>" + escapeStringToHTML(x2) + "</span>";
+                diff += "<span class='normal'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
             } else if (x1 == DIFF_INSERT) {
-                diff += "<span class='added'>" + escapeStringToHTML(x2) + "</span>";
+                diff += "<span class='added'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
             }
         }
 
@@ -48,23 +48,26 @@ export class ConflictResolveModal extends Modal {
         `;
         contentEl.createEl("button", { text: "Keep A" }, (e) => {
             e.addEventListener("click", async () => {
-                await this.callback(this.result.right.rev);
+                const callback = this.callback;
                 this.callback = null;
                 this.close();
+                await callback(this.result.right.rev);
             });
         });
         contentEl.createEl("button", { text: "Keep B" }, (e) => {
             e.addEventListener("click", async () => {
-                await this.callback(this.result.left.rev);
+                const callback = this.callback;
                 this.callback = null;
                 this.close();
+                await callback(this.result.left.rev);
             });
         });
         contentEl.createEl("button", { text: "Concat both" }, (e) => {
             e.addEventListener("click", async () => {
-                await this.callback("");
+                const callback = this.callback;
                 this.callback = null;
                 this.close();
+                await callback("");
             });
         });
         contentEl.createEl("button", { text: "Not now" }, (e) => {

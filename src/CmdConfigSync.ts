@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml } from "./deps";
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry } from "./lib/src/types";
 import { LOG_LEVEL } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { Parallels, delay, getDocData } from "./lib/src/utils";
+import { delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64, readString, crc32CKHash } from "./lib/src/strbin";
