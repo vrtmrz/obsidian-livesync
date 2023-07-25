@@ -1,8 +1,19 @@
 # 在你自己的服务器上设置 CouchDB
 
+## 目录
+- [配置 CouchDB](#配置-CouchDB)
+- [运行 CouchDB](#运行-CouchDB)
+  - [Docker CLI](#docker-cli)
+  - [Docker Compose](#docker-compose)
+- [创建数据库](#创建数据库)
+- [从移动设备访问](#从移动设备访问)
+  - [移动设备测试](#移动设备测试)
+  - [设置你的域名](#设置你的域名)
+---
+
 > 注：提供了 [docker-compose.yml 和 ini 文件](https://github.com/vrtmrz/self-hosted-livesync-server) 可以同时启动 Caddy 和 CouchDB。推荐直接使用该 docker-compose 配置进行搭建。（若使用，请查阅链接中的文档，而不是这个文档）
 
-## 安装 CouchDB 并从 PC 或 Mac 上访问
+## 配置 CouchDB
 
 设置 CouchDB 的最简单方法是使用 [CouchDB docker image]((https://hub.docker.com/_/couchdb)).
 
@@ -33,17 +44,62 @@ methods = GET, PUT, POST, HEAD, DELETE
 max_age = 3600
 ```
 
-创建 `local.ini` 并用如下指令启动 CouchDB：
-```
-$ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
-```
-Note: 此时 local.ini 的文件所有者会变成 5984:5984。这是 docker 镜像的限制，请修改文件所有者后再编辑 local.ini。
+## 运行 CouchDB
 
-在确定 Self-hosted LiveSync 可以和服务器同步后，可以后台启动 docker 镜像：
+### Docker CLI
+
+你可以通过指定 `local.ini` 配置运行 CouchDB:
 
 ```
-$ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
+$ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
 ```
+*记得将上述命令中的 local.ini 挂载路径替换成实际的存放路径*
+
+后台运行:
+```
+$ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
+```
+*记得将上述命令中的 local.ini 挂载路径替换成实际的存放路径*
+
+### Docker Compose
+创建一个文件夹, 将你的 `local.ini` 放在文件夹内, 然后在文件夹内创建 `docker-compose.yml`. 请确保对 `local.ini` 有读写权限并且确保在容器运行后能创建 `data` 文件夹. 文件夹结构大概如下:
+```
+obsidian-livesync
+├── docker-compose.yml
+└── local.ini
+```
+
+可以参照以下内容编辑 `docker-compose.yml`:
+```yaml
+version: "2.1"
+services:
+  couchdb:
+    image: couchdb
+    container_name: obsidian-livesync
+    user: 1000:1000
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=password
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./local.ini:/opt/couchdb/etc/local.ini
+    ports:
+      - 5984:5984
+    restart: unless-stopped
+```
+
+最后, 创建并启动容器:
+```
+# -d will launch detached so the container runs in background
+docker compose up -d
+```
+
+## 创建数据库
+
+CouchDB 部署成功后, 需要手动创建一个数据库, 方便插件连接并同步.
+
+1. 访问 `http://localhost:5984/_utils`, 输入帐号密码后进入管理页面
+2. 点击 Create Database, 然后根据个人喜好创建数据库
 
 ## 从移动设备访问
 如果你想要从移动设备访问 Self-hosted LiveSync，你需要一个合法的 SSL 证书。
