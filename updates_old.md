@@ -56,7 +56,32 @@ I hope you will give it a try.
       - Items that have no meaning in the settings are no longer displayed.
       - Some items have been reordered for clarity.
       - Each configuration has been grouped.
-
+- 0.19.7
+  - Fixed:
+    - The initial pane of Setting dialogue is now changed to General Settings.
+    - The Setup Wizard is now able to flush existing settings and get into the mode again.
+- 0.19.8
+  - New feature:
+    - Vault history: A tab has been implemented to give a birds-eye view of the changes that have occurred in the vault.
+  - Improved:
+    - Now the passphrases on the dialogue masked out. Thank you @antoKeinanen!
+    - Log dialogue is now shown as one of tabs.
+  - Fixed:
+    - Some minor issues has been fixed.
+- 0.19.9
+  - New feature (For fixing a problem):
+    - We can fix the database obfuscated and plain paths that have been mixed up.
+  - Improvements
+    - Customisation Sync performance has been improved.
+- 0.19.10
+  - Fixed
+    - Fixed the issue about fixing the database.
+- 0.19.11
+  - Improvements:
+    - Hashing ChunkID has been improved.
+    - Logging keeps 400 lines now.
+  - Refactored:
+    - Import statement has been fixed about types.
 ### 0.18.0
 
 #### Now, paths of files in the database can now be obfuscated. (Experimental Feature)

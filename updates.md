@@ -14,33 +14,7 @@ I hope you will give it a try.
 
 #### Minors
 
-- 0.19.1 to 0.19.6 has been moved into the updates_old.md
-- 0.19.7
-  - Fixed:
-    - The initial pane of Setting dialogue is now changed to General Settings.
-    - The Setup Wizard is now able to flush existing settings and get into the mode again.
-- 0.19.8
-  - New feature:
-    - Vault history: A tab has been implemented to give a birds-eye view of the changes that have occurred in the vault.
-  - Improved:
-    - Now the passphrases on the dialogue masked out. Thank you @antoKeinanen!
-    - Log dialogue is now shown as one of tabs.
-  - Fixed:
-    - Some minor issues has been fixed.
-- 0.19.9
-  - New feature (For fixing a problem):
-    - We can fix the database obfuscated and plain paths that have been mixed up.
-  - Improvements
-    - Customisation Sync performance has been improved.
-- 0.19.10
-  - Fixed
-    - Fixed the issue about fixing the database.
-- 0.19.11
-  - Improvements:
-    - Hashing ChunkID has been improved.
-    - Logging keeps 400 lines now.
-  - Refactored:
-    - Import statement has been fixed about types.
+- 0.19.1 to 0.19.11 has been moved into the updates_old.md
 - 0.19.12
   - Improved:
     - Boot-up performance has been improved.
@@ -54,5 +28,23 @@ I hope you will give it a try.
       **Note2**: Still in beta. Please back your vault up anything before.
   - Fixed:
     - The log updates are not thinned out now.
+- 0.19.14
+  - Fixed:
+    - Internal documents are now ignored.
+    - Merge dialogue now respond immediately to button pressing.
+    - Periodic processing now works fine.
+    - The checking interval of detecting conflicted has got shorter.
+    - Replication is now cancelled while cleaning up.
+    - The database locking by the cleaning up is now carefully unlocked.
+    - Missing chunks message is correctly reported.
+  - New feature:
+    - Suspend database reflecting has been implemented.
+      - This can be disabled by `Fetch database with previous behaviour`.
+    - Now fetch suspends the reflecting database and storage changes temporarily to improve the performance.
+    - We can choose the action when the remote database has been cleaned
+    - Merge dialogue now show `↲` before the new line.
+  - Improved:
+    - Now progress is reported while the cleaning up and fetch process.
+    - Cancelled replication is now detected.
 
 ... To continue on to `updates_old.md`.
