@@ -36,6 +36,8 @@
         "pouchdb-core": "^8.0.1",
         "pouchdb-find": "^8.0.1",
         "pouchdb-mapreduce": "^8.0.1",
+        "pouchdb-merge": "^8.0.1",
+        "pouchdb-errors": "^8.0.1",
         "pouchdb-replication": "^8.0.1",
         "pouchdb-utils": "^8.0.1",
         "svelte": "^3.59.1",

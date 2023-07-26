@@ -1656,10 +1656,12 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                             }
 
                             await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                            this.localDatabase.hashCaches.clear();
                             // Perform the synchronisation once.
                             if (await this.replicator.openReplication(this.settings, false, showMessage, true)) {
                                 await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                                 await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                                this.localDatabase.hashCaches.clear();
                                 await this.getReplicator().markRemoteResolved(this.settings);
                                 Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
                             } else {
@@ -2552,6 +2554,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             await purgeUnreferencedChunks(remoteDBConn.db, true, this.settings, false);
             await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
+            this.localDatabase.hashCaches.clear();
         });
     }
 
@@ -2566,6 +2569,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             await purgeUnreferencedChunks(remoteDBConn.db, false, this.settings, true);
             await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+            this.localDatabase.hashCaches.clear();
             await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDBConn.db);
             this.localDatabase.refreshSettings();
             Logger("The remote database has been cleaned up! Other devices will be cleaned up on the next synchronisation.")
