@@ -46,5 +46,11 @@ I hope you will give it a try.
   - Improved:
     - Now progress is reported while the cleaning up and fetch process.
     - Cancelled replication is now detected.
+- 0.19.15
+  - Fixed:
+    - Now storing files after cleaning up is correct works.
+  - Improved:
+    - Cleaning the local database up got incredibly fastened.
+      Now we can clean instead of fetching again when synchronising with the remote which has been cleaned up.
 
 ... To continue on to `updates_old.md`.
