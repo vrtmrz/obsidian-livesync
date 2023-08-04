@@ -52,5 +52,20 @@ I hope you will give it a try.
   - Improved:
     - Cleaning the local database up got incredibly fastened.
       Now we can clean instead of fetching again when synchronising with the remote which has been cleaned up.
+- 0.19.16
+  - Many upgrades on this release. I have tried not to let that happen, if something got corrupted, please feel free to notify me.
+  - New feature:
+    - (Beta) ignore files handling
+      We can use `.gitignore`, `.dockerignore`, and anything you like to filter the synchronising files.
+  - Fixed:
+    - Buttons on lock-detected-dialogue now can be shown in narrow-width devices.
+  - Improved:
+    - Some constant has been flattened to be evaluated.
+    - The usage of the deprecated API of obsidian has been reduced.
+    - Now the indexedDB adapter will be enabled while the importing configuration.
+  - Misc:
+  - Compiler, framework, and dependencies have been upgraded.
+  - Due to standing for these impacts (especially in esbuild and svelte,) terser has been introduced. 
+    Feel free to notify your opinion to me! I do not like to obfuscate the code too.
 
 ... To continue on to `updates_old.md`.
