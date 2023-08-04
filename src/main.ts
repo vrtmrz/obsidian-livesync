@@ -2,7 +2,7 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
@@ -17,7 +17,7 @@ import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store"
 import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
 import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
-import { addPrefix, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
+import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
 import { isLockAcquired, runWithLock } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
@@ -32,6 +32,7 @@ import { confirmWithMessage } from "./dialogs";
 import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView";
 import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
 import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
+import { LRUCache } from "./lib/src/LRUCache";
 
 setNoticeClass(Notice);
 
@@ -124,7 +125,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         // over 10MB
                         if (isCloudantURI(uri)) {
                             this.last_successful_post = false;
-                            Logger("This request should fail on IBM Cloudant.", LOG_LEVEL.VERBOSE);
+                            Logger("This request should fail on IBM Cloudant.", LOG_LEVEL_VERBOSE);
                             throw new Error("This request should fail on IBM Cloudant.");
                         }
                     }
@@ -156,7 +157,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         } else {
                             this.last_successful_post = true;
                         }
-                        Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL.DEBUG);
+                        Logger(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL_DEBUG);
 
                         return new Response(r.arrayBuffer, {
                             headers: r.headers,
@@ -164,7 +165,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                             statusText: `${r.status}`,
                         });
                     } catch (ex) {
-                        Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                        Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                         // limit only in bulk_docs.
                         if (url.toString().indexOf("_bulk_docs") !== -1) {
                             this.last_successful_post = false;
@@ -183,10 +184,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     } else {
                         this.last_successful_post = true;
                     }
-                    Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL.DEBUG);
+                    Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL_DEBUG);
                     return response;
                 } catch (ex) {
-                    Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL.VERBOSE);
+                    Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                     // limit only in bulk_docs.
                     if (url.toString().indexOf("_bulk_docs") !== -1) {
                         this.last_successful_post = false;
@@ -213,7 +214,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             if (ex.name == "TypeError" && ex.message == "Failed to fetch") {
                 msg += "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
             }
-            Logger(ex, LOG_LEVEL.VERBOSE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
             return msg;
         }
     }
@@ -345,7 +346,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map(e => e.dispPath);
         if (notesList.length == 0) {
-            Logger("There are no conflicted documents", LOG_LEVEL.NOTICE);
+            Logger("There are no conflicted documents", LOG_LEVEL_NOTICE);
             return false;
         }
         const target = await askSelectString(this.app, "File to view History", notesList);
@@ -397,7 +398,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     async onLayoutReady() {
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
-            Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL.NOTICE);
+            Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
             return;
         }
 
@@ -409,7 +410,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 this.settings.suspendFileWatching = true;
                 await this.saveSettings();
                 if (this.isRedFlag2Raised()) {
-                    Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL.NOTICE);
+                    Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.rebuildEverything();
                     await this.deleteRedFlag2();
                     if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
@@ -419,7 +420,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         this.app.commands.executeCommandById("app:reload")
                     }
                 } else if (this.isRedFlag3Raised()) {
-                    Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL.NOTICE);
+                    Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.fetchLocal();
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
@@ -434,15 +435,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     this.settings.writeLogToTheFile = true;
                     await this.openDatabase();
                     const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
-                    Logger(warningMessage, LOG_LEVEL.NOTICE);
+                    Logger(warningMessage, LOG_LEVEL_NOTICE);
                     this.setStatusBarText(warningMessage);
                 }
             } else {
                 if (this.settings.suspendFileWatching) {
-                    Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL.NOTICE);
+                    Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL_NOTICE);
                 }
                 if (this.settings.suspendParseReplicationResult) {
-                    Logger("'Suspend database reflecting' turned on. Are you sure this is what you intended? Every replicated change will be postponed until disabling this option.", LOG_LEVEL.NOTICE);
+                    Logger("'Suspend database reflecting' turned on. Are you sure this is what you intended? Every replicated change will be postponed until disabling this option.", LOG_LEVEL_NOTICE);
                 }
                 const isInitialized = await this.initializeDatabase(false, false);
                 if (!isInitialized) {
@@ -457,8 +458,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             }
             this.scanStat();
         } catch (ex) {
-            Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL.NOTICE);
-            Logger(ex, LOG_LEVEL.VERBOSE);
+            Logger("Error while loading Self-hosted LiveSync", LOG_LEVEL_NOTICE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
         }
     }
 
@@ -467,20 +468,20 @@ export default class ObsidianLiveSyncPlugin extends Plugin
      */
     async scanStat() {
         const notes: { path: string, mtime: number }[] = [];
-        Logger(`Additional safety scan..`, LOG_LEVEL.VERBOSE);
+        Logger(`Additional safety scan..`, LOG_LEVEL_VERBOSE);
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (!("_conflicts" in doc)) continue;
             notes.push({ path: this.getPath(doc), mtime: doc.mtime });
         }
         if (notes.length > 0) {
-            Logger(`Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`, LOG_LEVEL.NOTICE);
+            Logger(`Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`, LOG_LEVEL_NOTICE);
             for (const note of notes) {
                 Logger(`Conflicted: ${note.path}`);
             }
         } else {
-            Logger(`There are no conflicted files`, LOG_LEVEL.VERBOSE);
+            Logger(`There are no conflicted files`, LOG_LEVEL_VERBOSE);
         }
-        Logger(`Additional safety scan done`, LOG_LEVEL.VERBOSE);
+        Logger(`Additional safety scan done`, LOG_LEVEL_VERBOSE);
     }
 
     async onload() {
@@ -501,7 +502,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates) {
-            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL.NOTICE);
+            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
         }
         //@ts-ignore
         if (this.app.isMobile) {
@@ -589,10 +590,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             callback: async () => {
                 if (this.settings.liveSync) {
                     this.settings.liveSync = false;
-                    Logger("LiveSync Disabled.", LOG_LEVEL.NOTICE);
+                    Logger("LiveSync Disabled.", LOG_LEVEL_NOTICE);
                 } else {
                     this.settings.liveSync = true;
-                    Logger("LiveSync Enabled.", LOG_LEVEL.NOTICE);
+                    Logger("LiveSync Enabled.", LOG_LEVEL_NOTICE);
                 }
                 await this.realizeSettingSyncMode();
                 this.saveSettings();
@@ -604,10 +605,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             callback: async () => {
                 if (this.suspended) {
                     this.suspended = false;
-                    Logger("Self-hosted LiveSync resumed", LOG_LEVEL.NOTICE);
+                    Logger("Self-hosted LiveSync resumed", LOG_LEVEL_NOTICE);
                 } else {
                     this.suspended = true;
-                    Logger("Self-hosted LiveSync suspended", LOG_LEVEL.NOTICE);
+                    Logger("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
                 }
                 await this.realizeSettingSyncMode();
                 this.saveSettings();
@@ -772,7 +773,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL.URGENT);
+            Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL_URGENT);
             return "";
         }
         const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
@@ -788,7 +789,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as ObsidianLiveSyncSettings;
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+            Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
         } else {
             if (settings.encryptedCouchDBConnection) {
                 const keys = ["couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"] as (keyof CouchDBConnection)[];
@@ -800,7 +801,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         }
                     }
                 } else {
-                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
                     for (const key of keys) {
                         settings[key] = "";
                     }
@@ -812,7 +813,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 if (decrypted) {
                     settings.passphrase = decrypted;
                 } else {
-                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL.URGENT);
+                    Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
                     settings.passphrase = "";
                 }
             }
@@ -840,10 +841,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             }
         }
         if (isCloudantURI(this.settings.couchDB_URI) && this.settings.customChunkSize != 0) {
-            Logger("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL.NOTICE)
+            Logger("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL_NOTICE)
             this.settings.customChunkSize = 0;
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
+        this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
     }
 
     triggerRealizeSettingSyncMode() {
@@ -854,9 +856,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
         localStorage.setItem(lsKey, this.deviceAndVaultName || "");
+
         const settings = { ...this.settings };
         if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
-            Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL.NOTICE);
+            Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL_NOTICE);
         } else {
             if (settings.couchDB_PASSWORD != "" || settings.couchDB_URI != "" || settings.couchDB_USER != "" || settings.couchDB_DBNAME) {
                 const connectionSetting: CouchDBConnection = {
@@ -878,6 +881,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         await this.saveData(settings);
         this.localDatabase.settings = this.settings;
+        this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         this.triggerRealizeSettingSyncMode();
     }
 
@@ -967,12 +971,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 } else {
                     const targetFile = this.app.vault.getAbstractFileByPath(file.path);
                     if (!(targetFile instanceof TFile)) {
-                        Logger(`Target file was not found: ${file.path}`, LOG_LEVEL.INFO);
+                        Logger(`Target file was not found: ${file.path}`, LOG_LEVEL_INFO);
                         continue;
                     }
                     //TODO: check from cache time.
                     if (file.mtime == last) {
-                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL.VERBOSE);
+                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
                         continue;
                     }
 
@@ -981,7 +985,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         const keyD1 = `file-last-proc-DELETED-${file.path}`;
                         await this.kvDB.set(keyD1, mtime);
                         if (!await this.updateIntoDB(targetFile, false, cache)) {
-                            Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL.INFO);
+                            Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
                             // cancel running queues and remove one of atomic operation
                             this.vaultManager.cancelRelativeEvent(queue);
                             continue;
@@ -1038,7 +1042,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     async watchVaultRenameAsync(file: TFile, oldFile: any, cache?: CacheData) {
-        Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL.VERBOSE);
+        Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL_VERBOSE);
         if (file instanceof TFile) {
             try {
                 // Logger(`RENAMING.. ${file.path} into db`);
@@ -1046,7 +1050,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     // Logger(`deleted ${oldFile} from db`);
                     await this.deleteFromDBbyPath(oldFile);
                 } else {
-                    Logger(`Could not save new file: ${file.path} `, LOG_LEVEL.NOTICE);
+                    Logger(`Could not save new file: ${file.path} `, LOG_LEVEL_NOTICE);
                 }
             } catch (ex) {
                 Logger(ex);
@@ -1059,14 +1063,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     lastLog = "";
     // eslint-disable-next-line require-await
-    async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL.INFO, key = "") {
-        if (level == LOG_LEVEL.DEBUG && !isDebug) {
+    async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = "") {
+        if (level == LOG_LEVEL_DEBUG && !isDebug) {
             return;
         }
-        if (level < LOG_LEVEL.INFO && this.settings && this.settings.lessInformationInLog) {
+        if (level < LOG_LEVEL_INFO && this.settings && this.settings.lessInformationInLog) {
             return;
         }
-        if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL.VERBOSE) {
+        if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL_VERBOSE) {
             return;
         }
         const vaultName = this.getVaultName();
@@ -1092,7 +1096,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         logMessageStore.apply(e => [...e, newMessage].slice(-100));
         this.setStatusBarText(null, messageContent);
 
-        if (level >= LOG_LEVEL.NOTICE) {
+        if (level >= LOG_LEVEL_NOTICE) {
             if (!key) key = messageContent;
             if (key in this.notifies) {
                 // @ts-ignore
@@ -1159,13 +1163,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (shouldBeIgnored(path)) {
             return;
         }
-        if (!this.isTargetFile(path)) return;
+        if (!await this.isTargetFile(path)) return;
         if (docEntry._deleted || docEntry.deleted) {
             // This occurs not only when files are deleted, but also when conflicts are resolved.
             // We have to check no other revisions are left.
             const lastDocs = await this.localDatabase.getDBEntry(path);
             if (path != file.path) {
-                Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL.VERBOSE);
+                Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
             }
             if (lastDocs === false) {
                 await this.deleteVaultItem(file);
@@ -1173,7 +1177,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 // it perhaps delete some revisions.
                 // may be we have to reload this
                 await this.pullFile(path, null, true);
-                Logger(`delete skipped:${file.path}`, LOG_LEVEL.VERBOSE);
+                Logger(`delete skipped:${file.path}`, LOG_LEVEL_VERBOSE);
             }
             return;
         }
@@ -1184,12 +1188,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (doc === false) return;
         const msg = `DB -> STORAGE (${mode}${force ? ",force" : ""},${doc.datatype}) `;
         if (doc.datatype != "newnote" && doc.datatype != "plain") {
-            Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL.NOTICE);
+            Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
             return;
         }
         if (!force && localMtime >= docMtime) return;
         if (!isValidPath(path)) {
-            Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL.NOTICE);
+            Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL_NOTICE);
             return;
         }
         const writeData = doc.datatype == "newnote" ? base64ToArrayBuffer(doc.data) : getDocData(doc.data);
@@ -1207,14 +1211,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             this.app.vault.trigger(mode, outFile);
 
         } catch (ex) {
-            Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL.NOTICE);
-            Logger(ex, LOG_LEVEL.VERBOSE);
+            Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL_NOTICE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
         }
     }
 
     async deleteVaultItem(file: TFile | TFolder) {
         if (file instanceof TFile) {
-            if (!this.isTargetFile(file)) return;
+            if (!await this.isTargetFile(file)) return;
         }
         const dir = file.parent;
         if (this.settings.trashInsteadDelete) {
@@ -1258,7 +1262,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 try {
                     const releaser = await semaphore.acquire(1);
                     runWithLock(`dbchanged-${path}`, false, async () => {
-                        Logger(`Applying ${path} (${entry._id}: ${entry._rev}) change...`, LOG_LEVEL.VERBOSE);
+                        Logger(`Applying ${path} (${entry._id}: ${entry._rev}) change...`, LOG_LEVEL_VERBOSE);
                         await this.handleDBChangedAsync(entry);
                         Logger(`Applied ${path} (${entry._id}:${entry._rev}) change...`);
                     }).finally(() => { releaser(); });
@@ -1304,7 +1308,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     await this.doc2storage(doc, file);
                 } else {
                     if (!queueConflictCheck()) {
-                        Logger(`${this.getPath(change)} is conflicted, write to the storage has been pended.`, LOG_LEVEL.NOTICE);
+                        Logger(`${this.getPath(change)} is conflicted, write to the storage has been pended.`, LOG_LEVEL_NOTICE);
                     }
                 }
             }
@@ -1350,10 +1354,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 } else if (isValidPath(this.getPath(queue.entry))) {
                     this.handleDBChanged(queue.entry);
                 } else {
-                    Logger(`Skipped: ${queue.entry._id}`, LOG_LEVEL.VERBOSE);
+                    Logger(`Skipped: ${queue.entry._id}`, LOG_LEVEL_VERBOSE);
                 }
             } else if (now > queue.timeout) {
-                if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL.NOTICE);
+                if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL_NOTICE);
                 queue.warned = true;
                 continue;
             }
@@ -1385,7 +1389,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
     async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
         const path = this.getPath(doc);
-        if (!this.isTargetFile(path)) return;
+        if (!await this.isTargetFile(path)) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         // Do not handle internal files if the feature has not been enabled.
         if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) return;
@@ -1409,7 +1413,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 const docMtime = ~~(doc.mtime / 1000);
                 //TODO: some margin required.
                 if (localMtime >= docMtime) {
-                    Logger(`${path} (${doc._id}, ${doc._rev}) Skipped, older than storage.`, LOG_LEVEL.VERBOSE);
+                    Logger(`${path} (${doc._id}, ${doc._rev}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
                     return;
                 }
             }
@@ -1425,7 +1429,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if ((!this.settings.readChunksOnline) && "children" in doc) {
             const c = await this.localDatabase.collectChunksWithCache(doc.children as DocumentID[]);
             const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
-            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL.VERBOSE);
+            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
         } else {
@@ -1467,7 +1471,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         missingChildren: [] as string[],
                         timeout: 0,
                     };
-                    Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL.INFO);
+                    Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
                     this.queuedFiles.push(newQueue);
                     this.saveQueuedFiles();
                     continue;
@@ -1479,7 +1483,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             if (change.type == "versioninfo") {
                 if (change.version > VER) {
                     this.replicator.closeReplication();
-                    Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL.NOTICE);
+                    Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL_NOTICE);
                 }
             }
         }
@@ -1619,11 +1623,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     async replicate(showMessage?: boolean) {
         if (!this.isReady) return;
         if (isLockAcquired("cleanup")) {
-            Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL.NOTICE);
+            Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL_NOTICE);
             return;
         }
         if (this.settings.versionUpFlash != "") {
-            Logger("Open settings and check message, please. replication has been cancelled.", LOG_LEVEL.NOTICE);
+            Logger("Open settings and check message, please. replication has been cancelled.", LOG_LEVEL_NOTICE);
             return;
         }
         await this.applyBatchChange();
@@ -1632,8 +1636,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const ret = await this.replicator.openReplication(this.settings, false, showMessage);
         if (!ret) {
             if (this.replicator.remoteLockedAndDeviceNotAccepted) {
-                if (this.replicator.remoteCleaned) {
-                    Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO);
+                if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
+                    Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
                     await runWithLock("cleanup", true, async () => {
                         const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
                         const message = `The remote database has been cleaned up.
@@ -1651,7 +1655,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         if (ret == CHOICE_CLEAN) {
                             const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
                             if (typeof remoteDB == "string") {
-                                Logger(remoteDB, LOG_LEVEL.NOTICE);
+                                Logger(remoteDB, LOG_LEVEL_NOTICE);
                                 return false;
                             }
 
@@ -1663,9 +1667,9 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                                 await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                                 this.localDatabase.hashCaches.clear();
                                 await this.getReplicator().markRemoteResolved(this.settings);
-                                Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
+                                Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
                             } else {
-                                Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO)
+                                Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
                             }
 
                         }
@@ -1733,28 +1737,36 @@ Or if you are sure know what had been happened, we can unlock the database from 
         // synchronize all files between database and storage.
         let initialScan = false;
         if (showingNotice) {
-            Logger("Initializing", LOG_LEVEL.NOTICE, "syncAll");
+            Logger("Initializing", LOG_LEVEL_NOTICE, "syncAll");
         }
 
         Logger("Initialize and checking database files");
         Logger("Checking deleted files");
         await this.collectDeletedFiles();
 
-        Logger("Collecting local files on the storage", LOG_LEVEL.VERBOSE);
-        const filesStorage = this.app.vault.getFiles().filter(e => this.isTargetFile(e));
+        Logger("Collecting local files on the storage", LOG_LEVEL_VERBOSE);
+        const filesStorageSrc = this.app.vault.getFiles();
+
+        const filesStorage = [] as typeof filesStorageSrc;
+        for (const f of filesStorageSrc) {
+            if (await this.isTargetFile(f.path)) {
+                filesStorage.push(f);
+            }
+        }
+
         const filesStorageName = filesStorage.map((e) => e.path);
-        Logger("Collecting local files on the DB", LOG_LEVEL.VERBOSE);
+        Logger("Collecting local files on the DB", LOG_LEVEL_VERBOSE);
         const filesDatabase = [] as FilePathWithPrefix[]
         let count = 0;
         for await (const doc of this.localDatabase.findAllNormalDocs()) {
             count++;
-            if (count % 25 == 0) Logger(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO, "syncAll");
+            if (count % 25 == 0) Logger(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
             const path = getPath(doc);
-            if (isValidPath(path) && this.isTargetFile(path)) {
+            if (isValidPath(path) && await this.isTargetFile(path)) {
                 filesDatabase.push(path);
             }
         }
-        Logger("Opening the key-value database", LOG_LEVEL.VERBOSE);
+        Logger("Opening the key-value database", LOG_LEVEL_VERBOSE);
         const isInitialized = await (this.kvDB.get<boolean>("initialized")) || false;
         // Make chunk bigger if it is the initial scan. There must be non-active docs.
         if (filesDatabase.length == 0 && !isInitialized) {
@@ -1778,8 +1790,8 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     await callback(e);
                     return true;
                 } catch (ex) {
-                    Logger(`Error while ${procedureName}`, LOG_LEVEL.NOTICE);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    Logger(`Error while ${procedureName}`, LOG_LEVEL_NOTICE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
                     return false;
                 }
 
@@ -1808,7 +1820,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     await this.pullFile(e, filesStorage, false, null, false);
                     Logger(`Check or pull from db:${e} OK`);
                 } else if (w) {
-                    Logger(`Deletion history skipped: ${e}`, LOG_LEVEL.VERBOSE);
+                    Logger(`Deletion history skipped: ${e}`, LOG_LEVEL_VERBOSE);
                 } else {
                     Logger(`entry not found: ${e}`);
                 }
@@ -1839,7 +1851,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             await (this.kvDB.set("initialized", true))
         }
         if (showingNotice) {
-            Logger("Initialize done!", LOG_LEVEL.NOTICE, "syncAll");
+            Logger("Initialize done!", LOG_LEVEL_NOTICE, "syncAll");
         }
     }
 
@@ -1990,7 +2002,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             // except insertion, the line should not be different.
             if (rightItem[1] != leftItem[1]) {
                 //TODO: SHOULD BE PANIC.
-                Logger(`MERGING PANIC:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL.VERBOSE);
+                Logger(`MERGING PANIC:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL_VERBOSE);
                 autoMerge = false;
                 break LOOP_MERGE;
             }
@@ -2014,12 +2026,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     break LOOP_MERGE;
                 }
             }
-            Logger(`Weird condition:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL.VERBOSE);
+            Logger(`Weird condition:${leftItem[0]},${leftItem[1]} == ${rightItem[0]},${rightItem[1]}`, LOG_LEVEL_VERBOSE);
             // here is the exception
             break LOOP_MERGE;
         } while (leftIdx < diffLeft.length || rightIdx < diffRight.length);
         if (autoMerge) {
-            Logger(`Sensibly merge available`, LOG_LEVEL.VERBOSE);
+            Logger(`Sensibly merge available`, LOG_LEVEL_VERBOSE);
             return merged;
         } else {
             return false;
@@ -2071,7 +2083,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return JSON.stringify(newObj.data);
         } catch (ex) {
             Logger("Could not merge object");
-            Logger(ex, LOG_LEVEL.VERBOSE)
+            Logger(ex, LOG_LEVEL_VERBOSE)
             return false;
         }
     }
@@ -2101,18 +2113,18 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     if (result) {
                         p = result.filter(e => e[0] != DIFF_DELETE).map((e) => e[1]).join("");
                         // can be merged.
-                        Logger(`Sensible merge:${path}`, LOG_LEVEL.INFO);
+                        Logger(`Sensible merge:${path}`, LOG_LEVEL_INFO);
                     } else {
-                        Logger(`Sensible merge is not applicable.`, LOG_LEVEL.VERBOSE);
+                        Logger(`Sensible merge is not applicable.`, LOG_LEVEL_VERBOSE);
                     }
                 } else if (isObjectMargeApplicable(path)) {
                     // can be merged.
                     const result = await this.mergeObject(path, commonBase, test._rev, conflictedRev);
                     if (result) {
-                        Logger(`Object merge:${path}`, LOG_LEVEL.INFO);
+                        Logger(`Object merge:${path}`, LOG_LEVEL_INFO);
                         p = result;
                     } else {
-                        Logger(`Object merge is not applicable.`, LOG_LEVEL.VERBOSE);
+                        Logger(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                     }
                 }
 
@@ -2129,7 +2141,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         await this.updateIntoDB(newFile);
                     }
                     await this.pullFile(path);
-                    Logger(`Automatically merged (sensible) :${path}`, LOG_LEVEL.INFO);
+                    Logger(`Automatically merged (sensible) :${path}`, LOG_LEVEL_INFO);
                     return true;
                 }
             }
@@ -2139,14 +2151,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const rightLeaf = await this.getConflictedDoc(path, conflicts[0]);
         if (leftLeaf == false) {
             // what's going on..
-            Logger(`could not get current revisions:${path}`, LOG_LEVEL.NOTICE);
+            Logger(`could not get current revisions:${path}`, LOG_LEVEL_NOTICE);
             return false;
         }
         if (rightLeaf == false) {
             // Conflicted item could not load, delete this.
             await this.localDatabase.deleteDBEntry(path, { rev: conflicts[0] });
             await this.pullFile(path, null, true);
-            Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL.NOTICE);
+            Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL_NOTICE);
             return true;
         }
         // first, check for same contents and deletion status.
@@ -2169,7 +2181,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
             await this.pullFile(path, null, true);
-            Logger(`Automatically merged (newerFileResolve) :${path}`, LOG_LEVEL.NOTICE);
+            Logger(`Automatically merged (newerFileResolve) :${path}`, LOG_LEVEL_NOTICE);
             return true;
         }
         // make diff.
@@ -2187,15 +2199,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
     showMergeDialog(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
         return runWithLock("resolve-conflict:" + filename, false, () =>
             new Promise((res, rej) => {
-                Logger("open conflict dialog", LOG_LEVEL.VERBOSE);
+                Logger("open conflict dialog", LOG_LEVEL_VERBOSE);
                 new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
                     const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
                     if (testDoc === false) {
-                        Logger("Missing file..", LOG_LEVEL.VERBOSE);
+                        Logger("Missing file..", LOG_LEVEL_VERBOSE);
                         return res(true);
                     }
                     if (!testDoc._conflicts) {
-                        Logger("Nothing have to do with this conflict", LOG_LEVEL.VERBOSE);
+                        Logger("Nothing have to do with this conflict", LOG_LEVEL_VERBOSE);
                         return res(true);
                     }
                     const toDelete = selected;
@@ -2288,7 +2300,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
     async pullFile(filename: FilePathWithPrefix, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
         const targetFile = getAbstractFileByPath(stripAllPrefixes(filename));
-        if (!this.isTargetFile(filename)) return;
+        if (!await this.isTargetFile(filename)) return;
         if (targetFile == null) {
             //have to create;
             const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
@@ -2331,7 +2343,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const dK = `${file.path}-diff`;
         const isLastDiff = dK in caches ? caches[dK] : { storageMtime: 0, docMtime: 0 };
         if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
-            // Logger("STORAGE .. DB :" + file.path, LOG_LEVEL.VERBOSE);
+            // Logger("STORAGE .. DB :" + file.path, LOG_LEVEL_VERBOSE);
             caches[dK] = { storageMtime, docMtime };
             return caches;
         }
@@ -2355,14 +2367,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
             caches[dK] = { storageMtime, docMtime };
             return caches;
         }
-        Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL.VERBOSE);
+        Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_VERBOSE);
         caches[dK] = { storageMtime, docMtime };
         return caches;
 
     }
 
     async updateIntoDB(file: TFile, initialScan?: boolean, cache?: CacheData, force?: boolean) {
-        if (!this.isTargetFile(file)) return true;
+        if (!await this.isTargetFile(file)) return true;
         if (shouldBeIgnored(file.path)) {
             return true;
         }
@@ -2370,14 +2382,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
         let datatype: "plain" | "newnote" = "newnote";
         if (!cache) {
             if (!isPlainText(file.name)) {
-                Logger(`Reading   : ${file.path}`, LOG_LEVEL.VERBOSE);
+                Logger(`Reading   : ${file.path}`, LOG_LEVEL_VERBOSE);
                 const contentBin = await this.app.vault.readBinary(file);
-                Logger(`Processing: ${file.path}`, LOG_LEVEL.VERBOSE);
+                Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
                     content = await arrayBufferToBase64(contentBin);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
                     return false;
                 }
                 datatype = "newnote";
@@ -2387,12 +2399,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
         } else {
             if (cache instanceof ArrayBuffer) {
-                Logger(`Processing: ${file.path}`, LOG_LEVEL.VERBOSE);
+                Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
                     content = await arrayBufferToBase64(cache);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
                     return false;
                 }
                 datatype = "newnote"
@@ -2427,15 +2439,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
                     if (oldData.deleted != newData.deleted) return false;
                     if (!isDocContentSame(old.data, newData.data)) return false;
-                    Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
                     return true;
                     // d._rev = old._rev;
                 }
             } catch (ex) {
                 if (force) {
-                    Logger(msg + "Error, Could not check the diff for the old one." + (force ? "force writing." : "") + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    Logger(msg + "Error, Could not check the diff for the old one." + (force ? "force writing." : "") + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
                 } else {
-                    Logger(msg + "Error, Could not check the diff for the old one." + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL.VERBOSE);
+                    Logger(msg + "Error, Could not check the diff for the old one." + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
                 }
                 return !force;
             }
@@ -2453,7 +2465,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     async deleteFromDB(file: TFile) {
-        if (!this.isTargetFile(file)) return;
+        if (!await this.isTargetFile(file)) return;
         const fullPath = getPathFromTFile(file);
         Logger(`deleteDB By path:${fullPath}`);
         await this.deleteFromDBbyPath(fullPath);
@@ -2536,14 +2548,48 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return true;
     }
 
-
-
-    isTargetFile(file: string | TAbstractFile) {
-        if (file instanceof TFile) {
-            return this.localDatabase.isTargetFile(file.path);
-        } else if (typeof file == "string") {
-            return this.localDatabase.isTargetFile(file);
+    ignoreFileCache = new LRUCache<string, string[] | false>(300, 250000, true);
+    ignoreFiles = [] as string[]
+    async readIgnoreFile(path: string) {
+        try {
+            const file = await this.app.vault.adapter.read(path);
+            const gitignore = file.split(/\r?\n/g);
+            this.ignoreFileCache.set(path, gitignore);
+            return gitignore;
+        } catch (ex) {
+            this.ignoreFileCache.set(path, false);
+            return false;
         }
+    }
+    async getIgnoreFile(path: string) {
+        if (this.ignoreFileCache.has(path)) {
+            return this.ignoreFileCache.get(path);
+        } else {
+            return await this.readIgnoreFile(path);
+        }
+    }
+
+    async isIgnoredByIgnoreFiles(file: string | TAbstractFile) {
+        if (!this.settings.useIgnoreFiles) {
+            return true;
+        }
+        const filepath = file instanceof TFile ? file.path : file as string;
+        if (this.ignoreFileCache.has(filepath)) {
+            // Renew
+            await this.readIgnoreFile(filepath);
+        }
+        if (!await isAcceptedAll(stripAllPrefixes(filepath as FilePathWithPrefix), this.ignoreFiles, (filename) => this.getIgnoreFile(filename))) {
+            return false;
+        }
+        return true;
+    }
+
+    async isTargetFile(file: string | TAbstractFile) {
+        const filepath = file instanceof TFile ? file.path : file as string;
+        if (this.settings.useIgnoreFiles && !await this.isIgnoredByIgnoreFiles(file)) {
+            return false;
+        }
+        return this.localDatabase.isTargetFile(filepath);
     }
     async dryRunGC() {
         await runWithLock("cleanup", true, async () => {

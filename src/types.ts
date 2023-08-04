@@ -1,5 +1,5 @@
-import { PluginManifest, TFile } from "./deps";
-import { DatabaseEntry, EntryBody, FilePath } from "./lib/src/types";
+import { type PluginManifest, TFile } from "./deps";
+import { type DatabaseEntry, type EntryBody, type FilePath } from "./lib/src/types";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;

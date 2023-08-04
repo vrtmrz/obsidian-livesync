@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 import { Notice, type PluginManifest, parseYaml } from "./deps";
 
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry } from "./lib/src/types";
-import { LOG_LEVEL } from "./lib/src/types";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
 import { delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -139,7 +139,7 @@ export class ConfigSync extends LiveSyncCommands {
                 Logger("Scanning customizations : done");
             } catch (ex) {
                 Logger("Scanning customizations : failed");
-                Logger(ex, LOG_LEVEL.VERBOSE);
+                Logger(ex, LOG_LEVEL_VERBOSE);
             }
 
         }
@@ -165,13 +165,14 @@ export class ConfigSync extends LiveSyncCommands {
         await this.updatePluginList(showMessage);
     }
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
-        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+        const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         // pluginList.set([]);
         if (!this.settings.usePluginSync) {
             this.pluginList = [];
             pluginList.set(this.pluginList)
             return;
         }
+        await Promise.resolve(); // Just to prevent warning.
         scheduleTask("update-plugin-list-task", 200, async () => {
             await runWithLock("update-plugin-list", false, async () => {
                 try {
@@ -191,7 +192,7 @@ export class ConfigSync extends LiveSyncCommands {
                         try {
                             count++;
                             if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
-                            Logger(`plugin-${path}`, LOG_LEVEL.VERBOSE);
+                            Logger(`plugin-${path}`, LOG_LEVEL_VERBOSE);
                             const wx = await this.localDatabase.getDBEntry(path, null, false, false);
                             if (wx) {
                                 const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
@@ -211,7 +212,7 @@ export class ConfigSync extends LiveSyncCommands {
                             // return entries;
                         } catch (ex) {
                             //TODO
-                            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL.NOTICE);
+                            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
                             console.warn(ex);
                         }
                         return false;
@@ -257,7 +258,7 @@ export class ConfigSync extends LiveSyncCommands {
         const fileB = pluginDataB.files[0];
         const docAx = { ...docA, ...fileA } as LoadedEntry, docBx = { ...docB, ...fileB } as LoadedEntry
         return runWithLock("config:merge-data", false, () => new Promise((res) => {
-            Logger("Opening data-merging dialog", LOG_LEVEL.VERBOSE);
+            Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             // const docs = [docA, docB];
             const path = stripAllPrefixes(docAx.path.split("/").slice(-1).join("/") as FilePath);
             const modal = new JsonResolveModal(this.app, path, [docAx, docBx], async (keep, result) => {
@@ -266,7 +267,7 @@ export class ConfigSync extends LiveSyncCommands {
                     res(await this.applyData(pluginDataA, result));
                 } catch (ex) {
                     Logger("Could not apply merged file");
-                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
                     res(false);
                 }
             }, "📡", "🛰️", "B");
@@ -299,7 +300,7 @@ export class ConfigSync extends LiveSyncCommands {
 
                 } catch (ex) {
                     Logger(`Applying ${f.filename} of ${data.displayName || data.name}.. Failed`);
-                    Logger(ex, LOG_LEVEL.VERBOSE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
                 }
 
             }
@@ -307,7 +308,7 @@ export class ConfigSync extends LiveSyncCommands {
             await this.storeCustomizationFiles(uPath);
             await this.updatePluginList(true, uPath);
             await delay(100);
-            Logger(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL.NOTICE);
+            Logger(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
                 //@ts-ignore
                 const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
@@ -315,12 +316,12 @@ export class ConfigSync extends LiveSyncCommands {
                 const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
                 const pluginManifest = manifests.find((manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`);
                 if (pluginManifest) {
-                    Logger(`Unloading plugin: ${pluginManifest.name}`, LOG_LEVEL.NOTICE, "plugin-reload-" + pluginManifest.id);
+                    Logger(`Unloading plugin: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
                     // @ts-ignore
                     await this.app.plugins.unloadPlugin(pluginManifest.id);
                     // @ts-ignore
                     await this.app.plugins.loadPlugin(pluginManifest.id);
-                    Logger(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL.NOTICE, "plugin-reload-" + pluginManifest.id);
+                    Logger(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
                 }
             } else if (data.category == "CONFIG") {
                 scheduleTask("configReload", 250, async () => {
@@ -333,7 +334,7 @@ export class ConfigSync extends LiveSyncCommands {
             return true;
         } catch (ex) {
             Logger(`Applying ${data.displayName || data.name}.. Failed`);
-            Logger(ex, LOG_LEVEL.VERBOSE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
     }
@@ -342,11 +343,11 @@ export class ConfigSync extends LiveSyncCommands {
             if (data.documentPath) {
                 await this.deleteConfigOnDatabase(data.documentPath);
                 await this.updatePluginList(false, data.documentPath);
-                Logger(`Delete: ${data.documentPath}`, LOG_LEVEL.NOTICE);
+                Logger(`Delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
             }
             return true;
         } catch (ex) {
-            Logger(`Failed to delete: ${data.documentPath}`, LOG_LEVEL.NOTICE);
+            Logger(`Failed to delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
             return false;
 
         }
@@ -433,12 +434,12 @@ export class ConfigSync extends LiveSyncCommands {
                         displayName = `${json.name}`;
                     }
                 } catch (ex) {
-                    Logger(`Configuration sync data: ${path} looks like manifest, but could not read the version`, LOG_LEVEL.INFO);
+                    Logger(`Configuration sync data: ${path} looks like manifest, but could not read the version`, LOG_LEVEL_INFO);
                 }
             }
         } catch (ex) {
             Logger(`The file ${path} could not be encoded`);
-            Logger(ex, LOG_LEVEL.VERBOSE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
         const mtime = stat.mtime;
@@ -465,7 +466,7 @@ export class ConfigSync extends LiveSyncCommands {
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         const term = termOverRide || this.plugin.deviceAndVaultName;
         if (term == "") {
-            Logger("We have to configure the device name", LOG_LEVEL.NOTICE);
+            Logger("We have to configure the device name", LOG_LEVEL_NOTICE);
             return;
         }
         const vf = this.filenameToUnifiedKey(path, term);
@@ -501,7 +502,7 @@ export class ConfigSync extends LiveSyncCommands {
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target);
                 if (data == false) {
-                    // Logger(`Config: skipped: ${target} `, LOG_LEVEL.VERBOSE);
+                    // Logger(`Config: skipped: ${target} `, LOG_LEVEL_VERBOSE);
                     continue;
                 }
                 if (data.version) {
@@ -543,7 +544,7 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 } else {
                     if (old.mtime == mtime) {
-                        // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL.VERBOSE);
+                        // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
                     saveData =
@@ -564,7 +565,7 @@ export class ConfigSync extends LiveSyncCommands {
                 return ret;
             } catch (ex) {
                 Logger(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
-                Logger(ex, LOG_LEVEL.VERBOSE);
+                Logger(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         })
@@ -591,11 +592,11 @@ export class ConfigSync extends LiveSyncCommands {
 
 
     async scanAllConfigFiles(showMessage: boolean) {
-        const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+        const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         Logger("Scanning customizing files.", logLevel, "scan-all-config");
         const term = this.plugin.deviceAndVaultName;
         if (term == "") {
-            Logger("We have to configure the device name", LOG_LEVEL.NOTICE);
+            Logger("We have to configure the device name", LOG_LEVEL_NOTICE);
             return;
         }
         const filesAll = await this.scanInternalFiles();
@@ -643,7 +644,7 @@ export class ConfigSync extends LiveSyncCommands {
                 Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
             } catch (ex) {
                 Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);
-                Logger(ex, LOG_LEVEL.VERBOSE);
+                Logger(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         });

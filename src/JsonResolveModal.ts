@@ -1,5 +1,5 @@
 import { App, Modal } from "./deps";
-import { FilePath, LoadedEntry } from "./lib/src/types";
+import { type FilePath, type LoadedEntry } from "./lib/src/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 
 export class JsonResolveModal extends Modal {
@@ -41,7 +41,7 @@ export class JsonResolveModal extends Modal {
                     nameA: this.nameA,
                     nameB: this.nameB,
                     defaultSelect: this.defaultSelect,
-                    callback: (keepRev, mergedStr) => this.UICallback(keepRev, mergedStr),
+                    callback: (keepRev: string, mergedStr: string) => this.UICallback(keepRev, mergedStr),
                 },
             });
         }

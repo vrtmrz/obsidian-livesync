@@ -5,7 +5,7 @@ import {
 import LogPaneComponent from "./LogPane.svelte";
 import type ObsidianLiveSyncPlugin from "./main";
 export const VIEW_TYPE_LOG = "log-log";
-// Show notes as like scroll.
+//Log view
 export class LogPaneView extends ItemView {
 
     component: LogPaneComponent;
@@ -32,6 +32,7 @@ export class LogPaneView extends ItemView {
         return "Self-hosted LiveSync Log";
     }
 
+    // eslint-disable-next-line require-await
     async onOpen() {
         this.component = new LogPaneComponent({
             target: this.contentEl,
@@ -40,6 +41,7 @@ export class LogPaneView extends ItemView {
         });
     }
 
+    // eslint-disable-next-line require-await
     async onClose() {
         this.component.$destroy();
     }

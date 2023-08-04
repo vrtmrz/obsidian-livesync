@@ -1,6 +1,6 @@
 import { normalizePath, type PluginManifest } from "./deps";
 import type { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry } from "./lib/src/types";
-import { LOG_LEVEL } from "./lib/src/types";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { type PluginDataEntry, PERIODIC_PLUGIN_SWEEP, type PluginList, type DevicePluginList, PSCHeader, PSCHeaderEnd } from "./types";
 import { getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -79,7 +79,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 Logger("Scanning plugins done");
             } catch (ex) {
                 Logger("Scanning plugins  failed");
-                Logger(ex, LOG_LEVEL.VERBOSE);
+                Logger(ex, LOG_LEVEL_VERBOSE);
             }
 
         }
@@ -148,7 +148,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             });
             NewNotice(fragment, 10000);
         } else {
-            Logger("Everything is up to date.", LOG_LEVEL.NOTICE);
+            Logger("Everything is up to date.", LOG_LEVEL_NOTICE);
         }
     }
 
@@ -165,9 +165,9 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             specificPlugin = manifests.find(e => e.dir.endsWith("/" + specificPluginPath))?.id ?? "";
         }
         await runWithLock("sweepplugin", true, async () => {
-            const logLevel = showMessage ? LOG_LEVEL.NOTICE : LOG_LEVEL.INFO;
+            const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             if (!this.deviceAndVaultName) {
-                Logger("You have to set your device name.", LOG_LEVEL.NOTICE);
+                Logger("You have to set your device name.", LOG_LEVEL_NOTICE);
                 return;
             }
             Logger("Scanning plugins", logLevel);
@@ -176,7 +176,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 endkey: `ps:${this.deviceAndVaultName}-${specificPlugin}\u{10ffff}`,
                 include_docs: true,
             });
-            // Logger("OLD DOCS.", LOG_LEVEL.VERBOSE);
+            // Logger("OLD DOCS.", LOG_LEVEL_VERBOSE);
             // sweep current plugin.
             const procs = manifests.map(async (m) => {
                 const pluginDataEntryID = `ps:${this.deviceAndVaultName}-${m.id}` as DocumentID;
@@ -184,7 +184,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                     if (specificPlugin && m.id != specificPlugin) {
                         return;
                     }
-                    Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+                    Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL_VERBOSE);
                     const path = normalizePath(m.dir) + "/";
                     const adapter = this.app.vault.adapter;
                     const files = ["manifest.json", "main.js", "styles.css", "data.json"];
@@ -222,7 +222,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                         datatype: "plain",
                         type: "plain"
                     };
-                    Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL.VERBOSE);
+                    Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL_VERBOSE);
                     await runWithLock("plugin-" + m.id, false, async () => {
                         const old = await this.localDatabase.getDBEntry(p._id as string as FilePathWithPrefix /* This also should be explained */, null, false, false);
                         if (old !== false) {
@@ -237,7 +237,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                         Logger(`Plugin saved:${m.name}`, logLevel);
                     });
                 } catch (ex) {
-                    Logger(`Plugin save failed:${m.name}`, LOG_LEVEL.NOTICE);
+                    Logger(`Plugin save failed:${m.name}`, LOG_LEVEL_NOTICE);
                 } finally {
                     oldDocs.rows = oldDocs.rows.filter((e) => e.id != pluginDataEntryID);
                 }
@@ -259,7 +259,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 }
                 return e.doc;
             });
-            Logger(`Deleting old plugin:(${delDocs.length})`, LOG_LEVEL.VERBOSE);
+            Logger(`Deleting old plugin:(${delDocs.length})`, LOG_LEVEL_VERBOSE);
             await this.localDatabase.bulkDocsRaw(delDocs);
             Logger(`Scan plugin done.`, logLevel);
         });
@@ -274,15 +274,15 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.unloadPlugin(plugin.manifest.id);
-                Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL_NOTICE);
             }
             if (plugin.dataJson)
                 await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
-            Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL.NOTICE);
+            Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL_NOTICE);
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.loadPlugin(plugin.manifest.id);
-                Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL_NOTICE);
             }
         });
     }
@@ -294,7 +294,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.unloadPlugin(plugin.manifest.id);
-                Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL_NOTICE);
             }
 
             const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
@@ -309,7 +309,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.loadPlugin(plugin.manifest.id);
-                Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL.NOTICE);
+                Logger(`Load plugin:${plugin.manifest.id}`, LOG_LEVEL_NOTICE);
             }
         });
     }

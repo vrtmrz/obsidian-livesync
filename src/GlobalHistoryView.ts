@@ -32,6 +32,7 @@ export class GlobalHistoryView extends ItemView {
         return "Vault history";
     }
 
+    // eslint-disable-next-line require-await
     async onOpen() {
         this.component = new GlobalHistoryComponent({
             target: this.contentEl,
@@ -41,6 +42,7 @@ export class GlobalHistoryView extends ItemView {
         });
     }
 
+    // eslint-disable-next-line require-await
     async onClose() {
         this.component.$destroy();
     }

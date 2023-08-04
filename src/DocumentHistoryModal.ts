@@ -2,7 +2,7 @@ import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_pat
 import { getPathFromTFile, isValidPath } from "./utils";
 import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";
-import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL } from "./lib/src/types";
+import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getDocData } from "./lib/src/utils";
@@ -60,7 +60,7 @@ export class DocumentHistoryModal extends Modal {
                 this.contentView.setText(`History of this file was not recorded.`);
             } else {
                 this.contentView.setText(`Error occurred.`);
-                Logger(ex, LOG_LEVEL.VERBOSE);
+                Logger(ex, LOG_LEVEL_VERBOSE);
             }
         }
     }
@@ -178,7 +178,7 @@ export class DocumentHistoryModal extends Modal {
             e.addClass("mod-cta");
             e.addEventListener("click", async () => {
                 await navigator.clipboard.writeText(this.currentText);
-                Logger(`Old content copied to clipboard`, LOG_LEVEL.NOTICE);
+                Logger(`Old content copied to clipboard`, LOG_LEVEL_NOTICE);
             });
         });
         async function focusFile(path: string) {
@@ -189,7 +189,7 @@ export class DocumentHistoryModal extends Modal {
                 const leaf = app.workspace.getLeaf(false);
                 await leaf.openFile(targetFile);
             } else {
-                Logger("The file could not view on the editor", LOG_LEVEL.NOTICE)
+                Logger("The file could not view on the editor", LOG_LEVEL_NOTICE)
             }
         }
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {
@@ -198,7 +198,7 @@ export class DocumentHistoryModal extends Modal {
                 // const pathToWrite = this.plugin.id2path(this.id, true);
                 const pathToWrite = stripPrefix(this.file);
                 if (!isValidPath(pathToWrite)) {
-                    Logger("Path is not valid to write content.", LOG_LEVEL.INFO);
+                    Logger("Path is not valid to write content.", LOG_LEVEL_INFO);
                 }
                 if (this.currentDoc?.datatype == "plain") {
                     await this.app.vault.adapter.write(pathToWrite, getDocData(this.currentDoc.data));
@@ -210,7 +210,7 @@ export class DocumentHistoryModal extends Modal {
                     this.close();
                 } else {
 
-                    Logger(`Could not parse entry`, LOG_LEVEL.NOTICE);
+                    Logger(`Could not parse entry`, LOG_LEVEL_NOTICE);
                 }
             });
         });

@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, LOG_LEVEL, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID } from "./lib/src/types";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -21,10 +21,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     async testConnection(): Promise<void> {
         const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile, true);
         if (typeof db === "string") {
-            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL.NOTICE);
+            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL_NOTICE);
             return;
         }
-        this.plugin.addLog(`Connected to ${db.info.db_name}`, LOG_LEVEL.NOTICE);
+        this.plugin.addLog(`Connected to ${db.info.db_name}`, LOG_LEVEL_NOTICE);
     }
     display(): void {
         const { containerEl } = this;
@@ -111,7 +111,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         }
 
-        MarkdownRenderer.renderMarkdown(updateInformation, informationDivEl, "/", this.plugin);
+        MarkdownRenderer.render(this.plugin.app, updateInformation, informationDivEl, "/", this.plugin);
 
 
         addScreenElement("100", containerInformationEl);
@@ -133,12 +133,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         new Setting(setupWizardEl)
             .setName("Discard the existing configuration and set up")
             .addButton((text) => {
+                // eslint-disable-next-line require-await
                 text.setButtonText("Next").onClick(async () => {
                     if (JSON.stringify(this.plugin.settings) != JSON.stringify(DEFAULT_SETTINGS)) {
                         this.plugin.replicator.closeReplication();
                         this.plugin.settings = { ...DEFAULT_SETTINGS };
                         this.plugin.saveSettings();
-                        Logger("Configuration has been flushed, please open it again", LOG_LEVEL.NOTICE)
+                        Logger("Configuration has been flushed, please open it again", LOG_LEVEL_NOTICE)
                         // @ts-ignore
                         this.plugin.app.setting.close()
                     } else {
@@ -302,7 +303,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         const checkConfig = async () => {
                             try {
                                 if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
-                                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL.NOTICE);
+                                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
                                     return;
                                 }
 
@@ -334,11 +335,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                         const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
                                         console.dir(res);
                                         if (res.status == 200) {
-                                            Logger(`${title} successfully updated`, LOG_LEVEL.NOTICE);
+                                            Logger(`${title} successfully updated`, LOG_LEVEL_NOTICE);
                                             checkResultDiv.removeChild(x);
                                             checkConfig();
                                         } else {
-                                            Logger(`${title} failed`, LOG_LEVEL.NOTICE);
+                                            Logger(`${title} failed`, LOG_LEVEL_NOTICE);
                                             Logger(res.text);
                                         }
                                     });
@@ -451,7 +452,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 addResult("--Done--", ["ob-btn-config-head"]);
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                             } catch (ex) {
-                                Logger(`Checking configuration failed`, LOG_LEVEL.NOTICE);
+                                Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
                                 Logger(ex);
                             }
                         };
@@ -609,25 +610,25 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             console.dir(settingForCheck);
             const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile, true);
             if (typeof db === "string") {
-                Logger("Could not connect to the database.", LOG_LEVEL.NOTICE);
+                Logger("Could not connect to the database.", LOG_LEVEL_NOTICE);
                 return false;
             } else {
                 if (await checkSyncInfo(db.db)) {
-                    // Logger("Database connected", LOG_LEVEL.NOTICE);
+                    // Logger("Database connected", LOG_LEVEL_NOTICE);
                     return true;
                 } else {
-                    Logger("Failed to read remote database", LOG_LEVEL.NOTICE);
+                    Logger("Failed to read remote database", LOG_LEVEL_NOTICE);
                     return false;
                 }
             }
         };
         const applyEncryption = async (sendToServer: boolean) => {
             if (encrypt && passphrase == "") {
-                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
+                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
                 return;
             }
             if (encrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
+                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!(await checkWorkingPassphrase()) && !sendToServer) {
@@ -654,11 +655,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
             if (encrypt && passphrase == "") {
-                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL.NOTICE);
+                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
                 return;
             }
             if (encrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL.NOTICE);
+                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!encrypt) {
@@ -670,7 +671,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings.passphrase = passphrase;
             this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
             this.plugin.settings.usePathObfuscation = usePathObfuscation;
-            Logger("All synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
+            Logger("All synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
             await this.plugin.saveSettings();
             updateE2EControls();
             applyDisplayEnabled();
@@ -882,7 +883,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setCta()
                     .onClick(async () => {
                         if (currentPreset == "") {
-                            Logger("Select any preset.", LOG_LEVEL.NOTICE);
+                            Logger("Select any preset.", LOG_LEVEL_NOTICE);
                             return;
                         }
                         const presetAllDisabled = {
@@ -913,15 +914,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 ...this.plugin.settings,
                                 ...presetLiveSync
                             }
-                            Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL.NOTICE);
+                            Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL_NOTICE);
                         } else if (currentPreset == "PERIODIC") {
                             this.plugin.settings = {
                                 ...this.plugin.settings,
                                 ...presetPeriodic
                             }
-                            Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL.NOTICE);
+                            Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL_NOTICE);
                         } else {
-                            Logger("All synchronization disabled.", LOG_LEVEL.NOTICE);
+                            Logger("All synchronization disabled.", LOG_LEVEL_NOTICE);
                             this.plugin.settings = {
                                 ...this.plugin.settings,
                                 ...presetAllDisabled
@@ -943,7 +944,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             }
                             await this.plugin.replicate(true);
 
-                            Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL.NOTICE);
+                            Logger("All done! Please set up subsequent devices with 'Copy setup URI' and 'Open setup URI'.", LOG_LEVEL_NOTICE);
                             // @ts-ignore
                             this.plugin.app.commands.executeCommandById("obsidian-livesync:livesync-copysetupuri")
                         }
@@ -1330,7 +1331,38 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 return text;
             }
             );
-
+        new Setting(containerSyncSettingEl)
+            .setName("(Beta) Use ignore files")
+            .setDesc("If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.")
+            .setClass("wizardHidden")
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.useIgnoreFiles)
+                    .onChange(async (value) => {
+                        this.plugin.settings.useIgnoreFiles = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    })
+                return toggle;
+            }
+            );
+        if (this.plugin.settings.useIgnoreFiles) {
+            new Setting(containerSyncSettingEl)
+                .setName("Ignore files")
+                .setDesc("We can use multiple ignore files, e.g.) `.gitignore, .dockerignore`")
+                .setClass("wizardHidden")
+                .addTextArea((text) => {
+                    text
+                        .setValue(this.plugin.settings.ignoreFiles)
+                        .setPlaceholder(".gitignore, .dockerignore")
+                        .onChange(async (value) => {
+                            this.plugin.settings.ignoreFiles = value;
+                            await this.plugin.saveSettings();
+                        })
+                    return text;
+                }
+                );
+        }
         containerSyncSettingEl.createEl("h4", {
             text: sanitizeHTMLToDom(`Advanced settings`),
         }).addClass("wizardHidden");
@@ -1468,7 +1500,7 @@ ${stringifyYaml(responseConfig)}
 ${stringifyYaml(pluginConfig)}`;
                         console.log(msgConfig);
                         await navigator.clipboard.writeText(msgConfig);
-                        Logger(`Information has been copied to clipboard`, LOG_LEVEL.NOTICE);
+                        Logger(`Information has been copied to clipboard`, LOG_LEVEL_NOTICE);
                     })
             );
 
@@ -1521,11 +1553,11 @@ ${stringifyYaml(pluginConfig)}`;
                                 Logger(`UPDATE DATABASE ${file.path}`);
                                 await this.plugin.updateIntoDB(file, false, null, true);
                                 i++;
-                                Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL.NOTICE, "verify");
+                                Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL_NOTICE, "verify");
 
                             } catch (ex) {
                                 i++;
-                                Logger(`Error while verifyAndRepair`, LOG_LEVEL.NOTICE);
+                                Logger(`Error while verifyAndRepair`, LOG_LEVEL_NOTICE);
                                 Logger(ex);
                             } finally {
                                 releaser();
@@ -1533,7 +1565,7 @@ ${stringifyYaml(pluginConfig)}`;
                         }
                         )(e));
                         await Promise.all(processes);
-                        Logger("done", LOG_LEVEL.NOTICE, "verify");
+                        Logger("done", LOG_LEVEL_NOTICE, "verify");
                     })
             );
         new Setting(containerHatchEl)
@@ -1573,35 +1605,35 @@ ${stringifyYaml(pluginConfig)}`;
                                     }
                                     const ret = await this.plugin.localDatabase.putRaw(newDoc, { force: true });
                                     if (ret.ok) {
-                                        Logger(`${docName} has been converted as conflicted document`, LOG_LEVEL.NOTICE);
+                                        Logger(`${docName} has been converted as conflicted document`, LOG_LEVEL_NOTICE);
                                         doc._deleted = true;
                                         if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
-                                            Logger(`Old ${docName} has been deleted`, LOG_LEVEL.NOTICE);
+                                            Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                         }
                                         await this.plugin.showIfConflicted(docName as FilePathWithPrefix);
                                     } else {
-                                        Logger(`Converting ${docName} Failed!`, LOG_LEVEL.NOTICE);
-                                        Logger(ret, LOG_LEVEL.VERBOSE);
+                                        Logger(`Converting ${docName} Failed!`, LOG_LEVEL_NOTICE);
+                                        Logger(ret, LOG_LEVEL_VERBOSE);
                                     }
                                 } catch (ex) {
                                     if (ex?.status == 404) {
                                         // We can perform this safely
                                         if ((await this.plugin.localDatabase.putRaw(newDoc)).ok) {
-                                            Logger(`${docName} has been converted`, LOG_LEVEL.NOTICE);
+                                            Logger(`${docName} has been converted`, LOG_LEVEL_NOTICE);
                                             doc._deleted = true;
                                             if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
-                                                Logger(`Old ${docName} has been deleted`, LOG_LEVEL.NOTICE);
+                                                Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                             }
                                         }
                                     } else {
-                                        Logger(`Something went wrong on converting ${docName}`, LOG_LEVEL.NOTICE);
-                                        Logger(ex, LOG_LEVEL.VERBOSE);
+                                        Logger(`Something went wrong on converting ${docName}`, LOG_LEVEL_NOTICE);
+                                        Logger(ex, LOG_LEVEL_VERBOSE);
                                         // Something wrong.
                                     }
                                 }
                             }
                         }
-                        Logger(`Converting finished`, LOG_LEVEL.NOTICE);
+                        Logger(`Converting finished`, LOG_LEVEL_NOTICE);
                     }));
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
@@ -1727,12 +1759,12 @@ ${stringifyYaml(pluginConfig)}`;
                 button.setButtonText("Change")
                     .onClick(async () => {
                         if (this.plugin.settings.additionalSuffixOfDatabaseName == newDatabaseName) {
-                            Logger("Suffix was not changed.", LOG_LEVEL.NOTICE);
+                            Logger("Suffix was not changed.", LOG_LEVEL_NOTICE);
                             return;
                         }
                         this.plugin.settings.additionalSuffixOfDatabaseName = newDatabaseName;
                         await this.plugin.saveSettings();
-                        Logger("Suffix has been changed. Reopening database...", LOG_LEVEL.NOTICE);
+                        Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
                         await this.plugin.initializeDatabase();
                     })
             })
@@ -1786,11 +1818,11 @@ ${stringifyYaml(pluginConfig)}`;
             vaultName.setDisabled(this.plugin.settings.usePluginSync);
             // vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto scan." : "");
         };
-        updateDisabledOfDeviceAndVaultName
+        updateDisabledOfDeviceAndVaultName();
         new Setting(containerPluginSettings).setName("Enable customization sync").addToggle((toggle) =>
             toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
                 if (value && this.plugin.deviceAndVaultName.trim() == "") {
-                    Logger("We have to configure `Device name` to use this feature.", LOG_LEVEL.NOTICE);
+                    Logger("We have to configure `Device name` to use this feature.", LOG_LEVEL_NOTICE);
                     toggle.setValue(false);
                     return false;
                 }

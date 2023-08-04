@@ -1,4 +1,4 @@
-import { type EntryDoc, type ObsidianLiveSyncSettings, LOG_LEVEL, DEFAULT_SETTINGS } from "./lib/src/types";
+import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE } from "./lib/src/types";
 import { configURIBase } from "./types";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -55,7 +55,7 @@ export class SetupLiveSync extends LiveSyncCommands {
         const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
         const uri = `${configURIBase}${encryptedSetting}`;
         await navigator.clipboard.writeText(uri);
-        Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
+        Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
     }
     async command_copySetupURIFull() {
         const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "", true);
@@ -65,14 +65,14 @@ export class SetupLiveSync extends LiveSyncCommands {
         const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false));
         const uri = `${configURIBase}${encryptedSetting}`;
         await navigator.clipboard.writeText(uri);
-        Logger("Setup URI copied to clipboard", LOG_LEVEL.NOTICE);
+        Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
     }
     async command_openSetupURI() {
         const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
         if (setupURI === false)
             return;
         if (!setupURI.startsWith(`${configURIBase}`)) {
-            Logger("Set up URI looks wrong.", LOG_LEVEL.NOTICE);
+            Logger("Set up URI looks wrong.", LOG_LEVEL_NOTICE);
             return;
         }
         const config = decodeURIComponent(setupURI.substring(configURIBase.length));
@@ -103,6 +103,11 @@ export class SetupLiveSync extends LiveSyncCommands {
                     const setupManually = "Leave everything to me";
                     newSettingW.syncInternalFiles = false;
                     newSettingW.usePluginSync = false;
+                    // Migrate completely obsoleted configuration.
+                    if (!newSettingW.useIndexedDBAdapter) {
+                        newSettingW.useIndexedDBAdapter = true;
+                    }
+
                     const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
                     if (setupType == setupJustImport) {
                         this.plugin.settings = newSettingW;
@@ -135,13 +140,13 @@ export class SetupLiveSync extends LiveSyncCommands {
                                 await this.plugin.replicate(true);
                                 await this.plugin.markRemoteUnlocked();
                             }
-                            Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                            Logger("Configuration loaded.", LOG_LEVEL_NOTICE);
                             return;
                         }
                         if (keepLocalDB == "no" && keepRemoteDB == "no") {
                             const reset = await askYesNo(this.app, "Drop everything?");
                             if (reset != "yes") {
-                                Logger("Cancelled", LOG_LEVEL.NOTICE);
+                                Logger("Cancelled", LOG_LEVEL_NOTICE);
                                 this.plugin.settings = oldConf;
                                 return;
                             }
@@ -176,17 +181,17 @@ export class SetupLiveSync extends LiveSyncCommands {
                     }
                 }
 
-                Logger("Configuration loaded.", LOG_LEVEL.NOTICE);
+                Logger("Configuration loaded.", LOG_LEVEL_NOTICE);
             } else {
-                Logger("Cancelled.", LOG_LEVEL.NOTICE);
+                Logger("Cancelled.", LOG_LEVEL_NOTICE);
             }
         } catch (ex) {
-            Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL.NOTICE);
+            Logger("Couldn't parse or decrypt configuration uri.", LOG_LEVEL_NOTICE);
         }
     }
 
     suspendExtraSync() {
-        Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL.NOTICE)
+        Logger("Hidden files and plugin synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
         this.plugin.settings.syncInternalFiles = false;
         this.plugin.settings.usePluginSync = false;
         this.plugin.settings.autoSweepPlugins = false;
@@ -231,7 +236,7 @@ Of course, we are able to disable these features.`
             return;
         }
         if (mode != "CUSTOMIZE") {
-            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL.NOTICE);
+            Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
             if (mode == "FETCH") {
                 await this.plugin.addOnHiddenFileSync.syncInternalFilesAndDatabase("pullForce", true);
             } else if (mode == "OVERWRITE") {
@@ -241,7 +246,7 @@ Of course, we are able to disable these features.`
             }
             this.plugin.settings.syncInternalFiles = true;
             await this.plugin.saveSettings();
-            Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL.NOTICE);
+            Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
         } else if (mode == "CUSTOMIZE") {
             if (!this.plugin.deviceAndVaultName) {
                 let name = await askString(this.app, "Device name", "Please set this device name", `desktop`);
@@ -287,14 +292,14 @@ Of course, we are able to disable these features.`
     }
     async suspendReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
-        Logger(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL.NOTICE);
+        Logger(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = true;
         this.plugin.settings.suspendFileWatching = true;
         await this.plugin.saveSettings();
     }
     async resumeReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
-        Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL.NOTICE);
+        Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = false;
         this.plugin.settings.suspendFileWatching = false;
         await this.plugin.saveSettings();
@@ -320,14 +325,14 @@ Of course, we are able to disable these features.`
     }
     async fetchRemoteChunks() {
         if (!this.plugin.settings.doNotSuspendOnFetching && this.plugin.settings.readChunksOnline) {
-            Logger(`Fetching chunks`, LOG_LEVEL.NOTICE);
+            Logger(`Fetching chunks`, LOG_LEVEL_NOTICE);
             const remoteDB = await this.plugin.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.plugin.getIsMobile(), true);
             if (typeof remoteDB == "string") {
-                Logger(remoteDB, LOG_LEVEL.NOTICE);
+                Logger(remoteDB, LOG_LEVEL_NOTICE);
             } else {
                 await fetchAllUsedChunks(this.localDatabase.localDatabase, remoteDB.db);
             }
-            Logger(`Fetching chunks done`, LOG_LEVEL.NOTICE);
+            Logger(`Fetching chunks done`, LOG_LEVEL_NOTICE);
         }
     }
     async fetchLocal() {

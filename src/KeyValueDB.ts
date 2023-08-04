@@ -1,4 +1,4 @@
-import { deleteDB, IDBPDatabase, openDB } from "idb";
+import { deleteDB, type IDBPDatabase, openDB } from "idb";
 export interface KeyValueDatabase {
     get<T>(key: string): Promise<T>;
     set<T>(key: string, value: T): Promise<IDBValidKey>;

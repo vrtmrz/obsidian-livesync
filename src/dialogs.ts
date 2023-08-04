@@ -183,8 +183,9 @@ export class MessageBox extends Modal {
         })
         contentEl.createEl("h1", { text: this.title });
         const div = contentEl.createDiv();
-        MarkdownRenderer.renderMarkdown(this.contentMd, div, "/", this.plugin);
+        MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
         const buttonSetting = new Setting(contentEl);
+        buttonSetting.controlEl.style.flexWrap = "wrap";
         for (const button of this.buttons) {
             buttonSetting.addButton((btn) => {
                 btn

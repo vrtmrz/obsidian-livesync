@@ -2,7 +2,7 @@
     import type { PluginDataExDisplay } from "./CmdConfigSync";
     import { Logger } from "./lib/src/logger";
     import { versionNumberString2Number } from "./lib/src/strbin";
-    import { type FilePath, LOG_LEVEL } from "./lib/src/types";
+    import { type FilePath, LOG_LEVEL_NOTICE } from "./lib/src/types";
     import { getDocData } from "./lib/src/utils";
     import type ObsidianLiveSyncPlugin from "./main";
     import { askString, scheduleTask } from "./utils";
@@ -229,7 +229,7 @@
         const duplicateTermName = await askString(plugin.app, "Duplicate", "device name", "");
         if (duplicateTermName) {
             if (duplicateTermName.contains("/")) {
-                Logger(`We can not use "/" to the device name`, LOG_LEVEL.NOTICE);
+                Logger(`We can not use "/" to the device name`, LOG_LEVEL_NOTICE);
                 return;
             }
             const key = `${plugin.app.vault.configDir}/${local.files[0].filename}`;

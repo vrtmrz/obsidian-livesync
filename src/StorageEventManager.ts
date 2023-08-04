@@ -1,8 +1,8 @@
-import { Plugin_2, TAbstractFile, TFile, TFolder } from "./deps";
+import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import { getGlobalStore } from "./lib/src/store";
-import { FilePath, ObsidianLiveSyncSettings } from "./lib/src/types";
-import { FileEventItem, FileEventType, FileInfo, InternalFileInfo, queueItem } from "./types";
+import { type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
+import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo, type queueItem } from "./types";
 import { recentlyTouched } from "./utils";
 
 
@@ -12,12 +12,13 @@ export abstract class StorageEventManager {
     abstract getQueueLength(): number;
 }
 
-type LiveSyncForStorageEventManager = Plugin_2 &
+type LiveSyncForStorageEventManager = Plugin &
 {
     settings: ObsidianLiveSyncSettings
+    ignoreFiles: string[],
 } & {
-    isTargetFile: (file: string | TAbstractFile) => boolean,
-    procFileEvent: (applyBatch?: boolean) => Promise<boolean>
+    isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
+    procFileEvent: (applyBatch?: boolean) => Promise<boolean>,
 };
 
 
@@ -35,12 +36,12 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
         this.watchVaultRename = this.watchVaultRename.bind(this);
         this.watchVaultRawEvents = this.watchVaultRawEvents.bind(this);
-        plugin.registerEvent(app.vault.on("modify", this.watchVaultChange));
-        plugin.registerEvent(app.vault.on("delete", this.watchVaultDelete));
-        plugin.registerEvent(app.vault.on("rename", this.watchVaultRename));
-        plugin.registerEvent(app.vault.on("create", this.watchVaultCreate));
+        plugin.registerEvent(plugin.app.vault.on("modify", this.watchVaultChange));
+        plugin.registerEvent(plugin.app.vault.on("delete", this.watchVaultDelete));
+        plugin.registerEvent(plugin.app.vault.on("rename", this.watchVaultRename));
+        plugin.registerEvent(plugin.app.vault.on("create", this.watchVaultCreate));
         //@ts-ignore : Internal API
-        plugin.registerEvent(app.vault.on("raw", this.watchVaultRawEvents));
+        plugin.registerEvent(plugin.app.vault.on("raw", this.watchVaultRawEvents));
     }
 
     watchVaultCreate(file: TAbstractFile, ctx?: any) {
@@ -64,9 +65,18 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Watch raw events (Internal API)
     watchVaultRawEvents(path: FilePath) {
+        if (this.plugin.settings.useIgnoreFiles && this.plugin.ignoreFiles.some(e => path.endsWith(e.trim()))) {
+            // If it is one of ignore files, refresh the cached one.
+            this.plugin.isTargetFile(path).then(() => this._watchVaultRawEvents(path));
+        } else {
+            this._watchVaultRawEvents(path);
+        }
+    }
+
+    _watchVaultRawEvents(path: FilePath) {
         if (!this.plugin.settings.syncInternalFiles && !this.plugin.settings.usePluginSync) return;
         if (!this.plugin.settings.watchInternalFileChanges) return;
-        if (!path.startsWith(app.vault.configDir)) return;
+        if (!path.startsWith(this.plugin.app.vault.configDir)) return;
         const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e, "i"));
@@ -77,7 +87,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 file: { path, mtime: 0, ctime: 0, size: 0 }
             }], null);
     }
-
     // Cache file and waiting to can be proceed.
     async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
         let forcePerform = false;
@@ -90,7 +99,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             const file = param.file;
             const oldPath = param.oldPath;
             if (file instanceof TFolder) continue;
-            if (!this.plugin.isTargetFile(file.path)) continue;
+            if (!await this.plugin.isTargetFile(file.path)) continue;
             if (this.plugin.settings.suspendFileWatching) continue;
 
             let cache: null | string | ArrayBuffer;
@@ -100,11 +109,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                     continue;
                 }
                 if (!isPlainText(file.name)) {
-                    cache = await app.vault.readBinary(file);
+                    cache = await this.plugin.app.vault.readBinary(file);
                 } else {
                     // cache = await this.app.vault.read(file);
-                    cache = await app.vault.cachedRead(file);
-                    if (!cache) cache = await app.vault.read(file);
+                    cache = await this.plugin.app.vault.cachedRead(file);
+                    if (!cache) cache = await this.plugin.app.vault.read(file);
                 }
             }
             if (type == "DELETE" || type == "RENAME") {

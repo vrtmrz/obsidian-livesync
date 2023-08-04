@@ -1,4 +1,4 @@
-import { AnyEntry, DocumentID, EntryDoc, EntryHasPath, FilePath, FilePathWithPrefix } from "./lib/src/types";
+import { type AnyEntry, type DocumentID, type EntryDoc, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import type ObsidianLiveSyncPlugin from "./main";
 

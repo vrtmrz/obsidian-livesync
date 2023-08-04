@@ -1,8 +1,8 @@
-import { type DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin_2, type RequestUrlParam, requestUrl } from "./deps";
+import { type DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
-import { type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, LOG_LEVEL } from "./lib/src/types";
+import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
 import { CHeader, ICHeader, ICHeaderLength, PSCHeader } from "./types";
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
 import ObsidianLiveSyncPlugin from "./main";
@@ -327,7 +327,7 @@ export function isValidPath(filename: string) {
     if (Platform.isAndroidApp) return isValidFilenameInAndroid(filename);
     if (Platform.isIosApp) return isValidFilenameInDarwin(filename);
     //Fallback
-    Logger("Could not determine platform for checking filename", LOG_LEVEL.VERBOSE);
+    Logger("Could not determine platform for checking filename", LOG_LEVEL_VERBOSE);
     return isValidFilenameInWidows(filename);
 }
 
@@ -415,8 +415,8 @@ export const askString = (app: App, title: string, key: string, placeholder: str
 export class PeriodicProcessor {
     _process: () => Promise<any>;
     _timer?: number;
-    _plugin: Plugin_2;
-    constructor(plugin: Plugin_2, process: () => Promise<any>) {
+    _plugin: Plugin;
+    constructor(plugin: Plugin, process: () => Promise<any>) {
         this._plugin = plugin;
         this._process = process;
     }
