@@ -2569,9 +2569,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
     }
 
+    /**
+     * Check the file is ignored by the ignore files.
+     * @param file 
+     * @returns true if the file should be ignored, false if the file should be processed.
+     */
     async isIgnoredByIgnoreFiles(file: string | TAbstractFile) {
         if (!this.settings.useIgnoreFiles) {
-            return true;
+            return false;
         }
         const filepath = file instanceof TFile ? file.path : file as string;
         if (this.ignoreFileCache.has(filepath)) {
@@ -2579,14 +2584,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
             await this.readIgnoreFile(filepath);
         }
         if (!await isAcceptedAll(stripAllPrefixes(filepath as FilePathWithPrefix), this.ignoreFiles, (filename) => this.getIgnoreFile(filename))) {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     async isTargetFile(file: string | TAbstractFile) {
         const filepath = file instanceof TFile ? file.path : file as string;
-        if (this.settings.useIgnoreFiles && !await this.isIgnoredByIgnoreFiles(file)) {
+        if (this.settings.useIgnoreFiles && await this.isIgnoredByIgnoreFiles(file)) {
             return false;
         }
         return this.localDatabase.isTargetFile(filepath);
