@@ -14,38 +14,7 @@ I hope you will give it a try.
 
 #### Minors
 
-- 0.19.1 to 0.19.11 has been moved into the updates_old.md
-- 0.19.12
-  - Improved:
-    - Boot-up performance has been improved.
-    - Customisation sync performance has been improved.
-    - Synchronising performance has been improved.
-- 0.19.13
-  - Implemented:
-    - Database clean-up is now in beta 2!
-      We can shrink the remote database by deleting unused chunks, with keeping history.
-      Note: Local database is not cleaned up totally. We have to `Fetch` again to let it done.
-      **Note2**: Still in beta. Please back your vault up anything before.
-  - Fixed:
-    - The log updates are not thinned out now.
-- 0.19.14
-  - Fixed:
-    - Internal documents are now ignored.
-    - Merge dialogue now respond immediately to button pressing.
-    - Periodic processing now works fine.
-    - The checking interval of detecting conflicted has got shorter.
-    - Replication is now cancelled while cleaning up.
-    - The database locking by the cleaning up is now carefully unlocked.
-    - Missing chunks message is correctly reported.
-  - New feature:
-    - Suspend database reflecting has been implemented.
-      - This can be disabled by `Fetch database with previous behaviour`.
-    - Now fetch suspends the reflecting database and storage changes temporarily to improve the performance.
-    - We can choose the action when the remote database has been cleaned
-    - Merge dialogue now show `↲` before the new line.
-  - Improved:
-    - Now progress is reported while the cleaning up and fetch process.
-    - Cancelled replication is now detected.
+- 0.19.1 to 0.19.14 has been moved into the updates_old.md
 - 0.19.15
   - Fixed:
     - Now storing files after cleaning up is correct works.
@@ -67,5 +36,12 @@ I hope you will give it a try.
   - Compiler, framework, and dependencies have been upgraded.
   - Due to standing for these impacts (especially in esbuild and svelte,) terser has been introduced. 
     Feel free to notify your opinion to me! I do not like to obfuscate the code too.
+- 0.19.17
+  - Fixed:
+    - Now nested ignore files could be parsed correctly.
+    - The unexpected deletion of hidden files in some cases has been corrected.
+    - Hidden file change is no longer reflected on the device which has made the change itself.
+  - Behaviour changed:
+    - From this version, the file which has `:` in its name should be ignored even if on Linux devices.
 
 ... To continue on to `updates_old.md`.
