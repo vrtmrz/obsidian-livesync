@@ -280,7 +280,7 @@ Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://b
 
 ## Automatic setup using Colaboratory
 
-We can perform all these steps by using [this Colaboratory notebook](https://gist.github.com/vrtmrz/b437a539af25ef191bd452aae369242f) without installing anything.
+We can perform all these steps by using [this Colaboratory notebook](/deploy_couchdb_to_flyio_v2_with_swap.ipynb) without installing anything.
 
 ## After testing / before creating a new instance
 
