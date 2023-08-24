@@ -43,5 +43,8 @@ I hope you will give it a try.
     - Hidden file change is no longer reflected on the device which has made the change itself.
   - Behaviour changed:
     - From this version, the file which has `:` in its name should be ignored even if on Linux devices.
+- 0.19.18
+  - Fixed:
+    - Now the empty (or deleted) file could be conflict-resolved.
 
 ... To continue on to `updates_old.md`.
