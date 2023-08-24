@@ -1901,6 +1901,9 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const ret = [] as Diff[];
             do {
                 const d = src.shift();
+                if (d === undefined) {
+                    return ret;
+                }
                 const pieces = d[1].split(/([^\n]*\n)/).filter(f => f != "");
                 if (typeof (d) == "undefined") {
                     break;
