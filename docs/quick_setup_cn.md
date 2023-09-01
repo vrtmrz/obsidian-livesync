@@ -82,7 +82,7 @@ Config check 的显示内容可能因不同连接而异. 在上图情况下, 按
 根据需要设置密码。.
 设置 URI (Setup URI) 将被复制到剪贴板, 然后您可以通过某种方式将其传输到第二个及后续设备.
 
-# 如何设置第二单元和后续单元 (the second and subsequent units)
+## 如何设置第二单元和后续单元 (the second and subsequent units)
 
 在第一台设备上安装 Self-hosted LiveSync 后, 从命令面板上选择 `Open setup URI`, 然后输入您传输的设置 URI (Setup URI). 然后输入密码，安装向导就会打开.
 在弹窗中选择以下内容.
