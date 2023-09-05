@@ -99,6 +99,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                     newSettingW.encryptedCouchDBConnection = "";
                     const setupJustImport = "Just import setting";
                     const setupAsNew = "Set it up as secondary or subsequent device";
+                    const setupAsMerge = "Secondary device but try keeping local changes";
                     const setupAgain = "Reconfigure and reconstitute the data";
                     const setupManually = "Leave everything to me";
                     newSettingW.syncInternalFiles = false;
@@ -108,7 +109,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                         newSettingW.useIndexedDBAdapter = true;
                     }
 
-                    const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupJustImport, setupManually]);
+                    const setupType = await askSelectString(this.app, "How would you like to set it up?", [setupAsNew, setupAgain, setupAsMerge, setupJustImport, setupManually]);
                     if (setupType == setupJustImport) {
                         this.plugin.settings = newSettingW;
                         this.plugin.usedPassphrase = "";
@@ -117,6 +118,10 @@ export class SetupLiveSync extends LiveSyncCommands {
                         this.plugin.settings = newSettingW;
                         this.plugin.usedPassphrase = "";
                         await this.fetchLocal();
+                    } else if (setupType == setupAsMerge) {
+                        this.plugin.settings = newSettingW;
+                        this.plugin.usedPassphrase = "";
+                        await this.fetchLocalWithKeepLocal();
                     } else if (setupType == setupAgain) {
                         const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
                         if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
@@ -302,13 +307,11 @@ Of course, we are able to disable these features.`
         Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = false;
         this.plugin.settings.suspendFileWatching = false;
+        await this.plugin.syncAllFiles(true);
+        await this.plugin.loadQueuedFiles();
+        this.plugin.procQueuedFiles();
         await this.plugin.saveSettings();
-        if (this.plugin.settings.readChunksOnline) {
-            await this.plugin.syncAllFiles(true);
-            await this.plugin.loadQueuedFiles();
-            // Start processing
-            this.plugin.procQueuedFiles();
-        }
+
     }
     async askUseNewAdapter() {
         if (!this.plugin.settings.useIndexedDBAdapter) {
@@ -342,6 +345,25 @@ Of course, we are able to disable these features.`
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.resetLocalDatabase();
         await delay(1000);
+        await this.plugin.markRemoteResolved();
+        await this.plugin.openDatabase();
+        this.plugin.isReady = true;
+        await delay(500);
+        await this.plugin.replicateAllFromServer(true);
+        await delay(1000);
+        await this.plugin.replicateAllFromServer(true);
+        await this.fetchRemoteChunks();
+        await this.resumeReflectingDatabase();
+        await this.askHiddenFileConfiguration({ enableFetch: true });
+    }
+    async fetchLocalWithKeepLocal() {
+        this.suspendExtraSync();
+        this.askUseNewAdapter();
+        await this.suspendReflectingDatabase();
+        await this.plugin.realizeSettingSyncMode();
+        await this.plugin.resetLocalDatabase();
+        await delay(1000);
+        await this.plugin.initializeDatabase(true);
         await this.plugin.markRemoteResolved();
         await this.plugin.openDatabase();
         this.plugin.isReady = true;

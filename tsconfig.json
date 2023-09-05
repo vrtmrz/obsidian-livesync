@@ -15,6 +15,7 @@
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,
         "alwaysStrict": true,
+        "allowImportingTsExtensions": true,
         "lib": [
             "es2018",
             "DOM",

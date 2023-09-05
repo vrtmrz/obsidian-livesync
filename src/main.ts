@@ -1167,17 +1167,25 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (docEntry._deleted || docEntry.deleted) {
             // This occurs not only when files are deleted, but also when conflicts are resolved.
             // We have to check no other revisions are left.
-            const lastDocs = await this.localDatabase.getDBEntry(path);
+            const existDoc = await this.localDatabase.getDBEntry(path, { conflicts: true });
             if (path != file.path) {
                 Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
             }
-            if (lastDocs === false) {
+            if (existDoc === false) {
                 await this.deleteVaultItem(file);
             } else {
-                // it perhaps delete some revisions.
-                // may be we have to reload this
-                await this.pullFile(path, null, true);
-                Logger(`delete skipped:${file.path}`, LOG_LEVEL_VERBOSE);
+                if (existDoc._conflicts) {
+                    if (this.settings.writeDocumentsIfConflicted) {
+                        Logger(`Delete: ${file.path}: Conflicted revision has been deleted, but there were more conflicts. `, LOG_LEVEL_INFO);
+                        await this.pullFile(path, null, true);
+                    } else {
+                        Logger(`Delete: ${file.path}: Conflicted revision has been deleted, but there were more conflicts...`);
+                        this.queueConflictedOnlyActiveFile(file);
+                    }
+                } else {
+                    Logger(`Delete: ${file.path}: Conflict revision has been deleted and resolved`);
+                    await this.pullFile(path, null, true);
+                }
             }
             return;
         }
@@ -1274,6 +1282,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             this.dbChangeProcRunning = false;
         }
     }
+    queueConflictedOnlyActiveFile(file: TFile) {
+        if (!this.settings.checkConflictOnlyOnOpen) {
+            this.queueConflictedCheck(file);
+            return true;
+        } else {
+            const af = this.app.workspace.getActiveFile();
+            if (af && af.path == file.path) {
+                this.queueConflictedCheck(file);
+                return true;
+            }
+        }
+        return false;
+    }
     async handleDBChangedAsync(change: EntryBody) {
 
         const targetFile = getAbstractFileByPath(this.getPathWithoutPrefix(change));
@@ -1286,29 +1307,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         } else if (targetFile instanceof TFile) {
             const doc = change;
             const file = targetFile;
-            const queueConflictCheck = () => {
-                if (!this.settings.checkConflictOnlyOnOpen) {
-                    this.queueConflictedCheck(file);
-                    return true;
-                } else {
-                    const af = app.workspace.getActiveFile();
-                    if (af && af.path == file.path) {
-                        this.queueConflictedCheck(file);
-                        return true;
-                    }
-                }
-                return false;
-            }
             if (this.settings.writeDocumentsIfConflicted) {
                 await this.doc2storage(doc, file);
-                queueConflictCheck();
+                this.queueConflictedOnlyActiveFile(file);
             } else {
                 const d = await this.localDatabase.getDBEntryMeta(this.getPath(change), { conflicts: true }, true);
                 if (d && !d._conflicts) {
                     await this.doc2storage(doc, file);
                 } else {
-                    if (!queueConflictCheck()) {
-                        Logger(`${this.getPath(change)} is conflicted, write to the storage has been pended.`, LOG_LEVEL_NOTICE);
+                    if (!this.queueConflictedOnlyActiveFile(file)) {
+                        Logger(`${this.getPath(change)} is conflicted, write to the storage has been postponed.`, LOG_LEVEL_NOTICE);
                     }
                 }
             }
