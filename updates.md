@@ -46,5 +46,11 @@ I hope you will give it a try.
 - 0.19.18
   - Fixed:
     - Now the empty (or deleted) file could be conflict-resolved.
+- 0.19.19
+  - Fixed:
+    - Resolving conflicted revision has become more robust.
+    - LiveSync now try to keep local changes when fetching from the rebuilt remote database.
+      Local changes now have been kept as a revision and fetched things will be new revisions.
+    - Now, all files will be restored after performing `fetch` immediately.
 
 ... To continue on to `updates_old.md`.
