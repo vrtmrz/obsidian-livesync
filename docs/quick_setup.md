@@ -1,4 +1,7 @@
 # Quick setup
+
+[Japanese docs](./quick_setup_ja.md) - [Chinese docs](./quick_setup_cn.md).
+
 The plugin has so many configuration options to deal with different circumstances. However, there are not so many settings that are actually used. Therefore, `The Setup wizard` has been implemented to simplify the initial setup.
 
 Note: Subsequent devices are recommended to be set up using the `Copy setup URI` and `Open setup URI`.
