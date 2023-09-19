@@ -9,7 +9,7 @@ import { isPluginMetadata, PeriodicProcessor } from "./utils";
 import { PluginDialogModal } from "./dialogs";
 import { NewNotice } from "./lib/src/wrapper";
 import { versionNumberString2Number } from "./lib/src/strbin";
-import { runWithLock } from "./lib/src/lock";
+import { serialized, skipIfDuplicated } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 
 export class PluginAndTheirSettings extends LiveSyncCommands {
@@ -164,7 +164,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
         if (specificPluginPath != "") {
             specificPlugin = manifests.find(e => e.dir.endsWith("/" + specificPluginPath))?.id ?? "";
         }
-        await runWithLock("sweepplugin", true, async () => {
+        await skipIfDuplicated("sweepplugin", async () => {
             const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             if (!this.deviceAndVaultName) {
                 Logger("You have to set your device name.", LOG_LEVEL_NOTICE);
@@ -223,7 +223,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                         type: "plain"
                     };
                     Logger(`check diff:${m.name}(${m.id})`, LOG_LEVEL_VERBOSE);
-                    await runWithLock("plugin-" + m.id, false, async () => {
+                    await serialized("plugin-" + m.id, async () => {
                         const old = await this.localDatabase.getDBEntry(p._id as string as FilePathWithPrefix /* This also should be explained */, null, false, false);
                         if (old !== false) {
                             const oldData = { data: old.data, deleted: old._deleted };
@@ -266,7 +266,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
     }
 
     async applyPluginData(plugin: PluginDataEntry) {
-        await runWithLock("plugin-" + plugin.manifest.id, false, async () => {
+        await serialized("plugin-" + plugin.manifest.id, async () => {
             const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
             const adapter = this.app.vault.adapter;
             // @ts-ignore
@@ -288,7 +288,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
     }
 
     async applyPlugin(plugin: PluginDataEntry) {
-        await runWithLock("plugin-" + plugin.manifest.id, false, async () => {
+        await serialized("plugin-" + plugin.manifest.id, async () => {
             // @ts-ignore
             const stat = this.app.plugins.enabledPlugins.has(plugin.manifest.id) == true;
             if (stat) {

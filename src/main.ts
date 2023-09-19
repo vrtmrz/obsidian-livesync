@@ -1,7 +1,7 @@
 const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl } from "./deps";
+import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
@@ -10,15 +10,15 @@ import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
-import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
+import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64, writeString } from "./lib/src/strbin";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
-import { isLockAcquired, runWithLock } from "./lib/src/lock";
+import { isLockAcquired, serialized, skipIfDuplicated } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
@@ -43,16 +43,29 @@ setGlobalLogFunction((message: any, level?: LOG_LEVEL, key?: string) => {
 });
 logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
+async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
+    const ret = await requestUrl(request);
+    if (ret.status - (ret.status % 100) !== 200) {
+        const er: Error & { status?: number } = new Error(`Request Error:${ret.status}`);
+        if (ret.json) {
+            er.message = ret.json.reason;
+            er.name = `${ret.json.error ?? ""}:${ret.json.message ?? ""}`;
+        }
+        er.status = ret.status;
+        throw er;
+    }
+    return ret;
+}
 export default class ObsidianLiveSyncPlugin extends Plugin
     implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv {
 
-    settings: ObsidianLiveSyncSettings;
-    localDatabase: LiveSyncLocalDB;
-    replicator: LiveSyncDBReplicator;
+    settings!: ObsidianLiveSyncSettings;
+    localDatabase!: LiveSyncLocalDB;
+    replicator!: LiveSyncDBReplicator;
 
-    statusBar: HTMLElement;
-    suspended: boolean;
-    deviceAndVaultName: string;
+    statusBar?: HTMLElement;
+    suspended: boolean = true;
+    deviceAndVaultName: string = "";
     isMobile = false;
     isReady = false;
     packageVersion = "";
@@ -67,25 +80,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     periodicSyncProcessor = new PeriodicProcessor(this, async () => await this.replicate());
 
     // implementing interfaces
-    kvDB: KeyValueDatabase;
+    kvDB!: KeyValueDatabase;
     last_successful_post = false;
     getLastPostFailedBySize() {
         return !this.last_successful_post;
     }
 
-    async fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
-        const ret = await requestUrl(request);
-        if (ret.status - (ret.status % 100) !== 200) {
-            const er: Error & { status?: number } = new Error(`Request Error:${ret.status}`);
-            if (ret.json) {
-                er.message = ret.json.reason;
-                er.name = `${ret.json.error ?? ""}:${ret.json.message ?? ""}`;
-            }
-            er.status = ret.status;
-            throw er;
-        }
-        return ret;
-    }
+
+    _unloaded = false;
+
     getDatabase(): PouchDB.Database<EntryDoc> {
         return this.localDatabase.localDatabase;
     }
@@ -103,7 +106,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
         let authHeader = "";
         if (auth.username && auth.password) {
-            const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${auth.username}:${auth.password}`));
+            const utf8str = String.fromCharCode.apply(null, [...writeString(`${auth.username}:${auth.password}`)]);
             const encoded = window.btoa(utf8str);
             authHeader = "Basic " + encoded;
         } else {
@@ -115,11 +118,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             adapter: "http",
             auth,
             skip_setup: !performSetup,
-            fetch: async (url: string | Request, opts: RequestInit) => {
+            fetch: async (url: string | Request, opts?: RequestInit) => {
                 let size = "";
                 const localURL = url.toString().substring(uri.length);
-                const method = opts.method ?? "GET";
-                if (opts.body) {
+                const method = opts?.method ?? "GET";
+                if (opts?.body) {
                     const opts_length = opts.body.toString().length;
                     if (opts_length > 1000 * 1000 * 10) {
                         // over 10MB
@@ -132,10 +135,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     size = ` (${opts_length})`;
                 }
 
-                if (!disableRequestURI && typeof url == "string" && typeof (opts.body ?? "") == "string") {
-                    const body = opts.body as string;
+                if (!disableRequestURI && typeof url == "string" && typeof (opts?.body ?? "") == "string") {
+                    const body = opts?.body as string;
 
-                    const transformedHeaders = { ...(opts.headers as Record<string, string>) };
+                    const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
                     if (authHeader != "") transformedHeaders["authorization"] = authHeader;
                     delete transformedHeaders["host"];
                     delete transformedHeaders["Host"];
@@ -143,7 +146,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     delete transformedHeaders["Content-Length"];
                     const requestParam: RequestUrlParam = {
                         url,
-                        method: opts.method,
+                        method: opts?.method,
                         body: body,
                         headers: transformedHeaders,
                         contentType: "application/json",
@@ -151,7 +154,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     };
 
                     try {
-                        const r = await this.fetchByAPI(requestParam);
+                        const r = await fetchByAPI(requestParam);
                         if (method == "POST" || method == "PUT") {
                             this.last_successful_post = r.status - (r.status % 100) == 200;
                         } else {
@@ -209,9 +212,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         try {
             const info = await db.info();
             return { db: db, info: info };
-        } catch (ex) {
-            let msg = `${ex.name}:${ex.message}`;
-            if (ex.name == "TypeError" && ex.message == "Failed to fetch") {
+        } catch (ex: any) {
+            let msg = `${ex?.name}:${ex?.message}`;
+            if (ex?.name == "TypeError" && ex?.message == "Failed to fetch") {
                 msg += "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
             }
             Logger(ex, LOG_LEVEL_VERBOSE);
@@ -219,7 +222,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
     }
 
-    id2path(id: DocumentID, entry: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
+    id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
         const tempId = id2path(id, entry);
         if (stripPrefix && isInternalMetadata(tempId)) {
             const out = stripInternalMetadataPrefix(tempId);
@@ -234,18 +237,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return getPathWithoutPrefix(entry);
     }
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        const destPath = addPrefix(filename, prefix);
+        const destPath = addPrefix(filename, prefix ?? "");
         return await path2id(destPath, this.settings.usePathObfuscation ? this.settings.passphrase : "");
     }
 
-    createPouchDBInstance<T>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
+    createPouchDBInstance<T extends object>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
+        const optionPass = options ?? {};
         if (this.settings.useIndexedDBAdapter) {
-            options.adapter = "indexeddb";
+            optionPass.adapter = "indexeddb";
             //@ts-ignore :missing def
-            options.purged_infos_limit = 1;
-            return new PouchDB(name + "-indexeddb", options);
+            optionPass.purged_infos_limit = 1;
+            return new PouchDB(name + "-indexeddb", optionPass);
         }
-        return new PouchDB(name, options);
+        return new PouchDB(name, optionPass);
     }
     beforeOnUnload(db: LiveSyncLocalDB): void {
         this.kvDB.close();
@@ -258,6 +262,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.replicator = new LiveSyncDBReplicator(this);
     }
     async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
+        const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
+        localStorage.removeItem(lsKey);
         await this.kvDB.destroy();
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
         this.replicator = new LiveSyncDBReplicator(this);
@@ -320,7 +326,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
     }
 
-    showHistory(file: TFile | FilePathWithPrefix, id: DocumentID) {
+    showHistory(file: TFile | FilePathWithPrefix, id?: DocumentID) {
         new DocumentHistoryModal(this.app, this, file, id).open();
     }
 
@@ -334,7 +340,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const target = await askSelectString(this.app, "File to view History", notesList);
         if (target) {
             const targetId = notes.find(e => e.dispPath == target);
-            this.showHistory(targetId.path, undefined);
+            this.showHistory(targetId.path, targetId.id);
         }
     }
     async pickFileForResolve() {
@@ -349,7 +355,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             Logger("There are no conflicted documents", LOG_LEVEL_NOTICE);
             return false;
         }
-        const target = await askSelectString(this.app, "File to view History", notesList);
+        const target = await askSelectString(this.app, "File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find(e => e.dispPath == target);
             await this.resolveConflicted(targetItem.path);
@@ -362,6 +368,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (isInternalMetadata(target)) {
             await this.addOnHiddenFileSync.resolveConflictOnInternalFile(target);
         } else if (isPluginMetadata(target)) {
+            await this.resolveConflictByNewerEntry(target);
+        } else if (isCustomisationSyncMetadata(target)) {
             await this.resolveConflictByNewerEntry(target);
         } else {
             await this.showIfConflicted(target);
@@ -453,6 +461,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             }
             await this.realizeSettingSyncMode();
             this.registerWatchEvents();
+            this.swapSaveCommand();
             if (this.settings.syncOnStart) {
                 this.replicator.openReplication(this.settings, false, false);
             }
@@ -474,7 +483,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             notes.push({ path: this.getPath(doc), mtime: doc.mtime });
         }
         if (notes.length > 0) {
-            Logger(`Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`, LOG_LEVEL_NOTICE);
+            this.askInPopup(`conflicting-detected-on-safety`, `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`, (anchor) => {
+                anchor.text = "HERE";
+                anchor.addEventListener("click", () => {
+                    // @ts-ignore
+                    this.app.commands.executeCommandById("obsidian-livesync:livesync-all-conflictcheck");
+                });
+            }
+            );
+            Logger(`Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`, LOG_LEVEL_VERBOSE);
             for (const note of notes) {
                 Logger(`Conflicted: ${note.path}`);
             }
@@ -512,6 +529,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (last_version && Number(last_version) < VER) {
             this.settings.liveSync = false;
             this.settings.syncOnSave = false;
+            this.settings.syncOnEditorSave = false;
             this.settings.syncOnStart = false;
             this.settings.syncOnFileOpen = false;
             this.settings.syncAfterMerge = false;
@@ -572,15 +590,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.addCommand({
             id: "livesync-dump",
             name: "Dump information of this doc ",
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                this.localDatabase.getDBEntry(getPathFromTFile(view.file), {}, true, false);
+            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+                const file = view.file;
+                if (!file) return;
+                this.localDatabase.getDBEntry(getPathFromTFile(file), {}, true, false);
             },
         });
         this.addCommand({
             id: "livesync-checkdoc-conflicted",
             name: "Resolve if conflicted.",
-            editorCallback: async (editor: Editor, view: MarkdownView) => {
-                await this.showIfConflicted(getPathFromTFile(view.file));
+            editorCallback: async (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+                const file = view.file;
+                if (!file) return;
+                await this.showIfConflicted(getPathFromTFile(file));
             },
         });
 
@@ -617,8 +639,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.addCommand({
             id: "livesync-history",
             name: "Show history",
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                this.showHistory(view.file, null);
+            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+                if (view.file) this.showHistory(view.file, null);
             },
         });
         this.addCommand({
@@ -720,6 +742,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         cancelAllPeriodicTask();
         cancelAllTasks();
+        this._unloaded = true;
         Logger("unloading plugin");
     }
 
@@ -852,7 +875,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         (async () => await this.realizeSettingSyncMode())();
     }
 
-    async saveSettings() {
+
+    async saveSettingData() {
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
 
         localStorage.setItem(lsKey, this.deviceAndVaultName || "");
@@ -882,6 +906,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         await this.saveData(settings);
         this.localDatabase.settings = this.settings;
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
+    }
+
+    async saveSettings() {
+        await this.saveSettingData();
         this.triggerRealizeSettingSyncMode();
     }
 
@@ -889,7 +917,38 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     registerFileWatchEvents() {
         this.vaultManager = new StorageEventManagerObsidian(this)
     }
-
+    _initialCallback: any;
+    swapSaveCommand() {
+        Logger("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
+        const saveCommandDefinition = (this.app as any).commands?.commands?.[
+            "editor:save-file"
+        ];
+        const save = saveCommandDefinition?.callback;
+        if (typeof save === "function") {
+            this._initialCallback = save;
+            saveCommandDefinition.callback = () => {
+                scheduleTask("syncOnEditorSave", 250, () => {
+                    if (this._unloaded) {
+                        Logger("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
+                        saveCommandDefinition.callback = this._initialCallback;
+                    } else {
+                        Logger("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
+                        if (this.settings.syncOnEditorSave) {
+                            this.replicate();
+                        }
+                    }
+                });
+                save();
+            };
+        }
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const _this = this;
+        //@ts-ignore
+        window.CodeMirrorAdapter.commands.save = () => {
+            //@ts-ignore
+            _this.app.commands.executeCommandById('editor:save-file');
+        };
+    }
     registerWatchEvents() {
         this.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
         this.registerDomEvent(document, "visibilitychange", this.watchWindowVisibility);
@@ -949,7 +1008,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             }
         }
         cancelTask("applyBatchAuto");
-        const ret = await runWithLock("procFiles", true, async () => {
+        const ret = await skipIfDuplicated("procFiles", async () => {
             do {
                 const queue = this.vaultManager.fetchEvent();
                 if (queue === false) break;
@@ -1004,9 +1063,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
 
-    watchWorkspaceOpen(file: TFile) {
+    watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
         if (!this.isReady) return;
+        if (!file) return;
         this.watchWorkspaceOpenAsync(file);
     }
 
@@ -1269,7 +1329,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 const path = getPath(entry);
                 try {
                     const releaser = await semaphore.acquire(1);
-                    runWithLock(`dbchanged-${path}`, false, async () => {
+                    serialized(`dbchanged-${path}`, async () => {
                         Logger(`Applying ${path} (${entry._id}: ${entry._rev}) change...`, LOG_LEVEL_VERBOSE);
                         await this.handleDBChangedAsync(entry);
                         Logger(`Applied ${path} (${entry._id}:${entry._rev}) change...`);
@@ -1646,7 +1706,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             if (this.replicator.remoteLockedAndDeviceNotAccepted) {
                 if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
                     Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-                    await runWithLock("cleanup", true, async () => {
+                    await skipIfDuplicated("cleanup", async () => {
                         const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
                         const message = `The remote database has been cleaned up.
 To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
@@ -2172,18 +2232,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
             Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL_NOTICE);
             return true;
         }
-        // first, check for same contents and deletion status.
-        if (leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted) {
-            let leaf = leftLeaf;
-            if (leftLeaf.mtime > rightLeaf.mtime) {
-                leaf = rightLeaf;
-            }
-            await this.localDatabase.deleteDBEntry(path, { rev: leaf.rev });
-            await this.pullFile(path, null, true);
-            Logger(`automatically merged:${path}`);
-            return true;
-        }
-        if (this.settings.resolveConflictsByNewerFile) {
+
+        const isSame = leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted;
+        const isBinary = !isPlainText(path);
+        const alwaysNewer = this.settings.resolveConflictsByNewerFile;
+        if (isSame || isBinary || alwaysNewer) {
             const lMtime = ~~(leftLeaf.mtime / 1000);
             const rMtime = ~~(rightLeaf.mtime / 1000);
             let loser = leftLeaf;
@@ -2192,7 +2245,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
             await this.pullFile(path, null, true);
-            Logger(`Automatically merged (newerFileResolve) :${path}`, LOG_LEVEL_NOTICE);
+            Logger(`Automatically merged (${isSame ? "same," : ""}${isBinary ? "binary," : ""}${alwaysNewer ? "alwaysNewer" : ""}) :${path}`, LOG_LEVEL_NOTICE);
             return true;
         }
         // make diff.
@@ -2208,7 +2261,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     showMergeDialog(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
-        return runWithLock("resolve-conflict:" + filename, false, () =>
+        return serialized("resolve-conflict:" + filename, () =>
             new Promise((res, rej) => {
                 Logger("open conflict dialog", LOG_LEVEL_VERBOSE);
                 new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
@@ -2287,7 +2340,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     async showIfConflicted(filename: FilePathWithPrefix) {
-        await runWithLock("conflicted", false, async () => {
+        await serialized("conflicted", async () => {
             const conflictCheckResult = await this.getConflictedStatus(filename);
             if (conflictCheckResult === false) {
                 //nothing to do.
@@ -2439,7 +2492,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         };
         //upsert should locked
         const msg = `DB <- STORAGE (${datatype}) `;
-        const isNotChanged = await runWithLock("file-" + fullPath, false, async () => {
+        const isNotChanged = await serialized("file-" + fullPath, async () => {
             if (recentlyTouched(file)) {
                 return true;
             }
@@ -2608,7 +2661,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return this.localDatabase.isTargetFile(filepath);
     }
     async dryRunGC() {
-        await runWithLock("cleanup", true, async () => {
+        await skipIfDuplicated("cleanup", async () => {
             const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
             if (typeof (remoteDBConn) == "string") {
                 Logger(remoteDBConn);
@@ -2622,7 +2675,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
     async dbGC() {
         // Lock the remote completely once.
-        await runWithLock("cleanup", true, async () => {
+        await skipIfDuplicated("cleanup", async () => {
             this.getReplicator().markRemoteLocked(this.settings, true, true);
             const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
             if (typeof (remoteDBConn) == "string") {
@@ -2635,6 +2688,42 @@ Or if you are sure know what had been happened, we can unlock the database from 
             await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDBConn.db);
             this.localDatabase.refreshSettings();
             Logger("The remote database has been cleaned up! Other devices will be cleaned up on the next synchronisation.")
+        });
+    }
+
+
+    askInPopup(key: string, dialogText: string, anchorCallback: (anchor: HTMLAnchorElement) => void) {
+
+        const fragment = createFragment((doc) => {
+
+            const [beforeText, afterText] = dialogText.split("{HERE}", 2);
+            doc.createEl("span", null, (a) => {
+                a.appendText(beforeText);
+                a.appendChild(a.createEl("a", null, (anchor) => {
+                    anchorCallback(anchor);
+                }));
+
+                a.appendText(afterText);
+            });
+        });
+        const popupKey = "popup-" + key;
+        scheduleTask(popupKey, 1000, async () => {
+            const popup = await memoIfNotExist(popupKey, () => new Notice(fragment, 0));
+            //@ts-ignore
+            const isShown = popup?.noticeEl?.isShown();
+            if (!isShown) {
+                memoObject(popupKey, new Notice(fragment, 0));
+            }
+            scheduleTask(popupKey + "-close", 20000, () => {
+                const popup = retrieveMemoObject<Notice>(popupKey);
+                if (!popup)
+                    return;
+                //@ts-ignore
+                if (popup?.noticeEl?.isShown()) {
+                    popup.hide();
+                }
+                disposeMemoObject(popupKey);
+            });
         });
     }
 }

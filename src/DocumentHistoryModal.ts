@@ -10,29 +10,29 @@ import { stripPrefix } from "./lib/src/path";
 
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
-    range: HTMLInputElement;
-    contentView: HTMLDivElement;
-    info: HTMLDivElement;
-    fileInfo: HTMLDivElement;
+    range!: HTMLInputElement;
+    contentView!: HTMLDivElement;
+    info!: HTMLDivElement;
+    fileInfo!: HTMLDivElement;
     showDiff = false;
-    id: DocumentID;
+    id?: DocumentID;
 
     file: FilePathWithPrefix;
 
     revs_info: PouchDB.Core.RevisionInfo[] = [];
-    currentDoc: LoadedEntry;
+    currentDoc?: LoadedEntry;
     currentText = "";
     currentDeleted = false;
-    initialRev: string;
+    initialRev?: string;
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id: DocumentID, revision?: string) {
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id?: DocumentID, revision?: string) {
         super(app);
         this.plugin = plugin;
         this.file = (file instanceof TFile) ? getPathFromTFile(file) : file;
         this.id = id;
         this.initialRev = revision;
-        if (!file) {
-            this.file = this.plugin.id2path(id, null);
+        if (!file && id) {
+            this.file = this.plugin.id2path(id);
         }
         if (localStorage.getItem("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
@@ -46,8 +46,8 @@ export class DocumentHistoryModal extends Modal {
         const db = this.plugin.localDatabase;
         try {
             const w = await db.localDatabase.get(this.id, { revs_info: true });
-            this.revs_info = w._revs_info.filter((e) => e?.status == "available");
-            this.range.max = `${this.revs_info.length - 1}`;
+            this.revs_info = w._revs_info?.filter((e) => e?.status == "available") ?? [];
+            this.range.max = `${Math.max(this.revs_info.length - 1, 0)}`;
             this.range.value = this.range.max;
             this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
             await this.loadRevs(initialRev);
@@ -90,7 +90,7 @@ export class DocumentHistoryModal extends Modal {
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
             const w1data = w.datatype == "plain" ? getDocData(w.data) : base64ToString(w.data);
-            this.currentDeleted = w.deleted;
+            this.currentDeleted = !!w.deleted;
             this.currentText = w1data;
             if (this.showDiff) {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
@@ -130,9 +130,8 @@ export class DocumentHistoryModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-
+        this.titleEl.setText("Document History");
         contentEl.empty();
-        contentEl.createEl("h2", { text: "Document History" });
         this.fileInfo = contentEl.createDiv("");
         this.fileInfo.addClass("op-info");
         const divView = contentEl.createDiv("");

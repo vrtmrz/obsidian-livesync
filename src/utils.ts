@@ -3,9 +3,10 @@ import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDa
 
 import { Logger } from "./lib/src/logger";
 import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
-import { CHeader, ICHeader, ICHeaderLength, PSCHeader } from "./types";
+import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types";
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
 import ObsidianLiveSyncPlugin from "./main";
+import { writeString } from "./lib/src/strbin";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
@@ -387,6 +388,9 @@ export function isChunk(str: string): boolean {
 export function isPluginMetadata(str: string): boolean {
     return str.startsWith(PSCHeader);
 }
+export function isCustomisationSyncMetadata(str: string): boolean {
+    return str.startsWith(ICXHeader);
+}
 
 export const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
@@ -440,7 +444,7 @@ export class PeriodicProcessor {
 }
 
 export const _requestToCouchDBFetch = async (baseUri: string, username: string, password: string, path?: string, body?: string | any, method?: string) => {
-    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
+    const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
     const encoded = window.btoa(utf8str);
     const authHeader = "Basic " + encoded;
     const transformedHeaders: Record<string, string> = { authorization: authHeader, "content-type": "application/json" };
@@ -456,7 +460,7 @@ export const _requestToCouchDBFetch = async (baseUri: string, username: string, 
 }
 
 export const _requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, path?: string, body?: any, method?: string) => {
-    const utf8str = String.fromCharCode.apply(null, new TextEncoder().encode(`${username}:${password}`));
+    const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
     const encoded = window.btoa(utf8str);
     const authHeader = "Basic " + encoded;
     const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };

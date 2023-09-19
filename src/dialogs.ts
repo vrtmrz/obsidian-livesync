@@ -20,6 +20,7 @@ export class PluginDialogModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        this.titleEl.setText("Customization Sync (Beta2)")
         if (this.component == null) {
             this.component = new PluginPane({
                 target: contentEl,
@@ -38,7 +39,7 @@ export class PluginDialogModal extends Modal {
 
 export class InputStringDialog extends Modal {
     result: string | false = false;
-    onSubmit: (result: string | boolean) => void;
+    onSubmit: (result: string | false) => void;
     title: string;
     key: string;
     placeholder: string;
@@ -56,8 +57,7 @@ export class InputStringDialog extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-
-        contentEl.createEl("h1", { text: this.title });
+        this.titleEl.setText(this.title);
         // For enter to submit
         const formEl = contentEl.createEl("form");
         new Setting(formEl).setName(this.key).setClass(this.isPassword ? "password-input" : "normal-input").addText((text) =>
@@ -144,7 +144,7 @@ export class MessageBox extends Modal {
     timer: ReturnType<typeof setInterval> = undefined;
     defaultButtonComponent: ButtonComponent | undefined;
 
-    onSubmit: (result: string | boolean) => void;
+    onSubmit: (result: string | false) => void;
 
     constructor(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout: number, onSubmit: (result: (typeof buttons)[number] | false) => void) {
         super(plugin.app);
@@ -175,6 +175,7 @@ export class MessageBox extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        this.titleEl.setText(this.title);
         contentEl.addEventListener("click", () => {
             if (this.timer) {
                 clearInterval(this.timer);

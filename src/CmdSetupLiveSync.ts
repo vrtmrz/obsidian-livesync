@@ -20,6 +20,11 @@ export class SetupLiveSync extends LiveSyncCommands {
             name: "Copy the setup URI",
             callback: this.command_copySetupURI.bind(this),
         });
+        this.plugin.addCommand({
+            id: "livesync-copysetupuri-short",
+            name: "Copy the setup URI (With customization sync)",
+            callback: this.command_copySetupURIWithSync.bind(this),
+        });
 
         this.plugin.addCommand({
             id: "livesync-copysetupurifull",
@@ -41,11 +46,14 @@ export class SetupLiveSync extends LiveSyncCommands {
     }
     async realizeSettingSyncMode() { }
 
-    async command_copySetupURI() {
+    async command_copySetupURI(stripExtra = true) {
         const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "", true);
         if (encryptingPassphrase === false)
             return;
         const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
+        if (stripExtra) {
+            delete setting.pluginSyncExtendedSetting;
+        }
         const keys = Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[];
         for (const k of keys) {
             if (JSON.stringify(k in setting ? setting[k] : "") == JSON.stringify(k in DEFAULT_SETTINGS ? DEFAULT_SETTINGS[k] : "*")) {
@@ -66,6 +74,9 @@ export class SetupLiveSync extends LiveSyncCommands {
         const uri = `${configURIBase}${encryptedSetting}`;
         await navigator.clipboard.writeText(uri);
         Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
+    }
+    async command_copySetupURIWithSync() {
+        this.command_copySetupURI(false);
     }
     async command_openSetupURI() {
         const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
@@ -290,6 +301,7 @@ Of course, we are able to disable these features.`
         this.plugin.settings.liveSync = false;
         this.plugin.settings.periodicReplication = false;
         this.plugin.settings.syncOnSave = false;
+        this.plugin.settings.syncOnEditorSave = false;
         this.plugin.settings.syncOnStart = false;
         this.plugin.settings.syncOnFileOpen = false;
         this.plugin.settings.syncAfterMerge = false;

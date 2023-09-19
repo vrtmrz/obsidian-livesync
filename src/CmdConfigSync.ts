@@ -1,14 +1,14 @@
 import { writable } from 'svelte/store';
-import { Notice, type PluginManifest, parseYaml } from "./deps";
+import { Notice, type PluginManifest, parseYaml, normalizePath } from "./deps";
 
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry } from "./lib/src/types";
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
 import { delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64, readString, crc32CKHash } from "./lib/src/strbin";
-import { runWithLock } from "./lib/src/lock";
+import { serialized } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
 import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "./utils";
@@ -16,10 +16,20 @@ import { PluginDialogModal } from "./dialogs";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { pipeGeneratorToGenerator, processAllGeneratorTasksWithConcurrencyLimit } from './lib/src/task';
 
-
-function serialize<T>(obj: T): string {
-    return JSON.stringify(obj, null, 1);
+function serialize(data: PluginDataEx): string {
+    // To improve performance, make JSON manually.
+    // Self-hosted LiveSync uses `\n` to split chunks. Therefore, grouping together those with similar entropy would work nicely.
+    return `{"category":"${data.category}","name":"${data.name}","term":${JSON.stringify(data.term)}
+${data.version ? `,"version":"${data.version}"` : ""},
+"mtime":${data.mtime},
+"files":[
+${data.files.map(file => `{"filename":"${file.filename}"${file.displayName ? `,"displayName":"${file.displayName}"` : ""}${file.version ? `,"version":"${file.version}"` : ""},
+"mtime":${file.mtime},"size":${file.size}
+,"data":[${file.data.map(e => `"${e}"`).join(",")
+        }]}`).join(",")
+        }]}`
 }
+
 function deserialize<T>(str: string, def: T) {
     try {
         return JSON.parse(str) as T;
@@ -107,6 +117,7 @@ export class ConfigSync extends LiveSyncCommands {
             },
         });
     }
+
     getFileCategory(filePath: string): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
         if (filePath.split("/").length == 2 && filePath.endsWith(".json")) return "CONFIG";
         if (filePath.split("/").length == 4 && filePath.startsWith(`${this.app.vault.configDir}/themes/`)) return "THEME";
@@ -164,6 +175,46 @@ export class ConfigSync extends LiveSyncCommands {
         pluginList.set(this.pluginList)
         await this.updatePluginList(showMessage);
     }
+    async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
+        const wx = await this.localDatabase.getDBEntry(path, null, false, false);
+        if (wx) {
+            const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
+            const xFiles = [] as PluginDataExFile[];
+            for (const file of data.files) {
+                const work = { ...file };
+                const tempStr = getDocData(work.data);
+                work.data = [crc32CKHash(tempStr)];
+                xFiles.push(work);
+            }
+            return ({
+                ...data,
+                documentPath: this.getPath(wx),
+                files: xFiles
+            }) as PluginDataExDisplay;
+        }
+        return false;
+    }
+    createMissingConfigurationEntry() {
+        let saveRequired = false;
+        for (const v of this.pluginList) {
+            const key = `${v.category}/${v.name}`;
+            if (!(key in this.plugin.settings.pluginSyncExtendedSetting)) {
+                this.plugin.settings.pluginSyncExtendedSetting[key] = {
+                    key,
+                    mode: MODE_SELECTIVE,
+                    files: []
+                }
+            }
+            if (this.plugin.settings.pluginSyncExtendedSetting[key].files.sort().join(",").toLowerCase() !=
+                v.files.map(e => e.filename).sort().join(",").toLowerCase()) {
+                this.plugin.settings.pluginSyncExtendedSetting[key].files = v.files.map(e => e.filename).sort();
+                saveRequired = true;
+            }
+        }
+        if (saveRequired) {
+            this.plugin.saveSettingData();
+        }
+    }
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         // pluginList.set([]);
@@ -174,7 +225,7 @@ export class ConfigSync extends LiveSyncCommands {
         }
         await Promise.resolve(); // Just to prevent warning.
         scheduleTask("update-plugin-list-task", 200, async () => {
-            await runWithLock("update-plugin-list", false, async () => {
+            await serialized("update-plugin-list", async () => {
                 try {
                     const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
                     const plugins = updatedDocumentPath ?
@@ -193,22 +244,7 @@ export class ConfigSync extends LiveSyncCommands {
                             count++;
                             if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
                             Logger(`plugin-${path}`, LOG_LEVEL_VERBOSE);
-                            const wx = await this.localDatabase.getDBEntry(path, null, false, false);
-                            if (wx) {
-                                const data = deserialize(getDocData(wx.data), {}) as PluginDataEx;
-                                const xFiles = [] as PluginDataExFile[];
-                                for (const file of data.files) {
-                                    const work = { ...file };
-                                    const tempStr = getDocData(work.data);
-                                    work.data = [crc32CKHash(tempStr)];
-                                    xFiles.push(work);
-                                }
-                                return ({
-                                    ...data,
-                                    documentPath: this.getPath(wx),
-                                    files: xFiles
-                                });
-                            }
+                            return this.loadPluginData(path);
                             // return entries;
                         } catch (ex) {
                             //TODO
@@ -218,7 +254,7 @@ export class ConfigSync extends LiveSyncCommands {
                         return false;
                     }))) {
                         if ("ok" in v) {
-                            if (v.ok != false) {
+                            if (v.ok !== false) {
                                 let newList = [...this.pluginList];
                                 const item = v.ok;
                                 newList = newList.filter(x => x.documentPath != item.documentPath);
@@ -230,6 +266,7 @@ export class ConfigSync extends LiveSyncCommands {
                         }
                     }
                     Logger(`All files enumerated`, logLevel, "get-plugins");
+                    this.createMissingConfigurationEntry();
                 } finally {
                     pluginIsEnumerating.set(false);
                 }
@@ -257,7 +294,7 @@ export class ConfigSync extends LiveSyncCommands {
         const fileA = { ...pluginDataA.files[0], ctime: pluginDataA.files[0].mtime, _id: `${pluginDataA.documentPath}` as DocumentID };
         const fileB = pluginDataB.files[0];
         const docAx = { ...docA, ...fileA } as LoadedEntry, docBx = { ...docB, ...fileB } as LoadedEntry
-        return runWithLock("config:merge-data", false, () => new Promise((res) => {
+        return serialized("config:merge-data", () => new Promise((res) => {
             Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             // const docs = [docA, docB];
             const path = stripAllPrefixes(docAx.path.split("/").slice(-1).join("/") as FilePath);
@@ -411,6 +448,7 @@ export class ConfigSync extends LiveSyncCommands {
         this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0);
         return;
     }
+
     recentProcessedInternalFiles = [] as string[];
     async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
         const stat = await this.app.vault.adapter.stat(path);
@@ -470,7 +508,7 @@ export class ConfigSync extends LiveSyncCommands {
             return;
         }
         const vf = this.filenameToUnifiedKey(path, term);
-        return await runWithLock(`plugin-${vf}`, false, async () => {
+        return await serialized(`plugin-${vf}`, async () => {
             const category = this.getFileCategory(path);
             let mtime = 0;
             let fileTargets = [] as FilePath[];
@@ -578,6 +616,13 @@ export class ConfigSync extends LiveSyncCommands {
         // Make sure that target is a file.
         if (stat && stat.type != "file")
             return false;
+
+        const configDir = normalizePath(this.app.vault.configDir);
+        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode != MODE_SELECTIVE).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
+        if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
+            Logger(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const storageMTime = ~~((stat && stat.mtime || 0) / 1000);
         const key = `${path}-${storageMTime}`;
         if (this.recentProcessedInternalFiles.contains(key)) {
@@ -618,7 +663,7 @@ export class ConfigSync extends LiveSyncCommands {
 
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
-        await runWithLock("file-x-" + prefixedFileName, false, async () => {
+        await serialized("file-x-" + prefixedFileName, async () => {
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, false) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;

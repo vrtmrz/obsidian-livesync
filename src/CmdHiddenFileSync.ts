@@ -1,13 +1,13 @@
-import { Notice, normalizePath, type PluginManifest } from "./deps";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
+import { normalizePath, type PluginManifest } from "./deps";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
 import { Parallels, delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
+import { scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
-import { runWithLock } from "./lib/src/lock";
+import { serialized } from "./lib/src/lock";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { addPrefix, stripAllPrefixes } from "./lib/src/path";
@@ -77,7 +77,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     procInternalFiles: string[] = [];
     async execInternalFile() {
-        await runWithLock("execInternal", false, async () => {
+        await serialized("execInternal", async () => {
             const w = [...this.procInternalFiles];
             this.procInternalFiles = [];
             Logger(`Applying hidden ${w.length} files change...`);
@@ -95,6 +95,14 @@ export class HiddenFileSync extends LiveSyncCommands {
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: FilePath) {
         if (!this.settings.syncInternalFiles) return;
+
+        // Exclude files handled by customization sync
+        const configDir = normalizePath(this.app.vault.configDir);
+        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] : Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
+        if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
+            Logger(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const stat = await this.app.vault.adapter.stat(path);
         // sometimes folder is coming.
         if (stat && stat.type != "file")
@@ -209,18 +217,24 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     //TODO: Tidy up. Even though it is experimental feature, So dirty...
-    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe" | "pullForce" | "pushForce", showMessage: boolean, files: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
+    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe" | "pullForce" | "pushForce", showMessage: boolean, filesAll: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
         await this.resolveConflictOnInternalFiles();
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         Logger("Scanning hidden files.", logLevel, "sync_internal");
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e, "i"));
-        if (!files)
-            files = await this.scanInternalFiles();
+
+        const configDir = normalizePath(this.app.vault.configDir);
+        let files: InternalFileInfo[] =
+            filesAll ? filesAll : (await this.scanInternalFiles())
+
+        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] : Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
+        files = files.filter(file => synchronisedInConfigSync.every(filterFile => !file.path.toLowerCase().startsWith(filterFile)))
+
         const filesOnDB = ((await this.localDatabase.allDocsRaw({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
         const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => stripAllPrefixes(this.getPath(e)))])];
-        const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1));
+        const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1)).filter(path => synchronisedInConfigSync.every(filterFile => !path.toLowerCase().startsWith(filterFile)))
         function compareMTime(a: number, b: number) {
             const wa = ~~(a / 1000);
             const wb = ~~(b / 1000);
@@ -274,7 +288,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             if (ignorePatterns.some(e => filename.match(e)))
                 continue;
             if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
-                continue
+                continue;
             }
 
             const fileOnStorage = filename in filesMap ? filesMap[filename] : undefined;
@@ -335,7 +349,6 @@ export class HiddenFileSync extends LiveSyncCommands {
 
         // When files has been retrieved from the database. they must be reloaded.
         if ((direction == "pull" || direction == "pullForce") && filesChanged != 0) {
-            const configDir = normalizePath(this.app.vault.configDir);
             // Show notification to restart obsidian when something has been changed in configDir.
             if (configDir in updatedFolders) {
                 // Numbers of updated files that is below of configDir.
@@ -352,44 +365,18 @@ export class HiddenFileSync extends LiveSyncCommands {
                             updatedCount -= updatedFolders[manifest.dir];
                             const updatePluginId = manifest.id;
                             const updatePluginName = manifest.name;
-                            const fragment = createFragment((doc) => {
-                                doc.createEl("span", null, (a) => {
-                                    a.appendText(`Files in ${updatePluginName} has been updated, Press `);
-                                    a.appendChild(a.createEl("a", null, (anchor) => {
-                                        anchor.text = "HERE";
-                                        anchor.addEventListener("click", async () => {
-                                            Logger(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
-                                            // @ts-ignore
-                                            await this.app.plugins.unloadPlugin(updatePluginId);
-                                            // @ts-ignore
-                                            await this.app.plugins.loadPlugin(updatePluginId);
-                                            Logger(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
-                                        });
-                                    }));
-
-                                    a.appendText(` to reload ${updatePluginName}, or press elsewhere to dismiss this message.`);
+                            this.plugin.askInPopup(`updated-${updatePluginId}`, `Files in ${updatePluginName} has been updated, Press {HERE} to reload ${updatePluginName}, or press elsewhere to dismiss this message.`, (anchor) => {
+                                anchor.text = "HERE";
+                                anchor.addEventListener("click", async () => {
+                                    Logger(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
+                                    // @ts-ignore
+                                    await this.app.plugins.unloadPlugin(updatePluginId);
+                                    // @ts-ignore
+                                    await this.app.plugins.loadPlugin(updatePluginId);
+                                    Logger(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
                                 });
-                            });
-
-                            const updatedPluginKey = "popupUpdated-" + updatePluginId;
-                            scheduleTask(updatedPluginKey, 1000, async () => {
-                                const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
-                                //@ts-ignore
-                                const isShown = popup?.noticeEl?.isShown();
-                                if (!isShown) {
-                                    memoObject(updatedPluginKey, new Notice(fragment, 0));
-                                }
-                                scheduleTask(updatedPluginKey + "-close", 20000, () => {
-                                    const popup = retrieveMemoObject<Notice>(updatedPluginKey);
-                                    if (!popup)
-                                        return;
-                                    //@ts-ignore
-                                    if (popup?.noticeEl?.isShown()) {
-                                        popup.hide();
-                                    }
-                                    disposeMemoObject(updatedPluginKey);
-                                });
-                            });
+                            }
+                            );
                         }
                     }
                 } catch (ex) {
@@ -400,30 +387,11 @@ export class HiddenFileSync extends LiveSyncCommands {
 
                 // If something changes left, notify for reloading Obsidian.
                 if (updatedCount != 0) {
-                    const fragment = createFragment((doc) => {
-                        doc.createEl("span", null, (a) => {
-                            a.appendText(`Hidden files have been synchronized, Press `);
-                            a.appendChild(a.createEl("a", null, (anchor) => {
-                                anchor.text = "HERE";
-                                anchor.addEventListener("click", () => {
-                                    // @ts-ignore
-                                    this.app.commands.executeCommandById("app:reload");
-                                });
-                            }));
-
-                            a.appendText(` to reload obsidian, or press elsewhere to dismiss this message.`);
-                        });
-                    });
-
-                    scheduleTask("popupUpdated-" + configDir, 1000, () => {
-                        //@ts-ignore
-                        const isShown = this.confirmPopup?.noticeEl?.isShown();
-                        if (!isShown) {
-                            this.confirmPopup = new Notice(fragment, 0);
-                        }
-                        scheduleTask("popupClose" + configDir, 20000, () => {
-                            this.confirmPopup?.hide();
-                            this.confirmPopup = null;
+                    this.plugin.askInPopup(`updated-any-hidden`, `Hidden files have been synchronized, Press  {HERE} to reload Obsidian, or press elsewhere to dismiss this message.`, (anchor) => {
+                        anchor.text = "HERE";
+                        anchor.addEventListener("click", () => {
+                            // @ts-ignore
+                            this.app.commands.executeCommandById("app:reload");
                         });
                     });
                 }
@@ -437,6 +405,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (await this.plugin.isIgnoredByIgnoreFiles(file.path)) {
             return
         }
+
         const id = await this.path2id(file.path, ICHeader);
         const prefixedFileName = addPrefix(file.path, ICHeader);
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
@@ -449,7 +418,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             return false;
         }
         const mtime = file.mtime;
-        return await runWithLock("file-" + prefixedFileName, false, async () => {
+        return await serialized("file-" + prefixedFileName, async () => {
             try {
                 const old = await this.localDatabase.getDBEntry(prefixedFileName, null, false, false);
                 let saveData: LoadedEntry;
@@ -501,7 +470,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
             return
         }
-        await runWithLock("file-" + prefixedFileName, false, async () => {
+        await serialized("file-" + prefixedFileName, async () => {
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, true) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;
@@ -547,7 +516,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
             return;
         }
-        return await runWithLock("file-" + prefixedFileName, false, async () => {
+        return await serialized("file-" + prefixedFileName, async () => {
             try {
                 // Check conflicted status 
                 //TODO option
@@ -618,7 +587,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
 
     showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
-        return runWithLock("conflict:merge-data", false, () => new Promise((res) => {
+        return serialized("conflict:merge-data", () => new Promise((res) => {
             Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             const docs = [docA, docB];
             const path = stripAllPrefixes(docA.path);
@@ -676,13 +645,16 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
+        const configDir = normalizePath(this.app.vault.configDir);
         const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e, "i"));
+        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] : Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
+
         const filenames = (await this.getFiles(findRoot, [], null, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
-        const files = filenames.map(async (e) => {
+        const files = filenames.filter(path => synchronisedInConfigSync.every(filterFile => !path.toLowerCase().startsWith(filterFile))).map(async (e) => {
             return {
                 path: e as FilePath,
                 stat: await this.app.vault.adapter.stat(e)
@@ -716,7 +688,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             ...w.files
                 .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
                 .filter((e) => !filter || filter.some((ee) => e.match(ee)))
-                .filter((e) => !ignoreFilter || ignoreFilter.every((ee) => !e.match(ee))),
+                .filter((e) => !ignoreFilter || ignoreFilter.every((ee) => !e.match(ee)))
         ];
         let files = [] as string[];
         for (const file of filesSrc) {

@@ -108,7 +108,7 @@
                     }
                 }
             })
-            .reduce((p, c) => p | c, 0);
+            .reduce((p, c) => p | (c as number), 0 as number);
         if (matchingStatus == 0b0000100) {
             equivalency = "⚖️ Same";
             canApply = false;

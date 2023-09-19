@@ -18,7 +18,7 @@ type LiveSyncForStorageEventManager = Plugin &
     ignoreFiles: string[],
 } & {
     isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
-    procFileEvent: (applyBatch?: boolean) => Promise<boolean>,
+    procFileEvent: (applyBatch?: boolean) => Promise<any>,
 };
 
 

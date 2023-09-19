@@ -18,10 +18,8 @@ export class ConflictResolveModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-
+        this.titleEl.setText("Conflicting changes");
         contentEl.empty();
-
-        contentEl.createEl("h2", { text: "This document has conflicted changes." });
         contentEl.createEl("span", { text: this.filename });
         const div = contentEl.createDiv("");
         div.addClass("op-scrollable");

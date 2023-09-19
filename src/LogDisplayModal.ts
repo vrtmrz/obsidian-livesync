@@ -14,9 +14,9 @@ export class LogDisplayModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
+        this.titleEl.setText("Sync status");
 
         contentEl.empty();
-        contentEl.createEl("h2", { text: "Sync Status" });
         const div = contentEl.createDiv("");
         div.addClass("op-scrollable");
         div.addClass("op-pre");

@@ -104,7 +104,6 @@
     ] as ["" | "A" | "B" | "AB" | "BA", string][];
 </script>
 
-<h1>Conflicted settings</h1>
 <h2>{filename}</h2>
 {#if !docA || !docB}
     <div class="message">Just for a minute, please!</div>

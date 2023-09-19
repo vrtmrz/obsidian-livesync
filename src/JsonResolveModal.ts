@@ -29,7 +29,7 @@ export class JsonResolveModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-
+        this.titleEl.setText("Conflicted Setting");
         contentEl.empty();
 
         if (this.component == null) {

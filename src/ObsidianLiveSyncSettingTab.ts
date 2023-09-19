@@ -120,6 +120,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.periodicReplication) return true;
             if (this.plugin.settings.syncOnFileOpen) return true;
             if (this.plugin.settings.syncOnSave) return true;
+            if (this.plugin.settings.syncOnEditorSave) return true;
             if (this.plugin.settings.syncOnStart) return true;
             if (this.plugin.settings.syncAfterMerge) return true;
             if (this.plugin.replicator.syncStatus == "CONNECTED") return true;
@@ -157,6 +158,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     this.plugin.settings.liveSync = false;
                     this.plugin.settings.periodicReplication = false;
                     this.plugin.settings.syncOnSave = false;
+                    this.plugin.settings.syncOnEditorSave = false;
                     this.plugin.settings.syncOnStart = false;
                     this.plugin.settings.syncOnFileOpen = false;
                     this.plugin.settings.syncAfterMerge = false;
@@ -216,7 +218,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 syncLive.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
-            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
+            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnEditorSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
                 syncNonLive.forEach((e) => {
                     e.setDisabled(false).setTooltip("");
                 });
@@ -891,6 +893,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             liveSync: false,
                             periodicReplication: false,
                             syncOnSave: false,
+                            syncOnEditorSave: false,
                             syncOnStart: false,
                             syncOnFileOpen: false,
                             syncAfterMerge: false,
@@ -904,6 +907,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             batchSave: true,
                             periodicReplication: true,
                             syncOnSave: false,
+                            syncOnEditorSave: false,
                             syncOnStart: true,
                             syncOnFileOpen: true,
                             syncAfterMerge: true,
@@ -1010,6 +1014,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
                         this.plugin.settings.syncOnSave = value;
+                        await this.plugin.saveSettings();
+                        applyDisplayEnabled();
+                    })
+                )
+            new Setting(containerSyncSettingEl)
+                .setName("Sync on Editor Save")
+                .setDesc("When you save file on the editor, sync automatically")
+                .setClass("wizardHidden")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncOnEditorSave).onChange(async (value) => {
+                        this.plugin.settings.syncOnEditorSave = value;
                         await this.plugin.saveSettings();
                         applyDisplayEnabled();
                     })
@@ -1199,7 +1214,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
         const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$";
         new Setting(containerSyncSettingEl)
-            .setName("Skip patterns")
+            .setName("Folders and files to ignore")
             .setDesc(
                 "Regular expression, If you use hidden file sync between desktop and mobile, adding `workspace$` is recommended."
             )
@@ -1777,8 +1792,8 @@ ${stringifyYaml(pluginConfig)}`;
                 dropdown
                     .addOptions({ "": "Old Algorithm", "xxhash32": "xxhash32 (Fast)", "xxhash64": "xxhash64 (Fastest)" } as Record<HashAlgorithm, string>)
                     .setValue(this.plugin.settings.hashAlg)
-                    .onChange(async (value: HashAlgorithm) => {
-                        this.plugin.settings.hashAlg = value;
+                    .onChange(async (value) => {
+                        this.plugin.settings.hashAlg = value as HashAlgorithm;
                         await this.plugin.saveSettings();
                     })
             )
