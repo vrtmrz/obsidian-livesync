@@ -14,35 +14,8 @@ I hope you will give it a try.
 
 #### Minors
 
-- 0.19.1 to 0.19.14 has been moved into the updates_old.md
-- 0.19.15
-  - Fixed:
-    - Now storing files after cleaning up is correct works.
-  - Improved:
-    - Cleaning the local database up got incredibly fastened.
-      Now we can clean instead of fetching again when synchronising with the remote which has been cleaned up.
-- 0.19.16
-  - Many upgrades on this release. I have tried not to let that happen, if something got corrupted, please feel free to notify me.
-  - New feature:
-    - (Beta) ignore files handling
-      We can use `.gitignore`, `.dockerignore`, and anything you like to filter the synchronising files.
-  - Fixed:
-    - Buttons on lock-detected-dialogue now can be shown in narrow-width devices.
-  - Improved:
-    - Some constant has been flattened to be evaluated.
-    - The usage of the deprecated API of obsidian has been reduced.
-    - Now the indexedDB adapter will be enabled while the importing configuration.
-  - Misc:
-  - Compiler, framework, and dependencies have been upgraded.
-  - Due to standing for these impacts (especially in esbuild and svelte,) terser has been introduced. 
-    Feel free to notify your opinion to me! I do not like to obfuscate the code too.
-- 0.19.17
-  - Fixed:
-    - Now nested ignore files could be parsed correctly.
-    - The unexpected deletion of hidden files in some cases has been corrected.
-    - Hidden file change is no longer reflected on the device which has made the change itself.
-  - Behaviour changed:
-    - From this version, the file which has `:` in its name should be ignored even if on Linux devices.
+- 0.19.1 to 0.19.17 has been moved into the updates_old.md
+
 - 0.19.18
   - Fixed:
     - Now the empty (or deleted) file could be conflict-resolved.
@@ -52,5 +25,23 @@ I hope you will give it a try.
     - LiveSync now try to keep local changes when fetching from the rebuilt remote database.
       Local changes now have been kept as a revision and fetched things will be new revisions.
     - Now, all files will be restored after performing `fetch` immediately.
-
+- 0.19.20
+  - New feature:
+    - `Sync on Editor save` has been implemented
+      - We can start synchronisation when we save from the Obsidian explicitly. 
+    - Now we can use the `Hidden file sync` and the `Customization sync` cooperatively.
+      - We can exclude files from `Hidden file sync` which is already handled in Customization sync.
+    - We can ignore specific plugins in Customization sync.
+    - Now the message of leftover conflicted files accepts our click.
+      - We can open `Resolve all conflicted files` in an instant.
+  - Refactored:
+    - Parallelism functions made more explicit.
+    - Type errors have been reduced.
+  - Fixed:
+    - Now documents would not be overwritten if they are conflicted.
+      It will be saved as a new conflicted revision.
+    - Some error messages have been fixed.
+    - Missing dialogue titles have been shown now.
+      - We can click close buttons on mobile now.
+    - Conflicted Customisation sync files will be resolved automatically by their modified time.
 ... To continue on to `updates_old.md`.
