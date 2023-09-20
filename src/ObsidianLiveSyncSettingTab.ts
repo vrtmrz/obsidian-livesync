@@ -1508,10 +1508,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         pluginConfig.passphrase = REDACTED;
                         pluginConfig.encryptedPassphrase = REDACTED;
                         pluginConfig.encryptedCouchDBConnection = REDACTED;
+                        pluginConfig.pluginSyncExtendedSetting = {};
 
                         const msgConfig = `----remote config----
 ${stringifyYaml(responseConfig)}
 ---- Plug-in config ---
+version:${manifestVersion}
 ${stringifyYaml(pluginConfig)}`;
                         console.log(msgConfig);
                         await navigator.clipboard.writeText(msgConfig);

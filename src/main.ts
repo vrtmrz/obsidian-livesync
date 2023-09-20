@@ -1415,10 +1415,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             const now = new Date().getTime();
             if (queue.missingChildren.length == 0) {
                 queue.done = true;
-                if (isInternalMetadata(queue.entry._id)) {
+                if (isInternalMetadata(queue.entry._id) && this.settings.syncInternalFiles) {
                     //system file
                     const filename = this.getPathWithoutPrefix(queue.entry);
-                    this.addOnHiddenFileSync.procInternalFile(filename);
+                    this.isTargetFile(filename).then((ret) => ret ? this.addOnHiddenFileSync.procInternalFile(filename) : Logger(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE));
                 } else if (isValidPath(this.getPath(queue.entry))) {
                     this.handleDBChanged(queue.entry);
                 } else {
@@ -1460,7 +1460,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (!await this.isTargetFile(path)) return;
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         // Do not handle internal files if the feature has not been enabled.
-        if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) return;
+        if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) {
+            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
+            return;
+        }
+        if (isCustomisationSyncMetadata(doc._id) && !this.settings.usePluginSync) {
+            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         // It is better for your own safety, not to handle the following files
         const ignoreFiles = [
             "_design/replicate",
@@ -1534,12 +1541,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
             if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
                 if (this.settings.suspendParseReplicationResult) {
+                    if (isInternalMetadata(change._id) && !this.settings.syncInternalFiles) {
+                        continue;
+                    }
+                    if (isCustomisationSyncMetadata(change._id) && !this.settings.usePluginSync) {
+                        continue;
+                    }
+                    if (!change.path) {
+                        continue;
+                    }
                     const newQueue = {
                         entry: change,
                         missingChildren: [] as string[],
                         timeout: 0,
                     };
                     Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
+                    this.queuedFiles = this.queuedFiles.filter(e => e.entry.path != change.path);
                     this.queuedFiles.push(newQueue);
                     this.saveQueuedFiles();
                     continue;
