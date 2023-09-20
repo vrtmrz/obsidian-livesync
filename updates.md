@@ -44,4 +44,10 @@ I hope you will give it a try.
     - Missing dialogue titles have been shown now.
       - We can click close buttons on mobile now.
     - Conflicted Customisation sync files will be resolved automatically by their modified time.
+- 0.19.21
+  - Fixed:
+    - Hidden files are no longer handled in the initial replication.
+    - Report from `Making report` fixed
+      - No longer contains customisation sync information.
+      - Version of LiveSync has been added.
 ... To continue on to `updates_old.md`.
