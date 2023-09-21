@@ -50,4 +50,13 @@ I hope you will give it a try.
     - Report from `Making report` fixed
       - No longer contains customisation sync information.
       - Version of LiveSync has been added.
+- 0.19.22
+Fixed:
+- Now the synchronisation will begin without our interaction.
+- No longer puts the configuration of the remote database into the log while checking configuration.
+- Some outdated description notes have been removed.
+- Options that are meaningless depending on other settings configured are now hidden.
+  - Scan for hidden files before replication
+  - Scan customization periodically
+
 ... To continue on to `updates_old.md`.
