@@ -64,7 +64,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     replicator!: LiveSyncDBReplicator;
 
     statusBar?: HTMLElement;
-    suspended: boolean = true;
+    suspended: boolean = false;
     deviceAndVaultName: string = "";
     isMobile = false;
     isReady = false;
@@ -459,8 +459,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     return false;
                 }
             }
-            await this.realizeSettingSyncMode();
             this.registerWatchEvents();
+            await this.realizeSettingSyncMode();
             this.swapSaveCommand();
             if (this.settings.syncOnStart) {
                 this.replicator.openReplication(this.settings, false, false);

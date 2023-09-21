@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
@@ -303,6 +303,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setDisabled(false)
                     .onClick(async () => {
                         const checkConfig = async () => {
+                            Logger(`Checking database configuration`, LOG_LEVEL_INFO);
                             try {
                                 if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
                                     Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
@@ -310,8 +311,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 }
 
                                 const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
-
-                                Logger(JSON.stringify(r.json, null, 2));
 
                                 const responseConfig = r.json;
 
@@ -333,16 +332,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                     tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
                                     const x = checkResultDiv.appendChild(tmpDiv);
                                     x.querySelector("button").addEventListener("click", async () => {
-                                        console.dir({ key, value });
+                                        Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
                                         const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
-                                        console.dir(res);
                                         if (res.status == 200) {
-                                            Logger(`${title} successfully updated`, LOG_LEVEL_NOTICE);
+                                            Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
                                             checkResultDiv.removeChild(x);
                                             checkConfig();
                                         } else {
-                                            Logger(`${title} failed`, LOG_LEVEL_NOTICE);
-                                            Logger(res.text);
+                                            Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
+                                            Logger(res.text, LOG_LEVEL_VERBOSE);
                                         }
                                     });
                                 };
@@ -352,7 +350,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                     ["ob-btn-config-info"]
                                 );
 
-                                addResult("Your configuration is dumped to Log", ["ob-btn-config-info"]);
                                 addResult("--Config check--", ["ob-btn-config-head"]);
 
                                 // Admin check
@@ -453,6 +450,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 }
                                 addResult("--Done--", ["ob-btn-config-head"]);
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
+                                Logger(`Checking configuration done`, LOG_LEVEL_INFO);
                             } catch (ex) {
                                 Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
                                 Logger(ex);
@@ -1183,19 +1181,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 });
         }
 
-        new Setting(containerSyncSettingEl)
-            .setName("Scan for hidden files before replication")
-            .setDesc("This configuration will be ignored if monitoring changes is enabled.")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
-                    this.plugin.settings.syncInternalFilesBeforeReplication = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+        if (!this.plugin.settings.watchInternalFileChanges) {
+            new Setting(containerSyncSettingEl)
+                .setName("Scan for hidden files before replication")
+                .setClass("wizardHidden")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
+                        this.plugin.settings.syncInternalFilesBeforeReplication = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+        }
         new Setting(containerSyncSettingEl)
             .setName("Scan hidden files periodically")
-            .setDesc("Seconds, 0 to disable. This configuration will be ignored if monitoring changes is enabled.")
+            .setDesc("Seconds, 0 to disable")
             .setClass("wizardHidden")
             .addText((text) => {
                 text.setPlaceholder("")
@@ -1861,16 +1860,18 @@ ${stringifyYaml(pluginConfig)}`;
                     })
                 );
 
-            new Setting(containerPluginSettings)
-                .setName("Scan customization periodically")
-                .setDesc("Scan customization every 1 minute. This configuration will be ignored if monitoring changes of hidden files has been enabled.")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
-                        this.plugin.settings.autoSweepPluginsPeriodic = value;
-                        updateDisabledOfDeviceAndVaultName();
-                        await this.plugin.saveSettings();
-                    })
-                );
+            if (!this.plugin.settings.watchInternalFileChanges) {
+                new Setting(containerPluginSettings)
+                    .setName("Scan customization periodically")
+                    .setDesc("Scan customization every 1 minute.")
+                    .addToggle((toggle) =>
+                        toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
+                            this.plugin.settings.autoSweepPluginsPeriodic = value;
+                            updateDisabledOfDeviceAndVaultName();
+                            await this.plugin.saveSettings();
+                        })
+                    );
+            }
 
             new Setting(containerPluginSettings)
                 .setName("Notify customized")
