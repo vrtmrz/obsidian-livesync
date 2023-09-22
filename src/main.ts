@@ -576,7 +576,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.addRibbonIcon("view-log", "Show log", () => {
             this.showView(VIEW_TYPE_LOG);
         });
-
+        this.addCommand({
+            id: "view-log",
+            name: "Show log",
+            callback: () => {
+                this.showView(VIEW_TYPE_LOG);
+            }
+        });
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
         this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
 

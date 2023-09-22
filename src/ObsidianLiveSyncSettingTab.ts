@@ -304,28 +304,28 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         const checkConfig = async () => {
                             Logger(`Checking database configuration`, LOG_LEVEL_INFO);
+
+                            const emptyDiv = createDiv();
+                            emptyDiv.innerHTML = "<span></span>";
+                            checkResultDiv.replaceChildren(...[emptyDiv]);
+                            const addResult = (msg: string, classes?: string[]) => {
+                                const tmpDiv = createDiv();
+                                tmpDiv.addClass("ob-btn-config-fix");
+                                if (classes) {
+                                    tmpDiv.addClasses(classes);
+                                }
+                                tmpDiv.innerHTML = `${msg}`;
+                                checkResultDiv.appendChild(tmpDiv);
+                            };
                             try {
+
                                 if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
                                     Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
                                     return;
                                 }
-
                                 const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
-
                                 const responseConfig = r.json;
 
-                                const emptyDiv = createDiv();
-                                emptyDiv.innerHTML = "<span></span>";
-                                checkResultDiv.replaceChildren(...[emptyDiv]);
-                                const addResult = (msg: string, classes?: string[]) => {
-                                    const tmpDiv = createDiv();
-                                    tmpDiv.addClass("ob-btn-config-fix");
-                                    if (classes) {
-                                        tmpDiv.addClasses(classes);
-                                    }
-                                    tmpDiv.innerHTML = `${msg}`;
-                                    checkResultDiv.appendChild(tmpDiv);
-                                };
                                 const addConfigFixButton = (title: string, key: string, value: string) => {
                                     const tmpDiv = createDiv();
                                     tmpDiv.addClass("ob-btn-config-fix");
@@ -452,8 +452,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                                 Logger(`Checking configuration done`, LOG_LEVEL_INFO);
                             } catch (ex) {
-                                Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
-                                Logger(ex);
+                                if (ex?.status == 401) {
+                                    addResult(`❗ Access forbidden.`);
+                                    addResult(`We could not continue the test.`);
+                                    Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+                                } else {
+                                    Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
+                                    Logger(ex);
+                                }
                             }
                         };
                         await checkConfig();
@@ -1201,7 +1207,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.syncInternalFilesInterval + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 10) {
+                        if (v !== 0 && (isNaN(v) || v < 10)) {
                             v = 10;
                         }
                         this.plugin.settings.syncInternalFilesInterval = v;
