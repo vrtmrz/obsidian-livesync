@@ -11,7 +11,6 @@ We can use the new feature with the same configuration. Only the menu on the com
 
 I hope you will give it a try.
 
-
 #### Minors
 
 - 0.19.1 to 0.19.17 has been moved into the updates_old.md
@@ -28,7 +27,7 @@ I hope you will give it a try.
 - 0.19.20
   - New feature:
     - `Sync on Editor save` has been implemented
-      - We can start synchronisation when we save from the Obsidian explicitly. 
+      - We can start synchronisation when we save from the Obsidian explicitly.
     - Now we can use the `Hidden file sync` and the `Customization sync` cooperatively.
       - We can exclude files from `Hidden file sync` which is already handled in Customization sync.
     - We can ignore specific plugins in Customization sync.
@@ -51,12 +50,17 @@ I hope you will give it a try.
       - No longer contains customisation sync information.
       - Version of LiveSync has been added.
 - 0.19.22
-Fixed:
-- Now the synchronisation will begin without our interaction.
-- No longer puts the configuration of the remote database into the log while checking configuration.
-- Some outdated description notes have been removed.
-- Options that are meaningless depending on other settings configured are now hidden.
-  - Scan for hidden files before replication
-  - Scan customization periodically
+  - Fixed:
+    - Now the synchronisation will begin without our interaction.
+    - No longer puts the configuration of the remote database into the log while checking configuration.
+    - Some outdated description notes have been removed.
+    - Options that are meaningless depending on other settings configured are now hidden.
+      - Scan for hidden files before replication
+      - Scan customization periodically
+- 0.19.23
+  -Improved:
+    - We can open the log pane also from the command palette now.
+    - Now, the hidden file scanning interval could be configured to 0.
+    - `Check database configuration` now points out that we do not have administrator permission.
 
 ... To continue on to `updates_old.md`.
