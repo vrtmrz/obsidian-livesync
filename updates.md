@@ -1,66 +1,38 @@
-### 0.19.0
+### 0.20.0
 
-#### Customization sync
+At 0.20.0, Self-hosted LiveSync has changed the binary file format and encrypting format, for efficient synchronisation.  
+The dialogue will be shown and asks us to decide whether to keep v1 or use v2. Once we have enabled v2, all subsequent edits will be saved in v2. Therefore, devices running 0.19 or below cannot understand this and they might say that decryption error. Please update all devices.  
+Then we will have an impressive performance.
 
-Since `Plugin and their settings` have been broken, so I tried to fix it, not just fix it, but fix it the way it should be.
+Of course, these are very impactful changes. If you have any questions or troubled things, please feel free to open an issue and mention me.
 
-Now, we have `Customization sync`.
+Note: if you want to roll it back to v1, please enable `Use binary and encryption version 1` on the `Hatch` pane and perform the `rebuild everything` once.
 
-It is a real shame that the compatibility between these features has been broken. However, this new feature is surely useful and I believe that worth getting over the pain.
-We can use the new feature with the same configuration. Only the menu on the command palette has been changed. The dialog can be opened by `Show customization sync dialog`.
+Extra but notable information:
 
-I hope you will give it a try.
+This format change gives us the ability to detect some `marks` in the binary files as same as text files. Therefore, we can split binary files and some specific sort of them (i.e., PDF files) at the specific character. It means that editing the middle of files could be detected with marks.
 
-#### Minors
+Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
-- 0.19.1 to 0.19.17 has been moved into the updates_old.md
+#### Version history
 
-- 0.19.18
+- 0.20.0
+  - Improved:
+    - A New binary file handling implemented
+    - A new encrypted format has been implemented
+    - Now the chunk sizes will be adjusted for efficient sync
   - Fixed:
-    - Now the empty (or deleted) file could be conflict-resolved.
-- 0.19.19
-  - Fixed:
-    - Resolving conflicted revision has become more robust.
-    - LiveSync now try to keep local changes when fetching from the rebuilt remote database.
-      Local changes now have been kept as a revision and fetched things will be new revisions.
-    - Now, all files will be restored after performing `fetch` immediately.
-- 0.19.20
-  - New feature:
-    - `Sync on Editor save` has been implemented
-      - We can start synchronisation when we save from the Obsidian explicitly.
-    - Now we can use the `Hidden file sync` and the `Customization sync` cooperatively.
-      - We can exclude files from `Hidden file sync` which is already handled in Customization sync.
-    - We can ignore specific plugins in Customization sync.
-    - Now the message of leftover conflicted files accepts our click.
-      - We can open `Resolve all conflicted files` in an instant.
-  - Refactored:
-    - Parallelism functions made more explicit.
-    - Type errors have been reduced.
-  - Fixed:
-    - Now documents would not be overwritten if they are conflicted.
-      It will be saved as a new conflicted revision.
-    - Some error messages have been fixed.
-    - Missing dialogue titles have been shown now.
-      - We can click close buttons on mobile now.
-    - Conflicted Customisation sync files will be resolved automatically by their modified time.
-- 0.19.21
-  - Fixed:
-    - Hidden files are no longer handled in the initial replication.
-    - Report from `Making report` fixed
-      - No longer contains customisation sync information.
-      - Version of LiveSync has been added.
-- 0.19.22
-  - Fixed:
-    - Now the synchronisation will begin without our interaction.
-    - No longer puts the configuration of the remote database into the log while checking configuration.
-    - Some outdated description notes have been removed.
-    - Options that are meaningless depending on other settings configured are now hidden.
-      - Scan for hidden files before replication
-      - Scan customization periodically
-- 0.19.23
-  -Improved:
-    - We can open the log pane also from the command palette now.
-    - Now, the hidden file scanning interval could be configured to 0.
-    - `Check database configuration` now points out that we do not have administrator permission.
+    - levels of exception in some logs have been fixed
+  - Tidied:
+    - Some Lint warnings have been suppressed.
 
 ... To continue on to `updates_old.md`.
+
+- Improved:
+  - A New binary file handling implemented
+  - A new encrypted format has been implemented
+  - Now the chunk sizes will be adjusted for efficient sync
+- Fixed:
+  - levels of exception in some logs have been fixed
+- Tidied:
+  - Some Lint warnings have been suppressed.
