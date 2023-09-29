@@ -1,7 +1,7 @@
 <script lang="ts">
     import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "./deps";
     import type { FilePath, LoadedEntry } from "./lib/src/types";
-    import { base64ToString } from "./lib/src/strbin";
+    import { decodeBinary, readString } from "./lib/src/strbin";
     import { getDocData } from "./lib/src/utils";
     import { mergeObject } from "./utils";
 
@@ -26,7 +26,7 @@
     let mode: SelectModes = defaultSelect as SelectModes;
 
     function docToString(doc: LoadedEntry) {
-        return doc.datatype == "plain" ? getDocData(doc.data) : base64ToString(doc.data);
+        return doc.datatype == "plain" ? getDocData(doc.data) : readString(new Uint8Array(decodeBinary(doc.data)));
     }
     function revStringToRevNumber(rev: string) {
         return rev.split("-")[0];

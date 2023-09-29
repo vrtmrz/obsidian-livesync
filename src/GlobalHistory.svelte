@@ -7,7 +7,7 @@
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
     import { isPlainText, stripAllPrefixes } from "./lib/src/path";
     import { TFile } from "./deps";
-    import { arrayBufferToBase64 } from "./lib/src/strbin";
+    import { encodeBinary } from "./lib/src/strbin";
     export let plugin: ObsidianLiveSyncPlugin;
 
     let showDiffInfo = false;
@@ -116,7 +116,7 @@
                                         result = isDocContentSame(data, doc.data);
                                     } else {
                                         const data = await plugin.app.vault.readBinary(abs);
-                                        const dataEEncoded = await arrayBufferToBase64(data);
+                                        const dataEEncoded = await encodeBinary(data, plugin.settings.useV1);
                                         result = isDocContentSame(dataEEncoded, doc.data);
                                     }
                                     if (result) {

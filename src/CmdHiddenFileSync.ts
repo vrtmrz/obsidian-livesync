@@ -6,7 +6,7 @@ import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
 import { WrappedNotice } from "./lib/src/wrapper";
-import { base64ToArrayBuffer, arrayBufferToBase64 } from "./lib/src/strbin";
+import { decodeBinary, encodeBinary } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
@@ -411,7 +411,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
         let content: string[];
         try {
-            content = await arrayBufferToBase64(contentBin);
+            content = await encodeBinary(contentBin, this.settings.useV1);
         } catch (ex) {
             Logger(`The file ${file.path} could not be encoded`);
             Logger(ex, LOG_LEVEL_VERBOSE);
@@ -547,7 +547,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
                 if (!isExists) {
                     await this.ensureDirectoryEx(filename);
-                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.app.vault.adapter.writeBinary(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -559,12 +559,12 @@ export class HiddenFileSync extends LiveSyncCommands {
                     return true;
                 } else {
                     const contentBin = await this.app.vault.adapter.readBinary(filename);
-                    const content = await arrayBufferToBase64(contentBin);
+                    const content = await encodeBinary(contentBin, this.settings.useV1);
                     if (isDocContentSame(content, fileOnDB.data) && !force) {
                         // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
-                    await this.app.vault.adapter.writeBinary(filename, base64ToArrayBuffer(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.app.vault.adapter.writeBinary(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);

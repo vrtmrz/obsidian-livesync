@@ -1270,7 +1270,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerSyncSettingEl)
             .setName("Enhance chunk size")
-            .setDesc("Enhance chunk size for binary files (0.1MBytes). This cannot be increased when using IBM Cloudant.")
+            .setDesc("Enhance chunk size for binary files (Ratio). This cannot be increased when using IBM Cloudant.")
             .setClass("wizardHidden")
             .addText((text) => {
                 text.setPlaceholder("")
@@ -1278,7 +1278,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         let v = Number(value);
                         if (isNaN(v) || v < 1) {
-                            v = 1;
+                            v = 0;
                         }
                         this.plugin.settings.customChunkSize = v;
                         await this.plugin.saveSettings();
@@ -1813,6 +1813,15 @@ ${stringifyYaml(pluginConfig)}`;
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.doNotSuspendOnFetching).onChange(async (value) => {
                     this.plugin.settings.doNotSuspendOnFetching = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerHatchEl)
+            .setName("Use binary and encryption version 1")
+            .setDesc("Use the previous data format for other products which shares the remote database.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.useV1).onChange(async (value) => {
+                    this.plugin.settings.useV1 = value;
                     await this.plugin.saveSettings();
                 })
             );

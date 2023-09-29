@@ -182,7 +182,6 @@ export class MessageBox extends Modal {
                 this.timer = undefined;
             }
         })
-        contentEl.createEl("h1", { text: this.title });
         const div = contentEl.createDiv();
         MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
         const buttonSetting = new Setting(contentEl);

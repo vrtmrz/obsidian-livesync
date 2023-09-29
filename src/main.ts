@@ -2,7 +2,7 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, } from "./lib/src/types";
 import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
@@ -16,7 +16,7 @@ import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissin
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
-import { base64ToString, versionNumberString2Number, base64ToArrayBuffer, arrayBufferToBase64, writeString } from "./lib/src/strbin";
+import { versionNumberString2Number, writeString, decodeBinary, encodeBinary, readString } from "./lib/src/strbin";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
 import { isLockAcquired, serialized, skipIfDuplicated } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
@@ -64,8 +64,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     replicator!: LiveSyncDBReplicator;
 
     statusBar?: HTMLElement;
-    suspended: boolean = false;
-    deviceAndVaultName: string = "";
+    suspended = false;
+    deviceAndVaultName = "";
     isMobile = false;
     isReady = false;
     packageVersion = "";
@@ -204,7 +204,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
         if (passphrase !== "false" && typeof passphrase === "string") {
-            enableEncryption(db, passphrase, useDynamicIterationCount);
+            enableEncryption(db, passphrase, useDynamicIterationCount, false, this.settings.useV1);
         }
         if (skipInfo) {
             return { db: db, info: { db_name: "", doc_count: 0, update_seq: "" } };
@@ -404,6 +404,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         Logger(`Checking expired file history done`);
     }
     async onLayoutReady() {
+        if (this.settings.useV1 === undefined) {
+            this.settings.useV1 = await this.askEnableV2();
+            await this.saveSettingData();
+        }
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
             Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
@@ -500,6 +504,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         Logger(`Additional safety scan done`, LOG_LEVEL_VERBOSE);
     }
+    async askEnableV2() {
+        const message = `Since v0.20.0, Self-hosted LiveSync uses a new format for binary files and encrypted things. In the new format, files are split at meaningful delimitations, increasing the effectiveness of deduplication.
+However, the new format lacks compatibility with LiveSync before v0.20.0 and related projects. Basically enabling V2 is recommended. but If you are using some related products, stay in a while, please!
+Note: We can always able to read V1 format. It will be progressively converted. And, we can change this toggle later.`
+        const CHOICE_V2 = "Enable v2";
+        const CHOICE_V1 = "Keep v1";
+
+        const ret = await confirmWithMessage(this, "binary and encryption", message, [CHOICE_V2, CHOICE_V1], CHOICE_V1, 40);
+        return ret == CHOICE_V1;
+    }
 
     async onload() {
         logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
@@ -521,6 +535,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (lastVersion > this.settings.lastReadUpdates) {
             Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
         }
+
         //@ts-ignore
         if (this.app.isMobile) {
             this.isMobile = true;
@@ -797,7 +812,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
         if (this.usedPassphrase != "") {
-            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
+            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false, true);
         }
 
         const passphrase = await this.getPassphrase(settings);
@@ -805,7 +820,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL_URGENT);
             return "";
         }
-        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
+        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false, true);
         if (dec) {
             this.usedPassphrase = passphrase;
             return dec;
@@ -1270,7 +1285,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL_NOTICE);
             return;
         }
-        const writeData = doc.datatype == "newnote" ? base64ToArrayBuffer(doc.data) : getDocData(doc.data);
+        const writeData = doc.datatype == "newnote" ? decodeBinary(doc.data) : getDocData(doc.data);
         await this.ensureDirectoryEx(path);
         try {
             let outFile;
@@ -1953,7 +1968,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             if (doc === false) return false;
             let data = getDocData(doc.data)
             if (doc.datatype == "newnote") {
-                data = base64ToString(data);
+                data = readString(new Uint8Array(decodeBinary(doc.data)));
             } else if (doc.datatype == "plain") {
                 // NO OP.
             }
@@ -2473,7 +2488,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 const contentBin = await this.app.vault.readBinary(file);
                 Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
-                    content = await arrayBufferToBase64(contentBin);
+                    content = await encodeBinary(contentBin, this.settings.useV1);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
                     Logger(ex, LOG_LEVEL_VERBOSE);
@@ -2488,7 +2503,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             if (cache instanceof ArrayBuffer) {
                 Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
-                    content = await arrayBufferToBase64(cache);
+                    content = await encodeBinary(cache, this.settings.useV1);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
                     Logger(ex, LOG_LEVEL_VERBOSE);

@@ -1,6 +1,6 @@
 import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { getPathFromTFile, isValidPath } from "./utils";
-import { base64ToArrayBuffer, base64ToString, escapeStringToHTML } from "./lib/src/strbin";
+import { decodeBinary, escapeStringToHTML, readString } from "./lib/src/strbin";
 import ObsidianLiveSyncPlugin from "./main";
 import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
@@ -89,7 +89,7 @@ export class DocumentHistoryModal extends Modal {
             this.currentDoc = w;
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
             let result = "";
-            const w1data = w.datatype == "plain" ? getDocData(w.data) : base64ToString(w.data);
+            const w1data = w.datatype == "plain" ? getDocData(w.data) : readString(new Uint8Array(decodeBinary(w.data)));
             this.currentDeleted = !!w.deleted;
             this.currentText = w1data;
             if (this.showDiff) {
@@ -99,7 +99,7 @@ export class DocumentHistoryModal extends Modal {
                     const w2 = await db.getDBEntry(this.file, { rev: oldRev }, false, false, true);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
-                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : base64ToString(w2.data);
+                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : readString(new Uint8Array(decodeBinary(w.data)));
                         const diff = dmp.diff_main(w2data, w1data);
                         dmp.diff_cleanupSemantic(diff);
                         for (const v of diff) {
@@ -204,7 +204,7 @@ export class DocumentHistoryModal extends Modal {
                     await focusFile(pathToWrite);
                     this.close();
                 } else if (this.currentDoc?.datatype == "newnote") {
-                    await this.app.vault.adapter.writeBinary(pathToWrite, base64ToArrayBuffer(this.currentDoc.data));
+                    await this.app.vault.adapter.writeBinary(pathToWrite, decodeBinary(this.currentDoc.data));
                     await focusFile(pathToWrite);
                     this.close();
                 } else {
