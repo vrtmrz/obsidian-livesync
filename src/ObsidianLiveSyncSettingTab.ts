@@ -1657,6 +1657,22 @@ ${stringifyYaml(pluginConfig)}`;
                         }
                         Logger(`Converting finished`, LOG_LEVEL_NOTICE);
                     }));
+
+        new Setting(containerHatchEl)
+            .setName("Delete all customization sync data")
+            .addButton((button) =>
+                button
+                    .setButtonText("Delete")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        Logger(`Deleting customization sync data`, LOG_LEVEL_NOTICE);
+                        const entriesToDelete = (await this.plugin.localDatabase.allDocsRaw({ startkey: "ix:", endkey: "ix:\u{10ffff}", include_docs: true }));
+                        const newData = entriesToDelete.rows.map(e => ({ ...e.doc, _deleted: true }));
+                        const r = await this.plugin.localDatabase.bulkDocsRaw(newData as any[]);
+                        // Do not care about the result.
+                        Logger(`${r.length} items have been removed, to confirm how many items are left, please perform it again.`, LOG_LEVEL_NOTICE);
+                    }))
         new Setting(containerHatchEl)
             .setName("Suspend file watching")
             .setDesc("Stop watching for file change.")
