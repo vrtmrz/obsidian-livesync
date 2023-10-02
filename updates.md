@@ -15,6 +15,11 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.2
+  - New feature:
+    - We can delete all data of customization sync from the `Delete all customization sync data` on the `Hatch` pane.
+  - Fixed:
+    - Prevent keep restarting on iOS by yielding microtasks.
 - 0.20.1 
   - Fixed:
     - No more UI freezing and keep restarting on iOS.
