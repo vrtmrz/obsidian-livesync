@@ -15,7 +15,16 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
-
+- 0.20.1 
+  - Fixed:
+    - No more UI freezing and keep restarting on iOS.
+    - Diff of Non-markdown documents are now shown correctly.
+  - Improved:
+    - Performance has been a bit improved.
+    - Customization sync has gotten faster.
+      - However, We lost forward compatibility again (only for this feature). Please update all devices.
+  - Misc
+    - Terser configuration has been more aggressive.
 - 0.20.0
   - Improved:
     - A New binary file handling implemented
@@ -27,12 +36,3 @@ Now only a few chunks are transferred, even if we add a comment to the PDF or pu
     - Some Lint warnings have been suppressed.
 
 ... To continue on to `updates_old.md`.
-
-- Improved:
-  - A New binary file handling implemented
-  - A new encrypted format has been implemented
-  - Now the chunk sizes will be adjusted for efficient sync
-- Fixed:
-  - levels of exception in some logs have been fixed
-- Tidied:
-  - Some Lint warnings have been suppressed.
