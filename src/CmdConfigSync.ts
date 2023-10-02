@@ -16,22 +16,108 @@ import { PluginDialogModal } from "./dialogs";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { pipeGeneratorToGenerator, processAllGeneratorTasksWithConcurrencyLimit } from './lib/src/task';
 
+const d = "\u200b";
+const d2 = "\n";
+
 function serialize(data: PluginDataEx): string {
-    // To improve performance, make JSON manually.
+    // For higher performance, create custom plug-in data strings.
     // Self-hosted LiveSync uses `\n` to split chunks. Therefore, grouping together those with similar entropy would work nicely.
-    return `{"category":"${data.category}","name":"${data.name}","term":${JSON.stringify(data.term)}
-${data.version ? `,"version":"${data.version}"` : ""},
-"mtime":${data.mtime},
-"files":[
-${data.files.map(file => `{"filename":"${file.filename}"${file.displayName ? `,"displayName":"${file.displayName}"` : ""}${file.version ? `,"version":"${file.version}"` : ""},
-"mtime":${file.mtime},"size":${file.size}
-,"data":[${file.data.map(e => `"${e}"`).join(",")
-        }]}`).join(",")
-        }]}`
+    let ret = "";
+    ret += ":";
+    ret += data.category + d + data.name + d + data.term + d2;
+    ret += (data.version ?? "") + d2;
+    ret += data.mtime + d2;
+    for (const file of data.files) {
+        ret += file.filename + d + (file.displayName ?? "") + d + (file.version ?? "") + d2;
+        ret += file.mtime + d + file.size + d2;
+        for (const data of file.data ?? []) {
+            ret += data + d
+        }
+        ret += d2;
+    }
+    return ret;
+}
+function fetchToken(source: string, from: number): [next: number, token: string] {
+    const limitIdx = source.indexOf(d2, from);
+    const limit = limitIdx == -1 ? source.length : limitIdx;
+    const delimiterIdx = source.indexOf(d, from);
+    const delimiter = delimiterIdx == -1 ? source.length : delimiterIdx;
+    const tokenEnd = Math.min(limit, delimiter);
+    let next = tokenEnd;
+    if (limit < delimiter) {
+        next = tokenEnd;
+    } else {
+        next = tokenEnd + 1
+    }
+    return [next, source.substring(from, tokenEnd)];
+}
+function getTokenizer(source: string) {
+    const t = {
+        pos: 1,
+        next() {
+            const [next, token] = fetchToken(source, this.pos);
+            this.pos = next;
+            return token;
+        },
+        nextLine() {
+            const nextPos = source.indexOf(d2, this.pos);
+            if (nextPos == -1) {
+                this.pos = source.length;
+            } else {
+                this.pos = nextPos + 1;
+            }
+        }
+    }
+    return t;
+}
+
+function deserialize2(str: string): PluginDataEx {
+    const tokens = getTokenizer(str);
+    const ret = {} as PluginDataEx;
+    const category = tokens.next();
+    const name = tokens.next();
+    const term = tokens.next();
+    tokens.nextLine();
+    const version = tokens.next();
+    tokens.nextLine();
+    const mtime = Number(tokens.next());
+    tokens.nextLine();
+    const result: PluginDataEx = Object.assign(ret,
+        { category, name, term, version, mtime, files: [] as PluginDataExFile[] })
+    let filename = "";
+    do {
+        filename = tokens.next();
+        if (!filename) break;
+        const displayName = tokens.next();
+        const version = tokens.next();
+        tokens.nextLine();
+        const mtime = Number(tokens.next());
+        const size = Number(tokens.next());
+        tokens.nextLine();
+        const data = [] as string[];
+        let piece = "";
+        do {
+            piece = tokens.next();
+            if (piece == "") break;
+            data.push(piece);
+        } while (piece != "");
+        result.files.push(
+            {
+                filename,
+                displayName,
+                version,
+                mtime,
+                size,
+                data
+            }
+        )
+    } while (filename);
+    return result;
 }
 
 function deserialize<T>(str: string, def: T) {
     try {
+        if (str[0] == ":") return deserialize2(str);
         return JSON.parse(str) as T;
     } catch (ex) {
         try {

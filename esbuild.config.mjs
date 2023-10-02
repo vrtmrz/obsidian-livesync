@@ -48,7 +48,9 @@ const terserOpt = {
         lhs_constants: true,
         hoist_props: true,
         side_effects: true,
-        // if_return: true,
+        if_return: true,
+        ecma: 2018,
+        unused: true,
     },
     // mangle: {
     //     // mangle options

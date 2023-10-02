@@ -274,7 +274,7 @@
     {/if}
 {:else}
     <span class="spacer" />
-    <span class="message even">All devices are even</span>
+    <span class="message even">All the same or non-existent</span>
     <button disabled />
     <button disabled />
 {/if}

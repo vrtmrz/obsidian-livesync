@@ -99,7 +99,7 @@ export class DocumentHistoryModal extends Modal {
                     const w2 = await db.getDBEntry(this.file, { rev: oldRev }, false, false, true);
                     if (w2 != false) {
                         const dmp = new diff_match_patch();
-                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : readString(new Uint8Array(decodeBinary(w.data)));
+                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : readString(new Uint8Array(decodeBinary(w2.data)));
                         const diff = dmp.diff_main(w2data, w1data);
                         dmp.diff_cleanupSemantic(diff);
                         for (const v of diff) {
