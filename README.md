@@ -66,7 +66,7 @@ Synchronization status is shown in statusbar.
 -   ↓ Downloaded chunks and metadata
 -   ⏳ Number of pending processes
 -   🧩 Number of files waiting for their chunks.
-If you have deleted or renamed files, please wait until ⏳ icon disappeared.
+If you have deleted or renamed files, please wait until ⏳ icon disappears.
 
 
 ## Hints
