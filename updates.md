@@ -15,6 +15,16 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.3
+  - New feature:
+    - We can launch Customization sync from the Ribbon if we enabled it.
+  - Fixed:
+    - Setup URI is now back to the previous spec; be encrypted by V1.
+      - It may avoid the trouble with iOS 17.
+    - The Settings dialogue is now registered at the beginning of the start-up process.
+      - We can change the configuration even though LiveSync could not be launched in normal.
+  - Improved:
+    - Enumerating documents has been faster.
 - 0.20.2
   - New feature:
     - We can delete all data of customization sync from the `Delete all customization sync data` on the `Hatch` pane.
