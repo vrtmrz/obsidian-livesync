@@ -60,7 +60,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                 delete setting[k];
             }
         }
-        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false, false));
+        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false, true));
         const uri = `${configURIBase}${encryptedSetting}`;
         await navigator.clipboard.writeText(uri);
         Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
@@ -70,7 +70,7 @@ export class SetupLiveSync extends LiveSyncCommands {
         if (encryptingPassphrase === false)
             return;
         const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
-        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false, false));
+        const encryptedSetting = encodeURIComponent(await encrypt(JSON.stringify(setting), encryptingPassphrase, false, true));
         const uri = `${configURIBase}${encryptedSetting}`;
         await navigator.clipboard.writeText(uri);
         Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);

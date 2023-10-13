@@ -515,58 +515,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         return ret == CHOICE_V1;
     }
 
-    async onload() {
-        logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
-        Logger("loading plugin");
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
-        this.manifestVersion = manifestVersion;
-        this.packageVersion = packageVersion;
-
-        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
-        const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
-        const last_version = localStorage.getItem(lsKey);
-        await this.loadSettings();
-
-        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
-        if (lastVersion > this.settings.lastReadUpdates) {
-            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
-        }
-
-        //@ts-ignore
-        if (this.app.isMobile) {
-            this.isMobile = true;
-            this.settings.disableRequestURI = true;
-        }
-        if (last_version && Number(last_version) < VER) {
-            this.settings.liveSync = false;
-            this.settings.syncOnSave = false;
-            this.settings.syncOnEditorSave = false;
-            this.settings.syncOnStart = false;
-            this.settings.syncOnFileOpen = false;
-            this.settings.syncAfterMerge = false;
-            this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
-            this.saveSettings();
-        }
-        localStorage.setItem(lsKey, `${VER}`);
-        await this.openDatabase();
-        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
-        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
-        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
-
-        this.parseReplicationResult = this.parseReplicationResult.bind(this);
-
-        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
-
-        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
-
-        this.statusBar = this.addStatusBarItem();
-        this.statusBar.addClass("syncstatusbar");
-
+    addUIs() {
         addIcon(
             "replicate",
             `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
@@ -583,14 +532,23 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
        </g>`
         );
-        await Promise.all(this.addOns.map(e => e.onload()));
+        addIcon(
+            "custom-sync",
+            `<g transform="rotate(-90 75 218)"  fill="currentColor" fill-rule="evenodd">
+            <path d="m272 166-9.38 9.38 9.38 9.38 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.058 1.91 1.94 1.91 5.04 0 6.98l-9.38 9.38 5.86 5.86-11.7 11.7c-8.34 8.35-21.4 9.68-31.3 3.19l-3.84 3.98c-8.45 8.7-20.1 13.6-32.2 13.6h-5.55v-9.95h5.55c9.43-0.0182 18.5-3.84 25-10.6l3.95-4.09c-6.54-9.86-5.23-23 3.14-31.3l11.7-11.7 5.86 5.86 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.0564 1.91 1.93 1.91 5.04 2e-3 6.98z"/>
+        </g>`
+        );
         this.addRibbonIcon("replicate", "Replicate", async () => {
             await this.replicate(true);
-        });
+        }).addClass("livesync-ribbon-replicate");
 
         this.addRibbonIcon("view-log", "Show log", () => {
             this.showView(VIEW_TYPE_LOG);
-        });
+        }).addClass("livesync-ribbon-showlog");
+        this.addRibbonIcon("custom-sync", "Show Customization sync", () => {
+            this.addOnConfigSync.showPluginSyncModal();
+        }).addClass("livesync-ribbon-showcustom");
+
         this.addCommand({
             id: "view-log",
             name: "Show log",
@@ -598,8 +556,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 this.showView(VIEW_TYPE_LOG);
             }
         });
-        this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
-        this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
 
         this.addCommand({
             id: "livesync-replicate",
@@ -672,8 +628,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             }
         })
 
-        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
-
         this.addCommand({
             id: "livesync-filehistory",
             name: "Pick a file to show history",
@@ -709,6 +663,13 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 this.replicator.terminateSync();
             },
         })
+        this.addCommand({
+            id: "livesync-global-history",
+            name: "Show vault history",
+            callback: () => {
+                this.showGlobalHistory()
+            }
+        })
 
         this.registerView(
             VIEW_TYPE_GLOBAL_HISTORY,
@@ -718,13 +679,66 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             VIEW_TYPE_LOG,
             (leaf) => new LogPaneView(leaf, this)
         );
-        this.addCommand({
-            id: "livesync-global-history",
-            name: "Show vault history",
-            callback: () => {
-                this.showGlobalHistory()
-            }
-        })
+    }
+
+    async onload() {
+        logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
+        Logger("loading plugin");
+        this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
+        this.addUIs();
+        //@ts-ignore
+        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
+        //@ts-ignore
+        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
+
+        this.manifestVersion = manifestVersion;
+        this.packageVersion = packageVersion;
+
+        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
+        const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
+        const last_version = localStorage.getItem(lsKey);
+        await this.loadSettings();
+        this.statusBar = this.addStatusBarItem();
+        this.statusBar.addClass("syncstatusbar");
+        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
+        if (lastVersion > this.settings.lastReadUpdates) {
+            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
+        }
+
+        //@ts-ignore
+        if (this.app.isMobile) {
+            this.isMobile = true;
+            this.settings.disableRequestURI = true;
+        }
+        if (last_version && Number(last_version) < VER) {
+            this.settings.liveSync = false;
+            this.settings.syncOnSave = false;
+            this.settings.syncOnEditorSave = false;
+            this.settings.syncOnStart = false;
+            this.settings.syncOnFileOpen = false;
+            this.settings.syncAfterMerge = false;
+            this.settings.periodicReplication = false;
+            this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
+            this.saveSettings();
+        }
+        localStorage.setItem(lsKey, `${VER}`);
+        await this.openDatabase();
+        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
+        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
+        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
+
+        this.parseReplicationResult = this.parseReplicationResult.bind(this);
+
+        this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
+
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+
+        await Promise.all(this.addOns.map(e => e.onload()));
+
+        this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
+
+        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
+
     }
     async showView(viewType: string) {
         const leaves = this.app.workspace.getLeavesOfType(viewType);
@@ -1608,6 +1622,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (this.settings.liveSync) {
             this.replicator.openReplication(this.settings, true, false);
         }
+
+        const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
+        q?.toggleClass("sls-hidden", !this.settings.usePluginSync);
 
         this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);
 
