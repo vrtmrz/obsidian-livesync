@@ -15,6 +15,10 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.4
+  - Fixed
+    - The text-input-dialogue is no longer broken.
+      - Finally, we can use the Setup URI again on mobile.
 - 0.20.3
   - New feature:
     - We can launch Customization sync from the Ribbon if we enabled it.
