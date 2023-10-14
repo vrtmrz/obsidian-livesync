@@ -58,8 +58,7 @@ export class InputStringDialog extends Modal {
     onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
-        // For enter to submit
-        const formEl = contentEl.createEl("form");
+        const formEl = contentEl.createDiv();
         new Setting(formEl).setName(this.key).setClass(this.isPassword ? "password-input" : "normal-input").addText((text) =>
             text.onChange((value) => {
                 this.result = value;
