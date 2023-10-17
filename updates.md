@@ -15,6 +15,9 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.5
+  - Fixed
+    - Now the files which having digit or character prefixes in the path will not be ignored.
 - 0.20.4
   - Fixed
     - The text-input-dialogue is no longer broken.
