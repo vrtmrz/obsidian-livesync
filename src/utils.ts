@@ -481,7 +481,7 @@ export const requestToCouchDB = async (baseUri: string, username: string, passwo
 
 export async function performRebuildDB(plugin: ObsidianLiveSyncPlugin, method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") {
     if (method == "localOnly") {
-        await plugin.addOnSetup.fetchLocalWithKeepLocal();
+        await plugin.addOnSetup.fetchLocal();
     }
     if (method == "remoteOnly") {
         await plugin.addOnSetup.rebuildRemote();

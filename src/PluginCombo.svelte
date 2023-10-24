@@ -207,21 +207,21 @@
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
         if (selectedItem && (await applyData(selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(true, local.documentPath));
+            addOn.updatePluginList(true, local?.documentPath);
         }
     }
     async function compareSelected() {
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
         if (local && selectedItem && (await compareData(local, selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.updatePluginList(true, local.documentPath));
+            addOn.updatePluginList(true, local.documentPath);
         }
     }
     async function deleteSelected() {
         const selectedItem = list.find((e) => e.term == selected);
         // const deletedPath = selectedItem.documentPath;
         if (selectedItem && (await deleteData(selectedItem))) {
-            scheduleTask("update-plugin-list", 250, () => addOn.reloadPluginList(true));
+            addOn.reloadPluginList(true);
         }
     }
     async function duplicateItem() {

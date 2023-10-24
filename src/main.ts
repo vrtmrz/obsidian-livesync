@@ -1327,13 +1327,13 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (this.settings.trashInsteadDelete) {
             await this.app.vault.trash(file, false);
         } else {
-            await this.app.vault.delete(file);
+            await this.app.vault.delete(file, true);
         }
         Logger(`xxx <- STORAGE (deleted) ${file.path}`);
         Logger(`files: ${dir.children.length}`);
         if (dir.children.length == 0) {
             if (!this.settings.doNotDeleteFolder) {
-                Logger(`All files under the parent directory (${dir}) have been deleted, so delete this one.`);
+                Logger(`All files under the parent directory (${dir.path}) have been deleted, so delete this one.`);
                 await this.deleteVaultItem(dir);
             }
         }

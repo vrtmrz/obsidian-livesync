@@ -111,6 +111,7 @@ function deserialize2(str: string): PluginDataEx {
                 data
             }
         )
+        tokens.nextLine();
     } while (filename);
     return result;
 }
@@ -352,11 +353,13 @@ export class ConfigSync extends LiveSyncCommands {
                         }
                     }
                     Logger(`All files enumerated`, logLevel, "get-plugins");
+                    pluginIsEnumerating.set(false);
                     this.createMissingConfigurationEntry();
                 } finally {
                     pluginIsEnumerating.set(false);
                 }
             });
+            pluginIsEnumerating.set(false);
         });
         // return entries;
     }
