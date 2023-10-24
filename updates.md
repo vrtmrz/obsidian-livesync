@@ -15,6 +15,13 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.6
+  - Fixed
+    - Now empty file could be decoded.
+    - Local files are no longer pre-saved before fetching from a remote database.
+    - No longer deadlock while applying customisation sync.
+    - Configuration with multiple files is now able to be applied correctly.
+    - Deleting folder propagation now works without enabling the use of a trash bin.
 - 0.20.5
   - Fixed
     - Now the files which having digit or character prefixes in the path will not be ignored.
