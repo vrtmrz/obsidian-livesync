@@ -15,6 +15,10 @@ This format change gives us the ability to detect some `marks` in the binary fil
 Now only a few chunks are transferred, even if we add a comment to the PDF or put new files into the ZIP archives.
 
 #### Version history
+- 0.20.7
+  - Fixed
+    - To better replication, path obfuscation is now deterministic even if with E2EE.  
+      Note: Compatible with previous database without any conversion. Only new files will be obfuscated in deterministic. 
 - 0.20.6
   - Fixed
     - Now empty file could be decoded.
