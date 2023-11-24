@@ -1391,15 +1391,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }).addClass("wizardHidden");
         new Setting(containerSyncSettingEl)
             .setName("Batch size")
-            .setDesc("Number of change feed items to process at a time. Defaults to 50.")
+            .setDesc("Number of change feed items to process at a time. Defaults to 50. Minimum is 2.")
             .setClass("wizardHidden")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.batch_size + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 10) {
-                            v = 10;
+                        if (isNaN(v) || v < 2) {
+                            v = 2;
                         }
                         this.plugin.settings.batch_size = v;
                         await this.plugin.saveSettings();
@@ -1409,15 +1409,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerSyncSettingEl)
             .setName("Batch limit")
-            .setDesc("Number of batches to process at a time. Defaults to 40. This along with batch size controls how many docs are kept in memory at a time.")
+            .setDesc("Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.")
             .setClass("wizardHidden")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(this.plugin.settings.batches_limit + "")
                     .onChange(async (value) => {
                         let v = Number(value);
-                        if (isNaN(v) || v < 10) {
-                            v = 10;
+                        if (isNaN(v) || v < 2) {
+                            v = 2;
                         }
                         this.plugin.settings.batches_limit = v;
                         await this.plugin.saveSettings();
