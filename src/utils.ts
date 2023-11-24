@@ -303,14 +303,14 @@ export function flattenObject(obj: Record<string | number | symbol, any>, path: 
     return ret;
 }
 
-export function modifyFile(file: TFile, data: string | ArrayBuffer, options?: DataWriteOptions) {
+export function modifyFile(app: App, file: TFile, data: string | ArrayBuffer, options?: DataWriteOptions) {
     if (typeof (data) === "string") {
         return app.vault.modify(file, data, options);
     } else {
         return app.vault.modifyBinary(file, data, options);
     }
 }
-export function createFile(path: string, data: string | ArrayBuffer, options?: DataWriteOptions): Promise<TFile> {
+export function createFile(app: App, path: string, data: string | ArrayBuffer, options?: DataWriteOptions): Promise<TFile> {
     if (typeof (data) === "string") {
         return app.vault.create(path, data, options);
     } else {

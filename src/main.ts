@@ -1306,9 +1306,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         try {
             let outFile;
             if (mode == "create") {
-                outFile = await createFile(normalizePath(path), writeData, { ctime: doc.ctime, mtime: doc.mtime, });
+                outFile = await createFile(this.app,normalizePath(path), writeData, { ctime: doc.ctime, mtime: doc.mtime, });
             } else {
-                await modifyFile(file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
+                await modifyFile(this.app,file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
                 outFile = getAbstractFileByPath(getPathFromTFile(file)) as TFile;
             }
             Logger(msg + path);
