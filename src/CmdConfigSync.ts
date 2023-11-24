@@ -1,13 +1,13 @@
 import { writable } from 'svelte/store';
 import { Notice, type PluginManifest, parseYaml, normalizePath } from "./deps";
 
-import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry } from "./lib/src/types";
+import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { delay, getDocData } from "./lib/src/utils";
+import { createTextBlob, delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
-import { readString, crc32CKHash, decodeBinary, encodeBinary } from "./lib/src/strbin";
+import { readString, crc32CKHash, decodeBinary, arrayBufferToBase64 } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
@@ -549,7 +549,7 @@ export class ConfigSync extends LiveSyncCommands {
         const contentBin = await this.app.vault.adapter.readBinary(path);
         let content: string[];
         try {
-            content = await encodeBinary(contentBin, this.settings.useV1);
+            content = await arrayBufferToBase64(contentBin);
             if (path.toLowerCase().endsWith("/manifest.json")) {
                 const v = readString(new Uint8Array(contentBin));
                 try {
@@ -652,10 +652,10 @@ export class ConfigSync extends LiveSyncCommands {
                 return
             }
 
-            const content = serialize(dt);
+            const content = createTextBlob(serialize(dt));
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, false);
-                let saveData: LoadedEntry;
+                let saveData: SavingEntry;
                 if (old === false) {
                     saveData = {
                         _id: id,
@@ -664,7 +664,7 @@ export class ConfigSync extends LiveSyncCommands {
                         mtime,
                         ctime: mtime,
                         datatype: "newnote",
-                        size: content.length,
+                        size: content.size,
                         children: [],
                         deleted: false,
                         type: "newnote",
@@ -679,7 +679,7 @@ export class ConfigSync extends LiveSyncCommands {
                         ...old,
                         data: content,
                         mtime,
-                        size: content.length,
+                        size: content.size,
                         datatype: "newnote",
                         children: [],
                         deleted: false,

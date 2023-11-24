@@ -1,8 +1,8 @@
 import { normalizePath, type PluginManifest } from "./deps";
-import type { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry } from "./lib/src/types";
+import type { DocumentID, EntryDoc, FilePathWithPrefix, LoadedEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { type PluginDataEntry, PERIODIC_PLUGIN_SWEEP, type PluginList, type DevicePluginList, PSCHeader, PSCHeaderEnd } from "./types";
-import { getDocData, isDocContentSame } from "./lib/src/utils";
+import { createTextBlob, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { isPluginMetadata, PeriodicProcessor } from "./utils";
@@ -211,13 +211,14 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                         mtime: mtime,
                         type: "plugin",
                     };
-                    const d: LoadedEntry = {
+                    const blob = createTextBlob(JSON.stringify(p));
+                    const d: SavingEntry = {
                         _id: p._id,
                         path: p._id as string as FilePathWithPrefix,
-                        data: JSON.stringify(p),
+                        data: blob,
                         ctime: mtime,
                         mtime: mtime,
-                        size: 0,
+                        size: blob.size,
                         children: [],
                         datatype: "plain",
                         type: "plain"

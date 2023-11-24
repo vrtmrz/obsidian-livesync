@@ -1832,15 +1832,6 @@ ${stringifyYaml(pluginConfig)}`;
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerHatchEl)
-            .setName("Use binary and encryption version 1")
-            .setDesc("Use the previous data format for other products which shares the remote database.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.useV1).onChange(async (value) => {
-                    this.plugin.settings.useV1 = value;
-                    await this.plugin.saveSettings();
-                })
-            );
         addScreenElement("50", containerHatchEl);
 
 

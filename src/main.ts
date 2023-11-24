@@ -2,9 +2,9 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, } from "./lib/src/types";
 import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, getDocData, isDocContentSame } from "./lib/src/utils";
+import { arrayToChunkedArray, createBinaryBlob, createTextBlob, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -16,7 +16,7 @@ import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissin
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
 import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
-import { versionNumberString2Number, writeString, decodeBinary, encodeBinary, readString } from "./lib/src/strbin";
+import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/strbin";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
 import { isLockAcquired, serialized, skipIfDuplicated } from "./lib/src/lock";
 import { Semaphore } from "./lib/src/semaphore";
@@ -204,7 +204,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
         if (passphrase !== "false" && typeof passphrase === "string") {
-            enableEncryption(db, passphrase, useDynamicIterationCount, false, this.settings.useV1);
+            enableEncryption(db, passphrase, useDynamicIterationCount, false);
         }
         if (skipInfo) {
             return { db: db, info: { db_name: "", doc_count: 0, update_seq: "" } };
@@ -404,10 +404,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         Logger(`Checking expired file history done`);
     }
     async onLayoutReady() {
-        if (this.settings.useV1 === undefined) {
-            this.settings.useV1 = await this.askEnableV2();
-            await this.saveSettingData();
-        }
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
             Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
@@ -567,8 +563,13 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.addCommand({
             id: "livesync-dump",
             name: "Dump information of this doc ",
-            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
-                const file = view.file;
+            // editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+            //     const file = view.file;
+            //     if (!file) return;
+            //     this.localDatabase.getDBEntry(getPathFromTFile(file), {}, true, false);
+            // },
+            callback: () => {
+                const file = this.app.workspace.getActiveFile();
                 if (!file) return;
                 this.localDatabase.getDBEntry(getPathFromTFile(file), {}, true, false);
             },
@@ -682,6 +683,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     async onload() {
+
         logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
         Logger("loading plugin");
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
@@ -826,7 +828,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
     async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
         if (this.usedPassphrase != "") {
-            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false, true);
+            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
         }
 
         const passphrase = await this.getPassphrase(settings);
@@ -834,7 +836,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL_URGENT);
             return "";
         }
-        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false, true);
+        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
         if (dec) {
             this.usedPassphrase = passphrase;
             return dec;
@@ -2497,7 +2499,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (shouldBeIgnored(file.path)) {
             return true;
         }
-        let content: string | string[];
+        let content: Blob;
         let datatype: "plain" | "newnote" = "newnote";
         if (!cache) {
             if (!isPlainText(file.name)) {
@@ -2505,7 +2507,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 const contentBin = await this.app.vault.readBinary(file);
                 Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
-                    content = await encodeBinary(contentBin, this.settings.useV1);
+                    content = createBinaryBlob(contentBin);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
                     Logger(ex, LOG_LEVEL_VERBOSE);
@@ -2513,14 +2515,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 }
                 datatype = "newnote";
             } else {
-                content = await this.app.vault.read(file);
+                content = createTextBlob(await this.app.vault.read(file));
                 datatype = "plain";
             }
         } else {
             if (cache instanceof ArrayBuffer) {
                 Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
-                    content = await encodeBinary(cache, this.settings.useV1);
+                    content = createBinaryBlob(cache);
                 } catch (ex) {
                     Logger(`The file ${file.path} could not be encoded`);
                     Logger(ex, LOG_LEVEL_VERBOSE);
@@ -2528,13 +2530,13 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 }
                 datatype = "newnote"
             } else {
-                content = cache;
+                content = createTextBlob(cache);
                 datatype = "plain";
             }
         }
         const fullPath = getPathFromTFile(file);
         const id = await this.path2id(fullPath);
-        const d: LoadedEntry = {
+        const d: SavingEntry = {
             _id: id,
             path: getPathFromTFile(file),
             data: content,

@@ -1,7 +1,7 @@
 import { normalizePath, type PluginManifest } from "./deps";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { Parallels, delay, isDocContentSame } from "./lib/src/utils";
+import { Parallels, createBinaryBlob, delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
@@ -409,9 +409,9 @@ export class HiddenFileSync extends LiveSyncCommands {
         const id = await this.path2id(file.path, ICHeader);
         const prefixedFileName = addPrefix(file.path, ICHeader);
         const contentBin = await this.app.vault.adapter.readBinary(file.path);
-        let content: string[];
+        let content: Blob;
         try {
-            content = await encodeBinary(contentBin, this.settings.useV1);
+            content = createBinaryBlob(contentBin);
         } catch (ex) {
             Logger(`The file ${file.path} could not be encoded`);
             Logger(ex, LOG_LEVEL_VERBOSE);
@@ -421,7 +421,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return await serialized("file-" + prefixedFileName, async () => {
             try {
                 const old = await this.localDatabase.getDBEntry(prefixedFileName, null, false, false);
-                let saveData: LoadedEntry;
+                let saveData: SavingEntry;
                 if (old === false) {
                     saveData = {
                         _id: id,
@@ -559,7 +559,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     return true;
                 } else {
                     const contentBin = await this.app.vault.adapter.readBinary(filename);
-                    const content = await encodeBinary(contentBin, this.settings.useV1);
+                    const content = await encodeBinary(contentBin);
                     if (isDocContentSame(content, fileOnDB.data) && !force) {
                         // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
