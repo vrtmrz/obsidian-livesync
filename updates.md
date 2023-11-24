@@ -6,6 +6,12 @@ It will be addressed soon. Please be patient if you are using filesystem-livesyn
 
 
 #### Version history
+- 0.21.1
+  - Fixed:
+    - No more infinity loops on larger files.
+    - Show message on decode error.
+  - Refactored:
+    - Fixed to avoid obsolete global variables.
 - 0.21.0
   - Changes and performance improvements:
     - Now the saving files are processed by Blob.
