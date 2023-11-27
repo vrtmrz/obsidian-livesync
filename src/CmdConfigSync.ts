@@ -418,9 +418,9 @@ export class ConfigSync extends LiveSyncCommands {
                     await this.ensureDirectoryEx(path);
                     if (!content) {
                         const dt = decodeBinary(f.data);
-                        await this.app.vault.adapter.writeBinary(path, dt);
+                        await this.vaultAccess.adapterWrite(path, dt);
                     } else {
-                        await this.app.vault.adapter.write(path, content);
+                        await this.vaultAccess.adapterWrite(path, content);
                     }
                     Logger(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
 
@@ -540,13 +540,13 @@ export class ConfigSync extends LiveSyncCommands {
 
     recentProcessedInternalFiles = [] as string[];
     async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
-        const stat = await this.app.vault.adapter.stat(path);
+        const stat = await this.vaultAccess.adapterStat(path);
         let version: string | undefined;
         let displayName: string | undefined;
         if (!stat) {
             return false;
         }
-        const contentBin = await this.app.vault.adapter.readBinary(path);
+        const contentBin = await this.vaultAccess.adapterReadBinary(path);
         let content: string[];
         try {
             content = await arrayBufferToBase64(contentBin);
@@ -701,7 +701,7 @@ export class ConfigSync extends LiveSyncCommands {
     async watchVaultRawEventsAsync(path: FilePath) {
         if (!this.settings.usePluginSync) return false;
         if (!this.isTargetPath(path)) return false;
-        const stat = await this.app.vault.adapter.stat(path);
+        const stat = await this.vaultAccess.adapterStat(path);
         // Make sure that target is a file.
         if (stat && stat.type != "file")
             return false;

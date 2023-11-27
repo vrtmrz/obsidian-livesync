@@ -1,4 +1,4 @@
-import { type DataWriteOptions, normalizePath, TFile, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
+import { normalizePath, TFile, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
@@ -303,20 +303,6 @@ export function flattenObject(obj: Record<string | number | symbol, any>, path: 
     return ret;
 }
 
-export function modifyFile(app: App, file: TFile, data: string | ArrayBuffer, options?: DataWriteOptions) {
-    if (typeof (data) === "string") {
-        return app.vault.modify(file, data, options);
-    } else {
-        return app.vault.modifyBinary(file, data, options);
-    }
-}
-export function createFile(app: App, path: string, data: string | ArrayBuffer, options?: DataWriteOptions): Promise<TFile> {
-    if (typeof (data) === "string") {
-        return app.vault.create(path, data, options);
-    } else {
-        return app.vault.createBinary(path, data, options);
-    }
-}
 
 export function isValidPath(filename: string) {
     if (Platform.isDesktop) {
@@ -332,38 +318,10 @@ export function isValidPath(filename: string) {
     return isValidFilenameInWidows(filename);
 }
 
-let touchedFiles: string[] = [];
-
-export function getAbstractFileByPath(path: FilePath): TAbstractFile | null {
-    // Disabled temporary.
-    return app.vault.getAbstractFileByPath(path);
-    // // Hidden API but so useful.
-    // // @ts-ignore
-    // if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
-    //     // @ts-ignore
-    //     return app.vault.getAbstractFileByPathInsensitive(path);
-    // } else {
-    //    return app.vault.getAbstractFileByPath(path);
-    // }
-}
 export function trimPrefix(target: string, prefix: string) {
     return target.startsWith(prefix) ? target.substring(prefix.length) : target;
 }
 
-export function touch(file: TFile | FilePath) {
-    const f = file instanceof TFile ? file : getAbstractFileByPath(file) as TFile;
-    const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
-    touchedFiles.unshift(key);
-    touchedFiles = touchedFiles.slice(0, 100);
-}
-export function recentlyTouched(file: TFile) {
-    const key = `${file.path}-${file.stat.mtime}-${file.stat.size}`;
-    if (touchedFiles.indexOf(key) == -1) return false;
-    return true;
-}
-export function clearTouched() {
-    touchedFiles = [];
-}
 
 /**
  * returns is internal chunk of file

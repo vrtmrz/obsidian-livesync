@@ -1,9 +1,9 @@
+import type { SerializedFileAccess } from "./SerializedFileAccess";
 import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import { getGlobalStore } from "./lib/src/store";
 import { type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
 import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo, type queueItem } from "./types";
-import { recentlyTouched } from "./utils";
 
 
 export abstract class StorageEventManager {
@@ -16,6 +16,7 @@ type LiveSyncForStorageEventManager = Plugin &
 {
     settings: ObsidianLiveSyncSettings
     ignoreFiles: string[],
+    vaultAccess: SerializedFileAccess
 } & {
     isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
     procFileEvent: (applyBatch?: boolean) => Promise<any>,
@@ -105,15 +106,14 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             let cache: null | string | ArrayBuffer;
             // new file or something changed, cache the changes.
             if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
-                if (recentlyTouched(file)) {
+                if (this.plugin.vaultAccess.recentlyTouched(file)) {
                     continue;
                 }
                 if (!isPlainText(file.name)) {
-                    cache = await this.plugin.app.vault.readBinary(file);
+                    cache = await this.plugin.vaultAccess.vaultReadBinary(file);
                 } else {
-                    // cache = await this.app.vault.read(file);
-                    cache = await this.plugin.app.vault.cachedRead(file);
-                    if (!cache) cache = await this.plugin.app.vault.read(file);
+                    cache = await this.plugin.vaultAccess.vaultCacheRead(file);
+                    if (!cache) cache = await this.plugin.vaultAccess.vaultRead(file);
                 }
             }
             if (type == "DELETE" || type == "RENAME") {

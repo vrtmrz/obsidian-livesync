@@ -200,11 +200,11 @@ export class DocumentHistoryModal extends Modal {
                     Logger("Path is not valid to write content.", LOG_LEVEL_INFO);
                 }
                 if (this.currentDoc?.datatype == "plain") {
-                    await this.app.vault.adapter.write(pathToWrite, getDocData(this.currentDoc.data));
+                    await this.plugin.vaultAccess.adapterWrite(pathToWrite, getDocData(this.currentDoc.data));
                     await focusFile(pathToWrite);
                     this.close();
                 } else if (this.currentDoc?.datatype == "newnote") {
-                    await this.app.vault.adapter.writeBinary(pathToWrite, decodeBinary(this.currentDoc.data));
+                    await this.plugin.vaultAccess.adapterWrite(pathToWrite, decodeBinary(this.currentDoc.data));
                     await focusFile(pathToWrite);
                     this.close();
                 } else {

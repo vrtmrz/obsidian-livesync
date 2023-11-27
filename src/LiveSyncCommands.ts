@@ -14,6 +14,9 @@ export abstract class LiveSyncCommands {
     get localDatabase() {
         return this.plugin.localDatabase;
     }
+    get vaultAccess() {
+        return this.plugin.vaultAccess;
+    }
     id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
         return this.plugin.id2path(id, entry, stripPrefix);
     }

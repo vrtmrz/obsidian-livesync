@@ -10,7 +10,7 @@ import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, createFile, modifyFile, isValidPath, getAbstractFileByPath, touch, recentlyTouched, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, clearTouched, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
 import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
@@ -33,6 +33,7 @@ import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView
 import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
 import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
 import { LRUCache } from "./lib/src/LRUCache";
+import { SerializedFileAccess } from "./SerializedFileAccess";
 
 setNoticeClass(Notice);
 
@@ -86,6 +87,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return !this.last_successful_post;
     }
 
+    vaultAccess: SerializedFileAccess = new SerializedFileAccess(this.app);
 
     _unloaded = false;
 
@@ -293,36 +295,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
 
     isRedFlagRaised(): boolean {
-        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
         if (redflag != null) {
             return true;
         }
         return false;
     }
     isRedFlag2Raised(): boolean {
-        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
         if (redflag != null) {
             return true;
         }
         return false;
     }
     async deleteRedFlag2() {
-        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
-        if (redflag != null) {
-            await app.vault.delete(redflag, true);
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
+        if (redflag != null && redflag instanceof TFile) {
+            await this.vaultAccess.delete(redflag, true);
         }
     }
     isRedFlag3Raised(): boolean {
-        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
         if (redflag != null) {
             return true;
         }
         return false;
     }
     async deleteRedFlag3() {
-        const redflag = getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
-        if (redflag != null) {
-            await app.vault.delete(redflag, true);
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
+        if (redflag != null && redflag instanceof TFile) {
+            await this.vaultAccess.delete(redflag, true);
         }
     }
 
@@ -683,7 +685,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     async onload() {
-
         logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
         Logger("loading plugin");
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
@@ -1065,7 +1066,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                     await this.addOnHiddenFileSync.watchVaultRawEventsAsync(file.path);
                     await this.addOnConfigSync.watchVaultRawEventsAsync(file.path);
                 } else {
-                    const targetFile = this.app.vault.getAbstractFileByPath(file.path);
+                    const targetFile = this.vaultAccess.getAbstractFileByPath(file.path);
                     if (!(targetFile instanceof TFile)) {
                         Logger(`Target file was not found: ${file.path}`, LOG_LEVEL_INFO);
                         continue;
@@ -1184,7 +1185,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (this.settings?.writeLogToTheFile) {
             const time = now.toISOString().split("T")[0];
             const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
-            const file = this.app.vault.getAbstractFileByPath(normalizePath(logDate));
+            const file = this.vaultAccess.getAbstractFileByPath(normalizePath(logDate));
             if (!file) {
                 this.app.vault.adapter.append(normalizePath(logDate), "```\n");
             }
@@ -1306,13 +1307,15 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         try {
             let outFile;
             if (mode == "create") {
-                outFile = await createFile(this.app,normalizePath(path), writeData, { ctime: doc.ctime, mtime: doc.mtime, });
+                const normalizedPath = normalizePath(path);
+                await this.vaultAccess.vaultCreate(normalizedPath, writeData, { ctime: doc.ctime, mtime: doc.mtime, });
+                outFile = this.vaultAccess.getAbstractFileByPath(normalizedPath) as TFile;
             } else {
-                await modifyFile(this.app,file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
-                outFile = getAbstractFileByPath(getPathFromTFile(file)) as TFile;
+                await this.vaultAccess.vaultModify(file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
+                outFile = this.vaultAccess.getAbstractFileByPath(getPathFromTFile(file)) as TFile;
             }
             Logger(msg + path);
-            touch(outFile);
+            this.vaultAccess.touch(outFile);
             this.app.vault.trigger(mode, outFile);
 
         } catch (ex) {
@@ -1327,9 +1330,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         const dir = file.parent;
         if (this.settings.trashInsteadDelete) {
-            await this.app.vault.trash(file, false);
+            await this.vaultAccess.trash(file, false);
         } else {
-            await this.app.vault.delete(file, true);
+            await this.vaultAccess.delete(file, true);
         }
         Logger(`xxx <- STORAGE (deleted) ${file.path}`);
         Logger(`files: ${dir.children.length}`);
@@ -1394,7 +1397,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
     async handleDBChangedAsync(change: EntryBody) {
 
-        const targetFile = getAbstractFileByPath(this.getPathWithoutPrefix(change));
+        const targetFile = this.vaultAccess.getAbstractFileByPath(this.getPathWithoutPrefix(change));
         if (targetFile == null) {
             if (change._deleted || change.deleted) {
                 return;
@@ -1518,7 +1521,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
         }
         if ((!isInternalMetadata(doc._id)) && skipOldFile) {
-            const info = getAbstractFileByPath(stripAllPrefixes(path));
+            const info = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(path));
 
             if (info && info instanceof TFile) {
                 const localMtime = ~~(info.stat.mtime / 1000);
@@ -2260,12 +2263,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     // remove conflicted revision.
                     await this.localDatabase.deleteDBEntry(path, { rev: conflictedRev });
 
-                    const file = getAbstractFileByPath(stripAllPrefixes(path)) as TFile;
+                    const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(path)) as TFile;
                     if (file) {
-                        await this.app.vault.modify(file, p);
+                        await this.vaultAccess.vaultModify(file, p);
                         await this.updateIntoDB(file);
                     } else {
-                        const newFile = await this.app.vault.create(path, p);
+                        const newFile = await this.vaultAccess.vaultCreate(path, p);
                         await this.updateIntoDB(newFile);
                     }
                     await this.pullFile(path);
@@ -2338,12 +2341,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         // delete conflicted revision and write a new file, store it again.
                         const p = conflictCheckResult.diff.map((e) => e[1]).join("");
                         await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
-                        const file = getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
+                        const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
                         if (file) {
-                            await this.app.vault.modify(file, p);
+                            await this.vaultAccess.vaultModify(file, p);
                             await this.updateIntoDB(file);
                         } else {
-                            const newFile = await this.app.vault.create(filename, p);
+                            const newFile = await this.vaultAccess.vaultCreate(filename, p);
                             await this.updateIntoDB(newFile);
                         }
                         await this.pullFile(filename);
@@ -2385,7 +2388,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const checkFiles = JSON.parse(JSON.stringify(this.conflictedCheckFiles)) as FilePath[];
             for (const filename of checkFiles) {
                 try {
-                    const file = getAbstractFileByPath(filename);
+                    const file = this.vaultAccess.getAbstractFileByPath(filename);
                     if (file != null && file instanceof TFile) {
                         await this.showIfConflicted(getPathFromTFile(file));
                     }
@@ -2420,7 +2423,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     async pullFile(filename: FilePathWithPrefix, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
-        const targetFile = getAbstractFileByPath(stripAllPrefixes(filename));
+        const targetFile = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename));
         if (!await this.isTargetFile(filename)) return;
         if (targetFile == null) {
             //have to create;
@@ -2451,7 +2454,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             throw new Error(`Missing doc:${(file as any).path}`)
         }
         if (!(file instanceof TFile) && "path" in file) {
-            const w = getAbstractFileByPath((file as any).path);
+            const w = this.vaultAccess.getAbstractFileByPath((file as any).path);
             if (w instanceof TFile) {
                 file = w;
             } else {
@@ -2504,7 +2507,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (!cache) {
             if (!isPlainText(file.name)) {
                 Logger(`Reading   : ${file.path}`, LOG_LEVEL_VERBOSE);
-                const contentBin = await this.app.vault.readBinary(file);
+                const contentBin = await this.vaultAccess.vaultReadBinary(file);
                 Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
                     content = createBinaryBlob(contentBin);
@@ -2515,12 +2518,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 }
                 datatype = "newnote";
             } else {
-                content = createTextBlob(await this.app.vault.read(file));
+                content = createTextBlob(await this.vaultAccess.vaultRead(file));
                 datatype = "plain";
             }
         } else {
             if (cache instanceof ArrayBuffer) {
-                Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
+                Logger(`Cache Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
                 try {
                     content = createBinaryBlob(cache);
                 } catch (ex) {
@@ -2550,7 +2553,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         //upsert should locked
         const msg = `DB <- STORAGE (${datatype}) `;
         const isNotChanged = await serialized("file-" + fullPath, async () => {
-            if (recentlyTouched(file)) {
+            if (this.vaultAccess.recentlyTouched(file)) {
                 return true;
             }
             try {
@@ -2574,7 +2577,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             return false;
         });
-        if (isNotChanged) return true;
+        if (isNotChanged) {
+            this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
+            Logger(msg + " Skip " + fullPath, LOG_LEVEL_VERBOSE);
+            return true;
+        }
         const ret = await this.localDatabase.putDBEntry(d, initialScan);
         this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
 
@@ -2603,7 +2610,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     async resetLocalDatabase() {
-        clearTouched();
+        this.vaultAccess.clearTouched();
         await this.localDatabase.resetDatabase();
     }
 
@@ -2643,10 +2650,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return files.filter(file => !ignorePatterns.some(e => file.path.match(e))).filter(file => !targetFiles || (targetFiles && targetFiles.indexOf(file.path) !== -1))
     }
 
-    async applyMTimeToFile(file: InternalFileInfo) {
-        await this.app.vault.adapter.append(file.path, "", { ctime: file.ctime, mtime: file.mtime });
-    }
-
     async resolveConflictByNewerEntry(path: FilePathWithPrefix) {
         const id = await this.path2id(path);
         const doc = await this.localDatabase.getRaw<AnyEntry>(id, { conflicts: true });
@@ -2673,7 +2676,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     ignoreFiles = [] as string[]
     async readIgnoreFile(path: string) {
         try {
-            const file = await this.app.vault.adapter.read(path);
+            const file = await this.vaultAccess.adapterRead(path);
             const gitignore = file.split(/\r?\n/g);
             this.ignoreFileCache.set(path, gitignore);
             return gitignore;

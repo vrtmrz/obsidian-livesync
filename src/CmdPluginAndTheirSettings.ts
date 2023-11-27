@@ -186,18 +186,17 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                     }
                     Logger(`Reading plugin:${m.name}(${m.id})`, LOG_LEVEL_VERBOSE);
                     const path = normalizePath(m.dir) + "/";
-                    const adapter = this.app.vault.adapter;
                     const files = ["manifest.json", "main.js", "styles.css", "data.json"];
                     const pluginData: { [key: string]: string; } = {};
                     for (const file of files) {
                         const thePath = path + file;
-                        if (await adapter.exists(thePath)) {
-                            pluginData[file] = await adapter.read(thePath);
+                        if (await this.plugin.vaultAccess.adapterExists(thePath)) {
+                            pluginData[file] = await this.plugin.vaultAccess.adapterRead(thePath);
                         }
                     }
                     let mtime = 0;
-                    if (await adapter.exists(path + "/data.json")) {
-                        mtime = (await adapter.stat(path + "/data.json")).mtime;
+                    if (await this.plugin.vaultAccess.adapterExists(path + "/data.json")) {
+                        mtime = (await this.plugin.vaultAccess.adapterStat(path + "/data.json")).mtime;
                     }
 
                     const p: PluginDataEntry = {
@@ -269,7 +268,6 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
     async applyPluginData(plugin: PluginDataEntry) {
         await serialized("plugin-" + plugin.manifest.id, async () => {
             const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
-            const adapter = this.app.vault.adapter;
             // @ts-ignore
             const stat = this.app.plugins.enabledPlugins.has(plugin.manifest.id) == true;
             if (stat) {
@@ -278,7 +276,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                 Logger(`Unload plugin:${plugin.manifest.id}`, LOG_LEVEL_NOTICE);
             }
             if (plugin.dataJson)
-                await adapter.write(pluginTargetFolderPath + "data.json", plugin.dataJson);
+                await this.plugin.vaultAccess.adapterWrite(pluginTargetFolderPath + "data.json", plugin.dataJson);
             Logger("wrote:" + pluginTargetFolderPath + "data.json", LOG_LEVEL_NOTICE);
             if (stat) {
                 // @ts-ignore
@@ -299,14 +297,13 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
             }
 
             const pluginTargetFolderPath = normalizePath(plugin.manifest.dir) + "/";
-            const adapter = this.app.vault.adapter;
-            if ((await adapter.exists(pluginTargetFolderPath)) === false) {
-                await adapter.mkdir(pluginTargetFolderPath);
+            if ((await this.plugin.vaultAccess.adapterExists(pluginTargetFolderPath)) === false) {
+                await this.app.vault.adapter.mkdir(pluginTargetFolderPath);
             }
-            await adapter.write(pluginTargetFolderPath + "main.js", plugin.mainJs);
-            await adapter.write(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
+            await this.plugin.vaultAccess.adapterWrite(pluginTargetFolderPath + "main.js", plugin.mainJs);
+            await this.plugin.vaultAccess.adapterWrite(pluginTargetFolderPath + "manifest.json", plugin.manifestJson);
             if (plugin.styleCss)
-                await adapter.write(pluginTargetFolderPath + "styles.css", plugin.styleCss);
+                await this.plugin.vaultAccess.adapterWrite(pluginTargetFolderPath + "styles.css", plugin.styleCss);
             if (stat) {
                 // @ts-ignore
                 await this.app.plugins.loadPlugin(plugin.manifest.id);

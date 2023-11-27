@@ -103,7 +103,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             Logger(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
             return;
         }
-        const stat = await this.app.vault.adapter.stat(path);
+        const stat = await this.vaultAccess.adapterStat(path);
         // sometimes folder is coming.
         if (stat && stat.type != "file")
             return;
@@ -171,12 +171,12 @@ export class HiddenFileSync extends LiveSyncCommands {
                 if (result) {
                     Logger(`Object merge:${path}`, LOG_LEVEL_INFO);
                     const filename = stripAllPrefixes(path);
-                    const isExists = await this.app.vault.adapter.exists(filename);
+                    const isExists = await this.plugin.vaultAccess.adapterExists(filename);
                     if (!isExists) {
                         await this.ensureDirectoryEx(filename);
                     }
-                    await this.app.vault.adapter.write(filename, result);
-                    const stat = await this.app.vault.adapter.stat(filename);
+                    await this.plugin.vaultAccess.adapterWrite(filename, result);
+                    const stat = await this.vaultAccess.adapterStat(filename);
                     await this.storeInternalFileToDatabase({ path: filename, ...stat });
                     await this.extractInternalFileFromDatabase(filename);
                     await this.localDatabase.removeRaw(id, revB);
@@ -408,7 +408,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
         const id = await this.path2id(file.path, ICHeader);
         const prefixedFileName = addPrefix(file.path, ICHeader);
-        const contentBin = await this.app.vault.adapter.readBinary(file.path);
+        const contentBin = await this.plugin.vaultAccess.adapterReadBinary(file.path);
         let content: Blob;
         try {
             content = createBinaryBlob(contentBin);
@@ -511,7 +511,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     async extractInternalFileFromDatabase(filename: FilePath, force = false) {
-        const isExists = await this.app.vault.adapter.exists(filename);
+        const isExists = await this.plugin.vaultAccess.adapterExists(filename);
         const prefixedFileName = addPrefix(filename, ICHeader);
         if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
             return;
@@ -534,7 +534,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
                     } else {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
-                        await this.app.vault.adapter.remove(filename);
+                        await this.plugin.vaultAccess.adapterRemove(filename);
                         try {
                             //@ts-ignore internalAPI
                             await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -547,7 +547,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
                 if (!isExists) {
                     await this.ensureDirectoryEx(filename);
-                    await this.app.vault.adapter.writeBinary(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.plugin.vaultAccess.adapterWrite(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -558,13 +558,13 @@ export class HiddenFileSync extends LiveSyncCommands {
                     Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
                     return true;
                 } else {
-                    const contentBin = await this.app.vault.adapter.readBinary(filename);
+                    const contentBin = await this.plugin.vaultAccess.adapterReadBinary(filename);
                     const content = await encodeBinary(contentBin);
                     if (isDocContentSame(content, fileOnDB.data) && !force) {
                         // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
-                    await this.app.vault.adapter.writeBinary(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.plugin.vaultAccess.adapterWrite(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -613,12 +613,12 @@ export class HiddenFileSync extends LiveSyncCommands {
                         }
                     }
                     if (!keep && result) {
-                        const isExists = await this.app.vault.adapter.exists(filename);
+                        const isExists = await this.plugin.vaultAccess.adapterExists(filename);
                         if (!isExists) {
                             await this.ensureDirectoryEx(filename);
                         }
-                        await this.app.vault.adapter.write(filename, result);
-                        const stat = await this.app.vault.adapter.stat(filename);
+                        await this.plugin.vaultAccess.adapterWrite(filename, result);
+                        const stat = await this.plugin.vaultAccess.adapterStat(filename);
                         await this.storeInternalFileToDatabase({ path: filename, ...stat }, true);
                         try {
                             //@ts-ignore internalAPI
@@ -657,7 +657,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         const files = filenames.filter(path => synchronisedInConfigSync.every(filterFile => !path.toLowerCase().startsWith(filterFile))).map(async (e) => {
             return {
                 path: e as FilePath,
-                stat: await this.app.vault.adapter.stat(e)
+                stat: await this.plugin.vaultAccess.adapterStat(e)
             };
         });
         const result: InternalFileInfo[] = [];
