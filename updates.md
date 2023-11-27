@@ -6,6 +6,15 @@ It will be addressed soon. Please be patient if you are using filesystem-livesyn
 
 
 #### Version history
+- 0.21.2
+  - IMPORTANT NOTICE: **0.21.1 CONTAINS A BUG WHILE REBUILDING THE DATABASE. IF YOU HAVE BEEN REBUILT, PLEASE MAKE SURE THAT ALL FILES ARE SANE.**
+    - This has been fixed in this version.
+  - Fixed:
+    - No longer files are broken while rebuilding.
+    - Now, Large binary files can be written correctly on a mobile platform.
+    - Any decoding errors now make zero-byte files.
+  - Modified:
+    - All files are processed sequentially for each.
 - 0.21.1
   - Fixed:
     - No more infinity loops on larger files.
