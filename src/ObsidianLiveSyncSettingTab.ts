@@ -1813,7 +1813,7 @@ ${stringifyYaml(pluginConfig)}`;
             .setClass("wizardHidden")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOptions({ "": "Old Algorithm", "xxhash32": "xxhash32 (Fast)", "xxhash64": "xxhash64 (Fastest)" } as Record<HashAlgorithm, string>)
+                    .addOptions({ "": "Old Algorithm", "xxhash32": "xxhash32 (Fast)", "xxhash64": "xxhash64 (Fastest)", "sha1": "Fallback (Without WebAssembly)" } as Record<HashAlgorithm, string>)
                     .setValue(this.plugin.settings.hashAlg)
                     .onChange(async (value) => {
                         this.plugin.settings.hashAlg = value as HashAlgorithm;
