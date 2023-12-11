@@ -1,6 +1,7 @@
 import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "./deps";
 import { serialized } from "./lib/src/lock";
 import type { FilePath } from "./lib/src/types";
+import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
 function getFileLockKey(file: TFile | TFolder | string) {
     return `fl:${typeof (file) == "string" ? file : file.path}`;
 }
@@ -65,9 +66,22 @@ export class SerializedFileAccess {
 
     async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
         if (typeof (data) === "string") {
-            return await serialized(getFileLockKey(file), () => this.app.vault.modify(file, data, options));
+            return await serialized(getFileLockKey(file), async () => {
+                const oldData = await this.app.vault.read(file);
+                if (data === oldData) return false
+                await this.app.vault.modify(file, data, options)
+                return true;
+            }
+            );
         } else {
-            return await serialized(getFileLockKey(file), () => this.app.vault.modifyBinary(file, toArrayBuffer(data), options));
+            return await serialized(getFileLockKey(file), async () => {
+                const oldData = await this.app.vault.readBinary(file);
+                if (isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
+                    return false;
+                }
+                await this.app.vault.modifyBinary(file, toArrayBuffer(data), options)
+                return true;
+            });
         }
     }
     async vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions): Promise<TFile> {

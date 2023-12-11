@@ -66,10 +66,7 @@
 
                 for (const revInfo of reversedRevs) {
                     if (revInfo.status == "available") {
-                        const doc =
-                            (!isPlain && showDiffInfo) || (checkStorageDiff && revInfo.rev == docA._rev)
-                                ? await db.getDBEntry(path, { rev: revInfo.rev }, false, false, true)
-                                : await db.getDBEntryMeta(path, { rev: revInfo.rev }, true);
+                        const doc = (!isPlain && showDiffInfo) || (checkStorageDiff && revInfo.rev == docA._rev) ? await db.getDBEntry(path, { rev: revInfo.rev }, false, false, true) : await db.getDBEntryMeta(path, { rev: revInfo.rev }, true);
                         if (doc === false) continue;
                         const rev = revInfo.rev;
 
@@ -112,11 +109,11 @@
                                     let result = false;
                                     if (isPlainText(docA.path)) {
                                         const data = await plugin.vaultAccess.adapterRead(abs);
-                                        result = isDocContentSame(data, doc.data);
+                                        result = await isDocContentSame(data, doc.data);
                                     } else {
                                         const data = await plugin.vaultAccess.adapterReadBinary(abs);
                                         const dataEEncoded = createBinaryBlob(data);
-                                        result = isDocContentSame(dataEEncoded, doc.data);
+                                        result = await isDocContentSame(dataEEncoded, doc.data);
                                     }
                                     if (result) {
                                         diffDetail += " ⚖️";

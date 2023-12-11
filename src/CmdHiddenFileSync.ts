@@ -436,7 +436,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 } else {
-                    if (isDocContentSame(old.data, content) && !forceWrite) {
+                    if (await isDocContentSame(old.data, content) && !forceWrite) {
                         // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return;
                     }
@@ -560,7 +560,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 } else {
                     const contentBin = await this.plugin.vaultAccess.adapterReadBinary(filename);
                     const content = await encodeBinary(contentBin);
-                    if (isDocContentSame(content, fileOnDB.data) && !force) {
+                    if (await isDocContentSame(content, fileOnDB.data) && !force) {
                         // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
                     }

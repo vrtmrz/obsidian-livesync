@@ -228,7 +228,7 @@ export class PluginAndTheirSettings extends LiveSyncCommands {
                         if (old !== false) {
                             const oldData = { data: old.data, deleted: old._deleted };
                             const newData = { data: d.data, deleted: d._deleted };
-                            if (isDocContentSame(oldData.data, newData.data) && oldData.deleted == newData.deleted) {
+                            if (await isDocContentSame(oldData.data, newData.data) && oldData.deleted == newData.deleted) {
                                 Logger(`Nothing changed:${m.name}`);
                                 return;
                             }

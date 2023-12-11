@@ -33,7 +33,7 @@ import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView
 import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
 import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
 import { LRUCache } from "./lib/src/LRUCache";
-import { SerializedFileAccess } from "./SerializedFileAccess";
+import { SerializedFileAccess } from "./SerializedFileAccess.ts";
 
 setNoticeClass(Notice);
 
@@ -1306,17 +1306,22 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         await this.ensureDirectoryEx(path);
         try {
             let outFile;
+            let isChanged = true;
             if (mode == "create") {
                 const normalizedPath = normalizePath(path);
                 await this.vaultAccess.vaultCreate(normalizedPath, writeData, { ctime: doc.ctime, mtime: doc.mtime, });
                 outFile = this.vaultAccess.getAbstractFileByPath(normalizedPath) as TFile;
             } else {
-                await this.vaultAccess.vaultModify(file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
+                isChanged = await this.vaultAccess.vaultModify(file, writeData, { ctime: doc.ctime, mtime: doc.mtime });
                 outFile = this.vaultAccess.getAbstractFileByPath(getPathFromTFile(file)) as TFile;
             }
-            Logger(msg + path);
-            this.vaultAccess.touch(outFile);
-            this.app.vault.trigger(mode, outFile);
+            if (isChanged) {
+                Logger(msg + path);
+                this.vaultAccess.touch(outFile);
+                this.app.vault.trigger(mode, outFile);
+            } else {
+                Logger(msg + "Skipped, the file is the same: " + path, LOG_LEVEL_VERBOSE);
+            }
 
         } catch (ex) {
             Logger(msg + "ERROR, Could not write: " + path, LOG_LEVEL_NOTICE);
@@ -1370,12 +1375,12 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 try {
                     const releaser = await semaphore.acquire(1);
                     serialized(`dbchanged-${path}`, async () => {
-                        Logger(`Applying ${path} (${entry._id}: ${entry._rev}) change...`, LOG_LEVEL_VERBOSE);
+                        Logger(`Applying ${path} (${entry._id}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
                         await this.handleDBChangedAsync(entry);
-                        Logger(`Applied ${path} (${entry._id}:${entry._rev}) change...`);
+                        Logger(`Applied ${path} (${entry._id}:${entry._rev?.substring(0, 5)}) change...`);
                     }).finally(() => { releaser(); });
                 } catch (ex) {
-                    Logger(`Failed to apply the change of ${path} (${entry._id}:${entry._rev})`);
+                    Logger(`Failed to apply the change of ${path} (${entry._id}:${entry._rev?.substring(0, 5)})`);
                 }
             } while (this.queuedEntries.length > 0);
         } finally {
@@ -1501,11 +1506,11 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         // Do not handle internal files if the feature has not been enabled.
         if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) {
-            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
+            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
             return;
         }
         if (isCustomisationSyncMetadata(doc._id) && !this.settings.usePluginSync) {
-            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
+            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
             return;
         }
         // It is better for your own safety, not to handle the following files
@@ -1528,7 +1533,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 const docMtime = ~~(doc.mtime / 1000);
                 //TODO: some margin required.
                 if (localMtime >= docMtime) {
-                    Logger(`${path} (${doc._id}, ${doc._rev}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
+                    Logger(`${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
                     return;
                 }
             }
@@ -1544,7 +1549,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if ((!this.settings.readChunksOnline) && "children" in doc) {
             const c = await this.localDatabase.collectChunksWithCache(doc.children as DocumentID[]);
             const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
-            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
+            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
         } else {
@@ -2265,12 +2270,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
                     const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(path)) as TFile;
                     if (file) {
-                        await this.vaultAccess.vaultModify(file, p);
-                        await this.updateIntoDB(file);
+                        if (await this.vaultAccess.vaultModify(file, p)) {
+                            await this.updateIntoDB(file);
+                        }
                     } else {
                         const newFile = await this.vaultAccess.vaultCreate(path, p);
                         await this.updateIntoDB(newFile);
                     }
+                    // ?
                     await this.pullFile(path);
                     Logger(`Automatically merged (sensible) :${path}`, LOG_LEVEL_INFO);
                     return true;
@@ -2562,7 +2569,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     const oldData = { data: old.data, deleted: old._deleted || old.deleted };
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
                     if (oldData.deleted != newData.deleted) return false;
-                    if (!isDocContentSame(old.data, newData.data)) return false;
+                    if (!await isDocContentSame(old.data, newData.data)) return false;
                     Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
                     return true;
                     // d._rev = old._rev;
