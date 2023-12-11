@@ -1375,12 +1375,12 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 try {
                     const releaser = await semaphore.acquire(1);
                     serialized(`dbchanged-${path}`, async () => {
-                        Logger(`Applying ${path} (${entry._id}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
+                        Logger(`Applying ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
                         await this.handleDBChangedAsync(entry);
-                        Logger(`Applied ${path} (${entry._id}:${entry._rev?.substring(0, 5)}) change...`);
+                        Logger(`Applied ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) change...`);
                     }).finally(() => { releaser(); });
                 } catch (ex) {
-                    Logger(`Failed to apply the change of ${path} (${entry._id}:${entry._rev?.substring(0, 5)})`);
+                    Logger(`Failed to apply the change of ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)})`);
                 }
             } while (this.queuedEntries.length > 0);
         } finally {
@@ -1467,10 +1467,10 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 } else if (isValidPath(this.getPath(queue.entry))) {
                     this.handleDBChanged(queue.entry);
                 } else {
-                    Logger(`Skipped: ${queue.entry._id}`, LOG_LEVEL_VERBOSE);
+                    Logger(`Skipped: ${queue.entry._id.substring(0, 8)}`, LOG_LEVEL_VERBOSE);
                 }
             } else if (now > queue.timeout) {
-                if (!queue.warned) Logger(`Timed out: ${queue.entry._id} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL_NOTICE);
+                if (!queue.warned) Logger(`Timed out: ${queue.entry._id.substring(0, 8)} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL_NOTICE);
                 queue.warned = true;
                 continue;
             }
@@ -1506,11 +1506,11 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
         // Do not handle internal files if the feature has not been enabled.
         if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) {
-            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
+            Logger(`Skipped: ${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
             return;
         }
         if (isCustomisationSyncMetadata(doc._id) && !this.settings.usePluginSync) {
-            Logger(`Skipped: ${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
+            Logger(`Skipped: ${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
             return;
         }
         // It is better for your own safety, not to handle the following files
@@ -1533,7 +1533,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 const docMtime = ~~(doc.mtime / 1000);
                 //TODO: some margin required.
                 if (localMtime >= docMtime) {
-                    Logger(`${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
+                    Logger(`${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
                     return;
                 }
             }
@@ -1549,7 +1549,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if ((!this.settings.readChunksOnline) && "children" in doc) {
             const c = await this.localDatabase.collectChunksWithCache(doc.children as DocumentID[]);
             const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
-            if (missing.length > 0) Logger(`${path} (${doc._id}, ${doc._rev?.substring(0, 10)}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
+            if (missing.length > 0) Logger(`${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
             newQueue.missingChildren = missing;
             this.queuedFiles.push(newQueue);
         } else {
