@@ -6,13 +6,15 @@ It will be addressed soon. Please be patient if you are using filesystem-livesyn
 
 
 #### Version history
-- 0.21.4
+- 0.21.5
   - Improved:
     - Now all revisions will be shown only its first a few letters.
     - Now ID of the documents is shown in the log with the first 8 letters.
   - Fixed:
     - Check before modifying files has been implemented.
     - Content change detection has been improved.
+- 0.21.4
+  - This release had been skipped.
 - 0.21.3
   - Implemented:
     - Now we can use SHA1 for hash function as fallback.
