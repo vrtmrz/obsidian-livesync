@@ -1,4 +1,4 @@
-import { normalizePath, TFile, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
+import { normalizePath, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
@@ -7,6 +7,8 @@ import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
 import ObsidianLiveSyncPlugin from "./main";
 import { writeString } from "./lib/src/strbin";
+
+export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriodicTask, cancelAllPeriodicTask, } from "./lib/src/task";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
@@ -43,49 +45,6 @@ export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
 
-const tasks: { [key: string]: ReturnType<typeof setTimeout> } = {};
-export function scheduleTask(key: string, timeout: number, proc: (() => Promise<any> | void), skipIfTaskExist?: boolean) {
-    if (skipIfTaskExist && key in tasks) {
-        return;
-    }
-    cancelTask(key);
-    tasks[key] = setTimeout(async () => {
-        delete tasks[key];
-        await proc();
-    }, timeout);
-}
-export function cancelTask(key: string) {
-    if (key in tasks) {
-        clearTimeout(tasks[key]);
-        delete tasks[key];
-    }
-}
-export function cancelAllTasks() {
-    for (const v in tasks) {
-        clearTimeout(tasks[v]);
-        delete tasks[v];
-    }
-}
-const intervals: { [key: string]: ReturnType<typeof setInterval> } = {};
-export function setPeriodicTask(key: string, timeout: number, proc: (() => Promise<any> | void)) {
-    cancelPeriodicTask(key);
-    intervals[key] = setInterval(async () => {
-        delete intervals[key];
-        await proc();
-    }, timeout);
-}
-export function cancelPeriodicTask(key: string) {
-    if (key in intervals) {
-        clearInterval(intervals[key]);
-        delete intervals[key];
-    }
-}
-export function cancelAllPeriodicTask() {
-    for (const v in intervals) {
-        clearInterval(intervals[v]);
-        delete intervals[v];
-    }
-}
 
 const memos: { [key: string]: any } = {};
 export function memoObject<T>(key: string, obj: T): T {

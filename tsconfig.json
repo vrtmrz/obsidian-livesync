@@ -16,6 +16,7 @@
         "importHelpers": false,
         "alwaysStrict": true,
         "allowImportingTsExtensions": true,
+        "noEmit": true,
         "lib": [
             "es2018",
             "DOM",

@@ -3,8 +3,8 @@ const isDebug = false;
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, } from "./lib/src/types";
-import { type InternalFileInfo, type queueItem, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, createBinaryBlob, createTextBlob, getDocData, isDocContentSame } from "./lib/src/utils";
+import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
+import { createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -13,13 +13,11 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
-import { getGlobalStore, ObservableStore, observeStores } from "./lib/src/store";
-import { lockStore, logMessageStore, logStore, type LogEntry } from "./lib/src/stores";
+import { lockStats, logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
 import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/strbin";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
 import { isLockAcquired, serialized, skipIfDuplicated } from "./lib/src/lock";
-import { Semaphore } from "./lib/src/semaphore";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
 import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
@@ -31,18 +29,26 @@ import { ConfigSync } from "./CmdConfigSync";
 import { confirmWithMessage } from "./dialogs";
 import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./GlobalHistoryView";
 import { LogPaneView, VIEW_TYPE_LOG } from "./LogPaneView";
-import { mapAllTasksWithConcurrencyLimit, processAllTasksWithConcurrencyLimit } from "./lib/src/task";
 import { LRUCache } from "./lib/src/LRUCache";
-import { SerializedFileAccess } from "./SerializedFileAccess.ts";
+import { SerializedFileAccess } from "./SerializedFileAccess.js";
+import { KeyedQueueProcessor, QueueProcessor, type QueueItemWithKey } from "./lib/src/processor.js";
+import { reactive, reactiveSource } from "./lib/src/reactive.js";
 
 setNoticeClass(Notice);
 
 // DI the log again.
 setGlobalLogFunction((message: any, level?: LOG_LEVEL, key?: string) => {
     const entry = { message, level, key } as LogEntry;
-    logStore.push(entry);
+    logStore.enqueue(entry);
 });
-logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
+let recentLogs = [] as string[];
+
+// Recent log splicer
+const recentLogProcessor = new QueueProcessor((logs: string[]) => {
+    recentLogs = [...recentLogs, ...logs].splice(-200);
+    logMessages.value = recentLogs;
+}, { batchSize: 25, delay: 10, suspended: false, concurrentLimit: 1 }).resumePipeLine();
+// logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
 async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
     const ret = await requestUrl(request);
@@ -72,7 +78,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     packageVersion = "";
     manifestVersion = "";
 
-    // addOnPluginAndTheirSettings = new PluginAndTheirSettings(this);
     addOnHiddenFileSync = new HiddenFileSync(this);
     addOnSetup = new SetupLiveSync(this);
     addOnConfigSync = new ConfigSync(this);
@@ -273,7 +278,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     getReplicator() {
         return this.replicator;
     }
-    replicationStat = new ObservableStore({
+    replicationStat = reactiveSource({
         sent: 0,
         arrived: 0,
         maxPullSeq: 0,
@@ -446,7 +451,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     await this.openDatabase();
                     const warningMessage = "The red flag is raised! The whole initialize steps are skipped, and any file changes are not captured.";
                     Logger(warningMessage, LOG_LEVEL_NOTICE);
-                    this.setStatusBarText(warningMessage);
                 }
             } else {
                 if (this.settings.suspendFileWatching) {
@@ -685,7 +689,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     async onload() {
-        logStore.subscribe(e => this.addLog(e.message, e.level, e.key));
+        logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
         Logger("loading plugin");
         this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
         this.addUIs();
@@ -701,6 +705,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
         await this.loadSettings();
+        this.observeForLogs();
         this.statusBar = this.addStatusBarItem();
         this.statusBar.addClass("syncstatusbar");
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
@@ -729,18 +734,15 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
         this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
         this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
-
+        this.realizeSettingSyncMode = this.realizeSettingSyncMode.bind(this);
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
         this.loadQueuedFiles = this.loadQueuedFiles.bind(this);
-
-        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
 
         await Promise.all(this.addOns.map(e => e.onload()));
 
         this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
 
-        this.triggerRealizeSettingSyncMode = debounce(this.triggerRealizeSettingSyncMode.bind(this), 1000);
 
     }
     async showView(viewType: string) {
@@ -793,7 +795,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         //@ts-ignore
         this.isMobile = this.app.isMobile;
         this.localDatabase = new LiveSyncLocalDB(vaultName, this);
-        this.observeForLogs();
         return await this.localDatabase.initializeDatabase();
     }
 
@@ -907,12 +908,8 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
+        this.fileEventQueue.delay = this.settings.batchSave ? 5000 : 100;
     }
-
-    triggerRealizeSettingSyncMode() {
-        (async () => await this.realizeSettingSyncMode())();
-    }
-
 
     async saveSettingData() {
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
@@ -943,17 +940,19 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         await this.saveData(settings);
         this.localDatabase.settings = this.settings;
+        this.fileEventQueue.delay = this.settings.batchSave ? 5000 : 100;
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
+
     }
 
     async saveSettings() {
         await this.saveSettingData();
-        this.triggerRealizeSettingSyncMode();
+        fireAndForget(() => this.realizeSettingSyncMode());
     }
 
-    vaultManager: StorageEventManager;
+    vaultManager: StorageEventManager = new StorageEventManagerObsidian(this);
     registerFileWatchEvents() {
-        this.vaultManager = new StorageEventManagerObsidian(this)
+        this.vaultManager.beginWatch();
     }
     _initialCallback: any;
     swapSaveCommand() {
@@ -1033,73 +1032,94 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
     }
 
-    async procFileEvent(applyBatch?: boolean) {
-        if (!this.isReady) return;
-        if (this.settings.batchSave && !this.settings.liveSync) {
-            if (!applyBatch && this.vaultManager.getQueueLength() < FileWatchEventQueueMax) {
-                // Defer till applying batch save or queue has been grown enough.
-                // or 30 seconds after.
-                scheduleTask("applyBatchAuto", 30000, () => {
-                    this.procFileEvent(true);
-                })
-                return;
-            }
-        }
-        cancelTask("applyBatchAuto");
-        const ret = await skipIfDuplicated("procFiles", async () => {
-            do {
-                const queue = this.vaultManager.fetchEvent();
-                if (queue === false) break;
-                if (queue === undefined) break;
-                const file = queue.args.file;
-                const key = `file-last-proc-${queue.type}-${file.path}`;
-                const last = Number(await this.kvDB.get(key) || 0);
-                let mtime = file.mtime;
-                if (queue.type == "DELETE") {
-                    await this.deleteFromDBbyPath(file.path);
-                    mtime = file.mtime - 1;
-                    const keyD1 = `file-last-proc-CREATE-${file.path}`;
-                    const keyD2 = `file-last-proc-CHANGED-${file.path}`;
-                    await this.kvDB.set(keyD1, mtime);
-                    await this.kvDB.set(keyD2, mtime);
-                } else if (queue.type == "INTERNAL") {
-                    await this.addOnHiddenFileSync.watchVaultRawEventsAsync(file.path);
-                    await this.addOnConfigSync.watchVaultRawEventsAsync(file.path);
-                } else {
-                    const targetFile = this.vaultAccess.getAbstractFileByPath(file.path);
-                    if (!(targetFile instanceof TFile)) {
-                        Logger(`Target file was not found: ${file.path}`, LOG_LEVEL_INFO);
-                        continue;
-                    }
-                    //TODO: check from cache time.
-                    if (file.mtime == last) {
-                        Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
-                        continue;
-                    }
-
-                    const cache = queue.args.cache;
-                    if (queue.type == "CREATE" || queue.type == "CHANGED") {
-                        const keyD1 = `file-last-proc-DELETED-${file.path}`;
-                        await this.kvDB.set(keyD1, mtime);
-                        if (!await this.updateIntoDB(targetFile, false, cache)) {
-                            Logger(`DB -> STORAGE: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
-                            // cancel running queues and remove one of atomic operation
-                            this.vaultManager.cancelRelativeEvent(queue);
-                            continue;
-                        }
-                    }
-                    if (queue.type == "RENAME") {
-                        // Obsolete
-                        await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
-                    }
-                }
-                await this.kvDB.set(key, mtime);
-            } while (this.vaultManager.getQueueLength() > 0);
-            return true;
-        })
-        return ret;
+    cancelRelativeEvent(item: FileEventItem) {
+        this.fileEventQueue.modifyQueue((items) => [...items.filter(e => e.entity.key != item.key)])
     }
 
+    queueNextFileEvent(items: QueueItemWithKey<FileEventItem>[], newItem: QueueItemWithKey<FileEventItem>): QueueItemWithKey<FileEventItem>[] {
+        if (this.settings.batchSave && !this.settings.liveSync) {
+            const file = newItem.entity.args.file;
+            // if the latest event is the same type, omit that
+            // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
+            // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
+            // a.md MODIFY
+            // a.md CREATE
+            //     : 
+            let i = items.length;
+            L1:
+            while (i >= 0) {
+                i--;
+                if (i < 0) break L1;
+                if (items[i].entity.args.file.path != file.path) {
+                    continue L1;
+                }
+                if (items[i].entity.type != newItem.entity.type) break L1;
+                items.remove(items[i]);
+            }
+        }
+        items.push(newItem);
+        // When deleting or renaming, the queue must be flushed once before processing subsequent processes to prevent unexpected race condition.
+        if (newItem.entity.type == "DELETE" || newItem.entity.type == "RENAME") {
+            this.fileEventQueue.requestNextFlush();
+        }
+        return items;
+    }
+    async handleFileEvent(queue: FileEventItem): Promise<any> {
+        const file = queue.args.file;
+        const key = `file-last-proc-${queue.type}-${file.path}`;
+        const last = Number(await this.kvDB.get(key) || 0);
+        let mtime = file.mtime;
+        if (queue.type == "DELETE") {
+            await this.deleteFromDBbyPath(file.path);
+            mtime = file.mtime - 1;
+            const keyD1 = `file-last-proc-CREATE-${file.path}`;
+            const keyD2 = `file-last-proc-CHANGED-${file.path}`;
+            await this.kvDB.set(keyD1, mtime);
+            await this.kvDB.set(keyD2, mtime);
+        } else if (queue.type == "INTERNAL") {
+            await this.addOnHiddenFileSync.watchVaultRawEventsAsync(file.path);
+            await this.addOnConfigSync.watchVaultRawEventsAsync(file.path);
+        } else {
+            const targetFile = this.vaultAccess.getAbstractFileByPath(file.path);
+            if (!(targetFile instanceof TFile)) {
+                Logger(`Target file was not found: ${file.path}`, LOG_LEVEL_INFO);
+                return;
+            }
+            if (file.mtime == last) {
+                Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+
+            const cache = queue.args.cache;
+            if (queue.type == "CREATE" || queue.type == "CHANGED") {
+                const keyD1 = `file-last-proc-DELETED-${file.path}`;
+                await this.kvDB.set(keyD1, mtime);
+                if (!await this.updateIntoDB(targetFile, false, cache)) {
+                    Logger(`STORAGE -> DB: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
+                    // cancel running queues and remove one of atomic operation
+                    this.cancelRelativeEvent(queue);
+                    return;
+                }
+            }
+            if (queue.type == "RENAME") {
+                // Obsolete
+                await this.watchVaultRenameAsync(targetFile, queue.args.oldPath);
+            }
+        }
+        await this.kvDB.set(key, mtime);
+    }
+
+    pendingFileEventCount = reactiveSource(0);
+    fileEventQueue =
+        new KeyedQueueProcessor(
+            (items: FileEventItem[]) => this.handleFileEvent(items[0]),
+            { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 100, yieldThreshold: FileWatchEventQueueMax, totalRemainingReactiveSource: this.pendingFileEventCount }
+        ).replaceEnqueueProcessor((items, newItem) => this.queueNextFileEvent(items, newItem));
+
+
+    flushFileEventQueue() {
+        return this.fileEventQueue.flush();
+    }
 
     watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
@@ -1123,7 +1143,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
     async applyBatchChange() {
         if (this.settings.batchSave && !this.settings.liveSync) {
-            return await this.procFileEvent(true);
+            return await this.flushFileEventQueue();
         }
     }
 
@@ -1157,9 +1177,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     //--> Basic document Functions
-    notifies: { [key: string]: { notice: Notice; timer: ReturnType<typeof setTimeout>; count: number } } = {};
+    notifies: { [key: string]: { notice: Notice; count: number } } = {};
 
-    lastLog = "";
+    statusLog = reactiveSource("");
     // eslint-disable-next-line require-await
     async addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = "") {
         if (level == LOG_LEVEL_DEBUG && !isDebug) {
@@ -1182,6 +1202,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const newMessage = timestamp + "->" + messageContent;
 
         console.log(vaultName + ":" + newMessage);
+        if (!this.settings?.showOnlyIconsOnEditor) {
+            this.statusLog.value = messageContent;
+        }
         if (this.settings?.writeLogToTheFile) {
             const time = now.toISOString().split("T")[0];
             const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
@@ -1191,8 +1214,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             }
             this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
-        logMessageStore.apply(e => [...e, newMessage].slice(-100));
-        this.setStatusBarText(null, messageContent);
+        recentLogProcessor.enqueue(newMessage);
 
         if (level >= LOG_LEVEL_NOTICE) {
             if (!key) key = messageContent;
@@ -1202,34 +1224,30 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 if (!isShown) {
                     this.notifies[key].notice = new Notice(messageContent, 0);
                 }
-                clearTimeout(this.notifies[key].timer);
+                cancelTask(`notify-${key}`);
                 if (key == messageContent) {
                     this.notifies[key].count++;
                     this.notifies[key].notice.setMessage(`(${this.notifies[key].count}):${messageContent}`);
                 } else {
                     this.notifies[key].notice.setMessage(`${messageContent}`);
                 }
-
-                this.notifies[key].timer = setTimeout(() => {
-                    const notify = this.notifies[key].notice;
-                    delete this.notifies[key];
-                    try {
-                        notify.hide();
-                    } catch (ex) {
-                        // NO OP
-                    }
-                }, 5000);
             } else {
                 const notify = new Notice(messageContent, 0);
                 this.notifies[key] = {
                     count: 0,
                     notice: notify,
-                    timer: setTimeout(() => {
-                        delete this.notifies[key];
-                        notify.hide();
-                    }, 5000),
                 };
             }
+            const timeout = 5000;
+            scheduleTask(`notify-${key}`, timeout, () => {
+                const notify = this.notifies[key].notice;
+                delete this.notifies[key];
+                try {
+                    notify.hide();
+                } catch (ex) {
+                    // NO OP
+                }
+            })
         }
     }
 
@@ -1292,7 +1310,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
         const doc = await this.localDatabase.getDBEntry(path, { rev: docEntry._rev });
         if (doc === false) return;
-        const msg = `DB -> STORAGE (${mode}${force ? ",force" : ""},${doc.datatype}) `;
+        const msg = `STORAGE <- DB (${mode}${force ? ",force" : ""},${doc.datatype}) `;
         if (doc.datatype != "newnote" && doc.datatype != "plain") {
             Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
             return;
@@ -1351,42 +1369,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
 
     queuedEntries: EntryBody[] = [];
-    dbChangeProcRunning = false;
-    handleDBChanged(change: EntryBody) {
-        // If the file is opened, we have to apply immediately
-        const af = app.workspace.getActiveFile();
-        if (af && af.path == this.getPath(change)) {
-            this.queuedEntries = this.queuedEntries.filter(e => e._id != change._id);
-            return this.handleDBChangedAsync(change);
-        }
-        this.queuedEntries.push(change);
-        this.execDBchanged();
-    }
-    async execDBchanged() {
-        if (this.dbChangeProcRunning) return false;
-        this.dbChangeProcRunning = true;
-        const semaphore = Semaphore(4);
-        try {
-            do {
-                const entry = this.queuedEntries.shift();
-                // If the same file is to be manipulated, leave it to the last process.
-                if (this.queuedEntries.some(e => e._id == entry._id)) continue;
-                const path = getPath(entry);
-                try {
-                    const releaser = await semaphore.acquire(1);
-                    serialized(`dbchanged-${path}`, async () => {
-                        Logger(`Applying ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
-                        await this.handleDBChangedAsync(entry);
-                        Logger(`Applied ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) change...`);
-                    }).finally(() => { releaser(); });
-                } catch (ex) {
-                    Logger(`Failed to apply the change of ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)})`);
-                }
-            } while (this.queuedEntries.length > 0);
-        } finally {
-            this.dbChangeProcRunning = false;
-        }
-    }
+
     queueConflictedOnlyActiveFile(file: TFile) {
         if (!this.settings.checkConflictOnlyOnOpen) {
             this.queueConflictedCheck(file);
@@ -1400,42 +1383,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         return false;
     }
-    async handleDBChangedAsync(change: EntryBody) {
-
-        const targetFile = this.vaultAccess.getAbstractFileByPath(this.getPathWithoutPrefix(change));
-        if (targetFile == null) {
-            if (change._deleted || change.deleted) {
-                return;
-            }
-            const doc = change;
-            await this.doc2storage(doc);
-        } else if (targetFile instanceof TFile) {
-            const doc = change;
-            const file = targetFile;
-            if (this.settings.writeDocumentsIfConflicted) {
-                await this.doc2storage(doc, file);
-                this.queueConflictedOnlyActiveFile(file);
-            } else {
-                const d = await this.localDatabase.getDBEntryMeta(this.getPath(change), { conflicts: true }, true);
-                if (d && !d._conflicts) {
-                    await this.doc2storage(doc, file);
-                } else {
-                    if (!this.queueConflictedOnlyActiveFile(file)) {
-                        Logger(`${this.getPath(change)} is conflicted, write to the storage has been postponed.`, LOG_LEVEL_NOTICE);
-                    }
-                }
-            }
-        } else {
-            Logger(`${this.getPath(change)} is already exist as the folder`);
-        }
-    }
-
-    queuedFiles = [] as queueItem[];
-    queuedFilesStore = getGlobalStore("queuedFiles", { queuedItems: [] as queueItem[], fileEventItems: [] as FileEventItem[] });
-    chunkWaitTimeout = 60000;
 
     saveQueuedFiles() {
-        const saveData = JSON.stringify(this.queuedFiles.filter((e) => !e.done).map((e) => e.entry._id));
+        const saveData = JSON.stringify(this.replicationResultProcessor._queue.map((e) => e._id));
         const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
         localStorage.setItem(lsKey, saveData);
     }
@@ -1445,178 +1395,117 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
             const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: ids, include_docs: true });
             for (const doc of ret.rows) {
-                if (doc.doc && !this.queuedFiles.some((e) => e.entry._id == doc.doc._id)) {
-                    await this.parseIncomingDoc(doc.doc as PouchDB.Core.ExistingDocument<EntryBody & PouchDB.Core.AllDocsMeta>);
-                }
+                this.replicationResultProcessor.enqueue(doc.doc);
             }
         }
     }
 
-    procQueuedFiles() {
-
-        this.saveQueuedFiles();
-        for (const queue of this.queuedFiles) {
-            if (queue.done) continue;
-            const now = new Date().getTime();
-            if (queue.missingChildren.length == 0) {
-                queue.done = true;
-                if (isInternalMetadata(queue.entry._id) && this.settings.syncInternalFiles) {
-                    //system file
-                    const filename = this.getPathWithoutPrefix(queue.entry);
-                    this.isTargetFile(filename).then((ret) => ret ? this.addOnHiddenFileSync.procInternalFile(filename) : Logger(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE));
-                } else if (isValidPath(this.getPath(queue.entry))) {
-                    this.handleDBChanged(queue.entry);
-                } else {
-                    Logger(`Skipped: ${queue.entry._id.substring(0, 8)}`, LOG_LEVEL_VERBOSE);
-                }
-            } else if (now > queue.timeout) {
-                if (!queue.warned) Logger(`Timed out: ${queue.entry._id.substring(0, 8)} could not collect ${queue.missingChildren.length} chunks. plugin keeps watching, but you have to check the file after the replication.`, LOG_LEVEL_NOTICE);
-                queue.warned = true;
-                continue;
-            }
-        }
-        this.queuedFiles = this.queuedFiles.filter((e) => !e.done);
-        this.queuedFilesStore.apply((value) => ({ ...value, queuedItems: this.queuedFiles }));
-        this.saveQueuedFiles();
-    }
-    parseIncomingChunk(chunk: PouchDB.Core.ExistingDocument<EntryDoc>) {
-        const now = new Date().getTime();
-        let isNewFileCompleted = false;
-
-        for (const queue of this.queuedFiles) {
-            if (queue.done) continue;
-            if (queue.missingChildren.indexOf(chunk._id) !== -1) {
-                queue.missingChildren = queue.missingChildren.filter((e) => e != chunk._id);
-                queue.timeout = now + this.chunkWaitTimeout;
-            }
-            if (queue.missingChildren.length == 0) {
-                for (const e of this.queuedFiles) {
-                    if (e.entry._id == queue.entry._id && e.entry.mtime < queue.entry.mtime) {
-                        e.done = true;
-                    }
-                }
-                isNewFileCompleted = true;
-            }
-        }
-        if (isNewFileCompleted) this.procQueuedFiles();
-    }
-    async parseIncomingDoc(doc: PouchDB.Core.ExistingDocument<EntryBody>) {
-        const path = this.getPath(doc);
-        if (!await this.isTargetFile(path)) return;
-        const skipOldFile = this.settings.skipOlderFilesOnSync && false; //patched temporary.
-        // Do not handle internal files if the feature has not been enabled.
-        if (isInternalMetadata(doc._id) && !this.settings.syncInternalFiles) {
-            Logger(`Skipped: ${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Hidden file sync is disabled.`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-        if (isCustomisationSyncMetadata(doc._id) && !this.settings.usePluginSync) {
-            Logger(`Skipped: ${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Customization sync is disabled.`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-        // It is better for your own safety, not to handle the following files
-        const ignoreFiles = [
-            "_design/replicate",
-            "_design/chunks",
-            FLAGMD_REDFLAG,
-            FLAGMD_REDFLAG2,
-            FLAGMD_REDFLAG3
-        ];
-        if (!isInternalMetadata(doc._id) && ignoreFiles.contains(path)) {
-            return;
-
-        }
-        if ((!isInternalMetadata(doc._id)) && skipOldFile) {
-            const info = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(path));
-
-            if (info && info instanceof TFile) {
-                const localMtime = ~~(info.stat.mtime / 1000);
-                const docMtime = ~~(doc.mtime / 1000);
-                //TODO: some margin required.
-                if (localMtime >= docMtime) {
-                    Logger(`${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Skipped, older than storage.`, LOG_LEVEL_VERBOSE);
-                    return;
-                }
-            }
-        }
-        const now = new Date().getTime();
-        const newQueue = {
-            entry: doc,
-            missingChildren: [] as string[],
-            timeout: now + this.chunkWaitTimeout,
-        };
+    databaseQueueCount = reactiveSource(0);
+    databaseQueuedProcessor = new KeyedQueueProcessor(async (docs: EntryBody[]) => {
+        const dbDoc = docs[0];
+        const path = this.getPath(dbDoc);
         // If `Read chunks online` is disabled, chunks should be transferred before here.
         // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
-        if ((!this.settings.readChunksOnline) && "children" in doc) {
-            const c = await this.localDatabase.collectChunksWithCache(doc.children as DocumentID[]);
-            const missing = c.filter((e) => e.chunk === false).map((e) => e.id);
-            if (missing.length > 0) Logger(`${path} (${doc._id.substring(0, 8)}, ${doc._rev?.substring(0, 10)}) Queued (waiting ${missing.length} items)`, LOG_LEVEL_VERBOSE);
-            newQueue.missingChildren = missing;
-            this.queuedFiles.push(newQueue);
+        const datatype = (!("type" in dbDoc) || dbDoc.type == "notes") ? "newnote" : dbDoc.type;
+        const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc, datatype, data: [] }, {}, false, true, true);
+        if (!doc) {
+            Logger(`Something went wrong while gathering content of ${path} (${dbDoc._id.substring(0, 8)}, ${dbDoc._rev?.substring(0, 10)}) `, LOG_LEVEL_NOTICE)
+            return;
+        }
+        if (isInternalMetadata(doc._id) && this.settings.syncInternalFiles) {
+            //system file
+            const filename = this.getPathWithoutPrefix(doc);
+            this.isTargetFile(filename).then((ret) => ret ? this.addOnHiddenFileSync.procInternalFile(filename) : Logger(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE));
+        } else if (isValidPath(this.getPath(doc))) {
+            this.storageApplyingProcessor.enqueueWithKey(doc.path, doc);
         } else {
-            this.queuedFiles.push(newQueue);
+            Logger(`Skipped: ${doc._id.substring(0, 8)}`, LOG_LEVEL_VERBOSE);
         }
-        this.saveQueuedFiles();
-        this.procQueuedFiles();
-    }
+        return;
+    }, { suspended: true, batchSize: 1, concurrentLimit: 10, yieldThreshold: 1, delay: 0, totalRemainingReactiveSource: this.databaseQueueCount }).startPipeline();
 
-    //---> Sync
-    async parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<void> {
-        const docsSorted = docs.sort((a: any, b: any) => b?.mtime ?? 0 - a?.mtime ?? 0);
-        L1:
-        for (const change of docsSorted) {
-            if (isChunk(change._id)) {
-                if (!this.settings.suspendParseReplicationResult) {
-                    await this.parseIncomingChunk(change);
-                }
-                continue;
+    storageApplyingCount = reactiveSource(0);
+    storageApplyingProcessor = new KeyedQueueProcessor(async (docs: LoadedEntry[]) => {
+        const entry = docs[0];
+        const path = this.getPath(entry);
+        Logger(`Applying ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
+        const targetFile = this.vaultAccess.getAbstractFileByPath(this.getPathWithoutPrefix(entry));
+        if (targetFile == null) {
+            if (entry._deleted || entry.deleted) {
+                return;
             }
-            if (!this.settings.suspendParseReplicationResult) {
-                for (const proc of this.addOns) {
-                    if (await proc.parseReplicationResultItem(change)) {
-                        continue L1;
-                    }
-                }
-            }
-            if (change._id == SYNCINFO_ID) {
-                continue;
-            }
-            if (change._id.startsWith("_design")) {
-                continue;
-            }
-
-            if (change.type != "leaf" && change.type != "versioninfo" && change.type != "milestoneinfo" && change.type != "nodeinfo") {
-                if (this.settings.suspendParseReplicationResult) {
-                    if (isInternalMetadata(change._id) && !this.settings.syncInternalFiles) {
-                        continue;
-                    }
-                    if (isCustomisationSyncMetadata(change._id) && !this.settings.usePluginSync) {
-                        continue;
-                    }
-                    if (!change.path) {
-                        continue;
-                    }
-                    const newQueue = {
-                        entry: change,
-                        missingChildren: [] as string[],
-                        timeout: 0,
-                    };
-                    Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
-                    this.queuedFiles = this.queuedFiles.filter(e => e.entry.path != change.path);
-                    this.queuedFiles.push(newQueue);
-                    this.saveQueuedFiles();
-                    continue;
+            const doc = entry;
+            await this.doc2storage(doc);
+        } else if (targetFile instanceof TFile) {
+            const doc = entry;
+            const file = targetFile;
+            if (this.settings.writeDocumentsIfConflicted) {
+                await this.doc2storage(doc, file);
+                this.queueConflictedOnlyActiveFile(file);
+            } else {
+                const d = await this.localDatabase.getDBEntryMeta(this.getPath(entry), { conflicts: true }, true);
+                if (d && !d._conflicts) {
+                    await this.doc2storage(doc, file);
                 } else {
-                    await this.parseIncomingDoc(change);
-                    continue;
+                    if (!this.queueConflictedOnlyActiveFile(file)) {
+                        Logger(`${this.getPath(entry)} is conflicted, write to the storage has been postponed.`, LOG_LEVEL_NOTICE);
+                    }
                 }
             }
-            if (change.type == "versioninfo") {
-                if (change.version > VER) {
-                    this.replicator.closeReplication();
-                    Logger(`Remote database updated to incompatible version. update your self-hosted-livesync plugin.`, LOG_LEVEL_NOTICE);
-                }
+        } else {
+            Logger(`${this.getPath(entry)} is already exist as the folder`);
+        }
+        Logger(`Applied ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) change...`);
+        return;
+    }, { suspended: true, batchSize: 1, concurrentLimit: 2, yieldThreshold: 1, delay: 0, totalRemainingReactiveSource: this.storageApplyingCount }).startPipeline()
+
+
+    replicationResultCount = reactiveSource(0);
+    replicationResultProcessor = new QueueProcessor(async (docs: PouchDB.Core.ExistingDocument<EntryDoc>[]) => {
+        if (this.settings.suspendParseReplicationResult) return;
+        const change = docs[0];
+        if (isChunk(change._id)) {
+            // SendSignal?
+            // this.parseIncomingChunk(change);
+            sendValue(`leaf-${change._id}`, change);
+            return;
+        }
+        // any addon needs this item?
+        for (const proc of this.addOns) {
+            if (await proc.parseReplicationResultItem(change)) {
+                return;
             }
         }
+        if (change.type == "versioninfo") {
+            if (change.version > VER) {
+                this.replicator.closeReplication();
+                Logger(`Remote database updated to incompatible version. update your Self-hosted LiveSync plugin.`, LOG_LEVEL_NOTICE);
+            }
+            return;
+        }
+        if (change._id == SYNCINFO_ID || // Synchronisation information data
+            change._id.startsWith("_design") //design document
+        ) {
+            return;
+        }
+        if (change.type == "plain" || change.type == "newnote") {
+            if (this.databaseQueuedProcessor._isSuspended) {
+                Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
+            }
+            this.databaseQueuedProcessor.enqueueWithKey(change.path, change);
+        }
+        return;
+    }, { batchSize: 1, suspended: true, concurrentLimit: 1, delay: 0, totalRemainingReactiveSource: this.replicationResultCount }).startPipeline().onUpdateProgress(() => {
+        this.saveQueuedFiles();
+    });
+    //---> Sync
+    parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>) {
+        if (this.settings.suspendParseReplicationResult) {
+            this.replicationResultProcessor.suspend()
+        } else {
+            this.replicationResultProcessor.resume()
+        }
+        this.replicationResultProcessor.enqueueAll(docs);
     }
 
 
@@ -1644,10 +1533,52 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     lastMessage = "";
 
     observeForLogs() {
-        const observer__ = observeStores(this.queuedFilesStore, lockStore);
-        const observer = observeStores(observer__, this.replicationStat);
+        // const logStore
+        const queueCountLabel = reactive(() => {
+            const dbCount = this.databaseQueueCount.value;
+            const replicationCount = this.replicationResultCount.value;
+            const storageApplingCount = this.storageApplyingCount.value;
+            const chunkCount = collectingChunks.value;
+            const pluginScanCount = pluginScanningCount.value;
+            const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
+            const labelReplication = replicationCount ? `📥 ${replicationCount} ` : "";
+            const labelDBCount = dbCount ? `📄 ${dbCount} ` : "";
+            const labelStorageCount = storageApplingCount ? `💾 ${storageApplingCount}` : "";
+            const labelChunkCount = chunkCount ? `🧩${chunkCount} ` : "";
+            const labelPluginScanCount = pluginScanCount ? `🔌${pluginScanCount} ` : "";
+            const labelHiddenFilesCount = hiddenFilesCount ? `⚙️${hiddenFilesCount} ` : "";
 
-        observer.observe(e => {
+            return `${labelReplication}${labelDBCount}${labelStorageCount}${labelChunkCount}${labelPluginScanCount}${labelHiddenFilesCount}`;
+        })
+        const lockCountLabel = reactive(() => {
+            const lockStat = lockStats.value;
+            const processesCount = lockStat.count;
+            const processes = processesCount == 0 ? "" : ` ⏳${processesCount}`;
+            function getProcKind(proc: string) {
+                const p = proc.indexOf("-");
+                if (p == -1) {
+                    return proc;
+                }
+                return proc.substring(0, p);
+            }
+
+            const pendingTask = lockStat.pending.length
+                ? lockStat.pending.length < 10 ? ("\nPending: " +
+                    Object.entries(lockStat.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
+                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                        .join(", ")
+                ) : `\n Pending: ${lockStat.pending.length}` : "";
+
+            const runningTask = lockStat.running.length
+                ? lockStat.running.length < 10 ? ("\nRunning: " +
+                    Object.entries(lockStat.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
+                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
+                        .join(", ")
+                ) : `\n Running: ${lockStat.running.length}` : "";
+            return { processes, runningTask, pendingTask };
+        })
+        const replicationStatLabel = reactive(() => {
+            const e = this.replicationStat.value;
             const sent = e.sent;
             const arrived = e.arrived;
             const maxPullSeq = e.maxPullSeq;
@@ -1680,78 +1611,68 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 default:
                     w = "?";
             }
-            this.statusBar.title = e.syncStatus;
-            let waiting = "";
-            if (this.settings.batchSave && !this.settings.liveSync) {
-                const len = this.vaultManager?.getQueueLength();
-                if (len != 0) {
-                    waiting = ` 🛫${len}`;
-                }
-            }
-            let queued = "";
-            const queue = Object.entries(e.queuedItems).filter((e) => !e[1].warned);
-            const queuedCount = queue.length;
-
-            if (queuedCount) {
-                const pieces = queue.map((e) => e[1].missingChildren).reduce((prev, cur) => prev + cur.length, 0);
-                queued = ` 🧩${queuedCount} (${pieces})`;
-            }
-            const processes = e.count;
-            const processesDisp = processes == 0 ? "" : ` ⏳${processes}`;
-            const message = `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting}${processesDisp}${queued}`;
-            function getProcKind(proc: string) {
-                const p = proc.indexOf("-");
-                if (p == -1) {
-                    return proc;
-                }
-                return proc.substring(0, p);
-            }
-
-            const pendingTask = e.pending.length
-                ? e.pending.length < 10 ? ("\nPending: " +
-                    Object.entries(e.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                        .join(", ")
-                ) : `\n Pending: ${e.pending.length}` : "";
-
-            const runningTask = e.running.length
-                ? e.running.length < 10 ? ("\nRunning: " +
-                    Object.entries(e.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                        .join(", ")
-                ) : `\n Running: ${e.running.length}` : "";
-            this.setStatusBarText(message + pendingTask + runningTask);
+            return { w, sent, pushLast, arrived, pullLast };
         })
+        const waitingLabel = reactive(() => {
+            const e = this.pendingFileEventCount.value;
+            if (this.settings && this.settings.batchSave && !this.settings.liveSync) {
+                if (e != 0) {
+                    return ` 🛫${e}`;
+                }
+            }
+            return "";
+        })
+        const statusLineLabel = reactive(() => {
+            const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel.value;
+            const { processes, pendingTask, runningTask } = lockCountLabel.value;
+            const queued = queueCountLabel.value;
+            const waiting = waitingLabel.value;
+            return {
+                message: `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting}${processes} ${queued}${pendingTask}${runningTask}`,
+            };
+        })
+        const statusBarLabels = reactive(() => {
+
+            const { message } = statusLineLabel.value;
+            const status = this.statusLog.value;
+            return {
+                message, status
+            }
+        })
+        let last = 0;
+        const applyToDisplay = () => {
+            const v = statusBarLabels.value;
+            const now = Date.now();
+            if (now - last < 10) {
+                scheduleTask("applyToDisplay", 20, () => applyToDisplay());
+                return;
+            }
+            this.applyStatusBarText(v.message, v.status);
+            last = now;
+        }
+        statusBarLabels.onChanged(applyToDisplay);
     }
 
     refreshStatusText() {
         return;
     }
-
-    setStatusBarText(message: string = null, log: string = null) {
-        if (!this.statusBar) return;
-        const newMsg = typeof message == "string" ? message : this.lastMessage;
-        const newLog = typeof log == "string" ? log : this.lastLog;
-        if (`${this.lastMessage}-${this.lastLog}` != `${newMsg}-${newLog}`) {
-            // scheduleTask("update-display", 50, () => {
-            this.statusBar.setText(newMsg.split("\n")[0]);
-
-            if (this.settings.showStatusOnEditor) {
-                const root = activeDocument.documentElement;
-                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
-            } else {
-                const root = activeDocument.documentElement;
-                const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
-                q.forEach(e => e.setAttr("data-log", ''))
-            }
-            // }, true);
-            scheduleTask("log-hide", 3000, () => this.setStatusBarText(null, ""));
-            this.lastMessage = newMsg;
-            this.lastLog = newLog;
+    applyStatusBarText(message: string, log: string) {
+        const newMsg = message;
+        const newLog = log;
+        // scheduleTask("update-display", 50, () => {
+        this.statusBar?.setText(newMsg.split("\n")[0]);
+        if (this.settings.showStatusOnEditor) {
+            const root = activeDocument.documentElement;
+            const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+            q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
+        } else {
+            const root = activeDocument.documentElement;
+            const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+            q.forEach(e => e.setAttr("data-log", ''))
         }
+        // }, true);
+        scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
     }
-    updateStatusBarText() { }
 
     async replicate(showMessage?: boolean) {
         if (!this.isReady) return;
@@ -1836,7 +1757,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             await Promise.all(this.addOns.map(e => e.onInitializeDatabase(showingNotice)));
             this.isReady = true;
             // run queued event once.
-            await this.procFileEvent(true);
+            await this.flushFileEventQueue();
             return true;
         } else {
             this.isReady = false;
@@ -1913,40 +1834,43 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
         const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
         Logger("Updating database by new files");
-        this.setStatusBarText(`UPDATE DATABASE`);
+        // this.setStatusBarText(`UPDATE DATABASE`);
 
+        const initProcess = [];
         const runAll = async<T>(procedureName: string, objects: T[], callback: (arg: T) => Promise<void>) => {
+            if (objects.length == 0) {
+                Logger(`${procedureName}: Nothing to do`);
+                return;
+            }
             Logger(procedureName);
             if (!this.localDatabase.isReady) throw Error("Database is not ready!");
-            const procs = objects.map(e => async () => {
+            let success = 0;
+            let failed = 0;
+            const step = 10;
+            const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+            const processor = new QueueProcessor(async (e) => {
                 try {
-                    await callback(e);
-                    return true;
+                    await callback(e[0]);
+                    success++;
+                    // return 
                 } catch (ex) {
                     Logger(`Error while ${procedureName}`, LOG_LEVEL_NOTICE);
                     Logger(ex, LOG_LEVEL_VERBOSE);
-                    return false;
-                }
-
-            });
-            let success = 0;
-            let failed = 0;
-            for await (const v of processAllTasksWithConcurrencyLimit(10, procs)) {
-                if ("ok" in v && v.ok) {
-                    success++;
-                } else {
                     failed++;
                 }
-            }
-            Logger(`${procedureName}: PASS:${success}, FAILED:${failed}`);
+                if ((success + failed) % step == 0) {
+                    Logger(`${procedureName}: DONE:${success}, FAILED:${failed}, LAST:${processor._queue.length}`, logLevel, `log-${procedureName}`);
+                }
+                return;
+            }, { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, objects)
+            await processor.waitForPipeline();
+            Logger(`${procedureName} All done: DONE:${success}, FAILED:${failed}`, logLevel, `log-${procedureName}`);
         }
-
-        await runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
-            Logger(`UPDATE DATABASE ${e.path}`);
+        initProcess.push(runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
             await this.updateIntoDB(e, initialScan);
-        });
+        }));
         if (!initialScan) {
-            await runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
+            initProcess.push(runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
                 const w = await this.localDatabase.getDBEntryMeta(e, {}, true);
                 if (w && !(w.deleted || w._deleted)) {
                     Logger(`Check or pull from db:${e}`);
@@ -1957,28 +1881,50 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 } else {
                     Logger(`entry not found: ${e}`);
                 }
-            });
+            }));
         }
         if (!initialScan) {
             let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
             caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
+            type FileDocPair = { file: TFile, id: DocumentID };
 
-            const syncFilesBatch = [...arrayToChunkedArray(syncFiles, 100)];
-            const processes = syncFilesBatch.map((files, idx, total) => async () => {
-                const dbEntries = await mapAllTasksWithConcurrencyLimit(10, files.map(file => async () => ({ file: file, id: await this.path2id(getPathFromTFile(file)) })));
-                const dbEntriesOk = dbEntries.map(e => "ok" in e ? e.ok : undefined).filter(e => e);
-                const docs = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: dbEntriesOk.map(e => e.id), include_docs: true });
-                const docsMap = docs.rows.reduce((p, c) => ({ ...p, [c.id]: c.doc }), {} as Record<DocumentID, EntryDoc>);
-                const syncFilesToSync = dbEntriesOk.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
-                await runAll(`CHECK FILE STATUS:${idx + 1}/${total.length}`, syncFilesToSync, async (e) => {
-                    caches = await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
-                });
+            const processPrepareSyncFile = new QueueProcessor(
+                async (files) => {
+                    const file = files[0];
+                    const id = await this.path2id(getPathFromTFile(file));
+                    const pair: FileDocPair = { file, id };
+                    return [pair];
+                    // processSyncFile.enqueue(pair);
+                }
+                , { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, syncFiles);
+            processPrepareSyncFile
+                .pipeTo(
+                    new QueueProcessor(
+                        async (pairs) => {
+                            const docs = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: pairs.map(e => e.id), include_docs: true });
+                            const docsMap = docs.rows.reduce((p, c) => ({ ...p, [c.id]: c.doc }), {} as Record<DocumentID, EntryDoc>);
+                            const syncFilesToSync = pairs.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
+                            return syncFilesToSync;
+                        }
+                        , { batchSize: 10, concurrentLimit: 5, delay: 10, suspended: false }))
+                .pipeTo(
+                    new QueueProcessor(
+                        async (loadedPairs) => {
+                            const e = loadedPairs[0];
+                            await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
+                            return;
+                        }, { batchSize: 1, concurrentLimit: 5, delay: 10, suspended: false }
+                    ))
+
+            processPrepareSyncFile.startPipeline();
+            initProcess.push(async () => {
+                await processPrepareSyncFile.waitForPipeline();
+                await this.kvDB.set("diff-caches", caches);
             })
-            await mapAllTasksWithConcurrencyLimit(2, processes);
-            await this.kvDB.set("diff-caches", caches);
         }
+        await Promise.all(initProcess);
 
-        this.setStatusBarText(`NOW TRACKING!`);
+        // this.setStatusBarText(`NOW TRACKING!`);
         Logger("Initialized, NOW TRACKING!");
         if (!isInitialized) {
             await (this.kvDB.set("initialized", true))
@@ -2350,8 +2296,9 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
                         const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
                         if (file) {
-                            await this.vaultAccess.vaultModify(file, p);
-                            await this.updateIntoDB(file);
+                            if (await this.vaultAccess.vaultModify(file, p)) {
+                                await this.updateIntoDB(file);
+                            }
                         } else {
                             const newFile = await this.vaultAccess.vaultCreate(filename, p);
                             await this.updateIntoDB(newFile);
@@ -2558,7 +2505,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             type: datatype,
         };
         //upsert should locked
-        const msg = `DB <- STORAGE (${datatype}) `;
+        const msg = `STORAGE -> DB (${datatype}) `;
         const isNotChanged = await serialized("file-" + fullPath, async () => {
             if (this.vaultAccess.recentlyTouched(file)) {
                 return true;
@@ -2585,12 +2532,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return false;
         });
         if (isNotChanged) {
-            this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
             Logger(msg + " Skip " + fullPath, LOG_LEVEL_VERBOSE);
             return true;
         }
         const ret = await this.localDatabase.putDBEntry(d, initialScan);
-        this.queuedFiles = this.queuedFiles.map((e) => ({ ...e, ...(e.entry._id == d._id ? { done: true } : {}) }));
 
         Logger(msg + fullPath);
         if (this.settings.syncOnSave && !this.suspended) {

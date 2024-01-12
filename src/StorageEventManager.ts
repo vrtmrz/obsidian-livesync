@@ -1,15 +1,13 @@
 import type { SerializedFileAccess } from "./SerializedFileAccess";
 import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
-import { getGlobalStore } from "./lib/src/store";
+import type { KeyedQueueProcessor } from "./lib/src/processor";
 import { type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
-import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo, type queueItem } from "./types";
+import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "./types";
 
 
 export abstract class StorageEventManager {
-    abstract fetchEvent(): FileEventItem | false;
-    abstract cancelRelativeEvent(item: FileEventItem): void;
-    abstract getQueueLength(): number;
+    abstract beginWatch(): void;
 }
 
 type LiveSyncForStorageEventManager = Plugin &
@@ -19,19 +17,18 @@ type LiveSyncForStorageEventManager = Plugin &
     vaultAccess: SerializedFileAccess
 } & {
     isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
-    procFileEvent: (applyBatch?: boolean) => Promise<any>,
+    fileEventQueue: KeyedQueueProcessor<FileEventItem, any>
 };
 
 
 export class StorageEventManagerObsidian extends StorageEventManager {
     plugin: LiveSyncForStorageEventManager;
-    queuedFilesStore = getGlobalStore("queuedFiles", { queuedItems: [] as queueItem[], fileEventItems: [] as FileEventItem[] });
-
-    watchedFileEventQueue = [] as FileEventItem[];
-
     constructor(plugin: LiveSyncForStorageEventManager) {
         super();
         this.plugin = plugin;
+    }
+    beginWatch() {
+        const plugin = this.plugin;
         this.watchVaultChange = this.watchVaultChange.bind(this);
         this.watchVaultCreate = this.watchVaultCreate.bind(this);
         this.watchVaultDelete = this.watchVaultDelete.bind(this);
@@ -43,6 +40,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         plugin.registerEvent(plugin.app.vault.on("create", this.watchVaultCreate));
         //@ts-ignore : Internal API
         plugin.registerEvent(plugin.app.vault.on("raw", this.watchVaultRawEvents));
+        plugin.fileEventQueue.startPipeline();
     }
 
     watchVaultCreate(file: TAbstractFile, ctx?: any) {
@@ -90,7 +88,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Cache file and waiting to can be proceed.
     async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
-        let forcePerform = false;
         for (const param of params) {
             if (shouldBeIgnored(param.file.path)) {
                 continue;
@@ -116,33 +113,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                     if (!cache) cache = await this.plugin.vaultAccess.vaultRead(file);
                 }
             }
-            if (type == "DELETE" || type == "RENAME") {
-                forcePerform = true;
-            }
-
-
-            if (this.plugin.settings.batchSave && !this.plugin.settings.liveSync) {
-                // if the latest event is the same type, omit that
-                // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
-                // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
-                // a.md MODIFY
-                // a.md CREATE
-                //     : 
-                let i = this.watchedFileEventQueue.length;
-                L1:
-                while (i >= 0) {
-                    i--;
-                    if (i < 0) break L1;
-                    if (this.watchedFileEventQueue[i].args.file.path != file.path) {
-                        continue L1;
-                    }
-                    if (this.watchedFileEventQueue[i].type != type) break L1;
-                    this.watchedFileEventQueue.remove(this.watchedFileEventQueue[i]);
-                    //this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
-                    this.queuedFilesStore.apply((value) => ({ ...value, fileEventItems: this.watchedFileEventQueue }));
-                }
-            }
-
             const fileInfo = file instanceof TFile ? {
                 ctime: file.stat.ctime,
                 mtime: file.stat.mtime,
@@ -150,7 +120,8 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 path: file.path,
                 size: file.stat.size
             } as FileInfo : file as InternalFileInfo;
-            this.watchedFileEventQueue.push({
+
+            this.plugin.fileEventQueue.enqueueWithKey(`file-${fileInfo.path}`, {
                 type,
                 args: {
                     file: fileInfo,
@@ -161,21 +132,5 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 key: atomicKey
             })
         }
-        // this.queuedFilesStore.set({ queuedItems: this.queuedFiles, fileEventItems: this.watchedFileEventQueue });
-        this.queuedFilesStore.apply((value) => ({ ...value, fileEventItems: this.watchedFileEventQueue }));
-        this.plugin.procFileEvent(forcePerform);
-    }
-    fetchEvent(): FileEventItem | false {
-        if (this.watchedFileEventQueue.length == 0) return false;
-        const item = this.watchedFileEventQueue.shift();
-        this.queuedFilesStore.apply((value) => ({ ...value, fileEventItems: this.watchedFileEventQueue }));
-        return item;
-    }
-    cancelRelativeEvent(item: FileEventItem) {
-        this.watchedFileEventQueue = [...this.watchedFileEventQueue].filter(e => e.key != item.key);
-        this.queuedFilesStore.apply((value) => ({ ...value, fileEventItems: this.watchedFileEventQueue }));
-    }
-    getQueueLength() {
-        return this.watchedFileEventQueue.length;
     }
 }

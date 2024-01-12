@@ -7,14 +7,16 @@ import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
 import { createTextBlob, delay, getDocData } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
-import { readString, crc32CKHash, decodeBinary, arrayBufferToBase64 } from "./lib/src/strbin";
+import { readString, decodeBinary, arrayBufferToBase64, sha1 } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { stripAllPrefixes } from "./lib/src/path";
 import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "./utils";
 import { PluginDialogModal } from "./dialogs";
 import { JsonResolveModal } from "./JsonResolveModal";
-import { pipeGeneratorToGenerator, processAllGeneratorTasksWithConcurrencyLimit } from './lib/src/task';
+import { QueueProcessor } from './lib/src/processor';
+import { pluginScanningCount } from './lib/src/stores';
+import type ObsidianLiveSyncPlugin from './main';
 
 const d = "\u200b";
 const d2 = "\n";
@@ -162,6 +164,16 @@ export type PluginDataEx = {
     mtime: number,
 };
 export class ConfigSync extends LiveSyncCommands {
+    constructor(plugin: ObsidianLiveSyncPlugin) {
+        super(plugin);
+        pluginScanningCount.onChanged((e) => {
+            const total = e.value;
+            pluginIsEnumerating.set(total != 0);
+            if (total == 0) {
+                Logger(`Processing configurations done`, LOG_LEVEL_INFO, "get-plugins");
+            }
+        })
+    }
     confirmPopup: WrappedNotice = null;
     get kvDB() {
         return this.plugin.kvDB;
@@ -270,7 +282,7 @@ export class ConfigSync extends LiveSyncCommands {
             for (const file of data.files) {
                 const work = { ...file };
                 const tempStr = getDocData(work.data);
-                work.data = [crc32CKHash(tempStr)];
+                work.data = [await sha1(tempStr)];
                 xFiles.push(work);
             }
             return ({
@@ -302,65 +314,65 @@ export class ConfigSync extends LiveSyncCommands {
             this.plugin.saveSettingData();
         }
     }
+
+    pluginScanProcessor = new QueueProcessor(async (v: AnyEntry[]) => {
+        const plugin = v[0];
+        const path = plugin.path || this.getPath(plugin);
+        const oldEntry = (this.pluginList.find(e => e.documentPath == path));
+        if (oldEntry && oldEntry.mtime == plugin.mtime) return;
+        try {
+            const pluginData = await this.loadPluginData(path);
+            if (pluginData) {
+                return [pluginData];
+            }
+            // Failed to load
+            return;
+
+        } catch (ex) {
+            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+        }
+        return;
+    }, { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 300, yieldThreshold: 10 }).pipeTo(
+        new QueueProcessor(
+            (pluginDataList) => {
+                let newList = [...this.pluginList];
+                for (const item of pluginDataList) {
+                    newList = newList.filter(x => x.documentPath != item.documentPath);
+                    newList.push(item)
+                }
+                this.pluginList = newList;
+                pluginList.set(newList);
+                return;
+            }
+            , { suspended: true, batchSize: 1000, concurrentLimit: 10, delay: 200, yieldThreshold: 25, totalRemainingReactiveSource: pluginScanningCount })).startPipeline().root.onIdle(() => {
+                Logger(`All files enumerated`, LOG_LEVEL_INFO, "get-plugins");
+                this.createMissingConfigurationEntry();
+            });
+
+
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
-        const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         // pluginList.set([]);
         if (!this.settings.usePluginSync) {
+            this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
             pluginList.set(this.pluginList)
             return;
         }
-        await Promise.resolve(); // Just to prevent warning.
-        scheduleTask("update-plugin-list-task", 200, async () => {
-            await serialized("update-plugin-list", async () => {
-                try {
-                    const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
-                    const plugins = updatedDocumentPath ?
-                        this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", { include_docs: true, key: updatedDocumentId, limit: 1 }) :
-                        this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
-                    let count = 0;
-                    pluginIsEnumerating.set(true);
-                    for await (const v of processAllGeneratorTasksWithConcurrencyLimit(20, pipeGeneratorToGenerator(plugins, async plugin => {
-                        const path = plugin.path || this.getPath(plugin);
-                        if (updatedDocumentPath && updatedDocumentPath != path) {
-                            return false;
-                        }
-                        const oldEntry = (this.pluginList.find(e => e.documentPath == path));
-                        if (oldEntry && oldEntry.mtime == plugin.mtime) return false;
-                        try {
-                            count++;
-                            if (count % 10 == 0) Logger(`Enumerating files... ${count}`, logLevel, "get-plugins");
-                            Logger(`plugin-${path}`, LOG_LEVEL_VERBOSE);
-                            return this.loadPluginData(path);
-                            // return entries;
-                        } catch (ex) {
-                            //TODO
-                            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-                            console.warn(ex);
-                        }
-                        return false;
-                    }))) {
-                        if ("ok" in v) {
-                            if (v.ok !== false) {
-                                let newList = [...this.pluginList];
-                                const item = v.ok;
-                                newList = newList.filter(x => x.documentPath != item.documentPath);
-                                newList.push(item)
-                                if (updatedDocumentPath != "") newList = newList.filter(e => e.documentPath != updatedDocumentPath);
-                                this.pluginList = newList;
-                                pluginList.set(newList);
-                            }
-                        }
-                    }
-                    Logger(`All files enumerated`, logLevel, "get-plugins");
-                    pluginIsEnumerating.set(false);
-                    this.createMissingConfigurationEntry();
-                } finally {
-                    pluginIsEnumerating.set(false);
-                }
-            });
+        try {
+            const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
+            const plugins = updatedDocumentPath ?
+                this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", { include_docs: true, key: updatedDocumentId, limit: 1 }) :
+                this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
+            for await (const v of plugins) {
+                const path = v.path || this.getPath(v);
+                if (updatedDocumentPath && updatedDocumentPath != path) continue;
+                this.pluginScanProcessor.enqueue(v);
+            }
+        } finally {
             pluginIsEnumerating.set(false);
-        });
+        }
+        pluginIsEnumerating.set(false);
         // return entries;
     }
     async compareUsingDisplayData(dataA: PluginDataExDisplay, dataB: PluginDataExDisplay) {

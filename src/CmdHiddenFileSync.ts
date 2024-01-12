@@ -1,16 +1,18 @@
 import { normalizePath, type PluginManifest } from "./deps";
 import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { Parallels, createBinaryBlob, delay, isDocContentSame } from "./lib/src/utils";
+import { createBinaryBlob, delay, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { scheduleTask, isInternalMetadata, PeriodicProcessor } from "./utils";
+import { isInternalMetadata, PeriodicProcessor } from "./utils";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { decodeBinary, encodeBinary } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { addPrefix, stripAllPrefixes } from "./lib/src/path";
+import { KeyedQueueProcessor, QueueProcessor } from "./lib/src/processor";
+import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "./lib/src/stores";
 
 export class HiddenFileSync extends LiveSyncCommands {
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(this.plugin, async () => this.settings.syncInternalFiles && this.localDatabase.isReady && await this.syncInternalFilesAndDatabase("push", false));
@@ -75,22 +77,17 @@ export class HiddenFileSync extends LiveSyncCommands {
         return;
     }
 
-    procInternalFiles: string[] = [];
-    async execInternalFile() {
-        await serialized("execInternal", async () => {
-            const w = [...this.procInternalFiles];
-            this.procInternalFiles = [];
-            Logger(`Applying hidden ${w.length} files change...`);
-            await this.syncInternalFilesAndDatabase("pull", false, false, w);
-            Logger(`Applying hidden ${w.length} files changed`);
-        });
-    }
     procInternalFile(filename: string) {
-        this.procInternalFiles.push(filename);
-        scheduleTask("procInternal", 500, async () => {
-            await this.execInternalFile();
-        });
+        this.internalFileProcessor.enqueueWithKey(filename, filename);
     }
+    internalFileProcessor = new KeyedQueueProcessor<string, any>(
+        async (filenames) => {
+            Logger(`START :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
+            await this.syncInternalFilesAndDatabase("pull", false, false, filenames);
+            Logger(`DONE  :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
+            return;
+        }, { batchSize: 100, concurrentLimit: 1, delay: 100, yieldThreshold: 10, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
+    );
 
     recentProcessedInternalFiles = [] as string[];
     async watchVaultRawEventsAsync(path: FilePath) {
@@ -278,28 +275,38 @@ export class HiddenFileSync extends LiveSyncCommands {
             acc[stripAllPrefixes(this.getPath(cur))] = cur;
             return acc;
         }, {} as { [key: string]: InternalFileEntry; });
-        const para = Parallels();
-        for (const filename of allFileNames) {
+        await new QueueProcessor(async (filenames: FilePath[]) => {
+            const filename = filenames[0];
             processed++;
             if (processed % 100 == 0) {
                 Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
             }
-            if (!filename) continue;
+            if (!filename) return;
             if (ignorePatterns.some(e => filename.match(e)))
-                continue;
+                return;
             if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
-                continue;
+                return;
             }
 
             const fileOnStorage = filename in filesMap ? filesMap[filename] : undefined;
             const fileOnDatabase = filename in filesOnDBMap ? filesOnDBMap[filename] : undefined;
 
-            const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
+            return [{
+                filename,
+                fileOnStorage,
+                fileOnDatabase,
+            }]
 
-            await para.wait(5);
-            const proc = (async (xFileOnStorage: InternalFileInfo, xFileOnDatabase: InternalFileEntry) => {
-
+        }, { suspended: true, batchSize: 1, concurrentLimit: 10, delay: 0, totalRemainingReactiveSource: hiddenFilesProcessingCount })
+            .pipeTo(new QueueProcessor(async (params) => {
+                const
+                    {
+                        filename,
+                        fileOnStorage: xFileOnStorage,
+                        fileOnDatabase: xFileOnDatabase
+                    } = params[0];
                 if (xFileOnStorage && xFileOnDatabase) {
+                    const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
                     // Both => Synchronize
                     if ((direction != "pullForce" && direction != "pushForce") && xFileOnDatabase.mtime == cache.docMtime && xFileOnStorage.mtime == cache.storageMtime) {
                         return;
@@ -340,11 +347,12 @@ export class HiddenFileSync extends LiveSyncCommands {
                     throw new Error("Invalid state on hidden file sync");
                     // Something corrupted?
                 }
+                return;
+            }, { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 0 }))
+            .root
+            .enqueueAll(allFileNames)
+            .startPipeline().waitForPipeline();
 
-            });
-            para.add(proc(fileOnStorage, fileOnDatabase))
-        }
-        await para.all();
         await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.

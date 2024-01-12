@@ -321,7 +321,6 @@ Of course, we are able to disable these features.`
         this.plugin.settings.suspendFileWatching = false;
         await this.plugin.syncAllFiles(true);
         await this.plugin.loadQueuedFiles();
-        this.plugin.procQueuedFiles();
         await this.plugin.saveSettings();
 
     }

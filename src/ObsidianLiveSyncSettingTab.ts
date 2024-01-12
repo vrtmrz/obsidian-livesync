@@ -4,7 +4,7 @@ import { delay } from "./lib/src/utils";
 import { Semaphore } from "./lib/src/semaphore";
 import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
-import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb.js";
+import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
@@ -746,8 +746,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 toggle.setValue(this.plugin.settings.showStatusOnEditor).onChange(async (value) => {
                     this.plugin.settings.showStatusOnEditor = value;
                     await this.plugin.saveSettings();
+                    this.display();
                 })
             );
+        if (this.plugin.settings.showStatusOnEditor) {
+            new Setting(containerGeneralSettingsEl)
+                .setName("Show status as icons only")
+                .setDesc("")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.showOnlyIconsOnEditor).onChange(async (value) => {
+                        this.plugin.settings.showOnlyIconsOnEditor = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+        }
 
         containerGeneralSettingsEl.createEl("h4", { text: "Logging" });
         new Setting(containerGeneralSettingsEl)

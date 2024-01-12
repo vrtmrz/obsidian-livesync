@@ -1,26 +1,27 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import { logMessageStore } from "./lib/src/stores";
+    import { logMessages } from "./lib/src/stores";
+    import type { ReactiveInstance } from "./lib/src/reactive";
+    import { Logger } from "./lib/src/logger";
 
     let unsubscribe: () => void;
     let messages = [] as string[];
     let wrapRight = false;
     let autoScroll = true;
     let suspended = false;
-
+    function updateLog(logs: ReactiveInstance<string[]>) {
+        const e = logs.value;
+        if (!suspended) {
+            messages = [...e];
+            setTimeout(() => {
+                if (scroll) scroll.scrollTop = scroll.scrollHeight;
+            }, 10);
+        }
+    }
     onMount(async () => {
-        unsubscribe = logMessageStore.observe((e) => {
-            if (!suspended) {
-                messages = [...e];
-                if (autoScroll) {
-                    if (scroll) scroll.scrollTop = scroll.scrollHeight;
-                }
-            }
-        });
-        logMessageStore.invalidate();
-        setTimeout(() => {
-            if (scroll) scroll.scrollTop = scroll.scrollHeight;
-        }, 100);
+        logMessages.onChanged(updateLog);
+        Logger("Log window opened");
+        unsubscribe = () => logMessages.offChanged(updateLog);
     });
     onDestroy(() => {
         if (unsubscribe) unsubscribe();
