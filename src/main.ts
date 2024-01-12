@@ -1537,46 +1537,20 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const queueCountLabel = reactive(() => {
             const dbCount = this.databaseQueueCount.value;
             const replicationCount = this.replicationResultCount.value;
-            const storageApplingCount = this.storageApplyingCount.value;
+            const storageApplyingCount = this.storageApplyingCount.value;
             const chunkCount = collectingChunks.value;
             const pluginScanCount = pluginScanningCount.value;
             const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
             const labelReplication = replicationCount ? `📥 ${replicationCount} ` : "";
             const labelDBCount = dbCount ? `📄 ${dbCount} ` : "";
-            const labelStorageCount = storageApplingCount ? `💾 ${storageApplingCount}` : "";
+            const labelStorageCount = storageApplyingCount ? `💾 ${storageApplyingCount}` : "";
             const labelChunkCount = chunkCount ? `🧩${chunkCount} ` : "";
             const labelPluginScanCount = pluginScanCount ? `🔌${pluginScanCount} ` : "";
             const labelHiddenFilesCount = hiddenFilesCount ? `⚙️${hiddenFilesCount} ` : "";
 
             return `${labelReplication}${labelDBCount}${labelStorageCount}${labelChunkCount}${labelPluginScanCount}${labelHiddenFilesCount}`;
         })
-        const lockCountLabel = reactive(() => {
-            const lockStat = lockStats.value;
-            const processesCount = lockStat.count;
-            const processes = processesCount == 0 ? "" : ` ⏳${processesCount}`;
-            function getProcKind(proc: string) {
-                const p = proc.indexOf("-");
-                if (p == -1) {
-                    return proc;
-                }
-                return proc.substring(0, p);
-            }
 
-            const pendingTask = lockStat.pending.length
-                ? lockStat.pending.length < 10 ? ("\nPending: " +
-                    Object.entries(lockStat.pending.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                        .join(", ")
-                ) : `\n Pending: ${lockStat.pending.length}` : "";
-
-            const runningTask = lockStat.running.length
-                ? lockStat.running.length < 10 ? ("\nRunning: " +
-                    Object.entries(lockStat.running.reduce((p, c) => ({ ...p, [getProcKind(c)]: (p[getProcKind(c)] ?? 0) + 1 }), {} as { [key: string]: number }))
-                        .map((e) => `${e[0]}${e[1] == 1 ? "" : `(${e[1]})`}`)
-                        .join(", ")
-                ) : `\n Running: ${lockStat.running.length}` : "";
-            return { processes, runningTask, pendingTask };
-        })
         const replicationStatLabel = reactive(() => {
             const e = this.replicationStat.value;
             const sent = e.sent;
@@ -1615,20 +1589,18 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         })
         const waitingLabel = reactive(() => {
             const e = this.pendingFileEventCount.value;
-            if (this.settings && this.settings.batchSave && !this.settings.liveSync) {
-                if (e != 0) {
-                    return ` 🛫${e}`;
-                }
-            }
-            return "";
+            const proc = this.fileEventQueue.processingEntities;
+            const pend = e - proc;
+            const labelProc = proc != 0 ? `⏳${proc} ` : "";
+            const labelPend = pend != 0 ? ` 🛫${pend}` : "";
+            return `${labelProc}${labelPend}`;
         })
         const statusLineLabel = reactive(() => {
             const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel.value;
-            const { processes, pendingTask, runningTask } = lockCountLabel.value;
             const queued = queueCountLabel.value;
             const waiting = waitingLabel.value;
             return {
-                message: `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting}${processes} ${queued}${pendingTask}${runningTask}`,
+                message: `Sync: ${w} ↑${sent}${pushLast} ↓${arrived}${pullLast}${waiting} ${queued}`,
             };
         })
         const statusBarLabels = reactive(() => {

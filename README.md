@@ -59,14 +59,23 @@ Synchronization status is shown in statusbar.
 
 -   Status
     -   ⏹️ Stopped
-    -   💤 LiveSync enabled. Waiting for changes.
-    -   ⚡️ Synchronization in progress.
-    -   ⚠ An error occurred.
--   ↑ Uploaded chunks and metadata
--   ↓ Downloaded chunks and metadata
--   ⏳ Number of pending processes
--   🧩 Number of files waiting for their chunks.
-If you have deleted or renamed files, please wait until ⏳ icon disappears.
+    -   💤 LiveSync enabled. Waiting for changes
+    -   ⚡️ Synchronization in progress
+    -   ⚠ An error occurred
+-   Statistical indicator
+     -   ↑ Uploaded chunks and metadata
+     -   ↓ Downloaded chunks and metadata
+-   Progress indicator
+     -   📥 Unprocessed transferred items
+     -   📄 Working database operation
+     -   💾 Working write storage processes
+     -   ⏳ Working read storage processes
+     -   🛫 Pending read storage processes
+     -   ⚙️ Working or pending storage processes of hidden files
+     -   🧩 Waiting chunks
+     -   🔌 Working Customisation items (Configuration, snippets and plug-ins)
+
+To prevent file and database corruption, please wait until all progress indicators have disappeared. Especially in case of if you have deleted or renamed files.
 
 
 ## Hints

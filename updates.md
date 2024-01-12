@@ -12,11 +12,22 @@ Note: we got a very performance improvement.
 - 0.22.0
   - Refined:
     - Task scheduling logics has been rewritten.
-    - Possibly many bugs and fragile behaviour has been fixed
+    - Screen updates are also now efficient.
+    - Possibly many bugs and fragile behaviour has been fixed.
+    - Status updates and logging have been thinned out to display.
   - Fixed:
     - Remote-chunk-fetching now works with keeping request intervals
   - New feature:
     - We can show only the icons in the editor.
+    - Progress indicators have been more meaningful:
+      -   📥 Unprocessed transferred items
+      -   📄 Working database operation
+      -   💾 Working write storage processes
+      -   ⏳ Working read storage processes
+      -   🛫 Pending read storage processes
+      -   ⚙️ Working or pending storage processes of hidden files
+      -   🧩 Waiting chunks
+      -   🔌 Working Customisation items (Configuration, snippets and plug-ins)
 
 
 ... To continue on to `updates_old.md`.
