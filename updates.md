@@ -9,6 +9,18 @@ Sorry for being absent so much long. And thank you for your patience!
 Note: we got a very performance improvement.
 
 #### Version history
+- 0.22.1
+  - New feature:
+    - We can perform automatic conflict resolution for inactive files, and postpone only manual ones by `Postpone manual resolution of inactive files`.
+    - Now we can see the image in the document history dialogue.
+      - We can see the difference of the image, in the document history dialogue.
+        - And also we can highlight differences.
+  - Improved:
+    - Hidden file sync has been stabilised.
+    - Now automatically reloads the conflict-resolution dialogue when new conflicted revisions have arrived.
+  - Fixed:
+    - No longer periodic process runs after unloading the plug-in.
+    - Now the modification of binary files is surely stored in the storage.
 - 0.22.0
   - Refined:
     - Task scheduling logics has been rewritten.
