@@ -1,7 +1,7 @@
 import { normalizePath, type PluginManifest } from "./deps";
 import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { createBinaryBlob, delay, isDocContentSame } from "./lib/src/utils";
+import { createBinaryBlob, isDocContentSame, sendSignal } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { isInternalMetadata, PeriodicProcessor } from "./utils";
@@ -86,7 +86,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             await this.syncInternalFilesAndDatabase("pull", false, false, filenames);
             Logger(`DONE  :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
             return;
-        }, { batchSize: 100, concurrentLimit: 1, delay: 100, yieldThreshold: 10, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
+        }, { batchSize: 100, concurrentLimit: 1, delay: 10, yieldThreshold: 10, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
     );
 
     recentProcessedInternalFiles = [] as string[];
@@ -134,25 +134,34 @@ export class HiddenFileSync extends LiveSyncCommands {
     async resolveConflictOnInternalFiles() {
         // Scan all conflicted internal files
         const conflicted = this.localDatabase.findEntries(ICHeader, ICHeaderEnd, { conflicts: true });
-        for await (const doc of conflicted) {
-            if (!("_conflicts" in doc))
-                continue;
-            if (isInternalMetadata(doc._id)) {
-                await this.resolveConflictOnInternalFile(doc.path);
+        this.conflictResolutionProcessor.suspend();
+        try {
+            for await (const doc of conflicted) {
+                if (!("_conflicts" in doc))
+                    continue;
+                if (isInternalMetadata(doc._id)) {
+                    this.conflictResolutionProcessor.enqueue(doc.path);
+                }
             }
+        } catch (ex) {
+            Logger("something went wrong on resolving all conflicted internal files");
+            Logger(ex, LOG_LEVEL_VERBOSE);
         }
+        await this.conflictResolutionProcessor.startPipeline().waitForPipeline();
     }
 
-    async resolveConflictOnInternalFile(path: FilePathWithPrefix): Promise<boolean> {
+    conflictResolutionProcessor = new QueueProcessor(async (paths: FilePathWithPrefix[]) => {
+        const path = paths[0];
+        sendSignal(`cancel-internal-conflict:${path}`);
         try {
             // Retrieve data
             const id = await this.path2id(path, ICHeader);
             const doc = await this.localDatabase.getRaw(id, { conflicts: true });
             // If there is no conflict, return with false.
             if (!("_conflicts" in doc))
-                return false;
+                return;
             if (doc._conflicts.length == 0)
-                return false;
+                return;
             Logger(`Hidden file conflicted:${path}`);
             const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
             const revA = doc._rev;
@@ -177,21 +186,12 @@ export class HiddenFileSync extends LiveSyncCommands {
                     await this.storeInternalFileToDatabase({ path: filename, ...stat });
                     await this.extractInternalFileFromDatabase(filename);
                     await this.localDatabase.removeRaw(id, revB);
-                    return this.resolveConflictOnInternalFile(path);
+                    this.conflictResolutionProcessor.enqueue(path);
+                    return;
                 } else {
                     Logger(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                 }
-
-                const docAMerge = await this.localDatabase.getDBEntry(path, { rev: revA });
-                const docBMerge = await this.localDatabase.getDBEntry(path, { rev: revB });
-                if (docAMerge != false && docBMerge != false) {
-                    if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
-                        await delay(200);
-                        // Again for other conflicted revisions.
-                        return this.resolveConflictOnInternalFile(path);
-                    }
-                    return false;
-                }
+                return [{ path, revA, revB }];
             }
             const revBDoc = await this.localDatabase.getRaw(id, { rev: revB });
             // determine which revision should been deleted.
@@ -205,12 +205,31 @@ export class HiddenFileSync extends LiveSyncCommands {
             await this.localDatabase.removeRaw(id, delRev);
             Logger(`Older one has been deleted:${path}`);
             // check the file again 
-            return this.resolveConflictOnInternalFile(path);
+            this.conflictResolutionProcessor.enqueue(path);
+            return;
         } catch (ex) {
             Logger(`Failed to resolve conflict (Hidden): ${path}`);
             Logger(ex, LOG_LEVEL_VERBOSE);
-            return false;
+            return;
         }
+    }, {
+        suspended: false, batchSize: 1, concurrentLimit: 5, delay: 10, keepResultUntilDownstreamConnected: true, yieldThreshold: 10,
+        pipeTo: new QueueProcessor(async (results) => {
+            const { path, revA, revB } = results[0]
+            const docAMerge = await this.localDatabase.getDBEntry(path, { rev: revA });
+            const docBMerge = await this.localDatabase.getDBEntry(path, { rev: revB });
+            if (docAMerge != false && docBMerge != false) {
+                if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
+                    // Again for other conflicted revisions.
+                    this.conflictResolutionProcessor.enqueue(path);
+                }
+                return;
+            }
+        }, { suspended: false, batchSize: 1, concurrentLimit: 1, delay: 10, keepResultUntilDownstreamConnected: false, yieldThreshold: 10 })
+    })
+
+    queueConflictCheck(path: FilePathWithPrefix) {
+        this.conflictResolutionProcessor.enqueue(path);
     }
 
     //TODO: Tidy up. Even though it is experimental feature, So dirty...
@@ -595,7 +614,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
 
     showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
-        return serialized("conflict:merge-data", () => new Promise((res) => {
+        return new Promise((res) => {
             Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             const docs = [docA, docB];
             const path = stripAllPrefixes(docA.path);
@@ -649,7 +668,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
             });
             modal.open();
-        }));
+        });
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {

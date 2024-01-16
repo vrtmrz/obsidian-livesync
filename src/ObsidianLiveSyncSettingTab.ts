@@ -1116,11 +1116,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerSyncSettingEl)
-            .setName("Postpone resolution of unopened files")
+            .setName("Postpone resolution of inactive files")
             .setClass("wizardHidden")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.checkConflictOnlyOnOpen).onChange(async (value) => {
                     this.plugin.settings.checkConflictOnlyOnOpen = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Postpone manual resolution of inactive files")
+            .setClass("wizardHidden")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showMergeDialogOnlyOnActive).onChange(async (value) => {
+                    this.plugin.settings.showMergeDialogOnlyOnActive = value;
                     await this.plugin.saveSettings();
                 })
             );
@@ -1644,7 +1653,7 @@ ${stringifyYaml(pluginConfig)}`;
                                         if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
                                             Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                         }
-                                        await this.plugin.showIfConflicted(docName as FilePathWithPrefix);
+                                        await this.plugin.queueConflictCheck(docName as FilePathWithPrefix);
                                     } else {
                                         Logger(`Converting ${docName} Failed!`, LOG_LEVEL_NOTICE);
                                         Logger(ret, LOG_LEVEL_VERBOSE);

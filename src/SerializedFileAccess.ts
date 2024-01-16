@@ -76,7 +76,7 @@ export class SerializedFileAccess {
         } else {
             return await serialized(getFileLockKey(file), async () => {
                 const oldData = await this.app.vault.readBinary(file);
-                if (isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
+                if (await isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
                     return false;
                 }
                 await this.app.vault.modifyBinary(file, toArrayBuffer(data), options)

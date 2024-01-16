@@ -1,6 +1,7 @@
 import { App, Modal } from "./deps";
 import { type FilePath, type LoadedEntry } from "./lib/src/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
+import { waitForSignal } from "./lib/src/utils";
 
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;
@@ -20,6 +21,7 @@ export class JsonResolveModal extends Modal {
         this.nameA = nameA;
         this.nameB = nameB;
         this.defaultSelect = defaultSelect;
+        waitForSignal(`cancel-internal-conflict:${filename}`).then(() => this.close());
     }
     async UICallback(keepRev: string, mergedStr?: string) {
         this.close();

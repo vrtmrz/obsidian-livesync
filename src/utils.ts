@@ -1,12 +1,13 @@
-import { normalizePath, Platform, TAbstractFile, App, Plugin, type RequestUrlParam, requestUrl } from "./deps";
+import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
 import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
 import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types";
 import { InputStringDialog, PopoverSelectString } from "./dialogs";
-import ObsidianLiveSyncPlugin from "./main";
+import type ObsidianLiveSyncPlugin from "./main";
 import { writeString } from "./lib/src/strbin";
+import { fireAndForget } from "./lib/src/utils";
 
 export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriodicTask, cancelAllPeriodicTask, } from "./lib/src/task";
 
@@ -336,8 +337,8 @@ export const askString = (app: App, title: string, key: string, placeholder: str
 export class PeriodicProcessor {
     _process: () => Promise<any>;
     _timer?: number;
-    _plugin: Plugin;
-    constructor(plugin: Plugin, process: () => Promise<any>) {
+    _plugin: ObsidianLiveSyncPlugin;
+    constructor(plugin: ObsidianLiveSyncPlugin, process: () => Promise<any>) {
         this._plugin = plugin;
         this._process = process;
     }
@@ -351,12 +352,19 @@ export class PeriodicProcessor {
     enable(interval: number) {
         this.disable();
         if (interval == 0) return;
-        this._timer = window.setInterval(() => this.process().then(() => { }), interval);
+        this._timer = window.setInterval(() => fireAndForget(async () => {
+            await this.process();
+            if (this._plugin._unloaded) {
+                this.disable();
+            }
+        }), interval);
         this._plugin.registerInterval(this._timer);
     }
     disable() {
-        if (this._timer !== undefined) window.clearInterval(this._timer);
-        this._timer = undefined;
+        if (this._timer !== undefined) {
+            window.clearInterval(this._timer);
+            this._timer = undefined;
+        }
     }
 }
 

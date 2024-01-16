@@ -6,8 +6,34 @@ import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_I
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
 import { getDocData } from "./lib/src/utils";
-import { stripPrefix } from "./lib/src/path";
+import { isPlainText, stripPrefix } from "./lib/src/path";
 
+function isImage(path: string) {
+    const ext = path.split(".").splice(-1)[0].toLowerCase();
+    return ["png", "jpg", "jpeg", "gif", "bmp", "webp"].includes(ext);
+}
+function isComparableText(path: string) {
+    const ext = path.split(".").splice(-1)[0].toLowerCase();
+    return isPlainText(path) || ["md", "mdx", "txt", "json"].includes(ext);
+}
+function isComparableTextDecode(path: string) {
+    const ext = path.split(".").splice(-1)[0].toLowerCase();
+    return ["json"].includes(ext)
+}
+function readDocument(w: LoadedEntry) {
+    if (isImage(w.path)) {
+        return new Uint8Array(decodeBinary(w.data));
+    }
+    if (w.data == "plain") return getDocData(w.data);
+    if (isComparableTextDecode(w.path)) return readString(new Uint8Array(decodeBinary(w.data)));
+    if (isComparableText(w.path)) return getDocData(w.data);
+    try {
+        return readString(new Uint8Array(decodeBinary(w.data)));
+    } catch (ex) {
+        // NO OP.
+    }
+    return getDocData(w.data);
+}
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
     range!: HTMLInputElement;
@@ -56,7 +82,6 @@ export class DocumentHistoryModal extends Modal {
                 this.range.max = "0";
                 this.range.value = "";
                 this.range.disabled = true;
-                this.showDiff
                 this.contentView.setText(`History of this file was not recorded.`);
             } else {
                 this.contentView.setText(`Error occurred.`);
@@ -76,6 +101,22 @@ export class DocumentHistoryModal extends Modal {
         const rev = this.revs_info[index];
         await this.showExactRev(rev.rev);
     }
+    BlobURLs = new Map<string, string>();
+
+    revokeURL(key: string) {
+        const v = this.BlobURLs.get(key);
+        if (v) {
+            URL.revokeObjectURL(v);
+        }
+        this.BlobURLs.set(key, undefined);
+    }
+    generateBlobURL(key: string, data: Uint8Array) {
+        this.revokeURL(key);
+        const v = URL.createObjectURL(new Blob([data], { endings: "transparent", type: "application/octet-stream" }));
+        this.BlobURLs.set(key, v);
+        return v;
+    }
+
     async showExactRev(rev: string) {
         const db = this.plugin.localDatabase;
         const w = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
@@ -88,42 +129,67 @@ export class DocumentHistoryModal extends Modal {
         } else {
             this.currentDoc = w;
             this.info.innerHTML = `Modified:${new Date(w.mtime).toLocaleString()}`;
-            let result = "";
-            const w1data = w.datatype == "plain" ? getDocData(w.data) : readString(new Uint8Array(decodeBinary(w.data)));
+            let result = undefined;
+            const w1data = readDocument(w);
             this.currentDeleted = !!w.deleted;
-            this.currentText = w1data;
+            // this.currentText = w1data;
             if (this.showDiff) {
                 const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
                     const oldRev = this.revs_info[prevRevIdx].rev;
                     const w2 = await db.getDBEntry(this.file, { rev: oldRev }, false, false, true);
                     if (w2 != false) {
-                        const dmp = new diff_match_patch();
-                        const w2data = w2.datatype == "plain" ? getDocData(w2.data) : readString(new Uint8Array(decodeBinary(w2.data)));
-                        const diff = dmp.diff_main(w2data, w1data);
-                        dmp.diff_cleanupSemantic(diff);
-                        for (const v of diff) {
-                            const x1 = v[0];
-                            const x2 = v[1];
-                            if (x1 == DIFF_DELETE) {
-                                result += "<span class='history-deleted'>" + escapeStringToHTML(x2) + "</span>";
-                            } else if (x1 == DIFF_EQUAL) {
-                                result += "<span class='history-normal'>" + escapeStringToHTML(x2) + "</span>";
-                            } else if (x1 == DIFF_INSERT) {
-                                result += "<span class='history-added'>" + escapeStringToHTML(x2) + "</span>";
+                        if (typeof w1data == "string") {
+                            result = "";
+                            const dmp = new diff_match_patch();
+                            const w2data = readDocument(w2) as string;
+                            const diff = dmp.diff_main(w2data, w1data);
+                            dmp.diff_cleanupSemantic(diff);
+                            for (const v of diff) {
+                                const x1 = v[0];
+                                const x2 = v[1];
+                                if (x1 == DIFF_DELETE) {
+                                    result += "<span class='history-deleted'>" + escapeStringToHTML(x2) + "</span>";
+                                } else if (x1 == DIFF_EQUAL) {
+                                    result += "<span class='history-normal'>" + escapeStringToHTML(x2) + "</span>";
+                                } else if (x1 == DIFF_INSERT) {
+                                    result += "<span class='history-added'>" + escapeStringToHTML(x2) + "</span>";
+                                }
                             }
+                            result = result.replace(/\n/g, "<br>");
+                        } else if (isImage(this.file)) {
+                            const src = this.generateBlobURL("base", w1data);
+                            const overlay = this.generateBlobURL("overlay", readDocument(w2) as Uint8Array);
+                            result =
+                                `<div class='ls-imgdiff-wrap'>
+    <div class='overlay'>
+        <img class='img-base' src="${src}">
+        <img class='img-overlay' src='${overlay}'>
+    </div>
+</div>`;
+                            this.contentView.removeClass("op-pre");
                         }
+                    }
+                }
 
-                        result = result.replace(/\n/g, "<br>");
-                    } else {
-                        result = escapeStringToHTML(w1data);
+            }
+            if (result == undefined) {
+                if (typeof w1data != "string") {
+                    if (isImage(this.file)) {
+                        const src = this.generateBlobURL("base", w1data);
+                        result =
+                            `<div class='ls-imgdiff-wrap'>
+<div class='overlay'>
+<img class='img-base' src="${src}">
+</div>
+</div>`;
+                        this.contentView.removeClass("op-pre");
                     }
                 } else {
                     result = escapeStringToHTML(w1data);
                 }
-            } else {
-                result = escapeStringToHTML(w1data);
             }
+            if (result == undefined) result = typeof w1data == "string" ? escapeStringToHTML(w1data) : "Binary file";
             this.contentView.innerHTML = (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
         }
     }
@@ -217,5 +283,9 @@ export class DocumentHistoryModal extends Modal {
     onClose() {
         const { contentEl } = this;
         contentEl.empty();
+        this.BlobURLs.forEach(value => {
+            console.log(value);
+            if (value) URL.revokeObjectURL(value);
+        })
     }
 }

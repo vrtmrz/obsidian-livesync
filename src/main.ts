@@ -2,7 +2,7 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
@@ -13,11 +13,11 @@ import { DocumentHistoryModal } from "./DocumentHistoryModal";
 import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
-import { lockStats, logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/stores";
+import { logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
 import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/strbin";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/path";
-import { isLockAcquired, serialized, skipIfDuplicated } from "./lib/src/lock";
+import { isLockAcquired, serialized, shareRunningResult, skipIfDuplicated } from "./lib/src/lock";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
 import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
@@ -365,7 +365,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const target = await askSelectString(this.app, "File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find(e => e.dispPath == target);
-            await this.resolveConflicted(targetItem.path);
+            this.resolveConflicted(targetItem.path);
+            await this.conflictCheckQueue.waitForPipeline();
             return true;
         }
         return false;
@@ -373,13 +374,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
 
     async resolveConflicted(target: FilePathWithPrefix) {
         if (isInternalMetadata(target)) {
-            await this.addOnHiddenFileSync.resolveConflictOnInternalFile(target);
+            this.addOnHiddenFileSync.queueConflictCheck(target);
         } else if (isPluginMetadata(target)) {
             await this.resolveConflictByNewerEntry(target);
         } else if (isCustomisationSyncMetadata(target)) {
             await this.resolveConflictByNewerEntry(target);
         } else {
-            await this.showIfConflicted(target);
+            this.queueConflictCheck(target);
         }
     }
 
@@ -583,10 +584,10 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.addCommand({
             id: "livesync-checkdoc-conflicted",
             name: "Resolve if conflicted.",
-            editorCallback: async (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
                 const file = view.file;
                 if (!file) return;
-                await this.showIfConflicted(getPathFromTFile(file));
+                this.queueConflictCheck(file);
             },
         });
 
@@ -623,9 +624,10 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.addCommand({
             id: "livesync-history",
             name: "Show history",
-            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
-                if (view.file) this.showHistory(view.file, null);
-            },
+            callback: () => {
+                const file = this.app.workspace.getActiveFile();
+                if (file) this.showHistory(file, null);
+            }
         });
         this.addCommand({
             id: "livesync-scan-files",
@@ -769,6 +771,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     onunload() {
+        cancelAllPeriodicTask();
+        cancelAllTasks();
+        this._unloaded = true;
         for (const addOn of this.addOns) {
             addOn.onunload();
         }
@@ -780,9 +785,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             this.replicator.closeReplication();
             this.localDatabase.close();
         }
-        cancelAllPeriodicTask();
-        cancelAllTasks();
-        this._unloaded = true;
         Logger("unloading plugin");
     }
 
@@ -1138,7 +1140,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (this.settings.syncOnFileOpen && !this.suspended) {
             await this.replicate();
         }
-        await this.showIfConflicted(getPathFromTFile(file));
+        this.queueConflictCheck(file);
     }
 
     async applyBatchChange() {
@@ -1296,7 +1298,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                         await this.pullFile(path, null, true);
                     } else {
                         Logger(`Delete: ${file.path}: Conflicted revision has been deleted, but there were more conflicts...`);
-                        this.queueConflictedOnlyActiveFile(file);
+                        this.queueConflictCheck(file);
                     }
                 } else {
                     Logger(`Delete: ${file.path}: Conflict revision has been deleted and resolved`);
@@ -1367,21 +1369,16 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
     }
 
-
-    queuedEntries: EntryBody[] = [];
-
-    queueConflictedOnlyActiveFile(file: TFile) {
-        if (!this.settings.checkConflictOnlyOnOpen) {
-            this.queueConflictedCheck(file);
-            return true;
-        } else {
+    queueConflictCheck(file: FilePathWithPrefix | TFile) {
+        const path = file instanceof TFile ? getPathFromTFile(file) : file;
+        if (this.settings.checkConflictOnlyOnOpen) {
             const af = this.app.workspace.getActiveFile();
-            if (af && af.path == file.path) {
-                this.queueConflictedCheck(file);
-                return true;
+            if (af && af.path != path) {
+                Logger(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
+                return;
             }
         }
-        return false;
+        this.conflictCheckQueue.enqueue(path);
     }
 
     saveQueuedFiles() {
@@ -1441,15 +1438,13 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             const file = targetFile;
             if (this.settings.writeDocumentsIfConflicted) {
                 await this.doc2storage(doc, file);
-                this.queueConflictedOnlyActiveFile(file);
+                this.queueConflictCheck(file);
             } else {
                 const d = await this.localDatabase.getDBEntryMeta(this.getPath(entry), { conflicts: true }, true);
                 if (d && !d._conflicts) {
                     await this.doc2storage(doc, file);
                 } else {
-                    if (!this.queueConflictedOnlyActiveFile(file)) {
-                        Logger(`${this.getPath(entry)} is conflicted, write to the storage has been postponed.`, LOG_LEVEL_NOTICE);
-                    }
+                    this.queueConflictCheck(file);
                 }
             }
         } else {
@@ -1541,14 +1536,15 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             const chunkCount = collectingChunks.value;
             const pluginScanCount = pluginScanningCount.value;
             const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
+            const conflictProcessCount = this.conflictProcessQueueCount.value;
             const labelReplication = replicationCount ? `📥 ${replicationCount} ` : "";
             const labelDBCount = dbCount ? `📄 ${dbCount} ` : "";
             const labelStorageCount = storageApplyingCount ? `💾 ${storageApplyingCount}` : "";
             const labelChunkCount = chunkCount ? `🧩${chunkCount} ` : "";
             const labelPluginScanCount = pluginScanCount ? `🔌${pluginScanCount} ` : "";
             const labelHiddenFilesCount = hiddenFilesCount ? `⚙️${hiddenFilesCount} ` : "";
-
-            return `${labelReplication}${labelDBCount}${labelStorageCount}${labelChunkCount}${labelPluginScanCount}${labelHiddenFilesCount}`;
+            const labelConflictProcessCount = conflictProcessCount ? `🔩${conflictProcessCount} ` : "";
+            return `${labelReplication}${labelDBCount}${labelStorageCount}${labelChunkCount}${labelPluginScanCount}${labelHiddenFilesCount}${labelConflictProcessCount}`;
         })
 
         const replicationStatLabel = reactive(() => {
@@ -1625,9 +1621,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         statusBarLabels.onChanged(applyToDisplay);
     }
 
-    refreshStatusText() {
-        return;
-    }
     applyStatusBarText(message: string, log: string) {
         const newMsg = message;
         const newLog = log;
@@ -2147,12 +2140,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
      * @param path the file location
      * @returns true -> resolved, false -> nothing to do, or check result.
      */
-    async getConflictedStatus(path: FilePathWithPrefix): Promise<diff_check_result> {
+    async checkConflictAndPerformAutoMerge(path: FilePathWithPrefix): Promise<diff_check_result> {
         const test = await this.localDatabase.getDBEntry(path, { conflicts: true, revs_info: true }, false, false, true);
-        if (test === false) return false;
-        if (test == null) return false;
-        if (!test._conflicts) return false;
-        if (test._conflicts.length == 0) return false;
+        if (test === false) return MISSING_OR_ERROR;
+        if (test == null) return MISSING_OR_ERROR;
+        if (!test._conflicts) return NOT_CONFLICTED;
+        if (test._conflicts.length == 0) return NOT_CONFLICTED;
         const conflicts = test._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
         if ((isSensibleMargeApplicable(path) || isObjectMargeApplicable(path)) && !this.settings.disableMarkdownAutoMerge) {
             const conflictedRev = conflicts[0];
@@ -2198,7 +2191,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     // ?
                     await this.pullFile(path);
                     Logger(`Automatically merged (sensible) :${path}`, LOG_LEVEL_INFO);
-                    return true;
+                    return AUTO_MERGED;
                 }
             }
         }
@@ -2208,14 +2201,14 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (leftLeaf == false) {
             // what's going on..
             Logger(`could not get current revisions:${path}`, LOG_LEVEL_NOTICE);
-            return false;
+            return MISSING_OR_ERROR;
         }
         if (rightLeaf == false) {
             // Conflicted item could not load, delete this.
             await this.localDatabase.deleteDBEntry(path, { rev: conflicts[0] });
             await this.pullFile(path, null, true);
             Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL_NOTICE);
-            return true;
+            return AUTO_MERGED;
         }
 
         const isSame = leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted;
@@ -2231,7 +2224,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
             await this.pullFile(path, null, true);
             Logger(`Automatically merged (${isSame ? "same," : ""}${isBinary ? "binary," : ""}${alwaysNewer ? "alwaysNewer" : ""}) :${path}`, LOG_LEVEL_NOTICE);
-            return true;
+            return AUTO_MERGED;
         }
         // make diff.
         const dmp = new diff_match_patch();
@@ -2245,107 +2238,111 @@ Or if you are sure know what had been happened, we can unlock the database from 
         };
     }
 
-    showMergeDialog(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
-        return serialized("resolve-conflict:" + filename, () =>
-            new Promise((res, rej) => {
-                Logger("open conflict dialog", LOG_LEVEL_VERBOSE);
-                new ConflictResolveModal(this.app, filename, conflictCheckResult, async (selected) => {
-                    const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
-                    if (testDoc === false) {
-                        Logger("Missing file..", LOG_LEVEL_VERBOSE);
-                        return res(true);
-                    }
-                    if (!testDoc._conflicts) {
-                        Logger("Nothing have to do with this conflict", LOG_LEVEL_VERBOSE);
-                        return res(true);
-                    }
-                    const toDelete = selected;
-                    const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
-                    if (toDelete == "") {
-                        // concat both,
-                        // delete conflicted revision and write a new file, store it again.
-                        const p = conflictCheckResult.diff.map((e) => e[1]).join("");
-                        await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
-                        const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
-                        if (file) {
-                            if (await this.vaultAccess.vaultModify(file, p)) {
-                                await this.updateIntoDB(file);
-                            }
-                        } else {
-                            const newFile = await this.vaultAccess.vaultCreate(filename, p);
-                            await this.updateIntoDB(newFile);
-                        }
-                        await this.pullFile(filename);
-                        Logger("concat both file");
-                        if (this.settings.syncAfterMerge && !this.suspended) {
-                            await this.replicate();
-                        }
-                        setTimeout(() => {
-                            //resolved, check again.
-                            this.showIfConflicted(filename);
-                        }, 50);
-                    } else if (toDelete == null) {
-                        Logger("Leave it still conflicted");
-                    } else {
-                        await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
-                        await this.pullFile(filename, null, true, toKeep);
-                        Logger(`Conflict resolved:${filename}`);
-                        if (this.settings.syncAfterMerge && !this.suspended) {
-                            await this.replicate();
-                        }
-                        setTimeout(() => {
-                            //resolved, check again.
-                            this.showIfConflicted(filename);
-                        }, 50);
-                    }
-
-                    return res(true);
-                }).open();
-            })
-        );
-    }
-    conflictedCheckFiles: FilePath[] = [];
-
-    // queueing the conflicted file check
-    queueConflictedCheck(file: TFile) {
-        this.conflictedCheckFiles = this.conflictedCheckFiles.filter((e) => e != file.path);
-        this.conflictedCheckFiles.push(getPathFromTFile(file));
-        scheduleTask("check-conflict", 100, async () => {
-            const checkFiles = JSON.parse(JSON.stringify(this.conflictedCheckFiles)) as FilePath[];
-            for (const filename of checkFiles) {
-                try {
-                    const file = this.vaultAccess.getAbstractFileByPath(filename);
-                    if (file != null && file instanceof TFile) {
-                        await this.showIfConflicted(getPathFromTFile(file));
-                    }
-                } catch (ex) {
-                    Logger(ex);
-                }
-            }
-        });
-    }
-
-    async showIfConflicted(filename: FilePathWithPrefix) {
-        await serialized("conflicted", async () => {
-            const conflictCheckResult = await this.getConflictedStatus(filename);
-            if (conflictCheckResult === false) {
-                //nothing to do.
+    conflictProcessQueueCount = reactiveSource(0);
+    conflictResolveQueue =
+        new KeyedQueueProcessor(async (entries: { filename: FilePathWithPrefix, file: TFile }[]) => {
+            const entry = entries[0];
+            const filename = entry.filename;
+            const conflictCheckResult = await this.checkConflictAndPerformAutoMerge(filename);
+            if (conflictCheckResult === MISSING_OR_ERROR || conflictCheckResult === NOT_CONFLICTED || conflictCheckResult === CANCELLED) {
+                // nothing to do.
                 return;
             }
-            if (conflictCheckResult === true) {
+            if (conflictCheckResult === AUTO_MERGED) {
                 //auto resolved, but need check again;
                 if (this.settings.syncAfterMerge && !this.suspended) {
-                    await this.replicate();
+                    //Wait for the running replication, if not running replication, run it once.
+                    await shareRunningResult(`replication`, () => this.replicate());
                 }
                 Logger("conflict:Automatically merged, but we have to check it again");
-                setTimeout(() => {
-                    this.showIfConflicted(filename);
-                }, 50);
+                this.conflictCheckQueue.enqueue(filename);
                 return;
             }
-            //there conflicts, and have to resolve ;
-            await this.showMergeDialog(filename, conflictCheckResult);
+            if (this.settings.showMergeDialogOnlyOnActive) {
+                const af = this.app.workspace.getActiveFile();
+                if (af && af.path != filename) {
+                    Logger(`${filename} is conflicted. Merging process has been postponed to the file have got opened.`, LOG_LEVEL_NOTICE);
+                    return;
+                }
+            }
+            Logger("conflict:Manual merge required!");
+            await this.resolveConflictByUI(filename, conflictCheckResult);
+        }, { suspended: false, batchSize: 1, concurrentLimit: 1, delay: 10, keepResultUntilDownstreamConnected: false }).replaceEnqueueProcessor(
+            (queue, newEntity) => {
+                const filename = newEntity.entity.filename;
+                sendValue("cancel-resolve-conflict:" + filename, true);
+                const newQueue = [...queue].filter(e => e.key != newEntity.key);
+                return [...newQueue, newEntity];
+            });
+
+
+    conflictCheckQueue =
+        // First process - Check is the file actually need resolve -
+        new QueueProcessor((files: FilePathWithPrefix[]) => {
+            const filename = files[0];
+            const file = this.vaultAccess.getAbstractFileByPath(filename);
+            if (!file) return;
+            if (!(file instanceof TFile)) return;
+            // Check again?
+
+            return [{ key: filename, entity: { filename, file } }];
+            // this.conflictResolveQueue.enqueueWithKey(filename, { filename, file });
+        }, {
+            suspended: false, batchSize: 1, concurrentLimit: 5, delay: 10, keepResultUntilDownstreamConnected: true, pipeTo: this.conflictResolveQueue, totalRemainingReactiveSource: this.conflictProcessQueueCount
         });
+
+    async resolveConflictByUI(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
+        Logger("Merge:open conflict dialog", LOG_LEVEL_VERBOSE);
+        const dialog = new ConflictResolveModal(this.app, filename, conflictCheckResult);
+        dialog.open();
+        const selected = await dialog.waitForResult();
+        if (selected === CANCELLED) {
+            // Cancelled by UI, or another conflict.
+            Logger(`Merge: Cancelled ${filename}`, LOG_LEVEL_INFO);
+            return;
+        }
+        const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
+        if (testDoc === false) {
+            Logger(`Merge: Could not read ${filename} from the local database`, LOG_LEVEL_VERBOSE);
+            return;
+        }
+        if (!testDoc._conflicts) {
+            Logger(`Merge: Nothing to do ${filename}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
+        const toDelete = selected;
+        const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
+        if (toDelete === LEAVE_TO_SUBSEQUENT) {
+            // concat both,
+            // delete conflicted revision and write a new file, store it again.
+            const p = conflictCheckResult.diff.map((e) => e[1]).join("");
+            await this.localDatabase.deleteDBEntry(filename, { rev: testDoc._conflicts[0] });
+            const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename)) as TFile;
+            if (file) {
+                if (await this.vaultAccess.vaultModify(file, p)) {
+                    await this.updateIntoDB(file);
+                }
+            } else {
+                const newFile = await this.vaultAccess.vaultCreate(filename, p);
+                await this.updateIntoDB(newFile);
+            }
+            await this.pullFile(filename);
+            Logger(`Merge: Changes has been concatenated: ${filename}`);
+        } else if (typeof toDelete === "string") {
+            await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
+            await this.pullFile(filename, null, true, toKeep);
+            Logger(`Conflict resolved:${filename}`);
+        } else {
+            Logger(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
+            return;
+        }
+        // In here, some merge has been processed.
+        // So we have to run replication if configured.
+        if (this.settings.syncAfterMerge && !this.suspended) {
+            await shareRunningResult(`replication`, () => this.replicate());
+        }
+        // And, check it again.
+        this.conflictCheckQueue.enqueue(filename);
     }
 
     async pullFile(filename: FilePathWithPrefix, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
