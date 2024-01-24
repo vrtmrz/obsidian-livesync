@@ -1238,7 +1238,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
         let skipPatternTextArea: TextAreaComponent = null;
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
-        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$";
+        const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
         new Setting(containerSyncSettingEl)
             .setName("Folders and files to ignore")
             .setDesc(
