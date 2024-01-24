@@ -27,8 +27,10 @@
     async function requestReload() {
         await addOn.reloadPluginList(true);
     }
+    let allTerms = [] as string[];
     pluginList.subscribe((e) => {
         list = e;
+        allTerms = unique(list.map((e) => e.term));
     });
     pluginIsEnumerating.subscribe((e) => {
         loading = e;
@@ -172,7 +174,7 @@
                 .filter((e) => `${e.category}/${e.name}` == key)
                 .map((e) => e.files)
                 .flat()
-                .map((e) => e.filename)
+                .map((e) => e.filename),
         );
         automaticList.set(key, mode);
         automaticListDisp = automaticList;
@@ -217,6 +219,16 @@
         ]
             .sort((a, b) => (a.displayName ?? a.name).localeCompare(b.displayName ?? b.name))
             .reduce((p, c) => ({ ...p, [c.category]: unique(c.category in p ? [...p[c.category], c.displayName ?? c.name] : [c.displayName ?? c.name]) }), {} as Record<string, string[]>);
+    }
+
+    let deleteTerm = "";
+
+    async function deleteAllItems(term: string) {
+        const deleteItems = list.filter((e) => e.term == term);
+        for (const item of deleteItems) {
+            await deleteData(item);
+        }
+        addOn.reloadPluginList(true);
     }
 </script>
 
@@ -322,6 +334,29 @@
             </div>
         {/if}
     </div>
+    {#if isMaintenanceMode}
+        <div class="list">
+            <div>
+                <h3>Maintenance Commands</h3>
+                <div class="maintenancerow">
+                    <label for="">Delete All of </label>
+                    <select bind:value={deleteTerm}>
+                        {#each allTerms as term}
+                            <option value={term}>{term}</option>
+                        {/each}
+                    </select>
+                    <button
+                        class="status"
+                        on:click={(evt) => {
+                            deleteAllItems(deleteTerm);
+                        }}
+                    >
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
     <div class="buttons">
         <label><span>Hide not applicable items</span><input type="checkbox" bind:checked={hideEven} /></label>
     </div>
@@ -422,5 +457,14 @@
         justify-content: center;
         align-items: center;
         min-height: 3em;
+    }
+    .maintenancerow {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    .maintenancerow label {
+        margin-right: 0.5em;
+        margin-left: 0.5em;
     }
 </style>

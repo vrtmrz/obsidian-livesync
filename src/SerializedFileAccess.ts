@@ -2,6 +2,7 @@ import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "
 import { serialized } from "./lib/src/lock";
 import type { FilePath } from "./lib/src/types";
 import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
+import type { InternalFileInfo } from "./types";
 function getFileLockKey(file: TFile | TFolder | string) {
     return `fl:${typeof (file) == "string" ? file : file.path}`;
 }
@@ -121,8 +122,8 @@ export class SerializedFileAccess {
         this.touchedFiles.unshift(key);
         this.touchedFiles = this.touchedFiles.slice(0, 100);
     }
-    recentlyTouched(file: TFile) {
-        const key = `${file.path}-${file.stat.mtime}-${file.stat.size}`;
+    recentlyTouched(file: TFile | InternalFileInfo) {
+        const key = file instanceof TFile ? `${file.path}-${file.stat.mtime}-${file.stat.size}` : `${file.path}-${file.mtime}-${file.size}`;
         if (this.touchedFiles.indexOf(key) == -1) return false;
         return true;
     }

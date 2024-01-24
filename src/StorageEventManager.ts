@@ -1,8 +1,9 @@
 import type { SerializedFileAccess } from "./SerializedFileAccess";
 import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
+import { Logger } from "./lib/src/logger";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import type { KeyedQueueProcessor } from "./lib/src/processor";
-import { type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
+import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
 import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "./types";
 
 
@@ -17,7 +18,8 @@ type LiveSyncForStorageEventManager = Plugin &
     vaultAccess: SerializedFileAccess
 } & {
     isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
-    fileEventQueue: KeyedQueueProcessor<FileEventItem, any>
+    fileEventQueue: KeyedQueueProcessor<FileEventItem, any>,
+    isFileSizeExceeded: (size: number) => boolean;
 };
 
 
@@ -96,6 +98,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             const type = param.type;
             const file = param.file;
             const oldPath = param.oldPath;
+            const size = file instanceof TFile ? file.stat.size : (file as InternalFileInfo)?.size ?? 0;
+            if (this.plugin.isFileSizeExceeded(size) && (type == "CREATE" || type == "CHANGED")) {
+                Logger(`The storage file has been changed but exceeds the maximum size. Skipping: ${param.file.path}`, LOG_LEVEL_NOTICE);
+                continue;
+            }
             if (file instanceof TFolder) continue;
             if (!await this.plugin.isTargetFile(file.path)) continue;
             if (this.plugin.settings.suspendFileWatching) continue;

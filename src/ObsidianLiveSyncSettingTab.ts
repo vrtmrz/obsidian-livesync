@@ -8,6 +8,7 @@ import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
+import type { ButtonComponent } from "obsidian";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -33,6 +34,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         let useDynamicIterationCount = this.plugin.settings.useDynamicIterationCount;
 
         containerEl.empty();
+
+        // const preferred_setting = isCloudantURI(this.plugin.settings.couchDB_URI) ? PREFERRED_SETTING_CLOUDANT : PREFERRED_SETTING_SELF_HOSTED;
+        // const default_setting = { ...DEFAULT_SETTINGS };
+
 
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
         containerEl.addClass("sls-setting");
@@ -819,6 +824,53 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
+        containerGeneralSettingsEl.createEl("h4", { text: "Share settings via markdown" });
+        let settingSyncFile = this.plugin.settings.settingSyncFile;
+        let buttonApplyFilename: ButtonComponent;
+        new Setting(containerGeneralSettingsEl)
+            .setName("Filename")
+            .setDesc("If you set this, all settings are saved in a markdown file. You will also be notified when new settings were arrived. You can set different files by the platform.")
+            .addText((text) => {
+                text.setPlaceholder("livesync/setting.md")
+                    .setValue(settingSyncFile)
+                    .onChange((value) => {
+                        settingSyncFile = value;
+                        if (settingSyncFile == this.plugin.settings.settingSyncFile) {
+                            buttonApplyFilename.removeCta()
+                            buttonApplyFilename.setDisabled(true);
+                        } else {
+                            buttonApplyFilename.setCta()
+                            buttonApplyFilename.setDisabled(false);
+                        }
+                    })
+            }).addButton(button => {
+                button.setButtonText("Apply")
+                    .onClick(async () => {
+                        this.plugin.settings.settingSyncFile = settingSyncFile;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    })
+                buttonApplyFilename = button;
+            })
+        new Setting(containerGeneralSettingsEl)
+            .setName("Write credentials in the file")
+            .setDesc("(Not recommended) If set, credentials will be stored in the file.")
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.writeCredentialsForSettingSync)
+                    .onChange(async (value) => {
+                        this.plugin.settings.writeCredentialsForSettingSync = value;
+                        await this.plugin.saveSettings();
+                    })
+            });
+        new Setting(containerGeneralSettingsEl)
+            .setName("Notify all setting files")
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.notifyAllSettingSyncFile)
+                    .onChange(async (value) => {
+                        this.plugin.settings.notifyAllSettingSyncFile = value;
+                        await this.plugin.saveSettings();
+                    })
+            });
 
         containerGeneralSettingsEl.createEl("h4", { text: "Advanced Confidentiality" });
 
@@ -1322,11 +1374,35 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
 
         containerSyncSettingEl.createEl("h4", {
-            text: sanitizeHTMLToDom(`Synchronization target filters`),
+            text: sanitizeHTMLToDom(`Targets`),
         }).addClass("wizardHidden");
         new Setting(containerSyncSettingEl)
-            .setName("Regular expression to ignore files")
-            .setDesc("If this is set, any changes to local and remote files that match this will be skipped.")
+            .setName("Synchronising files")
+            .setDesc("(RegExp) Empty to sync all files. set filter as a regular expression to limit synchronising files.")
+            .setClass("wizardHidden")
+            .addTextArea((text) => {
+                text
+                    .setValue(this.plugin.settings.syncOnlyRegEx)
+                    .setPlaceholder("\\.md$|\\.txt")
+                    .onChange(async (value) => {
+                        let isValidRegExp = false;
+                        try {
+                            new RegExp(value);
+                            isValidRegExp = true;
+                        } catch (_) {
+                            // NO OP.
+                        }
+                        if (isValidRegExp || value.trim() == "") {
+                            this.plugin.settings.syncOnlyRegEx = value;
+                            await this.plugin.saveSettings();
+                        }
+                    })
+                return text;
+            }
+            );
+        new Setting(containerSyncSettingEl)
+            .setName("Non-Synchronising files")
+            .setDesc("(RegExp) If this is set, any changes to local and remote files that match this will be skipped.")
             .setClass("wizardHidden")
             .addTextArea((text) => {
                 text
@@ -1349,29 +1425,22 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             );
         new Setting(containerSyncSettingEl)
-            .setName("Regular expression for restricting synchronization targets")
-            .setDesc("If this is set, changes to local and remote files that only match this will be processed.")
+            .setName("Maximum file size")
+            .setDesc("(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.")
             .setClass("wizardHidden")
-            .addTextArea((text) => {
-                text
-                    .setValue(this.plugin.settings.syncOnlyRegEx)
-                    .setPlaceholder("\\.md$|\\.txt")
+            .addText((text) => {
+                text.setPlaceholder("")
+                    .setValue(this.plugin.settings.syncMaxSizeInMB + "")
                     .onChange(async (value) => {
-                        let isValidRegExp = false;
-                        try {
-                            new RegExp(value);
-                            isValidRegExp = true;
-                        } catch (_) {
-                            // NO OP.
+                        let v = Number(value);
+                        if (isNaN(v) || v < 1) {
+                            v = 0;
                         }
-                        if (isValidRegExp || value.trim() == "") {
-                            this.plugin.settings.syncOnlyRegEx = value;
-                            await this.plugin.saveSettings();
-                        }
-                    })
-                return text;
-            }
-            );
+                        this.plugin.settings.syncMaxSizeInMB = v;
+                        await this.plugin.saveSettings();
+                    });
+                text.inputEl.setAttribute("type", "number");
+            });
         new Setting(containerSyncSettingEl)
             .setName("(Beta) Use ignore files")
             .setDesc("If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.")
@@ -1535,8 +1604,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         pluginConfig.encryptedPassphrase = REDACTED;
                         pluginConfig.encryptedCouchDBConnection = REDACTED;
                         pluginConfig.pluginSyncExtendedSetting = {};
-
-                        const msgConfig = `----remote config----
+                        const obsidianInfo = navigator.userAgent;
+                        const msgConfig = `---- Obsidian info ----
+${obsidianInfo}
+---- remote config ----
 ${stringifyYaml(responseConfig)}
 ---- Plug-in config ---
 version:${manifestVersion}

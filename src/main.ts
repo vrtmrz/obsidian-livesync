@@ -1,10 +1,10 @@
 const isDebug = false;
 
-import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
+import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
 import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, sendValue } from "./lib/src/utils";
+import { createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -63,6 +63,10 @@ async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse>
     }
     return ret;
 }
+
+const SETTING_HEADER = "````yaml:livesync-setting\n";
+const SETTING_FOOTER = "\n````";
+
 export default class ObsidianLiveSyncPlugin extends Plugin
     implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv {
 
@@ -299,38 +303,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return timer;
     }
 
-    isRedFlagRaised(): boolean {
-        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG));
-        if (redflag != null) {
+    isFlagFileExist(path: string) {
+        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(path));
+        if (redflag != null && redflag instanceof TFile) {
             return true;
         }
         return false;
     }
-    isRedFlag2Raised(): boolean {
-        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
-        if (redflag != null) {
-            return true;
+    async deleteFlagFile(path: string) {
+        try {
+            const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(path));
+            if (redflag != null && redflag instanceof TFile) {
+                await this.vaultAccess.delete(redflag, true);
+            }
+        } catch (ex) {
+            Logger(`Could not delete ${path}`);
+            Logger(ex, LOG_LEVEL_VERBOSE);
         }
-        return false;
     }
+    isRedFlagRaised = () => this.isFlagFileExist(FLAGMD_REDFLAG)
+    isRedFlag2Raised = () => this.isFlagFileExist(FLAGMD_REDFLAG2) || this.isFlagFileExist(FLAGMD_REDFLAG2_HR)
+    isRedFlag3Raised = () => this.isFlagFileExist(FLAGMD_REDFLAG3) || this.isFlagFileExist(FLAGMD_REDFLAG3_HR)
+
     async deleteRedFlag2() {
-        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG2));
-        if (redflag != null && redflag instanceof TFile) {
-            await this.vaultAccess.delete(redflag, true);
-        }
+        await this.deleteFlagFile(FLAGMD_REDFLAG2);
+        await this.deleteFlagFile(FLAGMD_REDFLAG2_HR);
     }
-    isRedFlag3Raised(): boolean {
-        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
-        if (redflag != null) {
-            return true;
-        }
-        return false;
-    }
+
     async deleteRedFlag3() {
-        const redflag = this.vaultAccess.getAbstractFileByPath(normalizePath(FLAGMD_REDFLAG3));
-        if (redflag != null && redflag instanceof TFile) {
-            await this.vaultAccess.delete(redflag, true);
-        }
+        await this.deleteFlagFile(FLAGMD_REDFLAG3);
+        await this.deleteFlagFile(FLAGMD_REDFLAG3_HR);
     }
 
     showHistory(file: TFile | FilePathWithPrefix, id?: DocumentID) {
@@ -426,7 +428,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                 this.settings.suspendFileWatching = true;
                 await this.saveSettings();
                 if (this.isRedFlag2Raised()) {
-                    Logger(`${FLAGMD_REDFLAG2} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL_NOTICE);
+                    Logger(`${FLAGMD_REDFLAG2} or ${FLAGMD_REDFLAG2_HR} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.rebuildEverything();
                     await this.deleteRedFlag2();
                     if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
@@ -436,7 +438,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         this.app.commands.executeCommandById("app:reload")
                     }
                 } else if (this.isRedFlag3Raised()) {
-                    Logger(`${FLAGMD_REDFLAG3} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
+                    Logger(`${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.fetchLocal();
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
@@ -678,6 +680,28 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             callback: () => {
                 this.showGlobalHistory()
             }
+        })
+        this.addCommand({
+            id: "livesync-export-config",
+            name: "Write setting markdown manually",
+            checkCallback: (checking) => {
+                if (checking) {
+                    return this.settings.settingSyncFile != "";
+                }
+                this.saveSettingData();
+            }
+        })
+        this.addCommand({
+            id: "livesync-import-config",
+            name: "Parse setting file",
+            editorCheckCallback: (checking, editor, ctx) => {
+                if (checking) {
+                    const doc = editor.getValue();
+                    const ret = this.extractSettingFromWholeText(doc);
+                    return ret.body != "";
+                }
+                this.checkAndApplySettingFromMarkdown(ctx.file.path, false);
+            },
         })
 
         this.registerView(
@@ -944,8 +968,162 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.localDatabase.settings = this.settings;
         this.fileEventQueue.delay = this.settings.batchSave ? 5000 : 100;
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
-
+        if (this.settings.settingSyncFile != "") {
+            fireAndForget(() => this.saveSettingToMarkdown(this.settings.settingSyncFile));
+        }
     }
+
+    extractSettingFromWholeText(data: string): { preamble: string, body: string, postscript: string } {
+        if (data.indexOf(SETTING_HEADER) === -1) {
+            return {
+                preamble: data,
+                body: "",
+                postscript: ""
+            }
+        }
+        const startMarkerPos = data.indexOf(SETTING_HEADER);
+        const dataStartPos = startMarkerPos == -1 ? data.length : startMarkerPos;
+        const endMarkerPos = startMarkerPos == -1 ? data.length : data.indexOf(SETTING_FOOTER, dataStartPos);
+        const dataEndPos = endMarkerPos == -1 ? data.length : endMarkerPos;
+        const body = data.substring(dataStartPos + SETTING_HEADER.length, dataEndPos);
+        const ret = {
+            preamble: data.substring(0, dataStartPos),
+            body,
+            postscript: data.substring(dataEndPos + SETTING_FOOTER.length + 1)
+        }
+        return ret;
+    }
+
+    async parseSettingFromMarkdown(filename: string, data?: string) {
+        const file = this.app.vault.getAbstractFileByPath(filename);
+        if (!(file instanceof TFile)) return {
+            preamble: "",
+            body: "",
+            postscript: "",
+        };
+        if (data) {
+            return this.extractSettingFromWholeText(data);
+        }
+        const parseData = data ?? await this.app.vault.read(file);
+        return this.extractSettingFromWholeText(parseData);
+    }
+
+    async checkAndApplySettingFromMarkdown(filename: string, automated?: boolean) {
+        if (automated && !this.settings.notifyAllSettingSyncFile) {
+            if (this.settings.settingSyncFile != filename) {
+                Logger(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_INFO);
+                return;
+            }
+        }
+        const { body } = await this.parseSettingFromMarkdown(filename);
+        let newSetting = {} as Partial<ObsidianLiveSyncSettings>;
+        try {
+            newSetting = parseYaml(body);
+        } catch (ex) {
+            Logger("Could not parse YAML", LOG_LEVEL_NOTICE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+            return;
+        }
+
+        if ("settingSyncFile" in newSetting && newSetting.settingSyncFile != filename) {
+            Logger("This setting file seems to backed up one. Please fix the filename or settingSyncFile value.", automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE);
+            return;
+        }
+
+
+        let settingToApply = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
+        settingToApply = { ...settingToApply, ...newSetting }
+        if (!(settingToApply?.writeCredentialsForSettingSync)) {
+            //New setting does not contains credentials. 
+            settingToApply.couchDB_USER = this.settings.couchDB_USER;
+            settingToApply.couchDB_PASSWORD = this.settings.couchDB_PASSWORD;
+            settingToApply.passphrase = this.settings.passphrase;
+        }
+        const oldSetting = this.generateSettingForMarkdown(this.settings, settingToApply.writeCredentialsForSettingSync);
+        if (!isObjectDifferent(oldSetting, this.generateSettingForMarkdown(settingToApply))) {
+            Logger("Setting markdown has been detected, but not changed.", automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE);
+            return
+        }
+        const addMsg = this.settings.settingSyncFile != filename ? " (This is not-active file)" : "";
+        this.askInPopup("apply-setting-from-md", `Setting markdown ${filename}${addMsg} has been detected. Apply this from {HERE}.`, (anchor) => {
+            anchor.text = "HERE";
+            anchor.addEventListener("click", async () => {
+                const APPLY_ONLY = "Apply settings";
+                const APPLY_AND_RESTART = "Apply settings and restart obsidian";
+                const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
+                const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
+                const CANCEL = "Cancel";
+                const result = await askSelectString(this.app, "Ready for apply the setting.", [APPLY_AND_RESTART, APPLY_ONLY, APPLY_AND_FETCH, APPLY_AND_REBUILD, CANCEL]);
+                if (result == APPLY_ONLY || result == APPLY_AND_RESTART || result == APPLY_AND_REBUILD || result == APPLY_AND_FETCH) {
+                    this.settings = settingToApply;
+                    await this.saveSettingData();
+                    if (result == APPLY_ONLY) {
+                        Logger("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
+                        return;
+                    }
+                    if (result == APPLY_AND_REBUILD) {
+                        await this.app.vault.create(FLAGMD_REDFLAG2_HR, "");
+                    }
+                    if (result == APPLY_AND_FETCH) {
+                        await this.app.vault.create(FLAGMD_REDFLAG3_HR, "");
+                    }
+                    // @ts-ignore
+                    this.app.commands.executeCommandById("app:reload");
+                }
+            }
+            )
+        })
+    }
+    generateSettingForMarkdown(settings?: ObsidianLiveSyncSettings, keepCredential?: boolean): Partial<ObsidianLiveSyncSettings> {
+        const saveData = { ...(settings ? settings : this.settings) };
+        delete saveData.encryptedCouchDBConnection;
+        delete saveData.encryptedPassphrase;
+        if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
+            delete saveData.couchDB_USER;
+            delete saveData.couchDB_PASSWORD;
+            delete saveData.passphrase;
+        }
+        return saveData;
+    }
+
+    async saveSettingToMarkdown(filename: string) {
+        const saveData = this.generateSettingForMarkdown();
+        let file = this.app.vault.getAbstractFileByPath(filename);
+
+
+        if (!file) {
+            await this.ensureDirectoryEx(filename);
+            const initialContent = `This file contains Self-hosted LiveSync settings as YAML.
+Except for the \`livesync-setting\` code block, we can add a note for free.
+
+If the name of this file matches the value of the "settingSyncFile" setting inside the \`livesync-setting\` block, LiveSync will tell us whenever the settings change. We can decide to accept or decline the remote setting. (In other words, we can back up this file by renaming it to another name).
+
+We can perform a command in this file.
+- \`Parse setting file\` : load the setting from the file.
+
+**Note** Please handle it with all of your care if you have configured to write credentials in.
+
+
+`
+            file = await this.app.vault.create(filename, initialContent + SETTING_HEADER + "\n" + SETTING_FOOTER);
+        }
+        if (!(file instanceof TFile)) {
+            Logger(`Markdown Setting: ${filename} already exists as a folder`, LOG_LEVEL_NOTICE);
+            return;
+        }
+
+        const data = await this.app.vault.read(file);
+        const { preamble, body, postscript } = this.extractSettingFromWholeText(data);
+        const newBody = stringifyYaml(saveData);
+
+        if (newBody == body) {
+            Logger("Markdown setting: Nothing had been changed", LOG_LEVEL_VERBOSE);
+        } else {
+            await this.app.vault.modify(file, preamble + SETTING_HEADER + newBody + SETTING_FOOTER + postscript);
+            Logger(`Markdown setting: ${filename} has been updated!`, LOG_LEVEL_VERBOSE);
+        }
+    }
+
 
     async saveSettings() {
         await this.saveSettingData();
@@ -1094,6 +1272,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
             const cache = queue.args.cache;
             if (queue.type == "CREATE" || queue.type == "CHANGED") {
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(queue.args.file.path, true));
                 const keyD1 = `file-last-proc-DELETED-${file.path}`;
                 await this.kvDB.set(keyD1, mtime);
                 if (!await this.updateIntoDB(targetFile, false, cache)) {
@@ -1274,7 +1453,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
     }
 
-    async doc2storage(docEntry: EntryBody, file?: TFile, force?: boolean) {
+    async processEntryDoc(docEntry: EntryBody, file: TFile | undefined, force?: boolean) {
         const mode = file == undefined ? "create" : "modify";
 
         const path = this.getPath(docEntry);
@@ -1282,37 +1461,49 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             return;
         }
         if (!await this.isTargetFile(path)) return;
-        if (docEntry._deleted || docEntry.deleted) {
-            // This occurs not only when files are deleted, but also when conflicts are resolved.
-            // We have to check no other revisions are left.
-            const existDoc = await this.localDatabase.getDBEntry(path, { conflicts: true });
+
+        // Conflict resolution check
+        const existDoc = await this.localDatabase.getDBEntry(path, { conflicts: true });
+        const msg = `STORAGE <- DB (${mode}${force ? ",force" : ""},${existDoc ? existDoc?.datatype : "--"}) `;
+        // let performPullFileAgain = false;
+        if (existDoc && existDoc._conflicts) {
+            if (this.settings.writeDocumentsIfConflicted) {
+                Logger(`Processing: ${file.path}: Conflicted revision has been deleted, but there were more conflicts. `, LOG_LEVEL_INFO);
+                await this.processEntryDoc(docEntry, file, true);
+                return;
+            } else if (force != true) {
+                Logger(`Processing: ${file.path}: Conflicted revision has been deleted, but there were more conflicts...`);
+                this.queueConflictCheck(file);
+                return;
+            }
+        }
+        // If there are no conflicts, or forced to overwrite.
+
+        if (docEntry._deleted || docEntry.deleted || existDoc === false) {
             if (path != file.path) {
                 Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
             }
             if (existDoc === false) {
                 await this.deleteVaultItem(file);
             } else {
-                if (existDoc._conflicts) {
-                    if (this.settings.writeDocumentsIfConflicted) {
-                        Logger(`Delete: ${file.path}: Conflicted revision has been deleted, but there were more conflicts. `, LOG_LEVEL_INFO);
-                        await this.pullFile(path, null, true);
-                    } else {
-                        Logger(`Delete: ${file.path}: Conflicted revision has been deleted, but there were more conflicts...`);
-                        this.queueConflictCheck(file);
-                    }
-                } else {
-                    Logger(`Delete: ${file.path}: Conflict revision has been deleted and resolved`);
-                    await this.pullFile(path, null, true);
-                }
+                // Conflict has been resolved at this time, 
+                await this.pullFile(path, null, force);
             }
             return;
         }
         const localMtime = ~~((file?.stat?.mtime || 0) / 1000);
         const docMtime = ~~(docEntry.mtime / 1000);
 
-        const doc = await this.localDatabase.getDBEntry(path, { rev: docEntry._rev });
-        if (doc === false) return;
-        const msg = `STORAGE <- DB (${mode}${force ? ",force" : ""},${doc.datatype}) `;
+        // const doc = await this.localDatabase.getDBEntry(path, { rev: docEntry._rev });
+        // if (doc === false) return;
+        const doc = existDoc;
+        // if (doc === false) {
+        //     // The latest file 
+        //     await this.pullFile(path, null, force);
+        //     // Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
+        //     return;
+        // }
+
         if (doc.datatype != "newnote" && doc.datatype != "plain") {
             Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
             return;
@@ -1425,32 +1616,15 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     storageApplyingProcessor = new KeyedQueueProcessor(async (docs: LoadedEntry[]) => {
         const entry = docs[0];
         const path = this.getPath(entry);
-        Logger(`Applying ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
+        Logger(`Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
         const targetFile = this.vaultAccess.getAbstractFileByPath(this.getPathWithoutPrefix(entry));
-        if (targetFile == null) {
-            if (entry._deleted || entry.deleted) {
-                return;
-            }
-            const doc = entry;
-            await this.doc2storage(doc);
-        } else if (targetFile instanceof TFile) {
-            const doc = entry;
-            const file = targetFile;
-            if (this.settings.writeDocumentsIfConflicted) {
-                await this.doc2storage(doc, file);
-                this.queueConflictCheck(file);
-            } else {
-                const d = await this.localDatabase.getDBEntryMeta(this.getPath(entry), { conflicts: true }, true);
-                if (d && !d._conflicts) {
-                    await this.doc2storage(doc, file);
-                } else {
-                    this.queueConflictCheck(file);
-                }
-            }
-        } else {
+        if (targetFile instanceof TFolder) {
             Logger(`${this.getPath(entry)} is already exist as the folder`);
+        } else {
+            await this.processEntryDoc(entry, targetFile instanceof TFile ? targetFile : undefined);
+            Logger(`Processing ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) `);
         }
-        Logger(`Applied ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) change...`);
+
         return;
     }, { suspended: true, batchSize: 1, concurrentLimit: 2, yieldThreshold: 1, delay: 0, totalRemainingReactiveSource: this.storageApplyingCount }).startPipeline()
 
@@ -1486,6 +1660,11 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (change.type == "plain" || change.type == "newnote") {
             if (this.databaseQueuedProcessor._isSuspended) {
                 Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
+            }
+            const size = change.size;
+            if (this.isFileSizeExceeded(size)) {
+                Logger(`Processing ${change.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                return;
             }
             this.databaseQueuedProcessor.enqueueWithKey(change.path, change);
         }
@@ -1752,6 +1931,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return await this.replicator.markRemoteResolved(this.settings);
     }
 
+    isFileSizeExceeded(size: number) {
+        if (this.settings.syncMaxSizeInMB > 0 && size > 0) {
+            if (this.settings.syncMaxSizeInMB * 1024 * 1024 < size) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     async syncAllFiles(showingNotice?: boolean) {
         // synchronize all files between database and storage.
         let initialScan = false;
@@ -1802,6 +1990,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         // this.setStatusBarText(`UPDATE DATABASE`);
 
         const initProcess = [];
+        const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         const runAll = async<T>(procedureName: string, objects: T[], callback: (arg: T) => Promise<void>) => {
             if (objects.length == 0) {
                 Logger(`${procedureName}: Nothing to do`);
@@ -1812,7 +2001,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
             let success = 0;
             let failed = 0;
             const step = 10;
-            const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             const processor = new QueueProcessor(async (e) => {
                 try {
                     await callback(e[0]);
@@ -1832,15 +2020,24 @@ Or if you are sure know what had been happened, we can unlock the database from 
             Logger(`${procedureName} All done: DONE:${success}, FAILED:${failed}`, logLevel, `log-${procedureName}`);
         }
         initProcess.push(runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
-            await this.updateIntoDB(e, initialScan);
+            if (!this.isFileSizeExceeded(e.stat.size)) {
+                await this.updateIntoDB(e, initialScan);
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(e.path, true));
+            } else {
+                Logger(`UPDATE DATABASE: ${e.path} has been skipped due to file size exceeding the limit`, logLevel);
+            }
         }));
         if (!initialScan) {
             initProcess.push(runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
                 const w = await this.localDatabase.getDBEntryMeta(e, {}, true);
                 if (w && !(w.deleted || w._deleted)) {
-                    Logger(`Check or pull from db:${e}`);
-                    await this.pullFile(e, filesStorage, false, null, false);
-                    Logger(`Check or pull from db:${e} OK`);
+                    if (!this.isFileSizeExceeded(w.size)) {
+                        await this.pullFile(e, filesStorage, false, null, false);
+                        fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
+                        Logger(`Check or pull from db:${e} OK`);
+                    } else {
+                        Logger(`UPDATE STORAGE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
+                    }
                 } else if (w) {
                     Logger(`Deletion history skipped: ${e}`, LOG_LEVEL_VERBOSE);
                 } else {
@@ -2355,7 +2552,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 Logger(`${filename} Skipped`);
                 return;
             }
-            await this.doc2storage(doc, undefined, force);
+            await this.processEntryDoc(doc, undefined, force);
         } else if (targetFile instanceof TFile) {
             //normal case
             const file = targetFile;
@@ -2364,7 +2561,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 Logger(`${filename} Skipped`);
                 return;
             }
-            await this.doc2storage(doc, file, force);
+            await this.processEntryDoc(doc, file, force);
         } else {
             Logger(`target files:${filename} is exists as the folder`);
             //something went wrong..
@@ -2396,23 +2593,32 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
         if (storageMtime > docMtime) {
             //newer local file.
-            Logger("STORAGE -> DB :" + file.path);
-            Logger(`${storageMtime} > ${docMtime}`);
-            await this.updateIntoDB(file, initialScan);
-            caches[dK] = { storageMtime, docMtime };
-            return caches;
+            if (!this.isFileSizeExceeded(file.stat.size)) {
+                Logger("STORAGE -> DB :" + file.path);
+                Logger(`${storageMtime} > ${docMtime}`);
+                await this.updateIntoDB(file, initialScan);
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(file.path, true));
+                caches[dK] = { storageMtime, docMtime };
+                return caches;
+            } else {
+                Logger(`STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+            }
         } else if (storageMtime < docMtime) {
             //newer database file.
-            Logger("STORAGE <- DB :" + file.path);
-            Logger(`${storageMtime} < ${docMtime}`);
-            const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), null, false, false);
-            if (docx != false) {
-                await this.doc2storage(docx, file);
+            if (!this.isFileSizeExceeded(doc.size)) {
+                Logger("STORAGE <- DB :" + file.path);
+                Logger(`${storageMtime} < ${docMtime}`);
+                const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), null, false, false);
+                if (docx != false) {
+                    await this.processEntryDoc(docx, file);
+                } else {
+                    Logger(`STORAGE <- DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                }
+                caches[dK] = { storageMtime, docMtime };
+                return caches;
             } else {
-                Logger("STORAGE <- DB :" + file.path + " Skipped");
+                Logger("STORAGE <- DB :" + file.path + " Skipped (size)");
             }
-            caches[dK] = { storageMtime, docMtime };
-            return caches;
         }
         Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_VERBOSE);
         caches[dK] = { storageMtime, docMtime };
