@@ -1010,8 +1010,8 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
     async checkAndApplySettingFromMarkdown(filename: string, automated?: boolean) {
         if (automated && !this.settings.notifyAllSettingSyncFile) {
-            if (this.settings.settingSyncFile != filename) {
-                Logger(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_INFO);
+            if (!this.settings.settingSyncFile || this.settings.settingSyncFile != filename) {
+                Logger(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_VERBOSE);
                 return;
             }
         }
@@ -1291,10 +1291,11 @@ We can perform a command in this file.
     }
 
     pendingFileEventCount = reactiveSource(0);
+    processingFileEventCount = reactiveSource(0);
     fileEventQueue =
         new KeyedQueueProcessor(
             (items: FileEventItem[]) => this.handleFileEvent(items[0]),
-            { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 100, yieldThreshold: FileWatchEventQueueMax, totalRemainingReactiveSource: this.pendingFileEventCount }
+            { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 100, yieldThreshold: FileWatchEventQueueMax, totalRemainingReactiveSource: this.pendingFileEventCount, processingEntitiesReactiveSource: this.processingFileEventCount }
         ).replaceEnqueueProcessor((items, newItem) => this.queueNextFileEvent(items, newItem));
 
 
@@ -1764,7 +1765,7 @@ We can perform a command in this file.
         })
         const waitingLabel = reactive(() => {
             const e = this.pendingFileEventCount.value;
-            const proc = this.fileEventQueue.processingEntities;
+            const proc = this.processingFileEventCount.value;
             const pend = e - proc;
             const labelProc = proc != 0 ? `⏳${proc} ` : "";
             const labelPend = pend != 0 ? ` 🛫${pend}` : "";
@@ -1805,13 +1806,19 @@ We can perform a command in this file.
         const newLog = log;
         // scheduleTask("update-display", 50, () => {
         this.statusBar?.setText(newMsg.split("\n")[0]);
+        const selector = `.CodeMirror-wrap,` +
+            `.markdown-preview-view.cm-s-obsidian,` +
+            `.markdown-source-view.cm-s-obsidian,` +
+            `.canvas-wrapper,` +
+            `.empty-state`
+            ;
         if (this.settings.showStatusOnEditor) {
             const root = activeDocument.documentElement;
-            const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+            const q = root.querySelectorAll(selector);
             q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
         } else {
             const root = activeDocument.documentElement;
-            const q = root.querySelectorAll(`.CodeMirror-wrap,.cm-s-obsidian>.cm-editor,.canvas-wrapper`);
+            const q = root.querySelectorAll(selector);
             q.forEach(e => e.setAttr("data-log", ''))
         }
         // }, true);

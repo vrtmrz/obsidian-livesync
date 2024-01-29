@@ -4,6 +4,7 @@ import { Logger } from "./lib/src/logger";
 import { isPlainText, shouldBeIgnored } from "./lib/src/path";
 import type { KeyedQueueProcessor } from "./lib/src/processor";
 import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
+import { delay } from "./lib/src/utils";
 import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "./types";
 
 
@@ -110,6 +111,8 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             let cache: null | string | ArrayBuffer;
             // new file or something changed, cache the changes.
             if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
+                // Wait for a bit while to let the writer has marked `touched` at the file.
+                await delay(10);
                 if (this.plugin.vaultAccess.recentlyTouched(file)) {
                     continue;
                 }

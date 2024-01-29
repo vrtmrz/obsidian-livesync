@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml, normalizePath } from "./deps";
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { createTextBlob, delay, getDocData } from "./lib/src/utils";
+import { createTextBlob, delay, getDocData, sendSignal, waitForSignal } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { readString, decodeBinary, arrayBufferToBase64, sha1 } from "./lib/src/strbin";
@@ -335,7 +335,9 @@ export class ConfigSync extends LiveSyncCommands {
         return;
     }, { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 300, yieldThreshold: 10 }).pipeTo(
         new QueueProcessor(
-            (pluginDataList) => {
+            async (pluginDataList) => {
+                // Concurrency is two, therefore, we can unlock the previous awaiting.
+                sendSignal("plugin-next-load");
                 let newList = [...this.pluginList];
                 for (const item of pluginDataList) {
                     newList = newList.filter(x => x.documentPath != item.documentPath);
@@ -343,9 +345,13 @@ export class ConfigSync extends LiveSyncCommands {
                 }
                 this.pluginList = newList;
                 pluginList.set(newList);
+                if (pluginDataList.length != 10) {
+                    // If the queue is going to be empty, await subsequent for a while.
+                    await waitForSignal("plugin-next-load", 1000);
+                }
                 return;
             }
-            , { suspended: true, batchSize: 1000, concurrentLimit: 10, delay: 200, yieldThreshold: 25, totalRemainingReactiveSource: pluginScanningCount })).startPipeline().root.onIdle(() => {
+            , { suspended: true, batchSize: 10, concurrentLimit: 2, delay: 250, yieldThreshold: 25, totalRemainingReactiveSource: pluginScanningCount })).startPipeline().root.onIdle(() => {
                 Logger(`All files enumerated`, LOG_LEVEL_INFO, "get-plugins");
                 this.createMissingConfigurationEntry();
             });

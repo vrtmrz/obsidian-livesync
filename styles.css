@@ -98,8 +98,10 @@
 }
 
 .CodeMirror-wrap::before,
-.cm-s-obsidian > .cm-editor::before,
-.canvas-wrapper::before {
+.markdown-preview-view.cm-s-obsidian::before,
+.markdown-source-view.cm-s-obsidian::before,
+.canvas-wrapper::before,
+.empty-state::before {
     content: attr(data-log);
     text-align: right;
     white-space: pre-wrap;
@@ -115,6 +117,19 @@
     filter: grayscale(100%);
 }
 
+.empty-state::before,
+.markdown-preview-view.cm-s-obsidian::before,
+.markdown-source-view.cm-s-obsidian::before {
+    top: var(--header-height);
+    right: 1em;
+}
+
+.is-mobile .empty-state::before,
+.is-mobile .markdown-preview-view.cm-s-obsidian::before,
+.is-mobile .markdown-source-view.cm-s-obsidian::before {
+    top: var(--view-header-height);
+    right: 1em;
+}
 .canvas-wrapper::before {
     right: 48px;
 }
@@ -292,7 +307,7 @@ span.ls-mark-cr::after {
     position: absolute;
     top: 0;
     left: 0;
-    animation: ls-blink-diff 0.5s cubic-bezier(0.4, 0, 1, 1)  infinite alternate;
+    animation: ls-blink-diff 0.5s cubic-bezier(0.4, 0, 1, 1) infinite alternate;
 }
 @keyframes ls-blink-diff {
     0% {
