@@ -1469,20 +1469,25 @@ We can perform a command in this file.
         // let performPullFileAgain = false;
         if (existDoc && existDoc._conflicts) {
             if (this.settings.writeDocumentsIfConflicted) {
-                Logger(`Processing: ${file.path}: Conflicted revision has been deleted, but there were more conflicts. `, LOG_LEVEL_INFO);
+                Logger(`Processing: ${path}: Conflicted revision has been deleted, but there were more conflicts. `, LOG_LEVEL_INFO);
                 await this.processEntryDoc(docEntry, file, true);
                 return;
             } else if (force != true) {
-                Logger(`Processing: ${file.path}: Conflicted revision has been deleted, but there were more conflicts...`);
-                this.queueConflictCheck(file);
+                Logger(`Processing: ${path}: Conflicted revision has been deleted, but there were more conflicts...`);
+                this.queueConflictCheck(path);
                 return;
             }
         }
         // If there are no conflicts, or forced to overwrite.
 
         if (docEntry._deleted || docEntry.deleted || existDoc === false) {
-            if (path != file.path) {
-                Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
+            if (!file) {
+                Logger(`delete skipped: ${path} :Already not exist on storage`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+            if (file.path != path) {
+                Logger(`delete skipped: ${path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
+                return;
             }
             if (existDoc === false) {
                 await this.deleteVaultItem(file);
@@ -1495,15 +1500,7 @@ We can perform a command in this file.
         const localMtime = ~~((file?.stat?.mtime || 0) / 1000);
         const docMtime = ~~(docEntry.mtime / 1000);
 
-        // const doc = await this.localDatabase.getDBEntry(path, { rev: docEntry._rev });
-        // if (doc === false) return;
         const doc = existDoc;
-        // if (doc === false) {
-        //     // The latest file 
-        //     await this.pullFile(path, null, force);
-        //     // Logger(`delete skipped: ${file.path} :Not exactly matched`, LOG_LEVEL_VERBOSE);
-        //     return;
-        // }
 
         if (doc.datatype != "newnote" && doc.datatype != "plain") {
             Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
@@ -1519,7 +1516,7 @@ We can perform a command in this file.
         try {
             let outFile;
             let isChanged = true;
-            if (mode == "create") {
+            if (!file) {
                 const normalizedPath = normalizePath(path);
                 await this.vaultAccess.vaultCreate(normalizedPath, writeData, { ctime: doc.ctime, mtime: doc.mtime, });
                 outFile = this.vaultAccess.getAbstractFileByPath(normalizedPath) as TFile;
