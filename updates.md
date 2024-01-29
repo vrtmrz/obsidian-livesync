@@ -10,6 +10,17 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.3
+  - Fixed:
+    - No longer detects storage changes which have been caused by Self-hosted LiveSync itself.
+    - Setting sync file will be detected only if it has been configured now.
+      - And its log will be shown only while the verbose log is enabled.
+    - Customisation file enumeration has got less blingy.
+  - Fixed and improved:
+    - In-editor-status is now shown in the following areas:
+      - Note editing pane (Source mode and live-preview mode).
+      - New tab pane.
+      - Canvas pane.
 - 0.22.2
   - Fixed:
     - Now the results of resolving conflicts are surely synchronised.
