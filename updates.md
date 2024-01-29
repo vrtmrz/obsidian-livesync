@@ -16,6 +16,7 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
     - Setting sync file will be detected only if it has been configured now.
       - And its log will be shown only while the verbose log is enabled.
     - Customisation file enumeration has got less blingy.
+    - Deletion of files is now reliably synchronised.
   - Fixed and improved:
     - In-editor-status is now shown in the following areas:
       - Note editing pane (Source mode and live-preview mode).
