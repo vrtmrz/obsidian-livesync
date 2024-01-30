@@ -1,4 +1,4 @@
-import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl } from "./deps";
+import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl, TFile } from "./deps";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
 
 import { Logger } from "./lib/src/logger";
@@ -8,6 +8,7 @@ import { InputStringDialog, PopoverSelectString } from "./dialogs";
 import type ObsidianLiveSyncPlugin from "./main";
 import { writeString } from "./lib/src/strbin";
 import { fireAndForget } from "./lib/src/utils";
+import { sameChangePairs } from "./stores";
 
 export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriodicTask, cancelAllPeriodicTask, } from "./lib/src/task";
 
@@ -415,3 +416,48 @@ export async function performRebuildDB(plugin: ObsidianLiveSyncPlugin, method: "
         await plugin.addOnSetup.rebuildEverything();
     }
 }
+
+export const BASE_IS_NEW = Symbol("base");
+export const TARGET_IS_NEW = Symbol("target");
+export const EVEN = Symbol("even");
+
+
+// Why 2000? : ZIP FILE Does not have enough resolution.
+const resolution = 2000;
+export function compareMTime(baseMTime: number, targetMTime: number): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
+    const truncatedBaseMTime = (~~(baseMTime / resolution)) * resolution;
+    const truncatedTargetMTime = (~~(targetMTime / resolution)) * resolution;
+    // Logger(`Resolution MTime ${truncatedBaseMTime} and ${truncatedTargetMTime} `, LOG_LEVEL_VERBOSE);
+    if (truncatedBaseMTime == truncatedTargetMTime) return EVEN;
+    if (truncatedBaseMTime > truncatedTargetMTime) return BASE_IS_NEW;
+    if (truncatedBaseMTime < truncatedTargetMTime) return TARGET_IS_NEW;
+    throw new Error("Unexpected error");
+}
+
+export function markChangesAreSame(file: TFile | AnyEntry | string, mtime1: number, mtime2: number) {
+    if (mtime1 === mtime2) return true;
+    const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
+    const pairs = sameChangePairs.get(key, []);
+    if (pairs.some(e => e == mtime1 || e == mtime2)) {
+        sameChangePairs.set(key, [...new Set([...pairs, mtime1, mtime2])]);
+    } else {
+        sameChangePairs.set(key, [mtime1, mtime2]);
+    }
+}
+export function isMarkedAsSameChanges(file: TFile | AnyEntry | string, mtimes: number[]) {
+    const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
+    const pairs = sameChangePairs.get(key, []);
+    if (mtimes.every(e => pairs.indexOf(e) !== -1)) {
+        return EVEN;
+    }
+}
+export function compareFileFreshness(baseFile: TFile | AnyEntry, checkTarget: TFile | AnyEntry): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
+    const modifiedBase = baseFile instanceof TFile ? baseFile?.stat?.mtime ?? 0 : baseFile?.mtime ?? 0;
+    const modifiedTarget = checkTarget instanceof TFile ? checkTarget?.stat?.mtime ?? 0 : checkTarget?.mtime ?? 0;
+
+    if (modifiedBase && modifiedTarget && isMarkedAsSameChanges(baseFile, [modifiedBase, modifiedTarget])) {
+        return EVEN;
+    }
+    return compareMTime(modifiedBase, modifiedTarget);
+}
+

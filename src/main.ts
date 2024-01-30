@@ -1,16 +1,16 @@
 const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
-import { debounce, Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
+import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, sendValue } from "./lib/src/utils";
+import { arrayToChunkedArray, createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata } from "./utils";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata, compareFileFreshness, BASE_IS_NEW, TARGET_IS_NEW, EVEN, compareMTime, markChangesAreSame } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
 import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
 import { logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/stores";
@@ -33,6 +33,7 @@ import { LRUCache } from "./lib/src/LRUCache";
 import { SerializedFileAccess } from "./SerializedFileAccess.js";
 import { KeyedQueueProcessor, QueueProcessor, type QueueItemWithKey } from "./lib/src/processor.js";
 import { reactive, reactiveSource } from "./lib/src/reactive.js";
+import { initializeStores } from "./stores.js";
 
 setNoticeClass(Notice);
 
@@ -728,9 +729,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.packageVersion = packageVersion;
 
         Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
+        await this.loadSettings();
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
-        await this.loadSettings();
         this.observeForLogs();
         this.statusBar = this.addStatusBarItem();
         this.statusBar.addClass("syncstatusbar");
@@ -757,9 +758,9 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         localStorage.setItem(lsKey, `${VER}`);
         await this.openDatabase();
-        this.watchWorkspaceOpen = debounce(this.watchWorkspaceOpen.bind(this), 1000, false);
-        this.watchWindowVisibility = debounce(this.watchWindowVisibility.bind(this), 1000, false);
-        this.watchOnline = debounce(this.watchOnline.bind(this), 500, false);
+        this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
+        this.watchWindowVisibility = this.watchWindowVisibility.bind(this)
+        this.watchOnline = this.watchOnline.bind(this);
         this.realizeSettingSyncMode = this.realizeSettingSyncMode.bind(this);
         this.parseReplicationResult = this.parseReplicationResult.bind(this);
 
@@ -821,6 +822,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         //@ts-ignore
         this.isMobile = this.app.isMobile;
         this.localDatabase = new LiveSyncLocalDB(vaultName, this);
+        initializeStores(vaultName);
         return await this.localDatabase.initializeDatabase();
     }
 
@@ -1175,7 +1177,7 @@ We can perform a command in this file.
 
 
     watchOnline() {
-        this.watchOnlineAsync();
+        scheduleTask("watch-online", 500, () => fireAndForget(() => this.watchOnlineAsync()));
     }
     async watchOnlineAsync() {
         // If some files were failed to retrieve, scan files again.
@@ -1186,7 +1188,7 @@ We can perform a command in this file.
         }
     }
     watchWindowVisibility() {
-        this.watchWindowVisibilityAsync();
+        scheduleTask("watch-window-visibility", 500, () => fireAndForget(() => this.watchWindowVisibilityAsync()));
     }
 
     async watchWindowVisibilityAsync() {
@@ -1307,7 +1309,7 @@ We can perform a command in this file.
         if (this.settings.suspendFileWatching) return;
         if (!this.isReady) return;
         if (!file) return;
-        this.watchWorkspaceOpenAsync(file);
+        scheduleTask("watch-workspace-open", 500, () => fireAndForget(() => this.watchWorkspaceOpenAsync(file)));
     }
 
     async watchWorkspaceOpenAsync(file: TFile) {
@@ -1493,12 +1495,12 @@ We can perform a command in this file.
                 await this.deleteVaultItem(file);
             } else {
                 // Conflict has been resolved at this time, 
-                await this.pullFile(path, null, force);
+                await this.pullFile(path, null, true);
             }
             return;
         }
-        const localMtime = ~~((file?.stat?.mtime || 0) / 1000);
-        const docMtime = ~~(docEntry.mtime / 1000);
+
+        const compareResult = compareFileFreshness(file, docEntry);
 
         const doc = existDoc;
 
@@ -1506,7 +1508,8 @@ We can perform a command in this file.
             Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
             return;
         }
-        if (!force && localMtime >= docMtime) return;
+        // if (!force && localMtime >= docMtime) return;
+        if (!force && (compareResult == BASE_IS_NEW || compareResult == EVEN)) return;
         if (!isValidPath(path)) {
             Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL_NOTICE);
             return;
@@ -1579,9 +1582,12 @@ We can perform a command in this file.
         if (!this.settings.suspendParseReplicationResult) {
             const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
             const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
-            const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: ids, include_docs: true });
-            for (const doc of ret.rows) {
-                this.replicationResultProcessor.enqueue(doc.doc);
+            const batchSize = 100;
+            const chunkedIds = arrayToChunkedArray(ids, batchSize);
+            for await (const idsBatch of chunkedIds) {
+                const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: idsBatch, include_docs: true, limit: 100 });
+                this.replicationResultProcessor.enqueueAll(ret.rows.map(doc => doc.doc));
+                await this.replicationResultProcessor.waitForPipeline();
             }
         }
     }
@@ -1667,17 +1673,18 @@ We can perform a command in this file.
             this.databaseQueuedProcessor.enqueueWithKey(change.path, change);
         }
         return;
-    }, { batchSize: 1, suspended: true, concurrentLimit: 1, delay: 0, totalRemainingReactiveSource: this.replicationResultCount }).startPipeline().onUpdateProgress(() => {
+    }, { batchSize: 1, suspended: true, concurrentLimit: 100, delay: 0, totalRemainingReactiveSource: this.replicationResultCount }).startPipeline().onUpdateProgress(() => {
         this.saveQueuedFiles();
     });
     //---> Sync
     parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>) {
         if (this.settings.suspendParseReplicationResult) {
             this.replicationResultProcessor.suspend()
-        } else {
-            this.replicationResultProcessor.resume()
         }
         this.replicationResultProcessor.enqueueAll(docs);
+        if (!this.settings.suspendParseReplicationResult) {
+            this.replicationResultProcessor.resume()
+        }
     }
 
 
@@ -1991,7 +1998,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
         const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
         Logger("Updating database by new files");
-        // this.setStatusBarText(`UPDATE DATABASE`);
 
         const initProcess = [];
         const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
@@ -2050,8 +2056,8 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }));
         }
         if (!initialScan) {
-            let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
-            caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
+            // let caches: { [key: string]: { storageMtime: number; docMtime: number } } = {};
+            // caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number } }>("diff-caches") || {};
             type FileDocPair = { file: TFile, id: DocumentID };
 
             const processPrepareSyncFile = new QueueProcessor(
@@ -2077,7 +2083,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     new QueueProcessor(
                         async (loadedPairs) => {
                             const e = loadedPairs[0];
-                            await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan, caches);
+                            await this.syncFileBetweenDBandStorage(e.file, e.doc, initialScan);
                             return;
                         }, { batchSize: 1, concurrentLimit: 5, delay: 10, suspended: false }
                     ))
@@ -2085,7 +2091,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             processPrepareSyncFile.startPipeline();
             initProcess.push(async () => {
                 await processPrepareSyncFile.waitForPipeline();
-                await this.kvDB.set("diff-caches", caches);
+                // await this.kvDB.set("diff-caches", caches);
             })
         }
         await Promise.all(initProcess);
@@ -2132,6 +2138,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const rightLeaf = await this.getConflictedDoc(path, conflictedRev);
         let autoMerge = false;
         if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
+            return false;
+        }
+        if (leftLeaf.deleted && rightLeaf.deleted) {
+            // Both are deleted
             return false;
         }
         // diff between base and each revision
@@ -2294,6 +2304,9 @@ Or if you are sure know what had been happened, we can unlock the database from 
             if (baseLeaf == false || leftLeaf == false || rightLeaf == false) {
                 return false;
             }
+            if (leftLeaf.deleted && rightLeaf.deleted) {
+                return false;
+            }
             const baseObj = { data: tryParseJSON(baseLeaf.data, {}) } as Record<string | number | symbol, any>;
             const leftObj = { data: tryParseJSON(leftLeaf.data, {}) } as Record<string | number | symbol, any>;
             const rightObj = { data: tryParseJSON(rightLeaf.data, {}) } as Record<string | number | symbol, any>;
@@ -2379,7 +2392,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 if (p != undefined) {
                     // remove conflicted revision.
                     await this.localDatabase.deleteDBEntry(path, { rev: conflictedRev });
-
                     const file = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(path)) as TFile;
                     if (file) {
                         if (await this.vaultAccess.vaultModify(file, p)) {
@@ -2416,10 +2428,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const isBinary = !isPlainText(path);
         const alwaysNewer = this.settings.resolveConflictsByNewerFile;
         if (isSame || isBinary || alwaysNewer) {
-            const lMtime = ~~(leftLeaf.mtime / 1000);
-            const rMtime = ~~(rightLeaf.mtime / 1000);
+            const result = compareMTime(leftLeaf.mtime, rightLeaf.mtime)
             let loser = leftLeaf;
-            if (lMtime > rMtime) {
+            // if (lMtime > rMtime) {
+            if (result != TARGET_IS_NEW) {
                 loser = rightLeaf;
             }
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
@@ -2441,7 +2453,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
     conflictProcessQueueCount = reactiveSource(0);
     conflictResolveQueue =
-        new KeyedQueueProcessor(async (entries: { filename: FilePathWithPrefix, file: TFile }[]) => {
+        new KeyedQueueProcessor(async (entries: { filename: FilePathWithPrefix }[]) => {
             const entry = entries[0];
             const filename = entry.filename;
             const conflictCheckResult = await this.checkConflictAndPerformAutoMerge(filename);
@@ -2482,11 +2494,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
         new QueueProcessor((files: FilePathWithPrefix[]) => {
             const filename = files[0];
             const file = this.vaultAccess.getAbstractFileByPath(filename);
-            if (!file) return;
-            if (!(file instanceof TFile)) return;
+            // if (!file) return;
+            // if (!(file instanceof TFile)) return;
+            if ((file instanceof TFolder)) return;
             // Check again?
 
-            return [{ key: filename, entity: { filename, file } }];
+            return [{ key: filename, entity: { filename } }];
             // this.conflictResolveQueue.enqueueWithKey(filename, { filename, file });
         }, {
             suspended: false, batchSize: 1, concurrentLimit: 5, delay: 10, keepResultUntilDownstreamConnected: true, pipeTo: this.conflictResolveQueue, totalRemainingReactiveSource: this.conflictProcessQueueCount
@@ -2573,7 +2586,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         //when to opened file;
     }
 
-    async syncFileBetweenDBandStorage(file: TFile, doc: LoadedEntry, initialScan: boolean, caches: { [key: string]: { storageMtime: number; docMtime: number } }) {
+    async syncFileBetweenDBandStorage(file: TFile, doc: LoadedEntry, initialScan: boolean) {
         if (!doc) {
             throw new Error(`Missing doc:${(file as any).path}`)
         }
@@ -2586,47 +2599,37 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
         }
 
-        const storageMtime = ~~(file.stat.mtime / 1000);
-        const docMtime = ~~(doc.mtime / 1000);
-        const dK = `${file.path}-diff`;
-        const isLastDiff = dK in caches ? caches[dK] : { storageMtime: 0, docMtime: 0 };
-        if (isLastDiff.docMtime == docMtime && isLastDiff.storageMtime == storageMtime) {
-            // Logger("STORAGE .. DB :" + file.path, LOG_LEVEL_VERBOSE);
-            caches[dK] = { storageMtime, docMtime };
-            return caches;
-        }
-        if (storageMtime > docMtime) {
-            //newer local file.
-            if (!this.isFileSizeExceeded(file.stat.size)) {
-                Logger("STORAGE -> DB :" + file.path);
-                Logger(`${storageMtime} > ${docMtime}`);
-                await this.updateIntoDB(file, initialScan);
-                fireAndForget(() => this.checkAndApplySettingFromMarkdown(file.path, true));
-                caches[dK] = { storageMtime, docMtime };
-                return caches;
-            } else {
-                Logger(`STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
-            }
-        } else if (storageMtime < docMtime) {
-            //newer database file.
-            if (!this.isFileSizeExceeded(doc.size)) {
-                Logger("STORAGE <- DB :" + file.path);
-                Logger(`${storageMtime} < ${docMtime}`);
-                const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), null, false, false);
-                if (docx != false) {
-                    await this.processEntryDoc(docx, file);
+        const compareResult = compareFileFreshness(file, doc);
+        switch (compareResult) {
+            case BASE_IS_NEW:
+                if (!this.isFileSizeExceeded(file.stat.size)) {
+                    Logger("STORAGE -> DB :" + file.path);
+                    await this.updateIntoDB(file, initialScan);
+                    fireAndForget(() => this.checkAndApplySettingFromMarkdown(file.path, true));
+                } else {
+                    Logger(`STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                }
+                break;
+            case TARGET_IS_NEW:
+                if (!this.isFileSizeExceeded(doc.size)) {
+                    Logger("STORAGE <- DB :" + file.path);
+                    const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), null, false, false, true);
+                    if (docx != false) {
+                        await this.processEntryDoc(docx, file);
+                    } else {
+                        Logger(`STORAGE <- DB : Cloud not read ${file.path}, possibly deleted`, LOG_LEVEL_NOTICE);
+                    }
+                    return caches;
                 } else {
                     Logger(`STORAGE <- DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
                 }
-                caches[dK] = { storageMtime, docMtime };
-                return caches;
-            } else {
-                Logger("STORAGE <- DB :" + file.path + " Skipped (size)");
-            }
+                break;
+            case EVEN:
+                Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_VERBOSE);
+                break;
+            default:
+                Logger("STORAGE ?? DB :" + file.path + " Something got weird");
         }
-        Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_VERBOSE);
-        caches[dK] = { storageMtime, docMtime };
-        return caches;
 
     }
 
@@ -2697,6 +2700,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     if (oldData.deleted != newData.deleted) return false;
                     if (!await isDocContentSame(old.data, newData.data)) return false;
                     Logger(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
+                    markChangesAreSame(old, d.mtime, old.mtime);
                     return true;
                     // d._rev = old._rev;
                 }
@@ -2715,10 +2719,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return true;
         }
         const ret = await this.localDatabase.putDBEntry(d, initialScan);
-
-        Logger(msg + fullPath);
-        if (this.settings.syncOnSave && !this.suspended) {
-            await this.replicate();
+        if (ret !== false) {
+            Logger(msg + fullPath);
+            if (this.settings.syncOnSave && !this.suspended) {
+                scheduleTask("perform-replicate-after-save", 250, () => this.replicate());
+            }
         }
         return ret != false;
     }

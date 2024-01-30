@@ -3,6 +3,8 @@ import { serialized } from "./lib/src/lock";
 import type { FilePath } from "./lib/src/types";
 import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
 import type { InternalFileInfo } from "./types";
+import { markChangesAreSame } from "./utils";
+
 function getFileLockKey(file: TFile | TFolder | string) {
     return `fl:${typeof (file) == "string" ? file : file.path}`;
 }
@@ -16,6 +18,15 @@ function toArrayBuffer(arr: Uint8Array | ArrayBuffer | DataView): ArrayBufferLik
     return arr;
 }
 
+
+async function processReadFile<T>(file: TFile | TFolder | string, proc: () => Promise<T>) {
+    const ret = await serialized(getFileLockKey(file), () => proc());
+    return ret;
+}
+async function processWriteFile<T>(file: TFile | TFolder | string, proc: () => Promise<T>) {
+    const ret = await serialized(getFileLockKey(file), () => proc());
+    return ret;
+}
 export class SerializedFileAccess {
     app: App
     constructor(app: App) {
@@ -24,60 +35,64 @@ export class SerializedFileAccess {
 
     async adapterStat(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await serialized(getFileLockKey(path), () => this.app.vault.adapter.stat(path));
+        return await processReadFile(file, () => this.app.vault.adapter.stat(path));
     }
     async adapterExists(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await serialized(getFileLockKey(path), () => this.app.vault.adapter.exists(path));
+        return await processReadFile(file, () => this.app.vault.adapter.exists(path));
     }
     async adapterRemove(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await serialized(getFileLockKey(path), () => this.app.vault.adapter.remove(path));
+        return await processReadFile(file, () => this.app.vault.adapter.remove(path));
     }
 
     async adapterRead(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await serialized(getFileLockKey(path), () => this.app.vault.adapter.read(path));
+        return await processReadFile(file, () => this.app.vault.adapter.read(path));
     }
     async adapterReadBinary(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await serialized(getFileLockKey(path), () => this.app.vault.adapter.readBinary(path));
+        return await processReadFile(file, () => this.app.vault.adapter.readBinary(path));
     }
 
     async adapterWrite(file: TFile | string, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
         const path = file instanceof TFile ? file.path : file;
         if (typeof (data) === "string") {
-            return await serialized(getFileLockKey(path), () => this.app.vault.adapter.write(path, data, options));
+            return await processWriteFile(file, () => this.app.vault.adapter.write(path, data, options));
         } else {
-            return await serialized(getFileLockKey(path), () => this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), options));
+            return await processWriteFile(file, () => this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), options));
         }
     }
 
     async vaultCacheRead(file: TFile) {
-        return await serialized(getFileLockKey(file), () => this.app.vault.cachedRead(file));
+        return await processReadFile(file, () => this.app.vault.cachedRead(file));
     }
 
     async vaultRead(file: TFile) {
-        return await serialized(getFileLockKey(file), () => this.app.vault.read(file));
+        return await processReadFile(file, () => this.app.vault.read(file));
     }
 
     async vaultReadBinary(file: TFile) {
-        return await serialized(getFileLockKey(file), () => this.app.vault.readBinary(file));
+        return await processReadFile(file, () => this.app.vault.readBinary(file));
     }
 
     async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
         if (typeof (data) === "string") {
-            return await serialized(getFileLockKey(file), async () => {
+            return await processWriteFile(file, async () => {
                 const oldData = await this.app.vault.read(file);
-                if (data === oldData) return false
+                if (data === oldData) {
+                    markChangesAreSame(file, file.stat.mtime, options.mtime);
+                    return false
+                }
                 await this.app.vault.modify(file, data, options)
                 return true;
             }
             );
         } else {
-            return await serialized(getFileLockKey(file), async () => {
+            return await processWriteFile(file, async () => {
                 const oldData = await this.app.vault.readBinary(file);
                 if (await isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
+                    markChangesAreSame(file, file.stat.mtime, options.mtime);
                     return false;
                 }
                 await this.app.vault.modifyBinary(file, toArrayBuffer(data), options)
@@ -87,16 +102,16 @@ export class SerializedFileAccess {
     }
     async vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions): Promise<TFile> {
         if (typeof (data) === "string") {
-            return await serialized(getFileLockKey(path), () => this.app.vault.create(path, data, options));
+            return await processWriteFile(path, () => this.app.vault.create(path, data, options));
         } else {
-            return await serialized(getFileLockKey(path), () => this.app.vault.createBinary(path, toArrayBuffer(data), options));
+            return await processWriteFile(path, () => this.app.vault.createBinary(path, toArrayBuffer(data), options));
         }
     }
     async delete(file: TFile | TFolder, force = false) {
-        return await serialized(getFileLockKey(file), () => this.app.vault.delete(file, force));
+        return await processWriteFile(file, () => this.app.vault.delete(file, force));
     }
     async trash(file: TFile | TFolder, force = false) {
-        return await serialized(getFileLockKey(file), () => this.app.vault.trash(file, force));
+        return await processWriteFile(file, () => this.app.vault.trash(file, force));
     }
 
     getAbstractFileByPath(path: FilePath | string): TAbstractFile | null {
