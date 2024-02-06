@@ -1,40 +1,46 @@
+<!-- For translation: 20240206r0 -->
 # Self-hosted LiveSync
-
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
-Self-hosted LiveSync is a community-implemented synchronization plugin.  
-A self-hosted or purchased CouchDB acts as the intermediate server. Available on every obsidian-compatible platform.
-
-Note: It has no compatibility with the official "Obsidian Sync".
+Self-hosted LiveSync is a community-implemented synchronization plugin, available on every obsidian-compatible platform and using CouchDB as the server.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-Before installing or upgrading LiveSync, please back your vault up.
+Note:
+- Not compatible with official "Obsidian Sync".
 
 ## Features
 
--   Visual conflict resolver included.
--   Bidirectional synchronization between devices nearly in real-time
--   You can use CouchDB or its compatibles like IBM Cloudant.
--   End-to-End encryption is supported.
--   Plugin synchronization(Beta)
--   Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf) (End-to-End encryption will not be applicable.)
+- Synchronize vaults very efficiently with less traffic.
+  - We can synchronize in live, periodic, or on events, as we need.
+- Good at conflicted modification.
+  - Automatic merging for simple conflicts.
+    - If it cannot be automated, do not worry! we can use a visual conflict resolver.
+- Using OSS solution for the server.
+  - We do not have to suspect the server side, at least.
+  - Compatible solutions can be used.
+- End-to-end encryption is supported.
+- We can synchronize settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
+- Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 
-Useful for researchers, engineers and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private. 
+This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
 ## IMPORTANT NOTICE
 
--   Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync). Before enabling this plugin, make sure to disable all the other synchronization methods to avoid content corruption or duplication. If you want to synchronize to two or more services, do them one by one and never enable two synchronization methods at the same time.
-    This includes not putting your vault inside a cloud-synchronized folder (eg. an iCloud folder or Dropbox folder)
--   This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
--   If the device's storage runs out, database corruption may happen.
--   Hidden files or any other invisible files wouldn't be kept in the database, and thus won't be synchronized. (**and may also get deleted**)
+- Before installing or upgrading this plug-in, please back your vault up.
+- Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
+  - Before enabling this plugin, make sure to disable all the other synchronization methods to avoid content corruption or duplication.
+  - If you want to synchronize with two or more services, do them one by one, and never enable two synchronization methods at the same time.
+  - This includes not putting your vault inside a cloud-synchronized folder (eg. an iCloud folder or Dropbox folder)
+- This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
 
 ## How to use
 
 ### Get your database ready.
 
-First, get your database ready. fly.io is preferred for testing. Or you can use your own server with CouchDB. For more information, refer below:
+First, let us make our database ready. fly.io is preferred for testing. Or you can use your own server with CouchDB.
+
+For more information, refer below:
 1. [Setup fly.io](docs/setup_flyio.md)
 2. [Setup IBM Cloudant](docs/setup_cloudant.md)
 3. [Setup your CouchDB](docs/setup_own_server.md)
