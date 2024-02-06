@@ -1,0 +1,40 @@
+## CouchDB for fly.io image
+
+app = ''
+primary_region = 'nrt'
+swap_size_mb = 512
+
+[build]
+  image = "couchdb:latest"
+
+[mounts]
+  source = "couchdata"
+  destination = "/opt/couchdb/data"
+  initial_size = "1GB"
+  auto_extend_size_threshold = 90
+  auto_extend_size_increment = "1GB"
+  auto_extend_size_limit = "2GB"
+
+[env]
+  COUCHDB_USER = ""
+  ERL_FLAGS = "-couch_ini /opt/couchdb/etc/default.ini /opt/couchdb/etc/default.d/ /opt/couchdb/etc/local.d /opt/couchdb/etc/local.ini /opt/couchdb/data/persistence.ini"
+
+[http_service]
+  internal_port = 5984
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
+
+[[files]]
+  guest_path = "/docker-entrypoint2.sh"
+  raw_value = "#!/bin/bash\ntouch /opt/couchdb/data/persistence.ini\nchmod +w /opt/couchdb/data/persistence.ini\n/docker-entrypoint.sh $@"
+
+[experimental]
+  entrypoint = ["tini", "--", "/docker-entrypoint2.sh"]
