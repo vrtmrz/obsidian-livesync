@@ -21,11 +21,10 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 
 This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
-## IMPORTANT NOTICE
-
-- Before installing or upgrading this plug-in, please back your vault up.
-- Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
-- This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
+>[!IMPORTANT]
+> - Before installing or upgrading this plug-in, please back your vault up.
+> - Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
+> - This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
 
 ## How to use
 
@@ -39,10 +38,11 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 
 ### Manually Setup
 
-1. [Setup your CouchDB](docs/setup_own_server.md)
-2. [Configure plug-in](docs/quick_setup.md)
+1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
+2. [Setup your CouchDB](docs/setup_own_server.md)
+3. [Configure plug-in](docs/quick_setup.md)
 
-> **Tip**
+> [!TIP]
 > We are still able to use IBM Cloudant. However, it is not recommended for several reasons nowadays. Here is [Setup IBM Cloudant](docs/setup_cloudant.md)
 
 
