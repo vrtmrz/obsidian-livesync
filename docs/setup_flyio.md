@@ -1,24 +1,50 @@
+<!-- For translation: 20240209r0 -->
 # Setup CouchDB on fly.io
-
-In some cases, the use of IBM Cloudant was found to be hard. We looked for alternatives, but there were no services available. Therefore, we have to build our own servers, which is quite a challenge. In this situation, with fly.io, most of the processes are simplified and only CouchDB needs to be configured.
 
 This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 
-It generally falls within the `Free Allowances` range in most cases.
+> [!WARNING]
+> It is **your** instance. In Obsidian, we have files locally. Hence, do not hesitate to destroy the remote database if you feel something have got weird. We can launch and switch to the new CouchDB instance anytime[^1].
+> 
+[^1]: Actually, I am always building the database for reproduction of the issue like so.
 
-**[Automatic setup using Colaboratory](#automatic-setup-using-colaboratory) is recommended, after reading this document through. It is reproducible and hard to fail.**
+> [!TIP] What and why is the Fly.io
+> At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
+>
+> Then we found Fly.io. Fly.io is the PaaS Platform, which can be useable for a very reasonable price. It generally falls within the `Free Allowances` range in most cases.
 
 ## Required materials
 
 - A valid credit or debit card.
 
-## Warning
+## Setup CouchDB instance
 
-- It will be `your` instance. Check the log regularly.
+### A. Very automated setup
 
-## Prerequisites
+[![LiveSync Setup onto Fly.io SpeedRun 2024 using Google Colab](https://img.youtube.com/vi/7sa_I1832Xc/0.jpg)](https://www.youtube.com/watch?v=7sa_I1832Xc)
 
-For simplicity, the following description assumes that the settings are as shown in the table below. Please read it in accordance with the actual settings you wish to make.
+1. Open [setup-flyio-on-the-fly-v2.ipynb](../setup-flyio-on-the-fly-v2.ipynb).
+2. Press the `Open in Colab` button.
+3. Choose a region and run all blocks (Refer to video).
+   1. If you do not have the account yet, the sign-up page will be shown, please follow the instructions. The [Official document is here](https://fly.io/docs/hands-on/sign-up/).
+4. Copy the Setup-URI and open it in the Obsidian.
+5. You have been synchronised. Open the Setup-URI in subsequent devices.
+
+> [!NOTE]
+> Your automatically configured configurations will be shown on the result in the Colab note like below, and **it will not be saved**. Please make a note of it somewhere.
+> ```
+> -- YOUR CONFIGURATION --
+> URL     : https://billowing-dawn-6619.fly.dev
+> username: billowing-cherry-22580
+> password: misty-dew-13571
+> region  : nrt
+> ```
+
+### B. Scripted Setup
+
+Please refer to the document of [deploy-server.sh](../utils/readme.md#deploy-serversh).
+
+### C. Manual Setup
 
 | Used in the text | Meaning and where to use    | Memo                                                                     |
 | ---------------- | --------------------------- | ------------------------------------------------------------------------ |
@@ -26,11 +52,7 @@ For simplicity, the following description assumes that the settings are as shown
 | dfusiuada9suy    | Password                    |                                                                          |
 | nrt              | Region to make the instance | We can use any [region](https://fly.io/docs/reference/regions/) near us. |
 
-## Steps with your computer
-
-If you want to avoid installing anything, please skip to [Automatic setup using Colaboratory](#automatic-setup-using-colaboratory).
-
-### 1. Install flyctl
+#### 1. Install flyctl
 
 - Mac or Linux
 
@@ -44,7 +66,7 @@ $ curl -L https://fly.io/install.sh | sh
 $ iwr https://fly.io/install.ps1 -useb | iex
 ```
 
-### 2. Sign up or Sign in to fly.io
+#### 2. Sign up or Sign in to fly.io
 
 - Sign up
 
@@ -58,148 +80,90 @@ $ fly auth signup
 $ fly auth login
 ```
 
-For more information, please refer [Sign up](https://fly.io/docs/hands-on/sign-up/) and [Sign in](https://fly.io/docs/hands-on/sign-in/).
+For more information, please refer to [Sign up](https://fly.io/docs/hands-on/sign-up/) and [Sign in](https://fly.io/docs/hands-on/sign-in/).
 
-### 3. Make configuration files
+#### 3. Make a configuration file
 
-Please be careful, `nrt` is the region where near to Japan. Please use your preferred region.
+1. Make `fly.toml` from template `fly.template.toml`.  
+   We can simply copy and rename the file. The template is on [utils/flyio/fly.template.toml](../utils/flyio/fly.template.toml)
+2. Decide the instance name, initialize the App, and set credentials.
 
-1. Make fly.toml
+>[!TIP]
+> - The name `billowing-dawn-6619` is randomly decided name, and it will be a part of the CouchDB URL. It should be globally unique. Therefore, it is recommended to use something random for this name.
+> - Explicit naming is very good for humans. However, we do not often get the chance to actually enter this manually (have designed so). This database may contain important information for you. The needle should be hidden in the haystack.
+
+
+```bash
+$ fly launch --name=billowing-dawn-6619 --env="COUCHDB_USER=campanella" --copy-config=true --detach --no-deploy --region nrt --yes
+$ fly secrets set COUCHDB_PASSWORD=dfusiuada9suy
+```
+
+#### 4. Deploy
 
 ```
-$ flyctl launch --generate-name --detach --no-deploy --region nrt
-Creating app in /home/vrtmrz/dev/fly/demo
-Scanning source code
-Could not find a Dockerfile, nor detect a runtime or framework from source code. Continuing with a blank app.
-automatically selected personal organization: vorotamoroz
-App will use 'nrt' region as primary
+$ flyctl deploy 
+An existing fly.toml file was found
+Using build strategies '[the "couchdb:latest" docker image]'. Remove [build] from fly.toml to force a rescan
+Creating app in /home/vorotamoroz/dev/obsidian-livesync/utils/flyio
+We're about to launch your app on Fly.io. Here's what you're getting:
+
+Organization: vorotamoroz              (fly launch defaults to the personal org)
+Name:         billowing-dawn-6619     (specified on the command line)
+Region:       Tokyo, Japan             (specified on the command line)
+App Machines: shared-cpu-1x, 256MB RAM (specified on the command line)
+Postgres:     <none>                   (not requested)
+Redis:        <none>                   (not requested)
 
 Created app 'billowing-dawn-6619' in organization 'personal'
 Admin URL: https://fly.io/apps/billowing-dawn-6619
 Hostname: billowing-dawn-6619.fly.dev
 Wrote config file fly.toml
-```
-
-`billowing-dawn-6619` is an automatically generated name. It is used as the hostname. Please note it in something.  
-Note: we can specify this without `--generate-name`, but does not recommend in the trial phases.
-
-1. Make volume
-
-```
-$ flyctl volumes create --region nrt couchdata --size 2 --yes
-        ID: vol_g67340kxgmmvydxw
-      Name: couchdata
-       App: billowing-dawn-6619
-    Region: nrt
-      Zone: 35b7
-   Size GB: 2
- Encrypted: true
-Created at: 02 Jun 23 01:19 UTC
-```
-
-3. Edit fly.toml  
-   Changes:
-   - Change exposing port from `8080` to `5984`
-   - Mounting the volume `couchdata` created in step 2 under `/opt/couchdb/data`
-   - Set `campanella` for the administrator of CouchDB
-   - Customise CouchDB to use persistent ini-file; which is located under the data directory.
-   - To use Dockerfile
-
-```diff
-# fly.toml app configuration file generated for billowing-dawn-6619 on 2023-06-02T10:18:59+09:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = "billowing-dawn-6619"
-primary_region = "nrt"
-
-[http_service]
--  internal_port = 8080
-+  internal_port = 5984
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-
-+[mounts]
-+  source="couchdata"
-+  destination="/opt/couchdb/data"
-+
-+[env]
-+  COUCHDB_USER = "campanella"
-+  ERL_FLAGS="-couch_ini /opt/couchdb/etc/default.ini /opt/couchdb/etc/default.d/ /opt/couchdb/etc/local.d /opt/couchdb/etc/local.ini /opt/couchdb/data/persistence.ini"
-+
-+[build]
-+  dockerfile = "./Dockerfile"
-```
-
-4. Make `Dockerfile`  
-   Create a Dockerfile that patches the start-up script to fix ini file permissions.
-
-```dockerfile
-FROM couchdb:latest
-RUN sed -i '2itouch /opt/couchdb/data/persistence.ini && chmod +w /opt/couchdb/data/persistence.ini' /docker-entrypoint.sh
-```
-
-5. Set credential
-
-```
-flyctl secrets set COUCHDB_PASSWORD=dfusiuada9suy
-```
-
-### 4. Deploy
-
-```
-$ flyctl deploy --detach --remote-only
+Validating /home/vorotamoroz/dev/obsidian-livesync/utils/flyio/fly.toml
+Platform: machines
+✓ Configuration is valid
+Your app is ready! Deploy with `flyctl deploy`
+Secrets are staged for the first deployment
 ==> Verifying app config
-Validating /home/vrtmrz/dev/fly/demo/fly.toml
+Validating /home/vorotamoroz/dev/obsidian-livesync/utils/flyio/fly.toml
 Platform: machines
 ✓ Configuration is valid
 --> Verified app config
 ==> Building image
-Remote builder fly-builder-bold-sky-4515 ready
-==> Creating build context
---> Creating build context done
-==> Building image with Docker
---> docker host: 20.10.12 linux x86_64
+Searching for image 'couchdb:latest' remotely...
+image found: img_ox20prk63084j1zq
 
--------------:SNIPPED:-------------
-
-Watch your app at https://fly.io/apps/billowing-dawn-6619/monitoring
+Watch your deployment at https://fly.io/apps/billowing-dawn-6619/monitoring
 
 Provisioning ips for billowing-dawn-6619
-  Dedicated ipv6: 2a09:8280:1::2d:240f
-  Shared ipv4: 66.241.125.213
+  Dedicated ipv6: 2a09:8280:1::37:fde9
+  Shared ipv4: 66.241.124.163
   Add a dedicated ipv4 with: fly ips allocate-v4
+
+Creating a 1 GB volume named 'couchdata' for process group 'app'. Use 'fly vol extend' to increase its size
 This deployment will:
  * create 1 "app" machine
 
 No machines in group app, launching a new machine
-  Machine e7845d1f297183 [app] has state: started
+
+WARNING The app is not listening on the expected address and will not be reachable by fly-proxy.
+You can fix this by configuring your app to listen on the following addresses:
+  - 0.0.0.0:5984
+Found these processes inside the machine with open listening sockets:
+  PROCESS        | ADDRESSES                             
+-----------------*---------------------------------------
+  /.fly/hallpass | [fdaa:0:73b9:a7b:22e:3851:7f28:2]:22  
+
 Finished launching new machines
 
 NOTE: The machines for [app] have services with 'auto_stop_machines = true' that will be stopped when idling
+
+-------
+Checking DNS configuration for billowing-dawn-6619.fly.dev
+
+Visit your newly deployed app at https://billowing-dawn-6619.fly.dev/
 ```
 
-Now your CouchDB has been launched. (Do not forget to delete it if no longer need).  
-If failed, please check by `flyctl doctor`. Failure of remote build may be resolved by `flyctl` wireguard reset` or something.
-
-```
-$ flyctl status
-App
-  Name     = billowing-dawn-6619
-  Owner    = personal
-  Hostname = billowing-dawn-6619.fly.dev
-  Image    = billowing-dawn-6619:deployment-01H1WWB3CK5Z9ZX71KHBSDGHF1
-  Platform = machines
-
-Machines
-PROCESS ID              VERSION REGION  STATE   CHECKS  LAST UPDATED
-app     e7845d1f297183  1       nrt     started         2023-06-02T01:43:34Z
-```
-
-### 5. Apply CouchDB configuration
+#### 5. Apply CouchDB configuration
 
 After the initial setup, CouchDB needs some more customisations to be used from Self-hosted LiveSync. It can be configured in browsers or by HTTP-REST APIs.
 
@@ -273,15 +237,13 @@ iwr -UseBasicParsing -Method 'PUT' -ContentType 'application/json; charset=utf-8
 
 Note: Each of these should also be repeated until finished in 200.
 
-### 6. Use it from Self-hosted LiveSync
+#### 6. Use it from Self-hosted LiveSync
 
 Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-hosted LiveSync. `Database name` could be anything you want.
 `Enhance chunk size` could be up to around `100`.
 
-## Automatic setup using Colaboratory
+## Delete the Instance
 
-We can perform all these steps by using [this Colaboratory notebook](/deploy_couchdb_to_flyio_v2_with_swap.ipynb) without installing anything.
+If you want to delete the CouchDB instance, you can do that in [fly.io Dashboard](https://fly.io/dashboard/personal)
 
-## After testing / before creating a new instance
-
-**Be sure to delete the instance. We can check instances on the [Dashboard](https://fly.io/dashboard/personal)**
+If you have done with [B. Scripted Setup](#b-scripted-setup), we can use [delete-server.sh](../utils/readme.md#delete-serversh).

@@ -1,4 +1,4 @@
-<!-- For translation: 20240206r0 -->
+<!-- For translation: 20240209r0 -->
 # Self-hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
@@ -6,22 +6,18 @@ Self-hosted LiveSync is a community-implemented synchronization plugin, availabl
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-Note:
-- Not compatible with official "Obsidian Sync".
+Note: This plugin cannot synchronise with the official "Obsidian Sync".
 
 ## Features
 
 - Synchronize vaults very efficiently with less traffic.
-  - We can synchronize in live, periodic, or on events, as we need.
 - Good at conflicted modification.
-  - Automatic merging for simple conflicts.
-    - If it cannot be automated, do not worry! we can use a visual conflict resolver.
+- Automatic merging for simple conflicts.
 - Using OSS solution for the server.
-  - We do not have to suspect the server side, at least.
   - Compatible solutions can be used.
-- End-to-end encryption is supported.
-- We can synchronize settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
-- Receive WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
+- Supporting End-to-end encryption.
+- Synchronisation of settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
+- WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 
 This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
@@ -29,35 +25,26 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 
 - Before installing or upgrading this plug-in, please back your vault up.
 - Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
-  - Before enabling this plugin, make sure to disable all the other synchronization methods to avoid content corruption or duplication.
-  - If you want to synchronize with two or more services, do them one by one, and never enable two synchronization methods at the same time.
-  - This includes not putting your vault inside a cloud-synchronized folder (eg. an iCloud folder or Dropbox folder)
 - This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
 
 ## How to use
 
-### Get your database ready.
+### 3-minute setup - CouchDB on fly.io
 
-First, let us make our database ready. fly.io is preferred for testing. Or you can use your own server with CouchDB.
+**Recommended for beginners**
 
-For more information, refer below:
-1. [Setup fly.io](docs/setup_flyio.md)
-2. [Setup IBM Cloudant](docs/setup_cloudant.md)
-3. [Setup your CouchDB](docs/setup_own_server.md)
+[![LiveSync Setup onto Fly.io SpeedRun 2024 using Google Colab](https://img.youtube.com/vi/7sa_I1832Xc/0.jpg)](https://www.youtube.com/watch?v=7sa_I1832Xc)
 
-### Configure the plugin
+- [Setup CouchDB on fly.io](docs/setup_flyio.md)
 
-See [Quick setup guide](doccs/../docs/quick_setup.md)
+### Manually Setup
 
-## Something looks corrupted...
+1. [Setup your CouchDB](docs/setup_own_server.md)
+2. [Configure plug-in](docs/quick_setup.md)
 
-Please open the configuration link again and Answer below:
-- If your local database looks corrupted (in other words, when your Obsidian getting weird even standalone.)
-	- Answer `No` to `Keep local DB?`
-- If your remote database looks corrupted (in other words, when something happens while replicating)
-	- Answer `No` to `Keep remote DB?`
+> **Tip**
+> We are still able to use IBM Cloudant. However, it is not recommended for several reasons nowadays. Here is [Setup IBM Cloudant](docs/setup_cloudant.md)
 
-If you answered `No` to both, your databases will be rebuilt by the content on your device. And the remote database will lock out other devices. You have to synchronize all your devices again. (When this time, almost all your files should be synchronized with a timestamp. So you can use an existing vault).
 
 ## Information in StatusBar
 
@@ -79,31 +66,14 @@ Synchronization status is shown in statusbar.
      -   🛫 Pending read storage processes
      -   ⚙️ Working or pending storage processes of hidden files
      -   🧩 Waiting chunks
-     -   🔌 Working Customisation items (Configuration, snippets and plug-ins)
+     -   🔌 Working Customisation items (Configuration, snippets, and plug-ins)
 
 To prevent file and database corruption, please wait until all progress indicators have disappeared. Especially in case of if you have deleted or renamed files.
 
 
-## Hints
--   If a folder becomes empty after a replication, it will be deleted by default. But you can toggle this behaviour. Check the [Settings](docs/settings.md).
--   LiveSync mode drains more batteries in mobile devices. Periodic sync with some automatic sync is recommended.
--   Mobile Obsidian can not connect to non-secure (HTTP) or locally-signed servers, even if the root certificate is installed on the device.
--   There are no 'exclude_folders' like configurations.
--   While synchronizing, files are compared by their modification time and the older ones will be overwritten by the newer ones. Then plugin checks for conflicts and if a merge is needed, a dialog will open.
--   Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case, you can delete these items from the settings dialog.
--   To stop the boot-up sequence (eg. for fixing problems on databases), you can put a `redflag.md` file (or directory) at the root of your vault.
-    Tip for iOS: a redflag directory can be created at the root of the vault using the File application.
--   Also, with `redflag2.md` placed, we can automatically rebuild both the local and the remote databases during the boot-up sequence. With `redflag3.md`, we can discard only the local database and fetch from the remote again.
--   Q: The database is growing, how can I shrink it down?
-    A: each of the docs is saved with their past 100 revisions for detecting and resolving conflicts. Picturing that one device has been offline for a while, and comes online again. The device has to compare its notes with the remotely saved ones. If there exists a historic revision in which the note used to be identical, it could be updated safely (like git fast-forward). Even if that is not in revision histories, we only have to check the differences after the revision that both devices commonly have. This is like git's conflict-resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
--   And more technical Information is in the [Technical Information](docs/tech_info.md)
--   If you want to synchronize files without obsidian, you can use [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
--   WebClipper is also available on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 
-Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are a work in progress.)
-
-## Troubleshooting
-If you are having problems getting the plugin working see: [Troubleshooting](docs/troubleshooting.md)
+## Tips and Troubleshooting
+If you are having problems getting the plugin working see: [Tips and Troubleshooting](docs/troubleshooting.md)
 
 ## License
 
