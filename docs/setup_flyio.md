@@ -8,7 +8,8 @@ This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 > 
 [^1]: Actually, I am always building the database for reproduction of the issue like so.
 
-> [!TIP] What and why is the Fly.io
+> [!NOTE] 
+> **What and why is the Fly.io?**  
 > At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
 >
 > Then we found Fly.io. Fly.io is the PaaS Platform, which can be useable for a very reasonable price. It generally falls within the `Free Allowances` range in most cases.
