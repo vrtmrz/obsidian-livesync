@@ -10,7 +10,12 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
-- 0.23.4
+- 0.22.5
+  - Fixed:
+    - Some description of settings have been refined
+  - New feature:
+    - TroubleShooting is now shown in the setting dialogue.
+- 0.22.4
   - Fixed:
     - Now the result of conflict resolution could be surely written into the storage.
     - Deleted files can be handled correctly again in the history dialogue and conflict dialogue.
