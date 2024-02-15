@@ -1,138 +1,126 @@
 # Setup a CouchDB server
 
 ## Table of Contents
-- [Configure](#configure)
-- [Run](#run)
-  - [Docker CLI](#docker-cli)
-  - [Docker Compose](#docker-compose)
-- [Access from a mobile device](#access-from-a-mobile-device)
-  - [Testing from a mobile](#testing-from-a-mobile)
-  - [Setting up your domain](#setting-up-your-domain)
-- [Reverse Proxies](#reverse-proxies)
-  - [Traefik](#traefik)
+
+- [Setup a CouchDB server](#setup-a-couchdb-server)
+  - [Table of Contents](#table-of-contents)
+  - [1. Prepare CouchDB](#1-prepare-couchdb)
+    - [A. Using Docker container](#a-using-docker-container)
+      - [1. Prepare](#1-prepare)
+      - [2. Run docker container](#2-run-docker-container)
+    - [B. Install CouchDB directly](#b-install-couchdb-directly)
+  - [2. Run couchdb-init.sh for initialise](#2-run-couchdb-initsh-for-initialise)
+  - [3. Expose CouchDB to the Internet](#3-expose-couchdb-to-the-internet)
+  - [4. Client Setup](#4-client-setup)
+    - [1. Generate the setup URI on a desktop device or server](#1-generate-the-setup-uri-on-a-desktop-device-or-server)
+    - [2. Setup Self-hosted LiveSync to Obsidian](#2-setup-self-hosted-livesync-to-obsidian)
+  - [Manual setup information](#manual-setup-information)
+    - [Setting up your domain](#setting-up-your-domain)
+  - [Reverse Proxies](#reverse-proxies)
+    - [Traefik](#traefik)
 ---
 
-## Configure
+## 1. Prepare CouchDB
+### A. Using Docker container
 
-The easiest way to set up a CouchDB instance is using the official [docker image](https://hub.docker.com/_/couchdb).
+#### 1. Prepare
+```bash
 
-Some initial configuration is required. Create a `local.ini` to use Self-hosted LiveSync as follows ([CouchDB has to be version 3.2 or higher](https://docs.couchdb.org/en/latest/config/http.html#chttpd/enable_cors), if lower `enable_cors = true` has to be under section `[httpd]` ):
+# Prepare environment variables.
+export hostname=localhost:5984
+export username=goojdasjdas     #Please change as you like.
+export password=kpkdasdosakpdsa #Please change as you like
 
-```ini
-[couchdb]
-single_node=true
-max_document_size = 50000000
-
-[chttpd]
-require_valid_user = true
-max_http_request_size = 4294967296
-enable_cors = true
-
-[chttpd_auth]
-require_valid_user = true
-authentication_redirect = /_utils/session.html
-
-[httpd]
-WWW-Authenticate = Basic realm="couchdb"
-bind_address = 0.0.0.0
-
-[cors]
-origins = app://obsidian.md, capacitor://localhost, http://localhost
-credentials = true
-headers = accept, authorization, content-type, origin, referer
-methods = GET,PUT,POST,HEAD,DELETE
-max_age = 3600
+# Prepare directories which saving data and configurations.
+mkdir couchdb-data
+mkdir couchdb-etc
 ```
 
-## Run
+#### 2. Run docker container
 
-### Docker CLI
+1. Boot Check.
+```
+$ docker run --name couchdb-for-ols --rm -it -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
+```
+If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
+Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
 
-You can launch CouchDB using your `local.ini` like this:
+2. Enable it in background
 ```
-$ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
+$ docker run --name couchdb-for-ols -d --restart always -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
-*Remember to replace the path with the path to your local.ini*
+### B. Install CouchDB directly
+Please refer the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just administrator needs to be configured.
 
-Run in detached mode:
+## 2. Run couchdb-init.sh for initialise
 ```
-$ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v /path/to/local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb
-```
-*Remember to replace the path with the path to your local.ini*
-
-### Docker Compose
-Create a directory, place your `local.ini` within it, and create a `docker-compose.yml` alongside it. Make sure to have write permissions for `local.ini` and the about to be created `data` folder after the container start. The directory structure should look similar to this:
-```
-obsidian-livesync
-├── docker-compose.yml
-└── local.ini
+$ curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
-A good place to start for `docker-compose.yml`:
-```yaml
-version: "2.1"
-services:
-  couchdb:
-    image: couchdb
-    container_name: obsidian-livesync
-    user: 1000:1000
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=password
-    volumes:
-      - ./data:/opt/couchdb/data
-      - ./local.ini:/opt/couchdb/etc/local.ini
-    ports:
-      - 5984:5984
-    restart: unless-stopped
+If it results like following:
+```
+-- Configuring CouchDB by REST APIs... -->
+{"ok":true}
+""
+""
+""
+""
+""
+""
+""
+""
+""
+<-- Configuring CouchDB by REST APIs Done!
 ```
 
-And finally launch the container
+Your CouchDB has been initialised successfully. If you want this manually, please read the script.
+
+## 3. Expose CouchDB to the Internet
+
+- You can skip this instruction if you using only in intranet and only with desktop devices.
+  - For mobile devices, Obsidian requires a valid SSL certificate. Usually, it needs exposing the internet.
+
+Whatever solutions we can use. For the simplicity, following sample uses Cloudflare Zero Trust for testing.
+
 ```
-# -d will launch detached so the container runs in background
-docker compose up -d
+$ cloudflared tunnel --url http://localhost:5984
+2024-02-14T10:35:25Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
+2024-02-14T10:35:25Z INF Requesting new quick Tunnel on trycloudflare.com...
+2024-02-14T10:35:26Z INF +--------------------------------------------------------------------------------------------+
+2024-02-14T10:35:26Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+2024-02-14T10:35:26Z INF |  https://tiles-photograph-routine-groundwater.trycloudflare.com                            |
+2024-02-14T10:35:26Z INF +--------------------------------------------------------------------------------------------+
+  :
+  :
+  :
 ```
-
-## Access from a mobile device
-If you want to access Self-hosted LiveSync from mobile devices, you need a valid SSL certificate.
-
-### Testing from a mobile
-In the testing phase, [localhost.run](https://localhost.run/) or something like services is very useful.
-
-example using localhost.run:
-```
-$ ssh -R 80:localhost:5984 nokey@localhost.run
-Warning: Permanently added the RSA host key for IP address '35.171.254.69' to the list of known hosts.
-
-===============================================================================
-Welcome to localhost.run!
-
-Follow your favourite reverse tunnel at [https://twitter.com/localhost_run].
-
-**You need a SSH key to access this service.**
-If you get a permission denied follow Gitlab's most excellent howto:
-https://docs.gitlab.com/ee/ssh/
-*Only rsa and ed25519 keys are supported*
-
-To set up and manage custom domains go to https://admin.localhost.run/
-
-More details on custom domains (and how to enable subdomains of your custom
-domain) at https://localhost.run/docs/custom-domains
-
-To explore using localhost.run visit the documentation site:
-https://localhost.run/docs/
-
-===============================================================================
+Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our server. Make it into background once please.
 
 
-** your connection id is xxxxxxxxxxxxxxxxxxxxxxxxxxxx, please mention it if you send me a message about an issue. **
+## 4. Client Setup
+> [!TIP]
+> Now manually configuration is not recommended for some reasons. However, if you want to do so, please use `Setup wizard`. The recommended extra configurations will be also set.
 
-xxxxxxxx.localhost.run tunneled with tls termination, https://xxxxxxxx.localhost.run
-Connection to localhost.run closed by remote host.
-Connection to localhost.run closed.
+### 1. Generate the setup URI on a desktop device or server
+```bash
+$ export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
+$ export database=obsidiannotes #Please change as you like
+$ export passphrase=dfsapkdjaskdjasdas #Please change as you like
+$ deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
+obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
 ```
 
-https://xxxxxxxx.localhost.run is the temporary server address.
+### 2. Setup Self-hosted LiveSync to Obsidian
+[This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
+1. Install Self-hosted LiveSync
+2. Choose `Open the Setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
+3. Type `welcome` for setup-uri passphrase.
+4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
+5. `Reload app without save` once.
+
+---
+
+## Manual setup information
 
 ### Setting up your domain
 
