@@ -12,7 +12,7 @@
 ### Binary files get bigger on iOS
 - Reported at: v0.20.x
 - Fixed at: v0.21.2 (Fixed but not reviewed)
-- Required action: larger files will not be fixed automatically.
+- Required action: larger files will not be fixed automatically, please perform `Verify and repair all files`. If our local database and storage are not matched, we will be asked to apply which one.
 
 <!-- Add here -->
 
