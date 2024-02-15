@@ -97,6 +97,14 @@
     --slsmessage: "";
 }
 
+.sls-troubleshoot-preview {
+    max-width: max-content;
+}
+
+.sls-troubleshoot-preview img {
+    max-width: 100%;
+}
+
 .CodeMirror-wrap::before,
 .markdown-preview-view.cm-s-obsidian::before,
 .markdown-source-view.cm-s-obsidian::before,

@@ -1,14 +1,13 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO } from "./lib/src/types";
-import { delay } from "./lib/src/utils";
-import { Semaphore } from "./lib/src/semaphore";
+import { createBinaryBlob, createTextBlob, delay, isDocContentSame } from "./lib/src/utils";
 import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
-import type { ButtonComponent } from "obsidian";
+import { request, type ButtonComponent } from "obsidian";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -194,7 +193,57 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
                 })
             })
+        setupWizardEl.createEl("h3", { text: "Online Tips" });
+        const repo = "vrtmrz/obsidian-livesync";
+        const topPath = "/docs/troubleshooting.md";
+        const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
+        setupWizardEl.createEl("div", "", el => el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">Open in browser</a>`);
+        const troubleShootEl = setupWizardEl.createEl("div", { text: "", cls: "sls-troubleshoot-preview" });
+        const loadMarkdownPage = async (pathAll: string, basePathParam: string = "") => {
+            troubleShootEl.style.minHeight = troubleShootEl.clientHeight + "px";
+            troubleShootEl.empty();
+            const fullPath = pathAll.startsWith("/") ? pathAll : `${basePathParam}/${pathAll}`;
 
+            const directoryArr = fullPath.split("/");
+            const filename = directoryArr.pop();
+            const directly = directoryArr.join("/");
+            const basePath = directly;
+
+            let remoteTroubleShootMDSrc = "";
+            try {
+                remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
+            } catch (ex) {
+                remoteTroubleShootMDSrc = "Error Occurred!!\n" + ex.toString();
+            }
+            const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(/\((.*?(.png)|(.jpg))\)/g, `(${rawRepoURI}${basePath}/$1)`)
+            // Render markdown
+            await MarkdownRenderer.render(this.plugin.app, `<a class='sls-troubleshoot-anchor'></a> [Tips and Troubleshooting](${topPath}) [PageTop](${filename})\n\n${remoteTroubleShootMD}`, troubleShootEl, `${rawRepoURI}`, this.plugin);
+            // Menu
+            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")
+                .parentElement.setCssStyles({ position: "sticky", top: "-1em", backgroundColor: "var(--modal-background)" });
+            // Trap internal links.
+            troubleShootEl.querySelectorAll<HTMLAnchorElement>("a.internal-link").forEach((anchorEl) => {
+                anchorEl.addEventListener("click", async (evt) => {
+                    const uri = anchorEl.getAttr("data-href");
+                    if (uri.startsWith("#")) {
+                        evt.preventDefault();
+                        const elements = Array.from(troubleShootEl.querySelectorAll<HTMLHeadingElement>("[data-heading]"))
+                        const p = elements.find(e => e.getAttr("data-heading").toLowerCase().split(" ").join("-") == uri.substring(1).toLowerCase());
+                        if (p) {
+                            p.setCssStyles({ scrollMargin: "3em" });
+                            p.scrollIntoView({ behavior: "instant", block: "start" });
+                        }
+                    } else {
+                        evt.preventDefault();
+                        await loadMarkdownPage(uri, basePath);
+                        troubleShootEl.setCssStyles({ scrollMargin: "1em" });
+                        troubleShootEl.scrollIntoView({ behavior: "instant", block: "start" });
+                    }
+                })
+            })
+            troubleShootEl.style.minHeight = "";
+        }
+        loadMarkdownPage(topPath);
         addScreenElement("110", setupWizardEl);
 
         const containerRemoteDatabaseEl = containerEl.createDiv();
@@ -1650,38 +1699,61 @@ ${stringifyYaml(pluginConfig)}`;
 
         new Setting(containerHatchEl)
             .setName("Verify and repair all files")
-            .setDesc("Verify and repair all files and update database without restoring")
+            .setDesc("Compare the content of files between on local database and storage. If not matched, you will asked which one want to keep.")
             .addButton((button) =>
                 button
-                    .setButtonText("Verify and repair")
+                    .setButtonText("Verify all")
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        const semaphore = Semaphore(10);
                         const files = this.app.vault.getFiles();
                         let i = 0;
-                        const processes = files.map(e => (async (file) => {
-                            const releaser = await semaphore.acquire(1, "verifyAndRepair");
+                        for (const file of files) {
+                            i++;
+                            Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL_NOTICE, "verify");
+                            if (!await this.plugin.isTargetFile(file)) continue;
+                            const fileOnDB = await this.plugin.localDatabase.getDBEntry(file.path as FilePathWithPrefix);
+                            if (!fileOnDB) {
+                                Logger(`Compare: Not found on local database: ${file.path}`, LOG_LEVEL_NOTICE);
+                                continue;
+                            }
+                            let content: Blob;
+                            if (fileOnDB.type == "newnote") {
+                                content = createBinaryBlob(await this.plugin.vaultAccess.vaultReadBinary(file));
+                            } else {
+                                content = createTextBlob(await this.plugin.vaultAccess.vaultRead(file));
+                            }
+                            if (isDocContentSame(content, fileOnDB.data)) {
+                                Logger(`Compare: SAME: ${file.path}`)
+                            } else {
+                                Logger(`Compare: CONTENT IS NOT MATCHED! ${file.path}`, LOG_LEVEL_NOTICE);
+                                resultArea.appendChild(resultArea.createEl("div", {}, el => {
+                                    el.appendChild(el.createEl("h6", { text: file.path }));
+                                    el.appendChild(el.createEl("div", {}, infoGroupEl => {
+                                        infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Storage : Modified: ${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}` }))
+                                        infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Database: Modified: ${new Date(fileOnDB.mtime).toLocaleString()}, Size:${content.size}` }))
+                                    }));
 
-                            try {
-                                Logger(`UPDATE DATABASE ${file.path}`);
-                                await this.plugin.updateIntoDB(file, false, null, true);
-                                i++;
-                                Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL_NOTICE, "verify");
-
-                            } catch (ex) {
-                                i++;
-                                Logger(`Error while verifyAndRepair`, LOG_LEVEL_NOTICE);
-                                Logger(ex);
-                            } finally {
-                                releaser();
+                                    el.appendChild(el.createEl("button", { text: "Storage -> Database" }, buttonEl => {
+                                        buttonEl.onClickEvent(() => {
+                                            this.plugin.updateIntoDB(file, false, undefined, true);
+                                            el.remove();
+                                        })
+                                    }))
+                                    el.appendChild(el.createEl("button", { text: "Database -> Storage" }, buttonEl => {
+                                        buttonEl.onClickEvent(() => {
+                                            this.plugin.pullFile(file.path as FilePathWithPrefix, [], true, undefined, false);
+                                            el.remove();
+                                        })
+                                    }))
+                                    return el;
+                                }))
                             }
                         }
-                        )(e));
-                        await Promise.all(processes);
                         Logger("done", LOG_LEVEL_NOTICE, "verify");
                     })
             );
+        const resultArea = containerHatchEl.createDiv({ text: "" });
         new Setting(containerHatchEl)
             .setName("Check and convert non-path-obfuscated files")
             .setDesc("")
@@ -1854,7 +1926,7 @@ ${stringifyYaml(pluginConfig)}`;
 
         new Setting(containerHatchEl)
             .setName("Use an old adapter for compatibility")
-            .setDesc("This option is not compatible with a database made by older versions. Changing this configuration will fetch the remote database again.")
+            .setDesc("Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.")
             .setClass("wizardHidden")
             .addToggle((toggle) =>
                 toggle.setValue(!this.plugin.settings.useIndexedDBAdapter).onChange(async (value) => {
