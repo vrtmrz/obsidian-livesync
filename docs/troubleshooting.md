@@ -1,7 +1,8 @@
-<!--  -->
+<!-- 2024-02-15 -->
 # Tips and Troubleshooting
 
 - [Notable bugs and fixes](#notable-bugs-and-fixes)
+- [FAQ](#faq)
 - [Troubleshooting](#troubleshooting)
 - [Tips](#tips)
 <!-- - -->
@@ -15,11 +16,29 @@
 
 <!-- Add here -->
 
+## FAQ
+
+### Why `Use an old adapter for compatibility` is somehow enabled in my vault?
+
+Because you are a compassionate and experienced user. Before v0.17.16, we used an old adapter for the local database. At that time, current default adapter has not been stable.
+The new adapter has better performance and has a new feature like purging. Therefore, we should use new adapters and current default is so.
+
+However, when switching from an old adapter to a new adapter, some converting or local database rebuilding is required, and it takes a few time. It was a long time ago now, but we once inconvenienced everyone in a hurry when we changed the format of our database.
+For these reasons, this toggle is automatically on if we have upgraded from vault which using an old adapter.
+
+When you rebuild everything or fetch from the remote again, you will be asked to switch this.
+
+Therefore, experienced users (especially those stable enough not to have to rebuild the database) may have this toggle enabled in their Vault.
+Please disable it when you have enough time.
+
+<!-- Add here -->
+
 ## Troubleshooting
 <!-- Add here -->
 
 ## Tips
 <!-- Add here -->
+
 ### Old tips
 -   If a folder becomes empty after a replication, it will be deleted by default. But you can toggle this behaviour. Check the [Settings](settings.md).
 -   LiveSync mode drains more batteries in mobile devices. Periodic sync with some automatic sync is recommended.
