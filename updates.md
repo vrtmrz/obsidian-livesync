@@ -10,6 +10,11 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.7
+  - Fixed:
+    - No longer deleted hidden files were ignored.
+    - The document history dialogue is now able to process the deleted revisions.
+    - Deletion of a hidden file is now surely performed even if the file is already conflicted.
 - 0.22.6
   - Fixed:
     - Fixed a problem with synchronisation taking a long time to start in some cases.
