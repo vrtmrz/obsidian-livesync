@@ -76,7 +76,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     replicator!: LiveSyncDBReplicator;
 
     statusBar?: HTMLElement;
-    suspended = false;
+    _suspended = false;
+    get suspended() {
+        return this._suspended || !this.settings?.isConfigured;
+    }
+    set suspended(value: boolean) {
+        this._suspended = value;
+    }
     deviceAndVaultName = "";
     isMobile = false;
     isReady = false;
@@ -403,7 +409,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (notes.length == 0) {
             Logger("There are no old documents");
             Logger(`Checking expired file history done`);
-
             return;
         }
         for (const v of notes) {
@@ -418,6 +423,43 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
             Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
+            return;
+        }
+        if (!this.settings.isConfigured) {
+            const message = `Hello and welcome to Self-hosted LiveSync.
+
+Your device seems to **not be configured yet**. Please finish the setup and synchronise your vaults!
+
+Click anywhere to stop counting down.
+
+## At the first device
+- With Setup URI -> Use \`Use the copied setup URI\`.  
+  If you have configured it automatically, you should have one.
+- Without Setup URI -> Use \`Setup wizard\` in setting dialogue. **\`Minimal setup\` is recommended**.
+- What is the Setup URI? -> Do not worry! We have [some docs](https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use) now. Please refer to them once.
+
+## At the subsequent device
+- With Setup URI -> Use \`Use the copied setup URI\`.  
+  If you do not have it yet, you can copy it on the first device.
+- Without Setup URI -> Use \`Setup wizard\` in setting dialogue, but **strongly recommends using setup URI**.
+`
+            const OPEN_SETUP = "Open setting dialog";
+            const USE_SETUP = "Use the copied setup URI";
+            const DISMISS = "Dismiss";
+
+            const ret = await confirmWithMessage(this, "Welcome to Self-hosted LiveSync", message, [USE_SETUP, OPEN_SETUP, DISMISS], DISMISS, 40);
+            if (ret === OPEN_SETUP) {
+                try {
+                    //@ts-ignore: undocumented api
+                    this.app.setting.open();
+                    //@ts-ignore: undocumented api
+                    this.app.setting.openTabById("obsidian-livesync");
+                } catch (ex) {
+                    Logger("Something went wrong on opening setting dialog, please open it manually", LOG_LEVEL_NOTICE);
+                }
+            } else if (ret == USE_SETUP) {
+                fireAndForget(this.addOnSetup.command_openSetupURI());
+            }
             return;
         }
 
@@ -736,7 +778,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.statusBar = this.addStatusBarItem();
         this.statusBar.addClass("syncstatusbar");
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
-        if (lastVersion > this.settings.lastReadUpdates) {
+        if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
             Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
         }
 
@@ -877,6 +919,16 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
     async loadSettings() {
         const settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as ObsidianLiveSyncSettings;
+
+        if (typeof settings.isConfigured == "undefined") {
+            // If migrated, mark true
+            if (JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)) {
+                settings.isConfigured = true;
+            } else {
+                settings.additionalSuffixOfDatabaseName = `${("appId" in this.app ? this.app.appId : "")}`
+                settings.isConfigured = false;
+            }
+        }
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
             Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
@@ -1193,8 +1245,8 @@ We can perform a command in this file.
 
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) return;
+        if (!this.settings.isConfigured) return;
         if (!this.isReady) return;
-        // if (this.suspended) return;
         const isHidden = document.hidden;
         await this.applyBatchChange();
         if (isHidden) {
@@ -1307,6 +1359,7 @@ We can perform a command in this file.
 
     watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
+        if (!this.settings.isConfigured) return;
         if (!this.isReady) return;
         if (!file) return;
         scheduleTask("watch-workspace-open", 500, () => fireAndForget(() => this.watchWorkspaceOpenAsync(file)));
@@ -1314,6 +1367,7 @@ We can perform a command in this file.
 
     async watchWorkspaceOpenAsync(file: TFile) {
         if (this.settings.suspendFileWatching) return;
+        if (!this.settings.isConfigured) return;
         if (!this.isReady) return;
         await this.applyBatchChange();
         if (file == null) {
@@ -1579,17 +1633,18 @@ We can perform a command in this file.
         localStorage.setItem(lsKey, saveData);
     }
     async loadQueuedFiles() {
-        if (!this.settings.suspendParseReplicationResult) {
-            const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
-            const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
-            const batchSize = 100;
-            const chunkedIds = arrayToChunkedArray(ids, batchSize);
-            for await (const idsBatch of chunkedIds) {
-                const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: idsBatch, include_docs: true, limit: 100 });
-                this.replicationResultProcessor.enqueueAll(ret.rows.map(doc => doc.doc));
-                await this.replicationResultProcessor.waitForPipeline();
-            }
+        if (this.settings.suspendParseReplicationResult) return;
+        if (!this.settings.isConfigured) return;
+        const lsKey = "obsidian-livesync-queuefiles-" + this.getVaultName();
+        const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
+        const batchSize = 100;
+        const chunkedIds = arrayToChunkedArray(ids, batchSize);
+        for await (const idsBatch of chunkedIds) {
+            const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: idsBatch, include_docs: true, limit: 100 });
+            this.replicationResultProcessor.enqueueAll(ret.rows.map(doc => doc.doc));
+            await this.replicationResultProcessor.waitForPipeline();
         }
+
     }
 
     databaseQueueCount = reactiveSource(0);
@@ -1953,6 +2008,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
     async syncAllFiles(showingNotice?: boolean) {
         // synchronize all files between database and storage.
+        if (!this.settings.isConfigured) {
+            if (showingNotice) {
+                Logger("LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.", LOG_LEVEL_NOTICE, "syncAll");
+            }
+            return;
+        }
         let initialScan = false;
         if (showingNotice) {
             Logger("Initializing", LOG_LEVEL_NOTICE, "syncAll");

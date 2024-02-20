@@ -34,13 +34,15 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 
 [![LiveSync Setup onto Fly.io SpeedRun 2024 using Google Colab](https://img.youtube.com/vi/7sa_I1832Xc/0.jpg)](https://www.youtube.com/watch?v=7sa_I1832Xc)
 
-- [Setup CouchDB on fly.io](docs/setup_flyio.md)
+1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
+2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
 
 ### Manually Setup
 
-1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
-2. [Setup your CouchDB](docs/setup_own_server.md)
-3. [Configure plug-in](docs/quick_setup.md)
+1. Setup the server
+   1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
+   2. [Setup your CouchDB](docs/setup_own_server.md)
+2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
 
 > [!TIP]
 > We are still able to use IBM Cloudant. However, it is not recommended for several reasons nowadays. Here is [Setup IBM Cloudant](docs/setup_cloudant.md)

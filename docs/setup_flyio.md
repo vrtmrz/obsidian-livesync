@@ -28,8 +28,10 @@ This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 2. Press the `Open in Colab` button.
 3. Choose a region and run all blocks (Refer to video).
    1. If you do not have the account yet, the sign-up page will be shown, please follow the instructions. The [Official document is here](https://fly.io/docs/hands-on/sign-up/).
-4. Copy the Setup-URI and open it in the Obsidian.
-5. You have been synchronised. Open the Setup-URI in subsequent devices.
+4. Copy the Setup-URI and Use it in the Obsidian.
+5. You have been synchronised. Use the Setup-URI in subsequent devices.
+
+Steps 4 and 5 are detailed in the [Quick Setup](./quick_setup.md#1-using-setup-uris).
 
 > [!NOTE]
 > Your automatically configured configurations will be shown on the result in the Colab note like below, and **it will not be saved**. Please make a note of it somewhere.
@@ -240,8 +242,8 @@ Note: Each of these should also be repeated until finished in 200.
 
 #### 6. Use it from Self-hosted LiveSync
 
-Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-hosted LiveSync. `Database name` could be anything you want.
-`Enhance chunk size` could be up to around `100`.
+Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-hosted LiveSync. The `Database name` could be anything you want.
+Please refer to the [Minimal Setup of the Quick Setup](./quick_setup.md#2-minimal-setup).
 
 ## Delete the Instance
 

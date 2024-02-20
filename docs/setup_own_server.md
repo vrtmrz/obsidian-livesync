@@ -113,7 +113,7 @@ obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b2
 ### 2. Setup Self-hosted LiveSync to Obsidian
 [This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 1. Install Self-hosted LiveSync
-2. Choose `Open the Setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
+2. Choose `Use the copied setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
 3. Type `welcome` for setup-uri passphrase.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
 5. `Reload app without save` once.

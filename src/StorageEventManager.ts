@@ -91,6 +91,8 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Cache file and waiting to can be proceed.
     async appendWatchEvent(params: { type: FileEventType, file: TAbstractFile | InternalFileInfo, oldPath?: string }[], ctx?: any) {
+        if (!this.plugin.settings.isConfigured) return;
+        if (this.plugin.settings.suspendFileWatching) return;
         for (const param of params) {
             if (shouldBeIgnored(param.file.path)) {
                 continue;
@@ -106,7 +108,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             }
             if (file instanceof TFolder) continue;
             if (!await this.plugin.isTargetFile(file.path)) continue;
-            if (this.plugin.settings.suspendFileWatching) continue;
 
             let cache: null | string | ArrayBuffer;
             // new file or something changed, cache the changes.

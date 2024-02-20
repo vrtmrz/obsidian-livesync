@@ -5,7 +5,7 @@ import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { askSelectString, askYesNo, askString } from "./utils";
 import { decrypt, encrypt } from "./lib/src/e2ee_v2";
 import { LiveSyncCommands } from "./LiveSyncCommands";
-import { delay } from "./lib/src/utils";
+import { delay, fireAndForget } from "./lib/src/utils";
 import { confirmWithMessage } from "./dialogs";
 import { Platform } from "./deps";
 import { fetchAllUsedChunks } from "./lib/src/utils_couchdb";
@@ -17,25 +17,25 @@ export class SetupLiveSync extends LiveSyncCommands {
 
         this.plugin.addCommand({
             id: "livesync-copysetupuri",
-            name: "Copy the setup URI",
-            callback: this.command_copySetupURI.bind(this),
+            name: "Copy settings as a new setup URI",
+            callback: () => fireAndForget(this.command_copySetupURI()),
         });
         this.plugin.addCommand({
             id: "livesync-copysetupuri-short",
-            name: "Copy the setup URI (With customization sync)",
-            callback: this.command_copySetupURIWithSync.bind(this),
+            name: "Copy settings as a new setup URI (With customization sync)",
+            callback: () => fireAndForget(this.command_copySetupURIWithSync()),
         });
 
         this.plugin.addCommand({
             id: "livesync-copysetupurifull",
-            name: "Copy the setup URI (Full)",
-            callback: this.command_copySetupURIFull.bind(this),
+            name: "Copy settings as a new setup URI (Full)",
+            callback: () => fireAndForget(this.command_copySetupURIFull()),
         });
 
         this.plugin.addCommand({
             id: "livesync-opensetupuri",
-            name: "Open the setup URI",
-            callback: this.command_openSetupURI.bind(this),
+            name: "Use the copied setup URI (Formerly Open setup URI)",
+            callback: () => fireAndForget(this.command_openSetupURI()),
         });
     }
     onInitializeDatabase(showNotice: boolean) { }
@@ -76,7 +76,7 @@ export class SetupLiveSync extends LiveSyncCommands {
         Logger("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
     }
     async command_copySetupURIWithSync() {
-        this.command_copySetupURI(false);
+        await this.command_copySetupURI(false);
     }
     async command_openSetupURI() {
         const setupURI = await askString(this.app, "Easy setup", "Set up URI", `${configURIBase}aaaaa`);
@@ -108,6 +108,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                     newSettingW.configPassphraseStore = "";
                     newSettingW.encryptedPassphrase = "";
                     newSettingW.encryptedCouchDBConnection = "";
+                    newSettingW.additionalSuffixOfDatabaseName = `${("appId" in this.app ? this.app.appId : "")}`
                     const setupJustImport = "Just import setting";
                     const setupAsNew = "Set it up as secondary or subsequent device";
                     const setupAsMerge = "Secondary device but try keeping local changes";
@@ -115,6 +116,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                     const setupManually = "Leave everything to me";
                     newSettingW.syncInternalFiles = false;
                     newSettingW.usePluginSync = false;
+                    newSettingW.isConfigured = true;
                     // Migrate completely obsoleted configuration.
                     if (!newSettingW.useIndexedDBAdapter) {
                         newSettingW.useIndexedDBAdapter = true;
@@ -333,9 +335,17 @@ Of course, we are able to disable these features.`
 
             const ret = await confirmWithMessage(this.plugin, "Database adapter", message, choices, CHOICE_YES, 10);
             if (ret == CHOICE_YES) {
-                this.plugin.settings.useIndexedDBAdapter = false;
+                this.plugin.settings.useIndexedDBAdapter = true;
             }
         }
+    }
+    async resetLocalDatabase() {
+        if (this.plugin.settings.isConfigured && this.plugin.settings.additionalSuffixOfDatabaseName == "") {
+            // Discard the non-suffixed database
+            await this.plugin.resetLocalDatabase();
+        }
+        this.plugin.settings.additionalSuffixOfDatabaseName = `${("appId" in this.app ? this.app.appId : "")}`
+        await this.plugin.resetLocalDatabase();
     }
     async fetchRemoteChunks() {
         if (!this.plugin.settings.doNotSuspendOnFetching && this.plugin.settings.readChunksOnline) {
@@ -351,10 +361,11 @@ Of course, we are able to disable these features.`
     }
     async fetchLocal() {
         this.suspendExtraSync();
-        this.askUseNewAdapter();
+        await this.askUseNewAdapter();
+        this.plugin.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
         await this.plugin.realizeSettingSyncMode();
-        await this.plugin.resetLocalDatabase();
+        await this.resetLocalDatabase();
         await delay(1000);
         await this.plugin.markRemoteResolved();
         await this.plugin.openDatabase();
@@ -369,10 +380,11 @@ Of course, we are able to disable these features.`
     }
     async fetchLocalWithKeepLocal() {
         this.suspendExtraSync();
-        this.askUseNewAdapter();
+        await this.askUseNewAdapter();
+        this.plugin.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
         await this.plugin.realizeSettingSyncMode();
-        await this.plugin.resetLocalDatabase();
+        await this.resetLocalDatabase();
         await delay(1000);
         await this.plugin.initializeDatabase(true);
         await this.plugin.markRemoteResolved();
@@ -388,6 +400,7 @@ Of course, we are able to disable these features.`
     }
     async rebuildRemote() {
         this.suspendExtraSync();
+        this.plugin.settings.isConfigured = true;
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.markRemoteLocked();
         await this.plugin.tryResetRemoteDatabase();
@@ -401,9 +414,10 @@ Of course, we are able to disable these features.`
     }
     async rebuildEverything() {
         this.suspendExtraSync();
-        this.askUseNewAdapter();
+        await this.askUseNewAdapter();
+        this.plugin.settings.isConfigured = true;
         await this.plugin.realizeSettingSyncMode();
-        await this.plugin.resetLocalDatabase();
+        await this.resetLocalDatabase();
         await delay(1000);
         await this.plugin.initializeDatabase(true);
         await this.plugin.markRemoteLocked();

@@ -2,34 +2,51 @@
 
 [Japanese docs](./quick_setup_ja.md) - [Chinese docs](./quick_setup_cn.md).
 
-The plugin has so many configuration options to deal with different circumstances. However, there are not so many settings that are actually used. Therefore, `The Setup wizard` has been implemented to simplify the initial setup.
-
-Note: Subsequent devices are recommended to be set up using the `Copy setup URI` and `Open setup URI`.
-
-## The Setup wizard
-Open the `🧙‍♂️ Setup wizard` in the settings dialogue. If the plugin has not been configured before, it should already be open.
+The plugin has so many configuration options to deal with different circumstances. However, only a few settings are required in the normal cases. Therefore, `The Setup wizard` has been implemented to simplify the setup.
 
 ![](../images/quick_setup_1.png)
 
-- Discard the existing configuration and set up  
-If you have changed any settings, this button allows you to discard all changes before setting up.
+There are three methods to set up Self-hosted LiveSync.
 
-- Do not discard the existing configuration and set up  
-Simply reconfigure. Be careful. In wizard mode, you cannot see all configuration items, even if they have been configured.
+1. [Using setup URIs](#1-using-setup-uris) *(Recommended)*
+2. [Minimal setup](#2-minimal-setup)
+3. [Full manually setup the and Enable on this dialogue](#3-manually-setup)
 
-Pressing `Next` on one of the above options will put the configuration dialog into wizard mode.
+## At the first device
 
-### Wizard mode
+### 1. Using setup URIs
+
+> [!TIP] What is the setup URI? Why is it required?
+> The setup URI is the encrypted representation of Self-hosted LiveSync configuration as a URI. This starts `obsidian://setuplivesync?settings=`. This is encrypted with a passphrase, so that it can be shared relatively securely between devices. It is a bit long, but it is one line. This allows a series of settings to be set at once without any inconsistencies. 
+> 
+> If you have configured the remote database by [Automated setup on Fly.io](./setup_flyio.md#a-very-automated-setup) or [set up your server with the tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server), **you should have one of them** 
+
+In this procedure, [this video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
+
+1. Click `Use` button (Or launch `Use the copied setup URI` from Command palette).
+2. Paste the Setup URI into the dialogue
+3. Type the passphrase of the Setup URI
+4. Answer `yes` for `Importing LiveSync's conf, OK?`.
+5. Answer `Set it up as secondary or subsequent device` for `How would you like to set it up?`.
+6. Initialisation will begin, please hold a while.
+7. You will asked about the hidden file synchronisation, answer as you like.
+   1. If you are new to Self-hosted LiveSync, we can configure it later so leave it once.
+8. Synchronisation has been started! `Reload app without saving` is recommended after the indicators of Self-hosted LiveSync disappear.
+
+OK, we can proceed the [next step](#).
+
+### 2. Minimal setup
+
+If you do not have any setup URI, Press the `start` button. The setting dialogue turns into the wizard mode and will display only minimal items.
+
+>[!TIP]
+> We can generate the setup URI with the tool in any time. Please use [this tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server).
 
 ![](../images/quick_setup_2.png)
 
-Let's see how to use it step-by-step.
+#### Remote database configuration 
 
-## Remote Database configuration
-
-### Remote database configuration 
-
-Enter the information for the database we have set up.  
+1. Enter the information for the database we have set up.
 
 ![](../images/quick_setup_3.png)  
 
@@ -37,13 +54,9 @@ Enter the information for the database we have set up.
 #### Test database connection and Check database configuration
 
 We can check the connectivity to the database, and the database settings.
-
 ![](../images/quick_setup_5.png)  
 
-#### Test Database Connection
-Check whether we can connect to the database. If it fails, there are several possible reasons, but first attempt the `Check database configuration` check to see if it fails there too.
-
-#### Check database configuration
+#### Check and Fix database configuration
 
 Check the database settings and fix any problems on the spot.
 
@@ -52,40 +65,43 @@ Check the database settings and fix any problems on the spot.
 This item may vary depending on the connection. In the above case, press all three Fix buttons.  
 If the Fix buttons disappear and all become check marks, we are done.
 
-
-### Confidentiality configuration
+#### Confidentiality configuration (Optional but very preferred)
 
 ![](../images/quick_setup_4.png)
 
-Encrypt your database in case of unintended database exposure; enable End to End encryption and the contents of your notes will be encrypted at the moment it leaves the device. We strongly recommend enabling it. And `Path Obfuscation` also obfuscates filenames. Now stable and recommended.  
-Encryption is based on 256-bit AES-GCM.  
+Enable End-to-end encryption and the contents of your notes will be encrypted at the moment it leaves the device. We strongly recommend enabling it. And `Path Obfuscation` also obfuscates filenames. Now stable and recommended.
+
 These setting can be disabled if you are inside a closed network and it is clear that you will not be accessed by third parties.
 
-![](../images/quick_setup_7.png)
+> [!TIP]
+> Encryption is based on 256-bit AES-GCM.  
 
-#### Next 
-Go to the Sync Settings.
+We should proceed to the Next step.
 
-#### Discard existing database and proceed
-Discard the contents of the Remote database and go to the Sync Settings.
-
-### Sync Settings
+#### Sync Settings
 Finally, finish the wizard by selecting a preset for synchronisation.
 
 ![](../images/quick_setup_9_1.png)
 
-Select any synchronisation methods we want to use and `Apply` to initialise and build the local and remote databases as required. If `All done!` is displayed, we are done. Automatically, `Copy setup URI` will open and we will be asked for a passphrase to encrypt the `Setup URI`.
+Select any synchronisation methods we want to use and `Apply`. If database initialisation is required, it will be performed at this time. When `All done!` is displayed, we are ready to synchronise.
+
+The dialogue of `Copy settings as a new setup URI` will be open automatically. Please input a passphrase to encrypt the new `Setup URI`. (This passphrase is to encrypt the setup URI, not the vault).
 
 ![](../images/quick_setup_10.png)
 
-Set the passphrase as you like.  
-The Setup URI will be copied to the clipboard, which you can then transfer to the second and subsequent devices in some way.
+The Setup URI will be copied to the clipboard, please make a note(Not in Obsidian) of this.
 
-# How to set up the second and subsequent units
-After installing Self-hosted LiveSync on the first device, select `Open setup URI` from the command palette and enter the setup URI you transferred. Afterwards, enter your passphrase and a setup wizard will open.  
-Answer the following.
+>[!TIP]
+We can copy this in any time by `Copy current settings as a new setup URI`.
 
-- `Yes` to `Importing LiveSync's conf, OK?`
-- `Set it up as secondary or subsequent device` to `How would you like to set it up?`.
+### 3. Manually setup
 
-Then, The configuration will take effect and replication will start. Your files will be synchronised soon! You may need to close the settings dialog and reopen it to see the settings fields populated properly, but they will be set.
+It is strongly recommended to perform a "minimal set-up" first and set up the other contents after making sure has been synchronised.
+
+However, if you have some specific reasons to configure it manually, please click the `Enable` button of `Enable LiveSync on this device as the set-up was completed manually`.
+And, please copy the setup URI by `Copy current settings as a new setup URI` and make a note(Not in Obsidian) of this.
+
+## At the subsequent device
+After installing Self-hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
+
+It is completely same as [Using setup URIs on the first device](#1-using-setup-uris). Please refer it.

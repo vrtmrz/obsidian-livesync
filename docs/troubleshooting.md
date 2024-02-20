@@ -14,7 +14,15 @@
 - Fixed at: v0.21.2 (Fixed but not reviewed)
 - Required action: larger files will not be fixed automatically, please perform `Verify and repair all files`. If our local database and storage are not matched, we will be asked to apply which one.
 
-<!-- Add here -->
+### Some setting name has been changed
+- Fixed at: v0.22.6
+
+| Previous name                | New name                                 |
+| ---------------------------- | ---------------------------------------- |
+| Open setup URI               | Use the copied setup URI                 |
+| Copy setup URI               | Copy current settings as a new setup URI |
+| Setup Wizard                 | Minimal Setup                            |
+| Check database configuration | Check and Fix database configuration     |
 
 ## FAQ
 
