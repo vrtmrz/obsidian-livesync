@@ -10,6 +10,25 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.6
+  - Fixed:
+    - Fixed a problem with synchronisation taking a long time to start in some cases.
+      - The first synchronisation after update might take a bit longer.
+    - Now we can disable E2EE encryption.
+  - Improved:
+    - `Setup Wizard` is now more clear.
+    - `Minimal Setup` is now more simple.
+    - Self-hosted LiveSync now be able to use even if there are vaults with the same name.
+      - Database suffix will automatically added.
+    - Now Self-hosted LiveSync waits until set-up is complete.
+    - Show reload prompts when possibly recommended while settings.
+  - New feature:
+    - A guidance dialogue prompting for settings will be shown after the installation.
+  - Changed
+    - `Open setup URI` is now `Use the copied setup URI`
+    - `Copy setup URI` is now `Copy current settings as a new setup URI`
+    - `Setup Wizard` is now `Minimal Setup`
+    - `Check database configuration` is now `Check and Fix database configuration`
 - 0.22.5
   - Fixed:
     - Some description of settings have been refined
