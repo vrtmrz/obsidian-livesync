@@ -1,5 +1,5 @@
 import { normalizePath, type PluginManifest } from "./deps";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
 import { createBinaryBlob, isDocContentSame, sendSignal } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
@@ -102,11 +102,13 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
         const stat = await this.vaultAccess.adapterStat(path);
         // sometimes folder is coming.
-        if (stat && stat.type != "file")
+        if (stat != null && stat.type != "file") {
             return;
-        const storageMTime = ~~((stat && stat.mtime || 0) / 1000);
+        }
+        const mtime = stat == null ? 0 : stat?.mtime ?? 0;
+        const storageMTime = ~~((mtime) / 1000);
         const key = `${path}-${storageMTime}`;
-        if (this.recentProcessedInternalFiles.contains(key)) {
+        if (mtime != 0 && this.recentProcessedInternalFiles.contains(key)) {
             //If recently processed, it may caused by self.
             return;
         }
@@ -150,6 +152,27 @@ export class HiddenFileSync extends LiveSyncCommands {
         await this.conflictResolutionProcessor.startPipeline().waitForPipeline();
     }
 
+    async resolveByNewerEntry(id: DocumentID, path: FilePathWithPrefix, currentDoc: EntryDoc, currentRev: string, conflictedRev: string) {
+        const conflictedDoc = await this.localDatabase.getRaw(id, { rev: conflictedRev });
+        // determine which revision should been deleted.
+        // simply check modified time
+        const mtimeCurrent = ("mtime" in currentDoc && currentDoc.mtime) || 0;
+        const mtimeConflicted = ("mtime" in conflictedDoc && conflictedDoc.mtime) || 0;
+        // Logger(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
+        // console.log(`mtime:${mtimeA} - ${mtimeB}`);
+        const delRev = mtimeCurrent < mtimeConflicted ? currentRev : conflictedRev;
+        // delete older one.
+        await this.localDatabase.removeRevision(id, delRev);
+        Logger(`Older one has been deleted:${path}`);
+        const cc = await this.localDatabase.getRaw(id, { conflicts: true });
+        if (cc._conflicts.length == 0) {
+            await this.extractInternalFileFromDatabase(stripAllPrefixes(path))
+        } else {
+            this.conflictResolutionProcessor.enqueue(path);
+        }
+        // check the file again
+
+    }
     conflictResolutionProcessor = new QueueProcessor(async (paths: FilePathWithPrefix[]) => {
         const path = paths[0];
         sendSignal(`cancel-internal-conflict:${path}`);
@@ -185,27 +208,16 @@ export class HiddenFileSync extends LiveSyncCommands {
                     const stat = await this.vaultAccess.adapterStat(filename);
                     await this.storeInternalFileToDatabase({ path: filename, ...stat });
                     await this.extractInternalFileFromDatabase(filename);
-                    await this.localDatabase.removeRaw(id, revB);
+                    await this.localDatabase.removeRevision(id, revB);
                     this.conflictResolutionProcessor.enqueue(path);
                     return;
                 } else {
                     Logger(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                 }
-                return [{ path, revA, revB }];
+                return [{ path, revA, revB, id, doc }];
             }
-            const revBDoc = await this.localDatabase.getRaw(id, { rev: revB });
-            // determine which revision should been deleted.
-            // simply check modified time
-            const mtimeA = ("mtime" in doc && doc.mtime) || 0;
-            const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
-            // Logger(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
-            // console.log(`mtime:${mtimeA} - ${mtimeB}`);
-            const delRev = mtimeA < mtimeB ? revA : revB;
-            // delete older one.
-            await this.localDatabase.removeRaw(id, delRev);
-            Logger(`Older one has been deleted:${path}`);
-            // check the file again 
-            this.conflictResolutionProcessor.enqueue(path);
+            // When not JSON file, resolve conflicts by choosing a newer one.
+            await this.resolveByNewerEntry(id, path, doc, revA, revB);
             return;
         } catch (ex) {
             Logger(`Failed to resolve conflict (Hidden): ${path}`);
@@ -215,7 +227,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     }, {
         suspended: false, batchSize: 1, concurrentLimit: 5, delay: 10, keepResultUntilDownstreamConnected: true, yieldThreshold: 10,
         pipeTo: new QueueProcessor(async (results) => {
-            const { path, revA, revB } = results[0]
+            const { id, doc, path, revA, revB } = results[0];
             const docAMerge = await this.localDatabase.getDBEntry(path, { rev: revA });
             const docBMerge = await this.localDatabase.getDBEntry(path, { rev: revB });
             if (docAMerge != false && docBMerge != false) {
@@ -224,6 +236,9 @@ export class HiddenFileSync extends LiveSyncCommands {
                     this.conflictResolutionProcessor.enqueue(path);
                 }
                 return;
+            } else {
+                // If either revision could not read, force resolving by the newer one.
+                await this.resolveByNewerEntry(id, path, doc, revA, revB);
             }
         }, { suspended: false, batchSize: 1, concurrentLimit: 1, delay: 10, keepResultUntilDownstreamConnected: false, yieldThreshold: 10 })
     })
@@ -361,7 +376,11 @@ export class HiddenFileSync extends LiveSyncCommands {
                         }
                     }
                 } else if (xFileOnStorage && !xFileOnDatabase) {
-                    await this.storeInternalFileToDatabase(xFileOnStorage);
+                    if (direction == "push" || direction == "pushForce" || direction == "safe") {
+                        await this.storeInternalFileToDatabase(xFileOnStorage);
+                    } else {
+                        await this.extractInternalFileFromDatabase(xFileOnStorage.path);
+                    }
                 } else {
                     throw new Error("Invalid state on hidden file sync");
                     // Something corrupted?
@@ -513,6 +532,14 @@ export class HiddenFileSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 } else {
+                    // Remove all conflicted before deleting.
+                    const conflicts = await this.localDatabase.getRaw(old._id, { conflicts: true });
+                    if ("_conflicts" in conflicts) {
+                        for (const conflictRev of conflicts._conflicts) {
+                            await this.localDatabase.removeRevision(old._id, conflictRev);
+                            Logger(`STORAGE -x> DB:${filename}: (hidden) conflict removed ${old._rev} =>  ${conflictRev}`, LOG_LEVEL_VERBOSE);
+                        }
+                    }
                     if (old.deleted) {
                         Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
                         return;
@@ -546,8 +573,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return await serialized("file-" + prefixedFileName, async () => {
             try {
                 // Check conflicted status 
-                //TODO option
-                const fileOnDB = await this.localDatabase.getDBEntry(prefixedFileName, { conflicts: true }, false, true);
+                const fileOnDB = await this.localDatabase.getDBEntry(prefixedFileName, { conflicts: true }, false, true, true);
                 if (fileOnDB === false)
                     throw new Error(`File not found on database.:${filename}`);
                 // Prevent overwrite for Prevent overwriting while some conflicted revision exists.
@@ -555,7 +581,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     Logger(`Hidden file ${filename} has conflicted revisions, to keep in safe, writing to storage has been prevented`, LOG_LEVEL_INFO);
                     return;
                 }
-                const deleted = "deleted" in fileOnDB ? fileOnDB.deleted : false;
+                const deleted = fileOnDB.deleted || fileOnDB._deleted || false;
                 if (deleted) {
                     if (!isExists) {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);

@@ -21,6 +21,7 @@ function isComparableTextDecode(path: string) {
     return ["json"].includes(ext)
 }
 function readDocument(w: LoadedEntry) {
+    if (w.data.length == 0) return "";
     if (isImage(w.path)) {
         return new Uint8Array(decodeBinary(w.data));
     }
@@ -71,7 +72,7 @@ export class DocumentHistoryModal extends Modal {
         }
         const db = this.plugin.localDatabase;
         try {
-            const w = await db.localDatabase.get(this.id, { revs_info: true });
+            const w = await db.getRaw(this.id, { revs_info: true });
             this.revs_info = w._revs_info?.filter((e) => e?.status == "available") ?? [];
             this.range.max = `${Math.max(this.revs_info.length - 1, 0)}`;
             this.range.value = this.range.max;

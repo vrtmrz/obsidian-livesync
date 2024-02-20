@@ -2864,7 +2864,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
         const delRev = mtimeA < mtimeB ? revA : revB;
         // delete older one.
-        await this.localDatabase.removeRaw(id, delRev);
+        await this.localDatabase.removeRevision(id, delRev);
         Logger(`Older one has been deleted:${this.getPath(doc)}`);
         return true;
     }
