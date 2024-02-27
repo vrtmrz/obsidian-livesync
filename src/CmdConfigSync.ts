@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { Notice, type PluginManifest, parseYaml, normalizePath } from "./deps";
+import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles } from "./deps";
 
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
@@ -814,7 +814,14 @@ export class ConfigSync extends LiveSyncCommands {
         lastDepth: number
     ) {
         if (lastDepth == -1) return [];
-        const w = await this.app.vault.adapter.list(path);
+        let w: ListedFiles;
+        try {
+            w = await this.app.vault.adapter.list(path);
+        } catch (ex) {
+            Logger(`Could not traverse(ConfigSync):${path}`, LOG_LEVEL_INFO);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+            return [];
+        }
         let files = [
             ...w.files
         ];

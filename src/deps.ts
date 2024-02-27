@@ -4,7 +4,7 @@ export {
     addIcon, App, debounce, Editor, FuzzySuggestModal, MarkdownRenderer, MarkdownView, Modal, Notice, Platform, Plugin, PluginSettingTab, requestUrl, sanitizeHTMLToDom, Setting, stringifyYaml, TAbstractFile, TextAreaComponent, TFile, TFolder,
     parseYaml, ItemView, WorkspaceLeaf
 } from "obsidian";
-export type { DataWriteOptions, PluginManifest, RequestUrlParam, RequestUrlResponse, MarkdownFileInfo } from "obsidian";
+export type { DataWriteOptions, PluginManifest, RequestUrlParam, RequestUrlResponse, MarkdownFileInfo, ListedFiles } from "obsidian";
 import {
     normalizePath as normalizePath_
 } from "obsidian";

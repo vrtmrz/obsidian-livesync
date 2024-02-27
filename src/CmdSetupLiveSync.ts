@@ -367,8 +367,8 @@ Of course, we are able to disable these features.`
         await this.plugin.realizeSettingSyncMode();
         await this.resetLocalDatabase();
         await delay(1000);
-        await this.plugin.markRemoteResolved();
         await this.plugin.openDatabase();
+        await this.plugin.markRemoteResolved();
         this.plugin.isReady = true;
         await delay(500);
         await this.plugin.replicateAllFromServer(true);
@@ -387,8 +387,8 @@ Of course, we are able to disable these features.`
         await this.resetLocalDatabase();
         await delay(1000);
         await this.plugin.initializeDatabase(true);
-        await this.plugin.markRemoteResolved();
         await this.plugin.openDatabase();
+        await this.plugin.markRemoteResolved();
         this.plugin.isReady = true;
         await delay(500);
         await this.plugin.replicateAllFromServer(true);

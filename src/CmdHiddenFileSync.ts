@@ -1,4 +1,4 @@
-import { normalizePath, type PluginManifest } from "./deps";
+import { normalizePath, type PluginManifest, type ListedFiles } from "./deps";
 import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
 import { createBinaryBlob, isDocContentSame, sendSignal } from "./lib/src/utils";
@@ -735,8 +735,14 @@ export class HiddenFileSync extends LiveSyncCommands {
         filter: RegExp[],
         ignoreFilter: RegExp[]
     ) {
-
-        const w = await this.app.vault.adapter.list(path);
+        let w: ListedFiles;
+        try {
+            w = await this.app.vault.adapter.list(path);
+        } catch (ex) {
+            Logger(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+            return [];
+        }
         const filesSrc = [
             ...w.files
                 .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))

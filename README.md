@@ -1,4 +1,4 @@
-<!-- For translation: 20240209r0 -->
+<!-- For translation: 20240227r0 -->
 # Self-hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
@@ -12,7 +12,7 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 
 - Synchronize vaults very efficiently with less traffic.
 - Good at conflicted modification.
-- Automatic merging for simple conflicts.
+  - Automatic merging for simple conflicts.
 - Using OSS solution for the server.
   - Compatible solutions can be used.
 - Supporting End-to-end encryption.
@@ -50,8 +50,10 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 
 ## Information in StatusBar
 
-Synchronization status is shown in statusbar.
+Synchronization status is shown in the status bar with the following icons.
 
+-   Activity Indicator
+    -   📲 Network request
 -   Status
     -   ⏹️ Stopped
     -   💤 LiveSync enabled. Waiting for changes
@@ -70,7 +72,7 @@ Synchronization status is shown in statusbar.
      -   🧩 Waiting chunks
      -   🔌 Working Customisation items (Configuration, snippets, and plug-ins)
 
-To prevent file and database corruption, please wait until all progress indicators have disappeared. Especially in case of if you have deleted or renamed files.
+To prevent file and database corruption, please wait to stop Obsidian until all progress indicators have disappeared as possible (The plugin will also try to resume, though). Especially in case of if you have deleted or renamed files.
 
 
 
@@ -79,4 +81,4 @@ If you are having problems getting the plugin working see: [Tips and Troubleshoo
 
 ## License
 
-The source code is licensed under the MIT License.
+Licensed under the MIT License.
