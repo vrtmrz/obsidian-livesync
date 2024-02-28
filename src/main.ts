@@ -84,7 +84,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this._suspended = value;
     }
     deviceAndVaultName = "";
-    isMobile = false;
     isReady = false;
     packageVersion = "";
     manifestVersion = "";
@@ -248,6 +247,22 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
     }
 
+    get isMobile() {
+        // @ts-ignore: internal API
+        return this.app.isMobile
+    }
+
+    get vaultName() {
+        return this.app.vault.getName()
+    }
+    getActiveFile() {
+        return this.app.workspace.getActiveFile();
+    }
+
+    get appId() {
+        return `${("appId" in this.app ? this.app.appId : "")}`;
+    }
+
     id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
         const tempId = id2path(id, entry);
         if (stripPrefix && isInternalMetadata(tempId)) {
@@ -309,13 +324,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     // end interfaces
 
     getVaultName(): string {
-        return this.app.vault.getName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
-    }
-
-    setInterval(handler: () => any, timeout?: number): number {
-        const timer = window.setInterval(handler, timeout);
-        this.registerInterval(timer);
-        return timer;
+        return this.vaultName + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
     }
 
     isFlagFileExist(path: string) {
@@ -361,7 +370,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map(e => e.dispPath);
-        const target = await askSelectString(this.app, "File to view History", notesList);
+        const target = await this.askSelectString("File to view History", notesList);
         if (target) {
             const targetId = notes.find(e => e.dispPath == target);
             this.showHistory(targetId.path, targetId.id);
@@ -379,7 +388,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             Logger("There are no conflicted documents", LOG_LEVEL_NOTICE);
             return false;
         }
-        const target = await askSelectString(this.app, "File to resolve conflict", notesList);
+        const target = await this.askSelectString("File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find(e => e.dispPath == target);
             this.resolveConflicted(targetItem.path);
@@ -458,10 +467,7 @@ Click anywhere to stop counting down.
             const ret = await confirmWithMessage(this, "Welcome to Self-hosted LiveSync", message, [USE_SETUP, OPEN_SETUP, DISMISS], DISMISS, 40);
             if (ret === OPEN_SETUP) {
                 try {
-                    //@ts-ignore: undocumented api
-                    this.app.setting.open();
-                    //@ts-ignore: undocumented api
-                    this.app.setting.openTabById("obsidian-livesync");
+                    this.openSetting();
                 } catch (ex) {
                     Logger("Something went wrong on opening setting dialog, please open it manually", LOG_LEVEL_NOTICE);
                 }
@@ -482,22 +488,20 @@ Click anywhere to stop counting down.
                     Logger(`${FLAGMD_REDFLAG2} or ${FLAGMD_REDFLAG2_HR} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.rebuildEverything();
                     await this.deleteRedFlag2();
-                    if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                    if (await this.askYesNo("Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
                         this.settings.suspendFileWatching = false;
                         await this.saveSettings();
-                        // @ts-ignore
-                        this.app.commands.executeCommandById("app:reload")
+                        this.performAppReload();
                     }
                 } else if (this.isRedFlag3Raised()) {
                     Logger(`${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
                     await this.addOnSetup.fetchLocal();
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
-                        if (await askYesNo(this.app, "Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
+                        if (await this.askYesNo("Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
                             this.settings.suspendFileWatching = false;
                             await this.saveSettings();
-                            // @ts-ignore
-                            this.app.commands.executeCommandById("app:reload")
+                            this.performAppReload();
                         }
                     }
                 } else {
@@ -546,8 +550,7 @@ Click anywhere to stop counting down.
             this.askInPopup(`conflicting-detected-on-safety`, `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`, (anchor) => {
                 anchor.text = "HERE";
                 anchor.addEventListener("click", () => {
-                    // @ts-ignore
-                    this.app.commands.executeCommandById("obsidian-livesync:livesync-all-conflictcheck");
+                    this.performCommand("obsidian-livesync:livesync-all-conflictcheck");
                 });
             }
             );
@@ -629,7 +632,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             //     this.localDatabase.getDBEntry(getPathFromTFile(file), {}, true, false);
             // },
             callback: () => {
-                const file = this.app.workspace.getActiveFile();
+                const file = this.getActiveFile();
                 if (!file) return;
                 this.localDatabase.getDBEntry(getPathFromTFile(file), {}, true, false);
             },
@@ -678,7 +681,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             id: "livesync-history",
             name: "Show history",
             callback: () => {
-                const file = this.app.workspace.getActiveFile();
+                const file = this.getActiveFile();
                 if (file) this.showHistory(file, null);
             }
         });
@@ -791,8 +794,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
 
         //@ts-ignore
-        if (this.app.isMobile) {
-            this.isMobile = true;
+        if (this.isMobile) {
             this.settings.disableRequestURI = true;
         }
         if (last_version && Number(last_version) < VER) {
@@ -869,8 +871,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         const vaultName = this.getVaultName();
         Logger("Waiting for ready...");
-        //@ts-ignore
-        this.isMobile = this.app.isMobile;
         this.localDatabase = new LiveSyncLocalDB(vaultName, this);
         initializeStores(vaultName);
         return await this.localDatabase.initializeDatabase();
@@ -933,7 +933,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             if (JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)) {
                 settings.isConfigured = true;
             } else {
-                settings.additionalSuffixOfDatabaseName = `${("appId" in this.app ? this.app.appId : "")}`
+                settings.additionalSuffixOfDatabaseName = this.appId;
                 settings.isConfigured = false;
             }
         }
@@ -1057,7 +1057,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     async parseSettingFromMarkdown(filename: string, data?: string) {
-        const file = this.app.vault.getAbstractFileByPath(filename);
+        const file = this.vaultAccess.getAbstractFileByPath(filename);
         if (!(file instanceof TFile)) return {
             preamble: "",
             body: "",
@@ -1066,7 +1066,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         if (data) {
             return this.extractSettingFromWholeText(data);
         }
-        const parseData = data ?? await this.app.vault.read(file);
+        const parseData = data ?? await this.vaultAccess.vaultRead(file);
         return this.extractSettingFromWholeText(parseData);
     }
 
@@ -1115,7 +1115,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
                 const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
                 const CANCEL = "Cancel";
-                const result = await askSelectString(this.app, "Ready for apply the setting.", [APPLY_AND_RESTART, APPLY_ONLY, APPLY_AND_FETCH, APPLY_AND_REBUILD, CANCEL]);
+                const result = await this.askSelectString("Ready for apply the setting.", [APPLY_AND_RESTART, APPLY_ONLY, APPLY_AND_FETCH, APPLY_AND_REBUILD, CANCEL]);
                 if (result == APPLY_ONLY || result == APPLY_AND_RESTART || result == APPLY_AND_REBUILD || result == APPLY_AND_FETCH) {
                     this.settings = settingToApply;
                     await this.saveSettingData();
@@ -1124,13 +1124,12 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                         return;
                     }
                     if (result == APPLY_AND_REBUILD) {
-                        await this.app.vault.create(FLAGMD_REDFLAG2_HR, "");
+                        await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
                     }
                     if (result == APPLY_AND_FETCH) {
-                        await this.app.vault.create(FLAGMD_REDFLAG3_HR, "");
+                        await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG3_HR, "");
                     }
-                    // @ts-ignore
-                    this.app.commands.executeCommandById("app:reload");
+                    this.performAppReload();
                 }
             }
             )
@@ -1150,11 +1149,11 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
     async saveSettingToMarkdown(filename: string) {
         const saveData = this.generateSettingForMarkdown();
-        let file = this.app.vault.getAbstractFileByPath(filename);
+        let file = this.vaultAccess.getAbstractFileByPath(filename);
 
 
         if (!file) {
-            await this.ensureDirectoryEx(filename);
+            await this.vaultAccess.ensureDirectory(filename);
             const initialContent = `This file contains Self-hosted LiveSync settings as YAML.
 Except for the \`livesync-setting\` code block, we can add a note for free.
 
@@ -1167,21 +1166,21 @@ We can perform a command in this file.
 
 
 `
-            file = await this.app.vault.create(filename, initialContent + SETTING_HEADER + "\n" + SETTING_FOOTER);
+            file = await this.vaultAccess.vaultCreate(filename, initialContent + SETTING_HEADER + "\n" + SETTING_FOOTER);
         }
         if (!(file instanceof TFile)) {
             Logger(`Markdown Setting: ${filename} already exists as a folder`, LOG_LEVEL_NOTICE);
             return;
         }
 
-        const data = await this.app.vault.read(file);
+        const data = await this.vaultAccess.vaultRead(file);
         const { preamble, body, postscript } = this.extractSettingFromWholeText(data);
         const newBody = stringifyYaml(saveData);
 
         if (newBody == body) {
             Logger("Markdown setting: Nothing had been changed", LOG_LEVEL_VERBOSE);
         } else {
-            await this.app.vault.modify(file, preamble + SETTING_HEADER + newBody + SETTING_FOOTER + postscript);
+            await this.vaultAccess.vaultModify(file, preamble + SETTING_HEADER + newBody + SETTING_FOOTER + postscript);
             Logger(`Markdown setting: ${filename} has been updated!`, LOG_LEVEL_VERBOSE);
         }
     }
@@ -1224,8 +1223,7 @@ We can perform a command in this file.
         const _this = this;
         //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
-            //@ts-ignore
-            _this.app.commands.executeCommandById('editor:save-file');
+            _this.performCommand('editor:save-file');
         };
     }
     registerWatchEvents() {
@@ -1234,7 +1232,6 @@ We can perform a command in this file.
         this.registerDomEvent(window, "online", this.watchOnline);
         this.registerDomEvent(window, "offline", this.watchOnline);
     }
-
 
     watchOnline() {
         scheduleTask("watch-online", 500, () => fireAndForget(() => this.watchOnlineAsync()));
@@ -1456,9 +1453,9 @@ We can perform a command in this file.
             const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
             const file = this.vaultAccess.getAbstractFileByPath(normalizePath(logDate));
             if (!file) {
-                this.app.vault.adapter.append(normalizePath(logDate), "```\n");
+                this.vaultAccess.adapterAppend(normalizePath(logDate), "```\n");
             }
-            this.app.vault.adapter.append(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
+            this.vaultAccess.adapterAppend(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
         recentLogProcessor.enqueue(newMessage);
 
@@ -1496,28 +1493,6 @@ We can perform a command in this file.
             })
         }
     }
-
-    async ensureDirectory(fullPath: string) {
-        const pathElements = fullPath.split("/");
-        pathElements.pop();
-        let c = "";
-        for (const v of pathElements) {
-            c += v;
-            try {
-                await this.app.vault.createFolder(c);
-            } catch (ex) {
-                // basically skip exceptions.
-                if (ex.message && ex.message == "Folder already exists.") {
-                    // especially this message is.
-                } else {
-                    Logger("Folder Create Error");
-                    Logger(ex);
-                }
-            }
-            c += "/";
-        }
-    }
-
     async processEntryDoc(docEntry: EntryBody, file: TFile | undefined, force?: boolean) {
         const mode = file == undefined ? "create" : "modify";
 
@@ -1577,7 +1552,7 @@ We can perform a command in this file.
             return;
         }
         const writeData = doc.datatype == "newnote" ? decodeBinary(doc.data) : getDocData(doc.data);
-        await this.ensureDirectoryEx(path);
+        await this.vaultAccess.ensureDirectory(path);
         try {
             let outFile;
             let isChanged = true;
@@ -1592,7 +1567,7 @@ We can perform a command in this file.
             if (isChanged) {
                 Logger(msg + path);
                 this.vaultAccess.touch(outFile);
-                this.app.vault.trigger(mode, outFile);
+                this.vaultAccess.trigger(mode, outFile);
             } else {
                 Logger(msg + "Skipped, the file is the same: " + path, LOG_LEVEL_VERBOSE);
             }
@@ -1626,7 +1601,7 @@ We can perform a command in this file.
     queueConflictCheck(file: FilePathWithPrefix | TFile) {
         const path = file instanceof TFile ? getPathFromTFile(file) : file;
         if (this.settings.checkConflictOnlyOnOpen) {
-            const af = this.app.workspace.getActiveFile();
+            const af = this.getActiveFile();
             if (af && af.path != path) {
                 Logger(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
                 return;
@@ -1927,7 +1902,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         const CHOICE_DISMISS = "Dismiss";
                         const ret = await confirmWithMessage(this, "Cleaned", message, [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS], CHOICE_DISMISS, 30);
                         if (ret == CHOICE_FETCH) {
-                            await performRebuildDB(this, "localOnly");
+                            await performRebuildDB(this, "localOnlyWithChunks");
                         }
                         if (ret == CHOICE_CLEAN) {
                             const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
@@ -1961,7 +1936,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     const CHOICE_DISMISS = "Dismiss";
                     const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
                     if (ret == CHOICE_FETCH) {
-                        await performRebuildDB(this, "localOnly");
+                        await performRebuildDB(this, "localOnlyWithChunks");
                     }
                 }
             }
@@ -2036,7 +2011,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         await this.collectDeletedFiles();
 
         Logger("Collecting local files on the storage", LOG_LEVEL_VERBOSE);
-        const filesStorageSrc = this.app.vault.getFiles();
+        const filesStorageSrc = this.vaultAccess.getFiles();
 
         const filesStorage = [] as typeof filesStorageSrc;
         for (const f of filesStorageSrc) {
@@ -2534,7 +2509,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 return;
             }
             if (this.settings.showMergeDialogOnlyOnActive) {
-                const af = this.app.workspace.getActiveFile();
+                const af = this.getActiveFile();
                 if (af && af.path != filename) {
                     Logger(`${filename} is conflicted. Merging process has been postponed to the file have got opened.`, LOG_LEVEL_NOTICE);
                     return;
@@ -2820,27 +2795,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
         await this.replicator.tryCreateRemoteDatabase(this.settings);
     }
 
-    async ensureDirectoryEx(fullPath: string) {
-        const pathElements = fullPath.split("/");
-        pathElements.pop();
-        let c = "";
-        for (const v of pathElements) {
-            c += v;
-            try {
-                await this.app.vault.adapter.mkdir(c);
-            } catch (ex) {
-                // basically skip exceptions.
-                if (ex.message && ex.message == "Folder already exists.") {
-                    // especially this message is.
-                } else {
-                    Logger("Folder Create Error");
-                    Logger(ex);
-                }
-            }
-            c += "/";
-        }
-    }
-
     filterTargetFiles(files: InternalFileInfo[], targetFiles: string[] | false = false) {
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
@@ -2949,6 +2903,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
         });
     }
 
+    askYesNo(message: string): Promise<"yes" | "no"> {
+        return askYesNo(this.app, message);
+    }
+    askSelectString(message: string, items: string[]): Promise<string> {
+        return askSelectString(this.app, message, items);
+    }
 
     askInPopup(key: string, dialogText: string, anchorCallback: (anchor: HTMLAnchorElement) => void) {
 
@@ -2967,7 +2927,6 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const popupKey = "popup-" + key;
         scheduleTask(popupKey, 1000, async () => {
             const popup = await memoIfNotExist(popupKey, () => new Notice(fragment, 0));
-            //@ts-ignore
             const isShown = popup?.noticeEl?.isShown();
             if (!isShown) {
                 memoObject(popupKey, new Notice(fragment, 0));
@@ -2976,13 +2935,26 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 const popup = retrieveMemoObject<Notice>(popupKey);
                 if (!popup)
                     return;
-                //@ts-ignore
                 if (popup?.noticeEl?.isShown()) {
                     popup.hide();
                 }
                 disposeMemoObject(popupKey);
             });
         });
+    }
+    openSetting() {
+        //@ts-ignore: undocumented api
+        this.app.setting.open();
+        //@ts-ignore: undocumented api
+        this.app.setting.openTabById("obsidian-livesync");
+    }
+
+    performAppReload() {
+        this.performCommand("app:reload");
+    }
+    performCommand(id: string) {
+        // @ts-ignore
+        this.app.commands.executeCommandById(id)
     }
 }
 

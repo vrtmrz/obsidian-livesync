@@ -178,9 +178,7 @@ export class ConfigSync extends LiveSyncCommands {
     get kvDB() {
         return this.plugin.kvDB;
     }
-    ensureDirectoryEx(fullPath: string) {
-        return this.plugin.ensureDirectoryEx(fullPath);
-    }
+
     pluginDialog: PluginDialogModal = null;
     periodicPluginSweepProcessor = new PeriodicProcessor(this.plugin, async () => await this.scanAllConfigFiles(false));
 
@@ -433,7 +431,7 @@ export class ConfigSync extends LiveSyncCommands {
                 try {
                     // console.dir(f);
                     const path = `${baseDir}/${f.filename}`;
-                    await this.ensureDirectoryEx(path);
+                    await this.vaultAccess.ensureDirectory(path);
                     if (!content) {
                         const dt = decodeBinary(f.data);
                         await this.vaultAccess.adapterWrite(path, dt);

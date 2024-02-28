@@ -663,7 +663,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await rebuildDB("localOnly");
+                        await rebuildDB("localOnlyWithChunks");
                     })
             )
             .addButton((button) =>
@@ -732,7 +732,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         };
 
-        const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") => {
+        const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") => {
             if (encrypt && passphrase == "") {
                 Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
                 return;
@@ -1053,9 +1053,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             if (!this.plugin.settings.isConfigured) {
                                 this.plugin.settings.isConfigured = true;
                                 await this.plugin.saveSettings();
-                                await rebuildDB("localOnly");
+                                await rebuildDB("localOnlyWithChunks");
                                 Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
-                                await this.plugin.addOnSetup.command_openSetupURI();
+                                await this.plugin.addOnSetup.command_copySetupURI();
                             } else {
                                 this.askReload();
                             }
@@ -1922,7 +1922,7 @@ ${stringifyYaml(pluginConfig)}`;
                 toggle.setValue(!this.plugin.settings.useIndexedDBAdapter).onChange(async (value) => {
                     this.plugin.settings.useIndexedDBAdapter = !value;
                     await this.plugin.saveSettings();
-                    await rebuildDB("localOnly");
+                    await rebuildDB("localOnlyWithChunks");
                 })
             );
 
@@ -2117,6 +2117,19 @@ ${stringifyYaml(pluginConfig)}`;
             .addButton((button) =>
                 button
                     .setButtonText("Fetch")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await rebuildDB("localOnlyWithChunks");
+                    })
+            )
+
+        new Setting(containerMaintenanceEl)
+            .setName("Fetch rebuilt DB with all remote chunks")
+            .setDesc("Restore or reconstruct local database from remote database but use remote chunk .")
+            .addButton((button) =>
+                button
+                    .setButtonText("Fetch all")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {

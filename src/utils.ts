@@ -405,9 +405,12 @@ export const requestToCouchDB = async (baseUri: string, username: string, passwo
     return await _requestToCouchDB(baseUri, username, password, origin, uri, body, method);
 };
 
-export async function performRebuildDB(plugin: ObsidianLiveSyncPlugin, method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice") {
+export async function performRebuildDB(plugin: ObsidianLiveSyncPlugin, method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") {
     if (method == "localOnly") {
         await plugin.addOnSetup.fetchLocal();
+    }
+    if (method == "localOnlyWithChunks") {
+        await plugin.addOnSetup.fetchLocal(true);
     }
     if (method == "remoteOnly") {
         await plugin.addOnSetup.rebuildRemote();

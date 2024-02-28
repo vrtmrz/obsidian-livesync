@@ -1,5 +1,6 @@
 import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "./deps";
 import { serialized } from "./lib/src/lock";
+import { Logger } from "./lib/src/logger";
 import type { FilePath } from "./lib/src/types";
 import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
 import type { InternalFileInfo } from "./types";
@@ -107,6 +108,15 @@ export class SerializedFileAccess {
             return await processWriteFile(path, () => this.app.vault.createBinary(path, toArrayBuffer(data), options));
         }
     }
+
+    trigger(name: string, ...data: any[]) {
+        return this.app.vault.trigger(name, ...data);
+    }
+
+    async adapterAppend(normalizedPath: string, data: string, options?: DataWriteOptions) {
+        return await this.app.vault.adapter.append(normalizedPath, data, options)
+    }
+
     async delete(file: TFile | TFolder, force = false) {
         return await processWriteFile(file, () => this.app.vault.delete(file, force));
     }
@@ -125,6 +135,31 @@ export class SerializedFileAccess {
         // } else {
         //    return app.vault.getAbstractFileByPath(path);
         // }
+    }
+
+    getFiles() {
+        return this.app.vault.getFiles();
+    }
+
+    async ensureDirectory(fullPath: string) {
+        const pathElements = fullPath.split("/");
+        pathElements.pop();
+        let c = "";
+        for (const v of pathElements) {
+            c += v;
+            try {
+                await this.app.vault.adapter.mkdir(c);
+            } catch (ex) {
+                // basically skip exceptions.
+                if (ex.message && ex.message == "Folder already exists.") {
+                    // especially this message is.
+                } else {
+                    Logger("Folder Create Error");
+                    Logger(ex);
+                }
+            }
+            c += "/";
+        }
     }
 
 

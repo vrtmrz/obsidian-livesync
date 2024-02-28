@@ -359,7 +359,7 @@ Of course, we are able to disable these features.`
             Logger(`Fetching chunks done`, LOG_LEVEL_NOTICE);
         }
     }
-    async fetchLocal() {
+    async fetchLocal(makeLocalChunkBeforeSync?: boolean) {
         this.suspendExtraSync();
         await this.askUseNewAdapter();
         this.plugin.settings.isConfigured = true;
@@ -368,8 +368,11 @@ Of course, we are able to disable these features.`
         await this.resetLocalDatabase();
         await delay(1000);
         await this.plugin.openDatabase();
-        await this.plugin.markRemoteResolved();
         this.plugin.isReady = true;
+        if (makeLocalChunkBeforeSync) {
+            await this.plugin.initializeDatabase(true);
+        }
+        await this.plugin.markRemoteResolved();
         await delay(500);
         await this.plugin.replicateAllFromServer(true);
         await delay(1000);
@@ -379,24 +382,7 @@ Of course, we are able to disable these features.`
         await this.askHiddenFileConfiguration({ enableFetch: true });
     }
     async fetchLocalWithKeepLocal() {
-        this.suspendExtraSync();
-        await this.askUseNewAdapter();
-        this.plugin.settings.isConfigured = true;
-        await this.suspendReflectingDatabase();
-        await this.plugin.realizeSettingSyncMode();
-        await this.resetLocalDatabase();
-        await delay(1000);
-        await this.plugin.initializeDatabase(true);
-        await this.plugin.openDatabase();
-        await this.plugin.markRemoteResolved();
-        this.plugin.isReady = true;
-        await delay(500);
-        await this.plugin.replicateAllFromServer(true);
-        await delay(1000);
-        await this.plugin.replicateAllFromServer(true);
-        await this.fetchRemoteChunks();
-        await this.resumeReflectingDatabase();
-        await this.askHiddenFileConfiguration({ enableFetch: true });
+        return await this.fetchLocal(true);
     }
     async rebuildRemote() {
         this.suspendExtraSync();

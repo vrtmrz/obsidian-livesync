@@ -20,9 +20,6 @@ export class HiddenFileSync extends LiveSyncCommands {
     get kvDB() {
         return this.plugin.kvDB;
     }
-    ensureDirectoryEx(fullPath: string) {
-        return this.plugin.ensureDirectoryEx(fullPath);
-    }
     getConflictedDoc(path: FilePathWithPrefix, rev: string) {
         return this.plugin.getConflictedDoc(path, rev);
     }
@@ -202,7 +199,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     const filename = stripAllPrefixes(path);
                     const isExists = await this.plugin.vaultAccess.adapterExists(filename);
                     if (!isExists) {
-                        await this.ensureDirectoryEx(filename);
+                        await this.vaultAccess.ensureDirectory(filename);
                     }
                     await this.plugin.vaultAccess.adapterWrite(filename, result);
                     const stat = await this.vaultAccess.adapterStat(filename);
@@ -498,7 +495,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 }
-                const ret = await this.localDatabase.putDBEntry(saveData, true);
+                const ret = await this.localDatabase.putDBEntry(saveData);
                 Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
                 return ret;
             } catch (ex) {
@@ -599,7 +596,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     return true;
                 }
                 if (!isExists) {
-                    await this.ensureDirectoryEx(filename);
+                    await this.vaultAccess.ensureDirectory(filename);
                     await this.plugin.vaultAccess.adapterWrite(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
@@ -668,7 +665,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     if (!keep && result) {
                         const isExists = await this.plugin.vaultAccess.adapterExists(filename);
                         if (!isExists) {
-                            await this.ensureDirectoryEx(filename);
+                            await this.vaultAccess.ensureDirectory(filename);
                         }
                         await this.plugin.vaultAccess.adapterWrite(filename, result);
                         const stat = await this.plugin.vaultAccess.adapterStat(filename);
