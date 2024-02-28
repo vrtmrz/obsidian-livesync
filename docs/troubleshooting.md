@@ -10,7 +10,7 @@
     - [Why `Use an old adapter for compatibility` is somehow enabled in my vault?](#why-use-an-old-adapter-for-compatibility-is-somehow-enabled-in-my-vault)
     - [ZIP (or any extensions) files were not synchronised. Why?](#zip-or-any-extensions-files-were-not-synchronised-why)
     - [I hope to report the issue, but you said you needs `Report`. How to make it?](#i-hope-to-report-the-issue-but-you-said-you-needs-report-how-to-make-it)
-    - [If a file were deleted or trimmed, the capacity of the database was reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-was-reduced-right)
+    - [If a file were deleted or trimmed, the capacity of the database should be reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-should-be-reduced-right)
   - [Troubleshooting](#troubleshooting)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
@@ -58,7 +58,7 @@ It depends on Obsidian detects. May toggling `Detect all extensions` of `File an
 We can copy the report to the clipboard, by pressing the `Make report` button on the `Hatch` pane.
 ![Screenshot](../images/hatch.png)
 
-### If a file were deleted or trimmed, the capacity of the database was reduced, right?
+### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
 No, even though if files were deleted, chunks were not deleted.
 Self-hosted LiveSync splits the files into multiple chunks and transfers only newly created. This behaviour enables us to less traffic. And, the chunks will be shared between the files to reduce the total usage of the database.
 
