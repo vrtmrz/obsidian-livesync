@@ -1,10 +1,22 @@
 <!-- 2024-02-15 -->
 # Tips and Troubleshooting
 
-- [Notable bugs and fixes](#notable-bugs-and-fixes)
-- [FAQ](#faq)
-- [Troubleshooting](#troubleshooting)
-- [Tips](#tips)
+
+- [Tips and Troubleshooting](#tips-and-troubleshooting)
+  - [Notable bugs and fixes](#notable-bugs-and-fixes)
+    - [Binary files get bigger on iOS](#binary-files-get-bigger-on-ios)
+    - [Some setting name has been changed](#some-setting-name-has-been-changed)
+  - [FAQ](#faq)
+    - [Why `Use an old adapter for compatibility` is somehow enabled in my vault?](#why-use-an-old-adapter-for-compatibility-is-somehow-enabled-in-my-vault)
+    - [ZIP (or any extensions) files were not synchronised. Why?](#zip-or-any-extensions-files-were-not-synchronised-why)
+    - [I hope to report the issue, but you said you needs `Report`. How to make it?](#i-hope-to-report-the-issue-but-you-said-you-needs-report-how-to-make-it)
+    - [If a file were deleted or trimmed, the capacity of the database was reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-was-reduced-right)
+  - [Troubleshooting](#troubleshooting)
+    - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
+    - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
+  - [Tips](#tips)
+    - [Old tips](#old-tips)
+
 <!-- - -->
 
 
@@ -39,20 +51,38 @@ When you rebuild everything or fetch from the remote again, you will be asked to
 Therefore, experienced users (especially those stable enough not to have to rebuild the database) may have this toggle enabled in their Vault.
 Please disable it when you have enough time.
 
+### ZIP (or any extensions) files were not synchronised. Why?
+It depends on Obsidian detects. May toggling `Detect all extensions` of `File and links` (setting of Obsidian) will help us.
+
+### I hope to report the issue, but you said you needs `Report`. How to make it?
+We can copy the report to the clipboard, by pressing the `Make report` button on the `Hatch` pane.
+![Screenshot](../images/hatch.png)
+
+### If a file were deleted or trimmed, the capacity of the database was reduced, right?
+No, even though if files were deleted, chunks were not deleted.
+Self-hosted LiveSync splits the files into multiple chunks and transfers only newly created. This behaviour enables us to less traffic. And, the chunks will be shared between the files to reduce the total usage of the database.
+
+And one more thing, we can handle the conflicts on any device even though it has happened on other devices. This means that conflicts will happen in the past, after the time we have synchronised. Hence we cannot collect and delete the unused chunks even though if we are not currently referenced.
+
+To shrink the database size, `Rebuild everything` only reliably and effectively. But do not worry, if we have synchronised well. We have the actual and real files. Only it takes a bit of time and traffics.
+
 <!-- Add here -->
 
 ## Troubleshooting
 <!-- Add here -->
 
+### On the mobile device, cannot synchronise on the local network!
+Obsidian mobile is not able to connect to the non-secure end-point, such as starting with `http://`. Make sure your URI of CouchDB. Also not able to use a self-signed certificate.
+
+### I think that something bad happening on the vault...
+Place `redflag.md` on top of the vault, and restart Obsidian. The most simple way is to create a new note and rename it to `redflag`. Of course, we can put it without Obsidian.
+
+If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage processes.
+
 ## Tips
 <!-- Add here -->
 
 ### Old tips
--   If a folder becomes empty after a replication, it will be deleted by default. But you can toggle this behaviour. Check the [Settings](settings.md).
--   LiveSync mode drains more batteries in mobile devices. Periodic sync with some automatic sync is recommended.
--   Mobile Obsidian can not connect to non-secure (HTTP) or locally-signed servers, even if the root certificate is installed on the device.
--   There are no 'exclude_folders' like configurations.
--   While synchronizing, files are compared by their modification time and the older ones will be overwritten by the newer ones. Then plugin checks for conflicts and if a merge is needed, a dialog will open.
 -   Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case, you can delete these items from the settings dialog.
 -   To stop the boot-up sequence (eg. for fixing problems on databases), you can put a `redflag.md` file (or directory) at the root of your vault.
     Tip for iOS: a redflag directory can be created at the root of the vault using the File application.
