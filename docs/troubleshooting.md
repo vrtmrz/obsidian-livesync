@@ -10,6 +10,9 @@
     - [Why `Use an old adapter for compatibility` is somehow enabled in my vault?](#why-use-an-old-adapter-for-compatibility-is-somehow-enabled-in-my-vault)
     - [ZIP (or any extensions) files were not synchronised. Why?](#zip-or-any-extensions-files-were-not-synchronised-why)
     - [I hope to report the issue, but you said you needs `Report`. How to make it?](#i-hope-to-report-the-issue-but-you-said-you-needs-report-how-to-make-it)
+    - [Where can I check the log?](#where-can-i-check-the-log)
+    - [Why are the logs volatile and ephemeral?](#why-are-the-logs-volatile-and-ephemeral)
+    - [Some network logs are not written into the file.](#some-network-logs-are-not-written-into-the-file)
     - [If a file were deleted or trimmed, the capacity of the database should be reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-should-be-reduced-right)
   - [Troubleshooting](#troubleshooting)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
@@ -57,6 +60,24 @@ It depends on Obsidian detects. May toggling `Detect all extensions` of `File an
 ### I hope to report the issue, but you said you needs `Report`. How to make it?
 We can copy the report to the clipboard, by pressing the `Make report` button on the `Hatch` pane.
 ![Screenshot](../images/hatch.png)
+
+### Where can I check the log?
+We can launch the log pane by `Show log` on the command palette.
+And if you have troubled something, please enable the `Verbose Log` on the `General Setting` pane.
+
+However, the logs would not be kept so long and cleared when restarted. If you want to check the logs, please enable `Write logs into the file` temporarily.
+
+![ScreenShot](../images/write_logs_into_the_file.png)
+
+> [!IMPORTANT]
+> - Writing logs into the file will impact the performance.
+> - Please make sure that you have erased all your confidential information before reporting issue.
+
+### Why are the logs volatile and ephemeral?
+To avoid unexpected exposure to our confidential things.
+
+### Some network logs are not written into the file.
+Especially the CORS error will be reported as a general error to the plug-in for security reasons. So we cannot detect and log it.
 
 ### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
 No, even though if files were deleted, chunks were not deleted.
