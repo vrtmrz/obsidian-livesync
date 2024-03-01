@@ -7,6 +7,7 @@
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
     import { isPlainText, stripAllPrefixes } from "./lib/src/path";
     import { TFile } from "./deps";
+    import { decodeBinary } from "./lib/src/strbin";
     export let plugin: ObsidianLiveSyncPlugin;
 
     let showDiffInfo = false;
@@ -113,7 +114,7 @@
                                     } else {
                                         const data = await plugin.vaultAccess.adapterReadBinary(abs);
                                         const dataEEncoded = createBinaryBlob(data);
-                                        result = await isDocContentSame(dataEEncoded, doc.data);
+                                        result = await isDocContentSame(dataEEncoded, createBinaryBlob(decodeBinary(doc.data)));
                                     }
                                     if (result) {
                                         diffDetail += " ⚖️";

@@ -479,7 +479,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 } else {
-                    if (await isDocContentSame(old.data, content) && !forceWrite) {
+                    if (await isDocContentSame(createBinaryBlob(decodeBinary(old.data)), content) && !forceWrite) {
                         // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return;
                     }

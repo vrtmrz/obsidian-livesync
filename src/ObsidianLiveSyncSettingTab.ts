@@ -1635,7 +1635,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         const pluginConfig = JSON.parse(JSON.stringify(this.plugin.settings)) as ObsidianLiveSyncSettings;
                         pluginConfig.couchDB_DBNAME = REDACTED;
                         pluginConfig.couchDB_PASSWORD = REDACTED;
-                        pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI) ? "cloudant" : "self-hosted";
+                        const scheme = pluginConfig.couchDB_URI.startsWith("http:") ? "(HTTP)" : (pluginConfig.couchDB_URI.startsWith("https:")) ? "(HTTPS)" : ""
+                        pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI) ? "cloudant" : `self-hosted${scheme}`;
                         pluginConfig.couchDB_USER = REDACTED;
                         pluginConfig.passphrase = REDACTED;
                         pluginConfig.encryptedPassphrase = REDACTED;

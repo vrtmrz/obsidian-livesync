@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { createTextBlob, delay, getDocData, sendSignal, waitForSignal } from "./lib/src/utils";
+import { createTextBlob, delay, getDocData, isDocContentSame, sendSignal, waitForSignal } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { WrappedNotice } from "./lib/src/wrapper";
 import { readString, decodeBinary, arrayBufferToBase64, sha1 } from "./lib/src/strbin";
@@ -687,8 +687,20 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 } else {
                     if (old.mtime == mtime) {
-                        // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
+                        // Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
                         return true;
+                    }
+                    const oldC = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
+                    if (oldC) {
+                        const d = await deserialize(getDocData(oldC.data), {}) as PluginDataEx;
+                        const diffs = (d.files.map(previous => ({ prev: previous, curr: dt.files.find(e => e.filename == previous.filename) })).map(async e => {
+                            try { return await isDocContentSame(e.curr.data, e.prev.data) } catch (_) { return false }
+                        }))
+                        const isSame = (await Promise.all(diffs)).every(e => e == true);
+                        if (isSame) {
+                            Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
+                            return true;
+                        }
                     }
                     saveData =
                     {
