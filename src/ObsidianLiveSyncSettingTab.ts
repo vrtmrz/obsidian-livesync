@@ -1,13 +1,14 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO } from "./lib/src/types";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry } from "./lib/src/types";
 import { createBinaryBlob, createTextBlob, delay, isDocContentSame } from "./lib/src/utils";
-import { versionNumberString2Number } from "./lib/src/strbin";
+import { decodeBinary, versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
 import ObsidianLiveSyncPlugin from "./main";
 import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
-import { request, type ButtonComponent } from "obsidian";
+import { request, type ButtonComponent, TFile } from "obsidian";
+import { shouldBeIgnored } from "./lib/src/path";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -1698,6 +1699,59 @@ ${stringifyYaml(pluginConfig)}`;
         const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
         hatchWarn.addClass("op-warn-info");
 
+
+
+        const addResult = (path: string, file: TFile | false, fileOnDB: LoadedEntry | false) => {
+            resultArea.appendChild(resultArea.createEl("div", {}, el => {
+                el.appendChild(el.createEl("h6", { text: path }));
+                el.appendChild(el.createEl("div", {}, infoGroupEl => {
+                    infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Storage : Modified: ${!file ? `Missing:` : `${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}`}` }))
+                    infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size}`}` }))
+                }));
+                if (fileOnDB && file) {
+                    el.appendChild(el.createEl("button", { text: "Show history" }, buttonEl => {
+                        buttonEl.onClickEvent(() => {
+                            this.plugin.showHistory(file, fileOnDB._id);
+                        })
+                    }))
+                }
+                if (file) {
+                    el.appendChild(el.createEl("button", { text: "Storage -> Database" }, buttonEl => {
+                        buttonEl.onClickEvent(() => {
+                            this.plugin.updateIntoDB(file, undefined, true);
+                            el.remove();
+                        })
+                    }))
+                }
+                if (fileOnDB) {
+                    el.appendChild(el.createEl("button", { text: "Database -> Storage" }, buttonEl => {
+                        buttonEl.onClickEvent(() => {
+                            this.plugin.pullFile(this.plugin.getPath(fileOnDB), [], true, undefined, false);
+                            el.remove();
+                        })
+                    }))
+                }
+                return el;
+            }))
+        }
+
+        const checkBetweenStorageAndDatabase = async (file: TFile, fileOnDB: LoadedEntry) => {
+            let content: Blob;
+            let dataContent: Blob;
+            if (fileOnDB.type == "newnote") {
+                dataContent = createBinaryBlob(decodeBinary(fileOnDB.data));
+                content = createBinaryBlob(await this.plugin.vaultAccess.vaultReadBinary(file));
+            } else {
+                dataContent = createTextBlob(fileOnDB.data);
+                content = createTextBlob(await this.plugin.vaultAccess.vaultRead(file));
+            }
+            if (await isDocContentSame(content, dataContent)) {
+                Logger(`Compare: SAME: ${file.path}`)
+            } else {
+                Logger(`Compare: CONTENT IS NOT MATCHED! ${file.path}`, LOG_LEVEL_NOTICE);
+                addResult(file.path, file, fileOnDB)
+            }
+        }
         new Setting(containerHatchEl)
             .setName("Verify and repair all files")
             .setDesc("Compare the content of files between on local database and storage. If not matched, you will asked which one want to keep.")
@@ -1708,47 +1762,36 @@ ${stringifyYaml(pluginConfig)}`;
                     .setWarning()
                     .onClick(async () => {
                         const files = this.app.vault.getFiles();
+                        const documents = [] as FilePathWithPrefix[];
+
+                        const adn = this.plugin.localDatabase.findAllNormalDocs()
+                        for await (const i of adn) documents.push(this.plugin.getPath(i));
+                        const allPaths = [...new Set([...documents, ...files.map(e => e.path as FilePathWithPrefix)])];
                         let i = 0;
-                        for (const file of files) {
+                        for (const path of allPaths) {
                             i++;
-                            Logger(`${i}/${files.length}\n${file.path}`, LOG_LEVEL_NOTICE, "verify");
-                            if (!await this.plugin.isTargetFile(file)) continue;
-                            const fileOnDB = await this.plugin.localDatabase.getDBEntry(file.path as FilePathWithPrefix);
-                            if (!fileOnDB) {
-                                Logger(`Compare: Not found on local database: ${file.path}`, LOG_LEVEL_NOTICE);
+                            Logger(`${i}/${files.length}\n${path}`, LOG_LEVEL_NOTICE, "verify");
+                            if (shouldBeIgnored(path)) continue;
+                            const abstractFile = this.plugin.vaultAccess.getAbstractFileByPath(path);
+                            const fileOnStorage = abstractFile instanceof TFile ? abstractFile : false;
+                            if (!await this.plugin.isTargetFile(path)) continue;
+
+                            if (fileOnStorage && this.plugin.isFileSizeExceeded(fileOnStorage.stat.size)) continue;
+                            const fileOnDB = await this.plugin.localDatabase.getDBEntry(path);
+                            if (fileOnDB && this.plugin.isFileSizeExceeded(fileOnDB.size)) continue;
+
+                            if (!fileOnDB && fileOnStorage) {
+                                Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
+                                addResult(path, fileOnStorage, false)
                                 continue;
                             }
-                            let content: Blob;
-                            if (fileOnDB.type == "newnote") {
-                                content = createBinaryBlob(await this.plugin.vaultAccess.vaultReadBinary(file));
-                            } else {
-                                content = createTextBlob(await this.plugin.vaultAccess.vaultRead(file));
+                            if (fileOnDB && !fileOnStorage) {
+                                Logger(`Compare: Not found on the storage: ${path}`, LOG_LEVEL_NOTICE);
+                                addResult(path, false, fileOnDB)
+                                continue;
                             }
-                            if (isDocContentSame(content, fileOnDB.data)) {
-                                Logger(`Compare: SAME: ${file.path}`)
-                            } else {
-                                Logger(`Compare: CONTENT IS NOT MATCHED! ${file.path}`, LOG_LEVEL_NOTICE);
-                                resultArea.appendChild(resultArea.createEl("div", {}, el => {
-                                    el.appendChild(el.createEl("h6", { text: file.path }));
-                                    el.appendChild(el.createEl("div", {}, infoGroupEl => {
-                                        infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Storage : Modified: ${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}` }))
-                                        infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Database: Modified: ${new Date(fileOnDB.mtime).toLocaleString()}, Size:${content.size}` }))
-                                    }));
-
-                                    el.appendChild(el.createEl("button", { text: "Storage -> Database" }, buttonEl => {
-                                        buttonEl.onClickEvent(() => {
-                                            this.plugin.updateIntoDB(file, undefined, true);
-                                            el.remove();
-                                        })
-                                    }))
-                                    el.appendChild(el.createEl("button", { text: "Database -> Storage" }, buttonEl => {
-                                        buttonEl.onClickEvent(() => {
-                                            this.plugin.pullFile(file.path as FilePathWithPrefix, [], true, undefined, false);
-                                            el.remove();
-                                        })
-                                    }))
-                                    return el;
-                                }))
+                            if (fileOnStorage && fileOnDB) {
+                                await checkBetweenStorageAndDatabase(fileOnStorage, fileOnDB)
                             }
                         }
                         Logger("done", LOG_LEVEL_NOTICE, "verify");
