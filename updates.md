@@ -10,6 +10,14 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.12:
+  - Changed:
+    - The default settings has been changed.
+  - Improved:
+    - Default and preferred settings are applied on completion of the wizard.
+  - Fixed:
+    - Now Initialisation `Fetch` will be performed smoothly and there will be fewer conflicts.
+    - No longer stuck while Handling transferred or initialised documents.
 - 0.22.11:
   - Fixed:
     - `Verify and repair all files` is no longer broken.
