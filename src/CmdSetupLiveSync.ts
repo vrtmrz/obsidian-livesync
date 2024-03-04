@@ -134,7 +134,7 @@ export class SetupLiveSync extends LiveSyncCommands {
                     } else if (setupType == setupAsMerge) {
                         this.plugin.settings = newSettingW;
                         this.plugin.usedPassphrase = "";
-                        await this.fetchLocalWithKeepLocal();
+                        await this.fetchLocalWithRebuild();
                     } else if (setupType == setupAgain) {
                         const confirm = "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
                         if (await askSelectString(this.app, "Do you really want to do this?", ["Cancel", confirm]) != confirm) {
@@ -377,11 +377,13 @@ Of course, we are able to disable these features.`
         await this.plugin.replicateAllFromServer(true);
         await delay(1000);
         await this.plugin.replicateAllFromServer(true);
-        await this.fetchRemoteChunks();
+        // if (!tryLessFetching) {
+        //     await this.fetchRemoteChunks();
+        // }
         await this.resumeReflectingDatabase();
         await this.askHiddenFileConfiguration({ enableFetch: true });
     }
-    async fetchLocalWithKeepLocal() {
+    async fetchLocalWithRebuild() {
         return await this.fetchLocal(true);
     }
     async rebuildRemote() {

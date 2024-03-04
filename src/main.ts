@@ -1631,7 +1631,7 @@ We can perform a command in this file.
     }
 
     databaseQueueCount = reactiveSource(0);
-    databaseQueuedProcessor = new KeyedQueueProcessor(async (docs: EntryBody[]) => {
+    databaseQueuedProcessor = new QueueProcessor(async (docs: EntryBody[]) => {
         const dbDoc = docs[0];
         const path = this.getPath(dbDoc);
         // If `Read chunks online` is disabled, chunks should be transferred before here.
@@ -1708,7 +1708,7 @@ We can perform a command in this file.
                 Logger(`Processing ${change.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
                 return;
             }
-            this.databaseQueuedProcessor.enqueueWithKey(change.path, change);
+            this.databaseQueuedProcessor.enqueue(change);
         }
         return;
     }, { batchSize: 1, suspended: true, concurrentLimit: 100, delay: 0, totalRemainingReactiveSource: this.replicationResultCount }).startPipeline().onUpdateProgress(() => {
@@ -1902,7 +1902,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         const CHOICE_DISMISS = "Dismiss";
                         const ret = await confirmWithMessage(this, "Cleaned", message, [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS], CHOICE_DISMISS, 30);
                         if (ret == CHOICE_FETCH) {
-                            await performRebuildDB(this, "localOnlyWithChunks");
+                            await performRebuildDB(this, "localOnly");
                         }
                         if (ret == CHOICE_CLEAN) {
                             const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
@@ -1936,7 +1936,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     const CHOICE_DISMISS = "Dismiss";
                     const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
                     if (ret == CHOICE_FETCH) {
-                        await performRebuildDB(this, "localOnlyWithChunks");
+                        await performRebuildDB(this, "localOnly");
                     }
                 }
             }

@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry } from "./lib/src/types";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED } from "./lib/src/types";
 import { createBinaryBlob, createTextBlob, delay, isDocContentSame } from "./lib/src/utils";
 import { decodeBinary, versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
@@ -664,7 +664,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await rebuildDB("localOnlyWithChunks");
+                        await rebuildDB("localOnly");
                     })
             )
             .addButton((button) =>
@@ -774,9 +774,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             this.plugin.settings.passphrase = "";
                         }
                         if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
-                            this.plugin.settings.customChunkSize = 0;
+                            // this.plugin.settings.customChunkSize = 0;
+                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_CLOUDANT };
                         } else {
-                            this.plugin.settings.customChunkSize = 50;
+                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_SELF_HOSTED };
                         }
                         changeDisplay("30")
                     })
@@ -1054,7 +1055,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             if (!this.plugin.settings.isConfigured) {
                                 this.plugin.settings.isConfigured = true;
                                 await this.plugin.saveSettings();
-                                await rebuildDB("localOnlyWithChunks");
+                                await rebuildDB("localOnly");
                                 Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
                                 await this.plugin.addOnSetup.command_copySetupURI();
                             } else {
@@ -1966,7 +1967,7 @@ ${stringifyYaml(pluginConfig)}`;
                 toggle.setValue(!this.plugin.settings.useIndexedDBAdapter).onChange(async (value) => {
                     this.plugin.settings.useIndexedDBAdapter = !value;
                     await this.plugin.saveSettings();
-                    await rebuildDB("localOnlyWithChunks");
+                    await rebuildDB("localOnly");
                 })
             );
 
@@ -2164,20 +2165,20 @@ ${stringifyYaml(pluginConfig)}`;
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await rebuildDB("localOnlyWithChunks");
+                        await rebuildDB("localOnly");
                     })
             )
 
         new Setting(containerMaintenanceEl)
-            .setName("Fetch rebuilt DB with all remote chunks")
-            .setDesc("Restore or reconstruct local database from remote database but use remote chunk .")
+            .setName("Fetch rebuilt DB (Save local documents before)")
+            .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
             .addButton((button) =>
                 button
-                    .setButtonText("Fetch all")
+                    .setButtonText("Save and Fetch")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await rebuildDB("localOnly");
+                        await rebuildDB("localOnlyWithChunks");
                     })
             )
 
