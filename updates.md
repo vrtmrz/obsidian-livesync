@@ -10,6 +10,11 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.13:
+  - Improved:
+    - Now using HTTP for the remote database URI warns of an error (on mobile) or notice (on desktop).
+  - Refactored:
+    - Dependencies have been polished.
 - 0.22.12:
   - Changed:
     - The default settings has been changed.
@@ -57,29 +62,4 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
   - Changed:
     - Now no longer `fetch chunks on demand` needs `Pacing replication`
       - The setting `Do not pace synchronization` has been deleted.
-- 0.22.7
-  - Fixed:
-    - No longer deleted hidden files were ignored.
-    - The document history dialogue is now able to process the deleted revisions.
-    - Deletion of a hidden file is now surely performed even if the file is already conflicted.
-- 0.22.6
-  - Fixed:
-    - Fixed a problem with synchronisation taking a long time to start in some cases.
-      - The first synchronisation after update might take a bit longer.
-    - Now we can disable E2EE encryption.
-  - Improved:
-    - `Setup Wizard` is now more clear.
-    - `Minimal Setup` is now more simple.
-    - Self-hosted LiveSync now be able to use even if there are vaults with the same name.
-      - Database suffix will automatically added.
-    - Now Self-hosted LiveSync waits until set-up is complete.
-    - Show reload prompts when possibly recommended while settings.
-  - New feature:
-    - A guidance dialogue prompting for settings will be shown after the installation.
-  - Changed
-    - `Open setup URI` is now `Use the copied setup URI`
-    - `Copy setup URI` is now `Copy current settings as a new setup URI`
-    - `Setup Wizard` is now `Minimal Setup`
-    - `Check database configuration` is now `Check and Fix database configuration`
-
 ... To continue on to `updates_old.md`.
