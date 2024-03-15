@@ -267,6 +267,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const containerRemoteDatabaseEl = containerEl.createDiv();
         containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
         const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
+        if (this.plugin.settings.couchDB_URI.startsWith("http://")) {
+            if (this.plugin.isMobile) {
+                containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.` })
+                    .addClass("op-warn");
+            } else {
+                containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We might fail on mobile devices.` })
+                    .addClass("op-warn-info");
+            }
+        }
+
         syncWarn.addClass("op-warn-info");
         syncWarn.addClass("sls-hidden");
 
