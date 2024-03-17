@@ -91,7 +91,7 @@ services:
 最后, 创建并启动容器:
 ```
 # -d will launch detached so the container runs in background
-docker compose up -d
+docker-compose up -d
 ```
 
 ## 创建数据库
