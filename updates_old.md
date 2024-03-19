@@ -10,6 +10,30 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.9
+  - Fixed:
+    - Fixed a bug on `fetch chunks on demand` that could not fetch the chunks on demand.
+  - Improved:
+    - `fetch chunks on demand` works more smoothly.
+    - Initialisation `Fetch` is now more efficient.
+  - Tidied:
+    - Removed some meaningless codes.
+- 0.22.8
+  - Fixed:
+    - Now fetch and unlock the locked remote database works well again.
+    - No longer crash on symbolic links inside hidden folders.
+  - Improved:
+    - Chunks are now created more efficiently.
+      - Splitting old notes into a larger chunk.
+    - Better performance in saving notes.
+    - Network activities are indicated as an icon.
+    - Less memory used for binary processing.
+  - Tidied:
+    - Cleaned unused functions up.
+    - Sorting out the codes that have become nonsense.
+  - Changed:
+    - Now no longer `fetch chunks on demand` needs `Pacing replication`
+      - The setting `Do not pace synchronization` has been deleted.
 - 0.22.7
   - Fixed:
     - No longer deleted hidden files were ignored.

@@ -10,6 +10,17 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.14:
+- New feature:
+  - We can disable the status bar in the setting dialogue.
+- Improved:
+  - Now some files are handled as correct data type.
+  - Customisation sync now uses the digest of each file for better performance.
+  - The status in the Editor now works performant.
+- Refactored:
+  - Common functions have been ready and the codebase has been organised.
+  - Stricter type checking following TypeScript updates.
+  - Remove old iOS workaround for simplicity and performance.
 - 0.22.13:
   - Improved:
     - Now using HTTP for the remote database URI warns of an error (on mobile) or notice (on desktop).
@@ -38,28 +49,4 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
     - File integrity of vault history indicates the integrity correctly.
   - Improved:
     - In the report, the schema of the remote database URI is now printed.
-- 0.22.9
-  - Fixed:
-    - Fixed a bug on `fetch chunks on demand` that could not fetch the chunks on demand.
-  - Improved:
-    - `fetch chunks on demand` works more smoothly.
-    - Initialisation `Fetch` is now more efficient.
-  - Tidied:
-    - Removed some meaningless codes.
-- 0.22.8
-  - Fixed:
-    - Now fetch and unlock the locked remote database works well again.
-    - No longer crash on symbolic links inside hidden folders.
-  - Improved:
-    - Chunks are now created more efficiently.
-      - Splitting old notes into a larger chunk.
-    - Better performance in saving notes.
-    - Network activities are indicated as an icon.
-    - Less memory used for binary processing.
-  - Tidied:
-    - Cleaned unused functions up.
-    - Sorting out the codes that have become nonsense.
-  - Changed:
-    - Now no longer `fetch chunks on demand` needs `Pacing replication`
-      - The setting `Do not pace synchronization` has been deleted.
 ... To continue on to `updates_old.md`.
