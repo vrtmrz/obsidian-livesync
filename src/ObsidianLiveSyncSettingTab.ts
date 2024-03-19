@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED } from "./lib/src/types";
-import { createBinaryBlob, createTextBlob, delay, isDocContentSame } from "./lib/src/utils";
-import { decodeBinary, versionNumberString2Number } from "./lib/src/strbin";
+import { createBlob, delay, isDocContentSame, readAsBlob } from "./lib/src/utils";
+import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
 import { testCrypt } from "./lib/src/e2ee_v2";
@@ -86,11 +86,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             w.querySelectorAll(`.sls-setting-label`).forEach((element) => {
                 element.removeClass("selected");
-                (element.querySelector<HTMLInputElement>("input[type=radio]")).checked = false;
+                (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = false;
             });
             w.querySelectorAll(`.sls-setting-label.c-${screen}`).forEach((element) => {
                 element.addClass("selected");
-                (element.querySelector<HTMLInputElement>("input[type=radio]")).checked = true;
+                (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = true;
             });
             this.selectedScreen = screen;
         };
@@ -120,7 +120,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         tmpDiv.innerHTML = `<button> OK, I read all. </button>`;
         if (lastVersion > this.plugin.settings.lastReadUpdates) {
             const informationButtonDiv = h3El.appendChild(tmpDiv);
-            informationButtonDiv.querySelector("button").addEventListener("click", async () => {
+            informationButtonDiv.querySelector("button")?.addEventListener("click", async () => {
                 this.plugin.settings.lastReadUpdates = lastVersion;
                 await this.plugin.saveSettings();
                 informationButtonDiv.remove();
@@ -230,23 +230,23 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             let remoteTroubleShootMDSrc = "";
             try {
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
-            } catch (ex) {
+            } catch (ex: any) {
                 remoteTroubleShootMDSrc = "Error Occurred!!\n" + ex.toString();
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(/\((.*?(.png)|(.jpg))\)/g, `(${rawRepoURI}${basePath}/$1)`)
             // Render markdown
             await MarkdownRenderer.render(this.plugin.app, `<a class='sls-troubleshoot-anchor'></a> [Tips and Troubleshooting](${topPath}) [PageTop](${filename})\n\n${remoteTroubleShootMD}`, troubleShootEl, `${rawRepoURI}`, this.plugin);
             // Menu
-            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")
-                .parentElement.setCssStyles({ position: "sticky", top: "-1em", backgroundColor: "var(--modal-background)" });
+            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({ position: "sticky", top: "-1em", backgroundColor: "var(--modal-background)" });
             // Trap internal links.
             troubleShootEl.querySelectorAll<HTMLAnchorElement>("a.internal-link").forEach((anchorEl) => {
                 anchorEl.addEventListener("click", async (evt) => {
                     const uri = anchorEl.getAttr("data-href");
+                    if (!uri) return;
                     if (uri.startsWith("#")) {
                         evt.preventDefault();
                         const elements = Array.from(troubleShootEl.querySelectorAll<HTMLHeadingElement>("[data-heading]"))
-                        const p = elements.find(e => e.getAttr("data-heading").toLowerCase().split(" ").join("-") == uri.substring(1).toLowerCase());
+                        const p = elements.find(e => e.getAttr("data-heading")?.toLowerCase().split(" ").join("-") == uri.substring(1).toLowerCase());
                         if (p) {
                             p.setCssStyles({ scrollMargin: "3em" });
                             p.scrollIntoView({ behavior: "instant", block: "start" });
@@ -414,7 +414,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                     tmpDiv.addClass("ob-btn-config-fix");
                                     tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
                                     const x = checkResultDiv.appendChild(tmpDiv);
-                                    x.querySelector("button").addEventListener("click", async () => {
+                                    x.querySelector("button")?.addEventListener("click", async () => {
                                         Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
                                         const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
                                         if (res.status == 200) {
@@ -510,15 +510,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
                                 for (const org of origins) {
                                     const rr = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, org);
-                                    const responseHeaders = Object.entries(rr.headers)
+                                    const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
                                         .map((e) => {
-                                            e[0] = (e[0] + "").toLowerCase();
+                                            e[0] = `${e[0]}`.toLowerCase();
                                             return e;
-                                        })
-                                        .reduce((obj, [key, val]) => {
-                                            obj[key] = val;
-                                            return obj;
-                                        }, {} as { [key: string]: string });
+                                        }));
                                     addResult(`Origin check:${org}`);
                                     if (responseHeaders["access-control-allow-credentials"] != "true") {
                                         addResult("❗ CORS is not allowing credential");
@@ -534,7 +530,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 addResult("--Done--", ["ob-btn-config-head"]);
                                 addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                                 Logger(`Checking configuration done`, LOG_LEVEL_INFO);
-                            } catch (ex) {
+                            } catch (ex: any) {
                                 if (ex?.status == 401) {
                                     addResult(`❗ Access forbidden.`);
                                     addResult(`We could not continue the test.`);
@@ -803,7 +799,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         new Setting(containerGeneralSettingsEl)
             .setName("Show status inside the editor")
-            .setDesc("")
+            .setDesc("Reflected after reboot")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.showStatusOnEditor).onChange(async (value) => {
                     this.plugin.settings.showStatusOnEditor = value;
@@ -822,7 +818,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
                 );
         }
-
+        new Setting(containerGeneralSettingsEl)
+            .setName("Show status on the status bar")
+            .setDesc("Reflected after reboot.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showStatusOnStatusbar).onChange(async (value) => {
+                    this.plugin.settings.showStatusOnStatusbar = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                })
+            );
         containerGeneralSettingsEl.createEl("h4", { text: "Logging" });
         new Setting(containerGeneralSettingsEl)
             .setName("Show only notifications")
@@ -1337,7 +1342,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-        let skipPatternTextArea: TextAreaComponent = null;
+        let skipPatternTextArea: TextAreaComponent;
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
         const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
         new Setting(containerSyncSettingEl)
@@ -1747,15 +1752,8 @@ ${stringifyYaml(pluginConfig)}`;
         }
 
         const checkBetweenStorageAndDatabase = async (file: TFile, fileOnDB: LoadedEntry) => {
-            let content: Blob;
-            let dataContent: Blob;
-            if (fileOnDB.type == "newnote") {
-                dataContent = createBinaryBlob(decodeBinary(fileOnDB.data));
-                content = createBinaryBlob(await this.plugin.vaultAccess.vaultReadBinary(file));
-            } else {
-                dataContent = createTextBlob(fileOnDB.data);
-                content = createTextBlob(await this.plugin.vaultAccess.vaultRead(file));
-            }
+            const dataContent = readAsBlob(fileOnDB);
+            const content = createBlob(await this.plugin.vaultAccess.vaultReadAuto(file))
             if (await isDocContentSame(content, dataContent)) {
                 Logger(`Compare: SAME: ${file.path}`)
             } else {
@@ -1831,6 +1829,7 @@ ${stringifyYaml(pluginConfig)}`;
                                 //Prepare converted data
                                 newDoc._id = idEncoded;
                                 newDoc.path = docName as FilePathWithPrefix;
+                                // @ts-ignore
                                 delete newDoc._rev;
                                 try {
                                     const obfuscatedDoc = await this.plugin.localDatabase.getRaw(idEncoded, { revs_info: true });
@@ -1856,7 +1855,7 @@ ${stringifyYaml(pluginConfig)}`;
                                         Logger(`Converting ${docName} Failed!`, LOG_LEVEL_NOTICE);
                                         Logger(ret, LOG_LEVEL_VERBOSE);
                                     }
-                                } catch (ex) {
+                                } catch (ex: any) {
                                     if (ex?.status == 404) {
                                         // We can perform this safely
                                         if ((await this.plugin.localDatabase.putRaw(newDoc)).ok) {

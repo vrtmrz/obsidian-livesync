@@ -1,6 +1,7 @@
 import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "./deps";
 import { serialized } from "./lib/src/lock";
 import { Logger } from "./lib/src/logger";
+import { isPlainText } from "./lib/src/path";
 import type { FilePath } from "./lib/src/types";
 import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
 import type { InternalFileInfo } from "./types";
@@ -56,6 +57,12 @@ export class SerializedFileAccess {
         return await processReadFile(file, () => this.app.vault.adapter.readBinary(path));
     }
 
+    async adapterReadAuto(file: TFile | string) {
+        const path = file instanceof TFile ? file.path : file;
+        if (isPlainText(path)) return await processReadFile(file, () => this.app.vault.adapter.read(path));
+        return await processReadFile(file, () => this.app.vault.adapter.readBinary(path));
+    }
+
     async adapterWrite(file: TFile | string, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
         const path = file instanceof TFile ? file.path : file;
         if (typeof (data) === "string") {
@@ -77,12 +84,19 @@ export class SerializedFileAccess {
         return await processReadFile(file, () => this.app.vault.readBinary(file));
     }
 
+    async vaultReadAuto(file: TFile) {
+        const path = file.path;
+        if (isPlainText(path)) return await processReadFile(file, () => this.app.vault.read(file));
+        return await processReadFile(file, () => this.app.vault.readBinary(file));
+    }
+
+
     async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
         if (typeof (data) === "string") {
             return await processWriteFile(file, async () => {
                 const oldData = await this.app.vault.read(file);
                 if (data === oldData) {
-                    markChangesAreSame(file, file.stat.mtime, options.mtime);
+                    if (options && options.mtime) markChangesAreSame(file, file.stat.mtime, options.mtime);
                     return false
                 }
                 await this.app.vault.modify(file, data, options)
@@ -93,7 +107,7 @@ export class SerializedFileAccess {
             return await processWriteFile(file, async () => {
                 const oldData = await this.app.vault.readBinary(file);
                 if (await isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
-                    markChangesAreSame(file, file.stat.mtime, options.mtime);
+                    if (options && options.mtime) markChangesAreSame(file, file.stat.mtime, options.mtime);
                     return false;
                 }
                 await this.app.vault.modifyBinary(file, toArrayBuffer(data), options)
@@ -149,10 +163,9 @@ export class SerializedFileAccess {
             c += v;
             try {
                 await this.app.vault.adapter.mkdir(c);
-            } catch (ex) {
-                // basically skip exceptions.
-                if (ex.message && ex.message == "Folder already exists.") {
-                    // especially this message is.
+            } catch (ex: any) {
+                if (ex?.message == "Folder already exists.") {
+                    // Skip if already exists.
                 } else {
                     Logger("Folder Create Error");
                     Logger(ex);

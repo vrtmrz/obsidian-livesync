@@ -5,7 +5,7 @@ import ObsidianLiveSyncPlugin from "./main";
 import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
 import { Logger } from "./lib/src/logger";
 import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
-import { getDocData } from "./lib/src/utils";
+import { getDocData, readContent } from "./lib/src/utils";
 import { isPlainText, stripPrefix } from "./lib/src/path";
 
 function isImage(path: string) {
@@ -66,7 +66,7 @@ export class DocumentHistoryModal extends Modal {
         }
     }
 
-    async loadFile(initialRev: string) {
+    async loadFile(initialRev?: string) {
         if (!this.id) {
             this.id = await this.plugin.path2id(this.file);
         }
@@ -109,7 +109,7 @@ export class DocumentHistoryModal extends Modal {
         if (v) {
             URL.revokeObjectURL(v);
         }
-        this.BlobURLs.set(key, undefined);
+        this.BlobURLs.delete(key);
     }
     generateBlobURL(key: string, data: Uint8Array) {
         this.revokeURL(key);
@@ -247,12 +247,10 @@ export class DocumentHistoryModal extends Modal {
                 Logger(`Old content copied to clipboard`, LOG_LEVEL_NOTICE);
             });
         });
-        async function focusFile(path: string) {
-            const targetFile = app.vault
-                .getFiles()
-                .find((f) => f.path === path);
+        const focusFile = async (path: string) => {
+            const targetFile = this.plugin.app.vault.getFileByPath(path);
             if (targetFile) {
-                const leaf = app.workspace.getLeaf(false);
+                const leaf = this.plugin.app.workspace.getLeaf(false);
                 await leaf.openFile(targetFile);
             } else {
                 Logger("The file could not view on the editor", LOG_LEVEL_NOTICE)
@@ -265,19 +263,16 @@ export class DocumentHistoryModal extends Modal {
                 const pathToWrite = stripPrefix(this.file);
                 if (!isValidPath(pathToWrite)) {
                     Logger("Path is not valid to write content.", LOG_LEVEL_INFO);
+                    return;
                 }
-                if (this.currentDoc?.datatype == "plain") {
-                    await this.plugin.vaultAccess.adapterWrite(pathToWrite, getDocData(this.currentDoc.data));
-                    await focusFile(pathToWrite);
-                    this.close();
-                } else if (this.currentDoc?.datatype == "newnote") {
-                    await this.plugin.vaultAccess.adapterWrite(pathToWrite, decodeBinary(this.currentDoc.data));
-                    await focusFile(pathToWrite);
-                    this.close();
-                } else {
-
-                    Logger(`Could not parse entry`, LOG_LEVEL_NOTICE);
+                if (!this.currentDoc) {
+                    Logger("No active file loaded.", LOG_LEVEL_INFO);
+                    return;
                 }
+                const d = readContent(this.currentDoc);
+                await this.plugin.vaultAccess.adapterWrite(pathToWrite, d);
+                await focusFile(pathToWrite);
+                this.close();
             });
         });
     }

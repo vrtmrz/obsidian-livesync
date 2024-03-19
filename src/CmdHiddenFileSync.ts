@@ -1,12 +1,10 @@
 import { normalizePath, type PluginManifest, type ListedFiles } from "./deps";
 import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "./lib/src/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { createBinaryBlob, isDocContentSame, sendSignal } from "./lib/src/utils";
+import { readAsBlob, isDocContentSame, sendSignal, readContent, createBlob } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { isInternalMetadata, PeriodicProcessor } from "./utils";
-import { WrappedNotice } from "./lib/src/wrapper";
-import { decodeBinary, encodeBinary } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
@@ -16,7 +14,7 @@ import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "./lib/src/sto
 
 export class HiddenFileSync extends LiveSyncCommands {
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(this.plugin, async () => this.settings.syncInternalFiles && this.localDatabase.isReady && await this.syncInternalFilesAndDatabase("push", false));
-    confirmPopup: WrappedNotice = null;
+
     get kvDB() {
         return this.plugin.kvDB;
     }
@@ -67,11 +65,11 @@ export class HiddenFileSync extends LiveSyncCommands {
     realizeSettingSyncMode(): Promise<void> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this.plugin.suspended)
-            return;
+            return Promise.resolve();
         if (!this.plugin.isReady)
-            return;
+            return Promise.resolve();
         this.periodicInternalFileScanProcessor.enable(this.settings.syncInternalFiles && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
-        return;
+        return Promise.resolve();
     }
 
     procInternalFile(filename: string) {
@@ -125,7 +123,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (storageMTime == 0) {
             await this.deleteInternalFileOnDatabase(path);
         } else {
-            await this.storeInternalFileToDatabase({ path: path, ...stat });
+            await this.storeInternalFileToDatabase({ path: path, mtime, ctime: stat?.ctime ?? mtime, size: stat?.size ?? 0 });
         }
 
     }
@@ -162,7 +160,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         await this.localDatabase.removeRevision(id, delRev);
         Logger(`Older one has been deleted:${path}`);
         const cc = await this.localDatabase.getRaw(id, { conflicts: true });
-        if (cc._conflicts.length == 0) {
+        if (cc._conflicts?.length === 0) {
             await this.extractInternalFileFromDatabase(stripAllPrefixes(path))
         } else {
             this.conflictResolutionProcessor.enqueue(path);
@@ -177,11 +175,12 @@ export class HiddenFileSync extends LiveSyncCommands {
             // Retrieve data
             const id = await this.path2id(path, ICHeader);
             const doc = await this.localDatabase.getRaw(id, { conflicts: true });
-            // If there is no conflict, return with false.
-            if (!("_conflicts" in doc))
-                return;
+            // if (!("_conflicts" in doc)){
+            //     return [];
+            // }
+            if (doc._conflicts === undefined) return [];
             if (doc._conflicts.length == 0)
-                return;
+                return [];
             Logger(`Hidden file conflicted:${path}`);
             const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
             const revA = doc._rev;
@@ -192,7 +191,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 const conflictedRevNo = Number(conflictedRev.split("-")[0]);
                 //Search 
                 const revFrom = (await this.localDatabase.getRaw<EntryDoc>(id, { revs_info: true }));
-                const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
+                const commonBase = revFrom._revs_info?.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
                 const result = await this.plugin.mergeObject(path, commonBase, doc._rev, conflictedRev);
                 if (result) {
                     Logger(`Object merge:${path}`, LOG_LEVEL_INFO);
@@ -203,11 +202,14 @@ export class HiddenFileSync extends LiveSyncCommands {
                     }
                     await this.plugin.vaultAccess.adapterWrite(filename, result);
                     const stat = await this.vaultAccess.adapterStat(filename);
+                    if (!stat) {
+                        throw new Error(`conflictResolutionProcessor: Failed to stat file ${filename}`);
+                    }
                     await this.storeInternalFileToDatabase({ path: filename, ...stat });
                     await this.extractInternalFileFromDatabase(filename);
                     await this.localDatabase.removeRevision(id, revB);
                     this.conflictResolutionProcessor.enqueue(path);
-                    return;
+                    return [];
                 } else {
                     Logger(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                 }
@@ -215,11 +217,11 @@ export class HiddenFileSync extends LiveSyncCommands {
             }
             // When not JSON file, resolve conflicts by choosing a newer one.
             await this.resolveByNewerEntry(id, path, doc, revA, revB);
-            return;
+            return [];
         } catch (ex) {
             Logger(`Failed to resolve conflict (Hidden): ${path}`);
             Logger(ex, LOG_LEVEL_VERBOSE);
-            return;
+            return [];
         }
     }, {
         suspended: false, batchSize: 1, concurrentLimit: 5, delay: 10, keepResultUntilDownstreamConnected: true, yieldThreshold: 10,
@@ -312,11 +314,11 @@ export class HiddenFileSync extends LiveSyncCommands {
             if (processed % 100 == 0) {
                 Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
             }
-            if (!filename) return;
+            if (!filename) return [];
             if (ignorePatterns.some(e => filename.match(e)))
-                return;
+                return [];
             if (await this.plugin.isIgnoredByIgnoreFiles(filename)) {
-                return;
+                return [];
             }
 
             const fileOnStorage = filename in filesMap ? filesMap[filename] : undefined;
@@ -403,7 +405,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                     const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
                     const enabledPluginManifests = manifests.filter(e => enabledPlugins.has(e.id));
                     for (const manifest of enabledPluginManifests) {
-                        if (manifest.dir in updatedFolders) {
+                        if (manifest.dir && manifest.dir in updatedFolders) {
                             // If notified about plug-ins, reloading Obsidian may not be necessary.
                             updatedCount -= updatedFolders[manifest.dir];
                             const updatePluginId = manifest.id;
@@ -451,19 +453,11 @@ export class HiddenFileSync extends LiveSyncCommands {
 
         const id = await this.path2id(file.path, ICHeader);
         const prefixedFileName = addPrefix(file.path, ICHeader);
-        const contentBin = await this.plugin.vaultAccess.adapterReadBinary(file.path);
-        let content: Blob;
-        try {
-            content = createBinaryBlob(contentBin);
-        } catch (ex) {
-            Logger(`The file ${file.path} could not be encoded`);
-            Logger(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
+        const content = createBlob(await this.plugin.vaultAccess.adapterReadAuto(file.path));
         const mtime = file.mtime;
         return await serialized("file-" + prefixedFileName, async () => {
             try {
-                const old = await this.localDatabase.getDBEntry(prefixedFileName, null, false, false);
+                const old = await this.localDatabase.getDBEntry(prefixedFileName, undefined, false, false);
                 let saveData: SavingEntry;
                 if (old === false) {
                     saveData = {
@@ -479,7 +473,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 } else {
-                    if (await isDocContentSame(createBinaryBlob(decodeBinary(old.data)), content) && !forceWrite) {
+                    if (await isDocContentSame(readAsBlob(old), content) && !forceWrite) {
                         // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return;
                     }
@@ -489,10 +483,10 @@ export class HiddenFileSync extends LiveSyncCommands {
                         data: content,
                         mtime,
                         size: file.size,
-                        datatype: "newnote",
+                        datatype: old.datatype,
                         children: [],
                         deleted: false,
-                        type: "newnote",
+                        type: old.datatype,
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
@@ -515,7 +509,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
         await serialized("file-" + prefixedFileName, async () => {
             try {
-                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, null, true) as InternalFileEntry | false;
+                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, true) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;
                 if (old === false) {
                     saveData = {
@@ -531,7 +525,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 } else {
                     // Remove all conflicted before deleting.
                     const conflicts = await this.localDatabase.getRaw(old._id, { conflicts: true });
-                    if ("_conflicts" in conflicts) {
+                    if (conflicts._conflicts !== undefined) {
                         for (const conflictRev of conflicts._conflicts) {
                             await this.localDatabase.removeRevision(old._id, conflictRev);
                             Logger(`STORAGE -x> DB:${filename}: (hidden) conflict removed ${old._rev} =>  ${conflictRev}`, LOG_LEVEL_VERBOSE);
@@ -581,7 +575,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 const deleted = fileOnDB.deleted || fileOnDB._deleted || false;
                 if (deleted) {
                     if (!isExists) {
-                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is  already not found on storage.`);
+                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is already not found on storage.`);
                     } else {
                         Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
                         await this.plugin.vaultAccess.adapterRemove(filename);
@@ -597,7 +591,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
                 if (!isExists) {
                     await this.vaultAccess.ensureDirectory(filename);
-                    await this.plugin.vaultAccess.adapterWrite(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.plugin.vaultAccess.adapterWrite(filename, readContent(fileOnDB), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -608,13 +602,13 @@ export class HiddenFileSync extends LiveSyncCommands {
                     Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
                     return true;
                 } else {
-                    const contentBin = await this.plugin.vaultAccess.adapterReadBinary(filename);
-                    const content = await encodeBinary(contentBin);
-                    if (await isDocContentSame(content, fileOnDB.data) && !force) {
+                    const content = await this.plugin.vaultAccess.adapterReadAuto(filename);
+                    const docContent = readContent(fileOnDB);
+                    if (await isDocContentSame(content, docContent) && !force) {
                         // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
-                    await this.plugin.vaultAccess.adapterWrite(filename, decodeBinary(fileOnDB.data), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.plugin.vaultAccess.adapterWrite(filename, docContent, { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -669,7 +663,11 @@ export class HiddenFileSync extends LiveSyncCommands {
                         }
                         await this.plugin.vaultAccess.adapterWrite(filename, result);
                         const stat = await this.plugin.vaultAccess.adapterStat(filename);
-                        await this.storeInternalFileToDatabase({ path: filename, ...stat }, true);
+                        if (!stat) {
+                            throw new Error("Stat failed");
+                        }
+                        const mtime = stat?.mtime ?? 0;
+                        await this.storeInternalFileToDatabase({ path: filename, mtime, ctime: stat?.ctime ?? mtime, size: stat?.size ?? 0 }, true);
                         try {
                             //@ts-ignore internalAPI
                             await this.app.vault.adapter.reconcileInternalFile(filename);
@@ -703,7 +701,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
 
-        const filenames = (await this.getFiles(findRoot, [], null, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
+        const filenames = (await this.getFiles(findRoot, [], undefined, ignoreFilter)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
         const files = filenames.filter(path => synchronisedInConfigSync.every(filterFile => !path.toLowerCase().startsWith(filterFile))).map(async (e) => {
             return {
                 path: e as FilePath,
@@ -716,9 +714,12 @@ export class HiddenFileSync extends LiveSyncCommands {
             if (await this.plugin.isIgnoredByIgnoreFiles(w.path)) {
                 continue
             }
+            const mtime = w.stat?.mtime ?? 0
+            const ctime = w.stat?.ctime ?? mtime;
+            const size = w.stat?.size ?? 0;
             result.push({
                 ...w,
-                ...w.stat
+                mtime, ctime, size
             });
         }
         return result;
@@ -729,8 +730,8 @@ export class HiddenFileSync extends LiveSyncCommands {
     async getFiles(
         path: string,
         ignoreList: string[],
-        filter: RegExp[],
-        ignoreFilter: RegExp[]
+        filter?: RegExp[],
+        ignoreFilter?: RegExp[]
     ) {
         let w: ListedFiles;
         try {

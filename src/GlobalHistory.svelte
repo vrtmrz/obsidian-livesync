@@ -2,12 +2,11 @@
     import ObsidianLiveSyncPlugin from "./main";
     import { onDestroy, onMount } from "svelte";
     import type { AnyEntry, FilePathWithPrefix } from "./lib/src/types";
-    import { createBinaryBlob, getDocData, isDocContentSame } from "./lib/src/utils";
+    import { getDocData, isDocContentSame, readAsBlob } from "./lib/src/utils";
     import { diff_match_patch } from "./deps";
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
     import { isPlainText, stripAllPrefixes } from "./lib/src/path";
     import { TFile } from "./deps";
-    import { decodeBinary } from "./lib/src/strbin";
     export let plugin: ObsidianLiveSyncPlugin;
 
     let showDiffInfo = false;
@@ -107,15 +106,9 @@
                             if (checkStorageDiff) {
                                 const abs = plugin.vaultAccess.getAbstractFileByPath(stripAllPrefixes(plugin.getPath(docA)));
                                 if (abs instanceof TFile) {
-                                    let result = false;
-                                    if (isPlainText(docA.path)) {
-                                        const data = await plugin.vaultAccess.adapterRead(abs);
-                                        result = await isDocContentSame(data, doc.data);
-                                    } else {
-                                        const data = await plugin.vaultAccess.adapterReadBinary(abs);
-                                        const dataEEncoded = createBinaryBlob(data);
-                                        result = await isDocContentSame(dataEEncoded, createBinaryBlob(decodeBinary(doc.data)));
-                                    }
+                                    const data = await plugin.vaultAccess.adapterReadAuto(abs);
+                                    const d = readAsBlob(doc);
+                                    const result = await isDocContentSame(data, d);
                                     if (result) {
                                         diffDetail += " ⚖️";
                                     } else {

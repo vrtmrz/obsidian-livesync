@@ -1,7 +1,7 @@
 import type { SerializedFileAccess } from "./SerializedFileAccess";
 import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
 import { Logger } from "./lib/src/logger";
-import { isPlainText, shouldBeIgnored } from "./lib/src/path";
+import { shouldBeIgnored } from "./lib/src/path";
 import type { KeyedQueueProcessor } from "./lib/src/processor";
 import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
@@ -109,7 +109,8 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             if (file instanceof TFolder) continue;
             if (!await this.plugin.isTargetFile(file.path)) continue;
 
-            let cache: null | string | ArrayBuffer;
+            // Stop cache using to prevent the corruption;
+            // let cache: null | string | ArrayBuffer;
             // new file or something changed, cache the changes.
             if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
                 // Wait for a bit while to let the writer has marked `touched` at the file.
@@ -117,12 +118,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 if (this.plugin.vaultAccess.recentlyTouched(file)) {
                     continue;
                 }
-                if (!isPlainText(file.name)) {
-                    cache = await this.plugin.vaultAccess.vaultReadBinary(file);
-                } else {
-                    cache = await this.plugin.vaultAccess.vaultCacheRead(file);
-                    if (!cache) cache = await this.plugin.vaultAccess.vaultRead(file);
-                }
+                // cache = await this.plugin.vaultAccess.vaultReadAuto(file);
+                // if (!isPlainText(file.name)) {
+                //     cache = await this.plugin.vaultAccess.vaultReadBinary(file);
+                // } else {
+                //     cache = await this.plugin.vaultAccess.vaultCacheRead(file);
+                //     if (!cache) cache = await this.plugin.vaultAccess.vaultRead(file);
+                // }
             }
             const fileInfo = file instanceof TFile ? {
                 ctime: file.stat.ctime,
@@ -137,7 +139,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 args: {
                     file: fileInfo,
                     oldPath,
-                    cache,
+                    // cache,
                     ctx
                 },
                 key: atomicKey

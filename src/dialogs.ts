@@ -7,10 +7,9 @@ import PluginPane from "./PluginPane.svelte";
 
 export class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
-    logEl: HTMLDivElement;
-    component: PluginPane = null;
+    component: PluginPane | undefined;
     isOpened() {
-        return this.component != null;
+        return this.component != undefined;
     }
 
     constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
@@ -21,7 +20,7 @@ export class PluginDialogModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         this.titleEl.setText("Customization Sync (Beta2)")
-        if (this.component == null) {
+        if (!this.component) {
             this.component = new PluginPane({
                 target: contentEl,
                 props: { plugin: this.plugin },
@@ -30,9 +29,9 @@ export class PluginDialogModal extends Modal {
     }
 
     onClose() {
-        if (this.component != null) {
+        if (this.component) {
             this.component.$destroy();
-            this.component = null;
+            this.component = undefined;
         }
     }
 }
@@ -94,13 +93,13 @@ export class InputStringDialog extends Modal {
 }
 export class PopoverSelectString extends FuzzySuggestModal<string> {
     app: App;
-    callback: (e: string) => void = () => { };
+    callback: ((e: string) => void) | undefined = () => { };
     getItemsFun: () => string[] = () => {
         return ["yes", "no"];
 
     }
 
-    constructor(app: App, note: string, placeholder: string | null, getItemsFun: () => string[], callback: (e: string) => void) {
+    constructor(app: App, note: string, placeholder: string | undefined, getItemsFun: (() => string[]) | undefined, callback: (e: string) => void) {
         super(app);
         this.app = app;
         this.setPlaceholder((placeholder ?? "y/n) ") + note);
@@ -118,13 +117,14 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
 
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
         // debugger;
-        this.callback(item);
-        this.callback = null;
+        this.callback?.(item);
+        this.callback = undefined;
     }
     onClose(): void {
         setTimeout(() => {
-            if (this.callback != null) {
+            if (this.callback) {
                 this.callback("");
+                this.callback = undefined;
             }
         }, 100);
     }
@@ -136,16 +136,16 @@ export class MessageBox extends Modal {
     title: string;
     contentMd: string;
     buttons: string[];
-    result: string;
+    result: string | false = false;
     isManuallyClosed = false;
     defaultAction: string | undefined;
     timeout: number | undefined;
-    timer: ReturnType<typeof setInterval> = undefined;
+    timer: ReturnType<typeof setInterval> | undefined = undefined;
     defaultButtonComponent: ButtonComponent | undefined;
 
     onSubmit: (result: string | false) => void;
 
-    constructor(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout: number, onSubmit: (result: (typeof buttons)[number] | false) => void) {
+    constructor(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout: number | undefined, onSubmit: (result: (typeof buttons)[number] | false) => void) {
         super(plugin.app);
         this.plugin = plugin;
         this.title = title;
@@ -156,6 +156,7 @@ export class MessageBox extends Modal {
         this.timeout = timeout;
         if (this.timeout) {
             this.timer = setInterval(() => {
+                if (this.timeout === undefined) return;
                 this.timeout--;
                 if (this.timeout < 0) {
                     if (this.timer) {
@@ -166,7 +167,7 @@ export class MessageBox extends Modal {
                     this.isManuallyClosed = true;
                     this.close();
                 } else {
-                    this.defaultButtonComponent.setButtonText(`( ${this.timeout} ) ${defaultAction}`);
+                    this.defaultButtonComponent?.setButtonText(`( ${this.timeout} ) ${defaultAction}`);
                 }
             }, 1000);
         }
@@ -223,7 +224,7 @@ export class MessageBox extends Modal {
 }
 
 
-export function confirmWithMessage(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction?: (typeof buttons)[number], timeout?: number): Promise<(typeof buttons)[number] | false> {
+export function confirmWithMessage(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout?: number): Promise<(typeof buttons)[number] | false> {
     return new Promise((res) => {
         const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, (result) => res(result));
         dialog.open();

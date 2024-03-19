@@ -4,7 +4,7 @@ import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stri
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, createBinaryBlob, createTextBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, sendValue } from "./lib/src/utils";
+import { arrayToChunkedArray, createBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, readContent, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -211,6 +211,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                         this.last_successful_post = true;
                     }
                     Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL_DEBUG);
+                    if (Math.floor(response.status / 100) !== 2) {
+                        const r = response.clone();
+                        Logger(`The request may have failed. The reason sent by the server: ${r.status}: ${r.statusText}`);
+                        try {
+                            Logger(await (await r.blob()).text(), LOG_LEVEL_VERBOSE);
+                        } catch (_) {
+                            Logger("Cloud not parse response", LOG_LEVEL_VERBOSE);
+                        }
+                    }
                     return response;
                 } catch (ex) {
                     Logger(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
@@ -786,8 +795,10 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
         this.observeForLogs();
-        this.statusBar = this.addStatusBarItem();
-        this.statusBar.addClass("syncstatusbar");
+        if (this.settings.showStatusOnStatusbar) {
+            this.statusBar = this.addStatusBarItem();
+            this.statusBar.addClass("syncstatusbar");
+        }
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
             Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
@@ -1329,12 +1340,12 @@ We can perform a command in this file.
                 return;
             }
 
-            const cache = queue.args.cache;
+            // const cache = queue.args.cache;
             if (queue.type == "CREATE" || queue.type == "CHANGED") {
                 fireAndForget(() => this.checkAndApplySettingFromMarkdown(queue.args.file.path, true));
                 const keyD1 = `file-last-proc-DELETED-${file.path}`;
                 await this.kvDB.set(keyD1, mtime);
-                if (!await this.updateIntoDB(targetFile, cache)) {
+                if (!await this.updateIntoDB(targetFile, undefined)) {
                     Logger(`STORAGE -> DB: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
                     // cancel running queues and remove one of atomic operation
                     this.cancelRelativeEvent(queue);
@@ -1551,7 +1562,7 @@ We can perform a command in this file.
             Logger(msg + "ERROR, invalid path: " + path, LOG_LEVEL_NOTICE);
             return;
         }
-        const writeData = doc.datatype == "newnote" ? decodeBinary(doc.data) : getDocData(doc.data);
+        const writeData = readContent(doc);
         await this.vaultAccess.ensureDirectory(path);
         try {
             let outFile;
@@ -1658,13 +1669,13 @@ We can perform a command in this file.
     storageApplyingProcessor = new KeyedQueueProcessor(async (docs: LoadedEntry[]) => {
         const entry = docs[0];
         const path = this.getPath(entry);
-        Logger(`Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) change...`, LOG_LEVEL_VERBOSE);
+        Logger(`Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) :Started...`, LOG_LEVEL_VERBOSE);
         const targetFile = this.vaultAccess.getAbstractFileByPath(this.getPathWithoutPrefix(entry));
         if (targetFile instanceof TFolder) {
             Logger(`${this.getPath(entry)} is already exist as the folder`);
         } else {
             await this.processEntryDoc(entry, targetFile instanceof TFile ? targetFile : undefined);
-            Logger(`Processing ${path} (${entry._id.substring(0, 8)}:${entry._rev?.substring(0, 5)}) `);
+            Logger(`Processing ${path} (${entry._id.substring(0, 8)} :${entry._rev?.substring(0, 5)}) : Done`);
         }
 
         return;
@@ -1853,22 +1864,22 @@ We can perform a command in this file.
         const newLog = log;
         // scheduleTask("update-display", 50, () => {
         this.statusBar?.setText(newMsg.split("\n")[0]);
-        const selector = `.CodeMirror-wrap,` +
-            `.markdown-preview-view.cm-s-obsidian,` +
-            `.markdown-source-view.cm-s-obsidian,` +
-            `.canvas-wrapper,` +
-            `.empty-state`
-            ;
+        // const selector = `.CodeMirror-wrap,` +
+        //     `.markdown-preview-view.cm-s-obsidian,` +
+        //     `.markdown-source-view.cm-s-obsidian,` +
+        //     `.canvas-wrapper,` +
+        //     `.empty-state`
+        //     ;
         if (this.settings.showStatusOnEditor) {
             const root = activeDocument.documentElement;
-            const q = root.querySelectorAll(selector);
-            q.forEach(e => e.setAttr("data-log", '' + (newMsg + "\n" + newLog) + ''))
+            root.style.setProperty("--sls-log-text", "'" + (newMsg + "\\A " + newLog) + "'");
         } else {
-            const root = activeDocument.documentElement;
-            const q = root.querySelectorAll(selector);
-            q.forEach(e => e.setAttr("data-log", ''))
+            // const root = activeDocument.documentElement;
+            // root.style.setProperty("--log-text", "'" + (newMsg + "\\A " + newLog) + "'");
         }
         // }, true);
+
+
         scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
     }
 
@@ -2113,7 +2124,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 new QueueProcessor(
                     async (pairs) => {
                         const docs = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: pairs.map(e => e.id), include_docs: true });
-                        const docsMap = docs.rows.reduce((p, c) => ({ ...p, [c.id]: c.doc }), {} as Record<DocumentID, EntryDoc>);
+                        const docsMap = Object.fromEntries(docs.rows.map(e => [e.id, e.doc]));
                         const syncFilesToSync = pairs.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
                         return syncFilesToSync;
                     }
@@ -2675,41 +2686,24 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (shouldBeIgnored(file.path)) {
             return true;
         }
-        let content: Blob;
-        let datatype: "plain" | "newnote" = "newnote";
-        if (!cache) {
-            if (!isPlainText(file.name)) {
-                Logger(`Reading   : ${file.path}`, LOG_LEVEL_VERBOSE);
-                const contentBin = await this.vaultAccess.vaultReadBinary(file);
-                Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
-                try {
-                    content = createBinaryBlob(contentBin);
-                } catch (ex) {
-                    Logger(`The file ${file.path} could not be encoded`);
-                    Logger(ex, LOG_LEVEL_VERBOSE);
-                    return false;
-                }
-                datatype = "newnote";
-            } else {
-                content = createTextBlob(await this.vaultAccess.vaultRead(file));
-                datatype = "plain";
-            }
-        } else {
-            if (cache instanceof ArrayBuffer) {
-                Logger(`Cache Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
-                try {
-                    content = createBinaryBlob(cache);
-                } catch (ex) {
-                    Logger(`The file ${file.path} could not be encoded`);
-                    Logger(ex, LOG_LEVEL_VERBOSE);
-                    return false;
-                }
-                datatype = "newnote"
-            } else {
-                content = createTextBlob(cache);
-                datatype = "plain";
-            }
-        }
+        // let content: Blob;
+        // let datatype: "plain" | "newnote" = "newnote";
+        const isPlain = isPlainText(file.name);
+        const possiblyLarge = !isPlain;
+        // if (!cache) {
+        if (possiblyLarge) Logger(`Reading   : ${file.path}`, LOG_LEVEL_VERBOSE);
+        const content = createBlob(await this.vaultAccess.vaultReadAuto(file));
+        const datatype = isPlain ? "plain" : "newnote";
+        // }
+        // else if (cache instanceof ArrayBuffer) {
+        //     Logger(`Cache Reading: ${file.path}`, LOG_LEVEL_VERBOSE);
+        //     content = createBinaryBlob(cache);
+        //     datatype = "newnote"
+        // } else {
+        //     content = createTextBlob(cache);
+        //     datatype = "plain";
+        // }
+        if (possiblyLarge) Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
         const fullPath = getPathFromTFile(file);
         const id = await this.path2id(fullPath);
         const d: SavingEntry = {

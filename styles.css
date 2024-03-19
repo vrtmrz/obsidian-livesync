@@ -77,14 +77,6 @@
     border-top: 1px solid var(--background-modifier-border);
 }
 
-/* .sls-table-head{
-    width:50%;
-}
-.sls-table-tail{
-    width:50%;
-
-} */
-
 .sls-header-button {
     margin-left: 2em;
 }
@@ -94,7 +86,7 @@
 }
 
 :root {
-    --slsmessage: "";
+    --sls-log-text: "";
 }
 
 .sls-troubleshoot-preview {
@@ -110,7 +102,7 @@
 .markdown-source-view.cm-s-obsidian::before,
 .canvas-wrapper::before,
 .empty-state::before {
-    content: attr(data-log);
+    content: var(--sls-log-text, "");
     text-align: right;
     white-space: pre-wrap;
     position: absolute;

@@ -242,14 +242,11 @@ export function mergeObject(
             ret[key] = v;
         }
     }
+    const retSorted = Object.fromEntries(Object.entries(ret).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     if (Array.isArray(objA) && Array.isArray(objB)) {
-        return Object.values(Object.entries(ret)
-            .sort()
-            .reduce((p, [key, value]) => ({ ...p, [key]: value }), {}));
+        return Object.values(retSorted);
     }
-    return Object.entries(ret)
-        .sort()
-        .reduce((p, [key, value]) => ({ ...p, [key]: value }), {});
+    return retSorted;
 }
 
 export function flattenObject(obj: Record<string | number | symbol, any>, path: string[] = []): [string, any][] {
@@ -313,7 +310,7 @@ export function isCustomisationSyncMetadata(str: string): boolean {
 
 export const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, null, null, (result) => res(result as "yes" | "no"));
+        const popover = new PopoverSelectString(app, message, undefined, undefined, (result) => res(result as "yes" | "no"));
         popover.open();
     });
 };
@@ -327,7 +324,7 @@ export const askSelectString = (app: App, message: string, items: string[]): Pro
 };
 
 
-export const askString = (app: App, title: string, key: string, placeholder: string, isPassword?: boolean): Promise<string | false> => {
+export const askString = (app: App, title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> => {
     return new Promise((res) => {
         const dialog = new InputStringDialog(app, title, key, placeholder, isPassword, (result) => res(result));
         dialog.open();
@@ -400,7 +397,7 @@ export const _requestToCouchDB = async (baseUri: string, username: string, passw
     };
     return await requestUrl(requestParam);
 }
-export const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string, key?: string, body?: string, method?: string) => {
+export const requestToCouchDB = async (baseUri: string, username: string, password: string, origin: string = "", key?: string, body?: string, method?: string) => {
     const uri = `_node/_local/_config${key ? "/" + key : ""}`;
     return await _requestToCouchDB(baseUri, username, password, origin, uri, body, method);
 };
@@ -440,7 +437,7 @@ export function compareMTime(baseMTime: number, targetMTime: number): typeof BAS
 export function markChangesAreSame(file: TFile | AnyEntry | string, mtime1: number, mtime2: number) {
     if (mtime1 === mtime2) return true;
     const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
-    const pairs = sameChangePairs.get(key, []);
+    const pairs = sameChangePairs.get(key, []) || [];
     if (pairs.some(e => e == mtime1 || e == mtime2)) {
         sameChangePairs.set(key, [...new Set([...pairs, mtime1, mtime2])]);
     } else {
@@ -449,7 +446,7 @@ export function markChangesAreSame(file: TFile | AnyEntry | string, mtime1: numb
 }
 export function isMarkedAsSameChanges(file: TFile | AnyEntry | string, mtimes: number[]) {
     const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
-    const pairs = sameChangePairs.get(key, []);
+    const pairs = sameChangePairs.get(key, []) || [];
     if (mtimes.every(e => pairs.indexOf(e) !== -1)) {
         return EVEN;
     }
