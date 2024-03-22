@@ -6,15 +6,15 @@
     import { mergeObject } from "./utils";
 
     export let docs: LoadedEntry[] = [];
-    export let callback: (keepRev: string, mergedStr?: string) => Promise<void> = async (_, __) => {
+    export let callback: (keepRev?: string, mergedStr?: string) => Promise<void> = async (_, __) => {
         Promise.resolve();
     };
     export let filename: FilePath = "" as FilePath;
     export let nameA: string = "A";
     export let nameB: string = "B";
     export let defaultSelect: string = "";
-    let docA: LoadedEntry = undefined;
-    let docB: LoadedEntry = undefined;
+    let docA: LoadedEntry;
+    let docB: LoadedEntry;
     let docAContent = "";
     let docBContent = "";
     let objA: any = {};
@@ -28,7 +28,8 @@
     function docToString(doc: LoadedEntry) {
         return doc.datatype == "plain" ? getDocData(doc.data) : readString(new Uint8Array(decodeBinary(doc.data)));
     }
-    function revStringToRevNumber(rev: string) {
+    function revStringToRevNumber(rev?: string) {
+        if (!rev) return "";
         return rev.split("-")[0];
     }
 
@@ -44,15 +45,15 @@
     }
     function apply() {
         if (docA._id == docB._id) {
-            if (mode == "A") return callback(docA._rev, null);
-            if (mode == "B") return callback(docB._rev, null);
+            if (mode == "A") return callback(docA._rev!, undefined);
+            if (mode == "B") return callback(docB._rev!, undefined);
         } else {
-            if (mode == "A") return callback(null, docToString(docA));
-            if (mode == "B") return callback(null, docToString(docB));
+            if (mode == "A") return callback(undefined, docToString(docA));
+            if (mode == "B") return callback(undefined, docToString(docB));
         }
-        if (mode == "BA") return callback(null, JSON.stringify(objBA, null, 2));
-        if (mode == "AB") return callback(null, JSON.stringify(objAB, null, 2));
-        callback(null, null);
+        if (mode == "BA") return callback(undefined, JSON.stringify(objBA, null, 2));
+        if (mode == "AB") return callback(undefined, JSON.stringify(objAB, null, 2));
+        callback(undefined, undefined);
     }
     $: {
         if (docs && docs.length >= 1) {
@@ -133,13 +134,17 @@
     {/if}
     <div>
         {nameA}
-        {#if docA._id == docB._id} Rev:{revStringToRevNumber(docA._rev)} {/if} ,{new Date(docA.mtime).toLocaleString()}
+        {#if docA._id == docB._id}
+            Rev:{revStringToRevNumber(docA._rev)}
+        {/if} ,{new Date(docA.mtime).toLocaleString()}
         {docAContent.length} letters
     </div>
 
     <div>
         {nameB}
-        {#if docA._id == docB._id} Rev:{revStringToRevNumber(docB._rev)} {/if} ,{new Date(docB.mtime).toLocaleString()}
+        {#if docA._id == docB._id}
+            Rev:{revStringToRevNumber(docB._rev)}
+        {/if} ,{new Date(docB.mtime).toLocaleString()}
         {docBContent.length} letters
     </div>
 

@@ -2050,7 +2050,7 @@ ${stringifyYaml(pluginConfig)}`;
 
         const vaultName = new Setting(containerPluginSettings)
             .setName("Device name")
-            .setDesc("Unique name between all synchronized devices")
+            .setDesc("Unique name between all synchronized devices. To edit this setting, please disable customization sync once.")
             .addText((text) => {
                 text.setPlaceholder("desktop")
                     .setValue(this.plugin.deviceAndVaultName)

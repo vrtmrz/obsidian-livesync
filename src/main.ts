@@ -4,7 +4,7 @@ import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stri
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, createBlob, fireAndForget, getDocData, isDocContentSame, isObjectDifferent, readContent, sendValue } from "./lib/src/utils";
+import { arrayToChunkedArray, createBlob, determineTypeFromBlob, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -381,7 +381,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const notesList = notes.map(e => e.dispPath);
         const target = await this.askSelectString("File to view History", notesList);
         if (target) {
-            const targetId = notes.find(e => e.dispPath == target);
+            const targetId = notes.find(e => e.dispPath == target)!;
             this.showHistory(targetId.path, targetId.id);
         }
     }
@@ -399,7 +399,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         const target = await this.askSelectString("File to resolve conflict", notesList);
         if (target) {
-            const targetItem = notes.find(e => e.dispPath == target);
+            const targetItem = notes.find(e => e.dispPath == target)!;
             this.resolveConflicted(targetItem.path);
             await this.conflictCheckQueue.waitForPipeline();
             return true;
@@ -426,7 +426,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const limit = Date.now() - (86400 * 1000 * limitDays);
         const notes: { path: string, mtime: number, ttl: number, doc: PouchDB.Core.ExistingDocument<EntryDoc & PouchDB.Core.AllDocsMeta> }[] = [];
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
-            if (doc.type == "newnote" || doc.type == "plain") {
+            if (isAnyNote(doc)) {
                 if (doc.deleted && (doc.mtime - limit) < 0) {
                     notes.push({ path: this.getPath(doc), mtime: doc.mtime, ttl: (doc.mtime - limit) / 1000 / 86400, doc: doc });
                 }
@@ -691,7 +691,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             name: "Show history",
             callback: () => {
                 const file = this.getActiveFile();
-                if (file) this.showHistory(file, null);
+                if (file) this.showHistory(file, undefined);
             }
         });
         this.addCommand({
@@ -763,7 +763,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                     const ret = this.extractSettingFromWholeText(doc);
                     return ret.body != "";
                 }
-                this.checkAndApplySettingFromMarkdown(ctx.file.path, false);
+                if (ctx.file) this.checkAndApplySettingFromMarkdown(ctx.file.path, false);
             },
         })
 
@@ -1084,7 +1084,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     async checkAndApplySettingFromMarkdown(filename: string, automated?: boolean) {
         if (automated && !this.settings.notifyAllSettingSyncFile) {
             if (!this.settings.settingSyncFile || this.settings.settingSyncFile != filename) {
-                Logger(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_VERBOSE);
+                Logger(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_DEBUG);
                 return;
             }
         }
@@ -1147,7 +1147,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         })
     }
     generateSettingForMarkdown(settings?: ObsidianLiveSyncSettings, keepCredential?: boolean): Partial<ObsidianLiveSyncSettings> {
-        const saveData = { ...(settings ? settings : this.settings) };
+        const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
         delete saveData.encryptedPassphrase;
         if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
@@ -1404,13 +1404,12 @@ We can perform a command in this file.
     getFilePath(file: TAbstractFile): string {
         if (file instanceof TFolder) {
             if (file.isRoot()) return "";
-            return this.getFilePath(file.parent) + "/" + file.name;
+            return this.getFilePath(file.parent!) + "/" + file.name;
         }
         if (file instanceof TFile) {
-            return this.getFilePath(file.parent) + "/" + file.name;
+            return this.getFilePath(file.parent!) + "/" + file.name;
         }
-
-        return this.getFilePath(file.parent) + "/" + file.name;
+        return this.getFilePath(file.parent!) + "/" + file.name;
     }
 
     async watchVaultRenameAsync(file: TFile, oldFile: any, cache?: CacheData) {
@@ -1543,7 +1542,7 @@ We can perform a command in this file.
                 await this.deleteVaultItem(file);
             } else {
                 // Conflict has been resolved at this time, 
-                await this.pullFile(path, null, true);
+                await this.pullFile(path, undefined, true);
             }
             return;
         }
@@ -1552,8 +1551,8 @@ We can perform a command in this file.
 
         const doc = existDoc;
 
-        if (doc.datatype != "newnote" && doc.datatype != "plain") {
-            Logger(msg + "ERROR, Invalid datatype: " + path + "(" + doc.datatype + ")", LOG_LEVEL_NOTICE);
+        if (!isAnyNote(doc)) {
+            Logger(msg + "ERROR, Invalid type: " + path + "(" + (doc as any)?.type || "type missing" + ")", LOG_LEVEL_NOTICE);
             return;
         }
         // if (!force && localMtime >= docMtime) return;
@@ -1600,11 +1599,13 @@ We can perform a command in this file.
             await this.vaultAccess.delete(file, true);
         }
         Logger(`xxx <- STORAGE (deleted) ${file.path}`);
-        Logger(`files: ${dir.children.length}`);
-        if (dir.children.length == 0) {
-            if (!this.settings.doNotDeleteFolder) {
-                Logger(`All files under the parent directory (${dir.path}) have been deleted, so delete this one.`);
-                await this.deleteVaultItem(dir);
+        if (dir) {
+            Logger(`files: ${dir.children.length}`);
+            if (dir.children.length == 0) {
+                if (!this.settings.doNotDeleteFolder) {
+                    Logger(`All files under the parent directory (${dir.path}) have been deleted, so delete this one.`);
+                    await this.deleteVaultItem(dir);
+                }
             }
         }
     }
@@ -1635,7 +1636,7 @@ We can perform a command in this file.
         const chunkedIds = arrayToChunkedArray(ids, batchSize);
         for await (const idsBatch of chunkedIds) {
             const ret = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: idsBatch, include_docs: true, limit: 100 });
-            this.replicationResultProcessor.enqueueAll(ret.rows.map(doc => doc.doc));
+            this.replicationResultProcessor.enqueueAll(ret.rows.map(doc => doc.doc!));
             await this.replicationResultProcessor.waitForPipeline();
         }
 
@@ -1643,12 +1644,11 @@ We can perform a command in this file.
 
     databaseQueueCount = reactiveSource(0);
     databaseQueuedProcessor = new QueueProcessor(async (docs: EntryBody[]) => {
-        const dbDoc = docs[0];
+        const dbDoc = docs[0] as LoadedEntry; // It has no `data`
         const path = this.getPath(dbDoc);
         // If `Read chunks online` is disabled, chunks should be transferred before here.
         // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
-        const datatype = (!("type" in dbDoc) || dbDoc.type == "notes") ? "newnote" : dbDoc.type;
-        const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc, datatype, data: [] }, {}, false, true, true);
+        const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, {}, false, true, true);
         if (!doc) {
             Logger(`Something went wrong while gathering content of ${path} (${dbDoc._id.substring(0, 8)}, ${dbDoc._rev?.substring(0, 10)}) `, LOG_LEVEL_NOTICE)
             return;
@@ -1710,7 +1710,7 @@ We can perform a command in this file.
         ) {
             return;
         }
-        if (change.type == "plain" || change.type == "newnote") {
+        if (isAnyNote(change)) {
             if (this.databaseQueuedProcessor._isSuspended) {
                 Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
             }
@@ -1883,7 +1883,7 @@ We can perform a command in this file.
         scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
     }
 
-    async replicate(showMessage?: boolean) {
+    async replicate(showMessage: boolean = false) {
         if (!this.isReady) return;
         if (isLockAcquired("cleanup")) {
             Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL_NOTICE);
@@ -1956,7 +1956,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return ret;
     }
 
-    async initializeDatabase(showingNotice?: boolean, reopenDatabase = true) {
+    async initializeDatabase(showingNotice: boolean = false, reopenDatabase = true) {
         this.isReady = false;
         if ((!reopenDatabase) || await this.openDatabase()) {
             if (this.localDatabase.isReady) {
@@ -1974,17 +1974,17 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
     }
 
-    async replicateAllToServer(showingNotice?: boolean) {
+    async replicateAllToServer(showingNotice: boolean = false) {
         if (!this.isReady) return false;
         await Promise.all(this.addOns.map(e => e.beforeReplicate(showingNotice)));
         return await this.replicator.replicateAllToServer(this.settings, showingNotice);
     }
-    async replicateAllFromServer(showingNotice?: boolean) {
+    async replicateAllFromServer(showingNotice: boolean = false) {
         if (!this.isReady) return false;
         return await this.replicator.replicateAllFromServer(this.settings, showingNotice);
     }
 
-    async markRemoteLocked(lockByClean?: boolean) {
+    async markRemoteLocked(lockByClean: boolean = false) {
         return await this.replicator.markRemoteLocked(this.settings, true, lockByClean);
     }
 
@@ -2096,7 +2096,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const w = await this.localDatabase.getDBEntryMeta(e, {}, true);
             if (w && !(w.deleted || w._deleted)) {
                 if (!this.isFileSizeExceeded(w.size)) {
-                    await this.pullFile(e, filesStorage, false, null, false);
+                    await this.pullFile(e, filesStorage, false, undefined, false);
                     fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
                     Logger(`Check or pull from db:${e} OK`);
                 } else {
@@ -2414,11 +2414,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const conflictedRevNo = Number(conflictedRev.split("-")[0]);
             //Search 
             const revFrom = (await this.localDatabase.getRaw<EntryDoc>(await this.path2id(path), { revs_info: true }));
-            const commonBase = revFrom._revs_info.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
+            const commonBase = (revFrom._revs_info || []).filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
             let p = undefined;
             if (commonBase) {
                 if (isSensibleMargeApplicable(path)) {
-                    const result = await this.mergeSensibly(path, commonBase, test._rev, conflictedRev);
+                    const result = await this.mergeSensibly(path, commonBase, test._rev!, conflictedRev);
                     if (result) {
                         p = result.filter(e => e[0] != DIFF_DELETE).map((e) => e[1]).join("");
                         // can be merged.
@@ -2428,7 +2428,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     }
                 } else if (isObjectMargeApplicable(path)) {
                     // can be merged.
-                    const result = await this.mergeObject(path, commonBase, test._rev, conflictedRev);
+                    const result = await this.mergeObject(path, commonBase, test._rev!, conflictedRev);
                     if (result) {
                         Logger(`Object merge:${path}`, LOG_LEVEL_INFO);
                         p = result;
@@ -2457,7 +2457,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
         }
         // should be one or more conflicts;
-        const leftLeaf = await this.getConflictedDoc(path, test._rev);
+        const leftLeaf = await this.getConflictedDoc(path, test._rev!);
         const rightLeaf = await this.getConflictedDoc(path, conflicts[0]);
         if (leftLeaf == false) {
             // what's going on..
@@ -2467,7 +2467,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (rightLeaf == false) {
             // Conflicted item could not load, delete this.
             await this.localDatabase.deleteDBEntry(path, { rev: conflicts[0] });
-            await this.pullFile(path, null, true);
+            await this.pullFile(path, undefined, true);
             Logger(`could not get old revisions, automatically used newer one:${path}`, LOG_LEVEL_NOTICE);
             return AUTO_MERGED;
         }
@@ -2483,7 +2483,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 loser = rightLeaf;
             }
             await this.localDatabase.deleteDBEntry(path, { rev: loser.rev });
-            await this.pullFile(path, null, true);
+            await this.pullFile(path, undefined, true);
             Logger(`Automatically merged (${isSame ? "same," : ""}${isBinary ? "binary," : ""}${alwaysNewer ? "alwaysNewer" : ""}) :${path}`, LOG_LEVEL_NOTICE);
             return AUTO_MERGED;
         }
@@ -2561,16 +2561,16 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (selected === CANCELLED) {
             // Cancelled by UI, or another conflict.
             Logger(`Merge: Cancelled ${filename}`, LOG_LEVEL_INFO);
-            return;
+            return false;
         }
         const testDoc = await this.localDatabase.getDBEntry(filename, { conflicts: true }, false, false, true);
         if (testDoc === false) {
             Logger(`Merge: Could not read ${filename} from the local database`, LOG_LEVEL_VERBOSE);
-            return;
+            return false;
         }
         if (!testDoc._conflicts) {
             Logger(`Merge: Nothing to do ${filename}`, LOG_LEVEL_VERBOSE);
-            return;
+            return false;
         }
         const toDelete = selected;
         const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
@@ -2592,11 +2592,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
             Logger(`Merge: Changes has been concatenated: ${filename}`);
         } else if (typeof toDelete === "string") {
             await this.localDatabase.deleteDBEntry(filename, { rev: toDelete });
-            await this.pullFile(filename, null, true, toKeep);
+            await this.pullFile(filename, undefined, true, toKeep);
             Logger(`Conflict resolved:${filename}`);
         } else {
             Logger(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
-            return;
+            return false;
         }
         // In here, some merge has been processed.
         // So we have to run replication if configured.
@@ -2605,6 +2605,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
         // And, check it again.
         this.conflictCheckQueue.enqueue(filename);
+        return false;
     }
 
     async pullFile(filename: FilePathWithPrefix, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
@@ -2612,7 +2613,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         if (!await this.isTargetFile(filename)) return;
         if (targetFile == null) {
             //have to create;
-            const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
+            const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : undefined, false, waitForReady);
             if (doc === false) {
                 Logger(`${filename} Skipped`);
                 return;
@@ -2621,7 +2622,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         } else if (targetFile instanceof TFile) {
             //normal case
             const file = targetFile;
-            const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : null, false, waitForReady);
+            const doc = await this.localDatabase.getDBEntry(filename, rev ? { rev: rev } : undefined, false, waitForReady);
             if (doc === false) {
                 Logger(`${filename} Skipped`);
                 return;
@@ -2661,7 +2662,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             case TARGET_IS_NEW:
                 if (!this.isFileSizeExceeded(doc.size)) {
                     Logger("STORAGE <- DB :" + file.path);
-                    const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), null, false, false, true);
+                    const docx = await this.localDatabase.getDBEntry(getPathFromTFile(file), undefined, false, false, true);
                     if (docx != false) {
                         await this.processEntryDoc(docx, file);
                     } else {
@@ -2687,22 +2688,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return true;
         }
         // let content: Blob;
-        // let datatype: "plain" | "newnote" = "newnote";
         const isPlain = isPlainText(file.name);
         const possiblyLarge = !isPlain;
         // if (!cache) {
         if (possiblyLarge) Logger(`Reading   : ${file.path}`, LOG_LEVEL_VERBOSE);
         const content = createBlob(await this.vaultAccess.vaultReadAuto(file));
-        const datatype = isPlain ? "plain" : "newnote";
-        // }
-        // else if (cache instanceof ArrayBuffer) {
-        //     Logger(`Cache Reading: ${file.path}`, LOG_LEVEL_VERBOSE);
-        //     content = createBinaryBlob(cache);
-        //     datatype = "newnote"
-        // } else {
-        //     content = createTextBlob(cache);
-        //     datatype = "plain";
-        // }
+        const datatype = determineTypeFromBlob(content);
         if (possiblyLarge) Logger(`Processing: ${file.path}`, LOG_LEVEL_VERBOSE);
         const fullPath = getPathFromTFile(file);
         const id = await this.path2id(fullPath);
@@ -2724,7 +2715,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 return true;
             }
             try {
-                const old = await this.localDatabase.getDBEntry(fullPath, null, false, false);
+                const old = await this.localDatabase.getDBEntry(fullPath, undefined, false, false);
                 if (old !== false) {
                     const oldData = { data: old.data, deleted: old._deleted || old.deleted };
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
@@ -2800,7 +2791,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const id = await this.path2id(path);
         const doc = await this.localDatabase.getRaw<AnyEntry>(id, { conflicts: true });
         // If there is no conflict, return with false.
-        if (!("_conflicts" in doc)) return false;
+        if (!("_conflicts" in doc) || doc._conflicts === undefined) return false;
         if (doc._conflicts.length == 0) return false;
         Logger(`Hidden file conflicted:${this.getPath(doc)}`);
         const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
@@ -2833,7 +2824,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
     async getIgnoreFile(path: string) {
         if (this.ignoreFileCache.has(path)) {
-            return this.ignoreFileCache.get(path);
+            return this.ignoreFileCache.get(path) ?? false;
         } else {
             return await this.readIgnoreFile(path);
         }
@@ -2909,9 +2900,9 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const fragment = createFragment((doc) => {
 
             const [beforeText, afterText] = dialogText.split("{HERE}", 2);
-            doc.createEl("span", null, (a) => {
+            doc.createEl("span", undefined, (a) => {
                 a.appendText(beforeText);
-                a.appendChild(a.createEl("a", null, (anchor) => {
+                a.appendChild(a.createEl("a", undefined, (anchor) => {
                     anchorCallback(anchor);
                 }));
 

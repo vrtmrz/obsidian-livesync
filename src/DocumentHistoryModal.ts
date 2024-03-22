@@ -25,7 +25,7 @@ function readDocument(w: LoadedEntry) {
     if (isImage(w.path)) {
         return new Uint8Array(decodeBinary(w.data));
     }
-    if (w.data == "plain") return getDocData(w.data);
+    if (w.type == "plain" || w.datatype == "plain") return getDocData(w.data);
     if (isComparableTextDecode(w.path)) return readString(new Uint8Array(decodeBinary(w.data)));
     if (isComparableText(w.path)) return getDocData(w.data);
     try {

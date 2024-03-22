@@ -451,7 +451,11 @@ export function isMarkedAsSameChanges(file: TFile | AnyEntry | string, mtimes: n
         return EVEN;
     }
 }
-export function compareFileFreshness(baseFile: TFile | AnyEntry, checkTarget: TFile | AnyEntry): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
+export function compareFileFreshness(baseFile: TFile | AnyEntry | undefined, checkTarget: TFile | AnyEntry | undefined): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
+    if (baseFile === undefined && checkTarget == undefined) return EVEN;
+    if (baseFile == undefined) return TARGET_IS_NEW;
+    if (checkTarget == undefined) return BASE_IS_NEW;
+
     const modifiedBase = baseFile instanceof TFile ? baseFile?.stat?.mtime ?? 0 : baseFile?.mtime ?? 0;
     const modifiedTarget = checkTarget instanceof TFile ? checkTarget?.stat?.mtime ?? 0 : checkTarget?.mtime ?? 0;
 

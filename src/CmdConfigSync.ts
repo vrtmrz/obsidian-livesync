@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame, sendSignal, waitForSignal } from "./lib/src/utils";
+import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
@@ -398,7 +398,7 @@ export class ConfigSync extends LiveSyncCommands {
     showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry, pluginDataA: PluginDataEx, pluginDataB: PluginDataEx): Promise<boolean> {
         const fileA = { ...pluginDataA.files[0], ctime: pluginDataA.files[0].mtime, _id: `${pluginDataA.documentPath}` as DocumentID };
         const fileB = pluginDataB.files[0];
-        const docAx = { ...docA, ...fileA } as LoadedEntry, docBx = { ...docB, ...fileB } as LoadedEntry
+        const docAx = { ...docA, ...fileA, datatype: "newnote" } as LoadedEntry, docBx = { ...docB, ...fileB, datatype: "newnote" } as LoadedEntry
         return serialized("config:merge-data", () => new Promise((res) => {
             Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             // const docs = [docA, docB];

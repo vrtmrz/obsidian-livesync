@@ -2,7 +2,7 @@
     import ObsidianLiveSyncPlugin from "./main";
     import { onDestroy, onMount } from "svelte";
     import type { AnyEntry, FilePathWithPrefix } from "./lib/src/types";
-    import { getDocData, isDocContentSame, readAsBlob } from "./lib/src/utils";
+    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "./lib/src/utils";
     import { diff_match_patch } from "./deps";
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
     import { isPlainText, stripAllPrefixes } from "./lib/src/path";
@@ -30,7 +30,7 @@
 
     type HistoryData = {
         id: string;
-        rev: string;
+        rev?: string;
         path: string;
         dirname: string;
         filename: string;
@@ -53,12 +53,12 @@
                 if (docA.mtime < range_from_epoch) {
                     continue;
                 }
-                if (docA.type != "newnote" && docA.type != "plain") continue;
+                if (!isAnyNote(docA)) continue;
                 const path = plugin.getPath(docA as AnyEntry);
                 const isPlain = isPlainText(docA.path);
                 const revs = await db.getRaw(docA._id, { revs_info: true });
-                let p: string = undefined;
-                const reversedRevs = revs._revs_info.reverse();
+                let p: string | undefined = undefined;
+                const reversedRevs = (revs._revs_info ?? []).reverse();
                 const DIFF_DELETE = -1;
 
                 const DIFF_EQUAL = 0;
@@ -177,7 +177,7 @@
     onDestroy(() => {});
 
     function showHistory(file: string, rev: string) {
-        new DocumentHistoryModal(plugin.app, plugin, file as unknown as FilePathWithPrefix, null, rev).open();
+        new DocumentHistoryModal(plugin.app, plugin, file as unknown as FilePathWithPrefix, undefined, rev).open();
     }
     function openFile(file: string) {
         plugin.app.workspace.openLinkText(file, file);
@@ -232,7 +232,7 @@
                 <td>
                     <span class="rev">
                         {#if entry.isPlain}
-                            <a on:click={() => showHistory(entry.path, entry.rev)}>{entry.rev}</a>
+                            <a on:click={() => showHistory(entry.path, entry?.rev || "")}>{entry.rev}</a>
                         {:else}
                             {entry.rev}
                         {/if}
