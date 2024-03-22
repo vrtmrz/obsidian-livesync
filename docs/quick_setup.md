@@ -54,6 +54,7 @@ If you do not have any setup URI, Press the `start` button. The setting dialogue
 #### Test database connection and Check database configuration
 
 We can check the connectivity to the database, and the database settings.
+
 ![](../images/quick_setup_5.png)  
 
 #### Check and Fix database configuration
