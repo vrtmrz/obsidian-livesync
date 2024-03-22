@@ -10,6 +10,21 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.11:
+  - Fixed:
+    - `Verify and repair all files` is no longer broken.
+  - New feature:
+    - Now `Verify and repair all files` is able to...
+      - Restore if the file only in the local database.
+      - Show the history.
+  - Improved:
+    - Performance improved.
+- 0.22.10
+  - Fixed:
+    - No longer unchanged hidden files and customisations are saved and transferred now.
+    - File integrity of vault history indicates the integrity correctly.
+  - Improved:
+    - In the report, the schema of the remote database URI is now printed.
 - 0.22.9
   - Fixed:
     - Fixed a bug on `fetch chunks on demand` that could not fetch the chunks on demand.
