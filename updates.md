@@ -10,6 +10,17 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.16:
+  - Fixed:
+    - Fixed the issue that binary files were sometimes corrupted.
+    - Fixed customisation sync data could be corrupted.
+  - Improved:
+    - Now the remote database costs lower memory.
+      - This release requires a brief wait on the first synchronisation, to track the latest changeset again.
+    - Description added for the `Device name`.
+  - Refactored:
+    - Many type-errors have been resolved.
+    - Obsolete file has been deleted.
 - 0.22.15:
   - Improved:
     - Faster start-up by removing too many logs which indicates normality
