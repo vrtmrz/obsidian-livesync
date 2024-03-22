@@ -2673,7 +2673,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 }
                 break;
             case EVEN:
-                Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_VERBOSE);
+                Logger("STORAGE == DB :" + file.path + "", LOG_LEVEL_DEBUG);
                 break;
             default:
                 Logger("STORAGE ?? DB :" + file.path + " Something got weird");
