@@ -16,7 +16,8 @@ There are three methods to set up Self-hosted LiveSync.
 
 ### 1. Using setup URIs
 
-> [!TIP] What is the setup URI? Why is it required?
+> [!TIP]
+> What is the setup URI? Why is it required?  
 > The setup URI is the encrypted representation of Self-hosted LiveSync configuration as a URI. This starts `obsidian://setuplivesync?settings=`. This is encrypted with a passphrase, so that it can be shared relatively securely between devices. It is a bit long, but it is one line. This allows a series of settings to be set at once without any inconsistencies. 
 > 
 > If you have configured the remote database by [Automated setup on Fly.io](./setup_flyio.md#a-very-automated-setup) or [set up your server with the tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server), **you should have one of them** 
