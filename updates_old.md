@@ -10,6 +10,30 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.14:
+  - New feature:
+    - We can disable the status bar in the setting dialogue.
+  - Improved:
+    - Now some files are handled as correct data type.
+    - Customisation sync now uses the digest of each file for better performance.
+    - The status in the Editor now works performant.
+  - Refactored:
+    - Common functions have been ready and the codebase has been organised.
+    - Stricter type checking following TypeScript updates.
+    - Remove old iOS workaround for simplicity and performance.
+- 0.22.13:
+  - Improved:
+    - Now using HTTP for the remote database URI warns of an error (on mobile) or notice (on desktop).
+  - Refactored:
+    - Dependencies have been polished.
+- 0.22.12:
+  - Changed:
+    - The default settings has been changed.
+  - Improved:
+    - Default and preferred settings are applied on completion of the wizard.
+  - Fixed:
+    - Now Initialisation `Fetch` will be performed smoothly and there will be fewer conflicts.
+    - No longer stuck while Handling transferred or initialised documents.
 - 0.22.11:
   - Fixed:
     - `Verify and repair all files` is no longer broken.

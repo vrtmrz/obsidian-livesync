@@ -10,6 +10,24 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.17:
+  - Fixed:
+    - Error handling on booting now works fine.
+    - Replication is now started automatically in LiveSync mode.
+    - Batch database update is now disabled in LiveSync mode.
+    - No longer automatically reconnection while off-focused.
+    - Status saves are thinned out.
+    - Now Self-hosted LiveSync waits for all files between the local database and storage to be surely checked.
+  - Improved:
+    - The job scheduler is now more robust and stable.
+    - The status indicator no longer flickers and keeps zero for a while.
+    - No longer meaningless frequent updates of status indicators.
+    - Now we can configure regular expression filters in handy UI. Thank you so much, @eth-p!
+    - `Fetch` or `Rebuild everything` is now more safely performed.
+  - Minor things
+    - Some utility function has been added.
+    - Customisation sync now less wrong messages.
+    - Digging the weeds for eradication of type errors.
 - 0.22.16:
   - Fixed:
     - Fixed the issue that binary files were sometimes corrupted.
@@ -25,28 +43,4 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
   - Improved:
     - Faster start-up by removing too many logs which indicates normality
     - By streamlined scanning of customised synchronisation extra phases have been deleted.
-- 0.22.14:
-  - New feature:
-    - We can disable the status bar in the setting dialogue.
-  - Improved:
-    - Now some files are handled as correct data type.
-    - Customisation sync now uses the digest of each file for better performance.
-    - The status in the Editor now works performant.
-  - Refactored:
-    - Common functions have been ready and the codebase has been organised.
-    - Stricter type checking following TypeScript updates.
-    - Remove old iOS workaround for simplicity and performance.
-- 0.22.13:
-  - Improved:
-    - Now using HTTP for the remote database URI warns of an error (on mobile) or notice (on desktop).
-  - Refactored:
-    - Dependencies have been polished.
-- 0.22.12:
-  - Changed:
-    - The default settings has been changed.
-  - Improved:
-    - Default and preferred settings are applied on completion of the wizard.
-  - Fixed:
-    - Now Initialisation `Fetch` will be performed smoothly and there will be fewer conflicts.
-    - No longer stuck while Handling transferred or initialised documents.
 ... To continue on to `updates_old.md`.
