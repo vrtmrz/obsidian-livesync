@@ -103,6 +103,9 @@
 .canvas-wrapper::before,
 .empty-state::before {
     content: var(--sls-log-text, "");
+    font-variant-numeric: tabular-nums;
+    font-variant-emoji: emoji;
+    tab-size: 4;
     text-align: right;
     white-space: pre-wrap;
     position: absolute;

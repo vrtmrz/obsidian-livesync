@@ -1,5 +1,5 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, TextAreaComponent, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED } from "./lib/src/types";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "./deps";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR } from "./lib/src/types";
 import { createBlob, delay, isDocContentSame, readAsBlob } from "./lib/src/utils";
 import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
@@ -9,6 +9,7 @@ import ObsidianLiveSyncPlugin from "./main";
 import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
 import { request, type ButtonComponent, TFile } from "obsidian";
 import { shouldBeIgnored } from "./lib/src/path";
+import MultipleRegExpControl from './MultipleRegExpControl.svelte';
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -46,11 +47,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         let useDynamicIterationCount = this.plugin.settings.useDynamicIterationCount;
 
         containerEl.empty();
-
-        // const preferred_setting = isCloudantURI(this.plugin.settings.couchDB_URI) ? PREFERRED_SETTING_CLOUDANT : PREFERRED_SETTING_SELF_HOSTED;
-        // const default_setting = { ...DEFAULT_SETTINGS };
-
-
         containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
         containerEl.addClass("sls-setting");
         containerEl.removeClass("isWizard");
@@ -1342,43 +1338,48 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
                 text.inputEl.setAttribute("type", "number");
             });
-        let skipPatternTextArea: TextAreaComponent;
-        const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, \\/obsidian-livesync\\/";
+        const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, ^\\.git\\/, \\/obsidian-livesync\\/";
         const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
-        new Setting(containerSyncSettingEl)
-            .setName("Folders and files to ignore")
-            .setDesc(
-                "Regular expression, If you use hidden file sync between desktop and mobile, adding `workspace$` is recommended."
-            )
-            .setClass("wizardHidden")
-            .addTextArea((text) => {
-                text
-                    .setValue(this.plugin.settings.syncInternalFilesIgnorePatterns)
-                    .setPlaceholder("\\/node_modules\\/, \\/\\.git\\/")
-                    .onChange(async (value) => {
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = value;
+
+        const pat = this.plugin.settings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
+        const patSetting = new Setting(containerSyncSettingEl)
+            .setName("Hidden files ignore patterns")
+            .setDesc("");
+
+        new MultipleRegExpControl(
+            {
+                target: patSetting.controlEl,
+                props: {
+                    patterns: pat, originals: [...pat], apply: async (newPatterns) => {
+                        this.plugin.settings.syncInternalFilesIgnorePatterns = newPatterns.map(e => e.trim()).filter(e => e != "").join(", ");
                         await this.plugin.saveSettings();
-                    })
-                skipPatternTextArea = text;
-                return text;
+                        this.display();
+                    }
+                }
             }
-            );
+        )
+
+        const addDefaultPatterns = async (patterns: string) => {
+            const oldList = this.plugin.settings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
+            const newList = patterns.split(",").map(x => x.trim()).filter(x => x != "");
+            const allSet = new Set([...oldList, ...newList]);
+            this.plugin.settings.syncInternalFilesIgnorePatterns = [...allSet].join(", ");
+            await this.plugin.saveSettings();
+            this.display();
+        }
+
         new Setting(containerSyncSettingEl)
-            .setName("Restore the skip pattern to default")
+            .setName("Add default patterns")
             .setClass("wizardHidden")
             .addButton((button) => {
                 button.setButtonText("Default")
                     .onClick(async () => {
-                        skipPatternTextArea.setValue(defaultSkipPattern);
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPattern;
-                        await this.plugin.saveSettings();
+                        await addDefaultPatterns(defaultSkipPattern);
                     })
             }).addButton((button) => {
                 button.setButtonText("Cross-platform")
                     .onClick(async () => {
-                        skipPatternTextArea.setValue(defaultSkipPatternXPlat);
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = defaultSkipPatternXPlat;
-                        await this.plugin.saveSettings();
+                        await addDefaultPatterns(defaultSkipPatternXPlat);
                     })
             })
 
@@ -1430,54 +1431,41 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerSyncSettingEl.createEl("h4", {
             text: sanitizeHTMLToDom(`Targets`),
         }).addClass("wizardHidden");
-        new Setting(containerSyncSettingEl)
+
+        const syncFilesSetting = new Setting(containerSyncSettingEl)
             .setName("Synchronising files")
             .setDesc("(RegExp) Empty to sync all files. set filter as a regular expression to limit synchronising files.")
             .setClass("wizardHidden")
-            .addTextArea((text) => {
-                text
-                    .setValue(this.plugin.settings.syncOnlyRegEx)
-                    .setPlaceholder("\\.md$|\\.txt")
-                    .onChange(async (value) => {
-                        let isValidRegExp = false;
-                        try {
-                            new RegExp(value);
-                            isValidRegExp = true;
-                        } catch (_) {
-                            // NO OP.
-                        }
-                        if (isValidRegExp || value.trim() == "") {
-                            this.plugin.settings.syncOnlyRegEx = value;
-                            await this.plugin.saveSettings();
-                        }
-                    })
-                return text;
+        new MultipleRegExpControl(
+            {
+                target: syncFilesSetting.controlEl,
+                props: {
+                    patterns: this.plugin.settings.syncOnlyRegEx.split("|[]|"), originals: [...this.plugin.settings.syncOnlyRegEx.split("|[]|")], apply: async (newPatterns) => {
+                        this.plugin.settings.syncOnlyRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }
+                }
             }
-            );
-        new Setting(containerSyncSettingEl)
+        )
+
+        const nonSyncFilesSetting = new Setting(containerSyncSettingEl)
             .setName("Non-Synchronising files")
             .setDesc("(RegExp) If this is set, any changes to local and remote files that match this will be skipped.")
-            .setClass("wizardHidden")
-            .addTextArea((text) => {
-                text
-                    .setValue(this.plugin.settings.syncIgnoreRegEx)
-                    .setPlaceholder("\\.pdf$")
-                    .onChange(async (value) => {
-                        let isValidRegExp = false;
-                        try {
-                            new RegExp(value);
-                            isValidRegExp = true;
-                        } catch (_) {
-                            // NO OP.
-                        }
-                        if (isValidRegExp || value.trim() == "") {
-                            this.plugin.settings.syncIgnoreRegEx = value;
-                            await this.plugin.saveSettings();
-                        }
-                    })
-                return text;
+            .setClass("wizardHidden");
+
+        new MultipleRegExpControl(
+            {
+                target: nonSyncFilesSetting.controlEl,
+                props: {
+                    patterns: this.plugin.settings.syncIgnoreRegEx.split("|[]|"), originals: [...this.plugin.settings.syncIgnoreRegEx.split("|[]|")], apply: async (newPatterns) => {
+                        this.plugin.settings.syncIgnoreRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }
+                }
             }
-            );
+        )
         new Setting(containerSyncSettingEl)
             .setName("Maximum file size")
             .setDesc("(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.")
@@ -2174,6 +2162,15 @@ ${stringifyYaml(pluginConfig)}`;
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
+                        await this.plugin.vaultAccess.vaultCreate(FLAGMD_REDFLAG3_HR, "");
+                        this.plugin.performAppReload();
+                    })
+            ).addButton((button) =>
+                button
+                    .setButtonText("Fetch w/o restarting")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
                         await rebuildDB("localOnly");
                     })
             )
@@ -2233,9 +2230,20 @@ ${stringifyYaml(pluginConfig)}`;
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
+                        await this.plugin.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
+                        this.plugin.performAppReload();
+                    })
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Rebuild w/o restarting")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
                         await rebuildDB("rebuildBothByThisDevice");
                     })
             )
+
         applyDisplayEnabled();
         addScreenElement("70", containerMaintenanceEl);
 

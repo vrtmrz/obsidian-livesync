@@ -50,7 +50,7 @@ export class SetupLiveSync extends LiveSyncCommands {
         const encryptingPassphrase = await askString(this.app, "Encrypt your settings", "The passphrase to encrypt the setup URI", "", true);
         if (encryptingPassphrase === false)
             return;
-        const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" };
+        const setting = { ...this.settings, configPassphraseStore: "", encryptedCouchDBConnection: "", encryptedPassphrase: "" } as Partial<ObsidianLiveSyncSettings>;
         if (stripExtra) {
             delete setting.pluginSyncExtendedSetting;
         }
@@ -377,9 +377,6 @@ Of course, we are able to disable these features.`
         await this.plugin.replicateAllFromServer(true);
         await delay(1000);
         await this.plugin.replicateAllFromServer(true);
-        // if (!tryLessFetching) {
-        //     await this.fetchRemoteChunks();
-        // }
         await this.resumeReflectingDatabase();
         await this.askHiddenFileConfiguration({ enableFetch: true });
     }

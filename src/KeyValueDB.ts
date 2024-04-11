@@ -6,7 +6,7 @@ export interface KeyValueDatabase {
     clear(): Promise<void>;
     keys(query?: IDBValidKey | IDBKeyRange, count?: number): Promise<IDBValidKey[]>;
     close(): void;
-    destroy(): void;
+    destroy(): Promise<void>;
 }
 const databaseCache: { [key: string]: IDBPDatabase<any> } = {};
 export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
@@ -20,8 +20,7 @@ export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatab
             db.createObjectStore(storeKey);
         },
     });
-    let db: IDBPDatabase<any> = null;
-    db = await dbPromise;
+    const db = await dbPromise;
     databaseCache[dbKey] = db;
     return {
         get<T>(key: string): Promise<T> {

@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame } from "./lib/src/utils";
+import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame, throttle } from "./lib/src/utils";
 import { Logger } from "./lib/src/logger";
 import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "./lib/src/strbin";
 import { serialized } from "./lib/src/lock";
@@ -305,7 +305,8 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return false;
     }
-    createMissingConfigurationEntry() {
+    createMissingConfigurationEntry = throttle(() => this._createMissingConfigurationEntry(), 1000);
+    _createMissingConfigurationEntry() {
         let saveRequired = false;
         for (const v of this.pluginList) {
             const key = `${v.category}/${v.name}`;
@@ -349,8 +350,7 @@ export class ConfigSync extends LiveSyncCommands {
             Logger(ex, LOG_LEVEL_VERBOSE);
         }
         return [];
-    }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline().root.onIdle(() => {
-        // Logger(`All files enumerated`, LOG_LEVEL_INFO, "get-plugins");
+    }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline().root.onUpdateProgress(() => {
         this.createMissingConfigurationEntry();
     });
 

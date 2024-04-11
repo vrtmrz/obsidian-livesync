@@ -2,7 +2,7 @@ import type { SerializedFileAccess } from "./SerializedFileAccess";
 import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
 import { Logger } from "./lib/src/logger";
 import { shouldBeIgnored } from "./lib/src/path";
-import type { KeyedQueueProcessor } from "./lib/src/processor";
+import type { QueueProcessor } from "./lib/src/processor";
 import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
 import { delay } from "./lib/src/utils";
 import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "./types";
@@ -19,7 +19,7 @@ type LiveSyncForStorageEventManager = Plugin &
     vaultAccess: SerializedFileAccess
 } & {
     isTargetFile: (file: string | TAbstractFile) => Promise<boolean>,
-    fileEventQueue: KeyedQueueProcessor<FileEventItem, any>,
+    fileEventQueue: QueueProcessor<FileEventItem, any>,
     isFileSizeExceeded: (size: number) => boolean;
 };
 
@@ -133,8 +133,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 path: file.path,
                 size: file.stat.size
             } as FileInfo : file as InternalFileInfo;
-
-            this.plugin.fileEventQueue.enqueueWithKey(`file-${fileInfo.path}`, {
+            this.plugin.fileEventQueue.enqueue({
                 type,
                 args: {
                     file: fileInfo,

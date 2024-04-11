@@ -9,7 +9,7 @@ import { serialized } from "./lib/src/lock";
 import { JsonResolveModal } from "./JsonResolveModal";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { addPrefix, stripAllPrefixes } from "./lib/src/path";
-import { KeyedQueueProcessor, QueueProcessor } from "./lib/src/processor";
+import { QueueProcessor } from "./lib/src/processor";
 import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "./lib/src/stores";
 
 export class HiddenFileSync extends LiveSyncCommands {
@@ -73,15 +73,15 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     procInternalFile(filename: string) {
-        this.internalFileProcessor.enqueueWithKey(filename, filename);
+        this.internalFileProcessor.enqueue(filename);
     }
-    internalFileProcessor = new KeyedQueueProcessor<string, any>(
+    internalFileProcessor = new QueueProcessor<string, any>(
         async (filenames) => {
             Logger(`START :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
             await this.syncInternalFilesAndDatabase("pull", false, false, filenames);
             Logger(`DONE  :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
             return;
-        }, { batchSize: 100, concurrentLimit: 1, delay: 10, yieldThreshold: 10, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
+        }, { batchSize: 100, concurrentLimit: 1, delay: 10, yieldThreshold: 100, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
     );
 
     recentProcessedInternalFiles = [] as string[];
