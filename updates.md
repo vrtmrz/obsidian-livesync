@@ -10,6 +10,12 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.18
+  - New feature (Very Experimental):
+    - Now we can use `Automatic data compression` to reduce amount of traffic and the usage of remote database.
+      - Please make sure all devices are updated to v0.22.18 before trying this feature.
+      - If you are using some other utilities which connected to your vault, please make sure that they have compatibilities. 
+      - Note: Setting `File Compression` on the remote database works for shrink the size of remote database. Please refer the [Doc](https://docs.couchdb.org/en/stable/config/couchdb.html#couchdb/file_compression).
 - 0.22.17:
   - Fixed:
     - Error handling on booting now works fine.
