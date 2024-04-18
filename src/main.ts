@@ -12,7 +12,7 @@ import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { DocumentHistoryModal } from "./DocumentHistoryModal";
 import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata, compareFileFreshness, BASE_IS_NEW, TARGET_IS_NEW, EVEN, compareMTime, markChangesAreSame } from "./utils";
 import { encrypt, tryDecrypt } from "./lib/src/e2ee_v2";
-import { balanceChunkPurgedDBs, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
+import { balanceChunkPurgedDBs, enableCompression, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/utils_couchdb";
 import { logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/stores";
 import { setNoticeClass } from "./lib/src/wrapper";
 import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/strbin";
@@ -119,7 +119,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     requestCount = reactiveSource(0);
     responseCount = reactiveSource(0);
     processReplication = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => this.parseReplicationResult(e);
-    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
+    async connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
@@ -237,6 +237,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         };
 
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
+        enableCompression(db, compression);
         if (passphrase !== "false" && typeof passphrase === "string") {
             enableEncryption(db, passphrase, useDynamicIterationCount, false);
         }

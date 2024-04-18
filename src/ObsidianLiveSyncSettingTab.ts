@@ -544,6 +544,19 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             text: "",
         });
 
+
+        containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" });
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Data Compression (Experimental)")
+            .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.enableCompression).onChange(async (value) => {
+                    this.plugin.settings.enableCompression = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                })
+            );
+
         containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
 
         const e2e = new Setting(containerRemoteDatabaseEl)
