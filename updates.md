@@ -10,6 +10,11 @@ Note: we got a very performance improvement.
 Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
 
 #### Version history
+- 0.22.19
+  - Fixed:
+    - No longer data corrupting due to false BASE64 detections.
+  - Improved:
+    - A bit more efficient in Automatic data compression.
 - 0.22.18
   - New feature (Very Experimental):
     - Now we can use `Automatic data compression` to reduce amount of traffic and the usage of remote database.
