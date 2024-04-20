@@ -45,7 +45,7 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
 
 > [!TIP]
-> We are still able to use IBM Cloudant. However, it is not recommended for several reasons nowadays. Here is [Setup IBM Cloudant](docs/setup_cloudant.md)
+> Now, fly.io has become not free. Fortunately, even though there are some issues, we are still able to use IBM Cloudant. Here is [Setup IBM Cloudant](docs/setup_cloudant.md). It will be updated soon!
 
 
 ## Information in StatusBar
