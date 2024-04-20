@@ -57,7 +57,7 @@
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",
         "idb": "^8.0.0",
-        "minimatch": "^9.0.3",
+        "minimatch": "^9.0.4",
         "xxhash-wasm": "0.4.2",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }
