@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR } from "./lib/src/types";
-import { createBlob, delay, isDocContentSame, readAsBlob } from "./lib/src/utils";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, type BucketSyncSetting, type RemoteType, PREFERRED_JOURNAL_SYNC } from "./lib/src/types";
+import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "./lib/src/utils";
 import { versionNumberString2Number } from "./lib/src/strbin";
 import { Logger } from "./lib/src/logger";
 import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
@@ -10,6 +10,7 @@ import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./ut
 import { request, type ButtonComponent, TFile } from "obsidian";
 import { shouldBeIgnored } from "./lib/src/path";
 import MultipleRegExpControl from './MultipleRegExpControl.svelte';
+import { LiveSyncCouchDBReplicator } from "./lib/src/LiveSyncReplicator";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
@@ -20,17 +21,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
     }
-    async testConnection(): Promise<void> {
-        const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile, true);
-        if (typeof db === "string") {
-            this.plugin.addLog(`could not connect to ${this.plugin.settings.couchDB_URI} : ${this.plugin.settings.couchDB_DBNAME} \n(${db})`, LOG_LEVEL_NOTICE);
-            return;
-        }
-        this.plugin.addLog(`Connected to ${db.info.db_name}`, LOG_LEVEL_NOTICE);
+    async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
+        const trialSetting = { ...this.plugin.settings, ...settingOverride };
+        const replicator = this.plugin.getNewReplicator(trialSetting);
+
+        await replicator.tryConnectRemote(trialSetting);
     }
-    askReload() {
+    askReload(message?: string) {
         scheduleTask("configReload", 250, async () => {
-            if (await askYesNo(this.app, "Do you want to restart and reload Obsidian now?") == "yes") {
+            if (await askYesNo(this.app, message || "Do you want to restart and reload Obsidian now?") == "yes") {
                 // @ts-ignore
                 this.app.commands.executeCommandById("app:reload")
             }
@@ -129,6 +128,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         addScreenElement("100", containerInformationEl);
         const isAnySyncEnabled = (): boolean => {
+            if (!this.plugin.settings.isConfigured) return false;
             if (this.plugin.settings.liveSync) return true;
             if (this.plugin.settings.periodicReplication) return true;
             if (this.plugin.settings.syncOnFileOpen) return true;
@@ -141,6 +141,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return false;
         };
         let inWizard = false;
+        if (containerEl.hasClass("inWizard")) {
+            inWizard = true;
+        }
 
         const setupWizardEl = containerEl.createDiv();
         setupWizardEl.createEl("h3", { text: "Setup wizard" });
@@ -261,301 +264,423 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         addScreenElement("110", setupWizardEl);
 
         const containerRemoteDatabaseEl = containerEl.createDiv();
-        containerRemoteDatabaseEl.createEl("h3", { text: "Remote Database configuration" });
-        const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
-        if (this.plugin.settings.couchDB_URI.startsWith("http://")) {
-            if (this.plugin.isMobile) {
-                containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.` })
-                    .addClass("op-warn");
-            } else {
-                containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We might fail on mobile devices.` })
-                    .addClass("op-warn-info");
-            }
-        }
+        containerRemoteDatabaseEl.createEl("h3", { text: "Remote configuration" });
+        new Setting(containerRemoteDatabaseEl)
+            .setName("Remote Type")
+            .setDesc("Remote server type")
+            .addDropdown((dropdown) => {
+                dropdown
+                    .addOptions({ [REMOTE_COUCHDB]: "CouchDB", [REMOTE_MINIO]: "Minio,S3,R2" })
+                    .setValue(this.plugin.settings.remoteType)
+                    .onChange(async (value) => {
+                        if (this.plugin.settings.remoteType != value) {
+                            if (value != REMOTE_COUCHDB && this.plugin.settings.liveSync) {
+                                this.plugin.settings.liveSync = false;
+                            }
+                            this.plugin.settings.remoteType = value as RemoteType;
+                            await this.plugin.saveSettings();
+                            this.selectedScreen = "";
+                            this.closeSetting();
+                            Logger(`Please reopen the wizard if you have changed the remote type.`, LOG_LEVEL_NOTICE);
+                        }
+                    })
+            })
 
-        syncWarn.addClass("op-warn-info");
-        syncWarn.addClass("sls-hidden");
+        let applyDisplayEnabled = () => { }
+        const editing = extractObject<BucketSyncSetting>({
+            accessKey: "",
+            bucket: "",
+            endpoint: "",
+            region: "",
+            secretKey: "",
+            useCustomRequestHandler: false,
+        }, this.plugin.settings);
+        if (this.plugin.settings.remoteType == REMOTE_MINIO) {
 
+            const syncWarnMinio = containerRemoteDatabaseEl.createEl("div", {
+                text: ""
+            });
+            const ObjectStorageMessage = `Kindly notice: this is a pretty experimental feature, hence we have some limitations. 
+- Append only architecture. It will not shrink used storage if we do not perform a rebuild.
+- A bit fragile.
+- During the first synchronization, the entire history to date will be transferred. For this reason, it is preferable to do this under the WiFi network.
+- From the second, we always transfer only differences.
 
-        const applyDisplayEnabled = () => {
-            if (isAnySyncEnabled()) {
-                dbSettings.forEach((e) => {
-                    e.setDisabled(true).setTooltip("Could not change this while any synchronization options are enabled.");
-                });
-                syncWarn.removeClass("sls-hidden");
-            } else {
-                dbSettings.forEach((e) => {
-                    e.setDisabled(false).setTooltip("");
-                });
-                syncWarn.addClass("sls-hidden");
-            }
-            if (this.plugin.settings.liveSync) {
-                syncNonLive.forEach((e) => {
-                    e.setDisabled(true).setTooltip("");
-                });
-                syncLive.forEach((e) => {
-                    e.setDisabled(false).setTooltip("");
-                });
-            } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnEditorSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
-                syncNonLive.forEach((e) => {
-                    e.setDisabled(false).setTooltip("");
-                });
-                syncLive.forEach((e) => {
-                    e.setDisabled(true).setTooltip("");
-                });
-            } else {
-                syncNonLive.forEach((e) => {
-                    e.setDisabled(false).setTooltip("");
-                });
-                syncLive.forEach((e) => {
-                    e.setDisabled(false).setTooltip("");
-                });
-            }
-        };
+However, your report is needed to stabilise this. I appreciate you for your great dedication.
+`;
 
-        const dbSettings: Setting[] = [];
-        dbSettings.push(
-            new Setting(containerRemoteDatabaseEl).setName("URI").addText((text) =>
+            MarkdownRenderer.render(this.plugin.app, ObjectStorageMessage, syncWarnMinio, "/", this.plugin);
+            syncWarnMinio.addClass("op-warn-info");
+
+            new Setting(containerRemoteDatabaseEl).setName("Endpoint URL").addText((text) =>
                 text
                     .setPlaceholder("https://........")
-                    .setValue(this.plugin.settings.couchDB_URI)
+                    .setValue(editing.endpoint)
                     .onChange(async (value) => {
-                        this.plugin.settings.couchDB_URI = value;
-                        await this.plugin.saveSettings();
-                    })
-            ),
-            new Setting(containerRemoteDatabaseEl)
-                .setName("Username")
-                .setDesc("username")
-                .addText((text) =>
-                    text
-                        .setPlaceholder("")
-                        .setValue(this.plugin.settings.couchDB_USER)
-                        .onChange(async (value) => {
-                            this.plugin.settings.couchDB_USER = value;
-                            await this.plugin.saveSettings();
-                        })
-                ),
-            new Setting(containerRemoteDatabaseEl)
-                .setName("Password")
-                .setDesc("password")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.couchDB_PASSWORD)
-                        .onChange(async (value) => {
-                            this.plugin.settings.couchDB_PASSWORD = value;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "password");
-                }),
-            new Setting(containerRemoteDatabaseEl).setName("Database name").addText((text) =>
-                text
-                    .setPlaceholder("")
-                    .setValue(this.plugin.settings.couchDB_DBNAME)
-                    .onChange(async (value) => {
-                        this.plugin.settings.couchDB_DBNAME = value;
-                        await this.plugin.saveSettings();
+                        editing.endpoint = value;
                     })
             )
 
-        );
 
-        new Setting(containerRemoteDatabaseEl)
-            .setName("Test Database Connection")
-            .setClass("wizardHidden")
-            .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Test")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.testConnection();
+            new Setting(containerRemoteDatabaseEl).setName("Access Key").addText((text) =>
+                text
+                    .setPlaceholder("")
+                    .setValue(editing.accessKey)
+                    .onChange(async (value) => {
+                        editing.accessKey = value;
                     })
+            )
+            new Setting(containerRemoteDatabaseEl).setName("Secret Key").addText((text) =>
+                text
+                    .setPlaceholder("")
+                    .setValue(editing.secretKey)
+                    .onChange(async (value) => {
+                        editing.secretKey = value;
+                    })
+                    .inputEl.setAttribute("type", "password")
+            )
+            new Setting(containerRemoteDatabaseEl).setName("Region").addText((text) =>
+                text
+                    .setPlaceholder("auto")
+                    .setValue(editing.region)
+                    .onChange(async (value) => {
+                        editing.region = value;
+                    })
+            )
+            new Setting(containerRemoteDatabaseEl).setName("Bucket Name").addText((text) =>
+                text
+                    .setPlaceholder("")
+                    .setValue(editing.bucket)
+                    .onChange(async (value) => {
+                        editing.bucket = value;
+                    })
+            )
+            new Setting(containerRemoteDatabaseEl).setName("Use Custom HTTP Handler")
+                .setDesc("If your Object Storage could not configured accepting CORS, enable this.")
+                .addToggle((toggle) => {
+                    toggle.setValue(editing.useCustomRequestHandler).onChange(async (value) => {
+                        editing.useCustomRequestHandler = value;
+                    })
+                })
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Test Connection")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Test")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.testConnection(editing);
+                        })
+                );
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Apply Setting")
+                .setClass("wizardHidden")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Apply")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            this.plugin.settings = { ...this.plugin.settings, ...editing };
+                            await this.plugin.saveSettings();
+                            this.display();
+                            // await this.testConnection();
+                        })
+                );
+        } else {
+            if (this.plugin.settings.couchDB_URI.startsWith("http://")) {
+                if (this.plugin.isMobile) {
+                    containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.` })
+                        .addClass("op-warn");
+                } else {
+                    containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We might fail on mobile devices.` })
+                        .addClass("op-warn-info");
+                }
+            }
+            const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
+            syncWarn.addClass("sls-hidden");
+
+
+            applyDisplayEnabled = () => {
+                if (isAnySyncEnabled()) {
+                    dbSettings.forEach((e) => {
+                        e.setDisabled(true).setTooltip("Could not change this while any synchronization options are enabled.");
+                    });
+                    syncWarn.removeClass("sls-hidden");
+                } else {
+                    dbSettings.forEach((e) => {
+                        e.setDisabled(false).setTooltip("");
+                    });
+                    syncWarn.addClass("sls-hidden");
+                }
+                if (this.plugin.settings.liveSync) {
+                    syncNonLive.forEach((e) => {
+                        e.setDisabled(true).setTooltip("");
+                    });
+                    syncLive.forEach((e) => {
+                        e.setDisabled(false).setTooltip("");
+                    });
+                } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnEditorSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
+                    syncNonLive.forEach((e) => {
+                        e.setDisabled(false).setTooltip("");
+                    });
+                    syncLive.forEach((e) => {
+                        e.setDisabled(true).setTooltip("");
+                    });
+                } else {
+                    syncNonLive.forEach((e) => {
+                        e.setDisabled(false).setTooltip("");
+                    });
+                    syncLive.forEach((e) => {
+                        e.setDisabled(false).setTooltip("");
+                    });
+                }
+            };
+
+            const dbSettings: Setting[] = [];
+            dbSettings.push(
+                new Setting(containerRemoteDatabaseEl).setName("URI").addText((text) =>
+                    text
+                        .setPlaceholder("https://........")
+                        .setValue(this.plugin.settings.couchDB_URI)
+                        .onChange(async (value) => {
+                            this.plugin.settings.couchDB_URI = value;
+                            await this.plugin.saveSettings();
+                        })
+                ),
+                new Setting(containerRemoteDatabaseEl)
+                    .setName("Username")
+                    .setDesc("username")
+                    .addText((text) =>
+                        text
+                            .setPlaceholder("")
+                            .setValue(this.plugin.settings.couchDB_USER)
+                            .onChange(async (value) => {
+                                this.plugin.settings.couchDB_USER = value;
+                                await this.plugin.saveSettings();
+                            })
+                    ),
+                new Setting(containerRemoteDatabaseEl)
+                    .setName("Password")
+                    .setDesc("password")
+                    .addText((text) => {
+                        text.setPlaceholder("")
+                            .setValue(this.plugin.settings.couchDB_PASSWORD)
+                            .onChange(async (value) => {
+                                this.plugin.settings.couchDB_PASSWORD = value;
+                                await this.plugin.saveSettings();
+                            });
+                        text.inputEl.setAttribute("type", "password");
+                    }),
+                new Setting(containerRemoteDatabaseEl).setName("Database name").addText((text) =>
+                    text
+                        .setPlaceholder("")
+                        .setValue(this.plugin.settings.couchDB_DBNAME)
+                        .onChange(async (value) => {
+                            this.plugin.settings.couchDB_DBNAME = value;
+                            await this.plugin.saveSettings();
+                        })
+                )
+
             );
 
-        new Setting(containerRemoteDatabaseEl)
-            .setName("Check and Fix database configuration")
-            .setDesc("Check the database configuration, and fix if there are any problems.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Check")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        const checkConfig = async () => {
-                            Logger(`Checking database configuration`, LOG_LEVEL_INFO);
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Test Database Connection")
+                .setClass("wizardHidden")
+                .setDesc("Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Test")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.testConnection();
+                        })
+                );
 
-                            const emptyDiv = createDiv();
-                            emptyDiv.innerHTML = "<span></span>";
-                            checkResultDiv.replaceChildren(...[emptyDiv]);
-                            const addResult = (msg: string, classes?: string[]) => {
-                                const tmpDiv = createDiv();
-                                tmpDiv.addClass("ob-btn-config-fix");
-                                if (classes) {
-                                    tmpDiv.addClasses(classes);
-                                }
-                                tmpDiv.innerHTML = `${msg}`;
-                                checkResultDiv.appendChild(tmpDiv);
-                            };
-                            try {
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Check and Fix database configuration")
+                .setDesc("Check the database configuration, and fix if there are any problems.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Check")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            const checkConfig = async () => {
+                                Logger(`Checking database configuration`, LOG_LEVEL_INFO);
 
-                                if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
-                                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
-                                    return;
-                                }
-                                const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
-                                const responseConfig = r.json;
-
-                                const addConfigFixButton = (title: string, key: string, value: string) => {
+                                const emptyDiv = createDiv();
+                                emptyDiv.innerHTML = "<span></span>";
+                                checkResultDiv.replaceChildren(...[emptyDiv]);
+                                const addResult = (msg: string, classes?: string[]) => {
                                     const tmpDiv = createDiv();
                                     tmpDiv.addClass("ob-btn-config-fix");
-                                    tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
-                                    const x = checkResultDiv.appendChild(tmpDiv);
-                                    x.querySelector("button")?.addEventListener("click", async () => {
-                                        Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
-                                        const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
-                                        if (res.status == 200) {
-                                            Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
-                                            checkResultDiv.removeChild(x);
-                                            checkConfig();
-                                        } else {
-                                            Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
-                                            Logger(res.text, LOG_LEVEL_VERBOSE);
-                                        }
-                                    });
+                                    if (classes) {
+                                        tmpDiv.addClasses(classes);
+                                    }
+                                    tmpDiv.innerHTML = `${msg}`;
+                                    checkResultDiv.appendChild(tmpDiv);
                                 };
-                                addResult("---Notice---", ["ob-btn-config-head"]);
-                                addResult(
-                                    "If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.",
-                                    ["ob-btn-config-info"]
-                                );
+                                try {
 
-                                addResult("--Config check--", ["ob-btn-config-head"]);
+                                    if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
+                                        Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
+                                        return;
+                                    }
+                                    const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+                                    const responseConfig = r.json;
 
-                                // Admin check
-                                //  for database creation and deletion
-                                if (!(this.plugin.settings.couchDB_USER in responseConfig.admins)) {
-                                    addResult(`⚠ You do not have administrative privileges.`);
-                                } else {
-                                    addResult("✔ You have administrative privileges.");
-                                }
-                                // HTTP user-authorization check
-                                if (responseConfig?.chttpd?.require_valid_user != "true") {
-                                    addResult("❗ chttpd.require_valid_user looks like wrong.");
-                                    addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
-                                } else {
-                                    addResult("✔ chttpd.require_valid_user is ok.");
-                                }
-                                if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
-                                    addResult("❗ chttpd_auth.require_valid_user looks like wrong.");
-                                    addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
-                                } else {
-                                    addResult("✔ chttpd_auth.require_valid_user is ok.");
-                                }
-                                // HTTPD check
-                                //  Check Authentication header
-                                if (!responseConfig?.httpd["WWW-Authenticate"]) {
-                                    addResult("❗ httpd.WWW-Authenticate is missing");
-                                    addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
-                                } else {
-                                    addResult("✔ httpd.WWW-Authenticate is ok.");
-                                }
-                                if (responseConfig?.httpd?.enable_cors != "true") {
-                                    addResult("❗ httpd.enable_cors is wrong");
-                                    addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
-                                } else {
-                                    addResult("✔ httpd.enable_cors is ok.");
-                                }
-                                // If the server is not cloudant, configure request size
-                                if (!isCloudantURI(this.plugin.settings.couchDB_URI)) {
-                                    // REQUEST SIZE
-                                    if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
-                                        addResult("❗ chttpd.max_http_request_size is low)");
-                                        addConfigFixButton("Set chttpd.max_http_request_size", "chttpd/max_http_request_size", "4294967296");
-                                    } else {
-                                        addResult("✔ chttpd.max_http_request_size is ok.");
-                                    }
-                                    if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
-                                        addResult("❗ couchdb.max_document_size is low)");
-                                        addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
-                                    } else {
-                                        addResult("✔ couchdb.max_document_size is ok.");
-                                    }
-                                }
-                                // CORS check
-                                //  checking connectivity for mobile
-                                if (responseConfig?.cors?.credentials != "true") {
-                                    addResult("❗ cors.credentials is wrong");
-                                    addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
-                                } else {
-                                    addResult("✔ cors.credentials is ok.");
-                                }
-                                const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
-                                if (
-                                    responseConfig?.cors?.origins == "*" ||
-                                    (ConfiguredOrigins.indexOf("app://obsidian.md") !== -1 && ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 && ConfiguredOrigins.indexOf("http://localhost") !== -1)
-                                ) {
-                                    addResult("✔ cors.origins is ok.");
-                                } else {
-                                    addResult("❗ cors.origins is wrong");
-                                    addConfigFixButton("Set cors.origins", "cors/origins", "app://obsidian.md,capacitor://localhost,http://localhost");
-                                }
-                                addResult("--Connection check--", ["ob-btn-config-head"]);
-                                addResult(`Current origin:${window.location.origin}`);
+                                    const addConfigFixButton = (title: string, key: string, value: string) => {
+                                        const tmpDiv = createDiv();
+                                        tmpDiv.addClass("ob-btn-config-fix");
+                                        tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
+                                        const x = checkResultDiv.appendChild(tmpDiv);
+                                        x.querySelector("button")?.addEventListener("click", async () => {
+                                            Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
+                                            const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
+                                            if (res.status == 200) {
+                                                Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
+                                                checkResultDiv.removeChild(x);
+                                                checkConfig();
+                                            } else {
+                                                Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
+                                                Logger(res.text, LOG_LEVEL_VERBOSE);
+                                            }
+                                        });
+                                    };
+                                    addResult("---Notice---", ["ob-btn-config-head"]);
+                                    addResult(
+                                        "If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.",
+                                        ["ob-btn-config-info"]
+                                    );
 
-                                // Request header check
-                                const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
-                                for (const org of origins) {
-                                    const rr = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, org);
-                                    const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
-                                        .map((e) => {
-                                            e[0] = `${e[0]}`.toLowerCase();
-                                            return e;
-                                        }));
-                                    addResult(`Origin check:${org}`);
-                                    if (responseHeaders["access-control-allow-credentials"] != "true") {
-                                        addResult("❗ CORS is not allowing credential");
+                                    addResult("--Config check--", ["ob-btn-config-head"]);
+
+                                    // Admin check
+                                    //  for database creation and deletion
+                                    if (!(this.plugin.settings.couchDB_USER in responseConfig.admins)) {
+                                        addResult(`⚠ You do not have administrative privileges.`);
                                     } else {
-                                        addResult("✔ CORS credential OK");
+                                        addResult("✔ You have administrative privileges.");
                                     }
-                                    if (responseHeaders["access-control-allow-origin"] != org) {
-                                        addResult(`❗ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
+                                    // HTTP user-authorization check
+                                    if (responseConfig?.chttpd?.require_valid_user != "true") {
+                                        addResult("❗ chttpd.require_valid_user looks like wrong.");
+                                        addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
                                     } else {
-                                        addResult("✔ CORS origin OK");
+                                        addResult("✔ chttpd.require_valid_user is ok.");
                                     }
-                                }
-                                addResult("--Done--", ["ob-btn-config-head"]);
-                                addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
-                                Logger(`Checking configuration done`, LOG_LEVEL_INFO);
-                            } catch (ex: any) {
-                                if (ex?.status == 401) {
-                                    addResult(`❗ Access forbidden.`);
-                                    addResult(`We could not continue the test.`);
+                                    if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
+                                        addResult("❗ chttpd_auth.require_valid_user looks like wrong.");
+                                        addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
+                                    } else {
+                                        addResult("✔ chttpd_auth.require_valid_user is ok.");
+                                    }
+                                    // HTTPD check
+                                    //  Check Authentication header
+                                    if (!responseConfig?.httpd["WWW-Authenticate"]) {
+                                        addResult("❗ httpd.WWW-Authenticate is missing");
+                                        addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
+                                    } else {
+                                        addResult("✔ httpd.WWW-Authenticate is ok.");
+                                    }
+                                    if (responseConfig?.httpd?.enable_cors != "true") {
+                                        addResult("❗ httpd.enable_cors is wrong");
+                                        addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
+                                    } else {
+                                        addResult("✔ httpd.enable_cors is ok.");
+                                    }
+                                    // If the server is not cloudant, configure request size
+                                    if (!isCloudantURI(this.plugin.settings.couchDB_URI)) {
+                                        // REQUEST SIZE
+                                        if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
+                                            addResult("❗ chttpd.max_http_request_size is low)");
+                                            addConfigFixButton("Set chttpd.max_http_request_size", "chttpd/max_http_request_size", "4294967296");
+                                        } else {
+                                            addResult("✔ chttpd.max_http_request_size is ok.");
+                                        }
+                                        if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
+                                            addResult("❗ couchdb.max_document_size is low)");
+                                            addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
+                                        } else {
+                                            addResult("✔ couchdb.max_document_size is ok.");
+                                        }
+                                    }
+                                    // CORS check
+                                    //  checking connectivity for mobile
+                                    if (responseConfig?.cors?.credentials != "true") {
+                                        addResult("❗ cors.credentials is wrong");
+                                        addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
+                                    } else {
+                                        addResult("✔ cors.credentials is ok.");
+                                    }
+                                    const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
+                                    if (
+                                        responseConfig?.cors?.origins == "*" ||
+                                        (ConfiguredOrigins.indexOf("app://obsidian.md") !== -1 && ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 && ConfiguredOrigins.indexOf("http://localhost") !== -1)
+                                    ) {
+                                        addResult("✔ cors.origins is ok.");
+                                    } else {
+                                        addResult("❗ cors.origins is wrong");
+                                        addConfigFixButton("Set cors.origins", "cors/origins", "app://obsidian.md,capacitor://localhost,http://localhost");
+                                    }
+                                    addResult("--Connection check--", ["ob-btn-config-head"]);
+                                    addResult(`Current origin:${window.location.origin}`);
+
+                                    // Request header check
+                                    const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
+                                    for (const org of origins) {
+                                        const rr = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, org);
+                                        const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
+                                            .map((e) => {
+                                                e[0] = `${e[0]}`.toLowerCase();
+                                                return e;
+                                            }));
+                                        addResult(`Origin check:${org}`);
+                                        if (responseHeaders["access-control-allow-credentials"] != "true") {
+                                            addResult("❗ CORS is not allowing credential");
+                                        } else {
+                                            addResult("✔ CORS credential OK");
+                                        }
+                                        if (responseHeaders["access-control-allow-origin"] != org) {
+                                            addResult(`❗ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
+                                        } else {
+                                            addResult("✔ CORS origin OK");
+                                        }
+                                    }
+                                    addResult("--Done--", ["ob-btn-config-head"]);
+                                    addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                                     Logger(`Checking configuration done`, LOG_LEVEL_INFO);
-                                } else {
-                                    Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
-                                    Logger(ex);
+                                } catch (ex: any) {
+                                    if (ex?.status == 401) {
+                                        addResult(`❗ Access forbidden.`);
+                                        addResult(`We could not continue the test.`);
+                                        Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+                                    } else {
+                                        Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
+                                        Logger(ex);
+                                    }
                                 }
-                            }
-                        };
-                        await checkConfig();
+                            };
+                            await checkConfig();
+                        })
+                );
+            const checkResultDiv = containerRemoteDatabaseEl.createEl("div", {
+                text: "",
+            });
+
+            containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" });
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Data Compression (Experimental)")
+                .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.enableCompression).onChange(async (value) => {
+                        this.plugin.settings.enableCompression = value;
+                        await this.plugin.saveSettings();
+                        this.display();
                     })
-            );
-        const checkResultDiv = containerRemoteDatabaseEl.createEl("div", {
-            text: "",
-        });
+                );
+        }
 
 
-        containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" });
-        new Setting(containerRemoteDatabaseEl)
-            .setName("Data Compression (Experimental)")
-            .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.enableCompression).onChange(async (value) => {
-                    this.plugin.settings.enableCompression = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                })
-            );
 
         containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
 
@@ -616,6 +741,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         if (inWizard) {
                             this.plugin.settings.passphrase = value;
+                            passphrase = value;
                             await this.plugin.saveSettings();
                         } else {
                             passphrase = value;
@@ -633,6 +759,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 toggle.setValue(usePathObfuscation).onChange(async (value) => {
                     if (inWizard) {
                         this.plugin.settings.usePathObfuscation = value;
+                        usePathObfuscation = value;
                         await this.plugin.saveSettings();
                     } else {
                         usePathObfuscation = value;
@@ -650,6 +777,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         if (inWizard) {
                             this.plugin.settings.useDynamicIterationCount = value;
+                            useDynamicIterationCount = value;
                             await this.plugin.saveSettings();
                         } else {
                             useDynamicIterationCount = value;
@@ -695,14 +823,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         updateE2EControls();
         const checkWorkingPassphrase = async (): Promise<boolean> => {
+            if (this.plugin.settings.remoteType == REMOTE_MINIO) return true;
             const settingForCheck: RemoteDBSettings = {
                 ...this.plugin.settings,
                 encrypt: encrypt,
                 passphrase: passphrase,
                 useDynamicIterationCount: useDynamicIterationCount,
             };
-            console.dir(settingForCheck);
-            const db = await this.plugin.replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile, true);
+            const replicator = this.plugin.getReplicator();
+            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return true;
+
+            const db = await replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile, true);
             if (typeof db === "string") {
                 Logger("Could not connect to the database.", LOG_LEVEL_NOTICE);
                 return false;
@@ -788,9 +919,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         if (!this.plugin.settings.encrypt) {
                             this.plugin.settings.passphrase = "";
                         }
+                        this.plugin.settings = { ...this.plugin.settings, ...editing };
                         if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
                             // this.plugin.settings.customChunkSize = 0;
                             this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_CLOUDANT };
+                        } else if (this.plugin.settings.remoteType == REMOTE_MINIO) {
+                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_JOURNAL_SYNC };
                         } else {
                             this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_SELF_HOSTED };
                         }
@@ -1008,12 +1142,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerSyncSettingEl.createEl("div",
             { text: `Please select any preset to complete wizard.` }
         ).addClasses(["op-warn-info", "wizardOnly"]);
+        const options: Record<string, string> = this.plugin.settings.remoteType == REMOTE_COUCHDB ? { NONE: "", LIVESYNC: "LiveSync", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" } : { NONE: "", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" };
         new Setting(containerSyncSettingEl)
             .setName("Presets")
             .setDesc("Apply preset configuration")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOptions({ NONE: "", LIVESYNC: "LiveSync", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" })
+                    .addOptions(options)
                     .setValue(currentPreset)
                     .onChange((value) => (currentPreset = value))
             )
@@ -1098,12 +1233,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         } else if (this.plugin.settings.periodicReplication) {
             syncMode = "PERIODIC";
         }
+
+        const optionsSyncMode = this.plugin.settings.remoteType == REMOTE_COUCHDB ? { "": "On events", PERIODIC: "Periodic and On events", "LIVESYNC": "LiveSync" } : { "": "On events", PERIODIC: "Periodic and On events" }
         new Setting(containerSyncSettingEl)
             .setName("Sync Mode")
             .setClass("wizardHidden")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOptions({ "": "On events", PERIODIC: "Periodic and On events", "LIVESYNC": "LiveSync" })
+                    .addOptions(optionsSyncMode as Record<string, string>)
                     .setValue(syncMode)
                     .onChange(async (value) => {
                         this.plugin.settings.liveSync = false;
@@ -1357,6 +1494,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const pat = this.plugin.settings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
         const patSetting = new Setting(containerSyncSettingEl)
             .setName("Hidden files ignore patterns")
+            .setClass("wizardHidden")
             .setDesc("");
 
         new MultipleRegExpControl(
@@ -1427,19 +1565,21 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 text.inputEl.setAttribute("type", "number");
             });
 
-        new Setting(containerSyncSettingEl)
-            .setName("Fetch chunks on demand")
-            .setDesc("(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
-            .setClass("wizardHidden")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.readChunksOnline)
-                    .onChange(async (value) => {
-                        this.plugin.settings.readChunksOnline = value;
-                        await this.plugin.saveSettings();
-                    })
-                return toggle;
-            });
+        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+            new Setting(containerSyncSettingEl)
+                .setName("Fetch chunks on demand")
+                .setDesc("(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
+                .setClass("wizardHidden")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.readChunksOnline)
+                        .onChange(async (value) => {
+                            this.plugin.settings.readChunksOnline = value;
+                            await this.plugin.saveSettings();
+                        })
+                    return toggle;
+                });
+        }
 
         containerSyncSettingEl.createEl("h4", {
             text: sanitizeHTMLToDom(`Targets`),
@@ -1528,98 +1668,100 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 }
                 );
         }
-        containerSyncSettingEl.createEl("h4", {
-            text: sanitizeHTMLToDom(`Advanced settings`),
-        }).addClass("wizardHidden");
-        containerSyncSettingEl.createEl("div", {
-            text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
-        }).addClass("wizardHidden");
-        new Setting(containerSyncSettingEl)
-            .setName("Batch size")
-            .setDesc("Number of change feed items to process at a time. Defaults to 50. Minimum is 2.")
-            .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.batch_size + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 2) {
-                            v = 2;
-                        }
-                        this.plugin.settings.batch_size = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
 
-        new Setting(containerSyncSettingEl)
-            .setName("Batch limit")
-            .setDesc("Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.")
-            .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.batches_limit + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 2) {
-                            v = 2;
-                        }
-                        this.plugin.settings.batches_limit = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+            containerSyncSettingEl.createEl("h4", {
+                text: sanitizeHTMLToDom(`Advanced settings`),
+            }).addClass("wizardHidden");
+            containerSyncSettingEl.createEl("div", {
+                text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
+            }).addClass("wizardHidden");
+            new Setting(containerSyncSettingEl)
+                .setName("Batch size")
+                .setDesc("Number of change feed items to process at a time. Defaults to 50. Minimum is 2.")
+                .setClass("wizardHidden")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.batch_size + "")
+                        .onChange(async (value) => {
+                            let v = Number(value);
+                            if (isNaN(v) || v < 2) {
+                                v = 2;
+                            }
+                            this.plugin.settings.batch_size = v;
+                            await this.plugin.saveSettings();
+                        });
+                    text.inputEl.setAttribute("type", "number");
+                });
 
-        new Setting(containerSyncSettingEl)
-            .setName("Use timeouts instead of heartbeats")
-            .setDesc("If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.")
-            .setClass("wizardHidden")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.useTimeouts)
-                    .onChange(async (value) => {
-                        this.plugin.settings.useTimeouts = value;
-                        await this.plugin.saveSettings();
-                    })
-                return toggle;
-            }
-            );
+            new Setting(containerSyncSettingEl)
+                .setName("Batch limit")
+                .setDesc("Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.")
+                .setClass("wizardHidden")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.batches_limit + "")
+                        .onChange(async (value) => {
+                            let v = Number(value);
+                            if (isNaN(v) || v < 2) {
+                                v = 2;
+                            }
+                            this.plugin.settings.batches_limit = v;
+                            await this.plugin.saveSettings();
+                        });
+                    text.inputEl.setAttribute("type", "number");
+                });
 
-        new Setting(containerSyncSettingEl)
-            .setName("Batch size of on-demand fetching")
-            .setDesc("")
-            .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.concurrencyOfReadChunksOnline + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 10) {
-                            v = 10;
-                        }
-                        this.plugin.settings.concurrencyOfReadChunksOnline = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
-        new Setting(containerSyncSettingEl)
-            .setName("The delay for consecutive on-demand fetches")
-            .setDesc("")
-            .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.minimumIntervalOfReadChunksOnline + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 10) {
-                            v = 10;
-                        }
-                        this.plugin.settings.minimumIntervalOfReadChunksOnline = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+            new Setting(containerSyncSettingEl)
+                .setName("Use timeouts instead of heartbeats")
+                .setDesc("If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.")
+                .setClass("wizardHidden")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.useTimeouts)
+                        .onChange(async (value) => {
+                            this.plugin.settings.useTimeouts = value;
+                            await this.plugin.saveSettings();
+                        })
+                    return toggle;
+                }
+                );
 
+            new Setting(containerSyncSettingEl)
+                .setName("Batch size of on-demand fetching")
+                .setDesc("")
+                .setClass("wizardHidden")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.concurrencyOfReadChunksOnline + "")
+                        .onChange(async (value) => {
+                            let v = Number(value);
+                            if (isNaN(v) || v < 10) {
+                                v = 10;
+                            }
+                            this.plugin.settings.concurrencyOfReadChunksOnline = v;
+                            await this.plugin.saveSettings();
+                        });
+                    text.inputEl.setAttribute("type", "number");
+                });
+            new Setting(containerSyncSettingEl)
+                .setName("The delay for consecutive on-demand fetches")
+                .setDesc("")
+                .setClass("wizardHidden")
+                .addText((text) => {
+                    text.setPlaceholder("")
+                        .setValue(this.plugin.settings.minimumIntervalOfReadChunksOnline + "")
+                        .onChange(async (value) => {
+                            let v = Number(value);
+                            if (isNaN(v) || v < 10) {
+                                v = 10;
+                            }
+                            this.plugin.settings.minimumIntervalOfReadChunksOnline = v;
+                            await this.plugin.saveSettings();
+                        });
+                    text.inputEl.setAttribute("type", "number");
+                });
+        }
         addScreenElement("30", containerSyncSettingEl);
         const containerHatchEl = containerEl.createDiv();
 
@@ -1635,20 +1777,25 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         let responseConfig: any = {};
                         const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
-                        try {
-                            const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+                        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+                            try {
+                                const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
 
-                            Logger(JSON.stringify(r.json, null, 2));
+                                Logger(JSON.stringify(r.json, null, 2));
 
-                            responseConfig = r.json;
-                            responseConfig["couch_httpd_auth"].secret = REDACTED;
-                            responseConfig["couch_httpd_auth"].authentication_db = REDACTED;
-                            responseConfig["couch_httpd_auth"].authentication_redirect = REDACTED;
-                            responseConfig["couchdb"].uuid = REDACTED;
-                            responseConfig["admins"] = REDACTED;
+                                responseConfig = r.json;
+                                responseConfig["couch_httpd_auth"].secret = REDACTED;
+                                responseConfig["couch_httpd_auth"].authentication_db = REDACTED;
+                                responseConfig["couch_httpd_auth"].authentication_redirect = REDACTED;
+                                responseConfig["couchdb"].uuid = REDACTED;
+                                responseConfig["admins"] = REDACTED;
 
-                        } catch (ex) {
-                            responseConfig = "Requesting information to the remote CouchDB has been failed. If you are using IBM Cloudant, it is the normal behaviour."
+                            } catch (ex) {
+                                responseConfig = "Requesting information to the remote CouchDB has been failed. If you are using IBM Cloudant, it is the normal behaviour."
+                            }
+                        } else if (this.plugin.settings.remoteType == REMOTE_MINIO) {
+                            responseConfig = "Object Storage Synchronisation";
+                            //
                         }
                         const pluginConfig = JSON.parse(JSON.stringify(this.plugin.settings)) as ObsidianLiveSyncSettings;
                         pluginConfig.couchDB_DBNAME = REDACTED;
@@ -1659,7 +1806,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         pluginConfig.passphrase = REDACTED;
                         pluginConfig.encryptedPassphrase = REDACTED;
                         pluginConfig.encryptedCouchDBConnection = REDACTED;
+                        pluginConfig.accessKey = REDACTED;
+                        pluginConfig.secretKey = REDACTED;
+                        pluginConfig.region = `${REDACTED}(${pluginConfig.region.length} letters)`;
+                        pluginConfig.bucket = `${REDACTED}(${pluginConfig.bucket.length} letters)`;
                         pluginConfig.pluginSyncExtendedSetting = {};
+                        const endpoint = pluginConfig.endpoint;
+                        if (endpoint == "") {
+                            pluginConfig.endpoint = "Not configured or AWS";
+                        } else {
+                            const endpointScheme = pluginConfig.endpoint.startsWith("http:") ? "(HTTP)" : (pluginConfig.endpoint.startsWith("https:")) ? "(HTTPS)" : "";
+                            pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
+                        }
                         const obsidianInfo = navigator.userAgent;
                         const msgConfig = `---- Obsidian info ----
 ${obsidianInfo}
@@ -2133,13 +2291,13 @@ ${stringifyYaml(pluginConfig)}`;
 
         const containerMaintenanceEl = containerEl.createDiv();
 
-        containerMaintenanceEl.createEl("h3", { text: "Maintain databases" });
+        containerMaintenanceEl.createEl("h3", { text: "Maintenance" });
 
-        containerMaintenanceEl.createEl("h4", { text: "The remote database" });
+        containerMaintenanceEl.createEl("h4", { text: "Remote" });
 
         new Setting(containerMaintenanceEl)
-            .setName("Lock remote database")
-            .setDesc("Lock remote database to prevent synchronization with other devices.")
+            .setName("Lock remote")
+            .setDesc("Lock remote to prevent synchronization with other devices.")
             .addButton((button) =>
                 button
                     .setButtonText("Lock")
@@ -2151,8 +2309,8 @@ ${stringifyYaml(pluginConfig)}`;
             );
 
         new Setting(containerMaintenanceEl)
-            .setName("Overwrite remote database")
-            .setDesc("Overwrite remote database with local DB and passphrase.")
+            .setName("Overwrite remote")
+            .setDesc("Overwrite remote with local DB and passphrase.")
             .addButton((button) =>
                 button
                     .setButtonText("Send")
@@ -2164,11 +2322,11 @@ ${stringifyYaml(pluginConfig)}`;
             )
 
 
-        containerMaintenanceEl.createEl("h4", { text: "The local database" });
+        containerMaintenanceEl.createEl("h4", { text: "Local database" });
 
         new Setting(containerMaintenanceEl)
-            .setName("Fetch rebuilt DB")
-            .setDesc("Restore or reconstruct local database from remote database.")
+            .setName("Fetch from remote")
+            .setDesc("Restore or reconstruct local database from remote.")
             .addButton((button) =>
                 button
                     .setButtonText("Fetch")
@@ -2188,19 +2346,20 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
-        new Setting(containerMaintenanceEl)
-            .setName("Fetch rebuilt DB (Save local documents before)")
-            .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Save and Fetch")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await rebuildDB("localOnlyWithChunks");
-                    })
-            )
-
+        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+            new Setting(containerMaintenanceEl)
+                .setName("Fetch rebuilt DB (Save local documents before)")
+                .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Save and Fetch")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await rebuildDB("localOnlyWithChunks");
+                        })
+                )
+        }
         new Setting(containerMaintenanceEl)
             .setName("Discard local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>
@@ -2216,24 +2375,26 @@ ${stringifyYaml(pluginConfig)}`;
 
         containerMaintenanceEl.createEl("h4", { text: "Both databases" });
 
-        new Setting(containerMaintenanceEl)
-            .setName("(Beta2) Clean up databases")
-            .setDesc("Delete unused chunks to shrink the database. This feature requires disabling 'Use an old adapter for compatibility'")
-            .addButton((button) =>
-                button.setButtonText("DryRun")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin.dryRunGC();
-                    })
-            ).addButton((button) =>
-                button.setButtonText("Perform cleaning")
-                    .setDisabled(false)
-                    .setWarning()
-                    .onClick(async () => {
-                        this.closeSetting()
-                        await this.plugin.dbGC();
-                    })
-            );
+        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+            new Setting(containerMaintenanceEl)
+                .setName("(Beta2) Clean up databases")
+                .setDesc("Delete unused chunks to shrink the database. This feature requires disabling 'Use an old adapter for compatibility'")
+                .addButton((button) =>
+                    button.setButtonText("DryRun")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.dryRunGC();
+                        })
+                ).addButton((button) =>
+                    button.setButtonText("Perform cleaning")
+                        .setDisabled(false)
+                        .setWarning()
+                        .onClick(async () => {
+                            this.closeSetting()
+                            await this.plugin.dbGC();
+                        })
+                );
+        }
         new Setting(containerMaintenanceEl)
             .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")

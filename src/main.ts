@@ -2,7 +2,7 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, } from "./lib/src/types";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
 import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
@@ -20,7 +20,7 @@ import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixe
 import { isLockAcquired, serialized, shareRunningResult, skipIfDuplicated } from "./lib/src/lock";
 import { StorageEventManager, StorageEventManagerObsidian } from "./StorageEventManager";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/LiveSyncLocalDB";
-import { LiveSyncDBReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncReplicator";
+import { LiveSyncAbstractReplicator, type LiveSyncReplicatorEnv } from "./lib/src/LiveSyncAbstractReplicator.js";
 import { type KeyValueDatabase, OpenKeyValueDatabase } from "./KeyValueDB";
 import { LiveSyncCommands } from "./LiveSyncCommands";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
@@ -34,6 +34,11 @@ import { SerializedFileAccess } from "./SerializedFileAccess.js";
 import { QueueProcessor } from "./lib/src/processor.js";
 import { reactive, reactiveSource } from "./lib/src/reactive.js";
 import { initializeStores } from "./stores.js";
+import { JournalSyncMinio } from "./lib/src/JournalSyncMinio.js";
+import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./lib/src/LiveSyncJournalReplicator.js";
+import { LiveSyncCouchDBReplicator, type LiveSyncCouchDBReplicatorEnv } from "./lib/src/LiveSyncReplicator.js";
+import type { CheckPointInfo, SimpleStore } from "./lib/src/JournalSyncTypes.js";
+import { ObsHttpHandler } from "./ObsHttpHandler.js";
 
 setNoticeClass(Notice);
 
@@ -69,11 +74,16 @@ const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
 
 export default class ObsidianLiveSyncPlugin extends Plugin
-    implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv {
+    implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv {
+    _customHandler!: ObsHttpHandler;
+    customFetchHandler() {
+        if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
+        return this._customHandler;
+    }
 
     settings!: ObsidianLiveSyncSettings;
     localDatabase!: LiveSyncLocalDB;
-    replicator!: LiveSyncDBReplicator;
+    replicator!: LiveSyncAbstractReplicator;
 
     statusBar?: HTMLElement;
     _suspended = false;
@@ -308,9 +318,16 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     onClose(db: LiveSyncLocalDB): void {
         this.kvDB.close();
     }
+    getNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): LiveSyncAbstractReplicator {
+        const settings = { ...this.settings, ...settingOverride };
+        if (settings.remoteType == REMOTE_MINIO) {
+            return new LiveSyncJournalReplicator(this);
+        }
+        return new LiveSyncCouchDBReplicator(this);
+    }
     async onInitializeDatabase(db: LiveSyncLocalDB): Promise<void> {
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        this.replicator = new LiveSyncDBReplicator(this);
+        this.replicator = this.getNewReplicator();
     }
     async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
         const kvDBKey = "queued-files"
@@ -318,7 +335,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         // localStorage.removeItem(lsKey);
         await this.kvDB.destroy();
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        this.replicator = new LiveSyncDBReplicator(this);
+        this.replicator = this.getNewReplicator()
     }
     getReplicator() {
         return this.replicator;
@@ -447,6 +464,52 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
         Logger(`Checking expired file history done`);
     }
+
+    simpleStore: SimpleStore<CheckPointInfo> = {
+        get: async (key: string) => {
+            return await this.kvDB.get(`os-${key}`);
+        },
+        set: async (key: string, value: any) => {
+            await this.kvDB.set(`os-${key}`, value);
+        },
+        delete: async (key) => {
+            await this.kvDB.del(`os-${key}`);
+        },
+        keys: async (from: string | undefined, to: string | undefined, count?: number | undefined): Promise<string[]> => {
+            const ret = this.kvDB.keys(IDBKeyRange.bound(`os-${from || ""}`, `os-${to || ""}`), count);
+            return (await ret).map(e => e.toString());
+        }
+    }
+    getMinioJournalSyncClient() {
+        const id = this.settings.accessKey
+        const key = this.settings.secretKey
+        const bucket = this.settings.bucket
+        const region = this.settings.region
+        const endpoint = this.settings.endpoint
+        const useCustomRequestHandler = this.settings.useCustomRequestHandler;
+        return new JournalSyncMinio(id, key, endpoint, bucket, this.simpleStore, this, useCustomRequestHandler, region);
+    }
+    async resetRemoteBucket() {
+        const minioJournal = this.getMinioJournalSyncClient();
+        await minioJournal.resetBucket();
+    }
+    async resetJournalSync() {
+        const minioJournal = this.getMinioJournalSyncClient();
+        await minioJournal.resetCheckpointInfo();
+    }
+    async journalSendTest() {
+        const minioJournal = this.getMinioJournalSyncClient();
+        await minioJournal.sendLocalJournal();
+    }
+    async journalFetchTest() {
+        const minioJournal = this.getMinioJournalSyncClient();
+        await minioJournal.receiveRemoteJournal();
+    }
+
+    async journalSyncTest() {
+        const minioJournal = this.getMinioJournalSyncClient();
+        await minioJournal.sync();
+    }
     async onLayoutReady() {
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
@@ -538,7 +601,7 @@ Click anywhere to stop counting down.
             await this.realizeSettingSyncMode();
             this.swapSaveCommand();
             if (!this.settings.liveSync && this.settings.syncOnStart) {
-                this.replicator.openReplication(this.settings, false, false);
+                this.replicator.openReplication(this.settings, false, false, false);
             }
             this.scanStat();
         } catch (ex) {
@@ -618,6 +681,63 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.addRibbonIcon("custom-sync", "Show Customization sync", () => {
             this.addOnConfigSync.showPluginSyncModal();
         }).addClass("livesync-ribbon-showcustom");
+
+        this.addCommand({
+            id: "debug-x1",
+            name: "Journal send",
+            callback: () => {
+                this.journalSendTest();
+            }
+        });
+        this.addCommand({
+            id: "debug-x3",
+            name: "Journal receive",
+            callback: () => {
+                this.journalFetchTest();
+            }
+        });
+        this.addCommand({
+            id: "debug-x4",
+            name: "Sync By Journal",
+            callback: () => {
+                this.journalSyncTest();
+            }
+        });
+        this.addCommand({
+            id: "debug-x5",
+            name: "Reset journal sync",
+            callback: () => {
+                this.resetJournalSync();
+            }
+        });
+        this.addCommand({
+            id: "debug-x6",
+            name: "Reset journal sync and delete all items on the bucket",
+            callback: () => {
+                this.resetRemoteBucket();
+            }
+        })
+        this.addCommand({
+            id: "debug-x7",
+            name: "Perform Test",
+            callback: () => {
+                // const p = getMockedPouch();
+                // this.localDatabase.localDatabase.replicate.to(p, { since: 1000, checkpoint: "source" });
+            }
+        })
+        this.addCommand({
+            id: "debug-x8",
+            name: "Pack test",
+            callback: async () => {
+                const minioJournal = this.getMinioJournalSyncClient();
+                // const pack = await minioJournal.createJournalPack();
+                // console.warn();
+                console.warn(await minioJournal._createJournalPack());
+            }
+        })
+
+
+
 
         this.addCommand({
             id: "view-log",
@@ -955,17 +1075,19 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             Logger("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
         } else {
             if (settings.encryptedCouchDBConnection) {
-                const keys = ["couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"] as (keyof CouchDBConnection)[];
-                const decrypted = this.tryDecodeJson(await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)) as CouchDBConnection;
+                const keys = ["couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME", "accessKey", "bucket", "endpoint", "region", "secretKey"] as (keyof CouchDBConnection | keyof BucketSyncSetting)[];
+                const decrypted = this.tryDecodeJson(await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)) as (CouchDBConnection & BucketSyncSetting);
                 if (decrypted) {
                     for (const key of keys) {
                         if (key in decrypted) {
+                            //@ts-ignore
                             settings[key] = decrypted[key]
                         }
                     }
                 } else {
                     Logger("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
                     for (const key of keys) {
+                        //@ts-ignore
                         settings[key] = "";
                     }
                 }
@@ -1022,22 +1144,34 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL_NOTICE);
         } else {
             if (settings.couchDB_PASSWORD != "" || settings.couchDB_URI != "" || settings.couchDB_USER != "" || settings.couchDB_DBNAME) {
-                const connectionSetting: CouchDBConnection = {
+                const connectionSetting: CouchDBConnection & BucketSyncSetting = {
                     couchDB_DBNAME: settings.couchDB_DBNAME,
                     couchDB_PASSWORD: settings.couchDB_PASSWORD,
                     couchDB_URI: settings.couchDB_URI,
                     couchDB_USER: settings.couchDB_USER,
+                    accessKey: settings.accessKey,
+                    bucket: settings.bucket,
+                    endpoint: settings.endpoint,
+                    region: settings.region,
+                    secretKey: settings.secretKey,
+                    useCustomRequestHandler: settings.useCustomRequestHandler
                 };
                 settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(JSON.stringify(connectionSetting), settings);
                 settings.couchDB_PASSWORD = "";
                 settings.couchDB_DBNAME = "";
                 settings.couchDB_URI = "";
                 settings.couchDB_USER = "";
+                settings.accessKey = "";
+                settings.bucket = "";
+                settings.region = "";
+                settings.secretKey = "";
+                settings.endpoint = "";
             }
             if (settings.encrypt && settings.passphrase != "") {
                 settings.encryptedPassphrase = await this.encryptConfigurationItem(settings.passphrase, settings);
                 settings.passphrase = "";
             }
+
         }
         await this.saveData(settings);
         this.localDatabase.settings = this.settings;
@@ -1293,11 +1427,13 @@ We can perform a command in this file.
             // suspend all temporary.
             if (this.suspended) return;
             await Promise.all(this.addOns.map(e => e.onResume()));
-            if (this.settings.liveSync) {
-                this.replicator.openReplication(this.settings, true, false);
+            if (this.settings.remoteType == REMOTE_COUCHDB) {
+                if (this.settings.liveSync) {
+                    this.replicator.openReplication(this.settings, true, false, false);
+                }
             }
             if (this.settings.syncOnStart) {
-                this.replicator.openReplication(this.settings, false, false);
+                this.replicator.openReplication(this.settings, false, false, false);
             }
             this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);
         }
@@ -1790,8 +1926,10 @@ We can perform a command in this file.
         // disable all sync temporary.
         if (this.suspended) return;
         await Promise.all(this.addOns.map(e => e.onResume()));
-        if (this.settings.liveSync) {
-            this.replicator.openReplication(this.settings, true, false);
+        if (this.settings.remoteType == REMOTE_COUCHDB) {
+            if (this.settings.liveSync) {
+                this.replicator.openReplication(this.settings, true, false, false);
+            }
         }
 
         const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
@@ -1864,6 +2002,11 @@ We can perform a command in this file.
             let pushLast = "";
             let pullLast = "";
             let w = "";
+            const labels: Partial<Record<DatabaseConnectingStatus, string>> = {
+                "CONNECTED": "⚡",
+                "JOURNAL_SEND": "📦↑",
+                "JOURNAL_RECEIVE": "📦↓",
+            }
             switch (e.syncStatus) {
                 case "CLOSED":
                 case "COMPLETED":
@@ -1877,7 +2020,9 @@ We can perform a command in this file.
                     w = "💤";
                     break;
                 case "CONNECTED":
-                    w = "⚡";
+                case "JOURNAL_SEND":
+                case "JOURNAL_RECEIVE":
+                    w = labels[e.syncStatus] || "⚡";
                     pushLast = ((lastSyncPushSeq == 0) ? "" : (lastSyncPushSeq >= maxPushSeq ? " (LIVE)" : ` (${maxPushSeq - lastSyncPushSeq})`));
                     pullLast = ((lastSyncPullSeq == 0) ? "" : (lastSyncPullSeq >= maxPullSeq ? " (LIVE)" : ` (${maxPullSeq - lastSyncPullSeq})`));
                     break;
@@ -1957,7 +2102,7 @@ We can perform a command in this file.
         await this.applyBatchChange();
         await Promise.all(this.addOns.map(e => e.beforeReplicate(showMessage)));
         await this.loadQueuedFiles();
-        const ret = await this.replicator.openReplication(this.settings, false, showMessage);
+        const ret = await this.replicator.openReplication(this.settings, false, showMessage, false);
         if (!ret) {
             if (this.replicator.remoteLockedAndDeviceNotAccepted) {
                 if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
@@ -1977,7 +2122,9 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                             await performRebuildDB(this, "localOnly");
                         }
                         if (ret == CHOICE_CLEAN) {
-                            const remoteDB = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
+                            const replicator = this.getReplicator();
+                            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+                            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
                             if (typeof remoteDB == "string") {
                                 Logger(remoteDB, LOG_LEVEL_NOTICE);
                                 return false;
@@ -2211,7 +2358,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const step = 25;
         const remainLog = (remain: number) => {
             if (lastRemain - remain > step) {
-                const msg = ` CHECK AND SYNC: ${remain} / ${allSyncFiles}`;
+                const msg = ` CHECK AND SYNC: ${allSyncFiles - remain} / ${allSyncFiles}`;
                 updateLog("sync", msg);
                 lastRemain = remain;
             }
@@ -2935,7 +3082,9 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
     async dryRunGC() {
         await skipIfDuplicated("cleanup", async () => {
-            const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
+            const replicator = this.getReplicator();
+            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+            const remoteDBConn = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
             if (typeof (remoteDBConn) == "string") {
                 Logger(remoteDBConn);
                 return;
@@ -2949,8 +3098,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
     async dbGC() {
         // Lock the remote completely once.
         await skipIfDuplicated("cleanup", async () => {
+            const replicator = this.getReplicator();
+            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
             this.getReplicator().markRemoteLocked(this.settings, true, true);
-            const remoteDBConn = await this.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
+            const remoteDBConn = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.isMobile)
             if (typeof (remoteDBConn) == "string") {
                 Logger(remoteDBConn);
                 return;

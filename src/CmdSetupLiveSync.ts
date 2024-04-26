@@ -1,4 +1,4 @@
-import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE } from "./lib/src/types";
+import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "./lib/src/types";
 import { configURIBase } from "./types";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -9,6 +9,7 @@ import { delay, fireAndForget } from "./lib/src/utils";
 import { confirmWithMessage } from "./dialogs";
 import { Platform } from "./deps";
 import { fetchAllUsedChunks } from "./lib/src/utils_couchdb";
+import type { LiveSyncCouchDBReplicator } from "./lib/src/LiveSyncReplicator.js";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }
@@ -311,6 +312,7 @@ Of course, we are able to disable these features.`
     }
     async suspendReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
+        if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
         Logger(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = true;
         this.plugin.settings.suspendFileWatching = true;
@@ -318,6 +320,7 @@ Of course, we are able to disable these features.`
     }
     async resumeReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
+        if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
         Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = false;
         this.plugin.settings.suspendFileWatching = false;
@@ -348,9 +351,10 @@ Of course, we are able to disable these features.`
         await this.plugin.resetLocalDatabase();
     }
     async fetchRemoteChunks() {
-        if (!this.plugin.settings.doNotSuspendOnFetching && this.plugin.settings.readChunksOnline) {
+        if (!this.plugin.settings.doNotSuspendOnFetching && this.plugin.settings.readChunksOnline && this.plugin.settings.remoteType == REMOTE_COUCHDB) {
             Logger(`Fetching chunks`, LOG_LEVEL_NOTICE);
-            const remoteDB = await this.plugin.getReplicator().connectRemoteCouchDBWithSetting(this.settings, this.plugin.getIsMobile(), true);
+            const replicator = this.plugin.getReplicator() as LiveSyncCouchDBReplicator;
+            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.plugin.getIsMobile(), true);
             if (typeof remoteDB == "string") {
                 Logger(remoteDB, LOG_LEVEL_NOTICE);
             } else {
