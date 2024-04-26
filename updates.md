@@ -1,57 +1,22 @@
-### 0.22.0
-A few years passed since Self-hosted LiveSync was born, and our codebase had been very complicated. This could be patient now, but it should be a tremendous hurt.
-Therefore at v0.22.0, for future maintainability, I refined task scheduling logic totally.
+### 0.23.0
+Incredibly new features!
 
-Of course, I think this would be our suffering in some cases. However, I would love to ask you for your cooperation and contribution.
+Now, we can use object storage (MinIO, S3, R2 or anything you like) for synchronising! Moreover, despite that, we can use all the features as if we were using CouchDB.
+Note: As this is a pretty experimental feature, hence we have some limitations.
+- This is built on the append-only architecture. It will not shrink used storage if we do not perform a rebuild.
+- A bit fragile. However, our version x.yy.0 is always so.
+- When the first synchronisation, the entire history to date is transferred. For this reason, it is preferable to do this under the WiFi network.
+- Do not worry, from the second synchronisation, we always transfer only differences.
 
-Sorry for being absent so much long. And thank you for your patience!
+I hope this feature empowers users to maintain independence and self-host their data, offering an alternative for those who prefer to manage their own storage solutions and avoid being stuck on the right side of a sudden change in business model.
 
-Note: we got a very performance improvement.
-Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 by default**. Please configure the limit as you need. If you do not want to limit the sizes, set zero manually, please.
+Of course, I use Self-hosted MinIO for testing and recommend this. It is for the same reason as using CouchDB. -- open, controllable, auditable and indeed already audited by numerous eyes.
+
+Let me write one more acknowledgement.
+
+I have a lot of respect for that plugin, even though it is sometimes treated as if it is a competitor, remotely-save. I think it is a great architecture that embodies a different approach to my approach of recreating history. This time, with all due respect, I have used some of its code as a reference.
+Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
-- 0.22.19
-  - Fixed:
-    - No longer data corrupting due to false BASE64 detections.
-  - Improved:
-    - A bit more efficient in Automatic data compression.
-- 0.22.18
-  - New feature (Very Experimental):
-    - Now we can use `Automatic data compression` to reduce amount of traffic and the usage of remote database.
-      - Please make sure all devices are updated to v0.22.18 before trying this feature.
-      - If you are using some other utilities which connected to your vault, please make sure that they have compatibilities. 
-      - Note: Setting `File Compression` on the remote database works for shrink the size of remote database. Please refer the [Doc](https://docs.couchdb.org/en/stable/config/couchdb.html#couchdb/file_compression).
-- 0.22.17:
-  - Fixed:
-    - Error handling on booting now works fine.
-    - Replication is now started automatically in LiveSync mode.
-    - Batch database update is now disabled in LiveSync mode.
-    - No longer automatically reconnection while off-focused.
-    - Status saves are thinned out.
-    - Now Self-hosted LiveSync waits for all files between the local database and storage to be surely checked.
-  - Improved:
-    - The job scheduler is now more robust and stable.
-    - The status indicator no longer flickers and keeps zero for a while.
-    - No longer meaningless frequent updates of status indicators.
-    - Now we can configure regular expression filters in handy UI. Thank you so much, @eth-p!
-    - `Fetch` or `Rebuild everything` is now more safely performed.
-  - Minor things
-    - Some utility function has been added.
-    - Customisation sync now less wrong messages.
-    - Digging the weeds for eradication of type errors.
-- 0.22.16:
-  - Fixed:
-    - Fixed the issue that binary files were sometimes corrupted.
-    - Fixed customisation sync data could be corrupted.
-  - Improved:
-    - Now the remote database costs lower memory.
-      - This release requires a brief wait on the first synchronisation, to track the latest changeset again.
-    - Description added for the `Device name`.
-  - Refactored:
-    - Many type-errors have been resolved.
-    - Obsolete file has been deleted.
-- 0.22.15:
-  - Improved:
-    - Faster start-up by removing too many logs which indicates normality
-    - By streamlined scanning of customised synchronisation extra phases have been deleted.
-... To continue on to `updates_old.md`.
+- New feature:
+  - Now we can use Object Storage.

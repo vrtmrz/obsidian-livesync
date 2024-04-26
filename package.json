@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.22.19",
+    "version": "0.23.0",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -54,6 +54,10 @@
         "typescript": "^5.4.2"
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "^3.556.0",
+        "@smithy/fetch-http-handler": "^2.5.0",
+        "@smithy/protocol-http": "^3.3.0",
+        "@smithy/querystring-builder": "^2.2.0",
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",
         "idb": "^8.0.0",
