@@ -45,20 +45,38 @@ If you do not have any setup URI, Press the `start` button. The setting dialogue
 
 ![](../images/quick_setup_2.png)
 
-#### Remote database configuration 
 
-1. Enter the information for the database we have set up.
+#### Select the remote type
+
+1. Select the Remote Type from dropdown list.
+We now have a choice between CouchDB (and its compatibles) and object storage (MinIO, S3, R2). CouchDB is the first choice and is also recommended. And supporting Object Storage is an experimental feature.
+
+#### Remote configuration 
+
+##### CouchDB
+
+Enter the information for the database we have set up.
 
 ![](../images/quick_setup_3.png)  
 
+##### Object Storage
 
-#### Test database connection and Check database configuration
+1. Enter the information for the S3 API and bucket.
+
+![](../images/quick_setup_3b.png)  
+
+Note 1: if you use S3, you can leave the Endpoint URL empty.
+Note 2: if your Object Storage cannot configure the CORS setting fully, you may able to connect to the server by enabling the `Use Custom HTTP Handler` toggle.
+
+2. Press `Test` of `Test Connection` once and ensure you can connect to the Object Storage.
+
+#### Only CouchDB: Test database connection and Check database configuration
 
 We can check the connectivity to the database, and the database settings.
 
 ![](../images/quick_setup_5.png)  
 
-#### Check and Fix database configuration
+#### Only CouchDB: Check and Fix database configuration
 
 Check the database settings and fix any problems on the spot.
 
@@ -82,6 +100,8 @@ We should proceed to the Next step.
 
 #### Sync Settings
 Finally, finish the wizard by selecting a preset for synchronisation.
+
+Note: If you are going to use Object Storage, you cannot select `LiveSync`.
 
 ![](../images/quick_setup_9_1.png)
 
