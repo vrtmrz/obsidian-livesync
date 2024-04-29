@@ -1,4 +1,4 @@
-import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "./lib/src/types";
+import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB } from "./lib/src/types";
 import { configURIBase } from "./types";
 import { Logger } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
@@ -312,7 +312,7 @@ Of course, we are able to disable these features.`
     }
     async suspendReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
-        if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
+        // if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
         Logger(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = true;
         this.plugin.settings.suspendFileWatching = true;
@@ -320,7 +320,7 @@ Of course, we are able to disable these features.`
     }
     async resumeReflectingDatabase() {
         if (this.plugin.settings.doNotSuspendOnFetching) return;
-        if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
+        // if (this.plugin.settings.remoteType == REMOTE_MINIO) return;
         Logger(`Database and storage reflection has been resumed!`, LOG_LEVEL_NOTICE);
         this.plugin.settings.suspendParseReplicationResult = false;
         this.plugin.settings.suspendFileWatching = false;

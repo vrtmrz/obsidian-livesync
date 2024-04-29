@@ -2321,6 +2321,61 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
+        if (this.plugin.settings.remoteType != REMOTE_COUCHDB) {
+            new Setting(containerMaintenanceEl)
+                .setName("Reset journal received history")
+                .setDesc("Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset received")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [] }));
+                            Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+            new Setting(containerMaintenanceEl)
+                .setName("Reset journal sent history")
+                .setDesc("Initialise journal sent history. On the next sync, every item except this device received will be sent again.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset sent history")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+            new Setting(containerMaintenanceEl)
+                .setName("Reset all journal counter")
+                .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset all")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [], lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+            new Setting(containerMaintenanceEl)
+                .setName("Make empty the bucket")
+                .setDesc("Delete all data on the remote.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Delete")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [], lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            await this.plugin.resetRemoteBucket();
+                            Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+        }
 
         containerMaintenanceEl.createEl("h4", { text: "Local database" });
 

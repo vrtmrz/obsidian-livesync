@@ -683,63 +683,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }).addClass("livesync-ribbon-showcustom");
 
         this.addCommand({
-            id: "debug-x1",
-            name: "Journal send",
-            callback: () => {
-                this.journalSendTest();
-            }
-        });
-        this.addCommand({
-            id: "debug-x3",
-            name: "Journal receive",
-            callback: () => {
-                this.journalFetchTest();
-            }
-        });
-        this.addCommand({
-            id: "debug-x4",
-            name: "Sync By Journal",
-            callback: () => {
-                this.journalSyncTest();
-            }
-        });
-        this.addCommand({
-            id: "debug-x5",
-            name: "Reset journal sync",
-            callback: () => {
-                this.resetJournalSync();
-            }
-        });
-        this.addCommand({
-            id: "debug-x6",
-            name: "Reset journal sync and delete all items on the bucket",
-            callback: () => {
-                this.resetRemoteBucket();
-            }
-        })
-        this.addCommand({
-            id: "debug-x7",
-            name: "Perform Test",
-            callback: () => {
-                // const p = getMockedPouch();
-                // this.localDatabase.localDatabase.replicate.to(p, { since: 1000, checkpoint: "source" });
-            }
-        })
-        this.addCommand({
-            id: "debug-x8",
-            name: "Pack test",
-            callback: async () => {
-                const minioJournal = this.getMinioJournalSyncClient();
-                // const pack = await minioJournal.createJournalPack();
-                // console.warn();
-                console.warn(await minioJournal._createJournalPack());
-            }
-        })
-
-
-
-
-        this.addCommand({
             id: "view-log",
             name: "Show log",
             callback: () => {
