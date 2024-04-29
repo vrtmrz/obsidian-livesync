@@ -18,5 +18,16 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
-- New feature:
-  - Now we can use Object Storage.
+- 0.23.1
+  - Fixed:
+    - Now journal synchronisation considers untransferred each from sent and received.
+    - Journal sync now handles retrying.
+    - Journal synchronisation no longer considers the synchronisation of chunks as revision updates (Simply ignored).
+    - Journal sync now splits the journal pack to prevent mobile device rebooting.
+    - Maintenance menus which had been on the command palette are now back in the maintain pane on the setting dialogue.
+  - Improved:
+    - Now all changes which have been replicated while rebuilding will be postponed.
+
+- 0.23.0
+  - New feature:
+    - Now we can use Object Storage.
