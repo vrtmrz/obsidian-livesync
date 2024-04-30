@@ -18,6 +18,8 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.3
+  - Fixed: No longer unwanted `\f` in journal sync.
 - 0.23.2
   - Sorry for all the fixes to experimental features. (These things were also critical for dogfooding). The next release would be the main fixes! Thank you for your patience and understanding!
   - Fixed:
