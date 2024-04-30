@@ -2331,7 +2331,7 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [] }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: new Set(), knownIDs: new Set() }));
                             Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
                         })
                 )
@@ -2344,7 +2344,7 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, lastLocalSeq: 0, sentIDs: new Set(), sentFiles: new Set() }));
                             Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
                         })
                 )
@@ -2357,10 +2357,24 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [], lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            await this.plugin.getMinioJournalSyncClient().resetCheckpointInfo();
                             Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
                         })
                 )
+            new Setting(containerMaintenanceEl)
+                .setName("Purge all journal counter")
+                .setDesc("Purge all sending and downloading cache.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset all")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin.getMinioJournalSyncClient().resetAllCaches();
+                            Logger(`Journal sending and downloading cache has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+
             new Setting(containerMaintenanceEl)
                 .setName("Make empty the bucket")
                 .setDesc("Delete all data on the remote.")
@@ -2370,7 +2384,7 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: [], knownIDs: [], lastLocalSeq: 0, sentIDs: [], sentFiles: [] }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: new Set(), knownIDs: new Set(), lastLocalSeq: 0, sentIDs: new Set(), sentFiles: new Set() }));
                             await this.plugin.resetRemoteBucket();
                             Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
                         })

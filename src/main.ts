@@ -4,7 +4,7 @@ import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stri
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, } from "./lib/src/types";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./types";
-import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle } from "./lib/src/utils";
+import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/utils";
 import { Logger, setGlobalLogFunction } from "./lib/src/logger";
 import { PouchDB } from "./lib/src/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ConflictResolveModal";
@@ -37,7 +37,7 @@ import { initializeStores } from "./stores.js";
 import { JournalSyncMinio } from "./lib/src/JournalSyncMinio.js";
 import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./lib/src/LiveSyncJournalReplicator.js";
 import { LiveSyncCouchDBReplicator, type LiveSyncCouchDBReplicatorEnv } from "./lib/src/LiveSyncReplicator.js";
-import type { CheckPointInfo, SimpleStore } from "./lib/src/JournalSyncTypes.js";
+import type { CheckPointInfo } from "./lib/src/JournalSyncTypes.js";
 import { ObsHttpHandler } from "./ObsHttpHandler.js";
 
 setNoticeClass(Notice);
@@ -477,7 +477,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         },
         keys: async (from: string | undefined, to: string | undefined, count?: number | undefined): Promise<string[]> => {
             const ret = this.kvDB.keys(IDBKeyRange.bound(`os-${from || ""}`, `os-${to || ""}`), count);
-            return (await ret).map(e => e.toString());
+            return (await ret).map(e => e.toString()).filter(e => e.startsWith("os-")).map(e => e.substring(3));
         }
     }
     getMinioJournalSyncClient() {

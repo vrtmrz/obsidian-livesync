@@ -1,8 +1,8 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
 export interface KeyValueDatabase {
-    get<T>(key: string): Promise<T>;
-    set<T>(key: string, value: T): Promise<IDBValidKey>;
-    del(key: string): Promise<void>;
+    get<T>(key: IDBValidKey): Promise<T>;
+    set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey>;
+    del(key: IDBValidKey): Promise<void>;
     clear(): Promise<void>;
     keys(query?: IDBValidKey | IDBKeyRange, count?: number): Promise<IDBValidKey[]>;
     close(): void;
@@ -23,20 +23,20 @@ export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatab
     const db = await dbPromise;
     databaseCache[dbKey] = db;
     return {
-        get<T>(key: string): Promise<T> {
-            return db.get(storeKey, key);
+        async get<T>(key: IDBValidKey): Promise<T> {
+            return await db.get(storeKey, key);
         },
-        set<T>(key: string, value: T) {
-            return db.put(storeKey, value, key);
+        async set<T>(key: IDBValidKey, value: T) {
+            return await db.put(storeKey, value, key);
         },
-        del(key: string) {
-            return db.delete(storeKey, key);
+        async del(key: IDBValidKey) {
+            return await db.delete(storeKey, key);
         },
-        clear() {
-            return db.clear(storeKey);
+        async clear() {
+            return await db.clear(storeKey);
         },
-        keys(query?: IDBValidKey | IDBKeyRange, count?: number) {
-            return db.getAllKeys(storeKey, query, count);
+        async keys(query?: IDBValidKey | IDBKeyRange, count?: number) {
+            return await db.getAllKeys(storeKey, query, count);
         },
         close() {
             delete databaseCache[dbKey];
