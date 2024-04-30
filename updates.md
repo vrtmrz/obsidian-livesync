@@ -18,6 +18,14 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.2
+  - Sorry for all the fixes to experimental features. (These things were also critical for dogfooding). The next release would be the main fixes! Thank you for your patience and understanding!
+  - Fixed:
+    - Journal Sync will not hang up during big replication, especially the initial one.
+    - All changes which have been replicated while rebuilding will not be postponed (Previous behaviour).
+  - Improved:
+    - Now Journal Sync works efficiently in download and parse, or pack and upload.
+    - Less server storage and faster packing/unpacking usage by the new chunk format.
 - 0.23.1
   - Fixed:
     - Now journal synchronisation considers untransferred each from sent and received.
