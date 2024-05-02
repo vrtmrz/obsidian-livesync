@@ -1,11 +1,11 @@
-import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "./deps";
-import { serialized } from "./lib/src/lock";
-import { Logger } from "./lib/src/logger";
-import { isPlainText } from "./lib/src/path";
-import type { FilePath } from "./lib/src/types";
-import { createBinaryBlob, isDocContentSame } from "./lib/src/utils";
-import type { InternalFileInfo } from "./types";
-import { markChangesAreSame } from "./utils";
+import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "../deps.ts";
+import { serialized } from "../lib/src/concurrency/lock.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { isPlainText } from "../lib/src/string_and_binary/path.ts";
+import type { FilePath } from "../lib/src/common/types.ts";
+import { createBinaryBlob, isDocContentSame } from "../lib/src/common/utils.ts";
+import type { InternalFileInfo } from "../common/types.ts";
+import { markChangesAreSame } from "../common/utils.ts";
 
 function getFileLockKey(file: TFile | TFolder | string) {
     return `fl:${typeof (file) == "string" ? file : file.path}`;

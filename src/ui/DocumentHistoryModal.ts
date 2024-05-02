@@ -1,12 +1,12 @@
-import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "./deps";
-import { getPathFromTFile, isValidPath } from "./utils";
-import { decodeBinary, escapeStringToHTML, readString } from "./lib/src/strbin";
-import ObsidianLiveSyncPlugin from "./main";
-import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "./lib/src/types";
-import { Logger } from "./lib/src/logger";
-import { isErrorOfMissingDoc } from "./lib/src/utils_couchdb";
-import { getDocData, readContent } from "./lib/src/utils";
-import { isPlainText, stripPrefix } from "./lib/src/path";
+import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "../deps.ts";
+import { getPathFromTFile, isValidPath } from "../common/utils.ts";
+import { decodeBinary, escapeStringToHTML, readString } from "../lib/src/string_and_binary/strbin.ts";
+import ObsidianLiveSyncPlugin from "../main.ts";
+import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../lib/src/common/types.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { isErrorOfMissingDoc } from "../lib/src/pouchdb/utils_couchdb.ts";
+import { getDocData, readContent } from "../lib/src/common/utils.ts";
+import { isPlainText, stripPrefix } from "../lib/src/string_and_binary/path.ts";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();

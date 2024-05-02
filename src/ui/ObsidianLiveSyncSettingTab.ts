@@ -1,16 +1,16 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "./deps";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, type BucketSyncSetting, type RemoteType, PREFERRED_JOURNAL_SYNC } from "./lib/src/types";
-import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "./lib/src/utils";
-import { versionNumberString2Number } from "./lib/src/strbin";
-import { Logger } from "./lib/src/logger";
-import { checkSyncInfo, isCloudantURI } from "./lib/src/utils_couchdb";
-import { testCrypt } from "./lib/src/e2ee_v2";
-import ObsidianLiveSyncPlugin from "./main";
-import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "./utils";
+import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "../deps.ts";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, type BucketSyncSetting, type RemoteType, PREFERRED_JOURNAL_SYNC } from "../lib/src/common/types.ts";
+import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "../lib/src/common/utils.ts";
+import { versionNumberString2Number } from "../lib/src/string_and_binary/strbin.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { checkSyncInfo, isCloudantURI } from "../lib/src/pouchdb/utils_couchdb.ts";
+import { testCrypt } from "../lib/src/encryption/e2ee_v2.ts";
+import ObsidianLiveSyncPlugin from "../main.ts";
+import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "../common/utils.ts";
 import { request, type ButtonComponent, TFile } from "obsidian";
-import { shouldBeIgnored } from "./lib/src/path";
-import MultipleRegExpControl from './MultipleRegExpControl.svelte';
-import { LiveSyncCouchDBReplicator } from "./lib/src/LiveSyncReplicator";
+import { shouldBeIgnored } from "../lib/src/string_and_binary/path.ts";
+import MultipleRegExpControl from './components/MultipleRegExpControl.svelte';
+import { LiveSyncCouchDBReplicator } from "../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import { logMessages } from "./lib/src/stores";
-    import type { ReactiveInstance } from "./lib/src/reactive";
-    import { Logger } from "./lib/src/logger";
+    import { logMessages } from "../lib/src/mock_and_interop/stores";
+    import type { ReactiveInstance } from "../lib/src/dataobject/reactive";
+    import { Logger } from "../lib/src/common/logger";
 
     let unsubscribe: () => void;
     let messages = [] as string[];

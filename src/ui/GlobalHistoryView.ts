@@ -1,9 +1,9 @@
 import {
     ItemView,
     WorkspaceLeaf
-} from "./deps";
+} from "../deps.ts";
 import GlobalHistoryComponent from "./GlobalHistory.svelte";
-import type ObsidianLiveSyncPlugin from "./main";
+import type ObsidianLiveSyncPlugin from "../main.ts";
 
 export const VIEW_TYPE_GLOBAL_HISTORY = "global-history";
 export class GlobalHistoryView extends ItemView {

@@ -1,16 +1,16 @@
-import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl, TFile } from "./deps";
-import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "./lib/src/path";
+import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl, TFile } from "../deps.ts";
+import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
 
-import { Logger } from "./lib/src/logger";
-import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
-import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types";
-import { InputStringDialog, PopoverSelectString } from "./dialogs";
-import type ObsidianLiveSyncPlugin from "./main";
-import { writeString } from "./lib/src/strbin";
-import { fireAndForget } from "./lib/src/utils";
-import { sameChangePairs } from "./stores";
+import { Logger } from "../lib/src/common/logger.ts";
+import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "../lib/src/common/types.ts";
+import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types.ts";
+import { InputStringDialog, PopoverSelectString } from "./dialogs.ts";
+import type ObsidianLiveSyncPlugin from "../main.ts";
+import { writeString } from "../lib/src/string_and_binary/strbin.ts";
+import { fireAndForget } from "../lib/src/common/utils.ts";
+import { sameChangePairs } from "./stores.ts";
 
-export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriodicTask, cancelAllPeriodicTask, } from "./lib/src/task";
+export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriodicTask, cancelAllPeriodicTask, } from "../lib/src/concurrency/task.ts";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".

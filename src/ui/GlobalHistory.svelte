@@ -1,12 +1,12 @@
 <script lang="ts">
-    import ObsidianLiveSyncPlugin from "./main";
+    import ObsidianLiveSyncPlugin from "../main";
     import { onDestroy, onMount } from "svelte";
-    import type { AnyEntry, FilePathWithPrefix } from "./lib/src/types";
-    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "./lib/src/utils";
-    import { diff_match_patch } from "./deps";
+    import type { AnyEntry, FilePathWithPrefix } from "../lib/src/common/types";
+    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "../lib/src/common/utils";
+    import { diff_match_patch } from "../deps";
     import { DocumentHistoryModal } from "./DocumentHistoryModal";
-    import { isPlainText, stripAllPrefixes } from "./lib/src/path";
-    import { TFile } from "./deps";
+    import { isPlainText, stripAllPrefixes } from "../lib/src/string_and_binary/path";
+    import { TFile } from "../deps";
     export let plugin: ObsidianLiveSyncPlugin;
 
     let showDiffInfo = false;

@@ -3,7 +3,7 @@ import {
     WorkspaceLeaf
 } from "obsidian";
 import LogPaneComponent from "./LogPane.svelte";
-import type ObsidianLiveSyncPlugin from "./main";
+import type ObsidianLiveSyncPlugin from "../main.ts";
 export const VIEW_TYPE_LOG = "log-log";
 //Log view
 export class LogPaneView extends ItemView {

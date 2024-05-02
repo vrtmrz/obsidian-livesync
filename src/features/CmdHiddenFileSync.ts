@@ -1,16 +1,16 @@
-import { normalizePath, type PluginManifest, type ListedFiles } from "./deps";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "./lib/src/types";
-import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "./types";
-import { readAsBlob, isDocContentSame, sendSignal, readContent, createBlob } from "./lib/src/utils";
-import { Logger } from "./lib/src/logger";
-import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { isInternalMetadata, PeriodicProcessor } from "./utils";
-import { serialized } from "./lib/src/lock";
-import { JsonResolveModal } from "./JsonResolveModal";
-import { LiveSyncCommands } from "./LiveSyncCommands";
-import { addPrefix, stripAllPrefixes } from "./lib/src/path";
-import { QueueProcessor } from "./lib/src/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "./lib/src/stores";
+import { normalizePath, type PluginManifest, type ListedFiles } from "../deps.ts";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "../lib/src/common/types.ts";
+import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "../common/types.ts";
+import { readAsBlob, isDocContentSame, sendSignal, readContent, createBlob } from "../lib/src/common/utils.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { PouchDB } from "../lib/src/pouchdb/pouchdb-browser.js";
+import { isInternalMetadata, PeriodicProcessor } from "../common/utils.ts";
+import { serialized } from "../lib/src/concurrency/lock.ts";
+import { JsonResolveModal } from "../ui/JsonResolveModal.ts";
+import { LiveSyncCommands } from "./LiveSyncCommands.ts";
+import { addPrefix, stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
+import { QueueProcessor } from "../lib/src/concurrency/processor.ts";
+import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../lib/src/mock_and_interop/stores.ts";
 
 export class HiddenFileSync extends LiveSyncCommands {
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(this.plugin, async () => this.settings.syncInternalFiles && this.localDatabase.isReady && await this.syncInternalFilesAndDatabase("push", false));

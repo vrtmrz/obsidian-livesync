@@ -1,8 +1,8 @@
-import { App, Modal } from "./deps";
+import { App, Modal } from "../deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, RESULT_TIMED_OUT, type diff_result } from "./lib/src/types";
-import { escapeStringToHTML } from "./lib/src/strbin";
-import { delay, sendValue, waitForValue } from "./lib/src/utils";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT, RESULT_TIMED_OUT, type diff_result } from "../lib/src/common/types.ts";
+import { escapeStringToHTML } from "../lib/src/string_and_binary/strbin.ts";
+import { delay, sendValue, waitForValue } from "../lib/src/common/utils.ts";
 
 export type MergeDialogResult = typeof LEAVE_TO_SUBSEQUENT | typeof CANCELLED | string;
 export class ConflictResolveModal extends Modal {

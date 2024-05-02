@@ -1,4 +1,4 @@
-import { type FilePath } from "./lib/src/types";
+import { type FilePath } from "./lib/src/common/types.ts";
 
 export {
     addIcon, App, debounce, Editor, FuzzySuggestModal, MarkdownRenderer, MarkdownView, Modal, Notice, Platform, Plugin, PluginSettingTab, requestUrl, sanitizeHTMLToDom, Setting, stringifyYaml, TAbstractFile, TextAreaComponent, TFile, TFolder,

@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "./deps";
-    import type { FilePath, LoadedEntry } from "./lib/src/types";
-    import { decodeBinary, readString } from "./lib/src/strbin";
-    import { getDocData } from "./lib/src/utils";
-    import { mergeObject } from "./utils";
+    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "../deps";
+    import type { FilePath, LoadedEntry } from "../lib/src/common/types";
+    import { decodeBinary, readString } from "../lib/src/string_and_binary/strbin";
+    import { getDocData } from "../lib/src/common/utils";
+    import { mergeObject } from "../common/utils";
 
     export let docs: LoadedEntry[] = [];
     export let callback: (keepRev?: string, mergedStr?: string) => Promise<void> = async (_, __) => {

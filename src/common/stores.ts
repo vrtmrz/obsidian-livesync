@@ -1,4 +1,4 @@
-import { PersistentMap } from "./lib/src/PersistentMap";
+import { PersistentMap } from "../lib/src/dataobject/PersistentMap.ts";
 
 export let sameChangePairs: PersistentMap<number[]>;
 

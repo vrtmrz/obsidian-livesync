@@ -1,15 +1,15 @@
-import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "./lib/src/types";
-import { configURIBase } from "./types";
-import { Logger } from "./lib/src/logger";
-import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import { askSelectString, askYesNo, askString } from "./utils";
-import { decrypt, encrypt } from "./lib/src/e2ee_v2";
-import { LiveSyncCommands } from "./LiveSyncCommands";
-import { delay, fireAndForget } from "./lib/src/utils";
-import { confirmWithMessage } from "./dialogs";
-import { Platform } from "./deps";
-import { fetchAllUsedChunks } from "./lib/src/utils_couchdb";
-import type { LiveSyncCouchDBReplicator } from "./lib/src/LiveSyncReplicator.js";
+import { type EntryDoc, type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "../lib/src/common/types.ts";
+import { configURIBase } from "../common/types.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { PouchDB } from "../lib/src/pouchdb/pouchdb-browser.js";
+import { askSelectString, askYesNo, askString } from "../common/utils.ts";
+import { decrypt, encrypt } from "../lib/src/encryption/e2ee_v2.ts";
+import { LiveSyncCommands } from "./LiveSyncCommands.ts";
+import { delay, fireAndForget } from "../lib/src/common/utils.ts";
+import { confirmWithMessage } from "../common/dialogs.ts";
+import { Platform } from "../deps.ts";
+import { fetchAllUsedChunks } from "../lib/src/pouchdb/utils_couchdb.ts";
+import type { LiveSyncCouchDBReplicator } from "../lib/src/replication/couchdb/LiveSyncReplicator.js";
 
 export class SetupLiveSync extends LiveSyncCommands {
     onunload() { }

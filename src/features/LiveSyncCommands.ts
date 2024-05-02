@@ -1,6 +1,6 @@
-import { type AnyEntry, type DocumentID, type EntryDoc, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "./lib/src/types";
-import { PouchDB } from "./lib/src/pouchdb-browser.js";
-import type ObsidianLiveSyncPlugin from "./main";
+import { type AnyEntry, type DocumentID, type EntryDoc, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "../lib/src/common/types.ts";
+import { PouchDB } from "../lib/src/pouchdb/pouchdb-browser.js";
+import type ObsidianLiveSyncPlugin from "../main.ts";
 
 
 export abstract class LiveSyncCommands {

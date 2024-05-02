@@ -1,9 +1,9 @@
 import { ButtonComponent } from "obsidian";
-import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "./deps";
-import ObsidianLiveSyncPlugin from "./main";
+import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../deps.ts";
+import ObsidianLiveSyncPlugin from "../main.ts";
 
 //@ts-ignore
-import PluginPane from "./PluginPane.svelte";
+import PluginPane from "../ui/PluginPane.svelte";
 
 export class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;

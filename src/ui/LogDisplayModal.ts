@@ -1,8 +1,8 @@
-import { App, Modal } from "./deps";
-import type { ReactiveInstance, } from "./lib/src/reactive";
-import { logMessages } from "./lib/src/stores";
-import { escapeStringToHTML } from "./lib/src/strbin";
-import ObsidianLiveSyncPlugin from "./main";
+import { App, Modal } from "../deps.ts";
+import type { ReactiveInstance, } from "../lib/src/dataobject/reactive.ts";
+import { logMessages } from "../lib/src/mock_and_interop/stores.ts";
+import { escapeStringToHTML } from "../lib/src/string_and_binary/strbin.ts";
+import ObsidianLiveSyncPlugin from "../main.ts";
 
 export class LogDisplayModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;

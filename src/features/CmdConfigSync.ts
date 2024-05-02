@@ -1,21 +1,21 @@
 import { writable } from 'svelte/store';
-import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles } from "./deps";
+import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles } from "../deps.ts";
 
-import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "./lib/src/types";
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "./lib/src/types";
-import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "./types";
-import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame, throttle } from "./lib/src/utils";
-import { Logger } from "./lib/src/logger";
-import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "./lib/src/strbin";
-import { serialized } from "./lib/src/lock";
-import { LiveSyncCommands } from "./LiveSyncCommands";
-import { stripAllPrefixes } from "./lib/src/path";
-import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "./utils";
-import { PluginDialogModal } from "./dialogs";
-import { JsonResolveModal } from "./JsonResolveModal";
-import { QueueProcessor } from './lib/src/processor';
-import { pluginScanningCount } from './lib/src/stores';
-import type ObsidianLiveSyncPlugin from './main';
+import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "../lib/src/common/types.ts";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "../lib/src/common/types.ts";
+import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../common/types.ts";
+import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, isDocContentSame, throttle } from "../lib/src/common/utils.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "../lib/src/string_and_binary/strbin.ts";
+import { serialized } from "../lib/src/concurrency/lock.ts";
+import { LiveSyncCommands } from "./LiveSyncCommands.ts";
+import { stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
+import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../common/utils.ts";
+import { PluginDialogModal } from "../common/dialogs.ts";
+import { JsonResolveModal } from "../ui/JsonResolveModal.ts";
+import { QueueProcessor } from '../lib/src/concurrency/processor.ts';
+import { pluginScanningCount } from '../lib/src/mock_and_interop/stores.ts';
+import type ObsidianLiveSyncPlugin from '../main.ts';
 
 const d = "\u200b";
 const d2 = "\n";

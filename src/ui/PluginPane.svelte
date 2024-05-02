@@ -1,12 +1,12 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import ObsidianLiveSyncPlugin from "./main";
-    import { type PluginDataExDisplay, pluginIsEnumerating, pluginList } from "./CmdConfigSync";
-    import PluginCombo from "./PluginCombo.svelte";
+    import ObsidianLiveSyncPlugin from "../main";
+    import { type PluginDataExDisplay, pluginIsEnumerating, pluginList } from "../features/CmdConfigSync";
+    import PluginCombo from "./components/PluginCombo.svelte";
     import { Menu } from "obsidian";
-    import { unique } from "./lib/src/utils";
-    import { MODE_SELECTIVE, MODE_AUTOMATIC, MODE_PAUSED, type SYNC_MODE, type PluginSyncSettingEntry } from "./lib/src/types";
-    import { normalizePath } from "./deps";
+    import { unique } from "../lib/src/common/utils";
+    import { MODE_SELECTIVE, MODE_AUTOMATIC, MODE_PAUSED, type SYNC_MODE, type PluginSyncSettingEntry } from "../lib/src/common/types";
+    import { normalizePath } from "../deps";
     export let plugin: ObsidianLiveSyncPlugin;
 
     $: hideNotApplicable = false;

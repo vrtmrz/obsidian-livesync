@@ -1,7 +1,7 @@
-import { App, Modal } from "./deps";
-import { type FilePath, type LoadedEntry } from "./lib/src/types";
+import { App, Modal } from "../deps.ts";
+import { type FilePath, type LoadedEntry } from "../lib/src/common/types.ts";
 import JsonResolvePane from "./JsonResolvePane.svelte";
-import { waitForSignal } from "./lib/src/utils";
+import { waitForSignal } from "../lib/src/common/utils.ts";
 
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;

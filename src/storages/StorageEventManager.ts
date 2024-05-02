@@ -1,11 +1,11 @@
-import type { SerializedFileAccess } from "./SerializedFileAccess";
-import { Plugin, TAbstractFile, TFile, TFolder } from "./deps";
-import { Logger } from "./lib/src/logger";
-import { shouldBeIgnored } from "./lib/src/path";
-import type { QueueProcessor } from "./lib/src/processor";
-import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "./lib/src/types";
-import { delay } from "./lib/src/utils";
-import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "./types";
+import type { SerializedFileAccess } from "./SerializedFileAccess.ts";
+import { Plugin, TAbstractFile, TFile, TFolder } from "../deps.ts";
+import { Logger } from "../lib/src/common/logger.ts";
+import { shouldBeIgnored } from "../lib/src/string_and_binary/path.ts";
+import type { QueueProcessor } from "../lib/src/concurrency/processor.ts";
+import { LOG_LEVEL_NOTICE, type FilePath, type ObsidianLiveSyncSettings } from "../lib/src/common/types.ts";
+import { delay } from "../lib/src/common/utils.ts";
+import { type FileEventItem, type FileEventType, type FileInfo, type InternalFileInfo } from "../common/types.ts";
 
 
 export abstract class StorageEventManager {

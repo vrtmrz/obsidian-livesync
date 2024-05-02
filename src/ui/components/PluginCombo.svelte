@@ -1,11 +1,11 @@
 <script lang="ts">
-    import type { PluginDataExDisplay } from "./CmdConfigSync";
-    import { Logger } from "./lib/src/logger";
-    import { versionNumberString2Number } from "./lib/src/strbin";
-    import { type FilePath, LOG_LEVEL_NOTICE } from "./lib/src/types";
-    import { getDocData } from "./lib/src/utils";
-    import type ObsidianLiveSyncPlugin from "./main";
-    import { askString, scheduleTask } from "./utils";
+    import type { PluginDataExDisplay } from "../../features/CmdConfigSync";
+    import { Logger } from "../../lib/src/common/logger";
+    import { versionNumberString2Number } from "../../lib/src/string_and_binary/strbin";
+    import { type FilePath, LOG_LEVEL_NOTICE } from "../../lib/src/common/types";
+    import { getDocData } from "../../lib/src/common/utils";
+    import type ObsidianLiveSyncPlugin from "../../main";
+    import { askString, scheduleTask } from "../../common/utils";
 
     export let list: PluginDataExDisplay[] = [];
     export let thisTerm = "";
