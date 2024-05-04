@@ -112,7 +112,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         const tmpDiv = createSpan();
         tmpDiv.addClass("sls-header-button");
-        tmpDiv.innerHTML = `<button> OK, I read all. </button>`;
+        tmpDiv.innerHTML = `<button> OK, I read everything. </button>`;
         if (lastVersion > this.plugin.settings.lastReadUpdates) {
             const informationButtonDiv = h3El.appendChild(tmpDiv);
             informationButtonDiv.querySelector("button")?.addEventListener("click", async () => {
@@ -186,7 +186,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             })
         if (!this.plugin.settings.isConfigured) {
             new Setting(setupWizardEl)
-                .setName("Enable LiveSync on this device as the set-up was completed manually")
+                .setName("Enable LiveSync on this device as the setup was completed manually")
                 .addButton((text) => {
                     text.setButtonText("Enable").onClick(async () => {
                         this.plugin.settings.isConfigured = true;
@@ -197,10 +197,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
         if (this.plugin.settings.isConfigured) {
             new Setting(setupWizardEl)
-                .setName("Discard exist settings and databases")
+                .setName("Discard existing settings and databases")
                 .addButton((text) => {
                     text.setButtonText("Discard").onClick(async () => {
-                        if (await askYesNo(this.plugin.app, "Do you really want to discard exist settings and databases?") == "yes") {
+                        if (await askYesNo(this.plugin.app, "Do you really want to discard existing settings and databases?") == "yes") {
                             this.plugin.settings = { ...DEFAULT_SETTINGS };
                             await this.plugin.saveSettingData();
                             await this.plugin.resetLocalDatabase();
@@ -230,7 +230,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             try {
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
             } catch (ex: any) {
-                remoteTroubleShootMDSrc = "Error Occurred!!\n" + ex.toString();
+                remoteTroubleShootMDSrc = "An error occurred!!\n" + ex.toString();
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(/\((.*?(.png)|(.jpg))\)/g, `(${rawRepoURI}${basePath}/$1)`)
             // Render markdown
@@ -303,7 +303,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             const ObjectStorageMessage = `Kindly notice: this is a pretty experimental feature, hence we have some limitations. 
 - Append only architecture. It will not shrink used storage if we do not perform a rebuild.
 - A bit fragile.
-- During the first synchronization, the entire history to date will be transferred. For this reason, it is preferable to do this under the WiFi network.
+- During the first synchronization, the entire history to date will be transferred. For this reason, it is preferable to do this while connected to a Wi-Fi network.
 - From the second, we always transfer only differences.
 
 However, your report is needed to stabilise this. I appreciate you for your great dedication.
@@ -373,7 +373,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         })
                 );
             new Setting(containerRemoteDatabaseEl)
-                .setName("Apply Setting")
+                .setName("Apply Settings")
                 .setClass("wizardHidden")
                 .addButton((button) =>
                     button
@@ -497,7 +497,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 );
 
             new Setting(containerRemoteDatabaseEl)
-                .setName("Check and Fix database configuration")
+                .setName("Check and fix database configuration")
                 .setDesc("Check the database configuration, and fix if there are any problems.")
                 .addButton((button) =>
                     button
@@ -563,13 +563,13 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                     }
                                     // HTTP user-authorization check
                                     if (responseConfig?.chttpd?.require_valid_user != "true") {
-                                        addResult("❗ chttpd.require_valid_user looks like wrong.");
+                                        addResult("❗ chttpd.require_valid_user is wrong.");
                                         addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
                                     } else {
                                         addResult("✔ chttpd.require_valid_user is ok.");
                                     }
                                     if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
-                                        addResult("❗ chttpd_auth.require_valid_user looks like wrong.");
+                                        addResult("❗ chttpd_auth.require_valid_user is wrong.");
                                         addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
                                     } else {
                                         addResult("✔ chttpd_auth.require_valid_user is ok.");
@@ -636,9 +636,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                             }));
                                         addResult(`Origin check:${org}`);
                                         if (responseHeaders["access-control-allow-credentials"] != "true") {
-                                            addResult("❗ CORS is not allowing credential");
+                                            addResult("❗ CORS is not allowing credentials");
                                         } else {
-                                            addResult("✔ CORS credential OK");
+                                            addResult("✔ CORS credentials OK");
                                         }
                                         if (responseHeaders["access-control-allow-origin"] != org) {
                                             addResult(`❗ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
@@ -647,7 +647,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                         }
                                     }
                                     addResult("--Done--", ["ob-btn-config-head"]);
-                                    addResult("If you have some trouble with Connection-check even though all Config-check has been passed, Please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
+                                    addResult("If you have some trouble with Connection-check even though all Config-check has been passed, please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
                                     Logger(`Checking configuration done`, LOG_LEVEL_INFO);
                                 } catch (ex: any) {
                                     if (ex?.status == 401) {
@@ -685,7 +685,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
 
         const e2e = new Setting(containerRemoteDatabaseEl)
-            .setName("End to End Encryption")
+            .setName("End-to-End Encryption")
             .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
             .addToggle((toggle) =>
                 toggle.setValue(encrypt).onChange(async (value) => {
@@ -734,7 +734,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         // if (showEncryptOptionDetail) {
         const passphraseSetting = new Setting(containerRemoteDatabaseEl)
             .setName("Passphrase")
-            .setDesc("Encrypting passphrase. If you change the passphrase of a existing database, overwriting the remote database is strongly recommended.")
+            .setDesc("Encrypting passphrase. If you change the passphrase of an existing database, overwriting the remote database is strongly recommended.")
             .addText((text) => {
                 text.setPlaceholder("")
                     .setValue(passphrase)
@@ -803,7 +803,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Apply and Fetch")
+                    .setButtonText("Apply and fetch")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
@@ -812,7 +812,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Apply and Rebuild")
+                    .setButtonText("Apply and rebuild")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
@@ -853,7 +853,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 return;
             }
             if (encrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL_NOTICE);
+                Logger("WARNING! Your device does not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!(await checkWorkingPassphrase()) && !sendToServer) {
@@ -885,7 +885,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 return;
             }
             if (encrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device would not support encryption.", LOG_LEVEL_NOTICE);
+                Logger("WARNING! Your device does not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!encrypt) {
@@ -898,7 +898,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
             this.plugin.settings.usePathObfuscation = usePathObfuscation;
             this.plugin.settings.isConfigured = true;
-            Logger("All synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
+            Logger("All synchronizations have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
             await this.plugin.saveSettings();
             updateE2EControls();
             applyDisplayEnabled();
@@ -1034,7 +1034,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         let buttonApplyFilename: ButtonComponent;
         new Setting(containerGeneralSettingsEl)
             .setName("Filename")
-            .setDesc("If you set this, all settings are saved in a markdown file. You will also be notified when new settings were arrived. You can set different files by the platform.")
+            .setDesc("If you set this, all settings are saved in a markdown file. You will be notified when new settings arrive. You can set different files by the platform.")
             .addText((text) => {
                 text.setPlaceholder("livesync/setting.md")
                     .setValue(settingSyncFile)
@@ -1140,7 +1140,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
         let currentPreset = "NONE";
         containerSyncSettingEl.createEl("div",
-            { text: `Please select any preset to complete wizard.` }
+            { text: `Please select any preset to complete the wizard.` }
         ).addClasses(["op-warn-info", "wizardOnly"]);
         const options: Record<string, string> = this.plugin.settings.remoteType == REMOTE_COUCHDB ? { NONE: "", LIVESYNC: "LiveSync", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" } : { NONE: "", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" };
         new Setting(containerSyncSettingEl)
@@ -1200,7 +1200,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             }
                             Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL_NOTICE);
                         } else {
-                            Logger("All synchronization disabled.", LOG_LEVEL_NOTICE);
+                            Logger("All synchronizations disabled.", LOG_LEVEL_NOTICE);
                             this.plugin.settings = {
                                 ...this.plugin.settings,
                                 ...presetAllDisabled
@@ -1280,7 +1280,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
             new Setting(containerSyncSettingEl)
                 .setName("Sync on Save")
-                .setDesc("When you save file, sync automatically")
+                .setDesc("When you save a file, sync automatically")
                 .setClass("wizardHidden")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
@@ -1291,7 +1291,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 )
             new Setting(containerSyncSettingEl)
                 .setName("Sync on Editor Save")
-                .setDesc("When you save file on the editor, sync automatically")
+                .setDesc("When you save a file in the editor, sync automatically")
                 .setClass("wizardHidden")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.syncOnEditorSave).onChange(async (value) => {
@@ -1302,7 +1302,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 )
             new Setting(containerSyncSettingEl)
                 .setName("Sync on File Open")
-                .setDesc("When you open file, sync automatically")
+                .setDesc("When you open a file, sync automatically")
                 .setClass("wizardHidden")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.syncOnFileOpen).onChange(async (value) => {
@@ -1390,7 +1390,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             );
         containerSyncSettingEl.createEl("h4", { text: "Compatibility" }).addClass("wizardHidden");
         new Setting(containerSyncSettingEl)
-            .setName("Always resolve conflict manually")
+            .setName("Always resolve conflicts manually")
             .setDesc("If this switch is turned on, a merge dialog will be displayed, even if the sensible-merge is possible automatically. (Turn on to previous behavior)")
             .setClass("wizardHidden")
             .addToggle((toggle) =>
@@ -1587,7 +1587,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
         const syncFilesSetting = new Setting(containerSyncSettingEl)
             .setName("Synchronising files")
-            .setDesc("(RegExp) Empty to sync all files. set filter as a regular expression to limit synchronising files.")
+            .setDesc("(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.")
             .setClass("wizardHidden")
         new MultipleRegExpControl(
             {
@@ -1791,7 +1791,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                 responseConfig["admins"] = REDACTED;
 
                             } catch (ex) {
-                                responseConfig = "Requesting information to the remote CouchDB has been failed. If you are using IBM Cloudant, it is the normal behaviour."
+                                responseConfig = "Requesting information from the remote CouchDB has failed. If you are using IBM Cloudant, this is normal behaviour."
                             }
                         } else if (this.plugin.settings.remoteType == REMOTE_MINIO) {
                             responseConfig = "Object Storage Synchronisation";
@@ -1834,7 +1834,7 @@ ${stringifyYaml(pluginConfig)}`;
 
         if (this.plugin.replicator.remoteLockedAndDeviceNotAccepted) {
             const c = containerHatchEl.createEl("div", {
-                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. it caused by some operations like this. re-initialized. Local database initialization should be required. please back your vault up, reset local database, and press 'Mark this device as resolved'. ",
+                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. It caused by some operations like this. Re-initialized. Local database initialization should be required. Please back your vault up, reset the local database, and press 'Mark this device as resolved'. ",
             });
             c.createEl("button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
                 e.addClass("mod-warning");
@@ -1922,7 +1922,7 @@ ${stringifyYaml(pluginConfig)}`;
         }
         new Setting(containerHatchEl)
             .setName("Verify and repair all files")
-            .setDesc("Compare the content of files between on local database and storage. If not matched, you will asked which one want to keep.")
+            .setDesc("Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.")
             .addButton((button) =>
                 button
                     .setButtonText("Verify all")
@@ -2025,7 +2025,7 @@ ${stringifyYaml(pluginConfig)}`;
                                             }
                                         }
                                     } else {
-                                        Logger(`Something went wrong on converting ${docName}`, LOG_LEVEL_NOTICE);
+                                        Logger(`Something went wrong while converting ${docName}`, LOG_LEVEL_NOTICE);
                                         Logger(ex, LOG_LEVEL_VERBOSE);
                                         // Something wrong.
                                     }
