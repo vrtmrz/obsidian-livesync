@@ -18,6 +18,14 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.4
+  - Fixed:
+    - No longer experimental configuration is shown on the Minimal Setup.
+  - New feature:
+    - We can now use `Incubate Chunks in Document` to reduce non-well-formed chunks.
+      - Default: disabled / Preferred: enabled in all devices.
+      - When we enabled this toggle, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.
+      - The [design document](https://github.com/vrtmrz/obsidian-livesync/blob/3925052f9290b3579e45a4b716b3679c833d8ca0/docs/design_docs_of_keep_newborn_chunks.md) has been also available..
 - 0.23.3
   - Fixed: No longer unwanted `\f` in journal sync.
 - 0.23.2
