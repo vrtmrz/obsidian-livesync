@@ -39,6 +39,7 @@ import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./
 import { LiveSyncCouchDBReplicator, type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
 import { ObsHttpHandler } from "./common/ObsHttpHandler.js";
+// import { Trench } from "./lib/src/memory/memutil.js";
 
 setNoticeClass(Notice);
 
@@ -327,6 +328,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
     async onInitializeDatabase(db: LiveSyncLocalDB): Promise<void> {
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
+        // this.trench = new Trench(this.simpleStore);
         this.replicator = this.getNewReplicator();
     }
     async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
@@ -335,6 +337,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         // localStorage.removeItem(lsKey);
         await this.kvDB.destroy();
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
+        // this.trench = new Trench(this.simpleStore);
         this.replicator = this.getNewReplicator()
     }
     getReplicator() {
@@ -480,6 +483,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
             return (await ret).map(e => e.toString()).filter(e => e.startsWith("os-")).map(e => e.substring(3));
         }
     }
+    // trench!: Trench;
+
     getMinioJournalSyncClient() {
         const id = this.settings.accessKey
         const key = this.settings.secretKey
@@ -2873,6 +2878,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             children: [],
             datatype: datatype,
             type: datatype,
+            eden: {},
         };
         //upsert should locked
         const msg = `STORAGE -> DB (${datatype}) `;

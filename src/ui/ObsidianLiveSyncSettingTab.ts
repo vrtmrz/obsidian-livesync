@@ -1,5 +1,26 @@
 import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "../deps.ts";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, type BucketSyncSetting, type RemoteType, PREFERRED_JOURNAL_SYNC } from "../lib/src/common/types.ts";
+import {
+    DEFAULT_SETTINGS,
+    type ObsidianLiveSyncSettings,
+    type ConfigPassphraseStore,
+    type RemoteDBSettings,
+    type FilePathWithPrefix,
+    type HashAlgorithm,
+    type DocumentID,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    LOG_LEVEL_INFO,
+    type LoadedEntry,
+    PREFERRED_SETTING_CLOUDANT,
+    PREFERRED_SETTING_SELF_HOSTED,
+    FLAGMD_REDFLAG2_HR,
+    FLAGMD_REDFLAG3_HR,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    type BucketSyncSetting,
+    type RemoteType,
+    PREFERRED_JOURNAL_SYNC
+} from "../lib/src/common/types.ts";
 import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../lib/src/string_and_binary/strbin.ts";
 import { Logger } from "../lib/src/common/logger.ts";
@@ -21,12 +42,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
     }
+
     async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
         const trialSetting = { ...this.plugin.settings, ...settingOverride };
         const replicator = this.plugin.getNewReplicator(trialSetting);
 
         await replicator.tryConnectRemote(trialSetting);
     }
+
     askReload(message?: string) {
         scheduleTask("configReload", 250, async () => {
             if (await askYesNo(this.app, message || "Do you want to restart and reload Obsidian now?") == "yes") {
@@ -35,10 +58,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
         })
     }
+
     closeSetting() {
         // @ts-ignore
         this.plugin.app.setting.close()
     }
+
     display(): void {
         const { containerEl } = this;
         let encrypt = this.plugin.settings.encrypt;
@@ -236,7 +261,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             // Render markdown
             await MarkdownRenderer.render(this.plugin.app, `<a class='sls-troubleshoot-anchor'></a> [Tips and Troubleshooting](${topPath}) [PageTop](${filename})\n\n${remoteTroubleShootMD}`, troubleShootEl, `${rawRepoURI}`, this.plugin);
             // Menu
-            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({ position: "sticky", top: "-1em", backgroundColor: "var(--modal-background)" });
+            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({
+                position: "sticky",
+                top: "-1em",
+                backgroundColor: "var(--modal-background)"
+            });
             // Trap internal links.
             troubleShootEl.querySelectorAll<HTMLAnchorElement>("a.internal-link").forEach((anchorEl) => {
                 anchorEl.addEventListener("click", async (evt) => {
@@ -286,7 +315,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     })
             })
 
-        let applyDisplayEnabled = () => { }
+        let applyDisplayEnabled = () => {
+        }
         const editing = extractObject<BucketSyncSetting>({
             accessKey: "",
             bucket: "",
@@ -480,7 +510,6 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             await this.plugin.saveSettings();
                         })
                 )
-
             );
 
             new Setting(containerRemoteDatabaseEl)
@@ -667,7 +696,71 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 text: "",
             });
 
-            containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" });
+            containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" }).addClass("wizardHidden")
+            new Setting(containerRemoteDatabaseEl)
+                .setName("Incubate Chunks in Document")
+                .setDesc("If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.")
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.useEden).onChange(async (value) => {
+                        this.plugin.settings.useEden = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    })
+                )
+                .setClass("wizardHidden");
+            if (this.plugin.settings.useEden) {
+                new Setting(containerRemoteDatabaseEl)
+                    .setName("Maximum Incubating Chunks")
+                    .setDesc("The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.")
+                    .addText((text) => {
+                        text.setPlaceholder("")
+                            .setValue(this.plugin.settings.maxChunksInEden + "")
+                            .onChange(async (value) => {
+                                let v = Number(value);
+                                if (isNaN(v) || v < 3) {
+                                    v = 3;
+                                }
+                                this.plugin.settings.maxChunksInEden = v;
+                                await this.plugin.saveSettings();
+                            });
+                        text.inputEl.setAttribute("type", "number");
+                    })
+                    .setClass("wizardHidden");
+                new Setting(containerRemoteDatabaseEl)
+                    .setName("Maximum Incubating Chunk Size")
+                    .setDesc("The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.")
+                    .addText((text) => {
+                        text.setPlaceholder("")
+                            .setValue(this.plugin.settings.maxTotalLengthInEden + "")
+                            .onChange(async (value) => {
+                                let v = Number(value);
+                                if (isNaN(v) || v < 100) {
+                                    v = 100;
+                                }
+                                this.plugin.settings.maxTotalLengthInEden = v;
+                                await this.plugin.saveSettings();
+                            });
+                        text.inputEl.setAttribute("type", "number");
+                    })
+                    .setClass("wizardHidden");
+                new Setting(containerRemoteDatabaseEl)
+                    .setName("Maximum Incubation Period")
+                    .setDesc("The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.")
+                    .addText((text) => {
+                        text.setPlaceholder("")
+                            .setValue(this.plugin.settings.maxAgeInEden + "")
+                            .onChange(async (value) => {
+                                let v = Number(value);
+                                if (isNaN(v) || v < 3) {
+                                    v = 3;
+                                }
+                                this.plugin.settings.maxAgeInEden = v;
+                                await this.plugin.saveSettings();
+                            });
+                        text.inputEl.setAttribute("type", "number");
+                    })
+                    .setClass("wizardHidden");
+            }
             new Setting(containerRemoteDatabaseEl)
                 .setName("Data Compression (Experimental)")
                 .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
@@ -677,9 +770,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         await this.plugin.saveSettings();
                         this.display();
                     })
-                );
+                )
+                .setClass("wizardHidden");
         }
-
 
 
         containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
@@ -1142,7 +1235,12 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         containerSyncSettingEl.createEl("div",
             { text: `Please select any preset to complete wizard.` }
         ).addClasses(["op-warn-info", "wizardOnly"]);
-        const options: Record<string, string> = this.plugin.settings.remoteType == REMOTE_COUCHDB ? { NONE: "", LIVESYNC: "LiveSync", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" } : { NONE: "", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" };
+        const options: Record<string, string> = this.plugin.settings.remoteType == REMOTE_COUCHDB ? {
+            NONE: "",
+            LIVESYNC: "LiveSync",
+            PERIODIC: "Periodic w/ batch",
+            DISABLE: "Disable all automatic"
+        } : { NONE: "", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" };
         new Setting(containerSyncSettingEl)
             .setName("Presets")
             .setDesc("Apply preset configuration")
@@ -1234,7 +1332,11 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             syncMode = "PERIODIC";
         }
 
-        const optionsSyncMode = this.plugin.settings.remoteType == REMOTE_COUCHDB ? { "": "On events", PERIODIC: "Periodic and On events", "LIVESYNC": "LiveSync" } : { "": "On events", PERIODIC: "Periodic and On events" }
+        const optionsSyncMode = this.plugin.settings.remoteType == REMOTE_COUCHDB ? {
+            "": "On events",
+            PERIODIC: "Periodic and On events",
+            "LIVESYNC": "LiveSync"
+        } : { "": "On events", PERIODIC: "Periodic and On events" }
         new Setting(containerSyncSettingEl)
             .setName("Sync Mode")
             .setClass("wizardHidden")
@@ -1593,7 +1695,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             {
                 target: syncFilesSetting.controlEl,
                 props: {
-                    patterns: this.plugin.settings.syncOnlyRegEx.split("|[]|"), originals: [...this.plugin.settings.syncOnlyRegEx.split("|[]|")], apply: async (newPatterns) => {
+                    patterns: this.plugin.settings.syncOnlyRegEx.split("|[]|"),
+                    originals: [...this.plugin.settings.syncOnlyRegEx.split("|[]|")],
+                    apply: async (newPatterns) => {
                         this.plugin.settings.syncOnlyRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
                         await this.plugin.saveSettings();
                         this.display();
@@ -1611,7 +1715,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             {
                 target: nonSyncFilesSetting.controlEl,
                 props: {
-                    patterns: this.plugin.settings.syncIgnoreRegEx.split("|[]|"), originals: [...this.plugin.settings.syncIgnoreRegEx.split("|[]|")], apply: async (newPatterns) => {
+                    patterns: this.plugin.settings.syncIgnoreRegEx.split("|[]|"),
+                    originals: [...this.plugin.settings.syncIgnoreRegEx.split("|[]|")],
+                    apply: async (newPatterns) => {
                         this.plugin.settings.syncIgnoreRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
                         await this.plugin.saveSettings();
                         this.display();
@@ -1875,7 +1981,6 @@ ${stringifyYaml(pluginConfig)}`;
         hatchWarn.addClass("op-warn-info");
 
 
-
         const addResult = (path: string, file: TFile | false, fileOnDB: LoadedEntry | false) => {
             resultArea.appendChild(resultArea.createEl("div", {}, el => {
                 el.appendChild(el.createEl("h6", { text: path }));
@@ -2044,7 +2149,11 @@ ${stringifyYaml(pluginConfig)}`;
                     .setWarning()
                     .onClick(async () => {
                         Logger(`Deleting customization sync data`, LOG_LEVEL_NOTICE);
-                        const entriesToDelete = (await this.plugin.localDatabase.allDocsRaw({ startkey: "ix:", endkey: "ix:\u{10ffff}", include_docs: true }));
+                        const entriesToDelete = (await this.plugin.localDatabase.allDocsRaw({
+                            startkey: "ix:",
+                            endkey: "ix:\u{10ffff}",
+                            include_docs: true
+                        }));
                         const newData = entriesToDelete.rows.map(e => ({ ...e.doc, _deleted: true }));
                         const r = await this.plugin.localDatabase.bulkDocsRaw(newData as any[]);
                         // Do not care about the result.
@@ -2180,7 +2289,12 @@ ${stringifyYaml(pluginConfig)}`;
             .setClass("wizardHidden")
             .addDropdown((dropdown) =>
                 dropdown
-                    .addOptions({ "": "Old Algorithm", "xxhash32": "xxhash32 (Fast)", "xxhash64": "xxhash64 (Fastest)", "sha1": "Fallback (Without WebAssembly)" } as Record<HashAlgorithm, string>)
+                    .addOptions({
+                        "": "Old Algorithm",
+                        "xxhash32": "xxhash32 (Fast)",
+                        "xxhash64": "xxhash64 (Fastest)",
+                        "sha1": "Fallback (Without WebAssembly)"
+                    } as Record<HashAlgorithm, string>)
                     .setValue(this.plugin.settings.hashAlg)
                     .onChange(async (value) => {
                         this.plugin.settings.hashAlg = value as HashAlgorithm;
@@ -2331,7 +2445,11 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: new Set(), knownIDs: new Set() }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                                ...info,
+                                receivedFiles: new Set(),
+                                knownIDs: new Set()
+                            }));
                             Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
                         })
                 )
@@ -2344,7 +2462,12 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, lastLocalSeq: 0, sentIDs: new Set(), sentFiles: new Set() }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                                ...info,
+                                lastLocalSeq: 0,
+                                sentIDs: new Set(),
+                                sentFiles: new Set()
+                            }));
                             Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
                         })
                 )
@@ -2384,7 +2507,14 @@ ${stringifyYaml(pluginConfig)}`;
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({ ...info, receivedFiles: new Set(), knownIDs: new Set(), lastLocalSeq: 0, sentIDs: new Set(), sentFiles: new Set() }));
+                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                                ...info,
+                                receivedFiles: new Set(),
+                                knownIDs: new Set(),
+                                lastLocalSeq: 0,
+                                sentIDs: new Set(),
+                                sentFiles: new Set()
+                            }));
                             await this.plugin.resetRemoteBucket();
                             Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
                         })
