@@ -2,9 +2,9 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, } from "./lib/src/common/types.ts";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, TweakValuesShouldMatchedTemplate, confName, type TweakValues, } from "./lib/src/common/types.ts";
 import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./common/types.ts";
-import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
+import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
 import { Logger, setGlobalLogFunction } from "./lib/src/common/logger.ts";
 import { PouchDB } from "./lib/src/pouchdb/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ui/ConflictResolveModal.ts";
@@ -2052,58 +2052,114 @@ We can perform a command in this file.
         await this.loadQueuedFiles();
         const ret = await this.replicator.openReplication(this.settings, false, showMessage, false);
         if (!ret) {
-            if (this.replicator.remoteLockedAndDeviceNotAccepted) {
-                if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
-                    Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-                    await skipIfDuplicated("cleanup", async () => {
-                        const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
-                        const message = `The remote database has been cleaned up.
+            if (this.replicator.tweakSettingsMismatched) {
+                const remoteSettings = this.replicator.mismatchedTweakValues;
+                const mustSettings = remoteSettings.map(e => extractObject(TweakValuesShouldMatchedTemplate, e));
+                const items = Object.entries(TweakValuesShouldMatchedTemplate);
+                // Making tables:
+                let table = `| Value name | Ours | ${mustSettings.map((_, i) => `Remote ${i + 1} |`).join("")}\n` +
+                    `|: --- |: --- :${`|: --- :`.repeat(mustSettings.length)}|\n`
+                for (const v of items) {
+                    const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
+                    const value = mustSettings.map(e => e[key]);
+                    table += `| ${confName(key)} | ${escapeMarkdownValue(this.settings[key])} | ${value.map((v) => `${escapeMarkdownValue(v)} |`).join("")}\n`;
+                }
+
+                const message = `
+Configuration mismatching between the clients has been detected.
+This can be harmful or extra capacity consumption. We have to make these value unified.
+
+Configured values:
+
+${table}
+
+Please select a unification method.
+
+However, even if we answer that you will \`Use mine\`, we will be prompted to accept it again on the other device and have to decide accept or not.`;
+
+                //TODO: apply this settings.
+                const CHOICE_USE_REMOTE = "Use Remote ";
+                const CHOICE_USR_MINE = "Use ours";
+                const CHOICE_DISMISS = "Dismiss";
+                // const ourConfig = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
+                const CHOICE_AND_VALUES = [
+                    ...mustSettings.map((e, i) => [`${CHOICE_USE_REMOTE} ${i + 1}`, e]),
+                    [CHOICE_USR_MINE, true],
+                    [CHOICE_DISMISS, false]
+                ]
+                const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
+                const retKey = await confirmWithMessage(this, "Locked", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
+                if (!retKey) return;
+                const conf = CHOICES[retKey];
+                if (!conf) {
+                    return;
+                }
+                if (conf === true) {
+                    await this.replicator.resetRemoteTweakSettings(this.settings);
+                    Logger(`Tweak values on the remote server have been cleared, and will be overwritten in next synchronisation.`, LOG_LEVEL_NOTICE);
+                    return;
+                }
+                if (conf) {
+                    this.settings = { ...this.settings, ...conf };
+                    await this.saveSettingData();
+                    Logger(`Tweak Values have been overwritten by the chosen one.`, LOG_LEVEL_NOTICE);
+                    return;
+                }
+
+            } else {
+                if (this.replicator.remoteLockedAndDeviceNotAccepted) {
+                    if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
+                        Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+                        await skipIfDuplicated("cleanup", async () => {
+                            const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
+                            const message = `The remote database has been cleaned up.
 To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
 However, If there are many chunks to be deleted, maybe fetching again is faster.
 We will lose the history of this device if we fetch the remote database again.
 Even if you choose to clean up, you will see this option again if you exit Obsidian and then synchronise again.`
-                        const CHOICE_FETCH = "Fetch again";
-                        const CHOICE_CLEAN = "Cleanup";
-                        const CHOICE_DISMISS = "Dismiss";
-                        const ret = await confirmWithMessage(this, "Cleaned", message, [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS], CHOICE_DISMISS, 30);
-                        if (ret == CHOICE_FETCH) {
-                            await performRebuildDB(this, "localOnly");
-                        }
-                        if (ret == CHOICE_CLEAN) {
-                            const replicator = this.getReplicator();
-                            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-                            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
-                            if (typeof remoteDB == "string") {
-                                Logger(remoteDB, LOG_LEVEL_NOTICE);
-                                return false;
+                            const CHOICE_FETCH = "Fetch again";
+                            const CHOICE_CLEAN = "Cleanup";
+                            const CHOICE_DISMISS = "Dismiss";
+                            const ret = await confirmWithMessage(this, "Cleaned", message, [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS], CHOICE_DISMISS, 30);
+                            if (ret == CHOICE_FETCH) {
+                                await performRebuildDB(this, "localOnly");
                             }
+                            if (ret == CHOICE_CLEAN) {
+                                const replicator = this.getReplicator();
+                                if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+                                const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.getIsMobile(), true);
+                                if (typeof remoteDB == "string") {
+                                    Logger(remoteDB, LOG_LEVEL_NOTICE);
+                                    return false;
+                                }
 
-                            await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                            this.localDatabase.hashCaches.clear();
-                            // Perform the synchronisation once.
-                            if (await this.replicator.openReplication(this.settings, false, showMessage, true)) {
-                                await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                                 await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                                 this.localDatabase.hashCaches.clear();
-                                await this.getReplicator().markRemoteResolved(this.settings);
-                                Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
-                            } else {
-                                Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
-                            }
+                                // Perform the synchronisation once.
+                                if (await this.replicator.openReplication(this.settings, false, showMessage, true)) {
+                                    await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                                    await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                                    this.localDatabase.hashCaches.clear();
+                                    await this.getReplicator().markRemoteResolved(this.settings);
+                                    Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
+                                } else {
+                                    Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
+                                }
 
-                        }
-                    });
-                } else {
-                    const message = `
+                            }
+                        });
+                    } else {
+                        const message = `
 The remote database has been rebuilt.
 To synchronize, this device must fetch everything again once.
 Or if you are sure know what had been happened, we can unlock the database from the setting dialog.
                     `
-                    const CHOICE_FETCH = "Fetch again";
-                    const CHOICE_DISMISS = "Dismiss";
-                    const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
-                    if (ret == CHOICE_FETCH) {
-                        await performRebuildDB(this, "localOnly");
+                        const CHOICE_FETCH = "Fetch again";
+                        const CHOICE_DISMISS = "Dismiss";
+                        const ret = await confirmWithMessage(this, "Locked", message, [CHOICE_FETCH, CHOICE_DISMISS], CHOICE_DISMISS, 10);
+                        if (ret == CHOICE_FETCH) {
+                            await performRebuildDB(this, "localOnly");
+                        }
                     }
                 }
             }

@@ -19,7 +19,8 @@ import {
     REMOTE_MINIO,
     type BucketSyncSetting,
     type RemoteType,
-    PREFERRED_JOURNAL_SYNC
+    PREFERRED_JOURNAL_SYNC,
+    confName
 } from "../lib/src/common/types.ts";
 import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../lib/src/string_and_binary/strbin.ts";
@@ -698,7 +699,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
             containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" }).addClass("wizardHidden")
             new Setting(containerRemoteDatabaseEl)
-                .setName("Incubate Chunks in Document")
+                .setName(confName("useEden"))
                 .setDesc("If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.useEden).onChange(async (value) => {
@@ -762,7 +763,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     .setClass("wizardHidden");
             }
             new Setting(containerRemoteDatabaseEl)
-                .setName("Data Compression (Experimental)")
+                .setName(confName("enableCompression"))
                 .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
                 .addToggle((toggle) =>
                     toggle.setValue(this.plugin.settings.enableCompression).onChange(async (value) => {
@@ -778,7 +779,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
 
         const e2e = new Setting(containerRemoteDatabaseEl)
-            .setName("End-to-End Encryption")
+            .setName(confName("encrypt"))
             .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
             .addToggle((toggle) =>
                 toggle.setValue(encrypt).onChange(async (value) => {
@@ -846,7 +847,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             });
 
         const usePathObfuscationEl = new Setting(containerRemoteDatabaseEl)
-            .setName("Path Obfuscation")
+            .setName(confName("usePathObfuscation"))
             .setDesc("Obfuscate paths of files. If we configured, we should rebuild the database.")
             .addToggle((toggle) =>
                 toggle.setValue(usePathObfuscation).onChange(async (value) => {
@@ -863,7 +864,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             );
 
         const dynamicIteration = new Setting(containerRemoteDatabaseEl)
-            .setName("Use dynamic iteration count (experimental)")
+            .setName(confName("useDynamicIterationCount"))
             .setDesc("Balancing the encryption/decryption load against the length of the passphrase if toggled.")
             .addToggle((toggle) => {
                 toggle.setValue(useDynamicIterationCount)
@@ -1650,7 +1651,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             );
 
         new Setting(containerSyncSettingEl)
-            .setName("Enhance chunk size")
+            .setName(confName("customChunkSize"))
             .setDesc("Enhance chunk size for binary files (Ratio). This cannot be increased when using IBM Cloudant.")
             .setClass("wizardHidden")
             .addText((text) => {
@@ -2284,7 +2285,7 @@ ${stringifyYaml(pluginConfig)}`;
             })
 
         new Setting(containerHatchEl)
-            .setName("The Hash algorithm for chunk IDs")
+            .setName(confName("hashAlg"))
             .setDesc("xxhash64 is the current default.")
             .setClass("wizardHidden")
             .addDropdown((dropdown) =>
@@ -2310,6 +2311,15 @@ ${stringifyYaml(pluginConfig)}`;
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.doNotSuspendOnFetching).onChange(async (value) => {
                     this.plugin.settings.doNotSuspendOnFetching = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerHatchEl)
+            .setName("Do not check configuration mismatch before replication")
+            .setDesc("")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.disableCheckingConfigMismatch).onChange(async (value) => {
+                    this.plugin.settings.disableCheckingConfigMismatch = value;
                     await this.plugin.saveSettings();
                 })
             );
@@ -2409,6 +2419,26 @@ ${stringifyYaml(pluginConfig)}`;
 
         containerMaintenanceEl.createEl("h4", { text: "Remote" });
 
+        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+            new Setting(containerMaintenanceEl)
+                .setName("Perform compaction")
+                .setDesc("Compaction discards all of Eden in the non-latest revisions, reducing the storage usage. However, this operation requires the same free space on the remote as the current database.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Perform")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+                            Logger(`Compaction has been began`, LOG_LEVEL_NOTICE, "compaction")
+                            if (await replicator.compactRemote(this.plugin.settings)) {
+                                Logger(`Compaction has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                            } else {
+                                Logger(`Compaction has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                            }
+                        })
+                )
+        }
+
         new Setting(containerMaintenanceEl)
             .setName("Lock remote")
             .setDesc("Lock remote to prevent synchronization with other devices.")
@@ -2434,6 +2464,7 @@ ${stringifyYaml(pluginConfig)}`;
                         await rebuildDB("remoteOnly");
                     })
             )
+
 
         if (this.plugin.settings.remoteType != REMOTE_COUCHDB) {
             new Setting(containerMaintenanceEl)
