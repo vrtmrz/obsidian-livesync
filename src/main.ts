@@ -1374,6 +1374,7 @@ We can perform a command in this file.
         } else {
             // suspend all temporary.
             if (this.suspended) return;
+            if (!this.hasFocus) return;
             await Promise.all(this.addOns.map(e => e.onResume()));
             if (this.settings.remoteType == REMOTE_COUCHDB) {
                 if (this.settings.liveSync) {

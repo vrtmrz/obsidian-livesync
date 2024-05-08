@@ -684,6 +684,7 @@ export class ConfigSync extends LiveSyncCommands {
                         children: [],
                         deleted: false,
                         type: "newnote",
+                        eden: {}
                     };
                 } else {
                     if (old.mtime == mtime) {
