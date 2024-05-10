@@ -18,6 +18,13 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.7
+  - Fixed:
+    - No longer missing tasks which have queued as the same key (e.g., for the same operation to the same file).
+      - This occurs, for example, with hidden files that have been changed multiple times in a very short period of time, such as `appearance.json`. Thanks for the report!
+    - Some trivial issues have been fixed.
+  - New feature:
+    - Reloading Obsidian can be scheduled until that file and database operations are stable.
 - 0.23.6:
   - Fixed:
     - Now the remote chunks could be decrypted even if we are using `Incubate chunks in Document`. (The note of 0.23.6 has been fixed).
