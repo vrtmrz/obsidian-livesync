@@ -432,13 +432,14 @@ export class HiddenFileSync extends LiveSyncCommands {
 
                 // If something changes left, notify for reloading Obsidian.
                 if (updatedCount != 0) {
-                    this.plugin.askInPopup(`updated-any-hidden`, `Hidden files have been synchronized, Press  {HERE} to reload Obsidian, or press elsewhere to dismiss this message.`, (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
-                            // @ts-ignore
-                            this.app.commands.executeCommandById("app:reload");
+                    if (!this.plugin.isReloadingScheduled) {
+                        this.plugin.askInPopup(`updated-any-hidden`, `Hidden files have been synchronised, Press {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`, (anchor) => {
+                            anchor.text = "HERE";
+                            anchor.addEventListener("click", () => {
+                                this.plugin.scheduleAppReload();
+                            });
                         });
-                    });
+                    }
                 }
             }
         }
@@ -471,6 +472,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         children: [],
                         deleted: false,
                         type: "newnote",
+                        eden: {},
                     };
                 } else {
                     if (await isDocContentSame(readAsBlob(old), content) && !forceWrite) {
@@ -521,6 +523,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                         children: [],
                         deleted: true,
                         type: "newnote",
+                        eden: {}
                     };
                 } else {
                     // Remove all conflicted before deleting.

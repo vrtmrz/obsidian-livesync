@@ -28,7 +28,7 @@ import { Logger } from "../lib/src/common/logger.ts";
 import { checkSyncInfo, isCloudantURI } from "../lib/src/pouchdb/utils_couchdb.ts";
 import { testCrypt } from "../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../main.ts";
-import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "../common/utils.ts";
+import { askYesNo, performRebuildDB, requestToCouchDB } from "../common/utils.ts";
 import { request, type ButtonComponent, TFile } from "obsidian";
 import { shouldBeIgnored } from "../lib/src/string_and_binary/path.ts";
 import MultipleRegExpControl from './components/MultipleRegExpControl.svelte';
@@ -49,15 +49,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const replicator = this.plugin.getNewReplicator(trialSetting);
 
         await replicator.tryConnectRemote(trialSetting);
-    }
-
-    askReload(message?: string) {
-        scheduleTask("configReload", 250, async () => {
-            if (await askYesNo(this.app, message || "Do you want to restart and reload Obsidian now?") == "yes") {
-                // @ts-ignore
-                this.app.commands.executeCommandById("app:reload")
-            }
-        })
     }
 
     closeSetting() {
@@ -217,7 +208,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     text.setButtonText("Enable").onClick(async () => {
                         this.plugin.settings.isConfigured = true;
                         await this.plugin.saveSettings();
-                        this.askReload();
+                        this.plugin.askReload();
                     })
                 })
         }
@@ -231,7 +222,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettingData();
                             await this.plugin.resetLocalDatabase();
                             // await this.plugin.initializeDatabase();
-                            this.askReload();
+                            this.plugin.askReload();
                         }
                     }).setWarning()
                 })
@@ -1317,7 +1308,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                 Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
                                 await this.plugin.addOnSetup.command_copySetupURI();
                             } else {
-                                this.askReload();
+                                this.plugin.askReload();
                             }
                         }
                     })
@@ -1976,7 +1967,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .onClick(async () => {
                         this.plugin.settings.isConfigured = false;
                         await this.plugin.saveSettings();
-                        this.askReload();
+                        this.plugin.askReload();
                     }));
         const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
         hatchWarn.addClass("op-warn-info");
@@ -2167,7 +2158,7 @@ ${stringifyYaml(pluginConfig)}`;
                 toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
                     this.plugin.settings.suspendFileWatching = value;
                     await this.plugin.saveSettings();
-                    this.askReload();
+                    this.plugin.askReload();
                 })
             );
         new Setting(containerHatchEl)
@@ -2177,7 +2168,7 @@ ${stringifyYaml(pluginConfig)}`;
                 toggle.setValue(this.plugin.settings.suspendParseReplicationResult).onChange(async (value) => {
                     this.plugin.settings.suspendParseReplicationResult = value;
                     await this.plugin.saveSettings();
-                    this.askReload();
+                    this.plugin.askReload();
                 })
             );
         new Setting(containerHatchEl)

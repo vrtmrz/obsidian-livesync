@@ -10,7 +10,7 @@ import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "../li
 import { serialized } from "../lib/src/concurrency/lock.ts";
 import { LiveSyncCommands } from "./LiveSyncCommands.ts";
 import { stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
-import { PeriodicProcessor, askYesNo, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../common/utils.ts";
+import { PeriodicProcessor, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../common/utils.ts";
 import { PluginDialogModal } from "../common/dialogs.ts";
 import { JsonResolveModal } from "../ui/JsonResolveModal.ts";
 import { QueueProcessor } from '../lib/src/concurrency/processor.ts';
@@ -466,12 +466,7 @@ export class ConfigSync extends LiveSyncCommands {
                     Logger(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
                 }
             } else if (data.category == "CONFIG") {
-                scheduleTask("configReload", 250, async () => {
-                    if (await askYesNo(this.app, "Do you want to restart and reload Obsidian now?") == "yes") {
-                        // @ts-ignore
-                        this.app.commands.executeCommandById("app:reload")
-                    }
-                })
+                this.plugin.askReload();
             }
             return true;
         } catch (ex) {
