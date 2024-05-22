@@ -18,6 +18,26 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.8
+  - New feature:
+    - Now we are ready for i18n. 
+      - Patch or PR of `rosetta.ts` are welcome!
+    - The setting dialogue has been refined. Very controllable, clearly displayed disabled items, and ready to i18n.
+  - Fixed:
+    - Many memory leaks have been rescued.
+    - Chunk caches now work well.
+    - Many trivial but potential bugs are fixed.
+    - No longer error messages will be shown on retrieving checkpoint or server information.
+    - Now we can check and correct tweak mismatch during the setup
+  - Improved:
+    - Customisation synchronisation has got more smoother.
+  - Tidied
+    - Practically unused functions have been removed or are being prepared for removal.
+    - Many of the type-errors and lint errors have been corrected.
+    - Unused files have been removed.
+  - Note:
+    - From this version, some test files have been included. However, they are not enabled and released in the release build.
+      - To try them, please run Self-hosted LiveSync in the dev build.
 - 0.23.7
   - Fixed:
     - No longer missing tasks which have queued as the same key (e.g., for the same operation to the same file).
@@ -41,34 +61,5 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - We can detect the bucket could not be reachable.
   - Note:
     - Known inexplicable behaviour: Recently, (Maybe while enabling `Incubate chunks in Document` and `Fetch chunks on demand` or some more toggles), our customisation sync data is sometimes corrupted. It will be addressed by the next release.
-- 0.23.4
-  - Fixed:
-    - No longer experimental configuration is shown on the Minimal Setup.
-  - New feature:
-    - We can now use `Incubate Chunks in Document` to reduce non-well-formed chunks.
-      - Default: disabled / Preferred: enabled in all devices.
-      - When we enabled this toggle, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.
-      - The [design document](https://github.com/vrtmrz/obsidian-livesync/blob/3925052f9290b3579e45a4b716b3679c833d8ca0/docs/design_docs_of_keep_newborn_chunks.md) has been also available..
-- 0.23.3
-  - Fixed: No longer unwanted `\f` in journal sync.
-- 0.23.2
-  - Sorry for all the fixes to experimental features. (These things were also critical for dogfooding). The next release would be the main fixes! Thank you for your patience and understanding!
-  - Fixed:
-    - Journal Sync will not hang up during big replication, especially the initial one.
-    - All changes which have been replicated while rebuilding will not be postponed (Previous behaviour).
-  - Improved:
-    - Now Journal Sync works efficiently in download and parse, or pack and upload.
-    - Less server storage and faster packing/unpacking usage by the new chunk format.
-- 0.23.1
-  - Fixed:
-    - Now journal synchronisation considers untransferred each from sent and received.
-    - Journal sync now handles retrying.
-    - Journal synchronisation no longer considers the synchronisation of chunks as revision updates (Simply ignored).
-    - Journal sync now splits the journal pack to prevent mobile device rebooting.
-    - Maintenance menus which had been on the command palette are now back in the maintain pane on the setting dialogue.
-  - Improved:
-    - Now all changes which have been replicated while rebuilding will be postponed.
 
-- 0.23.0
-  - New feature:
-    - Now we can use Object Storage.
+Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
