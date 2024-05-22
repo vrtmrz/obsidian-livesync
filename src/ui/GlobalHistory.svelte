@@ -226,12 +226,18 @@
                 <td class="path">
                     <div class="filenames">
                         <span class="path">/{entry.dirname.split("/").join(`​/`)}</span>
+                        <!-- svelte-ignore a11y-click-events-have-key-events -->
+                        <!-- svelte-ignore a11y-no-static-element-interactions -->
+                        <!-- svelte-ignore a11y-missing-attribute -->
                         <span class="filename"><a on:click={() => openFile(entry.path)}>{entry.filename}</a></span>
                     </div>
                 </td>
                 <td>
                     <span class="rev">
                         {#if entry.isPlain}
+                            <!-- svelte-ignore a11y-click-events-have-key-events -->
+                            <!-- svelte-ignore a11y-no-static-element-interactions -->
+                            <!-- svelte-ignore a11y-missing-attribute -->
                             <a on:click={() => showHistory(entry.path, entry?.rev || "")}>{entry.rev}</a>
                         {:else}
                             {entry.rev}

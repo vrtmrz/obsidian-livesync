@@ -34,6 +34,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             options === undefined ? undefined : options.requestTimeout;
         this.reverseProxyNoSignUrl = reverseProxyNoSignUrl;
     }
+    // eslint-disable-next-line require-await
     async handle(
         request: HttpRequest,
         { abortSignal }: HttpHandlerOptions = {}

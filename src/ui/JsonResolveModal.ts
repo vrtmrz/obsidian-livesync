@@ -6,27 +6,27 @@ import { waitForSignal } from "../lib/src/common/utils.ts";
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;
     filename: FilePath;
-    callback: (keepRev: string, mergedStr?: string) => Promise<void>;
+    callback?: (keepRev?: string, mergedStr?: string) => Promise<void>;
     docs: LoadedEntry[];
-    component: JsonResolvePane;
+    component?: JsonResolvePane;
     nameA: string;
     nameB: string;
     defaultSelect: string;
 
-    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev: string, mergedStr?: string) => Promise<void>, nameA?: string, nameB?: string, defaultSelect?: string) {
+    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev?: string, mergedStr?: string) => Promise<void>, nameA?: string, nameB?: string, defaultSelect?: string) {
         super(app);
         this.callback = callback;
         this.filename = filename;
         this.docs = docs;
-        this.nameA = nameA;
-        this.nameB = nameB;
-        this.defaultSelect = defaultSelect;
+        this.nameA = nameA || "";
+        this.nameB = nameB || "";
+        this.defaultSelect = defaultSelect || "";
         waitForSignal(`cancel-internal-conflict:${filename}`).then(() => this.close());
     }
-    async UICallback(keepRev: string, mergedStr?: string) {
+    async UICallback(keepRev?: string, mergedStr?: string) {
         this.close();
-        await this.callback(keepRev, mergedStr);
-        this.callback = null;
+        await this.callback?.(keepRev, mergedStr);
+        this.callback = undefined;
     }
 
     onOpen() {
@@ -34,7 +34,7 @@ export class JsonResolveModal extends Modal {
         this.titleEl.setText("Conflicted Setting");
         contentEl.empty();
 
-        if (this.component == null) {
+        if (this.component == undefined) {
             this.component = new JsonResolvePane({
                 target: contentEl,
                 props: {
@@ -43,7 +43,7 @@ export class JsonResolveModal extends Modal {
                     nameA: this.nameA,
                     nameB: this.nameB,
                     defaultSelect: this.defaultSelect,
-                    callback: (keepRev: string, mergedStr: string) => this.UICallback(keepRev, mergedStr),
+                    callback: (keepRev, mergedStr) => this.UICallback(keepRev, mergedStr),
                 },
             });
         }
@@ -55,12 +55,12 @@ export class JsonResolveModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         // contentEl.empty();
-        if (this.callback != null) {
-            this.callback(null);
+        if (this.callback != undefined) {
+            this.callback(undefined);
         }
-        if (this.component != null) {
+        if (this.component != undefined) {
             this.component.$destroy();
-            this.component = null;
+            this.component = undefined;
         }
     }
 }

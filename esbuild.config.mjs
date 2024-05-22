@@ -16,6 +16,7 @@ if you want to view the source, please visit the github repository of this plugi
 
 
 const prod = process.argv[2] === "production";
+const keepTest = !prod;
 
 const terserOpt = {
     sourceMap: (!prod ? {
@@ -142,16 +143,17 @@ const context = await esbuild.context({
     sourcemap: prod ? false : "inline",
     treeShaking: true,
     outfile: "main_org.js",
+    mainFields: ["browser", "module", "main"],
     minifyWhitespace: false,
     minifySyntax: false,
     minifyIdentifiers: false,
     minify: false,
-
+    dropLabels: prod && !keepTest ? ["TEST", "DEV"] : [],
     // keepNames: true,
     plugins: [
         sveltePlugin({
             preprocess: sveltePreprocess(),
-            compilerOptions: { css: true, preserveComments: true },
+            compilerOptions: { css: "injected", preserveComments: false },
         }),
         ...plugins
     ],

@@ -31,6 +31,7 @@
 
 <ul>
     {#each patterns as pattern, idx}
+        <!-- svelte-ignore a11y-label-has-associated-control -->
         <li><label>{modified[idx]}{status[idx]}</label><input type="text" bind:value={pattern} class={modified[idx]} /><button class="iconbutton" on:click={() => remove(idx)}>🗑</button></li>
     {/each}
     <li>
@@ -72,12 +73,7 @@
     li input {
         min-width: 10em;
     }
-    li.buttons {
-    }
     button.iconbutton {
         max-width: 4em;
-    }
-    span.spacer {
-        flex-grow: 1;
     }
 </style>

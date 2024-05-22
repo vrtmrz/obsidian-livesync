@@ -144,7 +144,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             Logger("something went wrong on resolving all conflicted internal files");
             Logger(ex, LOG_LEVEL_VERBOSE);
         }
-        await this.conflictResolutionProcessor.startPipeline().waitForPipeline();
+        await this.conflictResolutionProcessor.startPipeline().waitForAllProcessed();
     }
 
     async resolveByNewerEntry(id: DocumentID, path: FilePathWithPrefix, currentDoc: EntryDoc, currentRev: string, conflictedRev: string) {
@@ -388,7 +388,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             }, { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 0 }))
             .root
             .enqueueAll(allFileNames)
-            .startPipeline().waitForPipeline();
+            .startPipeline().waitForAllDoneAndTerminate();
 
         await this.kvDB.set("diff-caches-internal", caches);
 

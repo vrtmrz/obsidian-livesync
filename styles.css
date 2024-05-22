@@ -133,6 +133,7 @@
     top: var(--view-header-height);
     right: 1em;
 }
+
 .canvas-wrapper::before {
     right: 48px;
 }
@@ -268,6 +269,22 @@ div.sls-setting-menu-btn {
 
 .sls-item-dirty::before {
     content: "✏";
+}
+
+.sls-item-dirty-help::after {
+    content: " ❓";
+}
+
+.sls-item-invalid-value {
+    background-color: rgba(var(--background-modifier-error-rgb), 0.3) !important;
+}
+
+.sls-setting-disabled input[type=text],
+.sls-setting-disabled input[type=number],
+.sls-setting-disabled input[type=password] {
+    filter: brightness(80%);
+    color: var(--text-muted);
+
 }
 
 .sls-setting-hidden {

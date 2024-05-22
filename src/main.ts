@@ -31,7 +31,7 @@ import { GlobalHistoryView, VIEW_TYPE_GLOBAL_HISTORY } from "./ui/GlobalHistoryV
 import { LogPaneView, VIEW_TYPE_LOG } from "./ui/LogPaneView.ts";
 import { LRUCache } from "./lib/src/memory/LRUCache.ts";
 import { SerializedFileAccess } from "./storages/SerializedFileAccess.js";
-import { QueueProcessor } from "./lib/src/concurrency/processor.js";
+import { QueueProcessor, stopAllRunningProcessors } from "./lib/src/concurrency/processor.js";
 import { reactive, reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
 import { initializeStores } from "./common/stores.js";
 import { JournalSyncMinio } from "./lib/src/replication/journal/objectstore/JournalSyncMinio.js";
@@ -39,7 +39,9 @@ import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./
 import { LiveSyncCouchDBReplicator, type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
 import { ObsHttpHandler } from "./common/ObsHttpHandler.js";
-// import { Trench } from "./lib/src/memory/memutil.js";
+import { TestPaneView, VIEW_TYPE_TEST } from "./tests/TestPaneView.js"
+import { $f, __onMissingTranslation, setLang } from "./lib/src/common/i18n.ts";
+
 
 setNoticeClass(Notice);
 
@@ -85,6 +87,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     settings!: ObsidianLiveSyncSettings;
     localDatabase!: LiveSyncLocalDB;
     replicator!: LiveSyncAbstractReplicator;
+    settingTab!: ObsidianLiveSyncSettingTab;
 
     statusBar?: HTMLElement;
     _suspended = false;
@@ -223,12 +226,17 @@ export default class ObsidianLiveSyncPlugin extends Plugin
                     }
                     Logger(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL_DEBUG);
                     if (Math.floor(response.status / 100) !== 2) {
-                        const r = response.clone();
-                        Logger(`The request may have failed. The reason sent by the server: ${r.status}: ${r.statusText}`);
-                        try {
-                            Logger(await (await r.blob()).text(), LOG_LEVEL_VERBOSE);
-                        } catch (_) {
-                            Logger("Cloud not parse response", LOG_LEVEL_VERBOSE);
+                        if (method != "GET" && localURL.indexOf("/_local/") === -1 && !localURL.endsWith("/")) {
+                            const r = response.clone();
+                            Logger(`The request may have failed. The reason sent by the server: ${r.status}: ${r.statusText}`);
+
+                            try {
+                                Logger(await (await r.blob()).text(), LOG_LEVEL_VERBOSE);
+                            } catch (_) {
+                                Logger("Cloud not parse response", LOG_LEVEL_VERBOSE);
+                            }
+                        } else {
+                            Logger(`Just checkpoint or some server information has been missing. The 404 error shown above is not an error.`, LOG_LEVEL_VERBOSE)
                         }
                     }
                     return response;
@@ -423,7 +431,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         if (target) {
             const targetItem = notes.find(e => e.dispPath == target)!;
             this.resolveConflicted(targetItem.path);
-            await this.conflictCheckQueue.waitForPipeline();
+            await this.conflictCheckQueue.waitForAllProcessed();
             return true;
         }
         return false;
@@ -845,12 +853,56 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             VIEW_TYPE_LOG,
             (leaf) => new LogPaneView(leaf, this)
         );
+        // eslint-disable-next-line no-unused-labels
+        TEST: {
+            this.registerView(
+                VIEW_TYPE_TEST,
+                (leaf) => new TestPaneView(leaf, this)
+            );
+            (async () => {
+                if (await this.vaultAccess.adapterExists("_SHOWDIALOGAUTO.md"))
+                    this.showView(VIEW_TYPE_TEST);
+            })()
+            this.addCommand({
+                id: "view-test",
+                name: "Open Test dialogue",
+                callback: () => {
+                    this.showView(VIEW_TYPE_TEST);
+                }
+            });
+
+        }
+
     }
 
     async onload() {
         logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
         Logger("loading plugin");
-        this.addSettingTab(new ObsidianLiveSyncSettingTab(this.app, this));
+        // eslint-disable-next-line no-unused-labels
+        DEV: {
+            __onMissingTranslation((key) => {
+                const now = new Date();
+                const filename = `missing-translation-`
+                const time = now.toISOString().split("T")[0];
+                const outFile = `${filename}${time}.jsonl`;
+                const piece = JSON.stringify(
+                    {
+                        [key]: {}
+                    }
+                )
+                const writePiece = piece.substring(1, piece.length - 1) + ",";
+                fireAndForget(async () => {
+                    try {
+                        await this.vaultAccess.adapterAppend(this.app.vault.configDir + "/ls-debug/" + outFile, writePiece + "\n")
+                    } catch (ex) {
+                        Logger(`Could not write ${outFile}`, LOG_LEVEL_VERBOSE);
+                        Logger(`Missing translation: ${writePiece}`, LOG_LEVEL_VERBOSE);
+                    }
+                });
+            })
+        }
+        this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this);
+        this.addSettingTab(this.settingTab);
         this.addUIs();
         //@ts-ignore
         const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
@@ -860,7 +912,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.manifestVersion = manifestVersion;
         this.packageVersion = packageVersion;
 
-        Logger(`Self-hosted LiveSync v${manifestVersion} ${packageVersion} `);
+        Logger($f`Self-hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
         await this.loadSettings();
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
@@ -871,7 +923,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            Logger("Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.", LOG_LEVEL_NOTICE);
+            Logger($f`Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.`, LOG_LEVEL_NOTICE);
         }
 
         //@ts-ignore
@@ -886,7 +938,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             this.settings.syncOnFileOpen = false;
             this.settings.syncAfterMerge = false;
             this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = "Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.";
+            this.settings.versionUpFlash = $f`Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.`;
             this.saveSettings();
         }
         localStorage.setItem(lsKey, `${VER}`);
@@ -931,6 +983,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     onunload() {
         cancelAllPeriodicTask();
         cancelAllTasks();
+        stopAllRunningProcessors();
         this._unloaded = true;
         for (const addOn of this.addOns) {
             addOn.onunload();
@@ -943,7 +996,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             this.replicator.closeReplication();
             this.localDatabase.close();
         }
-        Logger("unloading plugin");
+        Logger($f`unloading plugin`);
     }
 
     async openDatabase() {
@@ -951,7 +1004,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             await this.localDatabase.close();
         }
         const vaultName = this.getVaultName();
-        Logger("Waiting for ready...");
+        Logger($f`Waiting for ready...`);
         this.localDatabase = new LiveSyncLocalDB(vaultName, this);
         initializeStores(vaultName);
         return await this.localDatabase.initializeDatabase();
@@ -1053,6 +1106,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
         }
         this.settings = settings;
+        setLang(this.settings.displayLanguage);
 
         if ("workingEncrypt" in this.settings) delete this.settings.workingEncrypt;
         if ("workingPassphrase" in this.settings) delete this.settings.workingPassphrase;
@@ -1080,6 +1134,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         this.fileEventQueue.delay = (!this.settings.liveSync && this.settings.batchSave) ? 5000 : 100;
+        this.settingTab.requestReload()
     }
 
     async saveSettingData() {
@@ -1123,6 +1178,8 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         await this.saveData(settings);
         this.localDatabase.settings = this.settings;
+        setLang(this.settings.displayLanguage);
+        this.settingTab.requestReload();
         this.fileEventQueue.delay = (!this.settings.liveSync && this.settings.batchSave) ? 5000 : 100;
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         if (this.settings.settingSyncFile != "") {
@@ -1304,6 +1361,7 @@ We can perform a command in this file.
                     if (this._unloaded) {
                         Logger("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
                         saveCommandDefinition.callback = this._initialCallback;
+                        this._initialCallback = undefined;
                     } else {
                         Logger("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
                         if (this.settings.syncOnEditorSave) {
@@ -1424,6 +1482,8 @@ We can perform a command in this file.
         const file = queue.args.file;
         const lockKey = `handleFile:${file.path}`;
         return await serialized(lockKey, async () => {
+            // TODO CHECK
+            // console.warn(lockKey);
             const key = `file-last-proc-${queue.type}-${file.path}`;
             const last = Number(await this.kvDB.get(key) || 0);
             let mtime = file.mtime;
@@ -1761,7 +1821,7 @@ We can perform a command in this file.
                 Logger(JSON.stringify(errors), LOG_LEVEL_VERBOSE);
             }
             this.replicationResultProcessor.enqueueAll(docs);
-            await this.replicationResultProcessor.waitForPipeline();
+            await this.replicationResultProcessor.waitForAllProcessed();
         }
 
     }
@@ -2044,7 +2104,63 @@ We can perform a command in this file.
 
         scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
     }
+    async askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+        if (!this.replicator.tweakSettingsMismatched) {
+            return "OK";
+        }
+        const remoteSettings = this.replicator.mismatchedTweakValues;
+        const mustSettings = remoteSettings.map(e => extractObject(TweakValuesShouldMatchedTemplate, e));
+        const items = Object.entries(TweakValuesShouldMatchedTemplate);
+        // Making tables:
+        let table = `| Value name | Ours | ${mustSettings.map((_, i) => `Remote ${i + 1} |`).join("")}\n` +
+            `|: --- |: --- :${`|: --- :`.repeat(mustSettings.length)}|\n`
+        for (const v of items) {
+            const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
+            const value = mustSettings.map(e => e[key]);
+            table += `| ${confName(key)} | ${escapeMarkdownValue(this.settings[key])} | ${value.map((v) => `${escapeMarkdownValue(v)} |`).join("")}\n`;
+        }
 
+        const message = `
+Configuration mismatching between the clients has been detected.
+This can be harmful or extra capacity consumption. We have to make these value unified.
+
+Configured values:
+
+${table}
+
+Please select a unification method.
+
+However, even if we answer that you will \`Use mine\`, we will be prompted to accept it again on the other device and have to decide accept or not.`;
+
+        //TODO: apply this settings.
+        const CHOICE_USE_REMOTE = "Use Remote ";
+        const CHOICE_USR_MINE = "Use ours";
+        const CHOICE_DISMISS = "Dismiss";
+        // const ourConfig = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
+        const CHOICE_AND_VALUES = [
+            ...mustSettings.map((e, i) => [`${CHOICE_USE_REMOTE} ${i + 1}`, e]),
+            [CHOICE_USR_MINE, true],
+            [CHOICE_DISMISS, false]
+        ]
+        const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
+        const retKey = await confirmWithMessage(this, "Locked", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
+        if (!retKey) return "IGNORE";
+        const conf = CHOICES[retKey];
+
+        if (conf === true) {
+            await this.replicator.resetRemoteTweakSettings(this.settings);
+            Logger(`Tweak values on the remote server have been cleared, and will be overwritten in next synchronisation.`, LOG_LEVEL_NOTICE);
+            return "OK";
+        }
+        if (conf) {
+            this.settings = { ...this.settings, ...conf };
+            await this.saveSettingData();
+            Logger(`Tweak Values have been overwritten by the chosen one.`, LOG_LEVEL_NOTICE);
+            return "CHECKAGAIN";
+        }
+        return "IGNORE";
+
+    }
     async replicate(showMessage: boolean = false) {
         if (!this.isReady) return;
         if (isLockAcquired("cleanup")) {
@@ -2061,61 +2177,10 @@ We can perform a command in this file.
         const ret = await this.replicator.openReplication(this.settings, false, showMessage, false);
         if (!ret) {
             if (this.replicator.tweakSettingsMismatched) {
-                const remoteSettings = this.replicator.mismatchedTweakValues;
-                const mustSettings = remoteSettings.map(e => extractObject(TweakValuesShouldMatchedTemplate, e));
-                const items = Object.entries(TweakValuesShouldMatchedTemplate);
-                // Making tables:
-                let table = `| Value name | Ours | ${mustSettings.map((_, i) => `Remote ${i + 1} |`).join("")}\n` +
-                    `|: --- |: --- :${`|: --- :`.repeat(mustSettings.length)}|\n`
-                for (const v of items) {
-                    const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-                    const value = mustSettings.map(e => e[key]);
-                    table += `| ${confName(key)} | ${escapeMarkdownValue(this.settings[key])} | ${value.map((v) => `${escapeMarkdownValue(v)} |`).join("")}\n`;
-                }
-
-                const message = `
-Configuration mismatching between the clients has been detected.
-This can be harmful or extra capacity consumption. We have to make these value unified.
-
-Configured values:
-
-${table}
-
-Please select a unification method.
-
-However, even if we answer that you will \`Use mine\`, we will be prompted to accept it again on the other device and have to decide accept or not.`;
-
-                //TODO: apply this settings.
-                const CHOICE_USE_REMOTE = "Use Remote ";
-                const CHOICE_USR_MINE = "Use ours";
-                const CHOICE_DISMISS = "Dismiss";
-                // const ourConfig = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
-                const CHOICE_AND_VALUES = [
-                    ...mustSettings.map((e, i) => [`${CHOICE_USE_REMOTE} ${i + 1}`, e]),
-                    [CHOICE_USR_MINE, true],
-                    [CHOICE_DISMISS, false]
-                ]
-                const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
-                const retKey = await confirmWithMessage(this, "Locked", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
-                if (!retKey) return;
-                const conf = CHOICES[retKey];
-                if (!conf) {
-                    return;
-                }
-                if (conf === true) {
-                    await this.replicator.resetRemoteTweakSettings(this.settings);
-                    Logger(`Tweak values on the remote server have been cleared, and will be overwritten in next synchronisation.`, LOG_LEVEL_NOTICE);
-                    return;
-                }
-                if (conf) {
-                    this.settings = { ...this.settings, ...conf };
-                    await this.saveSettingData();
-                    Logger(`Tweak Values have been overwritten by the chosen one.`, LOG_LEVEL_NOTICE);
-                    return;
-                }
+                await this.askResolvingMismatchedTweaks();
 
             } else {
-                if (this.replicator.remoteLockedAndDeviceNotAccepted) {
+                if (this.replicator?.remoteLockedAndDeviceNotAccepted) {
                     if (this.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
                         Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
                         await skipIfDuplicated("cleanup", async () => {
@@ -2194,14 +2259,30 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
     }
 
-    async replicateAllToServer(showingNotice: boolean = false) {
+    async replicateAllToServer(showingNotice: boolean = false): Promise<boolean> {
         if (!this.isReady) return false;
         await Promise.all(this.addOns.map(e => e.beforeReplicate(showingNotice)));
-        return await this.replicator.replicateAllToServer(this.settings, showingNotice);
+        const ret = await this.replicator.replicateAllToServer(this.settings, showingNotice);
+        if (ret) return true;
+        if (this.replicator.tweakSettingsMismatched) {
+            const ret = await this.askResolvingMismatchedTweaks();
+            if (ret == "OK") return true;
+            if (ret == "CHECKAGAIN") return await this.replicateAllToServer(showingNotice);
+            if (ret == "IGNORE") return false;
+        }
+        return ret;
     }
-    async replicateAllFromServer(showingNotice: boolean = false) {
+    async replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
         if (!this.isReady) return false;
-        return await this.replicator.replicateAllFromServer(this.settings, showingNotice);
+        const ret = await this.replicator.replicateAllFromServer(this.settings, showingNotice);
+        if (ret) return true;
+        if (this.replicator.tweakSettingsMismatched) {
+            const ret = await this.askResolvingMismatchedTweaks();
+            if (ret == "OK") return true;
+            if (ret == "CHECKAGAIN") return await this.replicateAllFromServer(showingNotice);
+            if (ret == "IGNORE") return false;
+        }
+        return ret;
     }
 
     async markRemoteLocked(lockByClean: boolean = false) {
@@ -2308,7 +2389,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 }
                 return;
             }, { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, objects)
-            await processor.waitForPipeline();
+            await processor.waitForAllDoneAndTerminate();
             const msg = `${procedureName} All done: DONE:${success}, FAILED:${failed}`;
             updateLog(procedureName, msg)
         }
@@ -2376,7 +2457,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
         }
         processPrepareSyncFile.startPipeline().onUpdateProgress(() => remainLog(processPrepareSyncFile.totalRemaining + processPrepareSyncFile.nowProcessing))
-        initProcess.push(processPrepareSyncFile.waitForPipeline());
+        initProcess.push(processPrepareSyncFile.waitForAllDoneAndTerminate());
         await Promise.all(initProcess);
 
         // this.setStatusBarText(`NOW TRACKING!`);

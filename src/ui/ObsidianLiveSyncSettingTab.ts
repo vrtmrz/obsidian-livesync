@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "../deps.ts";
+import { App, PluginSettingTab, Setting as SettingOrg, sanitizeHTMLToDom, MarkdownRenderer, stringifyYaml } from "../deps.ts";
 import {
     DEFAULT_SETTINGS,
     type ObsidianLiveSyncSettings,
@@ -17,37 +17,564 @@ import {
     FLAGMD_REDFLAG3_HR,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
-    type BucketSyncSetting,
-    type RemoteType,
     PREFERRED_JOURNAL_SYNC,
-    confName
+    statusDisplay,
+    type ConfigurationItem
 } from "../lib/src/common/types.ts";
-import { createBlob, delay, extractObject, isDocContentSame, readAsBlob } from "../lib/src/common/utils.ts";
+import { createBlob, delay, isDocContentSame, isObjectDifferent, readAsBlob, unique } from "../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../lib/src/string_and_binary/strbin.ts";
 import { Logger } from "../lib/src/common/logger.ts";
 import { checkSyncInfo, isCloudantURI } from "../lib/src/pouchdb/utils_couchdb.ts";
 import { testCrypt } from "../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../main.ts";
-import { askYesNo, performRebuildDB, requestToCouchDB } from "../common/utils.ts";
-import { request, type ButtonComponent, TFile } from "obsidian";
+import { askYesNo, performRebuildDB, requestToCouchDB, scheduleTask } from "../common/utils.ts";
+import { request, ButtonComponent, TFile, TextComponent, ToggleComponent, DropdownComponent, ValueComponent, TextAreaComponent } from "obsidian";
 import { shouldBeIgnored } from "../lib/src/string_and_binary/path.ts";
 import MultipleRegExpControl from './components/MultipleRegExpControl.svelte';
 import { LiveSyncCouchDBReplicator } from "../lib/src/replication/couchdb/LiveSyncReplicator.ts";
+import { type AllSettingItemKey, type AllStringItemKey, type AllNumericItemKey, type AllBooleanItemKey, type AllSettings, OnDialogSettingsDefault, getConfig, type OnDialogSettings, getConfName } from "./settingConstants.ts";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "src/lib/src/common/rosetta.ts";
+import { $t } from "src/lib/src/common/i18n.ts";
+
+type OnUpdateResult = {
+    visibility?: boolean,
+    disabled?: boolean,
+    classes?: string[],
+    isCta?: boolean,
+    isWarning?: boolean,
+}
+type OnUpdateFunc = () => OnUpdateResult;
+type UpdateFunction = () => void;
+
+type AutoWireOption = {
+    placeHolder?: string,
+    holdValue?: boolean,
+    isPassword?: boolean,
+    invert?: boolean,
+    onUpdate?: OnUpdateFunc;
+}
+
+function visibleOnly(cond: () => boolean): OnUpdateFunc {
+    return () => ({
+        visibility: cond()
+    })
+}
+function enableOnly(cond: () => boolean): OnUpdateFunc {
+    return () => ({
+        disabled: !cond()
+    })
+}
+
+type OnSavedHandlerFunc<T extends AllSettingItemKey> = (value: AllSettings[T]) => (Promise<void> | void);
+type OnSavedHandler<T extends AllSettingItemKey> = {
+    key: T,
+    handler: OnSavedHandlerFunc<T>,
+}
+
+function wrapMemo<T>(func: (arg: T) => void) {
+    let buf: T | undefined = undefined;
+    return (arg: T) => {
+        if (buf !== arg) {
+            func(arg);
+            buf = arg;
+        }
+    }
+}
+
+class Setting extends SettingOrg {
+    autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
+    applyButtonComponent?: ButtonComponent;
+    selfKey?: AllSettingItemKey;
+    watchDirtyKeys = [] as AllSettingItemKey[];
+    holdValue: boolean = false;
+    static env: ObsidianLiveSyncSettingTab;
+
+    descBuf: string | DocumentFragment = "";
+    nameBuf: string | DocumentFragment = "";
+    placeHolderBuf: string = "";
+    hasPassword: boolean = false;
+
+    invalidateValue?: () => void;
+    setValue?: (value: any) => void;
+    constructor(containerEl: HTMLElement) {
+        super(containerEl);
+        Setting.env.settingComponents.push(this);
+    }
+
+    setDesc(desc: string | DocumentFragment): this {
+        this.descBuf = desc;
+        super.setDesc(desc);
+        return this;
+    }
+    setName(name: string | DocumentFragment): this {
+        this.nameBuf = name;
+        super.setName(name);
+        return this;
+    }
+    setAuto(key: AllSettingItemKey, opt?: AutoWireOption) {
+        this.autoWireSetting(key, opt);
+        return this;
+    }
+    autoWireSetting(key: AllSettingItemKey, opt?: AutoWireOption) {
+        const conf = getConfig(key);
+        if (!conf) {
+            // throw new Error(`No such setting item :${key}`)
+            return;
+        }
+        const name = `${conf.name}${statusDisplay(conf.status)}`;
+        this.setName(name);
+        if (conf.desc) {
+            this.setDesc(conf.desc);
+        }
+        this.holdValue = opt?.holdValue || this.holdValue;
+        this.selfKey = key;
+        if (opt?.onUpdate) this.addOnUpdate(opt.onUpdate);
+        const stat = this._getComputedStatus();
+        if (stat.visibility === false) {
+            this.settingEl.toggleClass("sls-setting-hidden", !stat.visibility);
+        }
+        return conf;
+    }
+    autoWireComponent(component: ValueComponent<any>, conf?: ConfigurationItem, opt?: AutoWireOption) {
+        this.placeHolderBuf = conf?.placeHolder || opt?.placeHolder || "";
+        if (this.placeHolderBuf && component instanceof TextComponent) {
+            component.setPlaceholder(this.placeHolderBuf)
+        }
+        if (opt?.onUpdate) this.addOnUpdate(opt.onUpdate);
+    }
+    async commitValue<T extends AllSettingItemKey>(value: AllSettings[T]) {
+        const key = this.selfKey as T;
+        if (key !== undefined) {
+            if (value != Setting.env.editingSettings[key]) {
+                Setting.env.editingSettings[key] = value;
+                if (!this.holdValue) {
+                    await Setting.env.saveSettings([key]);
+                }
+            }
+        }
+        Setting.env.requestUpdate()
+    }
+    autoWireText(key: AllStringItemKey, opt?: AutoWireOption) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addText(text => {
+            this.autoWiredComponent = text;
+            const setValue = wrapMemo((value: string) => text.setValue(value));
+            this.invalidateValue = () => setValue(`${Setting.env.editingSettings[key]}`);
+            this.invalidateValue();
+            text.onChange(async value => {
+                await this.commitValue(value);
+            })
+            if (opt?.isPassword) {
+                text.inputEl.setAttribute("type", "password")
+                this.hasPassword = true;
+            }
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        })
+        return this;
+    }
+    autoWireTextArea(key: AllStringItemKey, opt?: AutoWireOption) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addTextArea(text => {
+            this.autoWiredComponent = text;
+            const setValue = wrapMemo((value: string) => text.setValue(value));
+            this.invalidateValue = () => setValue(`${Setting.env.editingSettings[key]}`);
+            this.invalidateValue();
+            text.onChange(async value => {
+                await this.commitValue(value);
+            })
+            if (opt?.isPassword) {
+                text.inputEl.setAttribute("type", "password")
+                this.hasPassword = true;
+            }
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        })
+        return this;
+    }
+    autoWireNumeric(key: AllNumericItemKey, opt: AutoWireOption & { clampMin?: number, clampMax?: number, acceptZero?: boolean }) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addText(text => {
+            this.autoWiredComponent = text;
+            if (opt.clampMin) {
+                text.inputEl.setAttribute("min", `${opt.clampMin}`);
+            }
+            if (opt.clampMax) {
+                text.inputEl.setAttribute("max", `${opt.clampMax}`);
+            }
+            let lastError = false;
+            const setValue = wrapMemo((value: string) => text.setValue(value));
+            this.invalidateValue = () => {
+                if (!lastError) setValue(`${Setting.env.editingSettings[key]}`);
+            }
+            this.invalidateValue();
+            text.onChange(async TextValue => {
+                const parsedValue = Number(TextValue);
+                const value = parsedValue;
+                let hasError = false;
+                if (isNaN(value)) hasError = true;
+                if (opt.clampMax && opt.clampMax < value) hasError = true;
+                if (opt.clampMin && opt.clampMin > value) {
+                    if (opt.acceptZero && value == 0) {
+                        // This is ok.
+                    } else {
+                        hasError = true;
+                    }
+                }
+                if (!hasError) {
+                    lastError = false;
+                    this.setTooltip(``);
+                    text.inputEl.toggleClass("sls-item-invalid-value", false);
+                    await this.commitValue(value);
+                } else {
+                    this.setTooltip(`The value should ${opt.clampMin || "~"} < value < ${opt.clampMax || "~"}`);
+                    text.inputEl.toggleClass("sls-item-invalid-value", true);
+                    lastError = true;
+                    return false;
+                }
+            })
+            text.inputEl.setAttr("type", "number");
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        })
+        return this;
+    }
+    autoWireToggle(key: AllBooleanItemKey, opt?: AutoWireOption) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addToggle(toggle => {
+            this.autoWiredComponent = toggle;
+            const setValue = wrapMemo((value: boolean) => toggle.setValue(opt?.invert ? !value : value));
+            this.invalidateValue = () => setValue(Setting.env.editingSettings[key] ?? false);
+            this.invalidateValue();
+
+            toggle.onChange(async value => {
+                await this.commitValue(opt?.invert ? !value : value);
+            })
+
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        })
+        return this;
+    }
+    autoWireDropDown<T extends string>(key: AllStringItemKey, opt: AutoWireOption & { options: Record<T, string> }) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addDropdown(dropdown => {
+            this.autoWiredComponent = dropdown;
+            const setValue = wrapMemo((value: string) => {
+                dropdown.setValue(value)
+            });
+
+            dropdown
+                .addOptions(opt.options)
+
+            this.invalidateValue = () => setValue(Setting.env.editingSettings[key] || "");
+            this.invalidateValue();
+            dropdown.onChange(async value => {
+                await this.commitValue(value);
+            })
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        })
+        return this;
+    }
+    addApplyButton(keys: AllSettingItemKey[]) {
+        this.addButton((button) => {
+            this.applyButtonComponent = button;
+            this.watchDirtyKeys = unique([...keys, ...this.watchDirtyKeys]);
+            button.setButtonText("Apply")
+            button.onClick(async () => {
+                await Setting.env.saveSettings(keys);
+                Setting.env.reloadAllSettings();
+            })
+            Setting.env.requestUpdate()
+        })
+        return this;
+    }
+    addOnUpdate(func: () => OnUpdateResult) {
+        this.updateHandlers.add(func);
+        // this._applyOnUpdateHandlers();
+        return this;
+    }
+    updateHandlers = new Set<() => OnUpdateResult>();
+
+    prevStatus: OnUpdateResult = {};
+
+    _getComputedStatus() {
+        let newConf = {} as OnUpdateResult;
+        for (const handler of this.updateHandlers) {
+            newConf = {
+                ...newConf,
+                ...handler(),
+            }
+        }
+        return newConf;
+    }
+    _applyOnUpdateHandlers() {
+        if (this.updateHandlers.size > 0) {
+            const newConf = this._getComputedStatus();
+            const keys = Object.keys(newConf) as [keyof OnUpdateResult];
+            for (const k of keys) {
+
+                if (k in this.prevStatus && this.prevStatus[k] == newConf[k]) {
+                    continue;
+                }
+                // const newValue = newConf[k];
+                switch (k) {
+                    case "visibility":
+                        this.settingEl.toggleClass("sls-setting-hidden", !(newConf[k] || false))
+                        this.prevStatus[k] = newConf[k];
+                        break
+                    case "classes":
+                        break
+                    case "disabled":
+                        this.setDisabled((newConf[k] || false))
+                        this.settingEl.toggleClass("sls-setting-disabled", (newConf[k] || false))
+                        this.prevStatus[k] = newConf[k];
+                        break
+                    case "isCta":
+                        {
+                            const component = this.autoWiredComponent;
+                            if (component instanceof ButtonComponent) {
+                                if (newConf[k]) {
+                                    component.setCta();
+                                } else {
+                                    component.removeCta();
+                                }
+                            }
+                            this.prevStatus[k] = newConf[k];
+                        }
+                        break
+                    case "isWarning":
+                        {
+                            const component = this.autoWiredComponent;
+                            if (component instanceof ButtonComponent) {
+                                if (newConf[k]) {
+                                    component.setWarning();
+                                } else {
+                                    //TODO:IMPLEMENT
+                                    // component.removeCta();
+                                }
+                            }
+                            this.prevStatus[k] = newConf[k];
+                        }
+                        break
+                }
+            }
+        }
+    }
+    _onUpdate() {
+        if (this.applyButtonComponent) {
+            const isDirty = Setting.env.isSomeDirty(this.watchDirtyKeys);
+            this.applyButtonComponent.setDisabled(!isDirty);
+            if (isDirty) {
+                this.applyButtonComponent.setCta();
+            } else {
+                this.applyButtonComponent.removeCta();
+            }
+        }
+        if (this.selfKey && !Setting.env.isDirty(this.selfKey) && this.invalidateValue) {
+            this.invalidateValue();
+        }
+        if (this.holdValue && this.selfKey) {
+            const isDirty = Setting.env.isDirty(this.selfKey);
+            const alt = isDirty ? `Original: ${Setting.env.initialSettings![this.selfKey]}` : ""
+            this.controlEl.toggleClass("sls-item-dirty", isDirty);
+            if (!this.hasPassword) {
+                this.nameEl.toggleClass("sls-item-dirty-help", isDirty);
+                this.setTooltip(alt, { delay: 10, placement: "right" });
+            }
+        }
+        this._applyOnUpdateHandlers();
+    }
+
+}
 
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
     selectedScreen = "";
 
+    _editingSettings?: AllSettings;
+    // Buffered Settings for editing
+    get editingSettings(): AllSettings {
+        if (!this._editingSettings) {
+            this.reloadAllSettings();
+        }
+        return this._editingSettings!;
+    }
+    set editingSettings(v) {
+        if (!this._editingSettings) {
+            this.reloadAllSettings();
+        }
+        this._editingSettings = v;
+    }
+
+    // Buffered Settings for comparing.
+    initialSettings?: typeof this.editingSettings;
+
+    /**
+     * Apply editing setting to the plug-in.
+     * @param keys setting keys for applying
+     */
+    applySetting(keys: (AllSettingItemKey)[]) {
+        for (const k of keys) {
+            if (!this.isDirty(k)) continue;
+            if (k in OnDialogSettingsDefault) {
+                // //@ts-ignore
+                // this.initialSettings[k] = this.editingSettings[k];
+                continue;
+            }
+            //@ts-ignore
+            this.plugin.settings[k] = this.editingSettings[k];
+            //@ts-ignore
+            this.initialSettings[k] = this.plugin.settings[k];
+        }
+        keys.forEach(e => this.refreshSetting(e));
+    }
+    applyAllSettings() {
+        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter(e => this.isDirty(e));
+        this.applySetting(changedKeys);
+        this.reloadAllSettings();
+    }
+
+    async saveLocalSetting(key: (keyof typeof OnDialogSettingsDefault)) {
+        if (key == "configPassphrase") {
+            localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
+            return await Promise.resolve();
+        }
+    }
+    /**
+     * Apply and save setting to the plug-in.
+     * @param keys setting keys for applying
+     */
+    async saveSettings(keys: (AllSettingItemKey)[]) {
+        const appliedKeys = [] as AllSettingItemKey[];
+        for (const k of keys) {
+            if (!this.isDirty(k)) continue;
+            appliedKeys.push(k);
+            if (k in OnDialogSettingsDefault) {
+                await this.saveLocalSetting(k as keyof OnDialogSettings);
+                //@ts-ignore
+                this.initialSettings[k] = this.editingSettings[k];
+                continue;
+            }
+            //@ts-ignore
+            this.plugin.settings[k] = this.editingSettings[k];
+            //@ts-ignore
+            this.initialSettings[k] = this.plugin.settings[k];
+        }
+
+        await this.plugin.saveSettings();
+
+        // if (runOnSaved) {
+        const handlers =
+            this.onSavedHandlers.filter(e => appliedKeys.indexOf(e.key) !== -1).map(e => e.handler(this.editingSettings[e.key as AllSettingItemKey]));
+        await Promise.all(handlers);
+        // }
+        keys.forEach(e => this.refreshSetting(e));
+
+    }
+
+    /**
+     * Apply all editing setting to the plug-in.
+     * @param keys setting keys for applying
+     */
+    async saveAllDirtySettings() {
+        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter(e => this.isDirty(e));
+        await this.saveSettings(changedKeys);
+        this.reloadAllSettings();
+    }
+
+    /**
+     * Invalidate buffered value and fetch the latest.
+     */
+    requestUpdate() {
+        scheduleTask("update-setting", 10, () => {
+            for (const setting of this.settingComponents) {
+                setting._onUpdate();
+            }
+            for (const func of this.controlledElementFunc) {
+                func();
+            }
+        });
+    }
+
+    reloadAllLocalSettings() {
+        const ret = { ...OnDialogSettingsDefault };
+        ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
+        ret.preset = ""
+        return ret;
+    }
+    computeAllLocalSettings(): Partial<OnDialogSettings> {
+        const syncMode = this.editingSettings?.liveSync ? "LIVESYNC" :
+            this.editingSettings?.periodicReplication ? "PERIODIC" : "ONEVENTS";
+        return {
+            syncMode
+        }
+    }
+    /**
+     * Reread all settings and request invalidate
+     */
+    reloadAllSettings() {
+        const localSetting = this.reloadAllLocalSettings();
+        this._editingSettings = { ...this.plugin.settings, ...localSetting };
+        this._editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
+        this.initialSettings = { ...this.editingSettings, };
+        this.requestUpdate();
+    }
+
+    /**
+     * Reread each setting and request invalidate
+     */
+    refreshSetting(key: AllSettingItemKey) {
+        const localSetting = this.reloadAllLocalSettings();
+        if (key in this.plugin.settings) {
+            if (key in localSetting) {
+                //@ts-ignore
+                this.initialSettings[key] = localSetting[key];
+                //@ts-ignore
+                this.editingSettings[key] = localSetting[key];
+            } else {
+                //@ts-ignore
+                this.initialSettings[key] = this.plugin.settings[key];
+                //@ts-ignore
+                this.editingSettings[key] = this.initialSettings[key];
+            }
+        }
+        this.editingSettings = { ...(this.editingSettings), ...this.computeAllLocalSettings() };
+        // this.initialSettings = { ...this.initialSettings };
+        this.requestUpdate();
+    }
+
+    isDirty(key: AllSettingItemKey) {
+        return isObjectDifferent(this.editingSettings[key], this.initialSettings?.[key]);
+    }
+    isSomeDirty(keys: (AllSettingItemKey)[]) {
+        // if (debug) {
+        //     console.dir(keys);
+        //     console.dir(keys.map(e => this.isDirty(e)));
+        // }
+        return keys.some(e => this.isDirty(e));
+    }
+
+    isConfiguredAs(key: AllStringItemKey, value: string): boolean
+    isConfiguredAs(key: AllNumericItemKey, value: number): boolean
+    isConfiguredAs(key: AllBooleanItemKey, value: boolean): boolean
+    isConfiguredAs(key: AllSettingItemKey, value: AllSettings[typeof key]) {
+        if (!this.editingSettings) {
+            return false;
+        }
+        return this.editingSettings[key] == value;
+    }
+    // UI Element Wrapper --> 
+    settingComponents = [] as Setting[];
+    controlledElementFunc = [] as UpdateFunction[];
+    onSavedHandlers = [] as OnSavedHandler<any>[];
+
     constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+        Setting.env = this;
     }
 
     async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
-        const trialSetting = { ...this.plugin.settings, ...settingOverride };
+        const trialSetting = { ...this.editingSettings, ...settingOverride };
         const replicator = this.plugin.getNewReplicator(trialSetting);
-
         await replicator.tryConnectRemote(trialSetting);
     }
 
@@ -56,14 +583,102 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin.app.setting.close()
     }
 
+
+    handleElement(element: HTMLElement, func: OnUpdateFunc) {
+        const updateFunc = ((element, func) => {
+            const prev = {} as OnUpdateResult;
+            return () => {
+                const newValue = func();
+                const keys = Object.keys(newValue) as [keyof OnUpdateResult];
+                for (const k of keys) {
+                    if (prev[k] !== newValue[k]) {
+                        if (k == "visibility") {
+                            element.toggleClass("sls-setting-hidden", !(newValue[k] || false))
+                        }
+                        //@ts-ignore
+                        prev[k] = newValue[k];
+                    }
+                }
+            }
+        })(element, func);
+        this.controlledElementFunc.push(updateFunc);
+        updateFunc();
+    }
+
+    createEl<T extends keyof HTMLElementTagNameMap>(el: HTMLElement,
+        tag: T,
+        o?: string | DomElementInfo | undefined,
+        callback?: ((el: HTMLElementTagNameMap[T]) => void),
+        func?: OnUpdateFunc) {
+        const element = el.createEl(tag, o, callback);
+        if (func) this.handleElement(element, func);
+        return element;
+    }
+
+    addOnSaved<T extends AllSettingItemKey>(key: T, func: (value: AllSettings[T]) => (Promise<void> | void)) {
+        this.onSavedHandlers.push({ key, handler: func });
+    }
+    resetEditingSettings() {
+        this._editingSettings = undefined;
+        this.initialSettings = undefined;
+    }
+
+    hide() {
+        this.isShown = false;
+    }
+    isShown: boolean = false;
+
+    requestReload() {
+        if (this.isShown) {
+            const newConf = this.plugin.settings;
+            const keys = Object.keys(newConf) as (keyof ObsidianLiveSyncSettings)[];
+            let hasLoaded = false;
+            for (const k of keys) {
+                if (isObjectDifferent(newConf[k], this.initialSettings?.[k])) {
+                    // Something has changed
+                    if (this.isDirty(k as AllSettingItemKey)) {
+                        // And modified.
+                        this.plugin.askInPopup(`config-reloaded-${k}`, `The setting "${getConfName(k as AllSettingItemKey)}" being in editing has been changed from somewhere. We can discard modification and reload by clicking {HERE}. Click elsewhere to ignore changes`, (anchor) => {
+                            anchor.text = "HERE";
+                            anchor.addEventListener("click", () => {
+                                this.refreshSetting(k as AllSettingItemKey);
+                                this.display();
+                            });
+                        });
+                    } else {
+                        // not modified
+                        this.refreshSetting(k as AllSettingItemKey);
+                        hasLoaded = true;
+                    }
+                }
+            }
+            if (hasLoaded) {
+                this.display();
+            } else {
+                this.requestUpdate();
+            }
+        } else {
+            Logger(`reread: all! hidden`, LOG_LEVEL_VERBOSE)
+            this.reloadAllSettings();
+            this.display();
+        }
+    }
+
     display(): void {
         const { containerEl } = this;
-        let encrypt = this.plugin.settings.encrypt;
-        let passphrase = this.plugin.settings.passphrase;
-        let useDynamicIterationCount = this.plugin.settings.useDynamicIterationCount;
+        this.settingComponents.length = 0;
+        this.controlledElementFunc.length = 0;
+        this.onSavedHandlers.length = 0;
+        if (this._editingSettings == undefined || this.initialSettings == undefined) {
+            this.reloadAllSettings();
+        }
+        if (this.editingSettings === undefined || this.initialSettings == undefined) {
+            return;
+        }
+        this.isShown = true;
 
         containerEl.empty();
-        containerEl.createEl("h2", { text: "Settings for Self-hosted LiveSync." });
+        this.createEl(containerEl, "h2", { text: "Settings for Self-hosted LiveSync." });
         containerEl.addClass("sls-setting");
         containerEl.removeClass("isWizard");
 
@@ -117,8 +732,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         });
 
         const containerInformationEl = containerEl.createDiv();
-        const h3El = containerInformationEl.createEl("h3", { text: "Updates" });
-        const informationDivEl = containerInformationEl.createEl("div", { text: "" });
+        const h3El = this.createEl(containerInformationEl, "h3", { text: "Updates" });
+        const informationDivEl = this.createEl(containerInformationEl, "div", { text: "" });
 
         //@ts-ignore
         const manifestVersion: string = MANIFEST_VERSION || "-";
@@ -130,11 +745,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const tmpDiv = createSpan();
         tmpDiv.addClass("sls-header-button");
         tmpDiv.innerHTML = `<button> OK, I read everything. </button>`;
-        if (lastVersion > this.plugin.settings.lastReadUpdates) {
+        if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
             const informationButtonDiv = h3El.appendChild(tmpDiv);
             informationButtonDiv.querySelector("button")?.addEventListener("click", async () => {
-                this.plugin.settings.lastReadUpdates = lastVersion;
-                await this.plugin.saveSettings();
+                this.editingSettings.lastReadUpdates = lastVersion;
+                await this.saveAllDirtySettings();
                 informationButtonDiv.remove();
             });
 
@@ -145,25 +760,30 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         addScreenElement("100", containerInformationEl);
         const isAnySyncEnabled = (): boolean => {
-            if (!this.plugin.settings.isConfigured) return false;
-            if (this.plugin.settings.liveSync) return true;
-            if (this.plugin.settings.periodicReplication) return true;
-            if (this.plugin.settings.syncOnFileOpen) return true;
-            if (this.plugin.settings.syncOnSave) return true;
-            if (this.plugin.settings.syncOnEditorSave) return true;
-            if (this.plugin.settings.syncOnStart) return true;
-            if (this.plugin.settings.syncAfterMerge) return true;
-            if (this.plugin.replicator.syncStatus == "CONNECTED") return true;
-            if (this.plugin.replicator.syncStatus == "PAUSED") return true;
+            if (this.isConfiguredAs("isConfigured", false)) return true;
+            if (this.isConfiguredAs("liveSync", true)) return true;
+            if (this.isConfiguredAs("periodicReplication", true)) return true;
+            if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
+            if (this.isConfiguredAs("syncOnSave", true)) return true;
+            if (this.isConfiguredAs("syncOnEditorSave", true)) return true;
+            if (this.isConfiguredAs("syncOnStart", true)) return true;
+            if (this.isConfiguredAs("syncAfterMerge", true)) return true;
+            if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
+            if (this.plugin?.replicator?.syncStatus == "CONNECTED") return true;
+            if (this.plugin?.replicator?.syncStatus == "PAUSED") return true;
             return false;
         };
+        // const visibleOnlySyncDisabled = visibleOnly(() => !isAnySyncEnabled())
+        // const visibleOnlySyncDisabled = visibleOnly(() => !isAnySyncEnabled())
+        const enableOnlySyncDisabled = enableOnly(() => !isAnySyncEnabled())
+
         let inWizard = false;
         if (containerEl.hasClass("inWizard")) {
             inWizard = true;
         }
 
         const setupWizardEl = containerEl.createDiv();
-        setupWizardEl.createEl("h3", { text: "Setup wizard" });
+        this.createEl(setupWizardEl, "h3", { text: "Setup wizard" });
         new Setting(setupWizardEl)
             .setName("Use the copied setup URI")
             .setDesc("To setup Self-hosted LiveSync, this method is the most preferred one.")
@@ -173,7 +793,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     await this.plugin.addOnSetup.command_openSetupURI();
                 })
             })
-        if (this.plugin.settings.isConfigured) {
+        if (this.editingSettings.isConfigured) {
             new Setting(setupWizardEl)
                 .setName("Copy current settings as a new setup URI")
                 .addButton((text) => {
@@ -186,53 +806,51 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .setName("Minimal setup")
             .addButton((text) => {
                 text.setButtonText("Start").onClick(async () => {
-                    this.plugin.settings.liveSync = false;
-                    this.plugin.settings.periodicReplication = false;
-                    this.plugin.settings.syncOnSave = false;
-                    this.plugin.settings.syncOnEditorSave = false;
-                    this.plugin.settings.syncOnStart = false;
-                    this.plugin.settings.syncOnFileOpen = false;
-                    this.plugin.settings.syncAfterMerge = false;
+                    this.editingSettings.liveSync = false;
+                    this.editingSettings.periodicReplication = false;
+                    this.editingSettings.syncOnSave = false;
+                    this.editingSettings.syncOnEditorSave = false;
+                    this.editingSettings.syncOnStart = false;
+                    this.editingSettings.syncOnFileOpen = false;
+                    this.editingSettings.syncAfterMerge = false;
                     this.plugin.replicator.closeReplication();
-                    await this.plugin.saveSettings();
+                    await this.saveAllDirtySettings();
                     containerEl.addClass("isWizard");
-                    applyDisplayEnabled();
                     inWizard = true;
                     changeDisplay("0")
                 })
             })
-        if (!this.plugin.settings.isConfigured) {
-            new Setting(setupWizardEl)
-                .setName("Enable LiveSync on this device as the setup was completed manually")
-                .addButton((text) => {
-                    text.setButtonText("Enable").onClick(async () => {
-                        this.plugin.settings.isConfigured = true;
-                        await this.plugin.saveSettings();
+        new Setting(setupWizardEl)
+            .setName("Enable LiveSync on this device as the setup was completed manually")
+            .addButton((text) => {
+                text.setButtonText("Enable").onClick(async () => {
+                    this.editingSettings.isConfigured = true;
+                    await this.saveAllDirtySettings();
+                    this.plugin.askReload();
+                })
+            })
+            .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
+
+        new Setting(setupWizardEl)
+            .setName("Discard existing settings and databases")
+            .addButton((text) => {
+                text.setButtonText("Discard").onClick(async () => {
+                    if (await askYesNo(this.plugin.app, "Do you really want to discard existing settings and databases?") == "yes") {
+                        this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
+                        await this.plugin.saveSettingData();
+                        await this.plugin.resetLocalDatabase();
+                        // await this.plugin.initializeDatabase();
                         this.plugin.askReload();
-                    })
-                })
-        }
-        if (this.plugin.settings.isConfigured) {
-            new Setting(setupWizardEl)
-                .setName("Discard existing settings and databases")
-                .addButton((text) => {
-                    text.setButtonText("Discard").onClick(async () => {
-                        if (await askYesNo(this.plugin.app, "Do you really want to discard existing settings and databases?") == "yes") {
-                            this.plugin.settings = { ...DEFAULT_SETTINGS };
-                            await this.plugin.saveSettingData();
-                            await this.plugin.resetLocalDatabase();
-                            // await this.plugin.initializeDatabase();
-                            this.plugin.askReload();
-                        }
-                    }).setWarning()
-                })
-        }
-        setupWizardEl.createEl("h3", { text: "Online Tips" });
+                    }
+                }).setWarning()
+            }).addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)))
+        // }
+        this.createEl(setupWizardEl, "h3", { text: "Online Tips" });
         const repo = "vrtmrz/obsidian-livesync";
         const topPath = "/docs/troubleshooting.md";
         const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
-        setupWizardEl.createEl("div", "", el => el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">Open in browser</a>`);
-        const troubleShootEl = setupWizardEl.createEl("div", { text: "", cls: "sls-troubleshoot-preview" });
+        this.createEl(setupWizardEl, "div", "", el => el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">Open in browser</a>`);
+        const troubleShootEl = this.createEl(setupWizardEl, "div", { text: "", cls: "sls-troubleshoot-preview" });
         const loadMarkdownPage = async (pathAll: string, basePathParam: string = "") => {
             troubleShootEl.style.minHeight = troubleShootEl.clientHeight + "px";
             troubleShootEl.empty();
@@ -285,41 +903,25 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         addScreenElement("110", setupWizardEl);
 
         const containerRemoteDatabaseEl = containerEl.createDiv();
-        containerRemoteDatabaseEl.createEl("h3", { text: "Remote configuration" });
+        this.createEl(containerRemoteDatabaseEl, "h3", { text: "Remote configuration" });
+
         new Setting(containerRemoteDatabaseEl)
-            .setName("Remote Type")
-            .setDesc("Remote server type")
-            .addDropdown((dropdown) => {
-                dropdown
-                    .addOptions({ [REMOTE_COUCHDB]: "CouchDB", [REMOTE_MINIO]: "Minio,S3,R2" })
-                    .setValue(this.plugin.settings.remoteType)
-                    .onChange(async (value) => {
-                        if (this.plugin.settings.remoteType != value) {
-                            if (value != REMOTE_COUCHDB && this.plugin.settings.liveSync) {
-                                this.plugin.settings.liveSync = false;
-                            }
-                            this.plugin.settings.remoteType = value as RemoteType;
-                            await this.plugin.saveSettings();
-                            this.selectedScreen = "";
-                            this.closeSetting();
-                            Logger(`Please reopen the wizard if you have changed the remote type.`, LOG_LEVEL_NOTICE);
-                        }
-                    })
+            .autoWireDropDown("remoteType", {
+                holdValue: true, options: {
+                    [REMOTE_COUCHDB]: "CouchDB", [REMOTE_MINIO]: "Minio,S3,R2",
+                }, onUpdate: enableOnlySyncDisabled
             })
 
-        let applyDisplayEnabled = () => {
-        }
-        const editing = extractObject<BucketSyncSetting>({
-            accessKey: "",
-            bucket: "",
-            endpoint: "",
-            region: "",
-            secretKey: "",
-            useCustomRequestHandler: false,
-        }, this.plugin.settings);
-        if (this.plugin.settings.remoteType == REMOTE_MINIO) {
+        const onlyOnCouchDB = () => ({
+            visibility: this.isConfiguredAs('remoteType', REMOTE_COUCHDB)
+        }) as OnUpdateResult;
+        const onlyOnMinIO = () => ({
+            visibility: this.isConfiguredAs('remoteType', REMOTE_MINIO)
+        }) as OnUpdateResult;
 
-            const syncWarnMinio = containerRemoteDatabaseEl.createEl("div", {
+        this.createEl(containerRemoteDatabaseEl, "div", undefined, containerRemoteDatabaseEl => {
+
+            const syncWarnMinio = this.createEl(containerRemoteDatabaseEl, "div", {
                 text: ""
             });
             const ObjectStorageMessage = `Kindly notice: this is a pretty experimental feature, hence we have some limitations. 
@@ -334,56 +936,16 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             MarkdownRenderer.render(this.plugin.app, ObjectStorageMessage, syncWarnMinio, "/", this.plugin);
             syncWarnMinio.addClass("op-warn-info");
 
-            new Setting(containerRemoteDatabaseEl).setName("Endpoint URL").addText((text) =>
-                text
-                    .setPlaceholder("https://........")
-                    .setValue(editing.endpoint)
-                    .onChange(async (value) => {
-                        editing.endpoint = value;
-                    })
-            )
+            new Setting(containerRemoteDatabaseEl).autoWireText("endpoint", { holdValue: true })
+            new Setting(containerRemoteDatabaseEl).autoWireText("accessKey", { holdValue: true });
 
+            new Setting(containerRemoteDatabaseEl).autoWireText("secretKey", { holdValue: true, isPassword: true });
 
-            new Setting(containerRemoteDatabaseEl).setName("Access Key").addText((text) =>
-                text
-                    .setPlaceholder("")
-                    .setValue(editing.accessKey)
-                    .onChange(async (value) => {
-                        editing.accessKey = value;
-                    })
-            )
-            new Setting(containerRemoteDatabaseEl).setName("Secret Key").addText((text) =>
-                text
-                    .setPlaceholder("")
-                    .setValue(editing.secretKey)
-                    .onChange(async (value) => {
-                        editing.secretKey = value;
-                    })
-                    .inputEl.setAttribute("type", "password")
-            )
-            new Setting(containerRemoteDatabaseEl).setName("Region").addText((text) =>
-                text
-                    .setPlaceholder("auto")
-                    .setValue(editing.region)
-                    .onChange(async (value) => {
-                        editing.region = value;
-                    })
-            )
-            new Setting(containerRemoteDatabaseEl).setName("Bucket Name").addText((text) =>
-                text
-                    .setPlaceholder("")
-                    .setValue(editing.bucket)
-                    .onChange(async (value) => {
-                        editing.bucket = value;
-                    })
-            )
-            new Setting(containerRemoteDatabaseEl).setName("Use Custom HTTP Handler")
-                .setDesc("If your Object Storage could not configured accepting CORS, enable this.")
-                .addToggle((toggle) => {
-                    toggle.setValue(editing.useCustomRequestHandler).onChange(async (value) => {
-                        editing.useCustomRequestHandler = value;
-                    })
-                })
+            new Setting(containerRemoteDatabaseEl).autoWireText("region", { holdValue: true });
+
+            new Setting(containerRemoteDatabaseEl).autoWireText("bucket", { holdValue: true });
+
+            new Setting(containerRemoteDatabaseEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
             new Setting(containerRemoteDatabaseEl)
                 .setName("Test Connection")
                 .addButton((button) =>
@@ -391,118 +953,40 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         .setButtonText("Test")
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.testConnection(editing);
+                            await this.testConnection(this.editingSettings);
                         })
                 );
             new Setting(containerRemoteDatabaseEl)
                 .setName("Apply Settings")
                 .setClass("wizardHidden")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Apply")
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            this.plugin.settings = { ...this.plugin.settings, ...editing };
-                            await this.plugin.saveSettings();
-                            this.display();
-                            // await this.testConnection();
-                        })
-                );
-        } else {
-            if (this.plugin.settings.couchDB_URI.startsWith("http://")) {
-                if (this.plugin.isMobile) {
-                    containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.` })
-                        .addClass("op-warn");
-                } else {
-                    containerRemoteDatabaseEl.createEl("div", { text: `Configured as using plain HTTP. We might fail on mobile devices.` })
-                        .addClass("op-warn-info");
-                }
+                .addApplyButton(["remoteType", "endpoint", "region", "accessKey", "secretKey", "bucket", "useCustomRequestHandler"])
+                .addOnUpdate(onlyOnMinIO)
+
+        }, onlyOnMinIO);
+
+
+        this.createEl(containerRemoteDatabaseEl, "div", undefined, containerRemoteDatabaseEl => {
+            if (this.plugin.isMobile) {
+                this.createEl(containerRemoteDatabaseEl, "div", {
+                    text: `Configured as using non-HTTPS. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.`,
+                }, undefined, visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://")))
+                    .addClass("op-warn");
+            } else {
+                this.createEl(containerRemoteDatabaseEl, "div", {
+                    text: `Configured as using non-HTTPS. We might fail on mobile devices.`
+                }, undefined, visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://")))
+                    .addClass("op-warn-info");
             }
-            const syncWarn = containerRemoteDatabaseEl.createEl("div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` });
-            syncWarn.addClass("sls-hidden");
 
+            this.createEl(containerRemoteDatabaseEl, "div", { text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.` },
+                undefined, visibleOnly(() => isAnySyncEnabled())
+            ).addClass("sls-setting-hidden");
 
-            applyDisplayEnabled = () => {
-                if (isAnySyncEnabled()) {
-                    dbSettings.forEach((e) => {
-                        e.setDisabled(true).setTooltip("Could not change this while any synchronization options are enabled.");
-                    });
-                    syncWarn.removeClass("sls-hidden");
-                } else {
-                    dbSettings.forEach((e) => {
-                        e.setDisabled(false).setTooltip("");
-                    });
-                    syncWarn.addClass("sls-hidden");
-                }
-                if (this.plugin.settings.liveSync) {
-                    syncNonLive.forEach((e) => {
-                        e.setDisabled(true).setTooltip("");
-                    });
-                    syncLive.forEach((e) => {
-                        e.setDisabled(false).setTooltip("");
-                    });
-                } else if (this.plugin.settings.syncOnFileOpen || this.plugin.settings.syncOnSave || this.plugin.settings.syncOnEditorSave || this.plugin.settings.syncOnStart || this.plugin.settings.periodicReplication || this.plugin.settings.syncAfterMerge) {
-                    syncNonLive.forEach((e) => {
-                        e.setDisabled(false).setTooltip("");
-                    });
-                    syncLive.forEach((e) => {
-                        e.setDisabled(true).setTooltip("");
-                    });
-                } else {
-                    syncNonLive.forEach((e) => {
-                        e.setDisabled(false).setTooltip("");
-                    });
-                    syncLive.forEach((e) => {
-                        e.setDisabled(false).setTooltip("");
-                    });
-                }
-            };
+            new Setting(containerRemoteDatabaseEl).autoWireText("couchDB_URI", { holdValue: true, onUpdate: enableOnlySyncDisabled });
+            new Setting(containerRemoteDatabaseEl).autoWireText("couchDB_USER", { holdValue: true, onUpdate: enableOnlySyncDisabled });
+            new Setting(containerRemoteDatabaseEl).autoWireText("couchDB_PASSWORD", { holdValue: true, isPassword: true, onUpdate: enableOnlySyncDisabled });
+            new Setting(containerRemoteDatabaseEl).autoWireText("couchDB_DBNAME", { holdValue: true, onUpdate: enableOnlySyncDisabled });
 
-            const dbSettings: Setting[] = [];
-            dbSettings.push(
-                new Setting(containerRemoteDatabaseEl).setName("URI").addText((text) =>
-                    text
-                        .setPlaceholder("https://........")
-                        .setValue(this.plugin.settings.couchDB_URI)
-                        .onChange(async (value) => {
-                            this.plugin.settings.couchDB_URI = value;
-                            await this.plugin.saveSettings();
-                        })
-                ),
-                new Setting(containerRemoteDatabaseEl)
-                    .setName("Username")
-                    .setDesc("username")
-                    .addText((text) =>
-                        text
-                            .setPlaceholder("")
-                            .setValue(this.plugin.settings.couchDB_USER)
-                            .onChange(async (value) => {
-                                this.plugin.settings.couchDB_USER = value;
-                                await this.plugin.saveSettings();
-                            })
-                    ),
-                new Setting(containerRemoteDatabaseEl)
-                    .setName("Password")
-                    .setDesc("password")
-                    .addText((text) => {
-                        text.setPlaceholder("")
-                            .setValue(this.plugin.settings.couchDB_PASSWORD)
-                            .onChange(async (value) => {
-                                this.plugin.settings.couchDB_PASSWORD = value;
-                                await this.plugin.saveSettings();
-                            });
-                        text.inputEl.setAttribute("type", "password");
-                    }),
-                new Setting(containerRemoteDatabaseEl).setName("Database name").addText((text) =>
-                    text
-                        .setPlaceholder("")
-                        .setValue(this.plugin.settings.couchDB_DBNAME)
-                        .onChange(async (value) => {
-                            this.plugin.settings.couchDB_DBNAME = value;
-                            await this.plugin.saveSettings();
-                        })
-                )
-            );
 
             new Setting(containerRemoteDatabaseEl)
                 .setName("Test Database Connection")
@@ -542,11 +1026,11 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                 };
                                 try {
 
-                                    if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
+                                    if (isCloudantURI(this.editingSettings.couchDB_URI)) {
                                         Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
                                         return;
                                     }
-                                    const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+                                    const r = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, window.origin);
                                     const responseConfig = r.json;
 
                                     const addConfigFixButton = (title: string, key: string, value: string) => {
@@ -556,7 +1040,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                         const x = checkResultDiv.appendChild(tmpDiv);
                                         x.querySelector("button")?.addEventListener("click", async () => {
                                             Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
-                                            const res = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, undefined, key, value);
+                                            const res = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, undefined, key, value);
                                             if (res.status == 200) {
                                                 Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
                                                 checkResultDiv.removeChild(x);
@@ -577,7 +1061,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
                                     // Admin check
                                     //  for database creation and deletion
-                                    if (!(this.plugin.settings.couchDB_USER in responseConfig.admins)) {
+                                    if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
                                         addResult(`⚠ You do not have administrative privileges.`);
                                     } else {
                                         addResult("✔ You have administrative privileges.");
@@ -610,7 +1094,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                         addResult("✔ httpd.enable_cors is ok.");
                                     }
                                     // If the server is not cloudant, configure request size
-                                    if (!isCloudantURI(this.plugin.settings.couchDB_URI)) {
+                                    if (!isCloudantURI(this.editingSettings.couchDB_URI)) {
                                         // REQUEST SIZE
                                         if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
                                             addResult("❗ chttpd.max_http_request_size is low)");
@@ -649,7 +1133,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                     // Request header check
                                     const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
                                     for (const org of origins) {
-                                        const rr = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, org);
+                                        const rr = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, org);
                                         const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
                                             .map((e) => {
                                                 e[0] = `${e[0]}`.toLowerCase();
@@ -684,196 +1168,43 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             await checkConfig();
                         })
                 );
-            const checkResultDiv = containerRemoteDatabaseEl.createEl("div", {
+            const checkResultDiv = this.createEl(containerRemoteDatabaseEl, "div", {
                 text: "",
             });
 
-            containerRemoteDatabaseEl.createEl("h4", { text: "Effective Storage Using" }).addClass("wizardHidden")
             new Setting(containerRemoteDatabaseEl)
-                .setName(confName("useEden"))
-                .setDesc("If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.useEden).onChange(async (value) => {
-                        this.plugin.settings.useEden = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    })
-                )
-                .setClass("wizardHidden");
-            if (this.plugin.settings.useEden) {
-                new Setting(containerRemoteDatabaseEl)
-                    .setName("Maximum Incubating Chunks")
-                    .setDesc("The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.")
-                    .addText((text) => {
-                        text.setPlaceholder("")
-                            .setValue(this.plugin.settings.maxChunksInEden + "")
-                            .onChange(async (value) => {
-                                let v = Number(value);
-                                if (isNaN(v) || v < 3) {
-                                    v = 3;
-                                }
-                                this.plugin.settings.maxChunksInEden = v;
-                                await this.plugin.saveSettings();
-                            });
-                        text.inputEl.setAttribute("type", "number");
-                    })
-                    .setClass("wizardHidden");
-                new Setting(containerRemoteDatabaseEl)
-                    .setName("Maximum Incubating Chunk Size")
-                    .setDesc("The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.")
-                    .addText((text) => {
-                        text.setPlaceholder("")
-                            .setValue(this.plugin.settings.maxTotalLengthInEden + "")
-                            .onChange(async (value) => {
-                                let v = Number(value);
-                                if (isNaN(v) || v < 100) {
-                                    v = 100;
-                                }
-                                this.plugin.settings.maxTotalLengthInEden = v;
-                                await this.plugin.saveSettings();
-                            });
-                        text.inputEl.setAttribute("type", "number");
-                    })
-                    .setClass("wizardHidden");
-                new Setting(containerRemoteDatabaseEl)
-                    .setName("Maximum Incubation Period")
-                    .setDesc("The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.")
-                    .addText((text) => {
-                        text.setPlaceholder("")
-                            .setValue(this.plugin.settings.maxAgeInEden + "")
-                            .onChange(async (value) => {
-                                let v = Number(value);
-                                if (isNaN(v) || v < 3) {
-                                    v = 3;
-                                }
-                                this.plugin.settings.maxAgeInEden = v;
-                                await this.plugin.saveSettings();
-                            });
-                        text.inputEl.setAttribute("type", "number");
-                    })
-                    .setClass("wizardHidden");
-            }
-            new Setting(containerRemoteDatabaseEl)
-                .setName(confName("enableCompression"))
-                .setDesc("Compresses data during transfer, saving space in the remote database. Note: Please ensure that all devices have v0.22.18 and connected tools are also supported compression.")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.enableCompression).onChange(async (value) => {
-                        this.plugin.settings.enableCompression = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    })
-                )
-                .setClass("wizardHidden");
-        }
+                .setName("Apply Settings")
+                .setClass("wizardHidden")
+                .addApplyButton(["remoteType", "couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"])
+                .addOnUpdate(onlyOnCouchDB)
+        }, onlyOnCouchDB);
 
+        this.createEl(containerRemoteDatabaseEl, "h4", { text: "Effective Storage Using" }).addClass("wizardHidden")
 
-        containerRemoteDatabaseEl.createEl("h4", { text: "Confidentiality" });
+        new Setting(containerRemoteDatabaseEl).autoWireToggle("useEden").setClass("wizardHidden");
+        const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
+        new Setting(containerRemoteDatabaseEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+        new Setting(containerRemoteDatabaseEl).autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+        new Setting(containerRemoteDatabaseEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
 
-        const e2e = new Setting(containerRemoteDatabaseEl)
-            .setName(confName("encrypt"))
-            .setDesc("Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommend.")
-            .addToggle((toggle) =>
-                toggle.setValue(encrypt).onChange(async (value) => {
-                    if (inWizard) {
-                        this.plugin.settings.encrypt = value;
-                        encrypt = value;
-                        await this.plugin.saveSettings();
-                        updateE2EControls();
-                    } else {
-                        encrypt = value;
-                        // await this.plugin.saveSettings();
-                        // this.display();
-                        updateE2EControls();
-                    }
-                })
-            );
+        new Setting(containerRemoteDatabaseEl).autoWireToggle("enableCompression").setClass("wizardHidden");
 
+        this.createEl(containerRemoteDatabaseEl, "h4", { text: "Confidentiality" });
 
-        let usePathObfuscation = this.plugin.settings.usePathObfuscation;
+        new Setting(containerRemoteDatabaseEl)
+            .autoWireToggle("encrypt", { holdValue: true })
 
+        const isEncryptEnabled = visibleOnly(() => this.isConfiguredAs("encrypt", true))
 
-        const updateE2EControls = () => {
-            e2e.controlEl.toggleClass("sls-item-dirty", encrypt != this.plugin.settings.encrypt);
-            if (encrypt) {
-                passphraseSetting.settingEl.removeClass("sls-setting-hidden");
-                dynamicIteration.settingEl.removeClass("sls-setting-hidden");
-                usePathObfuscationEl.settingEl.removeClass("sls-setting-hidden");
-                passphraseSetting?.controlEl.toggleClass("sls-item-dirty", passphrase != this.plugin.settings.passphrase);
-                dynamicIteration?.controlEl.toggleClass("sls-item-dirty", useDynamicIterationCount != this.plugin.settings.useDynamicIterationCount);
-                usePathObfuscationEl?.controlEl.toggleClass("sls-item-dirty", usePathObfuscation != this.plugin.settings.usePathObfuscation);
+        new Setting(containerRemoteDatabaseEl)
+            .autoWireText("passphrase", { holdValue: true, isPassword: true, onUpdate: isEncryptEnabled })
 
-            } else {
-                passphraseSetting.settingEl.addClass("sls-setting-hidden");
-                dynamicIteration.settingEl.addClass("sls-setting-hidden");
-                usePathObfuscationEl.settingEl.addClass("sls-setting-hidden");
-            }
-            if (encrypt != this.plugin.settings.encrypt ||
-                passphrase != this.plugin.settings.passphrase ||
-                useDynamicIterationCount != this.plugin.settings.useDynamicIterationCount ||
-                usePathObfuscation != this.plugin.settings.usePathObfuscation) {
-                applyE2EButtons.settingEl.removeClass("sls-setting-hidden");
-            } else {
-                applyE2EButtons.settingEl.addClass("sls-setting-hidden");
-            }
-        }
-        // if (showEncryptOptionDetail) {
-        const passphraseSetting = new Setting(containerRemoteDatabaseEl)
-            .setName("Passphrase")
-            .setDesc("Encrypting passphrase. If you change the passphrase of an existing database, overwriting the remote database is strongly recommended.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(passphrase)
-                    .onChange(async (value) => {
-                        if (inWizard) {
-                            this.plugin.settings.passphrase = value;
-                            passphrase = value;
-                            await this.plugin.saveSettings();
-                        } else {
-                            passphrase = value;
-                            await this.plugin.saveSettings();
-                            updateE2EControls();
-                        }
-                    });
-                text.inputEl.setAttribute("type", "password");
-            });
+        new Setting(containerRemoteDatabaseEl)
+            .autoWireToggle("usePathObfuscation", { holdValue: true, onUpdate: isEncryptEnabled })
+        new Setting(containerRemoteDatabaseEl)
+            .autoWireToggle("useDynamicIterationCount", { holdValue: true, onUpdate: isEncryptEnabled }).setClass("wizardHidden");
 
-        const usePathObfuscationEl = new Setting(containerRemoteDatabaseEl)
-            .setName(confName("usePathObfuscation"))
-            .setDesc("Obfuscate paths of files. If we configured, we should rebuild the database.")
-            .addToggle((toggle) =>
-                toggle.setValue(usePathObfuscation).onChange(async (value) => {
-                    if (inWizard) {
-                        this.plugin.settings.usePathObfuscation = value;
-                        usePathObfuscation = value;
-                        await this.plugin.saveSettings();
-                    } else {
-                        usePathObfuscation = value;
-                        await this.plugin.saveSettings();
-                        updateE2EControls();
-                    }
-                })
-            );
-
-        const dynamicIteration = new Setting(containerRemoteDatabaseEl)
-            .setName(confName("useDynamicIterationCount"))
-            .setDesc("Balancing the encryption/decryption load against the length of the passphrase if toggled.")
-            .addToggle((toggle) => {
-                toggle.setValue(useDynamicIterationCount)
-                    .onChange(async (value) => {
-                        if (inWizard) {
-                            this.plugin.settings.useDynamicIterationCount = value;
-                            useDynamicIterationCount = value;
-                            await this.plugin.saveSettings();
-                        } else {
-                            useDynamicIterationCount = value;
-                            await this.plugin.saveSettings();
-                            updateE2EControls();
-                        }
-                    });
-            })
-            .setClass("wizardHidden");
-        // }
-        const applyE2EButtons = new Setting(containerRemoteDatabaseEl)
+        new Setting(containerRemoteDatabaseEl)
             .setName("Apply")
             .setDesc("Apply encryption settings")
             .setClass("wizardHidden")
@@ -903,17 +1234,20 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     .onClick(async () => {
                         await rebuildDB("rebuildBothByThisDevice");
                     })
-            );
+            )
+            .addOnUpdate(() => ({
+                isCta: this.isSomeDirty(["passphrase", "useDynamicIterationCount", "usePathObfuscation", "encrypt"]),
+                disabled: !this.isSomeDirty(["passphrase", "useDynamicIterationCount", "usePathObfuscation", "encrypt"]),
+            }))
 
-
-        updateE2EControls();
         const checkWorkingPassphrase = async (): Promise<boolean> => {
-            if (this.plugin.settings.remoteType == REMOTE_MINIO) return true;
+            if (this.editingSettings.remoteType == REMOTE_MINIO) return true;
+
             const settingForCheck: RemoteDBSettings = {
-                ...this.plugin.settings,
-                encrypt: encrypt,
-                passphrase: passphrase,
-                useDynamicIterationCount: useDynamicIterationCount,
+                ...this.editingSettings,
+                // encrypt: encrypt,
+                // passphrase: passphrase,
+                // useDynamicIterationCount: useDynamicIterationCount,
             };
             const replicator = this.plugin.getReplicator();
             if (!(replicator instanceof LiveSyncCouchDBReplicator)) return true;
@@ -933,29 +1267,31 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             }
         };
         const applyEncryption = async (sendToServer: boolean) => {
-            if (encrypt && passphrase == "") {
+            if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
                 Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
                 return;
             }
-            if (encrypt && !(await testCrypt())) {
+            if (this.editingSettings.encrypt && !(await testCrypt())) {
                 Logger("WARNING! Your device does not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!(await checkWorkingPassphrase()) && !sendToServer) {
                 return;
             }
-            if (!encrypt) {
-                passphrase = "";
+            if (!this.editingSettings.encrypt) {
+                this.editingSettings.passphrase = "";
             }
+            // this.applyAllSettings();
+            this.saveAllDirtySettings();
             this.plugin.addOnSetup.suspendAllSync();
             this.plugin.addOnSetup.suspendExtraSync();
-            this.plugin.settings.encrypt = encrypt;
-            this.plugin.settings.passphrase = passphrase;
-            this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
-            this.plugin.settings.usePathObfuscation = usePathObfuscation;
-            this.plugin.settings.isConfigured = true;
-            await this.plugin.saveSettings();
-            updateE2EControls();
+            this.reloadAllSettings();
+            // this.editingSettings.encrypt = encrypt;
+            // this.editingSettings.passphrase = passphrase;
+            // this.editingSettings.useDynamicIterationCount = useDynamicIterationCount;
+            // this.editingSettings.usePathObfuscation = usePathObfuscation;
+            this.editingSettings.isConfigured = true;
+            await this.saveAllDirtySettings();
             if (sendToServer) {
                 await this.plugin.addOnSetup.rebuildRemote()
             } else {
@@ -965,31 +1301,28 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         };
 
         const rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") => {
-            if (encrypt && passphrase == "") {
+            if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
                 Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
                 return;
             }
-            if (encrypt && !(await testCrypt())) {
+            if (this.editingSettings.encrypt && !(await testCrypt())) {
                 Logger("WARNING! Your device does not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
-            if (!encrypt) {
-                passphrase = "";
+            if (!this.editingSettings.encrypt) {
+                this.editingSettings.passphrase = "";
             }
+            this.applyAllSettings();
             this.plugin.addOnSetup.suspendAllSync();
             this.plugin.addOnSetup.suspendExtraSync();
-            this.plugin.settings.encrypt = encrypt;
-            this.plugin.settings.passphrase = passphrase;
-            this.plugin.settings.useDynamicIterationCount = useDynamicIterationCount;
-            this.plugin.settings.usePathObfuscation = usePathObfuscation;
-            this.plugin.settings.isConfigured = true;
+            this.reloadAllSettings();
+            this.editingSettings.isConfigured = true;
             Logger("All synchronizations have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
-            await this.plugin.saveSettings();
-            updateE2EControls();
-            applyDisplayEnabled();
+            await this.saveAllDirtySettings();
             this.closeSetting();
             await delay(2000);
             await performRebuildDB(this.plugin, method);
+            // this.resetEditingSettings();
         }
 
 
@@ -1001,17 +1334,15 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
-                        if (!this.plugin.settings.encrypt) {
-                            this.plugin.settings.passphrase = "";
+                        if (!this.editingSettings.encrypt) {
+                            this.editingSettings.passphrase = "";
                         }
-                        this.plugin.settings = { ...this.plugin.settings, ...editing };
-                        if (isCloudantURI(this.plugin.settings.couchDB_URI)) {
-                            // this.plugin.settings.customChunkSize = 0;
-                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_CLOUDANT };
-                        } else if (this.plugin.settings.remoteType == REMOTE_MINIO) {
-                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_JOURNAL_SYNC };
+                        if (isCloudantURI(this.editingSettings.couchDB_URI)) {
+                            this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_CLOUDANT };
+                        } else if (this.editingSettings.remoteType == REMOTE_MINIO) {
+                            this.editingSettings = { ...this.editingSettings, ...PREFERRED_JOURNAL_SYNC };
                         } else {
-                            this.plugin.settings = { ...this.plugin.settings, ...PREFERRED_SETTING_SELF_HOSTED };
+                            this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_SELF_HOSTED };
                         }
                         changeDisplay("30")
                     })
@@ -1021,490 +1352,271 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         addScreenElement("0", containerRemoteDatabaseEl);
 
         const containerGeneralSettingsEl = containerEl.createDiv();
-        containerGeneralSettingsEl.createEl("h3", { text: "General Settings" });
+        this.createEl(containerGeneralSettingsEl, "h3", { text: "General Settings" });
 
-        containerGeneralSettingsEl.createEl("h4", { text: "Appearance" });
+        this.createEl(containerGeneralSettingsEl, "h4", { text: "Appearance" });
 
-        new Setting(containerGeneralSettingsEl)
-            .setName("Show status inside the editor")
-            .setDesc("Reflected after reboot")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showStatusOnEditor).onChange(async (value) => {
-                    this.plugin.settings.showStatusOnEditor = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                })
-            );
-        if (this.plugin.settings.showStatusOnEditor) {
-            new Setting(containerGeneralSettingsEl)
-                .setName("Show status as icons only")
-                .setDesc("")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.showOnlyIconsOnEditor).onChange(async (value) => {
-                        this.plugin.settings.showOnlyIconsOnEditor = value;
-                        await this.plugin.saveSettings();
-                    })
-                );
-        }
-        new Setting(containerGeneralSettingsEl)
-            .setName("Show status on the status bar")
-            .setDesc("Reflected after reboot.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showStatusOnStatusbar).onChange(async (value) => {
-                    this.plugin.settings.showStatusOnStatusbar = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                })
-            );
-        containerGeneralSettingsEl.createEl("h4", { text: "Logging" });
-        new Setting(containerGeneralSettingsEl)
-            .setName("Show only notifications")
-            .setDesc("Prevent logging and show only notification")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.lessInformationInLog).onChange(async (value) => {
-                    this.plugin.settings.lessInformationInLog = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                })
-            );
-        if (!this.plugin.settings.lessInformationInLog) {
-            new Setting(containerGeneralSettingsEl)
-                .setName("Verbose Log")
-                .setDesc("Show verbose log")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.showVerboseLog).onChange(async (value) => {
-                        this.plugin.settings.showVerboseLog = value;
-                        await this.plugin.saveSettings();
-                    })
-                );
-        }
 
-        containerGeneralSettingsEl.createEl("h4", { text: "Performance tweaks" });
+        const languages = Object.fromEntries([["", "Default"], ...SUPPORTED_I18N_LANGS.map(e => [e, $t(`lang-${e}`)])]) as Record<I18N_LANGS, string>;
+        new Setting(containerGeneralSettingsEl).autoWireDropDown(
+            "displayLanguage",
+            {
+                options: languages
+            }
+        )
+        this.addOnSaved("displayLanguage", () => this.display());
+        new Setting(containerGeneralSettingsEl).autoWireToggle("showStatusOnEditor");
+        new Setting(containerGeneralSettingsEl).autoWireToggle("showOnlyIconsOnEditor",
+            { onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)) }
+        );
+        new Setting(containerGeneralSettingsEl).autoWireToggle("showStatusOnStatusbar");
+
+        this.createEl(containerGeneralSettingsEl, "h4", { text: "Logging" });
+
+        new Setting(containerGeneralSettingsEl).autoWireToggle("lessInformationInLog");
 
         new Setting(containerGeneralSettingsEl)
-            .setName("Memory cache size (by total items)")
-            .setDesc("")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.hashCacheMaxCount + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 10) {
-                            v = 10;
-                        }
-                        this.plugin.settings.hashCacheMaxCount = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
-        new Setting(containerGeneralSettingsEl)
-            .setName("Memory cache size (by total characters)")
-            .setDesc("(Mega chars)")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.hashCacheMaxAmount + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 1) {
-                            v = 1;
-                        }
-                        this.plugin.settings.hashCacheMaxAmount = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+            .autoWireToggle("showVerboseLog", { onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)) });
 
-        containerGeneralSettingsEl.createEl("h4", { text: "Share settings via markdown" });
-        let settingSyncFile = this.plugin.settings.settingSyncFile;
-        let buttonApplyFilename: ButtonComponent;
-        new Setting(containerGeneralSettingsEl)
-            .setName("Filename")
-            .setDesc("If you set this, all settings are saved in a markdown file. You will be notified when new settings arrive. You can set different files by the platform.")
-            .addText((text) => {
-                text.setPlaceholder("livesync/setting.md")
-                    .setValue(settingSyncFile)
-                    .onChange((value) => {
-                        settingSyncFile = value;
-                        if (settingSyncFile == this.plugin.settings.settingSyncFile) {
-                            buttonApplyFilename.removeCta()
-                            buttonApplyFilename.setDisabled(true);
-                        } else {
-                            buttonApplyFilename.setCta()
-                            buttonApplyFilename.setDisabled(false);
-                        }
-                    })
-            }).addButton(button => {
-                button.setButtonText("Apply")
-                    .onClick(async () => {
-                        this.plugin.settings.settingSyncFile = settingSyncFile;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    })
-                buttonApplyFilename = button;
-            })
-        new Setting(containerGeneralSettingsEl)
-            .setName("Write credentials in the file")
-            .setDesc("(Not recommended) If set, credentials will be stored in the file.")
-            .addToggle(toggle => {
-                toggle.setValue(this.plugin.settings.writeCredentialsForSettingSync)
-                    .onChange(async (value) => {
-                        this.plugin.settings.writeCredentialsForSettingSync = value;
-                        await this.plugin.saveSettings();
-                    })
-            });
-        new Setting(containerGeneralSettingsEl)
-            .setName("Notify all setting files")
-            .addToggle(toggle => {
-                toggle.setValue(this.plugin.settings.notifyAllSettingSyncFile)
-                    .onChange(async (value) => {
-                        this.plugin.settings.notifyAllSettingSyncFile = value;
-                        await this.plugin.saveSettings();
-                    })
-            });
+        this.createEl(containerGeneralSettingsEl, "h4", { text: "Performance tweaks" });
 
-        containerGeneralSettingsEl.createEl("h4", { text: "Advanced Confidentiality" });
+        new Setting(containerGeneralSettingsEl)
+            .autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
+        new Setting(containerGeneralSettingsEl)
+            .autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
+
+        this.createEl(containerGeneralSettingsEl, "h4", { text: "Share settings via markdown" });
+        new Setting(containerGeneralSettingsEl)
+            .autoWireText("settingSyncFile", { holdValue: true })
+            .addApplyButton(["settingSyncFile"])
+
+        new Setting(containerGeneralSettingsEl)
+            .autoWireToggle("writeCredentialsForSettingSync");
+
+        new Setting(containerGeneralSettingsEl)
+            .autoWireToggle("notifyAllSettingSyncFile")
+
+        this.createEl(containerGeneralSettingsEl, "h4", { text: "Advanced Confidentiality" });
 
         const passphrase_options: Record<ConfigPassphraseStore, string> = {
             "": "Default",
             LOCALSTORAGE: "Use a custom passphrase",
             ASK_AT_LAUNCH: "Ask an passphrase at every launch",
         }
+
         new Setting(containerGeneralSettingsEl)
             .setName("Encrypting sensitive configuration items")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOptions(passphrase_options)
-                    .setValue(this.plugin.settings.configPassphraseStore)
-                    .onChange(async (value) => {
-                        this.plugin.settings.configPassphraseStore = value as ConfigPassphraseStore;
-                        this.plugin.usedPassphrase = "";
-                        confPassphraseSetting.setDisabled(this.plugin.settings.configPassphraseStore != "LOCALSTORAGE");
-                        await this.plugin.saveSettings();
-                    })
-            )
+            .autoWireDropDown("configPassphraseStore", { options: passphrase_options, holdValue: true })
             .setClass("wizardHidden");
 
-
-        const confPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
-        const confPassphraseSetting = new Setting(containerGeneralSettingsEl)
-            .setName("Passphrase of sensitive configuration items")
-            .setDesc("This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(confPassphrase)
-                    .onChange(async (value) => {
-                        this.plugin.usedPassphrase = "";
-                        localStorage.setItem("ls-setting-passphrase", value);
-                        await this.plugin.saveSettings();
-                        updateE2EControls();
-                    });
-                text.inputEl.setAttribute("type", "password");
-            })
-            .setClass("wizardHidden");
-        confPassphraseSetting.setDisabled(this.plugin.settings.configPassphraseStore != "LOCALSTORAGE");
+        new Setting(containerGeneralSettingsEl)
+            .autoWireText("configPassphrase", { isPassword: true, holdValue: true })
+            .setClass("wizardHidden")
+            .addOnUpdate(() => ({
+                disabled: !this.isConfiguredAs("configPassphraseStore", "LOCALSTORAGE")
+            }))
+        new Setting(containerGeneralSettingsEl)
+            .addApplyButton(["configPassphrase", "configPassphraseStore"])
+            .setClass("wizardHidden")
 
         addScreenElement("20", containerGeneralSettingsEl);
         const containerSyncSettingEl = containerEl.createDiv();
-        containerSyncSettingEl.createEl("h3", { text: "Sync Settings" });
+        this.createEl(containerSyncSettingEl, "h3", { text: "Sync Settings" });
         // containerSyncSettingEl.addClass("wizardHidden")
 
-        if (this.plugin.settings.versionUpFlash != "") {
-            const c = containerSyncSettingEl.createEl("div", { text: this.plugin.settings.versionUpFlash });
-            c.createEl("button", { text: "I got it and updated." }, (e) => {
-                e.addClass("mod-cta");
-                e.addEventListener("click", async () => {
-                    this.plugin.settings.versionUpFlash = "";
-                    await this.plugin.saveSettings();
-                    applyDisplayEnabled();
-                    c.remove();
-                });
-            });
-            c.addClass("op-warn");
+        if (this.editingSettings.versionUpFlash != "") {
+            const c = this.createEl(containerSyncSettingEl, "div", {
+                text: this.editingSettings.versionUpFlash,
+                cls: "op-warn sls-setting-hidden"
+            }, el => {
+                this.createEl(el, "button", { text: "I got it and updated." }, (e) => {
+                    e.addClass("mod-cta");
+                    e.addEventListener("click", async () => {
+                        this.editingSettings.versionUpFlash = "";
+                        await this.saveAllDirtySettings();
+                        c.remove();
+                    });
+                })
+            }, visibleOnly(() => !this.isConfiguredAs("versionUpFlash", "")));
         }
 
+        this.createEl(containerSyncSettingEl, "div",
+            {
+                text: `Please select any preset to complete the wizard.`,
+                cls: "wizardOnly"
+            }
+        ).addClasses(["op-warn-info"]);
 
-        let currentPreset = "NONE";
-        containerSyncSettingEl.createEl("div",
-            { text: `Please select any preset to complete the wizard.` }
-        ).addClasses(["op-warn-info", "wizardOnly"]);
-        const options: Record<string, string> = this.plugin.settings.remoteType == REMOTE_COUCHDB ? {
+
+
+        const options: Record<string, string> = this.editingSettings.remoteType == REMOTE_COUCHDB ? {
             NONE: "",
             LIVESYNC: "LiveSync",
             PERIODIC: "Periodic w/ batch",
             DISABLE: "Disable all automatic"
         } : { NONE: "", PERIODIC: "Periodic w/ batch", DISABLE: "Disable all automatic" };
+
         new Setting(containerSyncSettingEl)
-            .setName("Presets")
-            .setDesc("Apply preset configuration")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOptions(options)
-                    .setValue(currentPreset)
-                    .onChange((value) => (currentPreset = value))
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Apply")
-                    .setDisabled(false)
-                    .setCta()
-                    .onClick(async () => {
-                        if (currentPreset == "") {
-                            Logger("Select any preset.", LOG_LEVEL_NOTICE);
-                            return;
-                        }
-                        const presetAllDisabled = {
-                            batchSave: false,
-                            liveSync: false,
-                            periodicReplication: false,
-                            syncOnSave: false,
-                            syncOnEditorSave: false,
-                            syncOnStart: false,
-                            syncOnFileOpen: false,
-                            syncAfterMerge: false,
-                        } as Partial<ObsidianLiveSyncSettings>;
-                        const presetLiveSync = {
-                            ...presetAllDisabled,
-                            liveSync: true
-                        } as Partial<ObsidianLiveSyncSettings>;
-                        const presetPeriodic = {
-                            ...presetAllDisabled,
-                            batchSave: true,
-                            periodicReplication: true,
-                            syncOnSave: false,
-                            syncOnEditorSave: false,
-                            syncOnStart: true,
-                            syncOnFileOpen: true,
-                            syncAfterMerge: true,
-                        } as Partial<ObsidianLiveSyncSettings>;
+            .autoWireDropDown("preset", {
+                options: options, holdValue: true,
+            }).addButton(button => {
+                button.setButtonText("Apply");
+                button.onClick(async () => {
+                    await this.saveSettings(["preset"]);
+                })
+            })
 
-                        if (currentPreset == "LIVESYNC") {
-                            this.plugin.settings = {
-                                ...this.plugin.settings,
-                                ...presetLiveSync
-                            }
-                            Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL_NOTICE);
-                        } else if (currentPreset == "PERIODIC") {
-                            this.plugin.settings = {
-                                ...this.plugin.settings,
-                                ...presetPeriodic
-                            }
-                            Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL_NOTICE);
-                        } else {
-                            Logger("All synchronizations disabled.", LOG_LEVEL_NOTICE);
-                            this.plugin.settings = {
-                                ...this.plugin.settings,
-                                ...presetAllDisabled
-                            }
-                        }
-                        await this.plugin.saveSettings();
-                        this.display();
-                        await this.plugin.realizeSettingSyncMode();
-                        if (inWizard) {
-                            this.closeSetting();
-                            if (!this.plugin.settings.isConfigured) {
-                                this.plugin.settings.isConfigured = true;
-                                await this.plugin.saveSettings();
-                                await rebuildDB("localOnly");
-                                Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
-                                await this.plugin.addOnSetup.command_copySetupURI();
-                            } else {
-                                this.plugin.askReload();
-                            }
-                        }
-                    })
-            );
+        this.addOnSaved("preset", async (currentPreset) => {
+            if (currentPreset == "") {
+                Logger("Select any preset.", LOG_LEVEL_NOTICE);
+                return;
+            }
+            const presetAllDisabled = {
+                batchSave: false,
+                liveSync: false,
+                periodicReplication: false,
+                syncOnSave: false,
+                syncOnEditorSave: false,
+                syncOnStart: false,
+                syncOnFileOpen: false,
+                syncAfterMerge: false,
+            } as Partial<ObsidianLiveSyncSettings>;
+            const presetLiveSync = {
+                ...presetAllDisabled,
+                liveSync: true
+            } as Partial<ObsidianLiveSyncSettings>;
+            const presetPeriodic = {
+                ...presetAllDisabled,
+                batchSave: true,
+                periodicReplication: true,
+                syncOnSave: false,
+                syncOnEditorSave: false,
+                syncOnStart: true,
+                syncOnFileOpen: true,
+                syncAfterMerge: true,
+            } as Partial<ObsidianLiveSyncSettings>;
 
-        containerSyncSettingEl.createEl("h4", { text: "Synchronization Methods" }).addClass("wizardHidden");
-        const syncLive: Setting[] = [];
-        const syncNonLive: Setting[] = [];
-        let syncMode = "" as "" | "PERIODIC" | "LIVESYNC";
-        if (this.plugin.settings.liveSync) {
-            syncMode = "LIVESYNC";
-        } else if (this.plugin.settings.periodicReplication) {
-            syncMode = "PERIODIC";
-        }
+            if (currentPreset == "LIVESYNC") {
+                this.editingSettings = {
+                    ...this.editingSettings,
+                    ...presetLiveSync
+                }
+                Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL_NOTICE);
+            } else if (currentPreset == "PERIODIC") {
+                this.editingSettings = {
+                    ...this.editingSettings,
+                    ...presetPeriodic
+                }
+                Logger("Synchronization setting configured as Periodic sync with batch database update.", LOG_LEVEL_NOTICE);
+            } else {
+                Logger("All synchronizations disabled.", LOG_LEVEL_NOTICE);
+                this.editingSettings = {
+                    ...this.editingSettings,
+                    ...presetAllDisabled
+                }
+            }
+            await this.saveAllDirtySettings();
+            await this.plugin.realizeSettingSyncMode();
+            if (inWizard) {
+                this.closeSetting();
+                if (!this.editingSettings.isConfigured) {
+                    this.editingSettings.isConfigured = true;
+                    await this.saveAllDirtySettings();
+                    await rebuildDB("localOnly");
+                    // this.resetEditingSettings();
+                    Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
+                    await this.plugin.addOnSetup.command_copySetupURI();
+                } else {
+                    this.plugin.askReload();
+                }
+            }
+        })
 
-        const optionsSyncMode = this.plugin.settings.remoteType == REMOTE_COUCHDB ? {
-            "": "On events",
+        this.createEl(containerSyncSettingEl, "h4", { text: "Synchronization Methods" }).addClass("wizardHidden");
+
+        // const onlyOnLiveSync = visibleOnly(() => this.isConfiguredAs("syncMode", "LIVESYNC"));
+        const onlyOnNonLiveSync = visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"));
+        const onlyOnPeriodic = visibleOnly(() => this.isConfiguredAs("syncMode", "PERIODIC"));
+
+        const optionsSyncMode = this.editingSettings.remoteType == REMOTE_COUCHDB ? {
+            "ONEVENTS": "On events",
             PERIODIC: "Periodic and On events",
             "LIVESYNC": "LiveSync"
-        } : { "": "On events", PERIODIC: "Periodic and On events" }
+        } : { "ONEVENTS": "On events", PERIODIC: "Periodic and On events" }
+
+
         new Setting(containerSyncSettingEl)
-            .setName("Sync Mode")
+            .autoWireDropDown("syncMode", {
+                //@ts-ignore
+                options: optionsSyncMode
+            })
             .setClass("wizardHidden")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOptions(optionsSyncMode as Record<string, string>)
-                    .setValue(syncMode)
-                    .onChange(async (value) => {
-                        this.plugin.settings.liveSync = false;
-                        this.plugin.settings.periodicReplication = false;
-                        if (value == "LIVESYNC") {
-                            this.plugin.settings.liveSync = true;
-                        } else if (value == "PERIODIC") {
-                            this.plugin.settings.periodicReplication = true;
-                        }
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                        await this.plugin.realizeSettingSyncMode();
-                        this.display();
-                    })
-            )
-        if (!this.plugin.settings.liveSync) {
-            if (this.plugin.settings.periodicReplication) {
-                new Setting(containerSyncSettingEl)
-                    .setName("Periodic Sync interval")
-                    .setDesc("Interval (sec)")
-                    .setClass("wizardHidden")
-                    .addText((text) => {
-                        text.setPlaceholder("")
-                            .setValue(this.plugin.settings.periodicReplicationInterval + "")
-                            .onChange(async (value) => {
-                                let v = Number(value);
-                                if (isNaN(v) || v > 5000) {
-                                    v = 0;
-                                }
-                                this.plugin.settings.periodicReplicationInterval = v;
-                                await this.plugin.saveSettings();
-                                applyDisplayEnabled();
-                            });
-                        text.inputEl.setAttribute("type", "number");
-                    })
+        this.addOnSaved("syncMode", async (value) => {
+            // debugger;
+            this.editingSettings.liveSync = false;
+            this.editingSettings.periodicReplication = false;
+            if (value == "LIVESYNC") {
+                this.editingSettings.liveSync = true;
+            } else if (value == "PERIODIC") {
+                this.editingSettings.periodicReplication = true;
             }
+            await this.saveSettings(["liveSync", "periodicReplication"]);
 
-            new Setting(containerSyncSettingEl)
-                .setName("Sync on Save")
-                .setDesc("When you save a file, sync automatically")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncOnSave).onChange(async (value) => {
-                        this.plugin.settings.syncOnSave = value;
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                    })
-                )
-            new Setting(containerSyncSettingEl)
-                .setName("Sync on Editor Save")
-                .setDesc("When you save a file in the editor, sync automatically")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncOnEditorSave).onChange(async (value) => {
-                        this.plugin.settings.syncOnEditorSave = value;
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                    })
-                )
-            new Setting(containerSyncSettingEl)
-                .setName("Sync on File Open")
-                .setDesc("When you open a file, sync automatically")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncOnFileOpen).onChange(async (value) => {
-                        this.plugin.settings.syncOnFileOpen = value;
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                    })
-                )
-            new Setting(containerSyncSettingEl)
-                .setName("Sync on Start")
-                .setDesc("Start synchronization after launching Obsidian.")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (value) => {
-                        this.plugin.settings.syncOnStart = value;
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                    })
-                )
-            new Setting(containerSyncSettingEl)
-                .setName("Sync after merging file")
-                .setDesc("Sync automatically after merging files")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncAfterMerge).onChange(async (value) => {
-                        this.plugin.settings.syncAfterMerge = value;
-                        await this.plugin.saveSettings();
-                        applyDisplayEnabled();
-                    })
-                )
-        }
-        containerSyncSettingEl.createEl("h4", { text: "Deletions propagation" }).addClass("wizardHidden")
-        new Setting(containerSyncSettingEl)
-            .setName("Use the trash bin")
-            .setDesc("Do not delete files that are deleted in remote, just move to trash.")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.trashInsteadDelete).onChange(async (value) => {
-                    this.plugin.settings.trashInsteadDelete = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            await this.plugin.realizeSettingSyncMode();
+        })
 
         new Setting(containerSyncSettingEl)
-            .setName("Keep empty folder")
-            .setDesc("Normally, a folder is deleted when it becomes empty after a synchronization. Enabling this will prevent it from getting deleted")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.doNotDeleteFolder).onChange(async (value) => {
-                    this.plugin.settings.doNotDeleteFolder = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireNumeric("periodicReplicationInterval",
+                { clampMax: 5000, onUpdate: onlyOnPeriodic }
+            ).setClass("wizardHidden")
 
-        containerSyncSettingEl.createEl("h4", { text: "Conflict resolution" }).addClass("wizardHidden");
 
         new Setting(containerSyncSettingEl)
-            .setName("Always overwrite with a newer file (beta)")
-            .setDesc("(Def off) Resolve conflicts by newer files automatically.")
             .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.resolveConflictsByNewerFile).onChange(async (value) => {
-                    this.plugin.settings.resolveConflictsByNewerFile = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("syncOnSave", { onUpdate: onlyOnNonLiveSync })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("syncOnEditorSave", { onUpdate: onlyOnNonLiveSync })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync })
+        this.createEl(containerSyncSettingEl, "h4", { text: "Deletions propagation" }).addClass("wizardHidden")
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("trashInsteadDelete")
 
         new Setting(containerSyncSettingEl)
-            .setName("Postpone resolution of inactive files")
             .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.checkConflictOnlyOnOpen).onChange(async (value) => {
-                    this.plugin.settings.checkConflictOnlyOnOpen = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerSyncSettingEl)
-            .setName("Postpone manual resolution of inactive files")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showMergeDialogOnlyOnActive).onChange(async (value) => {
-                    this.plugin.settings.showMergeDialogOnlyOnActive = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        containerSyncSettingEl.createEl("h4", { text: "Compatibility" }).addClass("wizardHidden");
-        new Setting(containerSyncSettingEl)
-            .setName("Always resolve conflicts manually")
-            .setDesc("If this switch is turned on, a merge dialog will be displayed, even if the sensible-merge is possible automatically. (Turn on to previous behavior)")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.disableMarkdownAutoMerge).onChange(async (value) => {
-                    this.plugin.settings.disableMarkdownAutoMerge = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerSyncSettingEl)
-            .setName("Always reflect synchronized changes even if the note has a conflict")
-            .setDesc("Turn on to previous behavior")
-            .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.writeDocumentsIfConflicted).onChange(async (value) => {
-                    this.plugin.settings.writeDocumentsIfConflicted = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("doNotDeleteFolder")
 
-        containerSyncSettingEl.createEl("h4", { text: "Hidden files" }).addClass("wizardHidden");
+        this.createEl(containerSyncSettingEl, "h4", { text: "Conflict resolution" }).addClass("wizardHidden");
+
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("resolveConflictsByNewerFile")
+
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("checkConflictOnlyOnOpen")
+
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("showMergeDialogOnlyOnActive")
+        this.createEl(containerSyncSettingEl, "h4", { text: "Compatibility" }).addClass("wizardHidden");
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("disableMarkdownAutoMerge")
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("writeDocumentsIfConflicted")
+
+        this.createEl(containerSyncSettingEl, "h4", { text: "Hidden files" }).addClass("wizardHidden");
         const LABEL_ENABLED = "🔁 : Enabled";
         const LABEL_DISABLED = "⏹️ : Disabled"
 
@@ -1512,17 +1624,17 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             .setName("Hidden file synchronization").setClass("wizardHidden")
         const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl
         const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
-        hiddenFileSyncSettingDiv.innerText = this.plugin.settings.syncInternalFiles ? LABEL_ENABLED : LABEL_DISABLED;
+        hiddenFileSyncSettingDiv.innerText = this.editingSettings.syncInternalFiles ? LABEL_ENABLED : LABEL_DISABLED;
 
-        if (this.plugin.settings.syncInternalFiles) {
+        if (this.editingSettings.syncInternalFiles) {
             new Setting(containerSyncSettingEl)
                 .setName("Disable Hidden files sync")
                 .setClass("wizardHidden")
                 .addButton((button) => {
                     button.setButtonText("Disable")
                         .onClick(async () => {
-                            this.plugin.settings.syncInternalFiles = false;
-                            await this.plugin.saveSettings();
+                            this.editingSettings.syncInternalFiles = false;
+                            await this.saveAllDirtySettings();
                             this.display();
                         })
                 })
@@ -1535,6 +1647,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     button.setButtonText("Merge")
                         .onClick(async () => {
                             this.closeSetting()
+                            // this.resetEditingSettings();
                             await this.plugin.addOnSetup.configureHiddenFileSync("MERGE");
                         })
                 })
@@ -1542,6 +1655,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     button.setButtonText("Fetch")
                         .onClick(async () => {
                             this.closeSetting()
+                            // this.resetEditingSettings();
                             await this.plugin.addOnSetup.configureHiddenFileSync("FETCH");
                         })
                 })
@@ -1549,43 +1663,27 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     button.setButtonText("Overwrite")
                         .onClick(async () => {
                             this.closeSetting()
+                            // this.resetEditingSettings();
                             await this.plugin.addOnSetup.configureHiddenFileSync("OVERWRITE");
                         })
                 });
         }
 
-        if (!this.plugin.settings.watchInternalFileChanges) {
-            new Setting(containerSyncSettingEl)
-                .setName("Scan for hidden files before replication")
-                .setClass("wizardHidden")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.syncInternalFilesBeforeReplication).onChange(async (value) => {
-                        this.plugin.settings.syncInternalFilesBeforeReplication = value;
-                        await this.plugin.saveSettings();
-                    })
-                );
-        }
         new Setting(containerSyncSettingEl)
-            .setName("Scan hidden files periodically")
-            .setDesc("Seconds, 0 to disable")
             .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.syncInternalFilesInterval + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (v !== 0 && (isNaN(v) || v < 10)) {
-                            v = 10;
-                        }
-                        this.plugin.settings.syncInternalFilesInterval = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+            .autoWireToggle("syncInternalFilesBeforeReplication",
+                { onUpdate: visibleOnly(() => this.isConfiguredAs("watchInternalFileChanges", false)) }
+            )
+
+        // }
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("syncInternalFilesInterval", { clampMin: 10, acceptZero: true })
+
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, ^\\.git\\/, \\/obsidian-livesync\\/";
         const defaultSkipPatternXPlat = defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
 
-        const pat = this.plugin.settings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
+        const pat = this.editingSettings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
         const patSetting = new Setting(containerSyncSettingEl)
             .setName("Hidden files ignore patterns")
             .setClass("wizardHidden")
@@ -1596,8 +1694,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 target: patSetting.controlEl,
                 props: {
                     patterns: pat, originals: [...pat], apply: async (newPatterns) => {
-                        this.plugin.settings.syncInternalFilesIgnorePatterns = newPatterns.map(e => e.trim()).filter(e => e != "").join(", ");
-                        await this.plugin.saveSettings();
+                        this.editingSettings.syncInternalFilesIgnorePatterns = newPatterns.map(e => e.trim()).filter(e => e != "").join(", ");
+                        await this.saveAllDirtySettings();
                         this.display();
                     }
                 }
@@ -1605,11 +1703,11 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         )
 
         const addDefaultPatterns = async (patterns: string) => {
-            const oldList = this.plugin.settings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
+            const oldList = this.editingSettings.syncInternalFilesIgnorePatterns.split(",").map(x => x.trim()).filter(x => x != "");
             const newList = patterns.split(",").map(x => x.trim()).filter(x => x != "");
             const allSet = new Set([...oldList, ...newList]);
-            this.plugin.settings.syncInternalFilesIgnorePatterns = [...allSet].join(", ");
-            await this.plugin.saveSettings();
+            this.editingSettings.syncInternalFilesIgnorePatterns = [...allSet].join(", ");
+            await this.saveAllDirtySettings();
             this.display();
         }
 
@@ -1629,53 +1727,20 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             })
 
 
-        containerSyncSettingEl.createEl("h4", { text: "Performance tweaks" }).addClass("wizardHidden");
+        this.createEl(containerSyncSettingEl, "h4", { text: "Performance tweaks" }).addClass("wizardHidden");
         new Setting(containerSyncSettingEl)
-            .setName("Batch database update")
-            .setDesc("Reducing the frequency with which on-disk changes are reflected into the DB")
             .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.batchSave).onChange(async (value) => {
-                    this.plugin.settings.batchSave = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("batchSave")
 
         new Setting(containerSyncSettingEl)
-            .setName(confName("customChunkSize"))
-            .setDesc("Enhance chunk size for binary files (Ratio). This cannot be increased when using IBM Cloudant.")
             .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.customChunkSize + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 1) {
-                            v = 0;
-                        }
-                        this.plugin.settings.customChunkSize = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+            .autoWireNumeric("customChunkSize", { clampMin: 0 })
 
-        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
-            new Setting(containerSyncSettingEl)
-                .setName("Fetch chunks on demand")
-                .setDesc("(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.")
-                .setClass("wizardHidden")
-                .addToggle((toggle) => {
-                    toggle
-                        .setValue(this.plugin.settings.readChunksOnline)
-                        .onChange(async (value) => {
-                            this.plugin.settings.readChunksOnline = value;
-                            await this.plugin.saveSettings();
-                        })
-                    return toggle;
-                });
-        }
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB })
 
-        containerSyncSettingEl.createEl("h4", {
+        this.createEl(containerSyncSettingEl, "h4", {
             text: sanitizeHTMLToDom(`Targets`),
         }).addClass("wizardHidden");
 
@@ -1687,11 +1752,11 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             {
                 target: syncFilesSetting.controlEl,
                 props: {
-                    patterns: this.plugin.settings.syncOnlyRegEx.split("|[]|"),
-                    originals: [...this.plugin.settings.syncOnlyRegEx.split("|[]|")],
+                    patterns: this.editingSettings.syncOnlyRegEx.split("|[]|"),
+                    originals: [...this.editingSettings.syncOnlyRegEx.split("|[]|")],
                     apply: async (newPatterns) => {
-                        this.plugin.settings.syncOnlyRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
-                        await this.plugin.saveSettings();
+                        this.editingSettings.syncOnlyRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
+                        await this.saveAllDirtySettings();
                         this.display();
                     }
                 }
@@ -1707,163 +1772,57 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             {
                 target: nonSyncFilesSetting.controlEl,
                 props: {
-                    patterns: this.plugin.settings.syncIgnoreRegEx.split("|[]|"),
-                    originals: [...this.plugin.settings.syncIgnoreRegEx.split("|[]|")],
+                    patterns: this.editingSettings.syncIgnoreRegEx.split("|[]|"),
+                    originals: [...this.editingSettings.syncIgnoreRegEx.split("|[]|")],
                     apply: async (newPatterns) => {
-                        this.plugin.settings.syncIgnoreRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
-                        await this.plugin.saveSettings();
+                        this.editingSettings.syncIgnoreRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
+                        await this.saveAllDirtySettings();
                         this.display();
                     }
                 }
             }
         )
         new Setting(containerSyncSettingEl)
-            .setName("Maximum file size")
-            .setDesc("(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.")
             .setClass("wizardHidden")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(this.plugin.settings.syncMaxSizeInMB + "")
-                    .onChange(async (value) => {
-                        let v = Number(value);
-                        if (isNaN(v) || v < 1) {
-                            v = 0;
-                        }
-                        this.plugin.settings.syncMaxSizeInMB = v;
-                        await this.plugin.saveSettings();
-                    });
-                text.inputEl.setAttribute("type", "number");
-            });
+            .autoWireNumeric("syncMaxSizeInMB", { clampMin: 0 })
+
         new Setting(containerSyncSettingEl)
-            .setName("(Beta) Use ignore files")
-            .setDesc("If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.")
             .setClass("wizardHidden")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.useIgnoreFiles)
-                    .onChange(async (value) => {
-                        this.plugin.settings.useIgnoreFiles = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    })
-                return toggle;
-            }
-            );
-        if (this.plugin.settings.useIgnoreFiles) {
-            new Setting(containerSyncSettingEl)
-                .setName("Ignore files")
-                .setDesc("We can use multiple ignore files, e.g.) `.gitignore, .dockerignore`")
-                .setClass("wizardHidden")
-                .addTextArea((text) => {
-                    text
-                        .setValue(this.plugin.settings.ignoreFiles)
-                        .setPlaceholder(".gitignore, .dockerignore")
-                        .onChange(async (value) => {
-                            this.plugin.settings.ignoreFiles = value;
-                            await this.plugin.saveSettings();
-                        })
-                    return text;
-                }
-                );
-        }
+            .autoWireToggle("useIgnoreFiles")
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireTextArea("ignoreFiles", { onUpdate: visibleOnly(() => this.isConfiguredAs("useIgnoreFiles", true)) });
 
-        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
-            containerSyncSettingEl.createEl("h4", {
-                text: sanitizeHTMLToDom(`Advanced settings`),
-            }).addClass("wizardHidden");
-            containerSyncSettingEl.createEl("div", {
-                text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
-            }).addClass("wizardHidden");
-            new Setting(containerSyncSettingEl)
-                .setName("Batch size")
-                .setDesc("Number of change feed items to process at a time. Defaults to 50. Minimum is 2.")
-                .setClass("wizardHidden")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.batch_size + "")
-                        .onChange(async (value) => {
-                            let v = Number(value);
-                            if (isNaN(v) || v < 2) {
-                                v = 2;
-                            }
-                            this.plugin.settings.batch_size = v;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "number");
-                });
+        this.createEl(containerSyncSettingEl, "h4", {
+            text: sanitizeHTMLToDom(`Advanced settings`),
+        }, undefined, onlyOnCouchDB).addClass("wizardHidden");
 
-            new Setting(containerSyncSettingEl)
-                .setName("Batch limit")
-                .setDesc("Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.")
-                .setClass("wizardHidden")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.batches_limit + "")
-                        .onChange(async (value) => {
-                            let v = Number(value);
-                            if (isNaN(v) || v < 2) {
-                                v = 2;
-                            }
-                            this.plugin.settings.batches_limit = v;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "number");
-                });
+        this.createEl(containerSyncSettingEl, "div", {
+            text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
+        }, undefined, onlyOnCouchDB).addClass("wizardHidden");
 
-            new Setting(containerSyncSettingEl)
-                .setName("Use timeouts instead of heartbeats")
-                .setDesc("If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.")
-                .setClass("wizardHidden")
-                .addToggle((toggle) => {
-                    toggle
-                        .setValue(this.plugin.settings.useTimeouts)
-                        .onChange(async (value) => {
-                            this.plugin.settings.useTimeouts = value;
-                            await this.plugin.saveSettings();
-                        })
-                    return toggle;
-                }
-                );
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("batch_size", { clampMin: 2, onUpdate: onlyOnCouchDB })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("batches_limit", { clampMin: 2, onUpdate: onlyOnCouchDB })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("useTimeouts", { onUpdate: onlyOnCouchDB });
 
-            new Setting(containerSyncSettingEl)
-                .setName("Batch size of on-demand fetching")
-                .setDesc("")
-                .setClass("wizardHidden")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.concurrencyOfReadChunksOnline + "")
-                        .onChange(async (value) => {
-                            let v = Number(value);
-                            if (isNaN(v) || v < 10) {
-                                v = 10;
-                            }
-                            this.plugin.settings.concurrencyOfReadChunksOnline = v;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "number");
-                });
-            new Setting(containerSyncSettingEl)
-                .setName("The delay for consecutive on-demand fetches")
-                .setDesc("")
-                .setClass("wizardHidden")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.minimumIntervalOfReadChunksOnline + "")
-                        .onChange(async (value) => {
-                            let v = Number(value);
-                            if (isNaN(v) || v < 10) {
-                                v = 10;
-                            }
-                            this.plugin.settings.minimumIntervalOfReadChunksOnline = v;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "number");
-                });
-        }
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("concurrencyOfReadChunksOnline", { clampMin: 10, onUpdate: onlyOnCouchDB })
+
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("minimumIntervalOfReadChunksOnline", { clampMin: 10, onUpdate: onlyOnCouchDB })
+
         addScreenElement("30", containerSyncSettingEl);
         const containerHatchEl = containerEl.createDiv();
 
-        containerHatchEl.createEl("h3", { text: "Hatch" });
+        this.createEl(containerHatchEl, "h3", { text: "Hatch" });
 
 
         new Setting(containerHatchEl)
@@ -1875,9 +1834,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     .onClick(async () => {
                         let responseConfig: any = {};
                         const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
-                        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
+                        if (this.editingSettings.remoteType == REMOTE_COUCHDB) {
                             try {
-                                const r = await requestToCouchDB(this.plugin.settings.couchDB_URI, this.plugin.settings.couchDB_USER, this.plugin.settings.couchDB_PASSWORD, window.origin);
+                                const r = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, window.origin);
 
                                 Logger(JSON.stringify(r.json, null, 2));
 
@@ -1891,11 +1850,11 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             } catch (ex) {
                                 responseConfig = "Requesting information from the remote CouchDB has failed. If you are using IBM Cloudant, this is normal behaviour."
                             }
-                        } else if (this.plugin.settings.remoteType == REMOTE_MINIO) {
+                        } else if (this.editingSettings.remoteType == REMOTE_MINIO) {
                             responseConfig = "Object Storage Synchronisation";
                             //
                         }
-                        const pluginConfig = JSON.parse(JSON.stringify(this.plugin.settings)) as ObsidianLiveSyncSettings;
+                        const pluginConfig = JSON.parse(JSON.stringify(this.editingSettings)) as ObsidianLiveSyncSettings;
                         pluginConfig.couchDB_DBNAME = REDACTED;
                         pluginConfig.couchDB_PASSWORD = REDACTED;
                         const scheme = pluginConfig.couchDB_URI.startsWith("http:") ? "(HTTP)" : (pluginConfig.couchDB_URI.startsWith("https:")) ? "(HTTPS)" : ""
@@ -1930,11 +1889,11 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             );
 
-        if (this.plugin.replicator.remoteLockedAndDeviceNotAccepted) {
-            const c = containerHatchEl.createEl("div", {
+        if (this.plugin?.replicator?.remoteLockedAndDeviceNotAccepted) {
+            const c = this.createEl(containerHatchEl, "div", {
                 text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. It caused by some operations like this. Re-initialized. Local database initialization should be required. Please back your vault up, reset the local database, and press 'Mark this device as resolved'. ",
             });
-            c.createEl("button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
+            this.createEl(c, "button", { text: "I'm ready, mark this device 'resolved'" }, (e) => {
                 e.addClass("mod-warning");
                 e.addEventListener("click", async () => {
                     await this.plugin.markRemoteResolved();
@@ -1943,11 +1902,11 @@ ${stringifyYaml(pluginConfig)}`;
             });
             c.addClass("op-warn");
         } else {
-            if (this.plugin.replicator.remoteLocked) {
-                const c = containerHatchEl.createEl("div", {
+            if (this.plugin?.replicator?.remoteLocked) {
+                const c = this.createEl(containerHatchEl, "div", {
                     text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
                 });
-                c.createEl("button", { text: "I'm ready, unlock the database" }, (e) => {
+                this.createEl(c, "button", { text: "I'm ready, unlock the database" }, (e) => {
                     e.addClass("mod-warning");
                     e.addEventListener("click", async () => {
                         await this.plugin.markRemoteUnlocked();
@@ -1965,30 +1924,30 @@ ${stringifyYaml(pluginConfig)}`;
                     .setButtonText("Back")
                     .setDisabled(false)
                     .onClick(async () => {
-                        this.plugin.settings.isConfigured = false;
-                        await this.plugin.saveSettings();
+                        this.editingSettings.isConfigured = false;
+                        await this.saveAllDirtySettings();
                         this.plugin.askReload();
                     }));
-        const hatchWarn = containerHatchEl.createEl("div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
+        const hatchWarn = this.createEl(containerHatchEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
         hatchWarn.addClass("op-warn-info");
 
 
         const addResult = (path: string, file: TFile | false, fileOnDB: LoadedEntry | false) => {
-            resultArea.appendChild(resultArea.createEl("div", {}, el => {
-                el.appendChild(el.createEl("h6", { text: path }));
-                el.appendChild(el.createEl("div", {}, infoGroupEl => {
-                    infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Storage : Modified: ${!file ? `Missing:` : `${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}`}` }))
-                    infoGroupEl.appendChild(infoGroupEl.createEl("div", { text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size}`}` }))
+            resultArea.appendChild(this.createEl(resultArea, "div", {}, el => {
+                el.appendChild(this.createEl(el, "h6", { text: path }));
+                el.appendChild(this.createEl(el, "div", {}, infoGroupEl => {
+                    infoGroupEl.appendChild(this.createEl(infoGroupEl, "div", { text: `Storage : Modified: ${!file ? `Missing:` : `${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}`}` }))
+                    infoGroupEl.appendChild(this.createEl(infoGroupEl, "div", { text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size}`}` }))
                 }));
                 if (fileOnDB && file) {
-                    el.appendChild(el.createEl("button", { text: "Show history" }, buttonEl => {
+                    el.appendChild(this.createEl(el, "button", { text: "Show history" }, buttonEl => {
                         buttonEl.onClickEvent(() => {
                             this.plugin.showHistory(file, fileOnDB._id);
                         })
                     }))
                 }
                 if (file) {
-                    el.appendChild(el.createEl("button", { text: "Storage -> Database" }, buttonEl => {
+                    el.appendChild(this.createEl(el, "button", { text: "Storage -> Database" }, buttonEl => {
                         buttonEl.onClickEvent(() => {
                             this.plugin.updateIntoDB(file, undefined, true);
                             el.remove();
@@ -1996,7 +1955,7 @@ ${stringifyYaml(pluginConfig)}`;
                     }))
                 }
                 if (fileOnDB) {
-                    el.appendChild(el.createEl("button", { text: "Database -> Storage" }, buttonEl => {
+                    el.appendChild(this.createEl(el, "button", { text: "Database -> Storage" }, buttonEl => {
                         buttonEl.onClickEvent(() => {
                             this.plugin.pullFile(this.plugin.getPath(fileOnDB), [], true, undefined, false);
                             el.remove();
@@ -2151,284 +2110,146 @@ ${stringifyYaml(pluginConfig)}`;
                         // Do not care about the result.
                         Logger(`${r.length} items have been removed, to confirm how many items are left, please perform it again.`, LOG_LEVEL_NOTICE);
                     }))
-        new Setting(containerHatchEl)
-            .setName("Suspend file watching")
-            .setDesc("Stop watching for file change.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.suspendFileWatching).onChange(async (value) => {
-                    this.plugin.settings.suspendFileWatching = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.askReload();
-                })
-            );
-        new Setting(containerHatchEl)
-            .setName("Suspend database reflecting")
-            .setDesc("Stop reflecting database changes to storage files.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.suspendParseReplicationResult).onChange(async (value) => {
-                    this.plugin.settings.suspendParseReplicationResult = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.askReload();
-                })
-            );
-        new Setting(containerHatchEl)
-            .setName("Write logs into the file")
-            .setDesc("Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.writeLogToTheFile).onChange(async (value) => {
-                    this.plugin.settings.writeLogToTheFile = value;
-                    await this.plugin.saveSettings();
-                })
-            );
 
-        // new Setting(containerHatchEl)
-        //     .setName("Do not pace synchronization")
-        //     .setDesc("If this toggle enabled, synchronisation will not be paced by queued entries. If synchronisation has been deadlocked, please make this enabled once.")
-        //     .addToggle((toggle) =>
-        //         toggle.setValue(this.plugin.settings.doNotPaceReplication).onChange(async (value) => {
-        //             this.plugin.settings.doNotPaceReplication = value;
-        //             await this.plugin.saveSettings();
-        //         })
-        //     );
-        containerHatchEl.createEl("h4", {
+
+        new Setting(containerHatchEl)
+            .autoWireToggle("suspendFileWatching")
+        this.addOnSaved("suspendFileWatching", () => this.plugin.askReload());
+
+        new Setting(containerHatchEl)
+            .autoWireToggle("suspendParseReplicationResult")
+        this.addOnSaved("suspendParseReplicationResult", () => this.plugin.askReload());
+
+        new Setting(containerHatchEl)
+            .autoWireToggle("writeLogToTheFile")
+
+        this.createEl(containerHatchEl, "h4", {
             text: sanitizeHTMLToDom(`Compatibility`),
             cls: "wizardHidden"
         });
 
         new Setting(containerHatchEl)
-            .setName("Do not keep metadata of deleted files.")
             .setClass("wizardHidden")
-            .addToggle((toggle) => {
-                toggle.setValue(this.plugin.settings.deleteMetadataOfDeletedFiles).onChange(async (value) => {
-                    this.plugin.settings.deleteMetadataOfDeletedFiles = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                })
-            }
-            );
-
-        if (this.plugin.settings.deleteMetadataOfDeletedFiles) {
-            new Setting(containerHatchEl)
-                .setName("Delete old metadata of deleted files on start-up")
-                .setClass("wizardHidden")
-                .setDesc("(Days passed, 0 to disable automatic-deletion)")
-                .addText((text) => {
-                    text.setPlaceholder("")
-                        .setValue(this.plugin.settings.automaticallyDeleteMetadataOfDeletedFiles + "")
-                        .onChange(async (value) => {
-                            let v = Number(value);
-                            if (isNaN(v)) {
-                                v = 0;
-                            }
-                            this.plugin.settings.automaticallyDeleteMetadataOfDeletedFiles = v;
-                            await this.plugin.saveSettings();
-                        });
-                    text.inputEl.setAttribute("type", "number");
-                });
-        }
-
+            .autoWireToggle("deleteMetadataOfDeletedFiles")
 
         new Setting(containerHatchEl)
-            .setName("Use an old adapter for compatibility")
-            .setDesc("Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.")
             .setClass("wizardHidden")
-            .addToggle((toggle) =>
-                toggle.setValue(!this.plugin.settings.useIndexedDBAdapter).onChange(async (value) => {
-                    this.plugin.settings.useIndexedDBAdapter = !value;
-                    await this.plugin.saveSettings();
-                    await rebuildDB("localOnly");
-                })
-            );
+            .autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", { onUpdate: visibleOnly(() => this.isConfiguredAs("deleteMetadataOfDeletedFiles", true)) })
+
 
         new Setting(containerHatchEl)
-            .setName("Scan changes on customization sync")
-            .setDesc("Do not use internal API")
-            .addToggle((toggle) =>
-                toggle.setValue(!this.plugin.settings.watchInternalFileChanges).onChange(async (value) => {
-                    this.plugin.settings.watchInternalFileChanges = !value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("useIndexedDBAdapter", { invert: true })
 
-        let newDatabaseName = this.plugin.settings.additionalSuffixOfDatabaseName + "";
+        this.addOnSaved("useIndexedDBAdapter", async () => {
+            await this.saveAllDirtySettings();
+            await rebuildDB("localOnly");
+        })
+
         new Setting(containerHatchEl)
-            .setName("Database suffix")
-            .setDesc("LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.")
-            .addText((text) => {
-                text.setPlaceholder("")
-                    .setValue(newDatabaseName)
-                    .onChange((value) => {
-                        newDatabaseName = value;
+            .autoWireToggle("watchInternalFileChanges", { invert: true })
 
-                    });
-            }).addButton((button) => {
-                button.setButtonText("Change")
-                    .onClick(async () => {
-                        if (this.plugin.settings.additionalSuffixOfDatabaseName == newDatabaseName) {
-                            Logger("Suffix was not changed.", LOG_LEVEL_NOTICE);
-                            return;
-                        }
-                        this.plugin.settings.additionalSuffixOfDatabaseName = newDatabaseName;
-                        await this.plugin.saveSettings();
-                        Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
-                        await this.plugin.initializeDatabase();
-                    })
+        new Setting(containerHatchEl)
+            .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
+            .addApplyButton(["additionalSuffixOfDatabaseName"]);
+
+        this.addOnSaved("additionalSuffixOfDatabaseName", async (key) => {
+            Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
+            await this.plugin.initializeDatabase();
+        })
+
+        new Setting(containerHatchEl)
+            .autoWireDropDown("hashAlg", {
+                options: {
+                    "": "Old Algorithm",
+                    "xxhash32": "xxhash32 (Fast)",
+                    "xxhash64": "xxhash64 (Fastest)",
+                    "sha1": "Fallback (Without WebAssembly)"
+                } as Record<HashAlgorithm, string>
             })
-
-        new Setting(containerHatchEl)
-            .setName(confName("hashAlg"))
-            .setDesc("xxhash64 is the current default.")
-            .setClass("wizardHidden")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOptions({
-                        "": "Old Algorithm",
-                        "xxhash32": "xxhash32 (Fast)",
-                        "xxhash64": "xxhash64 (Fastest)",
-                        "sha1": "Fallback (Without WebAssembly)"
-                    } as Record<HashAlgorithm, string>)
-                    .setValue(this.plugin.settings.hashAlg)
-                    .onChange(async (value) => {
-                        this.plugin.settings.hashAlg = value as HashAlgorithm;
-                        await this.plugin.saveSettings();
-                    })
-            )
-            .setClass("wizardHidden");
+        this.addOnSaved("hashAlg", async () => {
+            await this.plugin.localDatabase.prepareHashFunctions();
+        })
 
 
         new Setting(containerHatchEl)
-            .setName("Fetch database with previous behaviour")
-            .setDesc("")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.doNotSuspendOnFetching).onChange(async (value) => {
-                    this.plugin.settings.doNotSuspendOnFetching = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("doNotSuspendOnFetching")
         new Setting(containerHatchEl)
-            .setName("Do not check configuration mismatch before replication")
-            .setDesc("")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.disableCheckingConfigMismatch).onChange(async (value) => {
-                    this.plugin.settings.disableCheckingConfigMismatch = value;
-                    await this.plugin.saveSettings();
-                })
-            );
+            .autoWireToggle("disableCheckingConfigMismatch")
+
         addScreenElement("50", containerHatchEl);
 
 
         // With great respect, thank you TfTHacker!
         // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         const containerPluginSettings = containerEl.createDiv();
-        containerPluginSettings.createEl("h3", { text: "Customization sync (beta)" });
+        this.createEl(containerPluginSettings, "h3", { text: "Customization sync (beta)" });
 
-        const vaultName = new Setting(containerPluginSettings)
-            .setName("Device name")
-            .setDesc("Unique name between all synchronized devices. To edit this setting, please disable customization sync once.")
-            .addText((text) => {
-                text.setPlaceholder("desktop")
-                    .setValue(this.plugin.deviceAndVaultName)
-                    .onChange(async (value) => {
-                        this.plugin.deviceAndVaultName = value;
-                        await this.plugin.saveSettings();
-                    });
-                // text.inputEl.setAttribute("type", "password");
+        const enableOnlyOnPluginSyncIsNotEnabled = enableOnly(() => this.isConfiguredAs("usePluginSync", false));
+        const visibleOnlyOnPluginSyncEnabled = visibleOnly(() => this.isConfiguredAs("usePluginSync", true));
+
+        new Setting(containerPluginSettings)
+            .autoWireText("deviceAndVaultName", {
+                placeHolder: "desktop",
+                onUpdate: enableOnlyOnPluginSyncIsNotEnabled
             });
-        const updateDisabledOfDeviceAndVaultName = () => {
-            vaultName.setDisabled(this.plugin.settings.usePluginSync);
-            // vaultName.setTooltip(this.plugin.settings.autoSweepPlugins || this.plugin.settings.autoSweepPluginsPeriodic ? "You could not change when you enabling auto scan." : "");
-        };
-        updateDisabledOfDeviceAndVaultName();
-        new Setting(containerPluginSettings).setName("Enable customization sync").addToggle((toggle) =>
-            toggle.setValue(this.plugin.settings.usePluginSync).onChange(async (value) => {
-                if (value && this.plugin.deviceAndVaultName.trim() == "") {
-                    Logger("We have to configure `Device name` to use this feature.", LOG_LEVEL_NOTICE);
-                    toggle.setValue(false);
-                    return false;
-                }
-                this.plugin.settings.usePluginSync = value;
-                this.display();
-                await this.plugin.saveSettings();
+
+        new Setting(containerPluginSettings)
+            .autoWireToggle("usePluginSync", {
+                onUpdate: enableOnly(() => !this.isConfiguredAs("deviceAndVaultName", ""))
+            });
+
+        new Setting(containerPluginSettings)
+            .autoWireToggle("autoSweepPlugins", {
+                onUpdate: visibleOnlyOnPluginSyncEnabled
             })
-        );
 
-        if (this.plugin.settings.usePluginSync) {
-            new Setting(containerPluginSettings)
-                .setName("Scan customization automatically")
-                .setDesc("Scan customization before replicating.")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.autoSweepPlugins).onChange(async (value) => {
-                        this.plugin.settings.autoSweepPlugins = value;
-                        updateDisabledOfDeviceAndVaultName();
-                        await this.plugin.saveSettings();
-                    })
-                );
+        new Setting(containerPluginSettings)
+            .autoWireToggle("autoSweepPluginsPeriodic", {
+                onUpdate: visibleOnly(() => this.isConfiguredAs("usePluginSync", true) && this.isConfiguredAs("autoSweepPlugins", true))
+            })
+        new Setting(containerPluginSettings)
+            .autoWireToggle("notifyPluginOrSettingUpdated", {
+                onUpdate: visibleOnlyOnPluginSyncEnabled
+            })
 
-            if (!this.plugin.settings.watchInternalFileChanges) {
-                new Setting(containerPluginSettings)
-                    .setName("Scan customization periodically")
-                    .setDesc("Scan customization every 1 minute.")
-                    .addToggle((toggle) =>
-                        toggle.setValue(this.plugin.settings.autoSweepPluginsPeriodic).onChange(async (value) => {
-                            this.plugin.settings.autoSweepPluginsPeriodic = value;
-                            updateDisabledOfDeviceAndVaultName();
-                            await this.plugin.saveSettings();
-                        })
-                    );
-            }
-
-            new Setting(containerPluginSettings)
-                .setName("Notify customized")
-                .setDesc("Notify when other device has newly customized.")
-                .addToggle((toggle) =>
-                    toggle.setValue(this.plugin.settings.notifyPluginOrSettingUpdated).onChange(async (value) => {
-                        this.plugin.settings.notifyPluginOrSettingUpdated = value;
-                        await this.plugin.saveSettings();
-                    })
-                );
-
-            new Setting(containerPluginSettings)
-                .setName("Open")
-                .setDesc("Open the dialog")
-                .addButton((button) => {
-                    button
-                        .setButtonText("Open")
-                        .setDisabled(false)
-                        .onClick(() => {
-                            this.plugin.addOnConfigSync.showPluginSyncModal();
-                        });
-                });
-        }
-
-        updateDisabledOfDeviceAndVaultName();
+        new Setting(containerPluginSettings)
+            .setName("Open")
+            .setDesc("Open the dialog")
+            .addButton((button) => {
+                button
+                    .setButtonText("Open")
+                    .setDisabled(false)
+                    .onClick(() => {
+                        this.plugin.addOnConfigSync.showPluginSyncModal();
+                    });
+            })
+            .addOnUpdate(visibleOnlyOnPluginSyncEnabled);
 
         addScreenElement("60", containerPluginSettings);
 
         const containerMaintenanceEl = containerEl.createDiv();
 
-        containerMaintenanceEl.createEl("h3", { text: "Maintenance" });
+        this.createEl(containerMaintenanceEl, "h3", { text: "Maintenance" });
 
-        containerMaintenanceEl.createEl("h4", { text: "Remote" });
+        this.createEl(containerMaintenanceEl, "h4", { text: "Remote" });
 
-        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
-            new Setting(containerMaintenanceEl)
-                .setName("Perform compaction")
-                .setDesc("Compaction discards all of Eden in the non-latest revisions, reducing the storage usage. However, this operation requires the same free space on the remote as the current database.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Perform")
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
-                            Logger(`Compaction has been began`, LOG_LEVEL_NOTICE, "compaction")
-                            if (await replicator.compactRemote(this.plugin.settings)) {
-                                Logger(`Compaction has been completed!`, LOG_LEVEL_NOTICE, "compaction");
-                            } else {
-                                Logger(`Compaction has been failed!`, LOG_LEVEL_NOTICE, "compaction");
-                            }
-                        })
-                )
-        }
+        new Setting(containerMaintenanceEl)
+            .setName("Perform compaction")
+            .setDesc("Compaction discards all of Eden in the non-latest revisions, reducing the storage usage. However, this operation requires the same free space on the remote as the current database.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Perform")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+                        Logger(`Compaction has been began`, LOG_LEVEL_NOTICE, "compaction")
+                        if (await replicator.compactRemote(this.editingSettings)) {
+                            Logger(`Compaction has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                        } else {
+                            Logger(`Compaction has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                        }
+                    })
+            ).addOnUpdate(onlyOnCouchDB);
 
         new Setting(containerMaintenanceEl)
             .setName("Lock remote")
@@ -2456,94 +2277,94 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
+        new Setting(containerMaintenanceEl)
+            .setName("Reset journal received history")
+            .setDesc("Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset received")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                            ...info,
+                            receivedFiles: new Set(),
+                            knownIDs: new Set()
+                        }));
+                        Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
+                    })
+            ).addOnUpdate(onlyOnMinIO);
 
-        if (this.plugin.settings.remoteType != REMOTE_COUCHDB) {
-            new Setting(containerMaintenanceEl)
-                .setName("Reset journal received history")
-                .setDesc("Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Reset received")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                                ...info,
-                                receivedFiles: new Set(),
-                                knownIDs: new Set()
-                            }));
-                            Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
-                        })
-                )
-            new Setting(containerMaintenanceEl)
-                .setName("Reset journal sent history")
-                .setDesc("Initialise journal sent history. On the next sync, every item except this device received will be sent again.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Reset sent history")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                                ...info,
-                                lastLocalSeq: 0,
-                                sentIDs: new Set(),
-                                sentFiles: new Set()
-                            }));
-                            Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
-                        })
-                )
-            new Setting(containerMaintenanceEl)
-                .setName("Reset all journal counter")
-                .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Reset all")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().resetCheckpointInfo();
-                            Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
-                        })
-                )
-            new Setting(containerMaintenanceEl)
-                .setName("Purge all journal counter")
-                .setDesc("Purge all sending and downloading cache.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Reset all")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().resetAllCaches();
-                            Logger(`Journal sending and downloading cache has been cleared.`, LOG_LEVEL_NOTICE);
-                        })
-                )
+        new Setting(containerMaintenanceEl)
+            .setName("Reset journal sent history")
+            .setDesc("Initialise journal sent history. On the next sync, every item except this device received will be sent again.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset sent history")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                            ...info,
+                            lastLocalSeq: 0,
+                            sentIDs: new Set(),
+                            sentFiles: new Set()
+                        }));
+                        Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
+                    })
+            ).addOnUpdate(onlyOnMinIO);
 
-            new Setting(containerMaintenanceEl)
-                .setName("Make empty the bucket")
-                .setDesc("Delete all data on the remote.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Delete")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                                ...info,
-                                receivedFiles: new Set(),
-                                knownIDs: new Set(),
-                                lastLocalSeq: 0,
-                                sentIDs: new Set(),
-                                sentFiles: new Set()
-                            }));
-                            await this.plugin.resetRemoteBucket();
-                            Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
-                        })
-                )
-        }
+        new Setting(containerMaintenanceEl)
+            .setName("Reset all journal counter")
+            .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset all")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.getMinioJournalSyncClient().resetCheckpointInfo();
+                        Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
+                    })
+            ).addOnUpdate(onlyOnMinIO);
 
-        containerMaintenanceEl.createEl("h4", { text: "Local database" });
+        new Setting(containerMaintenanceEl)
+            .setName("Purge all journal counter")
+            .setDesc("Purge all sending and downloading cache.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Reset all")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.getMinioJournalSyncClient().resetAllCaches();
+                        Logger(`Journal sending and downloading cache has been cleared.`, LOG_LEVEL_NOTICE);
+                    })
+            ).addOnUpdate(onlyOnMinIO);
+
+        new Setting(containerMaintenanceEl)
+            .setName("Make empty the bucket")
+            .setDesc("Delete all data on the remote.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Delete")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                            ...info,
+                            receivedFiles: new Set(),
+                            knownIDs: new Set(),
+                            lastLocalSeq: 0,
+                            sentIDs: new Set(),
+                            sentFiles: new Set()
+                        }));
+                        await this.plugin.resetRemoteBucket();
+                        Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
+                    })
+            ).addOnUpdate(onlyOnMinIO);
+
+        this.createEl(containerMaintenanceEl, "h4", { text: "Local database" });
 
         new Setting(containerMaintenanceEl)
             .setName("Fetch from remote")
@@ -2567,20 +2388,19 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
-        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
-            new Setting(containerMaintenanceEl)
-                .setName("Fetch rebuilt DB (Save local documents before)")
-                .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Save and Fetch")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await rebuildDB("localOnlyWithChunks");
-                        })
-                )
-        }
+        new Setting(containerMaintenanceEl)
+            .setName("Fetch rebuilt DB (Save local documents before)")
+            .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Save and Fetch")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await rebuildDB("localOnlyWithChunks");
+                    })
+            ).addOnUpdate(onlyOnCouchDB);
+
         new Setting(containerMaintenanceEl)
             .setName("Discard local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>
@@ -2594,28 +2414,27 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             );
 
-        containerMaintenanceEl.createEl("h4", { text: "Both databases" });
+        this.createEl(containerMaintenanceEl, "h4", { text: "Both databases" });
 
-        if (this.plugin.settings.remoteType == REMOTE_COUCHDB) {
-            new Setting(containerMaintenanceEl)
-                .setName("(Beta2) Clean up databases")
-                .setDesc("Delete unused chunks to shrink the database. This feature requires disabling 'Use an old adapter for compatibility'")
-                .addButton((button) =>
-                    button.setButtonText("DryRun")
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin.dryRunGC();
-                        })
-                ).addButton((button) =>
-                    button.setButtonText("Perform cleaning")
-                        .setDisabled(false)
-                        .setWarning()
-                        .onClick(async () => {
-                            this.closeSetting()
-                            await this.plugin.dbGC();
-                        })
-                );
-        }
+        new Setting(containerMaintenanceEl)
+            .setName("(Beta2) Clean up databases")
+            .setDesc("Delete unused chunks to shrink the database. This feature requires disabling 'Use an old adapter for compatibility'")
+            .addButton((button) =>
+                button.setButtonText("DryRun")
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.dryRunGC();
+                    })
+            ).addButton((button) =>
+                button.setButtonText("Perform cleaning")
+                    .setDisabled(false)
+                    .setWarning()
+                    .onClick(async () => {
+                        this.closeSetting()
+                        await this.plugin.dbGC();
+                    })
+            ).addOnUpdate(onlyOnCouchDB);
+
         new Setting(containerMaintenanceEl)
             .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")
@@ -2639,13 +2458,11 @@ ${stringifyYaml(pluginConfig)}`;
                     })
             )
 
-        applyDisplayEnabled();
         addScreenElement("70", containerMaintenanceEl);
 
-        applyDisplayEnabled();
         if (this.selectedScreen == "") {
-            if (lastVersion != this.plugin.settings.lastReadUpdates) {
-                if (this.plugin.settings.isConfigured) {
+            if (lastVersion != this.editingSettings.lastReadUpdates) {
+                if (this.editingSettings.isConfigured) {
                     changeDisplay("100");
                 } else {
                     changeDisplay("110")
@@ -2660,5 +2477,6 @@ ${stringifyYaml(pluginConfig)}`;
         } else {
             changeDisplay(this.selectedScreen);
         }
+        this.requestUpdate();
     }
 }

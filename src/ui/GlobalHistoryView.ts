@@ -8,11 +8,11 @@ import type ObsidianLiveSyncPlugin from "../main.ts";
 export const VIEW_TYPE_GLOBAL_HISTORY = "global-history";
 export class GlobalHistoryView extends ItemView {
 
-    component: GlobalHistoryComponent;
+    component?: GlobalHistoryComponent;
     plugin: ObsidianLiveSyncPlugin;
-    icon: "clock";
-    title: string;
-    navigation: true;
+    icon = "clock";
+    title: string = "";
+    navigation = true;
 
     getIcon(): string {
         return "clock";
@@ -44,6 +44,6 @@ export class GlobalHistoryView extends ItemView {
 
     // eslint-disable-next-line require-await
     async onClose() {
-        this.component.$destroy();
+        this.component?.$destroy();
     }
 }

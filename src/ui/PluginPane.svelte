@@ -366,10 +366,10 @@
 </div>
 
 <style>
-    span.spacer {
+    /* span.spacer {
         min-width: 1px;
         flex-grow: 1;
-    }
+    } */
     h3 {
         position: sticky;
         top: 0;
