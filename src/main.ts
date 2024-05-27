@@ -1439,7 +1439,7 @@ We can perform a command in this file.
                     this.replicator.openReplication(this.settings, true, false, false);
                 }
             }
-            if (this.settings.syncOnStart) {
+            if (!this.settings.liveSync && this.settings.syncOnStart) {
                 this.replicator.openReplication(this.settings, false, false, false);
             }
             this.periodicSyncProcessor.enable(this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0);

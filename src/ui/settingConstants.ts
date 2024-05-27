@@ -6,6 +6,7 @@ export type OnDialogSettings = {
     preset: "" | "PERIODIC" | "LIVESYNC" | "DISABLE",
     syncMode: "ONEVENTS" | "PERIODIC" | "LIVESYNC"
     dummy: number,
+    deviceAndVaultName: string,
 }
 
 export const OnDialogSettingsDefault: OnDialogSettings = {
@@ -13,6 +14,7 @@ export const OnDialogSettingsDefault: OnDialogSettings = {
     preset: "",
     syncMode: "ONEVENTS",
     dummy: 0,
+    deviceAndVaultName: "",
 }
 export const AllSettingDefault =
     { ...DEFAULT_SETTINGS, ...OnDialogSettingsDefault }

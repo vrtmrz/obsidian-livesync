@@ -437,12 +437,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
             return await Promise.resolve();
         }
+        if (key == "deviceAndVaultName") {
+            this.plugin.deviceAndVaultName = this.editingSettings?.[key];
+            return await Promise.resolve();
+        }
     }
     /**
      * Apply and save setting to the plug-in.
      * @param keys setting keys for applying
      */
     async saveSettings(keys: (AllSettingItemKey)[]) {
+        let hasChanged = false;
         const appliedKeys = [] as AllSettingItemKey[];
         for (const k of keys) {
             if (!this.isDirty(k)) continue;
@@ -457,9 +462,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.plugin.settings[k] = this.editingSettings[k];
             //@ts-ignore
             this.initialSettings[k] = this.plugin.settings[k];
+            hasChanged = true;
         }
 
-        await this.plugin.saveSettings();
+        if (hasChanged) {
+            await this.plugin.saveSettings();
+        }
 
         // if (runOnSaved) {
         const handlers =
@@ -498,6 +506,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const ret = { ...OnDialogSettingsDefault };
         ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = ""
+        ret.deviceAndVaultName = this.plugin.deviceAndVaultName;
         return ret;
     }
     computeAllLocalSettings(): Partial<OnDialogSettings> {
