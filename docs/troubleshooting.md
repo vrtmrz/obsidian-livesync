@@ -93,10 +93,10 @@ To shrink the database size, `Rebuild everything` only reliably and effectively.
 
 #### Checking the network log
 1. Open the network pane.
-2. Find the requests marked in red.
+2. Find the requests marked in red.  
 ![Errored](../images/devtools1.png)
 3. Capture the `Headers`, `Payload`, and, `Response`. **Please be sure to keep important information confidential**. If the `Response` contains secrets, you can omitted that.
-Note: Headers contains a some credentials. **The path of the request URL, Remote Address, authority, and authorization must be concealed.**
+Note: Headers contains a some credentials. **The path of the request URL, Remote Address, authority, and authorization must be concealed.**  
 ![Concealed sample](../images/devtools2.png)
 
 ## Troubleshooting
