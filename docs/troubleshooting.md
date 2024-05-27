@@ -14,6 +14,8 @@
     - [Why are the logs volatile and ephemeral?](#why-are-the-logs-volatile-and-ephemeral)
     - [Some network logs are not written into the file.](#some-network-logs-are-not-written-into-the-file)
     - [If a file were deleted or trimmed, the capacity of the database should be reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-should-be-reduced-right)
+    - [How can I use the DevTools?](#how-can-i-use-the-devtools)
+      - [Checking the network log](#checking-the-network-log)
   - [Troubleshooting](#troubleshooting)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
@@ -77,7 +79,7 @@ However, the logs would not be kept so long and cleared when restarted. If you w
 To avoid unexpected exposure to our confidential things.
 
 ### Some network logs are not written into the file.
-Especially the CORS error will be reported as a general error to the plug-in for security reasons. So we cannot detect and log it.
+Especially the CORS error will be reported as a general error to the plug-in for security reasons. So we cannot detect and log it. We are only able to investigate them by [Checking the network log](#checking-the-network-log).
 
 ### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
 No, even though if files were deleted, chunks were not deleted.
@@ -87,7 +89,15 @@ And one more thing, we can handle the conflicts on any device even though it has
 
 To shrink the database size, `Rebuild everything` only reliably and effectively. But do not worry, if we have synchronised well. We have the actual and real files. Only it takes a bit of time and traffics.
 
-<!-- Add here -->
+### How can I use the DevTools?
+
+#### Checking the network log
+1. Open the network pane.
+2. Find the requests marked in red.
+![Errored](../images/devtools1.png)
+3. Capture the `Headers`, `Payload`, and, `Response`. **Please be sure to keep important information confidential**. If the `Response` contains secrets, you can omitted that.
+Note: Headers contains a some credentials. **The path of the request URL, Remote Address, authority, and authorization must be concealed.**
+![Concealed sample](../images/devtools2.png)
 
 ## Troubleshooting
 <!-- Add here -->
