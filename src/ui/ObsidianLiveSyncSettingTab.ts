@@ -769,7 +769,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         addScreenElement("100", containerInformationEl);
         const isAnySyncEnabled = (): boolean => {
-            if (this.isConfiguredAs("isConfigured", false)) return true;
+            if (this.isConfiguredAs("isConfigured", false)) return false;
             if (this.isConfiguredAs("liveSync", true)) return true;
             if (this.isConfiguredAs("periodicReplication", true)) return true;
             if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
