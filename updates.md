@@ -18,6 +18,10 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.9
+  - Fixed:
+    - No longer unexpected parallel replication is performed.
+    - Now we can set the device name and enable customised synchronisation again.
 - 0.23.8
   - New feature:
     - Now we are ready for i18n. 
@@ -45,21 +49,5 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - Some trivial issues have been fixed.
   - New feature:
     - Reloading Obsidian can be scheduled until that file and database operations are stable.
-- 0.23.6:
-  - Fixed:
-    - Now the remote chunks could be decrypted even if we are using `Incubate chunks in Document`. (The note of 0.23.6 has been fixed).
-    - Chunk retrieving with `Incubate chunks in document` got more efficiently.
-    - No longer task processor misses the completed tasks.
-    - Replication is no longer started automatically during changes in window visibility (e.g., task switching on the desktop) when off-focused.
-- 0.23.5:
-  - New feature:
-    - Now we can check configuration mismatching between clients before synchronisation.
-      - Default: enabled / Preferred: enabled / We can disable this by the `Do not check configuration mismatch before replication` toggle in the `Hatch` pane.
-      - It detects configuration mismatches and prevents synchronisation failures and wasted storage.
-    - Now we can perform remote database compaction from the `Maintenance` pane.
-  - Fixed:
-    - We can detect the bucket could not be reachable.
-  - Note:
-    - Known inexplicable behaviour: Recently, (Maybe while enabling `Incubate chunks in Document` and `Fetch chunks on demand` or some more toggles), our customisation sync data is sometimes corrupted. It will be addressed by the next release.
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
