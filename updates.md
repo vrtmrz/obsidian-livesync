@@ -18,6 +18,9 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.10
+  - Fixed:
+    - No longer configurations have been locked in the minimal setup.
 - 0.23.9
   - Fixed:
     - No longer unexpected parallel replication is performed.
