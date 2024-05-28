@@ -14,21 +14,24 @@ if you want to view the source, please visit the github repository of this plugi
 */
 `;
 
-
 const prod = process.argv[2] === "production";
-const keepTest = !prod;
+const dev = process.argv[2] === "dev";
+
+const keepTest = !prod || dev;
 
 const terserOpt = {
-    sourceMap: (!prod ? {
-        url: "inline"
-    } : {}),
+    sourceMap: !prod
+        ? {
+              url: "inline",
+          }
+        : {},
     format: {
         indent_level: 2,
         beautify: true,
         comments: "some",
         ecma: 2018,
         preamble: banner,
-        webkit: true
+        webkit: true,
     },
     parse: {
         // parse options
@@ -53,16 +56,6 @@ const terserOpt = {
         ecma: 2018,
         unused: true,
     },
-    // mangle: {
-    //     // mangle options
-    //     keep_classnames: true,
-    //     keep_fnames: true,
-
-    //     properties: {
-    //         // mangle property options
-
-    //     }
-    // },
 
     ecma: 2018, // specify one of: 5, 2015, 2016, etc.
     enclose: false, // or specify true, or "args:values"
@@ -72,41 +65,41 @@ const terserOpt = {
     module: false,
     // nameCache: null, // or specify a name cache object
     safari10: false,
-    toplevel: false
-}
-
+    toplevel: false,
+};
 
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
 const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
 const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
 
 /** @type esbuild.Plugin[] */
-const plugins = [{
-    name: 'my-plugin',
-    setup(build) {
-        let count = 0;
-        build.onEnd(async result => {
-            if (count++ === 0) {
-                console.log('first build:', result);
-
-            } else {
-                console.log('subsequent build:');
-            }
-            if (prod) {
-                console.log("Performing terser");
-                const src = fs.readFileSync("./main_org.js").toString();
-                // @ts-ignore
-                const ret = await minify(src, terserOpt);
-                if (ret && ret.code) {
-                    fs.writeFileSync("./main.js", ret.code);
+const plugins = [
+    {
+        name: "my-plugin",
+        setup(build) {
+            let count = 0;
+            build.onEnd(async (result) => {
+                if (count++ === 0) {
+                    console.log("first build:", result);
+                } else {
+                    console.log("subsequent build:");
                 }
-                console.log("Finished terser");
-            } else {
-                fs.copyFileSync("./main_org.js", "./main.js");
-            }
-        });
+                if (prod) {
+                    console.log("Performing terser");
+                    const src = fs.readFileSync("./main_org.js").toString();
+                    // @ts-ignore
+                    const ret = await minify(src, terserOpt);
+                    if (ret && ret.code) {
+                        fs.writeFileSync("./main.js", ret.code);
+                    }
+                    console.log("Finished terser");
+                } else {
+                    fs.copyFileSync("./main_org.js", "./main.js");
+                }
+            });
+        },
     },
-}];
+];
 
 const context = await esbuild.context({
     banner: {
@@ -115,26 +108,12 @@ const context = await esbuild.context({
     entryPoints: ["src/main.ts"],
     bundle: true,
     define: {
-        "MANIFEST_VERSION": `"${manifestJson.version}"`,
-        "PACKAGE_VERSION": `"${packageJson.version}"`,
-        "UPDATE_INFO": `${updateInfo}`,
-        "global": "window",
+        MANIFEST_VERSION: `"${manifestJson.version}"`,
+        PACKAGE_VERSION: `"${packageJson.version}"`,
+        UPDATE_INFO: `${updateInfo}`,
+        global: "window",
     },
-    external: [
-        "obsidian",
-        "electron",
-        "crypto",
-        "@codemirror/autocomplete",
-        "@codemirror/collab",
-        "@codemirror/commands",
-        "@codemirror/language",
-        "@codemirror/lint",
-        "@codemirror/search",
-        "@codemirror/state",
-        "@codemirror/view",
-        "@lezer/common",
-        "@lezer/highlight",
-        "@lezer/lr"],
+    external: ["obsidian", "electron", "crypto", "@codemirror/autocomplete", "@codemirror/collab", "@codemirror/commands", "@codemirror/language", "@codemirror/lint", "@codemirror/search", "@codemirror/state", "@codemirror/view", "@lezer/common", "@lezer/highlight", "@lezer/lr"],
     // minifyWhitespace: true,
     format: "cjs",
     target: "es2018",
@@ -155,11 +134,11 @@ const context = await esbuild.context({
             preprocess: sveltePreprocess(),
             compilerOptions: { css: "injected", preserveComments: false },
         }),
-        ...plugins
+        ...plugins,
     ],
-})
+});
 
-if (prod) {
+if (prod || dev) {
     await context.rebuild();
     process.exit(0);
 } else {
