@@ -4,7 +4,7 @@ import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, DocumentID, AnyEntry, SavingEntry } from "../lib/src/common/types.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "../lib/src/common/types.ts";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../common/types.ts";
-import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocDataAsArray, isDocContentSame, throttle } from "../lib/src/common/utils.ts";
+import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocDataAsArray, isDocContentSame } from "../lib/src/common/utils.ts";
 import { Logger } from "../lib/src/common/logger.ts";
 import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "../lib/src/string_and_binary/strbin.ts";
 import { serialized, shareRunningResult } from "../lib/src/concurrency/lock.ts";
@@ -19,7 +19,6 @@ import type ObsidianLiveSyncPlugin from '../main.ts';
 
 const d = "\u200b";
 const d2 = "\n";
-const delimiters = /(?<=[\n|\u200b])/g;
 
 
 function serialize(data: PluginDataEx): string {
@@ -42,8 +41,45 @@ function serialize(data: PluginDataEx): string {
     return ret;
 }
 
+function splitWithDelimiters(sources: string[]): string[] {
+    const result: string[] = [];
+    for (const str of sources) {
+        let startIndex = 0;
+        const maxLen = str.length;
+        let i = -1;
+        let i1;
+        let i2;
+        do {
+            i1 = str.indexOf(d, startIndex);
+            i2 = str.indexOf(d2, startIndex);
+            if (i1 == -1 && i2 == -1) {
+                break;
+            }
+            if (i1 == -1) {
+                i = i2;
+            } else if (i2 == -1) {
+                i = i1;
+            } else {
+                i = i1 < i2 ? i1 : i2;
+            }
+            result.push(str.slice(startIndex, i + 1));
+            startIndex = i + 1;
+        } while (i < maxLen);
+        if (startIndex < maxLen) {
+            result.push(str.slice(startIndex));
+        }
+    }
+
+    // To keep compatibilities
+    if (sources[sources.length - 1] == "") {
+        result.push("");
+    }
+
+    return result;
+}
+
 function getTokenizer(source: string[]) {
-    const sources = source.flatMap(e => e.split(delimiters))
+    const sources = splitWithDelimiters(source);
     sources[0] = sources[0].substring(1);
     let pos = 0;
     let lineRunOut = false;
@@ -318,8 +354,7 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return false;
     }
-    createMissingConfigurationEntry = throttle(() => this._createMissingConfigurationEntry(), 1000);
-    _createMissingConfigurationEntry() {
+    async createMissingConfigurationEntry() {
         let saveRequired = false;
         for (const v of this.pluginList) {
             const key = `${v.category}/${v.name}`;
@@ -337,7 +372,7 @@ export class ConfigSync extends LiveSyncCommands {
             }
         }
         if (saveRequired) {
-            this.plugin.saveSettingData();
+            await this.plugin.saveSettingData();
         }
 
     }
@@ -365,7 +400,11 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return [];
     }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline().root.onUpdateProgress(() => {
-        this.createMissingConfigurationEntry();
+        scheduleTask("checkMissingConfigurations", 250, async () => {
+            if (this.pluginScanProcessor.isIdle()) {
+                await this.createMissingConfigurationEntry();
+            }
+        });
     });
 
 
@@ -654,7 +693,7 @@ export class ConfigSync extends LiveSyncCommands {
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target);
                 if (data == false) {
-                    // Logger(`Config: skipped: ${target} `, LOG_LEVEL_VERBOSE);
+                    Logger(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
                     continue;
                 }
                 if (data.version) {
@@ -703,13 +742,15 @@ export class ConfigSync extends LiveSyncCommands {
                     const oldC = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
                     if (oldC) {
                         const d = await deserialize(getDocDataAsArray(oldC.data), {}) as PluginDataEx;
-                        const diffs = (d.files.map(previous => ({ prev: previous, curr: dt.files.find(e => e.filename == previous.filename) })).map(async e => {
-                            try { return await isDocContentSame(e.curr?.data ?? [], e.prev.data) } catch (_) { return false }
-                        }))
-                        const isSame = (await Promise.all(diffs)).every(e => e == true);
-                        if (isSame) {
-                            Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
-                            return true;
+                        if (d.files.length == dt.files.length) {
+                            const diffs = (d.files.map(previous => ({ prev: previous, curr: dt.files.find(e => e.filename == previous.filename) })).map(async e => {
+                                try { return await isDocContentSame(e.curr?.data ?? [], e.prev.data) } catch (_) { return false }
+                            }))
+                            const isSame = (await Promise.all(diffs)).every(e => e == true);
+                            if (isSame) {
+                                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
+                                return true;
+                            }
                         }
                     }
                     saveData =
@@ -757,9 +798,11 @@ export class ConfigSync extends LiveSyncCommands {
             return true;
         }
         this.recentProcessedInternalFiles = [key, ...this.recentProcessedInternalFiles].slice(0, 100);
-
-        this.storeCustomizationFiles(path).then(() => {/* Fire and forget */ });
-
+        // To prevent saving half-collected file sets.
+        const keySchedule = this.filenameToUnifiedKey(path);
+        scheduleTask(keySchedule, 100, async () => {
+            await this.storeCustomizationFiles(path);
+        })
     }
 
 

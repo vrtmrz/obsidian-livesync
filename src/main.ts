@@ -878,6 +878,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     async onload() {
         logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
         Logger("loading plugin");
+        __onMissingTranslation(() => { });
         // eslint-disable-next-line no-unused-labels
         DEV: {
             __onMissingTranslation((key) => {
@@ -1137,12 +1138,14 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.settingTab.requestReload()
     }
 
-    async saveSettingData() {
+    saveDeviceAndVaultName() {
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.getVaultName();
-
         localStorage.setItem(lsKey, this.deviceAndVaultName || "");
-
+    }
+    async saveSettingData() {
+        this.saveDeviceAndVaultName();
         const settings = { ...this.settings };
+        settings.deviceAndVaultName = "";
         if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
             Logger("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL_NOTICE);
         } else {
@@ -3060,11 +3063,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const ret = await this.localDatabase.putDBEntry(d);
         if (ret !== false) {
             Logger(msg + fullPath);
-            if (this.settings.syncOnSave && !this.suspended) {
-                scheduleTask("perform-replicate-after-save", 250, () => this.replicate());
-            }
+            this.scheduleReplicateIfSyncOnSave();
         }
         return ret != false;
+    }
+
+    scheduleReplicateIfSyncOnSave() {
+        if (this.settings.syncOnSave && !this.suspended) {
+            scheduleTask("perform-replicate-after-save", 250, () => this.replicate());
+        }
     }
 
     async deleteFromDB(file: TFile) {
@@ -3072,16 +3079,12 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const fullPath = getPathFromTFile(file);
         Logger(`deleteDB By path:${fullPath}`);
         await this.deleteFromDBbyPath(fullPath);
-        if (this.settings.syncOnSave && !this.suspended) {
-            await this.replicate();
-        }
+        this.scheduleReplicateIfSyncOnSave();
     }
 
     async deleteFromDBbyPath(fullPath: FilePath) {
         await this.localDatabase.deleteDBEntry(fullPath);
-        if (this.settings.syncOnSave && !this.suspended) {
-            await this.replicate();
-        }
+        this.scheduleReplicateIfSyncOnSave();
     }
 
     async resetLocalDatabase() {

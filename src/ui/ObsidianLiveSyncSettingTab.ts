@@ -439,6 +439,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
         if (key == "deviceAndVaultName") {
             this.plugin.deviceAndVaultName = this.editingSettings?.[key];
+            this.plugin.saveDeviceAndVaultName();
             return await Promise.resolve();
         }
     }
@@ -519,12 +520,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     /**
      * Reread all settings and request invalidate
      */
-    reloadAllSettings() {
+    reloadAllSettings(skipUpdate: boolean = false) {
         const localSetting = this.reloadAllLocalSettings();
         this._editingSettings = { ...this.plugin.settings, ...localSetting };
         this._editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
         this.initialSettings = { ...this.editingSettings, };
-        this.requestUpdate();
+        if (!skipUpdate) this.requestUpdate();
     }
 
     /**
@@ -667,9 +668,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 this.requestUpdate();
             }
         } else {
-            Logger(`reread: all! hidden`, LOG_LEVEL_VERBOSE)
-            this.reloadAllSettings();
-            this.display();
+            this.reloadAllSettings(true);
         }
     }
 
