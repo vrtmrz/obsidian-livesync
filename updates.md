@@ -18,6 +18,15 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.11:
+  - Fixed:
+    - Now we *surely* can set the device name and enable customised synchronisation.
+    - Unnecessary dialogue update processes have been eliminated.
+    - Customisation sync no longer stores half-collected files.
+    - No longer hangs up when removing or renaming files with the `Sync on Save` toggle enabled.
+  - Improved:
+    - Customisation sync now performs data deserialization more smoothly.
+    - New translations have been merged.
 - 0.23.10
   - Fixed:
     - No longer configurations have been locked in the minimal setup.
