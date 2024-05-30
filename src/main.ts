@@ -15,7 +15,7 @@ import { encrypt, tryDecrypt } from "./lib/src/encryption/e2ee_v2.ts";
 import { balanceChunkPurgedDBs, enableCompression, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/pouchdb/utils_couchdb.ts";
 import { logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/mock_and_interop/stores.ts";
 import { setNoticeClass } from "./lib/src/mock_and_interop/wrapper.ts";
-import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/string_and_binary/strbin.ts";
+import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/string_and_binary/convert.ts";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/string_and_binary/path.ts";
 import { isLockAcquired, serialized, shareRunningResult, skipIfDuplicated } from "./lib/src/concurrency/lock.ts";
 import { StorageEventManager, StorageEventManagerObsidian } from "./storages/StorageEventManager.ts";
@@ -41,6 +41,8 @@ import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTy
 import { ObsHttpHandler } from "./common/ObsHttpHandler.js";
 import { TestPaneView, VIEW_TYPE_TEST } from "./tests/TestPaneView.js"
 import { $f, __onMissingTranslation, setLang } from "./lib/src/common/i18n.ts";
+import { enableTestFunction } from "./tests/testUtils.ts";
+import { terminateWorker } from "./lib/src/worker/splitWorker.ts";
 
 
 setNoticeClass(Notice);
@@ -855,6 +857,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         );
         // eslint-disable-next-line no-unused-labels
         TEST: {
+            enableTestFunction(this);
             this.registerView(
                 VIEW_TYPE_TEST,
                 (leaf) => new TestPaneView(leaf, this)
@@ -870,9 +873,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                     this.showView(VIEW_TYPE_TEST);
                 }
             });
-
         }
-
     }
 
     async onload() {
@@ -982,6 +983,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     onunload() {
+        terminateWorker();
         cancelAllPeriodicTask();
         cancelAllTasks();
         stopAllRunningProcessors();

@@ -6,7 +6,8 @@ import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } f
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../common/types.ts";
 import { createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocDataAsArray, isDocContentSame } from "../lib/src/common/utils.ts";
 import { Logger } from "../lib/src/common/logger.ts";
-import { readString, decodeBinary, arrayBufferToBase64, digestHash } from "../lib/src/string_and_binary/strbin.ts";
+import { digestHash } from "../lib/src/string_and_binary/hash.ts";
+import { arrayBufferToBase64, decodeBinary, readString } from 'src/lib/src/string_and_binary/convert.ts';
 import { serialized, shareRunningResult } from "../lib/src/concurrency/lock.ts";
 import { LiveSyncCommands } from "./LiveSyncCommands.ts";
 import { stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";

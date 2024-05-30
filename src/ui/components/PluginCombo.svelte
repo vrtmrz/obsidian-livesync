@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { PluginDataExDisplay } from "../../features/CmdConfigSync";
     import { Logger } from "../../lib/src/common/logger";
-    import { versionNumberString2Number } from "../../lib/src/string_and_binary/strbin";
+    import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert";
     import { type FilePath, LOG_LEVEL_NOTICE } from "../../lib/src/common/types";
     import { getDocData } from "../../lib/src/common/utils";
     import type ObsidianLiveSyncPlugin from "../../main";

@@ -6,7 +6,7 @@ import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, t
 import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types.ts";
 import { InputStringDialog, PopoverSelectString } from "./dialogs.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
-import { writeString } from "../lib/src/string_and_binary/strbin.ts";
+import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
 import { sameChangePairs } from "./stores.ts";
 

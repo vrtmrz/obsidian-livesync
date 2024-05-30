@@ -22,7 +22,7 @@ import {
     type ConfigurationItem
 } from "../lib/src/common/types.ts";
 import { createBlob, delay, isDocContentSame, isObjectDifferent, readAsBlob, unique } from "../lib/src/common/utils.ts";
-import { versionNumberString2Number } from "../lib/src/string_and_binary/strbin.ts";
+import { versionNumberString2Number } from "../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../lib/src/common/logger.ts";
 import { checkSyncInfo, isCloudantURI } from "../lib/src/pouchdb/utils_couchdb.ts";
 import { testCrypt } from "../lib/src/encryption/e2ee_v2.ts";
@@ -1748,6 +1748,10 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             .setClass("wizardHidden")
             .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB })
 
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("enableChunkSplitterV2")
+
         this.createEl(containerSyncSettingEl, "h4", {
             text: sanitizeHTMLToDom(`Targets`),
         }).addClass("wizardHidden");
@@ -2183,6 +2187,14 @@ ${stringifyYaml(pluginConfig)}`;
             .autoWireToggle("doNotSuspendOnFetching")
         new Setting(containerHatchEl)
             .autoWireToggle("disableCheckingConfigMismatch")
+
+        new Setting(containerHatchEl)
+            .autoWireToggle("disableWorkerForGeneratingChunks")
+
+        new Setting(containerHatchEl)
+            .autoWireToggle("processSmallFilesInUIThread", {
+                onUpdate: visibleOnly(() => this.isConfiguredAs("disableWorkerForGeneratingChunks", false))
+            })
 
         addScreenElement("50", containerHatchEl);
 

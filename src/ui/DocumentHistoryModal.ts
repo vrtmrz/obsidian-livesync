@@ -1,6 +1,6 @@
 import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "../deps.ts";
 import { getPathFromTFile, isValidPath } from "../common/utils.ts";
-import { decodeBinary, escapeStringToHTML, readString } from "../lib/src/string_and_binary/strbin.ts";
+import { decodeBinary, escapeStringToHTML, readString } from "../lib/src/string_and_binary/convert.ts";
 import ObsidianLiveSyncPlugin from "../main.ts";
 import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../lib/src/common/types.ts";
 import { Logger } from "../lib/src/common/logger.ts";

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "../deps";
     import type { FilePath, LoadedEntry } from "../lib/src/common/types";
-    import { decodeBinary, readString } from "../lib/src/string_and_binary/strbin";
+    import { decodeBinary, readString } from "../lib/src/string_and_binary/convert";
     import { getDocData } from "../lib/src/common/utils";
     import { mergeObject } from "../common/utils";
 

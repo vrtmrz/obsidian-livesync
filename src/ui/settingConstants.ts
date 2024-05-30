@@ -300,6 +300,18 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     "displayLanguage": {
         "name": "Display Language",
         "desc": "Not all messages have been translated. And, please revert to \"Default\" when reporting errors."
+    },
+    enableChunkSplitterV2: {
+        name: "Use splitting-limit-capped chunk splitter",
+        desc: "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker."
+    },
+    disableWorkerForGeneratingChunks: {
+        name: "Do not split chunks in the foreground",
+        desc: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour)."
+    },
+    processSmallFilesInUIThread: {
+        name: "Process small files in the foreground",
+        desc: "If enabled, the file under 1kb will be processed in the UI thread."
     }
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
