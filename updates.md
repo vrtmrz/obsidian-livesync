@@ -18,6 +18,15 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.12:
+  - Improved:
+    - Now notes will be split into chunks in the background thread to improve smoothness.
+      - Default enabled, to disable, toggle `Do not split chunks in the foreground` on `Hatch` -> `Compatibility`.
+      - If you want to process very small notes in the foreground, please enable `Process small files in the foreground` on `Hatch` -> `Compatibility`.
+    - We can use a `splitting-limit-capped chunk splitter`; which performs more simple and make less amount of chunks.
+      - Default disabled, to enable, toggle `Use splitting-limit-capped chunk splitter` on `Sync settings` -> `Performance tweaks`
+  - Tidied
+    - Some files have been separated into multiple files to make them more explicit in what they are responsible for.
 - 0.23.11:
   - Fixed:
     - Now we *surely* can set the device name and enable customised synchronisation.
