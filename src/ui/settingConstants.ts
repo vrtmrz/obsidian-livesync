@@ -306,7 +306,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker."
     },
     disableWorkerForGeneratingChunks: {
-        name: "Do not split chunks in the foreground",
+        name: "Do not split chunks in the background",
         desc: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour)."
     },
     processSmallFilesInUIThread: {
