@@ -18,6 +18,11 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.13:
+  - Fixed:
+    - No longer files have been trimmed even delimiters have been continuous.
+    - Fixed the toggle title to `Do not split chunks in the background` from `Do not split chunks in the foreground`.
+    - Non-configured item mismatches are no longer detected.
 - 0.23.12:
   - Improved:
     - Now notes will be split into chunks in the background thread to improve smoothness.
