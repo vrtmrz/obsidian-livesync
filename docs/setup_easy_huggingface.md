@@ -18,14 +18,14 @@
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/58329dbf-773d-4ee2-bef2-abee4fd7308b)
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/f14dcefe-1559-436e-b418-ec8a5496f759)
 
-4. Add the user and password you will use in to access the couchDB in Obsidian.
+5. Add the user and password you will use in to access the couchDB in Obsidian.
 
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/7425c131-f7d3-4a2b-9bd9-70110187e22a)
 
-5. Once made, you go to "Embed this space".
+6. Once made, you go to "Embed this space".
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/76b05e1d-53b5-4253-bcb6-9b1fa3095e1d)
 
-6. And copy the "Direct URL", that you will use as URI to access the couchDB in Obsidian.
+7. And copy the "Direct URL", that you will use as URI to access the couchDB in Obsidian.
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/923be2a8-3254-45a1-8227-d66ec44255bf)
 
 ## Self-hosted LiveSync settings
@@ -36,7 +36,7 @@ The Setting should be as below:
 
 | Items         | Value | example                                                           |
 | ------------- | ----- | ----------------------------------------------------------------- |
-| URI           | (\*1) | https://[Your huggingface user here]-ob-live-sync.hf.space |
-| Username      | (\*3) | [Your User for couchDB here]            |
-| Password      | (\*4) | [Your password for couchDD here]                                  |
-| Database name | (\*2) | ob-live-sync                                                         |
+| URI           | (\*7) | https://[Your huggingface user here]-ob-live-sync.hf.space |
+| Username      | (\*5) | [Your User for couchDB here]            |
+| Password      | (\*5) | [Your password for couchDD here]                                  |
+| Database name | (\*4) | ob-live-sync                                                         |
