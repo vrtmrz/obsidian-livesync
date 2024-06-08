@@ -1,4 +1,4 @@
-# Hugging face spaces setup
+# Easy HuggingFace duplicated Space Setup
 
 1. First go to space seccion an search for "ob-live-sync" and click one of it.
 
@@ -13,6 +13,7 @@
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/fba7d216-e269-40ba-92eb-13ccf63f2b85)
 
 4. Be sure is public and free (At least you want premium funtions). You can change the name of the repo if you want.
+(Don't worry, no one will acess your database without the user and password from below)
 
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/58329dbf-773d-4ee2-bef2-abee4fd7308b)
 ![image](https://github.com/Facni/obsidian-livesync/assets/112446096/f14dcefe-1559-436e-b418-ec8a5496f759)
