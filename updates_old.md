@@ -18,6 +18,33 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.8
+  - New feature:
+    - Now we are ready for i18n. 
+      - Patch or PR of `rosetta.ts` are welcome!
+    - The setting dialogue has been refined. Very controllable, clearly displayed disabled items, and ready to i18n.
+  - Fixed:
+    - Many memory leaks have been rescued.
+    - Chunk caches now work well.
+    - Many trivial but potential bugs are fixed.
+    - No longer error messages will be shown on retrieving checkpoint or server information.
+    - Now we can check and correct tweak mismatch during the setup
+  - Improved:
+    - Customisation synchronisation has got more smoother.
+  - Tidied
+    - Practically unused functions have been removed or are being prepared for removal.
+    - Many of the type-errors and lint errors have been corrected.
+    - Unused files have been removed.
+  - Note:
+    - From this version, some test files have been included. However, they are not enabled and released in the release build.
+      - To try them, please run Self-hosted LiveSync in the dev build.
+- 0.23.7
+  - Fixed:
+    - No longer missing tasks which have queued as the same key (e.g., for the same operation to the same file).
+      - This occurs, for example, with hidden files that have been changed multiple times in a very short period of time, such as `appearance.json`. Thanks for the report!
+    - Some trivial issues have been fixed.
+  - New feature:
+    - Reloading Obsidian can be scheduled until that file and database operations are stable.
 - 0.23.6:
   - Fixed:
     - Now the remote chunks could be decrypted even if we are using `Incubate chunks in Document`. (The note of 0.23.6 has been fixed).
