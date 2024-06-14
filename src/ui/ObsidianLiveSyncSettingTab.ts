@@ -644,6 +644,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             const keys = Object.keys(newConf) as (keyof ObsidianLiveSyncSettings)[];
             let hasLoaded = false;
             for (const k of keys) {
+                if (k === "deviceAndVaultName") continue;
                 if (isObjectDifferent(newConf[k], this.initialSettings?.[k])) {
                     // Something has changed
                     if (this.isDirty(k as AllSettingItemKey)) {
@@ -1739,6 +1740,24 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         new Setting(containerSyncSettingEl)
             .setClass("wizardHidden")
             .autoWireToggle("batchSave")
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("batchSaveMinimumDelay",
+                {
+                    acceptZero: true,
+                    onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true))
+                }
+            )
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("batchSaveMaximumDelay",
+                {
+                    acceptZero: true,
+                    onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true))
+                }
+            )
+
+
 
         new Setting(containerSyncSettingEl)
             .setClass("wizardHidden")

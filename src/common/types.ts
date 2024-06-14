@@ -60,6 +60,9 @@ export type FileEventItem = {
     type: FileEventType,
     args: FileEventArgs,
     key: string,
+    skipBatchWait?: boolean,
+    cancelled?: boolean,
+    batched?: boolean
 }
 
 // Hidden items (Now means `chunk`)

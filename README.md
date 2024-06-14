@@ -68,6 +68,7 @@ Synchronization status is shown in the status bar with the following icons.
      -   💾 Working write storage processes
      -   ⏳ Working read storage processes
      -   🛫 Pending read storage processes
+     -   📬 Batched read storage processes
      -   ⚙️ Working or pending storage processes of hidden files
      -   🧩 Waiting chunks
      -   🔌 Working Customisation items (Configuration, snippets, and plug-ins)

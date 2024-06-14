@@ -67,11 +67,11 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     "lessInformationInLog": {
         "name": "Show only notifications",
-        "desc": "Prevent logging and show only notification"
+        "desc": "Prevent logging and show only notification. Please disable when you report the logs"
     },
     "showVerboseLog": {
         "name": "Verbose Log",
-        "desc": "Show verbose log"
+        "desc": "Show verbose log. Please enable when you report the logs"
     },
     "hashCacheMaxCount": {
         "name": "Memory cache size (by total items)"
@@ -312,6 +312,14 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     processSmallFilesInUIThread: {
         name: "Process small files in the foreground",
         desc: "If enabled, the file under 1kb will be processed in the UI thread."
+    },
+    batchSaveMinimumDelay: {
+        name: "Minimum delay for batch database updating",
+        desc: "Seconds. Saving to the local database will be delayed until this value after we stop typing or saving."
+    },
+    batchSaveMaximumDelay: {
+        name: "Maximum delay for batch database updating",
+        desc: "Saving will be performed forcefully after this number of seconds."
     }
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {

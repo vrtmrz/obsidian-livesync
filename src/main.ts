@@ -3,8 +3,8 @@ const isDebug = false;
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, TweakValuesShouldMatchedTemplate, confName, type TweakValues, } from "./lib/src/common/types.ts";
-import { type InternalFileInfo, type CacheData, type FileEventItem, FileWatchEventQueueMax } from "./common/types.ts";
-import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
+import { type InternalFileInfo, type CacheData, type FileEventItem } from "./common/types.ts";
+import { arrayToChunkedArray, createBlob, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
 import { Logger, setGlobalLogFunction } from "./lib/src/common/logger.ts";
 import { PouchDB } from "./lib/src/pouchdb/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ui/ConflictResolveModal.ts";
@@ -18,7 +18,7 @@ import { setNoticeClass } from "./lib/src/mock_and_interop/wrapper.ts";
 import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/string_and_binary/convert.ts";
 import { addPrefix, isAcceptedAll, isPlainText, shouldBeIgnored, stripAllPrefixes } from "./lib/src/string_and_binary/path.ts";
 import { isLockAcquired, serialized, shareRunningResult, skipIfDuplicated } from "./lib/src/concurrency/lock.ts";
-import { StorageEventManager, StorageEventManagerObsidian } from "./storages/StorageEventManager.ts";
+import { StorageEventManager, StorageEventManagerObsidian, type FileEvent } from "./storages/StorageEventManager.ts";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { LiveSyncAbstractReplicator, type LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
 import { type KeyValueDatabase, OpenKeyValueDatabase } from "./common/KeyValueDB.ts";
@@ -32,7 +32,7 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./ui/LogPaneView.ts";
 import { LRUCache } from "./lib/src/memory/LRUCache.ts";
 import { SerializedFileAccess } from "./storages/SerializedFileAccess.js";
 import { QueueProcessor, stopAllRunningProcessors } from "./lib/src/concurrency/processor.js";
-import { reactive, reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
+import { computed, reactive, reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
 import { initializeStores } from "./common/stores.js";
 import { JournalSyncMinio } from "./lib/src/replication/journal/objectstore/JournalSyncMinio.js";
 import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
@@ -98,6 +98,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
     set suspended(value: boolean) {
         this._suspended = value;
+    }
+    get shouldBatchSave() {
+        return this.settings?.batchSave && this.settings?.liveSync != true;
+    }
+    get batchSaveMinimumDelay(): number {
+        return this.settings?.batchSaveMinimumDelay ?? DEFAULT_SETTINGS.batchSaveMinimumDelay
+    }
+    get batchSaveMaximumDelay(): number {
+        return this.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay
     }
     deviceAndVaultName = "";
     isReady = false;
@@ -895,6 +904,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                 const writePiece = piece.substring(1, piece.length - 1) + ",";
                 fireAndForget(async () => {
                     try {
+                        await this.vaultAccess.ensureDirectory(this.app.vault.configDir + "/ls-debug/");
                         await this.vaultAccess.adapterAppend(this.app.vault.configDir + "/ls-debug/" + outFile, writePiece + "\n")
                     } catch (ex) {
                         Logger(`Could not write ${outFile}`, LOG_LEVEL_VERBOSE);
@@ -946,6 +956,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         localStorage.setItem(lsKey, `${VER}`);
         await this.openDatabase();
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
+        this.watchEditorChange = this.watchEditorChange.bind(this);
         this.watchWindowVisibility = this.watchWindowVisibility.bind(this)
         this.watchOnline = this.watchOnline.bind(this);
         this.realizeSettingSyncMode = this.realizeSettingSyncMode.bind(this);
@@ -1136,7 +1147,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
-        this.fileEventQueue.delay = (!this.settings.liveSync && this.settings.batchSave) ? 5000 : 100;
         this.settingTab.requestReload()
     }
 
@@ -1185,7 +1195,6 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         this.localDatabase.settings = this.settings;
         setLang(this.settings.displayLanguage);
         this.settingTab.requestReload();
-        this.fileEventQueue.delay = (!this.settings.liveSync && this.settings.batchSave) ? 5000 : 100;
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         if (this.settings.settingSyncFile != "") {
             fireAndForget(() => this.saveSettingToMarkdown(this.settings.settingSyncFile));
@@ -1351,6 +1360,7 @@ We can perform a command in this file.
     vaultManager: StorageEventManager = new StorageEventManagerObsidian(this);
     registerFileWatchEvents() {
         this.vaultManager.beginWatch();
+        this.registerEvent(this.app.workspace.on("editor-change", this.watchEditorChange));
     }
     _initialCallback: any;
     swapSaveCommand() {
@@ -1368,8 +1378,8 @@ We can perform a command in this file.
                         saveCommandDefinition.callback = this._initialCallback;
                         this._initialCallback = undefined;
                     } else {
-                        Logger("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
                         if (this.settings.syncOnEditorSave) {
+                            Logger("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
                             this.replicate();
                         }
                     }
@@ -1452,37 +1462,10 @@ We can perform a command in this file.
     }
 
     cancelRelativeEvent(item: FileEventItem) {
-        this.fileEventQueue.modifyQueue((items) => [...items.filter(e => e.key != item.key)])
+        this.vaultManager.cancelQueue(item.key);
     }
 
-    queueNextFileEvent(items: FileEventItem[], newItem: FileEventItem): FileEventItem[] {
-        if (this.settings.batchSave && !this.settings.liveSync) {
-            const file = newItem.args.file;
-            // if the latest event is the same type, omit that
-            // a.md MODIFY  <- this should be cancelled when a.md MODIFIED
-            // b.md MODIFY    <- this should be cancelled when b.md MODIFIED
-            // a.md MODIFY
-            // a.md CREATE
-            //     : 
-            let i = items.length;
-            L1:
-            while (i >= 0) {
-                i--;
-                if (i < 0) break L1;
-                if (items[i].args.file.path != file.path) {
-                    continue L1;
-                }
-                if (items[i].type != newItem.type) break L1;
-                items.remove(items[i]);
-            }
-        }
-        items.push(newItem);
-        // When deleting or renaming, the queue must be flushed once before processing subsequent processes to prevent unexpected race condition.
-        if (newItem.type == "DELETE" || newItem.type == "RENAME") {
-            this.fileEventQueue.requestNextFlush();
-        }
-        return items;
-    }
+
     async handleFileEvent(queue: FileEventItem): Promise<any> {
         const file = queue.args.file;
         const lockKey = `handleFile:${file.path}`;
@@ -1536,20 +1519,7 @@ We can perform a command in this file.
 
     pendingFileEventCount = reactiveSource(0);
     processingFileEventCount = reactiveSource(0);
-    fileEventQueue =
-        new QueueProcessor(
-            async (items: FileEventItem[]) => {
-                await this.handleFileEvent(items[0]);
-                return []
-            }
-            ,
-            { suspended: true, batchSize: 1, concurrentLimit: 5, delay: 100, yieldThreshold: FileWatchEventQueueMax, totalRemainingReactiveSource: this.pendingFileEventCount, processingEntitiesReactiveSource: this.processingFileEventCount }
-        ).replaceEnqueueProcessor((items, newItem) => this.queueNextFileEvent(items, newItem));
 
-
-    flushFileEventQueue() {
-        return this.fileEventQueue.flush();
-    }
 
     watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
@@ -1557,6 +1527,34 @@ We can perform a command in this file.
         if (!this.isReady) return;
         if (!file) return;
         scheduleTask("watch-workspace-open", 500, () => fireAndForget(() => this.watchWorkspaceOpenAsync(file)));
+    }
+
+
+    flushFileEventQueue() {
+        return this.vaultManager.flushQueue();
+    }
+
+    watchEditorChange(editor: Editor, info: any) {
+        if (!("path" in info)) {
+            return;
+        }
+        if (!this.shouldBatchSave) {
+            return;
+        }
+        const file = info?.file as TFile;
+        if (!file) return;
+        if (!this.vaultManager.isWaiting(file.path as FilePath)) {
+            return;
+        }
+        const data = info?.data as string;
+        const fi: FileEvent = {
+            type: "CHANGED",
+            file: file,
+            cachedData: data,
+        }
+        this.vaultManager.appendQueue([
+            fi
+        ])
     }
 
     async watchWorkspaceOpenAsync(file: TFile) {
@@ -1966,53 +1964,44 @@ We can perform a command in this file.
     observeForLogs() {
         const padSpaces = `\u{2007}`.repeat(10);
         // const emptyMark = `\u{2003}`;
-        const rerenderTimer = new Map<string, [ReturnType<typeof setTimeout>, number]>();
-        const tick = reactiveSource(0);
-        function padLeftSp(num: number, mark: string) {
-            const numLen = `${num}`.length + 1;
-            const [timer, len] = rerenderTimer.get(mark) ?? [undefined, numLen];
-            if (num || timer) {
-                if (num) {
-                    if (timer) clearTimeout(timer);
-                    rerenderTimer.set(mark, [setTimeout(async () => {
-                        rerenderTimer.delete(mark);
-                        await delay(100);
-                        tick.value = tick.value + 1;
-                    }, 3000), Math.max(len, numLen)]);
+        function padLeftSpComputed(numI: ReactiveValue<number>, mark: string) {
+            const formatted = reactiveSource("");
+            let timer: ReturnType<typeof setTimeout> | undefined = undefined;
+            let maxLen = 1;
+            numI.onChanged(numX => {
+                const num = numX.value;
+                const numLen = `${Math.abs(num)}`.length + 1;
+                maxLen = maxLen < numLen ? numLen : maxLen;
+                if (timer) clearTimeout(timer);
+                if (num == 0) {
+                    timer = setTimeout(() => {
+                        formatted.value = "";
+                        maxLen = 1;
+                    }, 3000);
                 }
-                return ` ${mark}${`${padSpaces}${num}`.slice(-(len))}`;
-            } else {
-                return "";
-            }
+                formatted.value = ` ${mark}${`${padSpaces}${num}`.slice(-(maxLen))}`;
+            })
+            return computed(() => formatted.value);
         }
-        // const logStore
-        const queueCountLabel = reactive(() => {
-            // For invalidating
-            // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const _ = tick.value;
-            const dbCount = this.databaseQueueCount.value;
-            const replicationCount = this.replicationResultCount.value;
-            const storageApplyingCount = this.storageApplyingCount.value;
-            const chunkCount = collectingChunks.value;
-            const pluginScanCount = pluginScanningCount.value;
-            const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
-            const conflictProcessCount = this.conflictProcessQueueCount.value;
-            const labelReplication = padLeftSp(replicationCount, `📥`);
-            const labelDBCount = padLeftSp(dbCount, `📄`);
-            const labelStorageCount = padLeftSp(storageApplyingCount, `💾`);
-            const labelChunkCount = padLeftSp(chunkCount, `🧩`);
-            const labelPluginScanCount = padLeftSp(pluginScanCount, `🔌`);
-            const labelHiddenFilesCount = padLeftSp(hiddenFilesCount, `⚙️`)
-            const labelConflictProcessCount = padLeftSp(conflictProcessCount, `🔩`);
-            return `${labelReplication}${labelDBCount}${labelStorageCount}${labelChunkCount}${labelPluginScanCount}${labelHiddenFilesCount}${labelConflictProcessCount}`;
+        const labelReplication = padLeftSpComputed(this.replicationResultCount, `📥`);
+        const labelDBCount = padLeftSpComputed(this.databaseQueueCount, `📄`);
+        const labelStorageCount = padLeftSpComputed(this.storageApplyingCount, `💾`);
+        const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
+        const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
+        const labelConflictProcessCount = padLeftSpComputed(this.conflictProcessQueueCount, `🔩`);
+        const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value + hiddenFilesProcessingCount.value);
+        const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`)
+        const queueCountLabelX = reactive(() => {
+            return `${labelReplication()}${labelDBCount()}${labelStorageCount()}${labelChunkCount()}${labelPluginScanCount()}${labelHiddenFilesCount()}${labelConflictProcessCount()}`;
         })
-        const requestingStatLabel = reactive(() => {
+        const queueCountLabel = () => queueCountLabelX.value;
+
+        const requestingStatLabel = computed(() => {
             const diff = this.requestCount.value - this.responseCount.value;
             return diff != 0 ? "📲 " : "";
         })
 
-        const replicationStatLabel = reactive(() => {
+        const replicationStatLabel = computed(() => {
             const e = this.replicationStat.value;
             const sent = e.sent;
             const arrived = e.arrived;
@@ -2055,42 +2044,36 @@ We can perform a command in this file.
             }
             return { w, sent, pushLast, arrived, pullLast };
         })
-        const waitingLabel = reactive(() => {
-            // For invalidating
-            // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const _ = tick.value;
-            const e = this.pendingFileEventCount.value;
-            const proc = this.processingFileEventCount.value;
-            const pend = e - proc;
-            const labelProc = padLeftSp(proc, `⏳`);
-            const labelPend = padLeftSp(pend, `🛫`);
-            return `${labelProc}${labelPend}`;
+        const labelProc = padLeftSpComputed(this.vaultManager.processing, `⏳`);
+        const labelPend = padLeftSpComputed(this.vaultManager.totalQueued, `🛫`);
+        const labelInBatchDelay = padLeftSpComputed(this.vaultManager.batched, `📬`);
+        const waitingLabel = computed(() => {
+            return `${labelProc()}${labelPend()}${labelInBatchDelay()}`;
         })
-        const statusLineLabel = reactive(() => {
-            const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel.value;
-            const queued = queueCountLabel.value;
-            const waiting = waitingLabel.value;
-            const networkActivity = requestingStatLabel.value;
+        const statusLineLabel = computed(() => {
+            const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel();
+            const queued = queueCountLabel();
+            const waiting = waitingLabel();
+            const networkActivity = requestingStatLabel();
             return {
                 message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}`,
             };
         })
         const statusBarLabels = reactive(() => {
             const scheduleMessage = this.isReloadingScheduled ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n` : "";
-            const { message } = statusLineLabel.value;
+            const { message } = statusLineLabel();
             const status = scheduleMessage + this.statusLog.value;
             return {
                 message, status
             }
         })
 
-        const applyToDisplay = throttle(() => {
-            const v = statusBarLabels.value;
+        const applyToDisplay = throttle((label: typeof statusBarLabels.value) => {
+            const v = label;
             this.applyStatusBarText(v.message, v.status);
 
         }, 20);
-        statusBarLabels.onChanged(applyToDisplay);
+        statusBarLabels.onChanged(label => applyToDisplay(label.value))
     }
 
     applyStatusBarText(message: string, log: string) {
@@ -2105,7 +2088,6 @@ We can perform a command in this file.
             // const root = activeDocument.documentElement;
             // root.style.setProperty("--log-text", "'" + (newMsg + "\\A " + newLog) + "'");
         }
-
 
         scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
     }
