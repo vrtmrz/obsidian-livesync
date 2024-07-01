@@ -1702,7 +1702,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             {
                 target: patSetting.controlEl,
                 props: {
-                    patterns: pat, originals: [...pat], apply: async (newPatterns) => {
+                    patterns: pat, originals: [...pat], apply: async (newPatterns: string[]) => {
                         this.editingSettings.syncInternalFilesIgnorePatterns = newPatterns.map(e => e.trim()).filter(e => e != "").join(", ");
                         await this.saveAllDirtySettings();
                         this.display();
@@ -1785,8 +1785,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 props: {
                     patterns: this.editingSettings.syncOnlyRegEx.split("|[]|"),
                     originals: [...this.editingSettings.syncOnlyRegEx.split("|[]|")],
-                    apply: async (newPatterns) => {
-                        this.editingSettings.syncOnlyRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
+                    apply: async (newPatterns: string[]) => {
+                        this.editingSettings.syncOnlyRegEx = newPatterns.map((e: string) => e.trim()).filter(e => e != "").join("|[]|");
                         await this.saveAllDirtySettings();
                         this.display();
                     }
@@ -1805,7 +1805,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 props: {
                     patterns: this.editingSettings.syncIgnoreRegEx.split("|[]|"),
                     originals: [...this.editingSettings.syncIgnoreRegEx.split("|[]|")],
-                    apply: async (newPatterns) => {
+                    apply: async (newPatterns: string[]) => {
                         this.editingSettings.syncIgnoreRegEx = newPatterns.map(e => e.trim()).filter(e => e != "").join("|[]|");
                         await this.saveAllDirtySettings();
                         this.display();

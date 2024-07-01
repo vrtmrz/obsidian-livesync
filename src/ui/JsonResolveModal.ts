@@ -43,7 +43,7 @@ export class JsonResolveModal extends Modal {
                     nameA: this.nameA,
                     nameB: this.nameB,
                     defaultSelect: this.defaultSelect,
-                    callback: (keepRev, mergedStr) => this.UICallback(keepRev, mergedStr),
+                    callback: (keepRev: string | undefined, mergedStr: string | undefined) => this.UICallback(keepRev, mergedStr),
                 },
             });
         }
