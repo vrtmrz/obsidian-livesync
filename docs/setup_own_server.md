@@ -108,13 +108,18 @@ $ export database=obsidiannotes #Please change as you like
 $ export passphrase=dfsapkdjaskdjasdas #Please change as you like
 $ deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
+
+Your passphrase of Setup-URI is:  patient-haze
+This passphrase is never shown again, so please note it in a safe place.
 ```
+
+Please keep your passphrase of Setup-URI.
 
 ### 2. Setup Self-hosted LiveSync to Obsidian
 [This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 1. Install Self-hosted LiveSync
 2. Choose `Use the copied setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
-3. Type `welcome` for setup-uri passphrase.
+3. Type the previously displayed passphrase (`patient-haze`) for setup-uri passphrase.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
 5. `Reload app without save` once.
 

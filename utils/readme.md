@@ -129,12 +129,15 @@ curl: (35) OpenSSL SSL_connect: Connection reset by peer in connection to young-
 <-- Configuring CouchDB by REST APIs Done!
 OK!
 Setup finished! Also, we can set up Self-hosted LiveSync instantly, by the following setup uri.
-Passphrase of setup-uri is `welcome`.
+Passphrase of setup-uri will be printed only one time. Keep it safe!
 --- configured ---
 database       : obsidiannotes
 E2EE passphrase: dark-wildflower-26467
 --- setup uri  ---
 obsidian://setuplivesync?settings=%5B%22gZkBwjFbLqxbdSIbJymU%2FmTPBPAKUiHVGDRKYiNnKhW0auQeBgJOfvnxexZtMCn8sNiIUTAlxNaMGF2t%2BCEhpJoeCP%2FO%2BrwfN5LaNDQyky1Uf7E%2B64A5UWyjOYvZDOgq4iCKSdBAXp9oO%2BwKh4MQjUZ78vIVvJp8Mo6NWHfm5fkiWoAoddki1xBMvi%2BmmN%2FhZatQGcslVb9oyYWpZocduTl0a5Dv%2FQviGwlYQ%2F4NY0dVDIoOdvaYS%2FX4GhNAnLzyJKMXhPEJHo9FvR%2FEOBuwyfMdftV1SQUZ8YDCuiR3T7fh7Kn1c6OFgaFMpFm%2BWgIJ%2FZpmAyhZFpEcjpd7ty%2BN9kfd9gQsZM4%2BYyU9OwDd2DahVMBWkqoV12QIJ8OlJScHHdcUfMW5ex%2F4UZTWKNEHJsigITXBrtq11qGk3rBfHys8O0vY6sz%2FaYNM3iAOsR1aoZGyvwZm4O6VwtzK8edg0T15TL4O%2B7UajQgtCGxgKNYxb8EMOGeskv7NifYhjCWcveeTYOJzBhnIDyRbYaWbkAXQgHPBxzJRkkG%2FpBPfBBoJarj7wgjMvhLJ9xtL4FbP6sBNlr8jtAUCoq4L7LJcRNF4hlgvjJpL2BpFZMzkRNtUBcsRYR5J%2BM1X2buWi2BHncbSiRRDKEwNOQkc%2FmhMJjbAn%2F8eNKRuIICOLD5OvxD7FZNCJ0R%2BWzgrzcNV%22%2C%22ec7edc900516b4fcedb4c7cc01000000%22%2C%22fceb5fe54f6619ee266ed9a887634e07%22%5D
+
+Your passphrase of Setup-URI is:  patient-haze
+This passphrase is never shown again, so please note it in a safe place.
 ```
 
 All we have to do is copy the setup-URI (`obsidian`://...`) and open it from Self-hosted LiveSync on Obsidian.
