@@ -18,6 +18,9 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.15:
+  - Maintenance Update:
+    - Library refining (Phase 1). There are no significant changes on the user side.
 - 0.23.14:
   - Fixed:
     - No longer batch-saving ignores editor inputs.
@@ -42,22 +45,6 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
       - Default disabled, to enable, toggle `Use splitting-limit-capped chunk splitter` on `Sync settings` -> `Performance tweaks`
   - Tidied
     - Some files have been separated into multiple files to make them more explicit in what they are responsible for.
-- 0.23.11:
-  - Fixed:
-    - Now we *surely* can set the device name and enable customised synchronisation.
-    - Unnecessary dialogue update processes have been eliminated.
-    - Customisation sync no longer stores half-collected files.
-    - No longer hangs up when removing or renaming files with the `Sync on Save` toggle enabled.
-  - Improved:
-    - Customisation sync now performs data deserialization more smoothly.
-    - New translations have been merged.
-- 0.23.10
-  - Fixed:
-    - No longer configurations have been locked in the minimal setup.
-- 0.23.9
-  - Fixed:
-    - No longer unexpected parallel replication is performed.
-    - Now we can set the device name and enable customised synchronisation again.
 
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
