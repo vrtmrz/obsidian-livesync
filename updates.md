@@ -18,6 +18,12 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.16:
+  - Maintenance Update:
+    - Library refining (Phase 1 - step 2). There are no significant changes on the user side.
+    - Including the following fixes of potentially problems:
+      - the problem which the path had been obfuscating twice has been resolved.
+      - Note: Potential problems of the library; which has not happened in Self-hosted LiveSync for some reasons.
 - 0.23.15:
   - Maintenance Update:
     - Library refining (Phase 1). There are no significant changes on the user side.
