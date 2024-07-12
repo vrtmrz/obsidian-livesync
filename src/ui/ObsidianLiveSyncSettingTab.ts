@@ -21,7 +21,7 @@ import {
     statusDisplay,
     type ConfigurationItem
 } from "../lib/src/common/types.ts";
-import { createBlob, delay, isDocContentSame, isObjectDifferent, readAsBlob, unique } from "../lib/src/common/utils.ts";
+import { createBlob, delay, isDocContentSame, isObjectDifferent, readAsBlob, sizeToHumanReadable, unique } from "../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../lib/src/common/logger.ts";
 import { checkSyncInfo, isCloudantURI } from "../lib/src/pouchdb/utils_couchdb.ts";
@@ -586,6 +586,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const trialSetting = { ...this.editingSettings, ...settingOverride };
         const replicator = this.plugin.getNewReplicator(trialSetting);
         await replicator.tryConnectRemote(trialSetting);
+        const status = await replicator.getRemoteStatus(trialSetting);
+        if (status) {
+            if (status.estimatedSize) {
+                Logger(`Estimated size: ${sizeToHumanReadable(status.estimatedSize)}`, LOG_LEVEL_NOTICE);
+            }
+        }
     }
 
     closeSetting() {
@@ -1187,6 +1193,10 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 .addApplyButton(["remoteType", "couchDB_URI", "couchDB_USER", "couchDB_PASSWORD", "couchDB_DBNAME"])
                 .addOnUpdate(onlyOnCouchDB)
         }, onlyOnCouchDB);
+
+        this.createEl(containerRemoteDatabaseEl, "h4", { text: "Notification" }).addClass("wizardHidden")
+        new Setting(containerRemoteDatabaseEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
+
 
         this.createEl(containerRemoteDatabaseEl, "h4", { text: "Effective Storage Using" }).addClass("wizardHidden")
 

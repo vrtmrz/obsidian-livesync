@@ -320,6 +320,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     batchSaveMaximumDelay: {
         name: "Maximum delay for batch database updating",
         desc: "Saving will be performed forcefully after this number of seconds."
+    },
+    "notifyThresholdOfRemoteStorageSize": {
+        name: "Notify when the estimated remote storage size exceeds on start up",
+        desc: "MB (0 to disable)."
     }
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {

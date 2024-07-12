@@ -4,7 +4,7 @@ import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stri
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
 import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, type LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, TweakValuesShouldMatchedTemplate, confName, type TweakValues, } from "./lib/src/common/types.ts";
 import { type InternalFileInfo, type CacheData, type FileEventItem } from "./common/types.ts";
-import { arrayToChunkedArray, createBlob, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
+import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, sizeToHumanReadable, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
 import { Logger, setGlobalLogFunction } from "./lib/src/common/logger.ts";
 import { PouchDB } from "./lib/src/pouchdb/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ui/ConflictResolveModal.ts";
@@ -640,6 +640,82 @@ Click anywhere to stop counting down.
     async scanStat() {
         const notes: { path: string, mtime: number }[] = [];
         Logger(`Additional safety scan..`, LOG_LEVEL_VERBOSE);
+        Logger(`Checking storage sizes`, LOG_LEVEL_VERBOSE);
+        if (this.settings.notifyThresholdOfRemoteStorageSize < 0) {
+            const message = `Now, Self-hosted LiveSync is able to check the remote storage size on the start-up.
+
+You can configure the threshold size for your remote storage. This will be different for your server.
+
+Please choose the threshold size as you like.
+
+- 0: Do not warn about storage size.
+  This is recommended if you have enough space on the remote storage especially you have self-hosted. And you can check the storage size and rebuild manually.
+- 800: Warn if the remote storage size exceeds 800MB.
+  This is recommended if you are using fly.io with 1GB limit or IBM Cloudant.
+- 2000: Warn if the remote storage size exceeds 2GB.
+
+And if your actual storage size exceeds the threshold after the setup, you may warned again. But do not worry, you can enlarge the threshold (or rebuild everything to reduce the size).
+`
+            const ANSWER_0 = "Do not warn";
+            const ANSWER_800 = "800MB";
+            const ANSWER_2000 = "2GB";
+
+            const ret = await confirmWithMessage(this, "Remote storage size threshold", message, [ANSWER_0, ANSWER_800, ANSWER_2000], ANSWER_800, 40);
+            if (ret == ANSWER_0) {
+                this.settings.notifyThresholdOfRemoteStorageSize = 0;
+            } else if (ret == ANSWER_800) {
+                this.settings.notifyThresholdOfRemoteStorageSize = 800;
+            } else {
+                this.settings.notifyThresholdOfRemoteStorageSize = 2000;
+            }
+        }
+        if (this.settings.notifyThresholdOfRemoteStorageSize > 0) {
+            const remoteStat = await this.replicator?.getRemoteStatus(this.settings);
+            if (remoteStat) {
+                const estimatedSize = remoteStat.estimatedSize;
+                if (estimatedSize) {
+                    const maxSize = this.settings.notifyThresholdOfRemoteStorageSize * 1024 * 1024;
+                    if (estimatedSize > maxSize) {
+                        const message = `Remote storage size: ${sizeToHumanReadable(estimatedSize)}. It exceeds the configured value ${sizeToHumanReadable(maxSize)}.
+This may cause the storage to be full. You should enlarge the remote storage, or rebuild everything to reduce the size. \n
+**Note:** If you are new to Self-hosted LiveSync, you should enlarge the threshold. \n
+
+Self-hosted LiveSync will not release the storage automatically even if the file is deleted. This is why they need regular maintenance.\n
+
+If you have enough space on the remote storage, you can enlarge the threshold. Otherwise, you should rebuild everything.\n
+
+However, **Please make sure that all devices have been synchronised**. \n
+\n`;
+                        const ANSWER_ENLARGE_LIMIT = "Enlarge the limit";
+                        const ANSWER_REBUILD = "Rebuild now";
+                        const ANSWER_IGNORE = "Dismiss";
+                        const ret = await confirmWithMessage(this, "Remote storage size exceeded", message, [ANSWER_ENLARGE_LIMIT, ANSWER_REBUILD, ANSWER_IGNORE,], ANSWER_IGNORE, 20);
+                        if (ret == ANSWER_REBUILD) {
+                            const ret = await this.askYesNo("This may take a bit of a long time. Do you really want to rebuild everything now?");
+                            if (ret == "yes") {
+                                Logger(`Receiving all from the server before rebuilding`, LOG_LEVEL_NOTICE);
+                                await this.replicateAllFromServer(true);
+                                await delay(3000);
+                                Logger(`Obsidian will be reloaded to rebuild everything.`, LOG_LEVEL_NOTICE);
+                                await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
+                                this.performAppReload();
+                            }
+                        } else if (ret == ANSWER_ENLARGE_LIMIT) {
+                            this.settings.notifyThresholdOfRemoteStorageSize = ~~(estimatedSize / 1024 / 1024) + 100;
+                            Logger(`Threshold has been enlarged to ${this.settings.notifyThresholdOfRemoteStorageSize}MB`, LOG_LEVEL_NOTICE);
+                            await this.saveSettings();
+                        } else {
+                            // Dismiss or Close the dialog
+                        }
+
+                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize)} `, LOG_LEVEL_INFO);
+                    } else {
+                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)}`, LOG_LEVEL_INFO);
+                    }
+                }
+            }
+        }
+
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (!("_conflicts" in doc)) continue;
             notes.push({ path: this.getPath(doc), mtime: doc.mtime });
@@ -1146,6 +1222,12 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             this.settings.customChunkSize = 0;
         }
         this.deviceAndVaultName = localStorage.getItem(lsKey) || "";
+        if (this.deviceAndVaultName == "") {
+            if (this.settings.usePluginSync) {
+                Logger("Device name is not set. Plug-in sync has been disabled.", LOG_LEVEL_NOTICE);
+                this.settings.usePluginSync = false;
+            }
+        }
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         this.settingTab.requestReload()
     }
@@ -2095,54 +2177,62 @@ We can perform a command in this file.
         if (!this.replicator.tweakSettingsMismatched) {
             return "OK";
         }
-        const remoteSettings = this.replicator.mismatchedTweakValues;
-        const mustSettings = remoteSettings.map(e => extractObject(TweakValuesShouldMatchedTemplate, e));
+        const preferred = extractObject(TweakValuesShouldMatchedTemplate, this.replicator.preferredTweakValue!);
+        const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         // Making tables:
-        let table = `| Value name | Ours | ${mustSettings.map((_, i) => `Remote ${i + 1} |`).join("")}\n` +
-            `|: --- |: --- :${`|: --- :`.repeat(mustSettings.length)}|\n`
+        let table = `| Value name | This device | Configured | \n` +
+            `|: --- |: --- :|: ---- :| \n`;
+
+        // const items = [mine,preferred]
         for (const v of items) {
             const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-            const value = mustSettings.map(e => e[key]);
-            table += `| ${confName(key)} | ${escapeMarkdownValue(this.settings[key])} | ${value.map((v) => `${escapeMarkdownValue(v)} |`).join("")}\n`;
+            const valueMine = escapeMarkdownValue(mine[key]);
+            const valuePreferred = escapeMarkdownValue(preferred[key]);
+            if (valueMine == valuePreferred) continue;
+            table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
         }
 
         const message = `
-Configuration mismatching between the clients has been detected.
-This can be harmful or extra capacity consumption. We have to make these value unified.
+Your configuration has not been matched with the one on the remote server.
+(Which you had decided once before, or set by initially synchronised device).
 
 Configured values:
 
 ${table}
 
-Please select a unification method.
+Please select which one you want to use.
 
-However, even if we answer that you will \`Use mine\`, we will be prompted to accept it again on the other device and have to decide accept or not.`;
+- Use configured: Update settings of this device by configured one on the remote server.
+  You should select this if you have changed the settings on **another device**.
+- Update with mine: Update settings on the remote server by the settings of this device.
+  You should select this if you have changed the settings on **this device**.
+- Dismiss: Ignore this message and keep the current settings.
+  You cannot synchronise until you resolve this issue without enabling \`Do not check configuration mismatch before replication\`.`;
 
-        //TODO: apply this settings.
-        const CHOICE_USE_REMOTE = "Use Remote ";
-        const CHOICE_USR_MINE = "Use ours";
+        const CHOICE_USE_REMOTE = "Use configured";
+        const CHOICE_USR_MINE = "Update with mine";
         const CHOICE_DISMISS = "Dismiss";
-        // const ourConfig = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
         const CHOICE_AND_VALUES = [
-            ...mustSettings.map((e, i) => [`${CHOICE_USE_REMOTE} ${i + 1}`, e]),
+            [CHOICE_USE_REMOTE, preferred],
             [CHOICE_USR_MINE, true],
             [CHOICE_DISMISS, false]
         ]
         const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
-        const retKey = await confirmWithMessage(this, "Locked", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
+        const retKey = await confirmWithMessage(this, "Tweaks Mismatched or Changed", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
         if (!retKey) return "IGNORE";
         const conf = CHOICES[retKey];
 
         if (conf === true) {
-            await this.replicator.resetRemoteTweakSettings(this.settings);
-            Logger(`Tweak values on the remote server have been cleared, and will be overwritten in next synchronisation.`, LOG_LEVEL_NOTICE);
-            return "OK";
+            await this.replicator.setPreferredRemoteTweakSettings(this.settings);
+            Logger(`Tweak values on the remote server have been updated. Your other device will see this message.`, LOG_LEVEL_NOTICE);
+            return "CHECKAGAIN";
         }
         if (conf) {
             this.settings = { ...this.settings, ...conf };
+            await this.replicator.setPreferredRemoteTweakSettings(this.settings);
             await this.saveSettingData();
-            Logger(`Tweak Values have been overwritten by the chosen one.`, LOG_LEVEL_NOTICE);
+            Logger(`Configuration has been updated as configured by the other device.`, LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
         return "IGNORE";
