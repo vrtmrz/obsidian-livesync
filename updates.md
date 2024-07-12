@@ -18,6 +18,18 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.17:
+  - Improved:
+    - Overall performance has been improved by using PouchDB 9.0.0.
+    - Configuration mismatch detection is refined. We can resolve mismatches more smoothly and naturally.
+    More detail is on `troubleshooting.md` on the repository.
+  - Fixed:
+    - Customisation Sync will be disabled when a corrupted configuration is detected.
+      Therefore, the Device Name can be changed even in the event of a configuration mismatch.
+  - New feature:
+    - We can get a notification about the storage usage of the remote database.
+      - Default: We will be asked.
+      - If the remote storage usage approaches the configured value, we will be asked whether we want to Rebuild or increase the limit.
 - 0.23.16:
   - Maintenance Update:
     - Library refining (Phase 1 - step 2). There are no significant changes on the user side.
@@ -37,20 +49,6 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
       - Default: 5 seconds, the same as the previous hard-coded value. (Note: also, the previous behaviour was not correct).
     - Also, we can configure the limit of delaying batch-saving.
     - The performance of showing status indicators has been improved.
-- 0.23.13:
-  - Fixed:
-    - No longer files have been trimmed even delimiters have been continuous.
-    - Fixed the toggle title to `Do not split chunks in the background` from `Do not split chunks in the foreground`.
-    - Non-configured item mismatches are no longer detected.
-- 0.23.12:
-  - Improved:
-    - Now notes will be split into chunks in the background thread to improve smoothness.
-      - Default enabled, to disable, toggle `Do not split chunks in the foreground` on `Hatch` -> `Compatibility`.
-      - If you want to process very small notes in the foreground, please enable `Process small files in the foreground` on `Hatch` -> `Compatibility`.
-    - We can use a `splitting-limit-capped chunk splitter`; which performs more simple and make less amount of chunks.
-      - Default disabled, to enable, toggle `Use splitting-limit-capped chunk splitter` on `Sync settings` -> `Performance tweaks`
-  - Tidied
-    - Some files have been separated into multiple files to make them more explicit in what they are responsible for.
 
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

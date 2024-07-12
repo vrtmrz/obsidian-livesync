@@ -20,6 +20,7 @@
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
   - [Tips](#tips)
+    - [How to resolve `Tweaks Mismatched of Changed`](#how-to-resolve-tweaks-mismatched-of-changed)
     - [Old tips](#old-tips)
 
 <!-- - -->
@@ -111,7 +112,27 @@ Place `redflag.md` on top of the vault, and restart Obsidian. The most simple wa
 If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage processes.
 
 ## Tips
+
+### How to resolve `Tweaks Mismatched of Changed`
+
+(Since v0.23.17)
+
+If you have changed some configurations or tweaks which should be unified between the devices, you will be asked how to reflect (or not) other devices at the next synchronisation. It also occurs on the device itself, where changes are made, to prevent unexpected configuration changes from unwanted propagation.  
+(We may thank this behaviour if we have synchronised or backed up and restored Self-hosted LiveSync. At least, for me so).
+
+Following dialogue will be shown:
+![Dialogue](tweak_mismatch_dialogue.png)
+
+- If we want to propagate the setting of the device, we should choose `Update with mine`.
+- On other devices, we should choose `Use configured` to accept and use the configured configuration.
+- `Dismiss` can postpone a decision. However, we cannot synchronise until we have decided. 
+
+Rest assured that in most cases we can choose `Use configured`. (Unless you are certain that you have not changed the configuration).
+
+If we see it for the first time, it reflects the settings of the device that has been synchronised with the remote for the first time since the upgrade. Probably, we can accept that.
+
 <!-- Add here -->
+
 
 ### Old tips
 -   Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case, you can delete these items from the settings dialog.
