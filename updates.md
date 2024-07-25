@@ -18,6 +18,23 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.18:
+  - New feature:
+    - Per-file-saved customization sync has been shipped.
+      - We can synchronise plug-igs etc., more smoothly.
+      - Default: disabled. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost compatibility with old versions.
+    - Customisation sync has got beta3.
+      - We can set `Flag` to each item to select the newest, automatically.
+        - This configuration is per device.
+  - Improved:
+    - Start-up speed has been improved.
+  - Fixed:
+    - On the customisation sync dialogue, buttons are kept within the screen.
+    - No more unnecessary entries on `data.json` for customisation sync.
+    - Selections are no longer lost while updating customisation items.
+  - Tidied on source codes:
+    - Many typos have been fixed.
+    - Some unnecessary type casting removed.
 - 0.23.17:
   - Improved:
     - Overall performance has been improved by using PouchDB 9.0.0.
