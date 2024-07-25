@@ -13,6 +13,8 @@
     export let nameA: string = "A";
     export let nameB: string = "B";
     export let defaultSelect: string = "";
+    export let keepOrder = false;
+    export let hideLocal: boolean = false;
     let docA: LoadedEntry;
     let docB: LoadedEntry;
     let docAContent = "";
@@ -55,9 +57,12 @@
         if (mode == "AB") return callback(undefined, JSON.stringify(objAB, null, 2));
         callback(undefined, undefined);
     }
+    function cancel() {
+        callback(undefined, undefined);
+    }
     $: {
         if (docs && docs.length >= 1) {
-            if (docs[0].mtime < docs[1].mtime) {
+            if (keepOrder || docs[0].mtime < docs[1].mtime) {
                 docA = docs[0];
                 docB = docs[1];
             } else {
@@ -96,13 +101,19 @@
         diffs = getJsonDiff(objA, selectedObj);
     }
 
-    $: modes = [
-        ["", "Not now"],
-        ["A", nameA || "A"],
-        ["B", nameB || "B"],
-        ["AB", `${nameA || "A"} + ${nameB || "B"}`],
-        ["BA", `${nameB || "B"} + ${nameA || "A"}`],
-    ] as ["" | "A" | "B" | "AB" | "BA", string][];
+    let modes = [] as ["" | "A" | "B" | "AB" | "BA", string][];
+    $: {
+        let newModes = [] as typeof modes;
+
+        if (!hideLocal) {
+            newModes.push(["", "Not now"]);
+            newModes.push(["A", nameA || "A"]);
+        }
+        newModes.push(["B", nameB || "B"]);
+        newModes.push(["AB", `${nameA || "A"} + ${nameB || "B"}`]);
+        newModes.push(["BA", `${nameB || "B"} + ${nameA || "A"}`]);
+        modes = newModes;
+    }
 </script>
 
 <h2>{filename}</h2>
@@ -132,28 +143,54 @@
     {:else}
         NO PREVIEW
     {/if}
-    <div>
-        {nameA}
-        {#if docA._id == docB._id}
-            Rev:{revStringToRevNumber(docA._rev)}
-        {/if} ,{new Date(docA.mtime).toLocaleString()}
-        {docAContent.length} letters
-    </div>
 
-    <div>
-        {nameB}
-        {#if docA._id == docB._id}
-            Rev:{revStringToRevNumber(docB._rev)}
-        {/if} ,{new Date(docB.mtime).toLocaleString()}
-        {docBContent.length} letters
+    <div class="infos">
+        <table>
+            <tr>
+                <th>{nameA}</th>
+                <td
+                    >{#if docA._id == docB._id}
+                        Rev:{revStringToRevNumber(docA._rev)}
+                    {/if}
+                    {new Date(docA.mtime).toLocaleString()}</td
+                >
+                <td>
+                    {docAContent.length} letters
+                </td>
+            </tr>
+            <tr>
+                <th>{nameB}</th>
+                <td
+                    >{#if docA._id == docB._id}
+                        Rev:{revStringToRevNumber(docB._rev)}
+                    {/if}
+                    {new Date(docB.mtime).toLocaleString()}</td
+                >
+                <td>
+                    {docBContent.length} letters
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div class="buttons">
+        {#if hideLocal}
+            <button on:click={cancel}>Cancel</button>
+        {/if}
         <button on:click={apply}>Apply</button>
     </div>
 {/if}
 
 <style>
+    .spacer {
+        flex-grow: 1;
+    }
+    .infos {
+        display: flex;
+        justify-content: space-between;
+        margin: 4px 0.5em;
+    }
+
     .deleted {
         text-decoration: line-through;
     }

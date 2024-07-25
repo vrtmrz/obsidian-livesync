@@ -12,15 +12,24 @@ export class JsonResolveModal extends Modal {
     nameA: string;
     nameB: string;
     defaultSelect: string;
+    keepOrder: boolean;
+    hideLocal: boolean;
+    title: string = "Conflicted Setting";
 
-    constructor(app: App, filename: FilePath, docs: LoadedEntry[], callback: (keepRev?: string, mergedStr?: string) => Promise<void>, nameA?: string, nameB?: string, defaultSelect?: string) {
+    constructor(app: App, filename: FilePath,
+        docs: LoadedEntry[], callback: (keepRev?: string, mergedStr?: string) => Promise<void>,
+        nameA?: string, nameB?: string, defaultSelect?: string,
+        keepOrder?: boolean, hideLocal?: boolean, title: string = "Conflicted Setting") {
         super(app);
         this.callback = callback;
         this.filename = filename;
         this.docs = docs;
         this.nameA = nameA || "";
         this.nameB = nameB || "";
+        this.keepOrder = keepOrder || false;
         this.defaultSelect = defaultSelect || "";
+        this.title = title;
+        this.hideLocal = hideLocal ?? false;
         waitForSignal(`cancel-internal-conflict:${filename}`).then(() => this.close());
     }
     async UICallback(keepRev?: string, mergedStr?: string) {
@@ -31,7 +40,7 @@ export class JsonResolveModal extends Modal {
 
     onOpen() {
         const { contentEl } = this;
-        this.titleEl.setText("Conflicted Setting");
+        this.titleEl.setText(this.title);
         contentEl.empty();
 
         if (this.component == undefined) {
@@ -43,6 +52,8 @@ export class JsonResolveModal extends Modal {
                     nameA: this.nameA,
                     nameB: this.nameB,
                     defaultSelect: this.defaultSelect,
+                    keepOrder: this.keepOrder,
+                    hideLocal: this.hideLocal,
                     callback: (keepRev: string | undefined, mergedStr: string | undefined) => this.UICallback(keepRev, mergedStr),
                 },
             });

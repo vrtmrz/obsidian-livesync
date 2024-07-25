@@ -1,39 +1,42 @@
 <script lang="ts">
-    import type { PluginDataExDisplay } from "../../features/CmdConfigSync";
+    import { PluginDataExDisplayV2, type IPluginDataExDisplay } from "../../features/CmdConfigSync";
     import { Logger } from "../../lib/src/common/logger";
-    import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert";
-    import { type FilePath, LOG_LEVEL_NOTICE } from "../../lib/src/common/types";
-    import { getDocData } from "../../lib/src/common/utils";
+    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types";
+    import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
     import type ObsidianLiveSyncPlugin from "../../main";
-    import { askString, scheduleTask } from "../../common/utils";
+    import { askString } from "../../common/utils";
+    import { Menu } from "obsidian";
 
-    export let list: PluginDataExDisplay[] = [];
+    export let list: IPluginDataExDisplay[] = [];
     export let thisTerm = "";
     export let hideNotApplicable = false;
     export let selectNewest = 0;
+    export let selectNewestStyle = 0;
     export let applyAllPluse = 0;
 
-    export let applyData: (data: PluginDataExDisplay) => Promise<boolean>;
-    export let compareData: (dataA: PluginDataExDisplay, dataB: PluginDataExDisplay) => Promise<boolean>;
-    export let deleteData: (data: PluginDataExDisplay) => Promise<boolean>;
+    export let applyData: (data: IPluginDataExDisplay) => Promise<boolean>;
+    export let compareData: (dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach?: boolean) => Promise<boolean>;
+    export let deleteData: (data: IPluginDataExDisplay) => Promise<boolean>;
     export let hidden: boolean;
     export let plugin: ObsidianLiveSyncPlugin;
     export let isMaintenanceMode: boolean = false;
+    export let isFlagged: boolean = false;
     const addOn = plugin.addOnConfigSync;
 
-    let selected = "";
+    export let selected = "";
     let freshness = "";
     let equivalency = "";
     let version = "";
     let canApply: boolean = false;
     let canCompare: boolean = false;
+    let pickToCompare: boolean = false;
     let currentSelectNewest = 0;
     let currentApplyAll = 0;
 
     // Selectable terminals
     let terms = [] as string[];
 
-    async function comparePlugin(local: PluginDataExDisplay, remote: PluginDataExDisplay) {
+    async function comparePlugin(local: IPluginDataExDisplay | undefined, remote: IPluginDataExDisplay | undefined) {
         let freshness = "";
         let equivalency = "";
         let version = "";
@@ -41,25 +44,28 @@
         let canApply: boolean = false;
         let canCompare = false;
         if (!local && !remote) {
-            // NO OP. whats happened?
+            // NO OP. what's happened?
             freshness = "";
         } else if (local && !remote) {
-            freshness = "⚠ Local only";
+            freshness = "Local only";
         } else if (remote && !local) {
-            freshness = "✓ Remote only";
+            freshness = "Remote only";
             canApply = true;
         } else {
             const dtDiff = (local?.mtime ?? 0) - (remote?.mtime ?? 0);
+            const diff = timeDeltaToHumanReadable(Math.abs(dtDiff / 1000));
             if (dtDiff / 1000 < -10) {
-                freshness = "✓ Newer";
+                // freshness = "✓ Newer";
+                freshness = `Newer (${diff})`;
                 canApply = true;
                 contentCheck = true;
             } else if (dtDiff / 1000 > 10) {
-                freshness = "⚠ Older";
+                // freshness = "⚠ Older";
+                freshness = `Older (${diff})`;
                 canApply = true;
                 contentCheck = true;
             } else {
-                freshness = "⚖️ Same old";
+                freshness = "Same";
                 canApply = false;
                 contentCheck = true;
             }
@@ -67,25 +73,26 @@
         const localVersionStr = local?.version || "0.0.0";
         const remoteVersionStr = remote?.version || "0.0.0";
         if (local?.version || remote?.version) {
-            const localVersion = versionNumberString2Number(localVersionStr);
-            const remoteVersion = versionNumberString2Number(remoteVersionStr);
-            if (localVersion == remoteVersion) {
-                version = "⚖️ Same ver.";
-            } else if (localVersion > remoteVersion) {
-                version = `⚠ Lower ${localVersionStr} > ${remoteVersionStr}`;
-            } else if (localVersion < remoteVersion) {
-                version = `✓ Higher ${localVersionStr} < ${remoteVersionStr}`;
+            const compare = `${localVersionStr}`.localeCompare(remoteVersionStr, undefined, { numeric: true });
+            if (compare == 0) {
+                version = "Same";
+            } else if (compare < 0) {
+                version = `Lower (${localVersionStr} < ${remoteVersionStr})`;
+            } else if (compare > 0) {
+                version = `Higher (${localVersionStr} > ${remoteVersionStr})`;
             }
         }
 
         if (contentCheck) {
-            const { canApply, equivalency, canCompare } = await checkEquivalency(local, remote);
-            return { canApply, freshness, equivalency, version, canCompare };
+            if (local && remote) {
+                const { canApply, equivalency, canCompare } = await checkEquivalency(local, remote);
+                return { canApply, freshness, equivalency, version, canCompare };
+            }
         }
         return { canApply, freshness, equivalency, version, canCompare };
     }
 
-    async function checkEquivalency(local: PluginDataExDisplay, remote: PluginDataExDisplay) {
+    async function checkEquivalency(local: IPluginDataExDisplay, remote: IPluginDataExDisplay) {
         let equivalency = "";
         let canApply = false;
         let canCompare = false;
@@ -100,17 +107,21 @@
                     return 0b0000010; //"LOCAL_ONLY";
                 } else if (!localFile && remoteFile) {
                     return 0b0001000; //"REMOTE ONLY"
-                } else {
-                    if (getDocData(localFile.data) == getDocData(remoteFile.data)) {
+                } else if (localFile && remoteFile) {
+                    const localDoc = getDocData(localFile.data);
+                    const remoteDoc = getDocData(remoteFile.data);
+                    if (localDoc == remoteDoc) {
                         return 0b0000100; //"EVEN"
                     } else {
                         return 0b0010000; //"DIFFERENT";
                     }
+                } else {
+                    return 0b0010000; //"DIFFERENT";
                 }
             })
             .reduce((p, c) => p | (c as number), 0 as number);
         if (matchingStatus == 0b0000100) {
-            equivalency = "⚖️ Same";
+            equivalency = "Same";
             canApply = false;
         } else if (matchingStatus <= 0b0000100) {
             equivalency = "Same or local only";
@@ -118,30 +129,37 @@
         } else if (matchingStatus == 0b0010000) {
             canApply = true;
             canCompare = true;
-            equivalency = "≠ Different";
+            equivalency = "Different";
         } else {
             canApply = true;
             canCompare = true;
-            equivalency = "≠ Different";
+            equivalency = "Mixed";
         }
         return { equivalency, canApply, canCompare };
     }
 
-    async function performCompare(local: PluginDataExDisplay, remote: PluginDataExDisplay) {
+    async function performCompare(local: IPluginDataExDisplay | undefined, remote: IPluginDataExDisplay | undefined) {
         const result = await comparePlugin(local, remote);
         canApply = result.canApply;
         freshness = result.freshness;
         equivalency = result.equivalency;
         version = result.version;
         canCompare = result.canCompare;
-        if (local?.files.length != 1 || !local?.files?.first()?.filename?.endsWith(".json")) {
-            canCompare = false;
+        pickToCompare = false;
+        if (canCompare) {
+            if (local?.files.length == remote?.files.length && local?.files.length == 1 && local?.files[0].filename == remote?.files[0].filename) {
+                pickToCompare = false;
+            } else {
+                pickToCompare = true;
+                // pickToCompare = false;
+                // canCompare = false;
+            }
         }
     }
 
-    async function updateTerms(list: PluginDataExDisplay[], selectNewest: boolean, isMaintenanceMode: boolean) {
+    async function updateTerms(list: IPluginDataExDisplay[], selectNewest: boolean, isMaintenanceMode: boolean) {
         const local = list.find((e) => e.term == thisTerm);
-        selected = "";
+        // selected = "";
         if (isMaintenanceMode) {
             terms = [...new Set(list.map((e) => e.term))];
         } else if (hideNotApplicable) {
@@ -157,7 +175,7 @@
         } else {
             terms = [...new Set(list.map((e) => e.term))].filter((e) => e != thisTerm);
         }
-        let newest: PluginDataExDisplay = local;
+        let newest: IPluginDataExDisplay | undefined = local;
         if (selectNewest) {
             for (const term of terms) {
                 const remote = list.find((e) => e.term == term);
@@ -170,12 +188,25 @@
             }
             // selectNewest = false;
         }
+        if (terms.indexOf(selected) < 0) {
+            selected = "";
+        }
     }
     $: {
         // React pulse and select
-        const doSelectNewest = selectNewest != currentSelectNewest;
-        currentSelectNewest = selectNewest;
+        let doSelectNewest = false;
+        if (selectNewest != currentSelectNewest) {
+            if (selectNewestStyle == 1) {
+                doSelectNewest = true;
+            } else if (selectNewestStyle == 2) {
+                doSelectNewest = isFlagged;
+            } else if (selectNewestStyle == 3) {
+                selected = "";
+            }
+            // currentSelectNewest = selectNewest;
+        }
         updateTerms(list, doSelectNewest, isMaintenanceMode);
+        currentSelectNewest = selectNewest;
     }
     $: {
         // React pulse and apply
@@ -213,9 +244,51 @@
     async function compareSelected() {
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
-        if (local && selectedItem && (await compareData(local, selectedItem))) {
-            addOn.updatePluginList(true, local.documentPath);
+        await compareItems(local, selectedItem);
+    }
+    async function compareItems(local: IPluginDataExDisplay | undefined, remote: IPluginDataExDisplay | undefined, filename?: string) {
+        if (local && remote) {
+            if (!filename) {
+                if (await compareData(local, remote)) {
+                    addOn.updatePluginList(true, local.documentPath);
+                }
+                return;
+            } else {
+                const localCopy = local instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(local) : { ...local };
+                const remoteCopy = remote instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(remote) : { ...remote };
+                localCopy.files = localCopy.files.filter((e) => e.filename == filename);
+                remoteCopy.files = remoteCopy.files.filter((e) => e.filename == filename);
+                if (await compareData(localCopy, remoteCopy, true)) {
+                    addOn.updatePluginList(true, local.documentPath);
+                }
+            }
+            return;
+        } else {
+            if (!remote && !local) {
+                Logger(`Could not find both remote and local item`, LOG_LEVEL_INFO);
+            } else if (!remote) {
+                Logger(`Could not find remote item`, LOG_LEVEL_INFO);
+            } else if (!local) {
+                Logger(`Could not locally item`, LOG_LEVEL_INFO);
+            }
         }
+    }
+
+    async function pickCompareItem(evt: MouseEvent) {
+        const local = list.find((e) => e.term == thisTerm);
+        const selectedItem = list.find((e) => e.term == selected);
+        if (!local) return;
+        if (!selectedItem) return;
+        const menu = new Menu();
+        menu.addItem((item) => item.setTitle("Compare file").setIsLabel(true));
+        menu.addSeparator();
+        const files = unique(local.files.map((e) => e.filename).concat(selectedItem.files.map((e) => e.filename)));
+        for (const filename of files) {
+            menu.addItem((item) => {
+                item.setTitle(filename).onClick((e) => compareItems(local, selectedItem, filename));
+            });
+        }
+        menu.showAtMouseEvent(evt);
     }
     async function deleteSelected() {
         const selectedItem = list.find((e) => e.term == selected);
@@ -226,6 +299,10 @@
     }
     async function duplicateItem() {
         const local = list.find((e) => e.term == thisTerm);
+        if (!local) {
+            Logger(`Could not find local item`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const duplicateTermName = await askString(plugin.app, "Duplicate", "device name", "");
         if (duplicateTermName) {
             if (duplicateTermName.contains("/")) {
@@ -242,10 +319,10 @@
 {#if terms.length > 0}
     <span class="spacer" />
     {#if !hidden}
-        <span class="messages">
-            <span class="message">{freshness}</span>
-            <span class="message">{equivalency}</span>
-            <span class="message">{version}</span>
+        <span class="chip-wrap">
+            <span class="chip modified">{freshness}</span>
+            <span class="chip content">{equivalency}</span>
+            <span class="chip version">{version}</span>
         </span>
         <select bind:value={selected}>
             <option value={""}>-</option>
@@ -255,7 +332,12 @@
         </select>
         {#if canApply || (isMaintenanceMode && selected != "")}
             {#if canCompare}
-                <button on:click={compareSelected}>🔍</button>
+                {#if pickToCompare}
+                    <button on:click={pickCompareItem}>🗃️</button>
+                {:else}
+                    <!--🔍  -->
+                    <button on:click={compareSelected}>⮂</button>
+                {/if}
             {:else}
                 <button disabled />
             {/if}
@@ -307,12 +389,46 @@
         padding: 0 1em;
         line-height: var(--line-height-tight);
     }
-    span.messages {
+    /* span.messages {
         display: flex;
         flex-direction: column;
         align-items: center;
-    }
+    } */
     :global(.is-mobile) .spacer {
         margin-left: auto;
+    }
+
+    .chip-wrap {
+        display: flex;
+        gap: 2px;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+    }
+    .chip {
+        display: inline-block;
+        border-radius: 2px;
+        font-size: 0.8em;
+        padding: 0 4px;
+        margin: 0 2px;
+        border-color: var(--tag-border-color);
+        background-color: var(--tag-background);
+        color: var(--tag-color);
+    }
+    .chip:empty {
+        display: none;
+    }
+    .chip:not(:empty)::before {
+        min-width: 1.8em;
+        display: inline-block;
+    }
+    .chip.content:not(:empty)::before {
+        content: "📄: ";
+    }
+    .chip.version:not(:empty)::before {
+        content: "🏷️: ";
+    }
+    .chip.modified:not(:empty)::before {
+        content: "📅: ";
     }
 </style>

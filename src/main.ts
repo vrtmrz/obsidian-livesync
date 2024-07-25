@@ -2417,6 +2417,10 @@ Or if you are sure know what had been happened, we can unlock the database from 
             count++;
             if (count % 25 == 0) Logger(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
             const path = getPath(doc);
+            // const docPath = doc.path;
+            // if (path != docPath) {
+            //     debugger;
+            // }
             if (isValidPath(path) && await this.isTargetFile(path)) {
                 filesDatabase.push(path);
             }
@@ -2513,14 +2517,20 @@ Or if you are sure know what had been happened, we can unlock the database from 
                         const syncFilesToSync = pairs.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
                         return syncFilesToSync;
                     }
-                    , { batchSize: 10, concurrentLimit: 5, delay: 10, suspended: false }))
+                    , { batchSize: 100, concurrentLimit: 1, delay: 10, suspended: false, maintainDelay: true, yieldThreshold: 100 }))
             .pipeTo(
                 new QueueProcessor(
                     async (loadedPairs) => {
-                        const e = loadedPairs[0];
-                        await this.syncFileBetweenDBandStorage(e.file, e.doc);
+                        for (const pair of loadedPairs)
+                            try {
+                                const e = pair;
+                                await this.syncFileBetweenDBandStorage(e.file, e.doc);
+                            } catch (ex) {
+                                Logger("Error while syncFileBetweenDBandStorage", LOG_LEVEL_NOTICE);
+                                Logger(ex, LOG_LEVEL_VERBOSE);
+                            }
                         return;
-                    }, { batchSize: 1, concurrentLimit: 5, delay: 10, suspended: false }
+                    }, { batchSize: 5, concurrentLimit: 10, delay: 10, suspended: false, yieldThreshold: 10, maintainDelay: true }
                 ))
 
         const allSyncFiles = syncFiles.length;

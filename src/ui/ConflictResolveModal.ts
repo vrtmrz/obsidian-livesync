@@ -13,10 +13,22 @@ export class ConflictResolveModal extends Modal {
     isClosed = false;
     consumed = false;
 
-    constructor(app: App, filename: string, diff: diff_result) {
+    title: string = "Conflicting changes";
+
+    pluginPickMode: boolean = false;
+    localName: string = "Keep A";
+    remoteName: string = "Keep B";
+
+    constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
         super(app);
         this.result = diff;
         this.filename = filename;
+        this.pluginPickMode = pluginPickMode || false;
+        if (this.pluginPickMode) {
+            this.title = "Pick a version";
+            this.remoteName = `Use ${remoteName || "Remote"}`;
+            this.localName = "Use Local"
+        }
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
         // sendValue("close-resolve-conflict:" + this.filename, false);
@@ -36,7 +48,7 @@ export class ConflictResolveModal extends Modal {
             }
         }, 10)
         // sendValue("close-resolve-conflict:" + this.filename, false);
-        this.titleEl.setText("Conflicting changes");
+        this.titleEl.setText(this.title);
         contentEl.empty();
         contentEl.createEl("span", { text: this.filename });
         const div = contentEl.createDiv("");
@@ -62,10 +74,12 @@ export class ConflictResolveModal extends Modal {
         div2.innerHTML = `
 <span class='deleted'>A:${date1}</span><br /><span class='added'>B:${date2}</span><br> 
         `;
-        contentEl.createEl("button", { text: "Keep A" }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.right.rev)));
-        contentEl.createEl("button", { text: "Keep B" }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.left.rev)));
-        contentEl.createEl("button", { text: "Concat both" }, (e) => e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT)));
-        contentEl.createEl("button", { text: "Not now" }, (e) => e.addEventListener("click", () => this.sendResponse(CANCELLED)));
+        contentEl.createEl("button", { text: this.localName }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.right.rev))).style.marginRight = "4px";
+        contentEl.createEl("button", { text: this.remoteName }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.left.rev))).style.marginRight = "4px";
+        if (!this.pluginPickMode) {
+            contentEl.createEl("button", { text: "Concat both" }, (e) => e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))).style.marginRight = "4px";
+        }
+        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => e.addEventListener("click", () => this.sendResponse(CANCELLED))).style.marginRight = "4px";
     }
 
     sendResponse(result: MergeDialogResult) {

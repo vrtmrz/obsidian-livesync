@@ -2231,7 +2231,7 @@ ${stringifyYaml(pluginConfig)}`;
         // With great respect, thank you TfTHacker!
         // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
         const containerPluginSettings = containerEl.createDiv();
-        this.createEl(containerPluginSettings, "h3", { text: "Customization sync (beta)" });
+        this.createEl(containerPluginSettings, "h3", { text: "Customization sync (beta 3)" });
 
         const enableOnlyOnPluginSyncIsNotEnabled = enableOnly(() => this.isConfiguredAs("usePluginSync", false));
         const visibleOnlyOnPluginSyncEnabled = visibleOnly(() => this.isConfiguredAs("usePluginSync", true));
@@ -2241,6 +2241,9 @@ ${stringifyYaml(pluginConfig)}`;
                 placeHolder: "desktop",
                 onUpdate: enableOnlyOnPluginSyncIsNotEnabled
             });
+
+        new Setting(containerPluginSettings)
+            .autoWireToggle("usePluginSyncV2")
 
         new Setting(containerPluginSettings)
             .autoWireToggle("usePluginSync", {

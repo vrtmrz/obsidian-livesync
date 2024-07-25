@@ -324,6 +324,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     "notifyThresholdOfRemoteStorageSize": {
         name: "Notify when the estimated remote storage size exceeds on start up",
         desc: "MB (0 to disable)."
+    },
+    "usePluginSyncV2": {
+        name: "Enable per-file-saved customization sync",
+        desc: "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions."
     }
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
