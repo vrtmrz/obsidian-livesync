@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles, diff_match_patch } from "../deps.ts";
 
 import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, AnyEntry, SavingEntry, diff_result } from "../lib/src/common/types.ts";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_SHINY } from "../lib/src/common/types.ts";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_SHINY } from "../lib/src/common/types.ts";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../common/types.ts";
 import { createBlob, createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, getDocDataAsArray, isDocContentSame, isLoadedEntry, isObjectDifferent } from "../lib/src/common/utils.ts";
 import { Logger } from "../lib/src/common/logger.ts";
@@ -11,7 +11,7 @@ import { arrayBufferToBase64, decodeBinary, readString } from 'src/lib/src/strin
 import { serialized, shareRunningResult } from "../lib/src/concurrency/lock.ts";
 import { LiveSyncCommands } from "./LiveSyncCommands.ts";
 import { stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
-import { PeriodicProcessor, disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../common/utils.ts";
+import { EVEN, PeriodicProcessor, disposeMemoObject, isMarkedAsSameChanges, markChangesAreSame, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../common/utils.ts";
 import { PluginDialogModal } from "../common/dialogs.ts";
 import { JsonResolveModal } from "../ui/JsonResolveModal.ts";
 import { QueueProcessor } from '../lib/src/concurrency/processor.ts';
@@ -272,8 +272,10 @@ export class PluginDataExDisplayV2 {
         this.confKey = `${categoryToFolder(this.category, this.term)}${this.name}`;
         this.applyLoadedManifest();
     }
-    setFile(file: LoadedEntryPluginDataExFile) {
-        if (this.files.find(e => e.filename == file.filename)) {
+    async setFile(file: LoadedEntryPluginDataExFile) {
+        const old = this.files.find(e => e.filename == file.filename);
+        if (old) {
+            if (old.mtime == file.mtime && await isDocContentSame(old.data, file.data)) return;
             this.files = this.files.filter(e => e.filename != file.filename);
         }
         this.files.push(file);
@@ -319,6 +321,7 @@ export type PluginDataEx = {
     version?: string,
     mtime: number,
 };
+
 export class ConfigSync extends LiveSyncCommands {
     constructor(plugin: ObsidianLiveSyncPlugin) {
         super(plugin);
@@ -637,7 +640,7 @@ export class ConfigSync extends LiveSyncCommands {
             if (!entry) return;
             const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
             if (file) {
-                entry.setFile(file);
+                await entry.setFile(file);
             } else {
                 entry.deleteFile(unifiedFilenameWithKey);
                 if (entry.files.length == 0) {
@@ -841,22 +844,46 @@ export class ConfigSync extends LiveSyncCommands {
                 Logger(`Applying ${filename} of ${data.displayName || data.name}..`);
                 const path = `${baseDir}/${filename}` as FilePath;
                 await this.vaultAccess.ensureDirectory(path);
+                // If the content has applied, modified time will be updated to the current time.
                 await this.vaultAccess.adapterWrite(path, content);
                 await this.storeCustomisationFileV2(path, this.plugin.deviceAndVaultName);
 
             } else {
                 const files = data.files;
                 for (const f of files) {
+                    // If files have applied, modified time will be updated to the current time.
+                    const stat = { mtime: f.mtime, ctime: f.ctime };
                     const path = `${baseDir}/${f.filename}` as FilePath;
                     Logger(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
                     this.vaultAccess.ensureDirectory(path);
+
                     if (f.datatype == "newnote") {
+                        let oldData;
+                        try {
+                            oldData = await this.vaultAccess.adapterReadBinary(path);
+                        } catch (ex) {
+                            oldData = new ArrayBuffer(0);
+                        }
                         const content = base64ToArrayBuffer(f.data);
-                        await this.vaultAccess.adapterWrite(path, content);
+                        if (await isDocContentSame(oldData, content)) {
+                            Logger(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
+                            continue;
+                        }
+                        await this.vaultAccess.adapterWrite(path, content, stat);
                     } else {
+                        let oldData;
+                        try {
+                            oldData = await this.vaultAccess.adapterRead(path);
+                        } catch (ex) {
+                            oldData = "";
+                        }
                         const content = getDocData(f.data);
-                        await this.vaultAccess.adapterWrite(path, content);
+                        if (await isDocContentSame(oldData, content)) {
+                            Logger(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
+                            continue;
+                        }
+                        await this.vaultAccess.adapterWrite(path, content, stat);
                     }
                     Logger(`Applied ${f.filename} of ${data.displayName || data.name}..`);
                     await this.storeCustomisationFileV2(path, this.plugin.deviceAndVaultName);
@@ -1063,7 +1090,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
 
-    async storeCustomisationFileV2(path: FilePath, term: string, saveRelatives = false) {
+    async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
         const vf = this.filenameWithUnifiedKey(path, term);
         return await serialized(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
@@ -1095,8 +1122,21 @@ export class ConfigSync extends LiveSyncCommands {
                         eden: {}
                     };
                 } else {
-                    if (old.mtime == mtime) {
-                        // Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
+                    if (isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
+                        Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`, LOG_LEVEL_DEBUG);
+                        return;
+                    }
+                    const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
+                    if (docXDoc == false) {
+                        throw "Could not load the document";
+                    }
+                    const dataSrc = getDocData(docXDoc.data);
+                    const dataStart = dataSrc.indexOf(DUMMY_END);
+                    const oldContent = dataSrc.substring(dataStart + DUMMY_END.length);
+                    const oldContentArray = base64ToArrayBuffer(oldContent);
+                    if (await isDocContentSame(oldContentArray, content)) {
+                        Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`, LOG_LEVEL_VERBOSE);
+                        markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
                         return true;
                     }
                     saveData =
