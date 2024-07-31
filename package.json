@@ -55,7 +55,7 @@
         "typescript": "^5.5.3"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "^3.614.0",
+        "@aws-sdk/client-s3": "^3.621.0",
         "@smithy/fetch-http-handler": "^3.2.1",
         "@smithy/protocol-http": "^4.0.3",
         "@smithy/querystring-builder": "^3.0.3",
