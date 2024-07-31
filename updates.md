@@ -18,6 +18,11 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.19:
+  - Fixed:
+    - Customisation Sync now checks the difference while storing or applying the configuration.
+      - No longer storing the same configuration multiple times.
+    - Time difference in the dialogue has been fixed.
 - 0.23.18:
   - New feature:
     - Per-file-saved customization sync has been shipped.
@@ -47,25 +52,5 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - We can get a notification about the storage usage of the remote database.
       - Default: We will be asked.
       - If the remote storage usage approaches the configured value, we will be asked whether we want to Rebuild or increase the limit.
-- 0.23.16:
-  - Maintenance Update:
-    - Library refining (Phase 1 - step 2). There are no significant changes on the user side.
-    - Including the following fixes of potentially problems:
-      - the problem which the path had been obfuscating twice has been resolved.
-      - Note: Potential problems of the library; which has not happened in Self-hosted LiveSync for some reasons.
-- 0.23.15:
-  - Maintenance Update:
-    - Library refining (Phase 1). There are no significant changes on the user side.
-- 0.23.14:
-  - Fixed:
-    - No longer batch-saving ignores editor inputs.
-    - The file-watching and serialisation processes have been changed to the one which is similar to previous implementations.
-    - We can configure the settings (Especially about text-boxes) even if we have configured the device name.
-  - Improved:
-    - We can configure the delay of batch-saving.
-      - Default: 5 seconds, the same as the previous hard-coded value. (Note: also, the previous behaviour was not correct).
-    - Also, we can configure the limit of delaying batch-saving.
-    - The performance of showing status indicators has been improved.
-
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
