@@ -18,11 +18,16 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
-- 0.23.19:
+- 0.23.20:
   - Fixed:
     - Customisation Sync now checks the difference while storing or applying the configuration.
       - No longer storing the same configuration multiple times.
     - Time difference in the dialogue has been fixed.
+    - Remote Storage Limit Notification dialogue has been fixed, now the chosen value is saved.
+  - Improved:
+    - The Enlarging button on the enlarging threshold dialogue now displays the new value.
+- 0.23.19:
+  - Not released.
 - 0.23.18:
   - New feature:
     - Per-file-saved customization sync has been shipped.
