@@ -663,10 +663,13 @@ And if your actual storage size exceeds the threshold after the setup, you may w
             const ret = await confirmWithMessage(this, "Remote storage size threshold", message, [ANSWER_0, ANSWER_800, ANSWER_2000], ANSWER_800, 40);
             if (ret == ANSWER_0) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 0;
+                await this.saveSettings();
             } else if (ret == ANSWER_800) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 800;
+                await this.saveSettings();
             } else {
                 this.settings.notifyThresholdOfRemoteStorageSize = 2000;
+                await this.saveSettings();
             }
         }
         if (this.settings.notifyThresholdOfRemoteStorageSize > 0) {
@@ -686,7 +689,8 @@ If you have enough space on the remote storage, you can enlarge the threshold. O
 
 However, **Please make sure that all devices have been synchronised**. \n
 \n`;
-                        const ANSWER_ENLARGE_LIMIT = "Enlarge the limit";
+                        const newMax = ~~(estimatedSize / 1024 / 1024) + 100;
+                        const ANSWER_ENLARGE_LIMIT = `Enlarge to ${newMax}MB`;
                         const ANSWER_REBUILD = "Rebuild now";
                         const ANSWER_IGNORE = "Dismiss";
                         const ret = await confirmWithMessage(this, "Remote storage size exceeded", message, [ANSWER_ENLARGE_LIMIT, ANSWER_REBUILD, ANSWER_IGNORE,], ANSWER_IGNORE, 20);
@@ -708,7 +712,7 @@ However, **Please make sure that all devices have been synchronised**. \n
                             // Dismiss or Close the dialog
                         }
 
-                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize)} `, LOG_LEVEL_INFO);
+                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize * 1024 * 1024)} `, LOG_LEVEL_INFO);
                     } else {
                         Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)}`, LOG_LEVEL_INFO);
                     }
