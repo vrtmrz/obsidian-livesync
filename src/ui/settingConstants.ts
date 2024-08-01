@@ -326,8 +326,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "MB (0 to disable)."
     },
     "usePluginSyncV2": {
-        name: "Enable per-file-saved customization sync",
-        desc: "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions."
+        name: "Enable per-file customization sync",
+        desc: "If enabled, efficient per-file customization sync will be used. A minor migration is required when enabling this feature, and all devices must be updated to v0.23.18. Enabling this feature will result in losing compatibility with older versions."
     }
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
