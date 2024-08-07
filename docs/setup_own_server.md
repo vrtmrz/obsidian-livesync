@@ -106,6 +106,8 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 $ export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
 $ export database=obsidiannotes #Please change as you like
 $ export passphrase=dfsapkdjaskdjasdas #Please change as you like
+$ export username=johndoe
+$ export password=abc123
 $ deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
 
