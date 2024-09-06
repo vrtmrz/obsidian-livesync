@@ -23,8 +23,8 @@ const keepTest = !prod || dev;
 const terserOpt = {
     sourceMap: !prod
         ? {
-              url: "inline",
-          }
+            url: "inline",
+        }
         : {},
     format: {
         indent_level: 2,
@@ -41,6 +41,7 @@ const terserOpt = {
         // compress options
         defaults: false,
         evaluate: true,
+        dead_code: true,
         inline: 3,
         join_vars: true,
         loops: true,
@@ -57,6 +58,7 @@ const terserOpt = {
         ecma: 2018,
         unused: true,
     },
+    // mangle: false,
 
     ecma: 2018, // specify one of: 5, 2015, 2016, etc.
     enclose: false, // or specify true, or "args:values"
@@ -122,7 +124,7 @@ const context = await esbuild.context({
     logLevel: "info",
     platform: "browser",
     sourcemap: prod ? false : "inline",
-    treeShaking: true,
+    treeShaking: false,
     outfile: "main_org.js",
     mainFields: ["browser", "module", "main"],
     minifyWhitespace: false,

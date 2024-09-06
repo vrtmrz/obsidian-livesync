@@ -2,7 +2,7 @@ import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "
 import { serialized } from "../lib/src/concurrency/lock.ts";
 import { Logger } from "../lib/src/common/logger.ts";
 import { isPlainText } from "../lib/src/string_and_binary/path.ts";
-import type { FilePath } from "../lib/src/common/types.ts";
+import type { FilePath, HasSettings } from "../lib/src/common/types.ts";
 import { createBinaryBlob, isDocContentSame } from "../lib/src/common/utils.ts";
 import type { InternalFileInfo } from "../common/types.ts";
 import { markChangesAreSame } from "../common/utils.ts";
@@ -31,8 +31,10 @@ async function processWriteFile<T>(file: TFile | TFolder | string, proc: () => P
 }
 export class SerializedFileAccess {
     app: App
-    constructor(app: App) {
+    plugin: HasSettings<{ handleFilenameCaseSensitive: boolean }>
+    constructor(app: App, plugin: typeof this["plugin"]) {
         this.app = app;
+        this.plugin = plugin;
     }
 
     async adapterStat(file: TFile | string) {
@@ -138,17 +140,23 @@ export class SerializedFileAccess {
         return await processWriteFile(file, () => this.app.vault.trash(file, force));
     }
 
+
+
+    isStorageInsensitive(): boolean {
+        //@ts-ignore
+        return this.app.vault.adapter.insensitive ?? true;
+    }
+
+    getAbstractFileByPathInsensitive(path: FilePath | string): TAbstractFile | null {
+        //@ts-ignore
+        return app.vault.getAbstractFileByPathInsensitive(path);
+    }
+
     getAbstractFileByPath(path: FilePath | string): TAbstractFile | null {
-        // Disabled temporary.
+        if (!this.plugin.settings.handleFilenameCaseSensitive || this.isStorageInsensitive()) {
+            return this.getAbstractFileByPathInsensitive(path);
+        }
         return this.app.vault.getAbstractFileByPath(path);
-        // // Hidden API but so useful.
-        // // @ts-ignore
-        // if ("getAbstractFileByPathInsensitive" in app.vault && (app.vault.adapter?.insensitive ?? false)) {
-        //     // @ts-ignore
-        //     return app.vault.getAbstractFileByPathInsensitive(path);
-        // } else {
-        //    return app.vault.getAbstractFileByPath(path);
-        // }
     }
 
     getFiles() {

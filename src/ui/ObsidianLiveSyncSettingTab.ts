@@ -35,6 +35,7 @@ import { LiveSyncCouchDBReplicator } from "../lib/src/replication/couchdb/LiveSy
 import { type AllSettingItemKey, type AllStringItemKey, type AllNumericItemKey, type AllBooleanItemKey, type AllSettings, OnDialogSettingsDefault, getConfig, type OnDialogSettings, getConfName } from "./settingConstants.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "src/lib/src/common/rosetta.ts";
 import { $t } from "src/lib/src/common/i18n.ts";
+import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 
 type OnUpdateResult = {
     visibility?: boolean,
@@ -272,11 +273,11 @@ class Setting extends SettingOrg {
         })
         return this;
     }
-    addApplyButton(keys: AllSettingItemKey[]) {
+    addApplyButton(keys: AllSettingItemKey[], text?: string) {
         this.addButton((button) => {
             this.applyButtonComponent = button;
             this.watchDirtyKeys = unique([...keys, ...this.watchDirtyKeys]);
-            button.setButtonText("Apply")
+            button.setButtonText(text ?? "Apply")
             button.onClick(async () => {
                 await Setting.env.saveSettings(keys);
                 Setting.env.reloadAllSettings();
@@ -1438,6 +1439,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             .addApplyButton(["configPassphrase", "configPassphraseStore"])
             .setClass("wizardHidden")
 
+
         addScreenElement("20", containerGeneralSettingsEl);
         const containerSyncSettingEl = containerEl.createDiv();
         this.createEl(containerSyncSettingEl, "h3", { text: "Sync Settings" });
@@ -1776,6 +1778,13 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         new Setting(containerSyncSettingEl)
             .setClass("wizardHidden")
             .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("sendChunksBulk", { onUpdate: onlyOnCouchDB })
+        new Setting(containerSyncSettingEl)
+            .setClass("wizardHidden")
+            .autoWireNumeric("sendChunksBulkMaxSize", { clampMax: 100, clampMin: 1, onUpdate: onlyOnCouchDB })
+
 
         new Setting(containerSyncSettingEl)
             .setClass("wizardHidden")
@@ -1916,7 +1925,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             const endpointScheme = pluginConfig.endpoint.startsWith("http:") ? "(HTTP)" : (pluginConfig.endpoint.startsWith("https:")) ? "(HTTPS)" : "";
                             pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                         }
-                        const obsidianInfo = navigator.userAgent;
+                        const obsidianInfo = `Navigator: ${navigator.userAgent}
+FileSystem: ${this.plugin.vaultAccess.isStorageInsensitive() ? "insensitive" : "sensitive"}`;
                         const msgConfig = `---- Obsidian info ----
 ${obsidianInfo}
 ---- remote config ----
@@ -1998,7 +2008,7 @@ ${stringifyYaml(pluginConfig)}`;
                 if (fileOnDB) {
                     el.appendChild(this.createEl(el, "button", { text: "Database -> Storage" }, buttonEl => {
                         buttonEl.onClickEvent(() => {
-                            this.plugin.pullFile(this.plugin.getPath(fileOnDB), [], true, undefined, false);
+                            this.plugin.pullFile(this.plugin.getPath(fileOnDB), undefined, true, undefined, false);
                             el.remove();
                         })
                     }))
@@ -2018,14 +2028,27 @@ ${stringifyYaml(pluginConfig)}`;
             }
         }
         new Setting(containerHatchEl)
+            .setName("Recreate missing chunks for all files")
+            .setDesc("This will recreate chunks for all files. If there were missing chunks, this may fix the errors.")
+            .addButton((button) =>
+                button.
+                    setButtonText("Recreate all")
+                    .setCta()
+                    .onClick(async () => {
+                        await this.plugin.createAllChunks(true);
+                    })
+            )
+
+        new Setting(containerHatchEl)
             .setName("Verify and repair all files")
             .setDesc("Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.")
             .addButton((button) =>
                 button
                     .setButtonText("Verify all")
                     .setDisabled(false)
-                    .setWarning()
+                    .setCta()
                     .onClick(async () => {
+                        Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                         const files = this.app.vault.getFiles();
                         const documents = [] as FilePathWithPrefix[];
 
@@ -2033,33 +2056,53 @@ ${stringifyYaml(pluginConfig)}`;
                         for await (const i of adn) documents.push(this.plugin.getPath(i));
                         const allPaths = [...new Set([...documents, ...files.map(e => e.path as FilePathWithPrefix)])];
                         let i = 0;
-                        for (const path of allPaths) {
+                        const incProc = () => {
                             i++;
-                            Logger(`${i}/${files.length}\n${path}`, LOG_LEVEL_NOTICE, "verify");
-                            if (shouldBeIgnored(path)) continue;
-                            const abstractFile = this.plugin.vaultAccess.getAbstractFileByPath(path);
-                            const fileOnStorage = abstractFile instanceof TFile ? abstractFile : false;
-                            if (!await this.plugin.isTargetFile(path)) continue;
-
-                            if (fileOnStorage && this.plugin.isFileSizeExceeded(fileOnStorage.stat.size)) continue;
-                            const fileOnDB = await this.plugin.localDatabase.getDBEntry(path);
-                            if (fileOnDB && this.plugin.isFileSizeExceeded(fileOnDB.size)) continue;
-
-                            if (!fileOnDB && fileOnStorage) {
-                                Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
-                                addResult(path, fileOnStorage, false)
-                                continue;
-                            }
-                            if (fileOnDB && !fileOnStorage) {
-                                Logger(`Compare: Not found on the storage: ${path}`, LOG_LEVEL_NOTICE);
-                                addResult(path, false, fileOnDB)
-                                continue;
-                            }
-                            if (fileOnStorage && fileOnDB) {
-                                await checkBetweenStorageAndDatabase(fileOnStorage, fileOnDB)
-                            }
+                            if (i % 25 == 0) Logger(`Checking ${i}/${files.length} files \n`, LOG_LEVEL_NOTICE, "verify-processed");
                         }
+                        const semaphore = Semaphore(10);
+                        const processes = allPaths.map(async path => {
+                            try {
+                                if (shouldBeIgnored(path)) {
+                                    return incProc();
+                                }
+                                const abstractFile = this.plugin.vaultAccess.getAbstractFileByPath(path);
+                                const fileOnStorage = abstractFile instanceof TFile ? abstractFile : false;
+                                if (!await this.plugin.isTargetFile(path)) return incProc();
+                                const releaser = await semaphore.acquire(1)
+                                if (fileOnStorage && this.plugin.isFileSizeExceeded(fileOnStorage.stat.size)) return incProc();
+                                try {
+                                    const fileOnDB = await this.plugin.localDatabase.getDBEntry(path);
+                                    if (fileOnDB && this.plugin.isFileSizeExceeded(fileOnDB.size)) return incProc();
+
+                                    if (!fileOnDB && fileOnStorage) {
+                                        Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
+                                        addResult(path, fileOnStorage, false)
+                                        return incProc();
+                                    }
+                                    if (fileOnDB && !fileOnStorage) {
+                                        Logger(`Compare: Not found on the storage: ${path}`, LOG_LEVEL_NOTICE);
+                                        addResult(path, false, fileOnDB)
+                                        return incProc();
+                                    }
+                                    if (fileOnStorage && fileOnDB) {
+                                        await checkBetweenStorageAndDatabase(fileOnStorage, fileOnDB)
+                                    }
+                                } catch (ex) {
+                                    Logger(`Error while processing ${path}`, LOG_LEVEL_NOTICE);
+                                    Logger(ex, LOG_LEVEL_VERBOSE);
+                                } finally {
+                                    releaser();
+                                    incProc();
+                                }
+                            } catch (ex) {
+                                Logger(`Error while processing without semaphore ${path}`, LOG_LEVEL_NOTICE);
+                                Logger(ex, LOG_LEVEL_VERBOSE);
+                            }
+                        });
+                        await Promise.all(processes);
                         Logger("done", LOG_LEVEL_NOTICE, "verify");
+                        // Logger(`${i}/${files.length}\n`, LOG_LEVEL_NOTICE, "verify-processed");
                     })
             );
         const resultArea = containerHatchEl.createDiv({ text: "" });
@@ -2181,6 +2224,34 @@ ${stringifyYaml(pluginConfig)}`;
         new Setting(containerHatchEl)
             .autoWireToggle("useIndexedDBAdapter", { invert: true })
 
+        new Setting(containerHatchEl)
+            .autoWireToggle("doNotUseFixedRevisionForChunks", { holdValue: true })
+            .setClass("wizardHidden")
+        new Setting(containerHatchEl)
+            .autoWireToggle("handleFilenameCaseSensitive", { holdValue: true })
+            .setClass("wizardHidden")
+
+        new Setting(containerHatchEl)
+            .setName("Apply")
+            .setDesc("These configurations require a database rebuild.")
+            .setClass("wizardHidden")
+            .addButton((button) =>
+                button
+                    .setButtonText("Apply and rebuild")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.saveAllDirtySettings();
+                        // await this.applySetting(["doNotUseFixedRevisionForChunks", "handleFilenameCaseSensitive"]);
+                        // await this.saveSettings(["doNotUseFixedRevisionForChunks", "handleFilenameCaseSensitive"]);
+                        // debugger;
+                        await rebuildDB("rebuildBothByThisDevice");
+                    })
+            )
+            .addOnUpdate(() => ({
+                isCta: this.isSomeDirty(["doNotUseFixedRevisionForChunks", "handleFilenameCaseSensitive"]),
+                disabled: !this.isSomeDirty(["doNotUseFixedRevisionForChunks", "handleFilenameCaseSensitive"]),
+            }))
         this.addOnSaved("useIndexedDBAdapter", async () => {
             await this.saveAllDirtySettings();
             await rebuildDB("localOnly");
@@ -2328,7 +2399,17 @@ ${stringifyYaml(pluginConfig)}`;
                         await rebuildDB("remoteOnly");
                     })
             )
-
+            .addButton((button) =>
+                button
+                    .setButtonText("Send chunks")
+                    .setWarning()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        if (this.plugin.replicator instanceof LiveSyncCouchDBReplicator) {
+                            await this.plugin.replicator.sendChunks(this.plugin.settings, undefined, true, 0);
+                        }
+                    })
+            )
         new Setting(containerMaintenanceEl)
             .setName("Reset journal received history")
             .setDesc("Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.")

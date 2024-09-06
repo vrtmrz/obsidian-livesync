@@ -328,7 +328,19 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     "usePluginSyncV2": {
         name: "Enable per-file-saved customization sync",
         desc: "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions."
-    }
+    },
+    "handleFilenameCaseSensitive": {
+        name: "Handle files as Case-Sensitive",
+        desc: "If this enabled, All files are handled as case-Sensitive (Previous behaviour)."
+    },
+    "doNotUseFixedRevisionForChunks": {
+        name: "Compute revisions for chunks (Previous behaviour)",
+        desc: "If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)"
+    },
+    "sendChunksBulkMaxSize": {
+        name: "Maximum size of chunks to send in one request",
+        desc: "MB"
+    },
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

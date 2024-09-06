@@ -15,14 +15,14 @@ export { scheduleTask, setPeriodicTask, cancelTask, cancelAllTasks, cancelPeriod
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
 // The first slash will be deleted when the path is normalized.
-export async function path2id(filename: FilePathWithPrefix | FilePath, obfuscatePassphrase: string | false): Promise<DocumentID> {
+export async function path2id(filename: FilePathWithPrefix | FilePath, obfuscatePassphrase: string | false, caseInsensitive: boolean): Promise<DocumentID> {
     const temp = filename.split(":");
     const path = temp.pop();
     const normalizedPath = normalizePath(path as FilePath);
     temp.push(normalizedPath);
     const fixedPath = temp.join(":") as FilePathWithPrefix;
 
-    const out = await path2id_base(fixedPath, obfuscatePassphrase);
+    const out = await path2id_base(fixedPath, obfuscatePassphrase, caseInsensitive);
     return out;
 }
 export function id2path(id: DocumentID, entry?: EntryHasPath): FilePathWithPrefix {
@@ -465,3 +465,34 @@ export function compareFileFreshness(baseFile: TFile | AnyEntry | undefined, che
     return compareMTime(modifiedBase, modifiedTarget);
 }
 
+const _cached = new Map<string, {
+    value: any;
+    context: Map<string, any>;
+}>();
+
+export type MemoOption = {
+    key: string;
+    forceUpdate?: boolean;
+    validator?: () => boolean;
+}
+
+export function useMemo<T>({ key, forceUpdate, validator }: MemoOption, updateFunc: (context: Map<string, any>, prev: T) => T): T {
+    const cached = _cached.get(key);
+    if (cached && !forceUpdate && (!validator || validator && !validator())) {
+        return cached.value;
+    }
+    const context = cached?.context || new Map<string, any>();
+    const value = updateFunc(context, cached?.value);
+    if (value !== cached?.value) {
+        _cached.set(key, { value, context });
+    }
+    return value;
+}
+
+export function disposeMemo(key: string) {
+    _cached.delete(key);
+}
+
+export function disposeAllMemo() {
+    _cached.clear();
+}
