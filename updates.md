@@ -18,6 +18,43 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.21:
+  - New Features:
+    - Case-insensitive file handling
+      - Files can now be handled case-insensitively.
+      - This behaviour can be modified in the settings under `Handle files as Case-Sensitive` (Default: Prompt, Enabled for previous behaviour).
+    - Improved chunk revision fixing
+        - Revisions for chunks can now be fixed for faster chunk creation.
+        - This can be adjusted in the settings under `Compute revisions for chunks` (Default: Prompt, Enabled for previous behaviour).
+    - Bulk chunk transfer
+      - Chunks can now be transferred in bulk during uploads.
+      - This feature is enabled by default through `Send chunks in bulk`.
+    - Creation of missing chunks without
+      - Missing chunks can be created without storing notes, enhancing efficiency for first synchronisation or after prolonged periods without synchronisation.
+  - Improvements:
+    - File status scanning on the startup
+      - Quite significant performance improvements.
+      - No more missing scans of some files.
+    - Status in editor enhancements
+      - Significant performance improvements in the status display within the editor.
+      - Notifications for files that will not be synchronised will now be properly communicated.
+    - Encryption and Decryption
+      - These processes are now performed in background threads to ensure fast and stable transfers.
+    - Verify and repair all files
+      - Got faster through parallel checking.
+    - Migration on update
+      - Migration messages and wizards have become more helpful.
+  - Behavioural changes:
+    - Chunk size adjustments
+      - Large chunks will no longer be created for older, stable files, addressing storage consumption issues.
+    - Flag file automation
+      - Confirmation will be shown and we can cancel it.
+  - Fixed:
+    - Database File Scanning
+      - All files in the database will now be enumerated correctly.
+  - Miscellaneous
+    - Dependency updated.
+    - Now, tree shaking is left to terser, from esbuild.
 - 0.23.20:
   - Fixed:
     - Customisation Sync now checks the difference while storing or applying the configuration.
