@@ -18,6 +18,12 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.22:
+  - Fixed:
+    - Case-insensitive file handling
+      - Full-lower-case files are no longer created during database checking.
+    - Bulk chunk transfer
+      - The default value will automatically adjust to an acceptable size when using IBM Cloudant.
 - 0.23.21:
   - New Features:
     - Case-insensitive file handling
