@@ -688,6 +688,17 @@ ___However, to enable either of these changes, both remote and local databases n
         await this.performAppReload();
 
     }
+    async migrateCheckBulkSize() {
+        if (this.settings.sendChunksBulk) {
+            if (this.settings.couchDB_URI != "" && isCloudantURI(this.settings.couchDB_URI)) {
+                if (this.settings.sendChunksBulkMaxSize > 1) {
+                    Logger("Cloudant does not support bulk size more than 1MB, Automatically fixed", LOG_LEVEL_NOTICE);
+                    this.settings.sendChunksBulkMaxSize = 1;
+                    await this.saveSettings();
+                }
+            }
+        }
+    }
     async migrationCheck() {
         const old = this.settings.settingVersion;
         const current = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
@@ -2687,25 +2698,27 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const file = storageFileNameMap[storageFileNameCI2CS[e]];
             if (!this.isFileSizeExceeded(file.stat.size)) {
                 await this.updateIntoDB(file);
-                fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
+                const path = getPathFromTFile(file);
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(path, true));
             } else {
                 Logger(`UPDATE DATABASE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
             }
         }));
         initProcess.push(runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
             const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
+            const path = getPath(w) ?? e;
             if (w && !(w.deleted || w._deleted)) {
                 if (!this.isFileSizeExceeded(w.size)) {
-                    await this.pullFile(e, undefined, false, undefined, false);
+                    await this.pullFile(path, undefined, false, undefined, false);
                     fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
-                    Logger(`Check or pull from db:${e} OK`);
+                    Logger(`Check or pull from db:${path} OK`);
                 } else {
-                    Logger(`UPDATE STORAGE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
+                    Logger(`UPDATE STORAGE: ${path} has been skipped due to file size exceeding the limit`, logLevel);
                 }
             } else if (w) {
-                Logger(`Deletion history skipped: ${e}`, LOG_LEVEL_VERBOSE);
+                Logger(`Deletion history skipped: ${path}`, LOG_LEVEL_VERBOSE);
             } else {
-                Logger(`entry not found: ${e}`);
+                Logger(`entry not found: ${path}`);
             }
         }));
 
