@@ -18,6 +18,37 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.19:
+  - Not released.
+- 0.23.18:
+  - New feature:
+    - Per-file-saved customization sync has been shipped.
+      - We can synchronise plug-igs etc., more smoothly.
+      - Default: disabled. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost compatibility with old versions.
+    - Customisation sync has got beta3.
+      - We can set `Flag` to each item to select the newest, automatically.
+        - This configuration is per device.
+  - Improved:
+    - Start-up speed has been improved.
+  - Fixed:
+    - On the customisation sync dialogue, buttons are kept within the screen.
+    - No more unnecessary entries on `data.json` for customisation sync.
+    - Selections are no longer lost while updating customisation items.
+  - Tidied on source codes:
+    - Many typos have been fixed.
+    - Some unnecessary type casting removed.
+- 0.23.17:
+  - Improved:
+    - Overall performance has been improved by using PouchDB 9.0.0.
+    - Configuration mismatch detection is refined. We can resolve mismatches more smoothly and naturally.
+    More detail is on `troubleshooting.md` on the repository.
+  - Fixed:
+    - Customisation Sync will be disabled when a corrupted configuration is detected.
+      Therefore, the Device Name can be changed even in the event of a configuration mismatch.
+  - New feature:
+    - We can get a notification about the storage usage of the remote database.
+      - Default: We will be asked.
+      - If the remote storage usage approaches the configured value, we will be asked whether we want to Rebuild or increase the limit.
 - 0.23.16:
   - Maintenance Update:
     - Library refining (Phase 1 - step 2). There are no significant changes on the user side.

@@ -18,6 +18,30 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
+- 0.23.23:
+  - Refined:
+    - Setting dialogue very slightly refined.
+      - The hodgepodge inside the `Hatch` pane has been sorted into more explicit categorised panes.
+        - Now we have new panes for:
+          - `Selector`
+          - `Advanced`
+          - `Power users`
+          - `Patches (Edge case)`
+      - Applying the settings will now be more informative.
+        - The header bar will be shown for applying the settings which needs a database rebuild.
+        - Applying methods are now more clearly navigated.
+      - Definitely, drastic change. I hope this will be more user-friendly. However, if you notice any issues, please let me know. I hope that nothing missed.
+  - New features:
+    - Word-segmented chunk building on users language
+      - Chunks can now be built with word-segmented data, enhancing efficiency for markdown files which contains the multiple sentences in a single line.
+      - This feature is enabled by default through `Use Segmented-splitter`. 
+        - (Default: Disabled, Please be relived, I have learnt).
+  - Fixed:
+    - Sending chunks on `Send chunk in bulk` are now buffered to avoid the out-of-memory error.
+    - `Send chunk in bulk` is back to default disabled. (Sorry, not applied to the migrated users; I did not think we should deepen the wound any further "automatically").
+    - Merging conflicts of JSON files are now works fine even if it contains `null`.
+  - Development:
+    - Implemented the logic for automatically generating the stub of document for the setting dialogue.
 - 0.23.22:
   - Fixed:
     - Case-insensitive file handling
@@ -69,36 +93,5 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - Remote Storage Limit Notification dialogue has been fixed, now the chosen value is saved.
   - Improved:
     - The Enlarging button on the enlarging threshold dialogue now displays the new value.
-- 0.23.19:
-  - Not released.
-- 0.23.18:
-  - New feature:
-    - Per-file-saved customization sync has been shipped.
-      - We can synchronise plug-igs etc., more smoothly.
-      - Default: disabled. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost compatibility with old versions.
-    - Customisation sync has got beta3.
-      - We can set `Flag` to each item to select the newest, automatically.
-        - This configuration is per device.
-  - Improved:
-    - Start-up speed has been improved.
-  - Fixed:
-    - On the customisation sync dialogue, buttons are kept within the screen.
-    - No more unnecessary entries on `data.json` for customisation sync.
-    - Selections are no longer lost while updating customisation items.
-  - Tidied on source codes:
-    - Many typos have been fixed.
-    - Some unnecessary type casting removed.
-- 0.23.17:
-  - Improved:
-    - Overall performance has been improved by using PouchDB 9.0.0.
-    - Configuration mismatch detection is refined. We can resolve mismatches more smoothly and naturally.
-    More detail is on `troubleshooting.md` on the repository.
-  - Fixed:
-    - Customisation Sync will be disabled when a corrupted configuration is detected.
-      Therefore, the Device Name can be changed even in the event of a configuration mismatch.
-  - New feature:
-    - We can get a notification about the storage usage of the remote database.
-      - Default: We will be asked.
-      - If the remote storage usage approaches the configured value, we will be asked whether we want to Rebuild or increase the limit.
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
