@@ -129,7 +129,7 @@ export class LogAddOn extends LiveSyncCommands {
         this.statusBarLabels = statusBarLabels;
 
         const applyToDisplay = throttle((label: typeof statusBarLabels.value) => {
-            const v = label;
+            // const v = label;
             this.applyStatusBarText();
 
         }, 20);
@@ -161,10 +161,10 @@ export class LogAddOn extends LiveSyncCommands {
 
     }
     onload(): void | Promise<void> {
-        eventHub.on(EVENT_FILE_RENAMED, (evt: CustomEvent<{ oldPath: string, newPath: string }>) => {
+        eventHub.onEvent(EVENT_FILE_RENAMED, (evt: CustomEvent<{ oldPath: string, newPath: string }>) => {
             this.setFileStatus();
         });
-        eventHub.on(EVENT_LEAF_ACTIVE_CHANGED, () => this.onActiveLeafChange());
+        eventHub.onEvent(EVENT_LEAF_ACTIVE_CHANGED, () => this.onActiveLeafChange());
         const w = document.querySelectorAll(`.livesync-status`);
         w.forEach(e => e.remove());
 
@@ -175,7 +175,7 @@ export class LogAddOn extends LiveSyncCommands {
         this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
         this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
         this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
-        eventHub.on(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
+        eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings.showStatusOnStatusbar) {
             this.statusBar = this.plugin.addStatusBarItem();
             this.statusBar.addClass("syncstatusbar");

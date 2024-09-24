@@ -198,8 +198,9 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         "name": "Do not keep metadata of deleted files."
     },
     "useIndexedDBAdapter": {
-        "name": "Use an old adapter for compatibility",
-        "desc": "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this."
+        "name": "(Obsolete) Use an old adapter for compatibility",
+        "desc": "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
+        "obsolete": true
     },
     "watchInternalFileChanges": {
         "name": "Scan changes on customization sync",
@@ -340,6 +341,18 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     "sendChunksBulkMaxSize": {
         name: "Maximum size of chunks to send in one request",
         desc: "MB"
+    },
+    "useAdvancedMode": {
+        name: "Enable advanced features",
+        // desc: "Enable advanced mode"
+    },
+    usePowerUserMode: {
+        name: "Enable power user features",
+        // desc: "Enable power user mode",
+        // level: LEVEL_ADVANCED
+    },
+    useEdgeCaseMode: {
+        name: "Enable edge case treatment features",
     },
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {

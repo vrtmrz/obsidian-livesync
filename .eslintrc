@@ -23,12 +23,14 @@
                 "args": "none"
             }
         ],
+        "no-unused-labels": "off",
         "@typescript-eslint/ban-ts-comment": "off",
         "no-prototype-builtins": "off",
         "@typescript-eslint/no-empty-function": "off",
         "require-await": "warn",
         "no-async-promise-executor": "off",
         "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-unnecessary-type-assertion": "error"
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "no-constant-condition": ["error", { "checkLoops": false }]
     }
-}
+    }

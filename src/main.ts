@@ -46,7 +46,7 @@ import { LogAddOn } from "./features/CmdStatusInsideEditor.ts";
 import { eventHub } from "./lib/src/hub/hub.ts";
 import { EVENT_FILE_RENAMED, EVENT_LAYOUT_READY, EVENT_LEAF_ACTIVE_CHANGED, EVENT_PLUGIN_LOADED, EVENT_PLUGIN_UNLOADED, EVENT_SETTING_SAVED } from "./common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-
+import { yieldMicrotask } from "octagonal-wheels/promises";
 
 setNoticeClass(Notice);
 
@@ -354,10 +354,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return new PouchDB(name, optionPass);
     }
     beforeOnUnload(db: LiveSyncLocalDB): void {
-        this.kvDB.close();
+        if (this.kvDB) this.kvDB.close();
     }
     onClose(db: LiveSyncLocalDB): void {
-        this.kvDB.close();
+        if (this.kvDB) this.kvDB.close();
     }
     getNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): LiveSyncAbstractReplicator {
         const settings = { ...this.settings, ...settingOverride };
@@ -367,8 +367,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return new LiveSyncCouchDBReplicator(this);
     }
     async onInitializeDatabase(db: LiveSyncLocalDB): Promise<void> {
+        await delay(10);
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        // this.trench = new Trench(this.simpleStore);
         this.replicator = this.getNewReplicator();
     }
     async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
@@ -376,8 +376,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.kvDB.del(kvDBKey);
         // localStorage.removeItem(lsKey);
         await this.kvDB.destroy();
+        await yieldMicrotask();
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        // this.trench = new Trench(this.simpleStore);
+        await yieldMicrotask();
         this.replicator = this.getNewReplicator()
     }
     getReplicator() {
@@ -710,7 +711,7 @@ ___However, to enable either of these changes, both remote and local databases n
 
     }
     async onLayoutReady() {
-        eventHub.emit(EVENT_LAYOUT_READY);
+        eventHub.emitEvent(EVENT_LAYOUT_READY);
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
             Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
@@ -1160,34 +1161,34 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     wireUpEvents() {
-        eventHub.on(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
             const settings = evt.detail;
             this.localDatabase.settings = settings;
             setLang(settings.displayLanguage);
             this.settingTab.requestReload();
             this.ignoreFiles = settings.ignoreFiles.split(",").map(e => e.trim());
         });
-        eventHub.on(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
             const settings = evt.detail;
             if (settings.settingSyncFile != "") {
                 fireAndForget(() => this.saveSettingToMarkdown(settings.settingSyncFile));
             }
         })
-        eventHub.on(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
             fireAndForget(() => this.realizeSettingSyncMode());
         })
     }
     connectObsidianEvents() {
         // this.registerEvent(this.app.workspace.on("editor-change", ));
         this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-            eventHub.emit(EVENT_FILE_RENAMED, { newPath: file.path, old: oldPath });
+            eventHub.emitEvent(EVENT_FILE_RENAMED, { newPath: file.path, old: oldPath });
         }));
-        this.registerEvent(this.app.workspace.on("active-leaf-change", () => eventHub.emit(EVENT_LEAF_ACTIVE_CHANGED)));
+        this.registerEvent(this.app.workspace.on("active-leaf-change", () => eventHub.emitEvent(EVENT_LEAF_ACTIVE_CHANGED)));
     }
     async onload() {
         this.wireUpEvents();
         this.connectObsidianEvents();
-        eventHub.emit(EVENT_PLUGIN_LOADED, this);
+        eventHub.emitEvent(EVENT_PLUGIN_LOADED, this);
         logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
         Logger("loading plugin");
         __onMissingTranslation(() => { });
@@ -1213,6 +1214,36 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                         Logger(`Missing translation: ${writePiece}`, LOG_LEVEL_VERBOSE);
                     }
                 });
+            })
+            type STUB = {
+                toc: Set<string>,
+                stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } }
+            };
+            eventHub.onEvent("document-stub-created", async (e: CustomEvent<STUB>) => {
+                const stub = e.detail.stub;
+                const toc = e.detail.toc;
+
+                const stubDocX =
+                    Object.entries(stub).map(([key, value]) => {
+                        return [`## ${key}`, Object.entries(value).
+                            map(([key2, value2]) => {
+                                return [`### ${key2}`,
+                                ([...(value2.entries())].map(([key3, value3]) => {
+                                    // return `#### ${key3}` + "\n" + JSON.stringify(value3);
+                                    const isObsolete = value3["is_obsolete"] ? " (obsolete)" : "";
+                                    const desc = value3["desc"] ?? "";
+                                    const key = value3["key"] ? "Setting key: " + value3["key"] + "\n" : "";
+                                    return `#### ${key3}${isObsolete}\n${key}${desc}\n`
+                                }))].flat()
+                            }).flat()].flat()
+                    }).flat();
+                const stubDocMD = `
+| Icon  | Description                                                       |
+| :---: | ----------------------------------------------------------------- |
+` +
+                    [...toc.values()].map(e => `${e}`).join("\n") + "\n\n" +
+                    stubDocX.join("\n");
+                await this.vaultAccess.adapterWrite(this.app.vault.configDir + "/ls-debug/stub-doc.md", stubDocMD);
             })
         }
         this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this);
@@ -1292,7 +1323,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     onunload() {
-        eventHub.emit(EVENT_PLUGIN_UNLOADED);
+        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
         cancelAllPeriodicTask();
         cancelAllTasks();
         stopAllRunningProcessors();
@@ -1305,7 +1336,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         this.periodicSyncProcessor?.disable();
         if (this.localDatabase != null) {
-            this.replicator.closeReplication();
+            this.replicator?.closeReplication();
             this.localDatabase.close();
         }
         Logger($f`unloading plugin`);
@@ -1496,7 +1527,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
         }
         await this.saveData(settings);
-        eventHub.emit(EVENT_SETTING_SAVED, settings);
+        eventHub.emitEvent(EVENT_SETTING_SAVED, settings);
     }
 
     extractSettingFromWholeText(data: string): { preamble: string, body: string, postscript: string } {

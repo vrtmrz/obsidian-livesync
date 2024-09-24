@@ -134,7 +134,13 @@ export function generatePatchObj(from: Record<string | number | symbol, any>, to
                 //if type is not match, replace completely.
                 ret[key] = { [MARK_SWAPPED]: value };
             } else {
-                if (typeof (v) == "object" && typeof (value) == "object" && !Array.isArray(v) && !Array.isArray(value)) {
+                if (v === null && value === null) {
+                    // NO OP.
+                } else if (v === null && value !== null) {
+                    ret[key] = { [MARK_SWAPPED]: value };
+                } else if (v !== null && value === null) {
+                    ret[key] = { [MARK_SWAPPED]: value };
+                } else if (typeof (v) == "object" && typeof (value) == "object" && !Array.isArray(v) && !Array.isArray(value)) {
                     const wk = generatePatchObj(v, value);
                     if (Object.keys(wk).length > 0) ret[key] = wk;
                 } else if (typeof (v) == "object" && typeof (value) == "object" && Array.isArray(v) && Array.isArray(value)) {
@@ -167,6 +173,10 @@ export function applyPatch(from: Record<string | number | symbol, any>, patch: R
     for (const [key, value] of patches) {
         if (value == MARK_DELETED) {
             delete ret[key];
+            continue;
+        }
+        if (value === null) {
+            ret[key] = null;
             continue;
         }
         if (typeof (value) == "object") {
@@ -251,6 +261,7 @@ export function mergeObject(
 
 export function flattenObject(obj: Record<string | number | symbol, any>, path: string[] = []): [string, any][] {
     if (typeof (obj) != "object") return [[path.join("."), obj]];
+    if (obj === null) return [[path.join("."), null]];
     if (Array.isArray(obj)) return [[path.join("."), JSON.stringify(obj)]];
     const e = Object.entries(obj);
     const ret = []
@@ -489,6 +500,35 @@ export function useMemo<T>({ key, forceUpdate, validator }: MemoOption, updateFu
     return value;
 }
 
+// const _static = new Map<string, any>();
+const _staticObj = new Map<string, {
+    value: any
+}>();
+
+export function useStatic<T>(key: string): { value: (T | undefined) };
+export function useStatic<T>(key: string, initial: T): { value: T };
+export function useStatic<T>(key: string, initial?: T) {
+    // if (!_static.has(key) && initial) {
+    //     _static.set(key, initial);
+    // }
+    const obj = _staticObj.get(key);
+    if (obj !== undefined) {
+        return obj;
+    } else {
+        // let buf = initial;
+        const obj = {
+            _buf: initial,
+            get value() {
+                return this._buf as T;
+            },
+            set value(value: T) {
+                this._buf = value
+            }
+        }
+        _staticObj.set(key, obj);
+        return obj;
+    }
+}
 export function disposeMemo(key: string) {
     _cached.delete(key);
 }

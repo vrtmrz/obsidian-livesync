@@ -25,6 +25,7 @@
             "ES7",
             "es2019.array",
             "ES2020.BigInt",
+            "ESNext.Intl"
         ]
     },
     "include": [
