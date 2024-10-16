@@ -1,10 +1,9 @@
-import { normalizePath, Platform, TAbstractFile, App, type RequestUrlParam, requestUrl, TFile } from "../deps.ts";
+import { normalizePath, Platform, TAbstractFile, type RequestUrlParam, requestUrl } from "../deps.ts";
 import { path2id_base, id2path_base, isValidFilenameInLinux, isValidFilenameInDarwin, isValidFilenameInWidows, isValidFilenameInAndroid, stripAllPrefixes } from "../lib/src/string_and_binary/path.ts";
 
 import { Logger } from "../lib/src/common/logger.ts";
-import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "../lib/src/common/types.ts";
+import { LOG_LEVEL_VERBOSE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type UXFileInfo, type UXFileInfoStub } from "../lib/src/common/types.ts";
 import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types.ts";
-import { InputStringDialog, PopoverSelectString } from "./dialogs.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
@@ -46,6 +45,10 @@ export function getPathWithoutPrefix(entry: AnyEntry) {
 export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
+export function getPathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
+    if (typeof file == "string") return file as FilePathWithPrefix;
+    return file.path;
+}
 
 
 const memos: { [key: string]: any } = {};
@@ -70,206 +73,6 @@ export function retrieveMemoObject<T>(key: string): T | false {
 }
 export function disposeMemoObject(key: string) {
     delete memos[key];
-}
-
-export function isSensibleMargeApplicable(path: string) {
-    if (path.endsWith(".md")) return true;
-    return false;
-}
-export function isObjectMargeApplicable(path: string) {
-    if (path.endsWith(".canvas")) return true;
-    if (path.endsWith(".json")) return true;
-    return false;
-}
-
-export function tryParseJSON(str: string, fallbackValue?: any) {
-    try {
-        return JSON.parse(str);
-    } catch (ex) {
-        return fallbackValue;
-    }
-}
-
-const MARK_OPERATOR = `\u{0001}`;
-const MARK_DELETED = `${MARK_OPERATOR}__DELETED`;
-const MARK_ISARRAY = `${MARK_OPERATOR}__ARRAY`;
-const MARK_SWAPPED = `${MARK_OPERATOR}__SWAP`;
-
-function unorderedArrayToObject(obj: Array<any>) {
-    return obj.map(e => ({ [e.id as string]: e })).reduce((p, c) => ({ ...p, ...c }), {})
-}
-function objectToUnorderedArray(obj: object) {
-    const entries = Object.entries(obj);
-    if (entries.some(e => e[0] != e[1]?.id)) throw new Error("Item looks like not unordered array")
-    return entries.map(e => e[1]);
-}
-function generatePatchUnorderedArray(from: Array<any>, to: Array<any>) {
-    if (from.every(e => typeof (e) == "object" && ("id" in e)) && to.every(e => typeof (e) == "object" && ("id" in e))) {
-        const fObj = unorderedArrayToObject(from);
-        const tObj = unorderedArrayToObject(to);
-        const diff = generatePatchObj(fObj, tObj);
-        if (Object.keys(diff).length > 0) {
-            return { [MARK_ISARRAY]: diff };
-        } else {
-            return {};
-        }
-    }
-    return { [MARK_SWAPPED]: to };
-}
-
-export function generatePatchObj(from: Record<string | number | symbol, any>, to: Record<string | number | symbol, any>) {
-    const entries = Object.entries(from);
-    const tempMap = new Map<string | number | symbol, any>(entries);
-    const ret = {} as Record<string | number | symbol, any>;
-    const newEntries = Object.entries(to);
-    for (const [key, value] of newEntries) {
-        if (!tempMap.has(key)) {
-            //New
-            ret[key] = value;
-            tempMap.delete(key);
-        } else {
-            //Exists
-            const v = tempMap.get(key);
-            if (typeof (v) !== typeof (value) || (Array.isArray(v) !== Array.isArray(value))) {
-                //if type is not match, replace completely.
-                ret[key] = { [MARK_SWAPPED]: value };
-            } else {
-                if (v === null && value === null) {
-                    // NO OP.
-                } else if (v === null && value !== null) {
-                    ret[key] = { [MARK_SWAPPED]: value };
-                } else if (v !== null && value === null) {
-                    ret[key] = { [MARK_SWAPPED]: value };
-                } else if (typeof (v) == "object" && typeof (value) == "object" && !Array.isArray(v) && !Array.isArray(value)) {
-                    const wk = generatePatchObj(v, value);
-                    if (Object.keys(wk).length > 0) ret[key] = wk;
-                } else if (typeof (v) == "object" && typeof (value) == "object" && Array.isArray(v) && Array.isArray(value)) {
-                    const wk = generatePatchUnorderedArray(v, value);
-                    if (Object.keys(wk).length > 0) ret[key] = wk;
-                } else if (typeof (v) != "object" && typeof (value) != "object") {
-                    if (JSON.stringify(tempMap.get(key)) !== JSON.stringify(value)) {
-                        ret[key] = value;
-                    }
-                } else {
-                    if (JSON.stringify(tempMap.get(key)) !== JSON.stringify(value)) {
-                        ret[key] = { [MARK_SWAPPED]: value };
-                    }
-                }
-            }
-            tempMap.delete(key);
-        }
-    }
-    //Not used item, means deleted one
-    for (const [key,] of tempMap) {
-        ret[key] = MARK_DELETED
-    }
-    return ret;
-}
-
-
-export function applyPatch(from: Record<string | number | symbol, any>, patch: Record<string | number | symbol, any>) {
-    const ret = from;
-    const patches = Object.entries(patch);
-    for (const [key, value] of patches) {
-        if (value == MARK_DELETED) {
-            delete ret[key];
-            continue;
-        }
-        if (value === null) {
-            ret[key] = null;
-            continue;
-        }
-        if (typeof (value) == "object") {
-            if (MARK_SWAPPED in value) {
-                ret[key] = value[MARK_SWAPPED];
-                continue;
-            }
-            if (MARK_ISARRAY in value) {
-                if (!(key in ret)) ret[key] = [];
-                if (!Array.isArray(ret[key])) {
-                    throw new Error("Patch target type is mismatched (array to something)");
-                }
-                const orgArrayObject = unorderedArrayToObject(ret[key]);
-                const appliedObject = applyPatch(orgArrayObject, value[MARK_ISARRAY]);
-                const appliedArray = objectToUnorderedArray(appliedObject);
-                ret[key] = [...appliedArray];
-            } else {
-                if (!(key in ret)) {
-                    ret[key] = value;
-                    continue;
-                }
-                ret[key] = applyPatch(ret[key], value);
-            }
-        } else {
-            ret[key] = value;
-        }
-    }
-    return ret;
-}
-
-export function mergeObject(
-    objA: Record<string | number | symbol, any> | [any],
-    objB: Record<string | number | symbol, any> | [any]
-) {
-    const newEntries = Object.entries(objB);
-    const ret: any = { ...objA };
-    if (
-        typeof objA !== typeof objB ||
-        Array.isArray(objA) !== Array.isArray(objB)
-    ) {
-        return objB;
-    }
-
-    for (const [key, v] of newEntries) {
-        if (key in ret) {
-            const value = ret[key];
-            if (
-                typeof v !== typeof value ||
-                Array.isArray(v) !== Array.isArray(value)
-            ) {
-                //if type is not match, replace completely.
-                ret[key] = v;
-            } else {
-                if (
-                    typeof v == "object" &&
-                    typeof value == "object" &&
-                    !Array.isArray(v) &&
-                    !Array.isArray(value)
-                ) {
-                    ret[key] = mergeObject(v, value);
-                } else if (
-                    typeof v == "object" &&
-                    typeof value == "object" &&
-                    Array.isArray(v) &&
-                    Array.isArray(value)
-                ) {
-                    ret[key] = [...new Set([...v, ...value])];
-                } else {
-                    ret[key] = v;
-                }
-            }
-        } else {
-            ret[key] = v;
-        }
-    }
-    const retSorted = Object.fromEntries(Object.entries(ret).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    if (Array.isArray(objA) && Array.isArray(objB)) {
-        return Object.values(retSorted);
-    }
-    return retSorted;
-}
-
-export function flattenObject(obj: Record<string | number | symbol, any>, path: string[] = []): [string, any][] {
-    if (typeof (obj) != "object") return [[path.join("."), obj]];
-    if (obj === null) return [[path.join("."), null]];
-    if (Array.isArray(obj)) return [[path.join("."), JSON.stringify(obj)]];
-    const e = Object.entries(obj);
-    const ret = []
-    for (const [key, value] of e) {
-        const p = flattenObject(value, [...path, key]);
-        ret.push(...p);
-    }
-    return ret;
 }
 
 
@@ -318,29 +121,6 @@ export function isPluginMetadata(str: string): boolean {
 export function isCustomisationSyncMetadata(str: string): boolean {
     return str.startsWith(ICXHeader);
 }
-
-export const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
-    return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, undefined, undefined, (result) => res(result as "yes" | "no"));
-        popover.open();
-    });
-};
-
-export const askSelectString = (app: App, message: string, items: string[]): Promise<string> => {
-    const getItemsFun = () => items;
-    return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, "", getItemsFun, (result) => res(result));
-        popover.open();
-    });
-};
-
-
-export const askString = (app: App, title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> => {
-    return new Promise((res) => {
-        const dialog = new InputStringDialog(app, title, key, placeholder, isPassword, (result) => res(result));
-        dialog.open();
-    });
-};
 
 
 export class PeriodicProcessor {
@@ -413,20 +193,6 @@ export const requestToCouchDB = async (baseUri: string, username: string, passwo
     return await _requestToCouchDB(baseUri, username, password, origin, uri, body, method);
 };
 
-export async function performRebuildDB(plugin: ObsidianLiveSyncPlugin, method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") {
-    if (method == "localOnly") {
-        await plugin.addOnSetup.fetchLocal();
-    }
-    if (method == "localOnlyWithChunks") {
-        await plugin.addOnSetup.fetchLocal(true);
-    }
-    if (method == "remoteOnly") {
-        await plugin.addOnSetup.rebuildRemote();
-    }
-    if (method == "rebuildBothByThisDevice") {
-        await plugin.addOnSetup.rebuildEverything();
-    }
-}
 
 export const BASE_IS_NEW = Symbol("base");
 export const TARGET_IS_NEW = Symbol("target");
@@ -445,9 +211,9 @@ export function compareMTime(baseMTime: number, targetMTime: number): typeof BAS
     throw new Error("Unexpected error");
 }
 
-export function markChangesAreSame(file: TFile | AnyEntry | string, mtime1: number, mtime2: number) {
+export function markChangesAreSame(file: AnyEntry | string | UXFileInfoStub, mtime1: number, mtime2: number) {
     if (mtime1 === mtime2) return true;
-    const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
+    const key = typeof file == "string" ? file : "_id" in file ? file._id : file.path;
     const pairs = sameChangePairs.get(key, []) || [];
     if (pairs.some(e => e == mtime1 || e == mtime2)) {
         sameChangePairs.set(key, [...new Set([...pairs, mtime1, mtime2])]);
@@ -455,20 +221,20 @@ export function markChangesAreSame(file: TFile | AnyEntry | string, mtime1: numb
         sameChangePairs.set(key, [mtime1, mtime2]);
     }
 }
-export function isMarkedAsSameChanges(file: TFile | AnyEntry | string, mtimes: number[]) {
-    const key = typeof file == "string" ? file : file instanceof TFile ? file.path : file.path ?? file._id;
+export function isMarkedAsSameChanges(file: UXFileInfoStub | AnyEntry | string, mtimes: number[]) {
+    const key = typeof file == "string" ? file : "_id" in file ? file._id : file.path;
     const pairs = sameChangePairs.get(key, []) || [];
     if (mtimes.every(e => pairs.indexOf(e) !== -1)) {
         return EVEN;
     }
 }
-export function compareFileFreshness(baseFile: TFile | AnyEntry | undefined, checkTarget: TFile | AnyEntry | undefined): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
+export function compareFileFreshness(baseFile: UXFileInfoStub | AnyEntry | undefined, checkTarget: UXFileInfo | AnyEntry | undefined): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
     if (baseFile === undefined && checkTarget == undefined) return EVEN;
     if (baseFile == undefined) return TARGET_IS_NEW;
     if (checkTarget == undefined) return BASE_IS_NEW;
 
-    const modifiedBase = baseFile instanceof TFile ? baseFile?.stat?.mtime ?? 0 : baseFile?.mtime ?? 0;
-    const modifiedTarget = checkTarget instanceof TFile ? checkTarget?.stat?.mtime ?? 0 : checkTarget?.mtime ?? 0;
+    const modifiedBase = "stat" in baseFile ? baseFile?.stat?.mtime ?? 0 : baseFile?.mtime ?? 0;
+    const modifiedTarget = "stat" in checkTarget ? checkTarget?.stat?.mtime ?? 0 : checkTarget?.mtime ?? 0;
 
     if (modifiedBase && modifiedTarget && isMarkedAsSameChanges(baseFile, [modifiedBase, modifiedTarget])) {
         return EVEN;
@@ -484,15 +250,15 @@ const _cached = new Map<string, {
 export type MemoOption = {
     key: string;
     forceUpdate?: boolean;
-    validator?: () => boolean;
+    validator?: (context: Map<string, any>) => boolean;
 }
 
 export function useMemo<T>({ key, forceUpdate, validator }: MemoOption, updateFunc: (context: Map<string, any>, prev: T) => T): T {
     const cached = _cached.get(key);
-    if (cached && !forceUpdate && (!validator || validator && !validator())) {
+    const context = cached?.context || new Map<string, any>();
+    if (cached && !forceUpdate && (!validator || validator && !validator(context))) {
         return cached.value;
     }
-    const context = cached?.context || new Map<string, any>();
     const value = updateFunc(context, cached?.value);
     if (value !== cached?.value) {
         _cached.set(key, { value, context });
@@ -536,3 +302,12 @@ export function disposeMemo(key: string) {
 export function disposeAllMemo() {
     _cached.clear();
 }
+
+export function displayRev(rev: string) {
+    const [number, hash] = rev.split("-");
+    return `${number}-${hash.substring(0, 6)}`;
+}
+
+// export function getPathFromUXFileInfo(file: UXFileInfoStub | UXFileInfo | string) {
+//     return (typeof file == "string" ? file : file.path) as FilePathWithPrefix;
+// }

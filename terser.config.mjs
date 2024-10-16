@@ -12,8 +12,8 @@ const terserOption = {
           }
         : {},
     format: {
-        indent_level: 2,
-        beautify: true,
+        // indent_level: 2,
+        // beautify: true,
         comments: "some",
         ecma: 2018,
         preamble: banner,

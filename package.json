@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.23.23",
+    "version": "0.24.0.rc1",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -8,7 +8,10 @@
         "dev": "node esbuild.config.mjs",
         "build": "node esbuild.config.mjs production",
         "buildDev": "node esbuild.config.mjs dev",
-        "lint": "eslint src"
+        "lint": "eslint src",
+        "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
+        "tsc-check": "tsc --noEmit",
+        "check": "npm run lint && npm run svelte-check && npm run tsc-check"
     },
     "keywords": [],
     "author": "vorotamoroz",
@@ -66,6 +69,7 @@
         "idb": "^8.0.0",
         "minimatch": "^10.0.1",
         "octagonal-wheels": "^0.1.15",
+        "svelte-check": "^4.0.4",
         "xxhash-wasm": "0.4.2",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }

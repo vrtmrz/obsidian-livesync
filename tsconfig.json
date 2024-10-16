@@ -8,30 +8,16 @@
         "allowJs": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
-        "types": [
-            "svelte",
-            "node"
-        ],
+        "types": ["svelte", "node"],
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,
         "alwaysStrict": true,
         "allowImportingTsExtensions": true,
         "noEmit": true,
-        "lib": [
-            "es2018",
-            "DOM",
-            "ES5",
-            "ES6",
-            "ES7",
-            "es2019.array",
-            "ES2020.BigInt",
-            "ESNext.Intl"
-        ]
+        "lib": ["es2018", "DOM", "ES5", "ES6", "ES7", "es2019.array", "ES2021.WeakRef", "ES2020.BigInt", "ESNext.Intl"],
+        "strictBindCallApply": true,
+        "strictFunctionTypes": true
     },
-    "include": [
-        "**/*.ts"
-    ],
-    "exclude": [
-        "pouchdb-browser-webpack"
-    ]
+    "include": ["**/*.ts"],
+    "exclude": ["pouchdb-browser-webpack", "utils", "src/modules/coreObsidian/devUtil/tests.ts", "src/lib/src/API/**"]
 }
