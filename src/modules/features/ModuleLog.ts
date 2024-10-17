@@ -212,13 +212,14 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             const { message, status } = this.statusBarLabels.value;
             // const recent = logMessages.value;
             const newMsg = message;
-            const newLog = this.settings?.showOnlyIconsOnEditor ? "" : status;
+            let newLog = this.settings?.showOnlyIconsOnEditor ? "" : status;
+            const moduleTagEnd = newLog.indexOf(`]\u{200A}`);
+            if (moduleTagEnd != -1) {
+                newLog = newLog.substring(moduleTagEnd + 2);
+            }
 
             this.statusBar?.setText(newMsg.split("\n")[0]);
             if (this.settings?.showStatusOnEditor && this.statusDiv) {
-                // const root = activeDocument.documentElement;
-                // root.style.setProperty("--sls-log-text", "'" + (newMsg + "\\A " + newLog) + "'");
-                // this.statusDiv.innerText = newMsg + "\\A " + newLog;
                 if (this.settings.showLongerLogInsideEditor) {
                     const now = new Date().getTime();
                     this.logLines = this.logLines.filter(e => e.ttl > now);

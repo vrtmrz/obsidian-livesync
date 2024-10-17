@@ -115,19 +115,8 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     }
                 }
 
-                // -old implementation
-
                 try {
-                    // const orgHeaders = opts?.headers;
-                    // const newHeaders = new Headers();
-                    // newHeaders.append("authorization", authHeader);
-                    // if (orgHeaders && typeof orgHeaders.forEach !== "string") {
-                    //     const items = Object.entries(orgHeaders);
-                    //     items.forEach(([key, value]) => newHeaders.append(key, value));
-                    // }
-                    // newHeaders.append("ngrok-skip-browser-warning", "123"); 
-                    // opts!.headers = newHeaders;
-                    DEV: {
+                    if (this.settings.enableDebugTools) {
                         // Issue #407
                         (opts!.headers as Headers).append("ngrok-skip-browser-warning", "123");
                     }

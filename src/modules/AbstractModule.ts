@@ -131,7 +131,7 @@ export function injectModules<T extends ICoreModule>(target: T, modules: ICoreMo
 export abstract class AbstractModule {
     _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
         if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
-            msg = `[${this.constructor.name}] ${msg}`;
+            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
         }
         // console.log(msg);
         Logger(msg, level, key);

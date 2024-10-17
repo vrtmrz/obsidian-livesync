@@ -18,10 +18,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
     $everyOnFirstInitialize(): Promise<boolean> {
         this.vaultManager.beginWatch();
-        this.plugin.totalQueued = this.vaultManager.totalQueued;
-        this.plugin.batched = this.vaultManager.batched;
-        this.plugin.processing = this.vaultManager.processing;
-
         return Promise.resolve(true);
     }
     $allOnUnload(): Promise<boolean> {

@@ -19,5 +19,5 @@
         "strictFunctionTypes": true
     },
     "include": ["**/*.ts"],
-    "exclude": ["pouchdb-browser-webpack", "utils", "src/modules/coreObsidian/devUtil/tests.ts", "src/lib/src/API/**"]
+    "exclude": ["pouchdb-browser-webpack", "utils"]
 }

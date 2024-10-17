@@ -6,7 +6,6 @@ import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "../../../lib/src/concurrency/lock.ts";
 import { finishAllWaitingForTimeout, finishWaitingForTimeout, isWaitingForTimeout, waitForTimeout } from "../../../lib/src/concurrency/task.ts";
-import { reactiveSource, type ReactiveSource } from "../../../lib/src/dataobject/reactive.ts";
 import { Semaphore } from "../../../lib/src/concurrency/semaphore.ts";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
@@ -29,17 +28,12 @@ export abstract class StorageEventManager {
     abstract appendQueue(items: FileEvent[], ctx?: any): Promise<void>;
     abstract cancelQueue(key: string): void;
     abstract isWaiting(filename: FilePath): boolean;
-    abstract totalQueued: ReactiveSource<number>;
-    abstract batched: ReactiveSource<number>;
-    abstract processing: ReactiveSource<number>;
 
 }
 
 
 export class StorageEventManagerObsidian extends StorageEventManager {
-    totalQueued = reactiveSource(0);
-    batched = reactiveSource(0);
-    processing = reactiveSource(0);
+
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
 
@@ -330,9 +324,10 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     updateStatus() {
         const allItems = this.bufferedQueuedItems.filter(e => !e.cancelled)
-        this.batched.value = allItems.filter(e => e.batched && !e.skipBatchWait).length;
-        this.processing.value = this.processingCount;
-        this.totalQueued.value = allItems.length - this.batched.value;
+        const batchedCount = allItems.filter(e => e.batched && !e.skipBatchWait).length;
+        this.core.batched.value = batchedCount
+        this.core.processing.value = this.processingCount;
+        this.core.totalQueued.value = allItems.length - batchedCount;
     }
 
     async handleFileEvent(queue: FileEventItem): Promise<any> {
@@ -340,7 +335,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         const lockKey = `handleFile:${file.path}`;
         return await serialized(lockKey, async () => {
             // TODO CHECK
-            // console.warn(lockKey);
             const key = `file-last-proc-${queue.type}-${file.path}`;
             const last = Number(await this.core.kvDB.get(key) || 0);
             if (queue.type == "INTERNAL" || file.isInternal) {
@@ -362,77 +356,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                         this.cancelRelativeEvent(queue);
                         return;
                     }
-                    //     if (queue.type == "CREATE" || queue.type == "CHANGED") {
-                    //                 // eventHub.emitEvent("event-file-changed", { file: targetFile, automated: true });
-
-                    //                 if (!await this.core.updateIntoDB(targetFile, undefined)) {
-                    //                     Logger(`STORAGE -> DB: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
-                    //                     // cancel running queues and remove one of atomic operation
-                    //                     this.cancelRelativeEvent(queue);
-                    //                     return;
-                    //                 }
-                    //             }
-                    //             if (queue.type == "RENAME") {
-                    //                 // Obsolete , can be called? 
-                    //                 await this.renameVaultItem(targetFile, queue.args.oldPath);
-                    //             }
-                    // }
-                    //     await this.core.deleteFromDBbyPath(file.path);
-                    //     mtime = file.stat.mtime - 1;
-                    //     const keyD1 = `file-last-proc-CREATE-${file.path}`;
-                    //     const keyD2 = `file-last-proc-CHANGED-${file.path}`;
-                    //     await this.core.kvDB.set(keyD1, mtime);
-                    //     await this.core.kvDB.set(keyD2, mtime);
-                    // } else {
-                    //     const targetFile = this.core.storageAccess.getFileStub(file.path);
-                    //     if (!(targetFile)) {
-                    //         Logger(`Target file was not found: ${file.path}`, LOG_LEVEL_INFO);
-                    //         return;
-                    //     }
-                    //     if (file.stat.mtime == last) {
-                    //         Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
-                    //         return;
-                    //     }
-
-                    //     // const cache = queue.args.cache;
-                    //     if (queue.type == "CREATE" || queue.type == "CHANGED") {
-                    //         eventHub.emitEvent("event-file-changed", { file: targetFile, automated: true });
-                    //         // fireAndForget(() => this.addOnObsidianUI.checkAndApplySettingFromMarkdown(queue.args.file.path, true));
-                    //         const keyD1 = `file-last-proc-DELETED-${file.path}`;
-                    //         await this.core.kvDB.set(keyD1, mtime);
-                    //         if (!await this.core.updateIntoDB(targetFile, undefined)) {
-                    //             Logger(`STORAGE -> DB: failed, cancel the relative operations: ${targetFile.path}`, LOG_LEVEL_INFO);
-                    //             // cancel running queues and remove one of atomic operation
-                    //             this.cancelRelativeEvent(queue);
-                    //             return;
-                    //         }
-                    //     }
-                    //     if (queue.type == "RENAME") {
-                    //         // Obsolete , can be called? 
-                    //         await this.renameVaultItem(targetFile, queue.args.oldPath);
-                    //     }
-                    // }
-                    // await this.core.kvDB.set(key, mtime);
                 }
             }
         });
     }
-    // async renameVaultItem(file: UXFileInfoStub, oldFile: any, cache?: CacheData): Promise<void> {
-    //     Logger(`${oldFile} renamed to ${file.path}`, LOG_LEVEL_VERBOSE);
-    //     if (!file.isFolder) {
-    //         try {
-    //             // Logger(`RENAMING.. ${file.path} into db`);
-    //             if (await this.core.updateIntoDB(file, cache)) {
-    //                 // Logger(`deleted ${oldFile} from db`);
-    //                 await this.core.deleteFromDBbyPath(oldFile);
-    //             } else {
-    //                 Logger(`Could not save new file: ${file.path} `, LOG_LEVEL_NOTICE);
-    //             }
-    //         } catch (ex) {
-    //             Logger(ex);
-    //         }
-    //     }
-    // }
+
     cancelRelativeEvent(item: FileEventItem): void {
         this.cancelQueue(item.key);
     }

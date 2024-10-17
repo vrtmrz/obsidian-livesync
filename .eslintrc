@@ -7,7 +7,7 @@
         "sourceType": "module",
         "project": ["tsconfig.json"]
     },
-    "ignorePatterns": ["src/lib/src/API/*.ts"],
+    "ignorePatterns": [],
     "rules": {
         "no-unused-vars": "off",
         "@typescript-eslint/no-unused-vars": [
