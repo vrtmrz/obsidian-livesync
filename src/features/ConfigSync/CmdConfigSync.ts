@@ -343,7 +343,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     get useSyncPluginEtc() {
         return this.plugin.settings.usePluginEtc;
     }
-    $isThisModuleEnabled() {
+    _isThisModuleEnabled() {
         return this.plugin.settings.usePluginSync;
     }
 
@@ -352,7 +352,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
     pluginList: IPluginDataExDisplay[] = [];
     showPluginSyncModal() {
-        if (!this.$isThisModuleEnabled()) {
+        if (!this._isThisModuleEnabled()) {
             return;
         }
         if (this.pluginDialog) {
@@ -417,7 +417,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return this.getFileCategory(filePath) != "";
     }
     async $everyOnDatabaseInitialized(showNotice: boolean) {
-        if (!this.$isThisModuleEnabled()) return true;
+        if (!this._isThisModuleEnabled()) return true;
         try {
             Logger("Scanning customizations...");
             await this.scanAllConfigFiles(showNotice);
@@ -429,7 +429,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return true;
     }
     async $everyBeforeReplicate(showNotice: boolean) {
-        if (!this.$isThisModuleEnabled()) return true;
+        if (!this._isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(showNotice);
             return true;
@@ -437,8 +437,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return true;
     }
     async $everyOnResumeProcess(): Promise<boolean> {
-        if (!this.$isThisModuleEnabled()) return true;
-        if (this.$isMainSuspended()) {
+        if (!this._isThisModuleEnabled()) return true;
+        if (this._isMainSuspended()) {
             return true;
         }
         if (this.settings.autoSweepPlugins) {
@@ -449,7 +449,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
     $everyAfterResumeProcess(): Promise<boolean> {
         const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
-        q?.toggleClass("sls-hidden", !this.$isThisModuleEnabled());
+        q?.toggleClass("sls-hidden", !this._isThisModuleEnabled());
         return Promise.resolve(true);
     }
     async reloadPluginList(showMessage: boolean) {
@@ -754,7 +754,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
-        if (!this.$isThisModuleEnabled()) {
+        if (!this._isThisModuleEnabled()) {
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
             pluginList.set(this.pluginList)
@@ -1019,10 +1019,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
     async $anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (!docs._id.startsWith(ICXHeader)) return undefined;
-        if (this.$isThisModuleEnabled()) {
+        if (this._isThisModuleEnabled()) {
             await this.updatePluginList(false, (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath((docs as AnyEntry)));
         }
-        if (this.$isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
+        if (this._isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
             if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                 const fragment = createFragment((doc) => {
                     doc.createEl("span", undefined, (a) => {
@@ -1063,9 +1063,9 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
     async $everyRealizeSettingSyncMode(): Promise<boolean> {
         this.periodicPluginSweepProcessor?.disable();
-        if (!this.$isMainReady) return true;
-        if (!this.$isMainSuspended()) return true;
-        if (!this.$isThisModuleEnabled()) return true;
+        if (!this._isMainReady) return true;
+        if (!this._isMainSuspended()) return true;
+        if (!this._isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(false);
         }
@@ -1323,9 +1323,9 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     async watchVaultRawEventsAsync(path: FilePath) {
-        // if (!this.$isMainReady) return true;
-        // if (!this.$isMainSuspended()) return true;
-        if (!this.$isThisModuleEnabled()) return true;
+        if (!this._isMainReady) return true;
+        if (!this._isMainSuspended()) return true;
+        if (!this._isThisModuleEnabled()) return true;
         if (!this.isTargetPath(path)) return false;
         const stat = await this.plugin.storageAccess.statHidden(path);
         // Make sure that target is a file.

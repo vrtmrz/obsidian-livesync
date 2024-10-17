@@ -9,9 +9,12 @@ import { writable } from "svelte/store";
 
 export class ModuleDev extends AbstractObsidianModule implements IObsidianModule {
 
+    $everyOnloadStart(): Promise<boolean> {
+        __onMissingTranslation(() => { });
+        return Promise.resolve(true);
+    }
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        __onMissingTranslation(() => { });
         // eslint-disable-next-line no-unused-labels
         __onMissingTranslation((key) => {
             const now = new Date();

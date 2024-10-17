@@ -14,11 +14,11 @@ import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
 
 export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule {
 
-    $isThisModuleEnabled() {
+    _isThisModuleEnabled() {
         return this.plugin.settings.syncInternalFiles;
     }
 
-    periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(this.plugin, async () => this.$isThisModuleEnabled() && this.$isDatabaseReady() && await this.syncInternalFilesAndDatabase("push", false));
+    periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(this.plugin, async () => this._isThisModuleEnabled() && this._isDatabaseReady() && await this.syncInternalFilesAndDatabase("push", false));
 
     get kvDB() {
         return this.plugin.kvDB;
@@ -39,7 +39,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         });
     }
     async $everyOnDatabaseInitialized(showNotice: boolean) {
-        if (this.$isThisModuleEnabled()) {
+        if (this._isThisModuleEnabled()) {
             try {
                 Logger("Synchronizing hidden files...");
                 await this.syncInternalFilesAndDatabase("push", showNotice);
@@ -52,7 +52,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return true;
     }
     async $everyBeforeReplicate(showNotice: boolean) {
-        if (this.$isThisModuleEnabled() && this.$isDatabaseReady() && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
+        if (this._isThisModuleEnabled() && this._isDatabaseReady() && this.settings.syncInternalFilesBeforeReplication && !this.settings.watchInternalFileChanges) {
             await this.syncInternalFilesAndDatabase("push", showNotice);
         }
         return true;
@@ -61,22 +61,22 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
 
     async $everyOnResumeProcess(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
-        if (this.$isMainSuspended())
+        if (this._isMainSuspended())
             return true;
-        if (this.$isThisModuleEnabled()) {
+        if (this._isThisModuleEnabled()) {
             await this.syncInternalFilesAndDatabase("safe", false);
         }
-        this.periodicInternalFileScanProcessor.enable(this.$isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
+        this.periodicInternalFileScanProcessor.enable(this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
         return true
     }
 
     $everyRealizeSettingSyncMode(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
-        if (this.$isMainSuspended())
+        if (this._isMainSuspended())
             return Promise.resolve(true);
         if (!this.plugin.isReady)
             return Promise.resolve(true);
-        this.periodicInternalFileScanProcessor.enable(this.$isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
+        this.periodicInternalFileScanProcessor.enable(this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
         return Promise.resolve(true);
     }
 
@@ -98,7 +98,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return await this.watchVaultRawEventsAsync(path);
     }
     async watchVaultRawEventsAsync(path: FilePath): Promise<boolean | undefined> {
-        if (!this.$isThisModuleEnabled()) return false;
+        if (!this._isThisModuleEnabled()) return false;
         if (!isInternalMetadata(path)) return false;
 
         // Exclude files handled by customization sync
@@ -274,7 +274,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
     }
 
     async $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> {
-        if (isInternalMetadata(doc._id) && this.$isThisModuleEnabled()) {
+        if (isInternalMetadata(doc._id) && this._isThisModuleEnabled()) {
             //system file
             const filename = getPath(doc);
             if (await this.plugin.$$isTargetFile(filename)) {

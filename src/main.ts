@@ -618,10 +618,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     $everyModuleTestMultiDevice(): Promise<boolean> { return InterceptiveEvery; }
     $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void { throwShouldBeOverridden(); }
 
-    $isMainReady(): boolean { return this.isReady; }
-    $isMainSuspended(): boolean { return this.suspended; }
-    $isThisModuleEnabled(): boolean { return true; }
-    $isDatabaseReady(): boolean { return this.localDatabase.isReady; }
+    _isMainReady(): boolean { return this.isReady; }
+    _isMainSuspended(): boolean { return this.suspended; }
+    _isThisModuleEnabled(): boolean { return true; }
+    _isDatabaseReady(): boolean { return this.localDatabase.isReady; }
 
     $anyGetAppId(): Promise<string | undefined> { return InterceptiveAny; }
 }

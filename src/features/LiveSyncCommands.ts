@@ -31,13 +31,13 @@ export abstract class LiveSyncCommands {
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;
 
-    $isMainReady() {
-        return this.plugin.$isMainReady();
+    _isMainReady() {
+        return this.plugin._isMainReady();
     }
-    $isMainSuspended() {
-        return this.plugin.$isMainSuspended();
+    _isMainSuspended() {
+        return this.plugin._isMainSuspended();
     }
-    $isDatabaseReady() {
-        return this.plugin.$isDatabaseReady();
+    _isDatabaseReady() {
+        return this.plugin._isDatabaseReady();
     }
 }

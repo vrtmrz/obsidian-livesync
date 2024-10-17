@@ -23,6 +23,13 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc3
+
+### Fixed
+
+-   No longer Missing Translation Warning is shown in the console.
+-   Fixed the issue where some functions were not working properly (`_` started functions).
+
 ## 0.24.0.dev-rc2
 
 ### Fixed
