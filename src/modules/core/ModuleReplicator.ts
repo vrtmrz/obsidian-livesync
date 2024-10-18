@@ -231,12 +231,17 @@ Or if you are sure know what had been happened, we can unlock the database from 
             return;
         }
         if (isAnyNote(change)) {
+            const docPath = getPath(change);
+            if (!await this.core.$$isTargetFile(docPath)) {
+                Logger(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
             if (this.databaseQueuedProcessor._isSuspended) {
-                Logger(`Processing scheduled: ${change.path}`, LOG_LEVEL_INFO);
+                Logger(`Processing scheduled: ${docPath}`, LOG_LEVEL_INFO);
             }
             const size = change.size;
             if (this.core.$$isFileSizeExceeded(size)) {
-                Logger(`Processing ${change.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                Logger(`Processing ${docPath} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
                 return;
             }
             this.databaseQueuedProcessor.enqueue(change);
@@ -258,6 +263,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     databaseQueuedProcessor = new QueueProcessor(async (docs: EntryBody[]) => {
         const dbDoc = docs[0] as LoadedEntry; // It has no `data`
         const path = getPath(dbDoc);
+
         // If `Read chunks online` is disabled, chunks should be transferred before here.
         // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
         const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, {}, false, true, true);
@@ -308,15 +314,17 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return Promise.resolve(true);
     }
 
-    async $$replicateAllToServer(showingNotice: boolean = false): Promise<boolean> {
+    async $$replicateAllToServer(showingNotice: boolean = false, sendChunksInBulkDisabled: boolean = false): Promise<boolean> {
         if (!this.core.isReady) return false;
         if (!await this.core.$everyBeforeReplicate(showingNotice)) {
             Logger(`Replication has been cancelled by some module failure`, LOG_LEVEL_NOTICE);
             return false;
         }
-        if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
-            if (await this.core.confirm.askYesNoDialog("Do you want to send all chunks before replication?", { defaultOption: "No", timeout: 20 }) == "yes") {
-                await this.core.replicator.sendChunks(this.core.settings, undefined, true, 0);
+        if (!sendChunksInBulkDisabled) {
+            if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
+                if (await this.core.confirm.askYesNoDialog("Do you want to send all chunks before replication?", { defaultOption: "No", timeout: 20 }) == "yes") {
+                    await this.core.replicator.sendChunks(this.core.settings, undefined, true, 0);
+                }
             }
         }
         const ret = await this.core.replicator.replicateAllToServer(this.settings, showingNotice);

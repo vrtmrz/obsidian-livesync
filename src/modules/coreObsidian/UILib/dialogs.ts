@@ -1,7 +1,29 @@
 import { ButtonComponent } from "obsidian";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
+import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
+import { delay } from "octagonal-wheels/promises";
 
-export class InputStringDialog extends Modal {
+class AutoClosableModal extends Modal {
+    removeEvent: (() => void) | undefined;
+
+    constructor(app: App) {
+        super(app);
+        this.removeEvent = eventHub.on(EVENT_PLUGIN_UNLOADED, async () => {
+            await delay(100);
+            if (!this.removeEvent) return;
+            this.close();
+            this.removeEvent = undefined;
+        });
+    }
+    onClose() {
+        if (this.removeEvent) {
+            this.removeEvent();
+            this.removeEvent = undefined
+        }
+    }
+}
+
+export class InputStringDialog extends AutoClosableModal {
     result: string | false = false;
     onSubmit: (result: string | false) => void;
     title: string;
@@ -47,6 +69,7 @@ export class InputStringDialog extends Modal {
     }
 
     onClose() {
+        super.onClose();
         const { contentEl } = this;
         contentEl.empty();
         if (this.isManuallyClosed) {
@@ -95,7 +118,7 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
     }
 }
 
-export class MessageBox extends Modal {
+export class MessageBox extends AutoClosableModal {
 
     plugin: Plugin;
     title: string;
@@ -144,16 +167,19 @@ export class MessageBox extends Modal {
     onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
-        contentEl.addEventListener("click", () => {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = undefined;
-                this.defaultButtonComponent?.setButtonText(`${this.defaultAction}`);
-            }
-        })
         const div = contentEl.createDiv();
+        div.style.userSelect = "text";
         void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
         const buttonSetting = new Setting(contentEl);
+        const labelWrapper = contentEl.createDiv();
+        labelWrapper.addClass("sls-dialogue-note-wrapper");
+        const labelEl = labelWrapper.createEl("label", { text: "To stop the countdown, tap anywhere on the dialogue" });
+        labelEl.addClass("sls-dialogue-note-countdown");
+        if (!this.timeout || !this.timer) {
+            labelWrapper.empty();
+            labelWrapper.style.display = "none";
+        }
+
         buttonSetting.infoEl.style.display = "none";
         buttonSetting.controlEl.style.flexWrap = "wrap";
         if (this.wideButton) {
@@ -162,6 +188,15 @@ export class MessageBox extends Modal {
             buttonSetting.controlEl.style.justifyContent = "center";
             buttonSetting.controlEl.style.flexGrow = "1";
         }
+        contentEl.addEventListener("click", () => {
+            if (this.timer) {
+                labelWrapper.empty();
+                labelWrapper.style.display = "none";
+                clearInterval(this.timer);
+                this.timer = undefined;
+                this.defaultButtonComponent?.setButtonText(`${this.defaultAction}`);
+            }
+        })
         for (const button of this.buttons) {
             buttonSetting.addButton((btn) => {
                 btn
@@ -190,6 +225,7 @@ export class MessageBox extends Modal {
     }
 
     onClose() {
+        super.onClose();
         const { contentEl } = this;
         contentEl.empty();
         if (this.timer) {

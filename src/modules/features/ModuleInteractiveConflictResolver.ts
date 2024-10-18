@@ -106,28 +106,6 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
         return false;
     }
 
-    // async resolveConflictByNewerEntry(path: FilePathWithPrefix) {
-    //     const id = await this.plugin.$$path2id(path);
-    //     const doc = await this.localDatabase.getRaw<AnyEntry>(id, { conflicts: true });
-    //     // If there is no conflict, return with false.
-    //     if (!("_conflicts" in doc) || doc._conflicts === undefined) return false;
-    //     if (doc._conflicts.length == 0) return false;
-    //     this._log(`Hidden file conflicted:${getPath(doc)}`);
-    //     const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
-    //     const revA = doc._rev;
-    //     const revB = conflicts[0];
-    //     const revBDoc = await this.localDatabase.getRaw<EntryDoc>(id, { rev: revB });
-    //     // determine which revision should been deleted.
-    //     // simply check modified time
-    //     const mtimeA = ("mtime" in doc && doc.mtime) || 0;
-    //     const mtimeB = ("mtime" in revBDoc && revBDoc.mtime) || 0;
-    //     const delRev = mtimeA < mtimeB ? revA : revB;
-    //     // delete older one.
-    //     await this.localDatabase.removeRevision(id, delRev);
-    //     this._log(`Older one has been deleted:${getPath(doc)}`);
-    //     return true;
-    // }
-
     async $allScanStat(): Promise<boolean> {
         const notes: { path: string, mtime: number }[] = [];
         this._log(`Checking conflicted files`, LOG_LEVEL_VERBOSE);

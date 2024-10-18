@@ -27,6 +27,15 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         }
     }
 
+    async askUsingOptionalFeature(opt: {
+        enableFetch?: boolean;
+        enableOverwrite?: boolean;
+    }) {
+        if (await this.core.confirm.askYesNoDialog("Do you want to enable extra features? If you are new to Self-hosted LiveSync, try the core feature first!", { title: "Enable extra features", defaultOption: "No", timeout: 15 }) == "yes") {
+            await this.core.$allAskUsingOptionalSyncFeature(opt);
+        }
+    }
+
     async rebuildRemote() {
         await this.core.$allSuspendExtraSync();
         this.core.settings.isConfigured = true;
@@ -36,11 +45,11 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$tryResetRemoteDatabase();
         await this.core.$$markRemoteLocked();
         await delay(500);
-        await this.core.$allAskUsingOptionalSyncFeature({ enableOverwrite: true });
+        await this.askUsingOptionalFeature({ enableOverwrite: true });
         await delay(1000);
         await this.core.$$replicateAllToServer(true);
         await delay(1000);
-        await this.core.$$replicateAllToServer(true);
+        await this.core.$$replicateAllToServer(true, true);
     }
     $rebuildRemote(): Promise<void> {
         return this.rebuildRemote();
@@ -59,11 +68,11 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$tryResetRemoteDatabase();
         await this.core.$$markRemoteLocked();
         await delay(500);
-        await this.core.$allAskUsingOptionalSyncFeature({ enableOverwrite: true });
+        await this.askUsingOptionalFeature({ enableOverwrite: true });
         await delay(1000);
         await this.core.$$replicateAllToServer(true);
         await delay(1000);
-        await this.core.$$replicateAllToServer(true);
+        await this.core.$$replicateAllToServer(true, true);
 
     }
 
@@ -169,7 +178,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await delay(1000);
         await this.core.$$replicateAllFromServer(true);
         await this.resumeReflectingDatabase();
-        await this.core.$allAskUsingOptionalSyncFeature({ enableFetch: true });
+        await this.askUsingOptionalFeature({ enableFetch: true });
     }
     async fetchLocalWithRebuild() {
         return await this.fetchLocal(true);

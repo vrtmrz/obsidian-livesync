@@ -77,7 +77,11 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                     }
                 } else if (isRedFlag3Raised) {
                     this._log(`${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
-                    const makeLocalChunkBeforeSync = ((await this.core.confirm.askYesNoDialog("Do you want to create local chunks before fetching?", { defaultOption: "Yes" })) == "yes");
+                    const makeLocalChunkBeforeSync = ((await this.core.confirm.askYesNoDialog(`Do you want to create local chunks before fetching? 
+> [!MORE]-
+> If creating local chunks before fetching, only the difference between the local and remote will be fetched.
+
+`, { defaultOption: "Yes", title: "Trick to transfer efficiently" })) == "yes");
                     await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync);
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
@@ -87,6 +91,8 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                             this.core.$$performRestart();
                             return false;
                         }
+                    } else {
+                        this._log("Your content of files will be synchronised gradually. Please wait for the completion.", LOG_LEVEL_NOTICE);
                     }
                 } else {
                     // Case of FLAGMD_REDFLAG.

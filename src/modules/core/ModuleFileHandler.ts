@@ -54,21 +54,9 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             if (!onlyChunks) {
                 return await this.db.store(readFile);
             } else {
-                return true;
+                return await this.db.createChunks(readFile, false, true);
             }
         }
-        // I remember that it should be processed naturally. --> 
-
-        // // If the file is exist on the database, then it should be updated.
-        // // Check the file is already conflicted or not.
-        // const conflictedRevs = await this.db.getConflictedRevs(file);
-        // if (conflictedRevs.length > 0) {
-        //     // If conflicted, then it should be stored as new conflicted file.
-        //     const readFile = await this.readFileFromStub(file);
-        //     this.db.store(readFile, true);
-        //     return false;
-        // }
-        //< --
 
         // entry is exist on the database, check the difference between the file and the entry.
 

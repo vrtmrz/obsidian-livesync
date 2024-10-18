@@ -1,8 +1,10 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from 'octagonal-wheels/common/logger.js';
 import { SETTING_VERSION_SUPPORT_CASE_INSENSITIVE } from '../../lib/src/common/types.js';
-import { EVENT_REQUEST_OPEN_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI, eventHub } from '../../common/events.ts';
+import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI, eventHub } from '../../common/events.ts';
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
+
+const URI_DOC = "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use";
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
 
@@ -159,6 +161,63 @@ ___However, to enable either of these changes, both remote and local databases n
 
     }
 
+    async initialMessage() {
+        const message = `Your device has **not been set up yet**. Let me guide you through the setup process.
+
+Please keep in mind that every dialogue content can be copied to the clipboard. If you need to refer to it later, you can paste it into a note in Obsidian. You can also translate it into your language using a translation tool.
+
+First, do you have **Setup URI**?
+
+Note: If you do not know what it is, please refer to the [documentation](${URI_DOC}).
+`;
+
+        const USE_SETUP = "Yes, I have";
+        const NEXT = "No, I do not have";
+
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [
+            USE_SETUP, NEXT], {
+            title: "Welcome to Self-hosted LiveSync",
+            defaultAction: USE_SETUP
+        });
+        if (ret === USE_SETUP) {
+            eventHub.emitEvent(EVENT_REQUEST_OPEN_SETUP_URI);
+            return false;
+        }
+        else if (ret == NEXT) {
+            return true;
+        }
+        return false;
+    }
+
+    async askAgainForSetupURI() {
+        const message = `We strongly recommend that you generate a set-up URI and use it.
+If you do not have knowledge about it, please refer to the [documentation](${URI_DOC}) (Sorry again, but it is important).
+
+How do you want to set it up manually?`;
+
+        const USE_MINIMAL = "Take me into the setup wizard";
+        const USE_SETUP = "Set it up all manually";
+        const NEXT = "Remind me at the next launch";
+
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [
+            USE_MINIMAL, USE_SETUP, NEXT], {
+            title: "Recommendation to use Setup URI",
+            defaultAction: USE_MINIMAL
+        });
+        if (ret === USE_MINIMAL) {
+            eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTING_WIZARD);
+            return false;
+        }
+        if (ret === USE_SETUP) {
+            eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTINGS);
+            return false;
+        }
+        else if (ret == NEXT) {
+            return false;
+        }
+        return false;
+    }
+
     async $everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
             this._log(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
@@ -170,40 +229,11 @@ ___However, to enable either of these changes, both remote and local databases n
         }
         if (!this.settings.isConfigured) {
             // Case sensitivity
-            const message = `Hello and welcome to Self-hosted LiveSync.
-
-Your device seems to **not be configured yet**. Please finish the setup and synchronise your vaults!
-
-Click anywhere to stop counting down.
-
-## At the first device
-- With Setup URI -> Use \`Use the copied setup URI\`.  
-  If you have configured it automatically, you should have one.
-- Without Setup URI -> Use \`Setup wizard\` in setting dialogue. **\`Minimal setup\` is recommended**.
-- What is the Setup URI? -> Do not worry! We have [some docs](https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use) now. Please refer to them once.
-
-## At the subsequent device
-- With Setup URI -> Use \`Use the copied setup URI\`.  
-  If you do not have it yet, you can copy it on the first device.
-- Without Setup URI -> Use \`Setup wizard\` in setting dialogue, but **strongly recommends using setup URI**.
-`
-            const OPEN_SETUP = "Open setting dialog";
-            const USE_SETUP = "Use the copied setup URI";
-            const DISMISS = "Dismiss";
-
-            const ret = await this.core.confirm.confirmWithMessage("Welcome to Self-hosted LiveSync", message, [
-                USE_SETUP, OPEN_SETUP, DISMISS], DISMISS, 40);
-            if (ret === OPEN_SETUP) {
-                try {
-                    eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTINGS);
-                } catch (ex) {
-                    this._log("Something went wrong on opening setting dialog, please open it manually", LOG_LEVEL_NOTICE);
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                }
-            } else if (ret == USE_SETUP) {
-                eventHub.emitEvent(EVENT_REQUEST_OPEN_SETUP_URI);
+            if (!await this.initialMessage() || !await this.askAgainForSetupURI()) {
+                this._log("The setup has been cancelled, Self-hosted LiveSync waiting for your setup!", LOG_LEVEL_NOTICE);
+                return false;
             }
-            return true;
+
         }
         return true;
     }

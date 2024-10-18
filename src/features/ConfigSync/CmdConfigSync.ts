@@ -1492,14 +1492,13 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return true;
     }
     async _askHiddenFileConfiguration(opt: { enableFetch?: boolean, enableOverwrite?: boolean }) {
-        const message = `Would you like to enable \`Customization sync\`?
-This feature allows you to sync your customisations -- such as configurations, themes, snippets, and plugins -- across your devices in a fully controlled manner, unlike the fully automatic behaviour of hidden file synchronisation.
+        const message = `Would you like to enable **Customization sync**?
 
-You may use this feature alongside hidden file synchronisation. When both features are enabled, items configured as \`Automatic\` in this feature will be managed by hidden file synchronisation.
-
-Do not worry, you will be prompted to enable or keep disabled hidden file synchronisation after this dialogue.
-
-Of course, you can enable or disable this feature at any time.
+> [!DETAILS]-
+> This feature allows you to sync your customisations -- such as configurations, themes, snippets, and plugins -- across your devices in a fully controlled manner, unlike the fully automatic behaviour of hidden file synchronisation.
+> 
+> You may use this feature alongside hidden file synchronisation. When both features are enabled, items configured as \`Automatic\` in this feature will be managed by **hidden file synchronisation**.
+> Do not worry, you will be prompted to enable or keep disabled **hidden file synchronisation** after this dialogue.
 `
         const CHOICE_CUSTOMIZE = "Yes, Enable it";
         const CHOICE_DISABLE = "No, Disable it";
@@ -1576,6 +1575,7 @@ Of course, you can enable or disable this feature at any time.
                 this.plugin.deviceAndVaultName = name;
             }
             this.plugin.settings.usePluginSync = true;
+            this.plugin.settings.useAdvancedMode = true;
             await this.plugin.saveSettings();
             await this.scanAllConfigFiles(true);
         }

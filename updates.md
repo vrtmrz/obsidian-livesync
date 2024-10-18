@@ -23,6 +23,44 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc4
+
+### Improved
+
+-   The welcome message is now more simple to encourage the use of the Setup-URI.
+    -   And the secondary message is also simpler to guide users to Minimal Setup.
+        -   But Setup-URI will be recommended again, due to its importance.
+    -   These dialogues contain a link to the documentation which can be clicked.
+-   The minimal setup is more minimal now. And, the setup is more user-friendly.
+    -   Now the Configuration of the remote database is checked more robust, but we can ignore the warning and proceed with the setup.
+-   Before we are asked about each feature, we are asked if we want to use optional features in the first place.
+    -   This is to prevent the user from being overwhelmed by the features.
+    -   And made it clear that it is not recommended for new users.
+-   Many messages have been improved for better understanding.
+    -   Ridiculous messages have been (carefully) refined.
+    -   Dialogues are more informative and friendly.
+        -   A lot of messages have been mostly rewritten, leveraging Markdown.
+        -   Especially auto-closing dialogues are now explicitly labelled: `To stop the countdown, tap anywhere on the dialogue`.
+-   Now if the is plugin configured to ignore some events, we will get a chance to fix it, in addition to the warning.
+    -   And why that has happened is also explained in the dialogue.
+
+### Fixed
+
+-   While restarting the plug-in, the shown dialogues will be automatically closed to avoid unexpected behaviour.
+-   Replicated documents that the local device has configured to ignore are now correctly ignored.
+-   The chunks of the document on the local device during the first transfer will be created correctly.
+    -   And why we should create them is now explained in the dialogue.
+-   If optional features have been enabled in the wizard, `Enable advanced features` will be toggled correctly.
+
+### Changed
+
+-   Some default settings have been changed for easier new user experience.
+    -   Preventing the meaningless migration of the settings.
+
+### Tidied
+
+-   Commented-out codes have been gradually removed.
+
 ## 0.24.0.dev-rc3
 
 ### Fixed

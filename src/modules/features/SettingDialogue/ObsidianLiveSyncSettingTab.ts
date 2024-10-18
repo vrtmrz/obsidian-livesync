@@ -405,11 +405,51 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
+    screenElements: { [key: string]: HTMLElement[] } = {};
+    changeDisplay(screen: string) {
+        for (const k in this.screenElements) {
+            if (k == screen) {
+                this.screenElements[k].forEach((element) => element.removeClass("setting-collapsed"));
+            } else {
+                this.screenElements[k].forEach((element) => element.addClass("setting-collapsed"));
+            }
+        }
+        if (this.menuEl) {
+            this.menuEl.querySelectorAll(`.sls-setting-label`).forEach((element) => {
+                if (element.hasClass(`c-${screen}`)) {
+                    element.addClass("selected");
+                    (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = true;
+                } else {
+                    element.removeClass("selected");
+                    (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = false;
+                }
+            });
+        }
+        this.selectedScreen = screen;
+    }
+    async enableMinimalSetup() {
+        this.editingSettings.liveSync = false;
+        this.editingSettings.periodicReplication = false;
+        this.editingSettings.syncOnSave = false;
+        this.editingSettings.syncOnEditorSave = false;
+        this.editingSettings.syncOnStart = false;
+        this.editingSettings.syncOnFileOpen = false;
+        this.editingSettings.syncAfterMerge = false;
+        this.plugin.replicator.closeReplication();
+        await this.saveAllDirtySettings();
+        this.containerEl.addClass("isWizard");
+        this.inWizard = true;
+        this.changeDisplay("20")
+    }
+    menuEl?: HTMLElement;
+
     display(): void {
+        const changeDisplay = this.changeDisplay.bind(this);
         const { containerEl } = this;
         this.settingComponents.length = 0;
         this.controlledElementFunc.length = 0;
         this.onSavedHandlers.length = 0;
+        this.screenElements = {};
         if (this._editingSettings == undefined || this.initialSettings == undefined) {
             this.reloadAllSettings();
         }
@@ -436,26 +476,26 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         setStyle(containerEl, "menu-setting-advanced", () => this.isConfiguredAs("useAdvancedMode", true));
         setStyle(containerEl, "menu-setting-edgecase", () => this.isConfiguredAs("useEdgeCaseMode", true));
 
-        const screenElements: { [key: string]: HTMLElement[] } = {};
         const addScreenElement = (key: string, element: HTMLElement) => {
-            if (!(key in screenElements)) {
-                screenElements[key] = [];
+            if (!(key in this.screenElements)) {
+                this.screenElements[key] = [];
             }
-            screenElements[key].push(element);
+            this.screenElements[key].push(element);
         };
         const menuWrapper = this.createEl(containerEl, "div", { cls: "sls-setting-menu-wrapper" });
 
-        const w = menuWrapper.createDiv("");
-        w.addClass("sls-setting-menu");
-        const menuTabs = w.querySelectorAll(".sls-setting-label");
+        if (this.menuEl) {
+            this.menuEl.remove();
+        }
+        this.menuEl = menuWrapper.createDiv("");
+        this.menuEl.addClass("sls-setting-menu");
+        const menuTabs = this.menuEl.querySelectorAll(".sls-setting-label");
         const selectPane = (event: Event) => {
             const target = event.target as HTMLElement;
             if (target.tagName == "INPUT") {
                 const value = target.getAttribute("value");
                 if (value && this.selectedScreen != value) {
                     changeDisplay(value);
-                    // target.parentElement?.parentElement?.querySelector(".sls-setting-label.selected")?.removeClass("selected");
-                    // target.parentElement?.addClass("selected");
                 }
             }
         }
@@ -575,17 +615,19 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             }
             setLevelClass(el, level)
             el.createEl("h3", { text: title, cls: "sls-setting-pane-title" });
-            w.createEl("label", { cls: `sls-setting-label c-${order} ${wizardHidden ? "wizardHidden" : ""}` }, el => {
-                setLevelClass(el, level)
-                const inputEl = el.createEl("input", {
-                    type: "radio", name: "disp", value: `${order}`, cls: "sls-setting-tab"
-                } as DomElementInfo);
-                el.createEl("div", {
-                    cls: "sls-setting-menu-btn", text: icon, title: title
-                });
-                inputEl.addEventListener("change", selectPane);
-                inputEl.addEventListener("click", selectPane);
-            })
+            if (this.menuEl) {
+                this.menuEl.createEl("label", { cls: `sls-setting-label c-${order} ${wizardHidden ? "wizardHidden" : ""}` }, el => {
+                    setLevelClass(el, level)
+                    const inputEl = el.createEl("input", {
+                        type: "radio", name: "disp", value: `${order}`, cls: "sls-setting-tab"
+                    } as DomElementInfo);
+                    el.createEl("div", {
+                        cls: "sls-setting-menu-btn", text: icon, title: title
+                    });
+                    inputEl.addEventListener("change", selectPane);
+                    inputEl.addEventListener("click", selectPane);
+                })
+            }
             addScreenElement(`${order}`, el);
             const p = Promise.resolve(el)
             // fireAndForget
@@ -615,31 +657,13 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             return p;
         }
 
-        const changeDisplay = (screen: string) => {
-            for (const k in screenElements) {
-                if (k == screen) {
-                    screenElements[k].forEach((element) => element.removeClass("setting-collapsed"));
-                } else {
-                    screenElements[k].forEach((element) => element.addClass("setting-collapsed"));
-                }
-            }
-            w.querySelectorAll(`.sls-setting-label`).forEach((element) => {
-                if (element.hasClass(`c-${screen}`)) {
-                    element.addClass("selected");
-                    (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = true;
-                } else {
-                    element.removeClass("selected");
-                    (element.querySelector<HTMLInputElement>("input[type=radio]"))!.checked = false;
-                }
-            });
-            this.selectedScreen = screen;
-        };
+
         menuTabs.forEach((element) => {
             const e = element.querySelector(".sls-setting-tab");
             if (!e) return;
             e.addEventListener("change", (event) => {
                 menuTabs.forEach((element) => element.removeClass("selected"));
-                changeDisplay((event.currentTarget as HTMLInputElement).value);
+                this.changeDisplay((event.currentTarget as HTMLInputElement).value);
                 element.addClass("selected");
             });
         });
@@ -772,18 +796,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     .setName("Minimal setup")
                     .addButton((text) => {
                         text.setButtonText("Start").onClick(async () => {
-                            this.editingSettings.liveSync = false;
-                            this.editingSettings.periodicReplication = false;
-                            this.editingSettings.syncOnSave = false;
-                            this.editingSettings.syncOnEditorSave = false;
-                            this.editingSettings.syncOnStart = false;
-                            this.editingSettings.syncOnFileOpen = false;
-                            this.editingSettings.syncAfterMerge = false;
-                            this.plugin.replicator.closeReplication();
-                            await this.saveAllDirtySettings();
-                            containerEl.addClass("isWizard");
-                            this.inWizard = true;
-                            changeDisplay("0")
+                            await this.enableMinimalSetup();
                         })
                     })
                 new Setting(paneEl)
@@ -816,6 +829,8 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                         text.setButtonText("Discard").onClick(async () => {
                             if (await this.plugin.confirm.askYesNoDialog("Do you really want to discard existing settings and databases?", { defaultOption: "No" }) == "yes") {
                                 this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
+                                await this.saveAllDirtySettings();
+                                this.plugin.settings = { ...DEFAULT_SETTINGS };
                                 await this.plugin.$$saveSettingData();
                                 await this.plugin.$$resetLocalDatabase();
                                 // await this.plugin.initializeDatabase();
@@ -918,14 +933,193 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
             });
             void addPanel(paneEl, "Logging").then((paneEl) => {
+                paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).autoWireToggle("lessInformationInLog");
 
                 new Setting(paneEl)
                     .autoWireToggle("showVerboseLog", { onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)) });
             });
-
+            new Setting(paneEl)
+                .setClass("wizardOnly")
+                .addButton((button) => button
+                    .setButtonText("Next")
+                    .setCta()
+                    .onClick(() => {
+                        this.changeDisplay("0");
+                    })
+                );
         })
+        let checkResultDiv: HTMLDivElement;
+        const checkConfig = async (checkResultDiv: HTMLDivElement | undefined) => {
+            Logger(`Checking database configuration`, LOG_LEVEL_INFO);
+            let isSuccessful = true;
+            const emptyDiv = createDiv();
+            emptyDiv.innerHTML = "<span></span>";
+            checkResultDiv?.replaceChildren(...[emptyDiv]);
+            const addResult = (msg: string, classes?: string[]) => {
+                const tmpDiv = createDiv();
+                tmpDiv.addClass("ob-btn-config-fix");
+                if (classes) {
+                    tmpDiv.addClasses(classes);
+                }
+                tmpDiv.innerHTML = `${msg}`;
+                checkResultDiv?.appendChild(tmpDiv);
+            };
+            try {
+
+                if (isCloudantURI(this.editingSettings.couchDB_URI)) {
+                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
+                    return;
+                }
+                const r = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, window.origin);
+                const responseConfig = r.json;
+
+                const addConfigFixButton = (title: string, key: string, value: string) => {
+                    if (!checkResultDiv) return;
+                    const tmpDiv = createDiv();
+                    tmpDiv.addClass("ob-btn-config-fix");
+                    tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
+                    const x = checkResultDiv.appendChild(tmpDiv);
+                    x.querySelector("button")?.addEventListener("click", () => {
+                        fireAndForget(async () => {
+                            Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
+                            const res = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, undefined, key, value);
+                            if (res.status == 200) {
+                                Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
+                                checkResultDiv.removeChild(x);
+                                await checkConfig(checkResultDiv);
+                            } else {
+                                Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
+                                Logger(res.text, LOG_LEVEL_VERBOSE);
+                            }
+                        });
+                    });
+                };
+                addResult("---Notice---", ["ob-btn-config-head"]);
+                addResult("If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.", ["ob-btn-config-info"]);
+
+                addResult("--Config check--", ["ob-btn-config-head"]);
+
+                // Admin check
+                //  for database creation and deletion
+                if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
+                    addResult(`⚠ You do not have administrative privileges.`);
+                } else {
+                    addResult("✔ You have administrative privileges.");
+                }
+                // HTTP user-authorization check
+                if (responseConfig?.chttpd?.require_valid_user != "true") {
+                    isSuccessful = false;
+                    addResult("❗ chttpd.require_valid_user is wrong.");
+                    addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
+                } else {
+                    addResult("✔ chttpd.require_valid_user is ok.");
+                }
+                if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
+                    isSuccessful = false;
+                    addResult("❗ chttpd_auth.require_valid_user is wrong.");
+                    addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
+                } else {
+                    addResult("✔ chttpd_auth.require_valid_user is ok.");
+                }
+                // HTTPD check
+                //  Check Authentication header
+                if (!responseConfig?.httpd["WWW-Authenticate"]) {
+                    isSuccessful = false;
+                    addResult("❗ httpd.WWW-Authenticate is missing");
+                    addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
+                } else {
+                    addResult("✔ httpd.WWW-Authenticate is ok.");
+                }
+                if (responseConfig?.httpd?.enable_cors != "true") {
+                    isSuccessful = false;
+                    addResult("❗ httpd.enable_cors is wrong");
+                    addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
+                } else {
+                    addResult("✔ httpd.enable_cors is ok.");
+                }
+                // If the server is not cloudant, configure request size
+                if (!isCloudantURI(this.editingSettings.couchDB_URI)) {
+                    // REQUEST SIZE
+                    if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
+                        isSuccessful = false;
+                        addResult("❗ chttpd.max_http_request_size is low)");
+                        addConfigFixButton("Set chttpd.max_http_request_size", "chttpd/max_http_request_size", "4294967296");
+                    } else {
+                        addResult("✔ chttpd.max_http_request_size is ok.");
+                    }
+                    if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
+                        isSuccessful = false;
+                        addResult("❗ couchdb.max_document_size is low)");
+                        addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
+                    } else {
+                        addResult("✔ couchdb.max_document_size is ok.");
+                    }
+                }
+                // CORS check
+                //  checking connectivity for mobile
+                if (responseConfig?.cors?.credentials != "true") {
+                    isSuccessful = false;
+                    addResult("❗ cors.credentials is wrong");
+                    addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
+                } else {
+                    addResult("✔ cors.credentials is ok.");
+                }
+                const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
+                if (responseConfig?.cors?.origins == "*" || (ConfiguredOrigins.indexOf("app://obsidian.md") !== -1 && ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 && ConfiguredOrigins.indexOf("http://localhost") !== -1)) {
+                    addResult("✔ cors.origins is ok.");
+                } else {
+                    addResult("❗ cors.origins is wrong");
+                    addConfigFixButton("Set cors.origins", "cors/origins", "app://obsidian.md,capacitor://localhost,http://localhost");
+                    isSuccessful = false;
+                }
+                addResult("--Connection check--", ["ob-btn-config-head"]);
+                addResult(`Current origin:${window.location.origin}`);
+
+                // Request header check
+                const origins = [
+                    "app://obsidian.md",
+                    "capacitor://localhost",
+                    "http://localhost"];
+                for (const org of origins) {
+                    const rr = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, org);
+                    const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
+                        .map((e) => {
+                            e[0] = `${e[0]}`.toLowerCase();
+                            return e;
+                        }));
+                    addResult(`Origin check:${org}`);
+                    if (responseHeaders["access-control-allow-credentials"] != "true") {
+                        addResult("❗ CORS is not allowing credentials");
+                        isSuccessful = false;
+                    } else {
+                        addResult("✔ CORS credentials OK");
+                    }
+                    if (responseHeaders["access-control-allow-origin"] != org) {
+                        addResult(`⚠ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
+                    } else {
+                        addResult("✔ CORS origin OK");
+                    }
+                }
+                addResult("--Done--", ["ob-btn-config-head"]);
+                addResult("If you have some trouble with Connection-check even though all Config-check has been passed, please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
+                Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+            } catch (ex: any) {
+                if (ex?.status == 401) {
+                    isSuccessful = false;
+                    addResult(`❗ Access forbidden.`);
+                    addResult(`We could not continue the test.`);
+                    Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+                } else {
+                    Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
+                    Logger(ex);
+                    isSuccessful = false;
+                }
+            }
+            return isSuccessful;
+        };
+
         void addPane(containerEl, "Remote Configuration", "🛰️", 0, false).then((paneEl) => {
             void addPanel(paneEl, "Remote Server").then((paneEl) => {
                 // const containerRemoteDatabaseEl = containerEl.createDiv();
@@ -1039,164 +1233,9 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             .setButtonText("Check")
                             .setDisabled(false)
                             .onClick(async () => {
-                                const checkConfig = async () => {
-                                    Logger(`Checking database configuration`, LOG_LEVEL_INFO);
-
-                                    const emptyDiv = createDiv();
-                                    emptyDiv.innerHTML = "<span></span>";
-                                    checkResultDiv.replaceChildren(...[emptyDiv]);
-                                    const addResult = (msg: string, classes?: string[]) => {
-                                        const tmpDiv = createDiv();
-                                        tmpDiv.addClass("ob-btn-config-fix");
-                                        if (classes) {
-                                            tmpDiv.addClasses(classes);
-                                        }
-                                        tmpDiv.innerHTML = `${msg}`;
-                                        checkResultDiv.appendChild(tmpDiv);
-                                    };
-                                    try {
-
-                                        if (isCloudantURI(this.editingSettings.couchDB_URI)) {
-                                            Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
-                                            return;
-                                        }
-                                        const r = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, window.origin);
-                                        const responseConfig = r.json;
-
-                                        const addConfigFixButton = (title: string, key: string, value: string) => {
-                                            const tmpDiv = createDiv();
-                                            tmpDiv.addClass("ob-btn-config-fix");
-                                            tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
-                                            const x = checkResultDiv.appendChild(tmpDiv);
-                                            x.querySelector("button")?.addEventListener("click", () => {
-                                                fireAndForget(async () => {
-                                                    Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`)
-                                                    const res = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, undefined, key, value);
-                                                    if (res.status == 200) {
-                                                        Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
-                                                        checkResultDiv.removeChild(x);
-                                                        await checkConfig();
-                                                    } else {
-                                                        Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
-                                                        Logger(res.text, LOG_LEVEL_VERBOSE);
-                                                    }
-                                                });
-                                            });
-                                        };
-                                        addResult("---Notice---", ["ob-btn-config-head"]);
-                                        addResult("If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.", ["ob-btn-config-info"]);
-
-                                        addResult("--Config check--", ["ob-btn-config-head"]);
-
-                                        // Admin check
-                                        //  for database creation and deletion
-                                        if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
-                                            addResult(`⚠ You do not have administrative privileges.`);
-                                        } else {
-                                            addResult("✔ You have administrative privileges.");
-                                        }
-                                        // HTTP user-authorization check
-                                        if (responseConfig?.chttpd?.require_valid_user != "true") {
-                                            addResult("❗ chttpd.require_valid_user is wrong.");
-                                            addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
-                                        } else {
-                                            addResult("✔ chttpd.require_valid_user is ok.");
-                                        }
-                                        if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
-                                            addResult("❗ chttpd_auth.require_valid_user is wrong.");
-                                            addConfigFixButton("Set chttpd_auth.require_valid_user = true", "chttpd_auth/require_valid_user", "true");
-                                        } else {
-                                            addResult("✔ chttpd_auth.require_valid_user is ok.");
-                                        }
-                                        // HTTPD check
-                                        //  Check Authentication header
-                                        if (!responseConfig?.httpd["WWW-Authenticate"]) {
-                                            addResult("❗ httpd.WWW-Authenticate is missing");
-                                            addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
-                                        } else {
-                                            addResult("✔ httpd.WWW-Authenticate is ok.");
-                                        }
-                                        if (responseConfig?.httpd?.enable_cors != "true") {
-                                            addResult("❗ httpd.enable_cors is wrong");
-                                            addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
-                                        } else {
-                                            addResult("✔ httpd.enable_cors is ok.");
-                                        }
-                                        // If the server is not cloudant, configure request size
-                                        if (!isCloudantURI(this.editingSettings.couchDB_URI)) {
-                                            // REQUEST SIZE
-                                            if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
-                                                addResult("❗ chttpd.max_http_request_size is low)");
-                                                addConfigFixButton("Set chttpd.max_http_request_size", "chttpd/max_http_request_size", "4294967296");
-                                            } else {
-                                                addResult("✔ chttpd.max_http_request_size is ok.");
-                                            }
-                                            if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
-                                                addResult("❗ couchdb.max_document_size is low)");
-                                                addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
-                                            } else {
-                                                addResult("✔ couchdb.max_document_size is ok.");
-                                            }
-                                        }
-                                        // CORS check
-                                        //  checking connectivity for mobile
-                                        if (responseConfig?.cors?.credentials != "true") {
-                                            addResult("❗ cors.credentials is wrong");
-                                            addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
-                                        } else {
-                                            addResult("✔ cors.credentials is ok.");
-                                        }
-                                        const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
-                                        if (responseConfig?.cors?.origins == "*" || (ConfiguredOrigins.indexOf("app://obsidian.md") !== -1 && ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 && ConfiguredOrigins.indexOf("http://localhost") !== -1)) {
-                                            addResult("✔ cors.origins is ok.");
-                                        } else {
-                                            addResult("❗ cors.origins is wrong");
-                                            addConfigFixButton("Set cors.origins", "cors/origins", "app://obsidian.md,capacitor://localhost,http://localhost");
-                                        }
-                                        addResult("--Connection check--", ["ob-btn-config-head"]);
-                                        addResult(`Current origin:${window.location.origin}`);
-
-                                        // Request header check
-                                        const origins = [
-                                            "app://obsidian.md",
-                                            "capacitor://localhost",
-                                            "http://localhost"];
-                                        for (const org of origins) {
-                                            const rr = await requestToCouchDB(this.editingSettings.couchDB_URI, this.editingSettings.couchDB_USER, this.editingSettings.couchDB_PASSWORD, org);
-                                            const responseHeaders = Object.fromEntries(Object.entries(rr.headers)
-                                                .map((e) => {
-                                                    e[0] = `${e[0]}`.toLowerCase();
-                                                    return e;
-                                                }));
-                                            addResult(`Origin check:${org}`);
-                                            if (responseHeaders["access-control-allow-credentials"] != "true") {
-                                                addResult("❗ CORS is not allowing credentials");
-                                            } else {
-                                                addResult("✔ CORS credentials OK");
-                                            }
-                                            if (responseHeaders["access-control-allow-origin"] != org) {
-                                                addResult(`❗ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`);
-                                            } else {
-                                                addResult("✔ CORS origin OK");
-                                            }
-                                        }
-                                        addResult("--Done--", ["ob-btn-config-head"]);
-                                        addResult("If you have some trouble with Connection-check even though all Config-check has been passed, please check your reverse proxy's configuration.", ["ob-btn-config-info"]);
-                                        Logger(`Checking configuration done`, LOG_LEVEL_INFO);
-                                    } catch (ex: any) {
-                                        if (ex?.status == 401) {
-                                            addResult(`❗ Access forbidden.`);
-                                            addResult(`We could not continue the test.`);
-                                            Logger(`Checking configuration done`, LOG_LEVEL_INFO);
-                                        } else {
-                                            Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
-                                            Logger(ex);
-                                        }
-                                    }
-                                };
-                                await checkConfig();
+                                await checkConfig(checkResultDiv);
                             }));
-                    const checkResultDiv = this.createEl(paneEl, "div", {
+                    checkResultDiv = this.createEl(paneEl, "div", {
                         text: "",
                     });
 
@@ -1245,9 +1284,25 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     .setButtonText("Next")
                     .setCta()
                     .setDisabled(false)
-                    .onClick(() => {
+                    .onClick(async () => {
+                        if (!await checkConfig(checkResultDiv)) {
+                            if (await this.plugin.confirm.askYesNoDialog("The configuration check has failed. Do you want to continue anyway?", { defaultOption: "No", title: "Remote Configuration Check Failed" }) == "no") {
+                                return;
+                            }
+                        }
+                        const isEncryptionFullyEnabled = !this.editingSettings.encrypt || !this.editingSettings.usePathObfuscation;
+                        if (isEncryptionFullyEnabled) {
+                            if (await this.plugin.confirm.askYesNoDialog("Enabling End-to-End Encryption and Path Obfuscation is strongly recommended. Do you surely want to continue without encryption?", { defaultOption: "No", title: "Encryption is not enabled" }) == "no") {
+                                return;
+                            }
+                        }
                         if (!this.editingSettings.encrypt) {
                             this.editingSettings.passphrase = "";
+                        }
+                        if (!await isPassphraseValid()) {
+                            if (await this.plugin.confirm.askYesNoDialog("End-to-End encryption seems to have trouble. Do you surely want to continue with the current settings?", { defaultOption: "No", title: "Encryption has some trouble" }) == "no") {
+                                return;
+                            }
                         }
                         if (isCloudantURI(this.editingSettings.couchDB_URI)) {
                             this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_CLOUDANT };
@@ -1279,7 +1334,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             }
 
             this.createEl(paneEl, "div", {
-                text: `Please select any preset to complete the wizard.`,
+                text: `Please select and apply any preset item to complete the wizard.`,
                 cls: "wizardOnly"
             }).addClasses(["op-warn-info"]);
 
@@ -1362,9 +1417,12 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             await this.plugin.realizeSettingSyncMode();
                             await rebuildDB("localOnly");
                             // this.resetEditingSettings();
-                            Logger("All done! Please set up subsequent devices with 'Copy current settings as a new setup URI' and 'Use the copied setup URI'.", LOG_LEVEL_NOTICE);
-                            // await this.plugin.addOnSetup.command_copySetupURI();
-                            eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
+                            if (await this.plugin.confirm.askYesNoDialog(
+                                "All done!, do you want to generate a setup URI to set up other devices?",
+                                { defaultOption: "Yes", title: "Congratulations!" }
+                            ) == "yes") {
+                                eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
+                            }
                         } else {
                             if (isNeedRebuildLocal() || isNeedRebuildRemote()) {
                                 await confirmRebuild();
@@ -1714,7 +1772,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
         });
 
 
-        void addPane(containerEl, "Hatch", "🧰", 50, false).then((paneEl) => {
+        void addPane(containerEl, "Hatch", "🧰", 50, true).then((paneEl) => {
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
             void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
@@ -2269,7 +2327,7 @@ ${stringifyYaml(pluginConfig)}`;
             const isRemoteLocked = () => this.plugin?.replicator?.remoteLocked;
             // if (this.plugin?.replicator?.remoteLockedAndDeviceNotAccepted) {
             this.createEl(paneEl, "div", {
-                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. It caused by some operations like this. Re-initialized. Local database initialization should be required. Please back your vault up, reset the local database, and press 'Mark this device as resolved'. ",
+                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. It caused by some operations like this. Re-initialized. Local database initialization should be required. Please back your vault up, reset the local database, and press 'Mark this device as resolved'. This warning kept showing until confirming the device is resolved by the replication.",
                 cls: "op-warn"
             }, c => {
                 this.createEl(c, "button", {
@@ -2284,7 +2342,7 @@ ${stringifyYaml(pluginConfig)}`;
                 })
             }, visibleOnly(isRemoteLockedAndDeviceNotAccepted));
             this.createEl(paneEl, "div", {
-                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database.",
+                text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database. This warning kept showing until confirming the device is resolved by the replication",
                 cls: "op-warn"
             }, c => this.createEl(c, "button", {
                 text: "I'm ready, unlock the database", cls: "mod-warning"

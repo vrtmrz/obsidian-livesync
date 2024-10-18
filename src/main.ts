@@ -347,11 +347,29 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     async onLiveSyncReady() {
         if (!await this.$everyOnLayoutReady()) return;
         eventHub.emitEvent(EVENT_LAYOUT_READY);
-        if (this.settings.suspendFileWatching) {
-            Logger("'Suspend file watching' turned on. Are you sure this is what you intended? Every modification on the vault will be ignored.", LOG_LEVEL_NOTICE);
-        }
-        if (this.settings.suspendParseReplicationResult) {
-            Logger("'Suspend database reflecting' turned on. Are you sure this is what you intended? Every replicated change will be postponed until disabling this option.", LOG_LEVEL_NOTICE);
+        if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
+            const ANSWER_KEEP = "Keep this plug-in suspended";
+            const ANSWER_RESUME = "Resume and restart Obsidian";
+            const message = `Self-hosted LiveSync has been configured to ignore some events. Is this intentional for you?
+
+| Type | Status | Note |
+|:---:|:---:|---|
+| Storage Events | ${this.settings.suspendFileWatching ? "suspended" : "active"} | Every modification will be ignored |
+| Database Events | ${this.settings.suspendParseReplicationResult ? "suspended" : "active"} | Every synchronised change will be postponed |
+
+Do you want to resume them and restart Obsidian?
+
+> [!DETAILS]-
+> These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.
+> If you are not sure, you can try to rerun these processes. Make sure to back your vault up.
+`;
+            if (await this.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], { defaultAction: ANSWER_KEEP, title: "Scram Enabled" }) == ANSWER_RESUME) {
+                this.settings.suspendFileWatching = false;
+                this.settings.suspendParseReplicationResult = false;
+                await this.saveSettings();
+                await this.$$scheduleAppReload();
+                return;
+            }
         }
         const isInitialized = await this.$$initializeDatabase(false, false);
         if (!isInitialized) {
@@ -411,7 +429,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            Logger($f`Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.`, LOG_LEVEL_NOTICE);
+            Logger($f`You have some unread release notes! Please read them once!`, LOG_LEVEL_NOTICE);
         }
 
         //@ts-ignore
@@ -559,7 +577,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
 
     $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> { return InterceptiveAny; }
 
-    $$replicateAllToServer(showingNotice: boolean = false): Promise<boolean> { throwShouldBeOverridden() }
+    $$replicateAllToServer(showingNotice: boolean = false, sendChunksInBulkDisabled: boolean = false): Promise<boolean> { throwShouldBeOverridden() }
     $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> { throwShouldBeOverridden() }
 
     // Remote Governing

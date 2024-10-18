@@ -1,7 +1,7 @@
 import { ObsidianLiveSyncSettingTab } from "./SettingDialogue/ObsidianLiveSyncSettingTab.ts";
 import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
-import { EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "../../common/events.ts";
+import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "../../common/events.ts";
 
 export class ModuleObsidianSettingDialogue extends AbstractObsidianModule implements IObsidianModule {
 
@@ -11,6 +11,11 @@ export class ModuleObsidianSettingDialogue extends AbstractObsidianModule implem
         this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this.plugin);
         this.plugin.addSettingTab(this.settingTab);
         eventHub.onEvent(EVENT_REQUEST_OPEN_SETTINGS, () => this.openSetting());
+        eventHub.onEvent(EVENT_REQUEST_OPEN_SETTING_WIZARD, () => {
+            this.openSetting();
+            void this.settingTab.enableMinimalSetup();
+        });
+
         return Promise.resolve(true);
     }
 

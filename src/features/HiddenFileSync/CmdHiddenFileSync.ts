@@ -748,18 +748,19 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return true;
     }
     async _askHiddenFileConfiguration(opt: { enableFetch?: boolean, enableOverwrite?: boolean }) {
-        const messageFetch = `${opt.enableFetch ? `- Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
-        const messageOverwrite = `${opt.enableOverwrite ? ` - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
-        const messageMerge = `- Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.
-  However, please be reminded that merging may cause conflicts if the files are not identical. Additionally, this process may occur within the same folder, potentially breaking your plug-in or theme settings that comprise multiple files.\n`;
-        const message = `Would you like to enable \`Hidden File Synchronization\`?
+        const messageFetch = `${opt.enableFetch ? `> - Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
+        const messageOverwrite = `${opt.enableOverwrite ? `> - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
+        const messageMerge = `> - Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.
+>  However, please be reminded that merging may cause conflicts if the files are not identical. Additionally, this process may occur within the same folder, potentially breaking your plug-in or theme settings that comprise multiple files.\n`;
+        const message = `Would you like to enable **Hidden File Synchronization**?
 
-This feature allows you to synchronize all hidden files without any user interaction.
-To enable this feature, you should choose one of the following options:
-
+> [!DETAILS]-
+> This feature allows you to synchronize all hidden files without any user interaction.
+> To enable this feature, you should choose one of the following options:
 ${messageFetch}${messageOverwrite}${messageMerge}
 
-Note: Please keep in mind that enabling this feature alongside customisation sync may override certain behaviors.`
+> [!IMPORTANT]
+> Please keep in mind that enabling this feature alongside customisation sync may override certain behaviors.`
         const CHOICE_FETCH = "Fetch";
         const CHOICE_OVERWRITE = "Overwrite";
         const CHOICE_MERGE = "Merge";
@@ -817,6 +818,7 @@ Note: Please keep in mind that enabling this feature alongside customisation syn
         } else if (mode == "MERGE") {
             await this.syncInternalFilesAndDatabase("safe", true);
         }
+        this.plugin.settings.useAdvancedMode = true;
         this.plugin.settings.syncInternalFiles = true;
         await this.plugin.saveSettings();
         Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
