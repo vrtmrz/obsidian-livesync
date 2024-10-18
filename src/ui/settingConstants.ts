@@ -198,8 +198,9 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         "name": "Do not keep metadata of deleted files."
     },
     "useIndexedDBAdapter": {
-        "name": "Use an old adapter for compatibility",
-        "desc": "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this."
+        "name": "(Obsolete) Use an old adapter for compatibility",
+        "desc": "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
+        "obsolete": true
     },
     "watchInternalFileChanges": {
         "name": "Scan changes on customization sync",
@@ -329,6 +330,30 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Enable per-file customization sync",
         desc: "If enabled, efficient per-file customization sync will be used. A minor migration is required when enabling this feature, and all devices must be updated to v0.23.18. Enabling this feature will result in losing compatibility with older versions."
     }
+    "handleFilenameCaseSensitive": {
+        name: "Handle files as Case-Sensitive",
+        desc: "If this enabled, All files are handled as case-Sensitive (Previous behaviour)."
+    },
+    "doNotUseFixedRevisionForChunks": {
+        name: "Compute revisions for chunks (Previous behaviour)",
+        desc: "If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)"
+    },
+    "sendChunksBulkMaxSize": {
+        name: "Maximum size of chunks to send in one request",
+        desc: "MB"
+    },
+    "useAdvancedMode": {
+        name: "Enable advanced features",
+        // desc: "Enable advanced mode"
+    },
+    usePowerUserMode: {
+        name: "Enable power user features",
+        // desc: "Enable power user mode",
+        // level: LEVEL_ADVANCED
+    },
+    useEdgeCaseMode: {
+        name: "Enable edge case treatment features",
+    },
 }
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

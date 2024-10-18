@@ -2,17 +2,17 @@ const isDebug = false;
 
 import { type Diff, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch, stringifyYaml, parseYaml } from "./deps";
 import { Notice, Plugin, TFile, addIcon, TFolder, normalizePath, TAbstractFile, Editor, MarkdownView, type RequestUrlParam, type RequestUrlResponse, requestUrl, type MarkdownFileInfo } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, type LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, TweakValuesShouldMatchedTemplate, confName, type TweakValues, } from "./lib/src/common/types.ts";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type diff_check_result, type diff_result_leaf, type EntryBody, type LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, FLAGMD_REDFLAG, SYNCINFO_ID, SALT_OF_PASSPHRASE, type ConfigPassphraseStore, type CouchDBConnection, FLAGMD_REDFLAG2, FLAGMD_REDFLAG3, PREFIXMD_LOGFILE, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, type AnyEntry, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT, LOG_LEVEL_VERBOSE, type SavingEntry, MISSING_OR_ERROR, NOT_CONFLICTED, AUTO_MERGED, CANCELLED, LEAVE_TO_SUBSEQUENT, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_MINIO, REMOTE_COUCHDB, type BucketSyncSetting, TweakValuesShouldMatchedTemplate, confName, type TweakValues, type HasSettings, SETTING_VERSION_SUPPORT_CASE_INSENSITIVE, CompatibilityBreakingTweakValues, type FilePathWithPrefixLC, type MetaEntry, isMetaEntry, } from "./lib/src/common/types.ts";
 import { type InternalFileInfo, type CacheData, type FileEventItem } from "./common/types.ts";
-import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, sizeToHumanReadable, throttle, type SimpleStore } from "./lib/src/common/utils.ts";
+import { arrayToChunkedArray, createBlob, delay, determineTypeFromBlob, escapeMarkdownValue, extractObject, fireAndForget, getDocData, isAnyNote, isDocContentSame, isObjectDifferent, readContent, sendValue, sizeToHumanReadable, throttle, unique, type SimpleStore } from "./lib/src/common/utils.ts";
 import { Logger, setGlobalLogFunction } from "./lib/src/common/logger.ts";
 import { PouchDB } from "./lib/src/pouchdb/pouchdb-browser.js";
 import { ConflictResolveModal } from "./ui/ConflictResolveModal.ts";
 import { ObsidianLiveSyncSettingTab } from "./ui/ObsidianLiveSyncSettingTab.ts";
 import { DocumentHistoryModal } from "./ui/DocumentHistoryModal.ts";
-import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata, compareFileFreshness, BASE_IS_NEW, TARGET_IS_NEW, EVEN, compareMTime, markChangesAreSame } from "./common/utils.ts";
+import { applyPatch, cancelAllPeriodicTask, cancelAllTasks, cancelTask, generatePatchObj, id2path, isObjectMargeApplicable, isSensibleMargeApplicable, flattenObject, path2id, scheduleTask, tryParseJSON, isValidPath, isInternalMetadata, isPluginMetadata, stripInternalMetadataPrefix, isChunk, askSelectString, askYesNo, askString, PeriodicProcessor, getPath, getPathWithoutPrefix, getPathFromTFile, performRebuildDB, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject, isCustomisationSyncMetadata, compareFileFreshness, BASE_IS_NEW, TARGET_IS_NEW, EVEN, compareMTime, markChangesAreSame, useMemo } from "./common/utils.ts";
 import { encrypt, tryDecrypt } from "./lib/src/encryption/e2ee_v2.ts";
-import { balanceChunkPurgedDBs, enableCompression, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks } from "./lib/src/pouchdb/utils_couchdb.ts";
+import { balanceChunkPurgedDBs, replicationFilter, enableEncryption, isCloudantURI, isErrorOfMissingDoc, isValidRemoteCouchDBURI, purgeUnreferencedChunks, disableEncryption } from "./lib/src/pouchdb/utils_couchdb.ts";
 import { logStore, type LogEntry, collectingChunks, pluginScanningCount, hiddenFilesProcessingCount, hiddenFilesEventCount, logMessages } from "./lib/src/mock_and_interop/stores.ts";
 import { setNoticeClass } from "./lib/src/mock_and_interop/wrapper.ts";
 import { versionNumberString2Number, writeString, decodeBinary, readString } from "./lib/src/string_and_binary/convert.ts";
@@ -32,7 +32,7 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./ui/LogPaneView.ts";
 import { LRUCache } from "./lib/src/memory/LRUCache.ts";
 import { SerializedFileAccess } from "./storages/SerializedFileAccess.js";
 import { QueueProcessor, stopAllRunningProcessors } from "./lib/src/concurrency/processor.js";
-import { computed, reactive, reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
+import { reactive, reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
 import { initializeStores } from "./common/stores.js";
 import { JournalSyncMinio } from "./lib/src/replication/journal/objectstore/JournalSyncMinio.js";
 import { LiveSyncJournalReplicator, type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
@@ -42,13 +42,16 @@ import { ObsHttpHandler } from "./common/ObsHttpHandler.js";
 import { TestPaneView, VIEW_TYPE_TEST } from "./tests/TestPaneView.js"
 import { $f, __onMissingTranslation, setLang } from "./lib/src/common/i18n.ts";
 import { enableTestFunction } from "./tests/testUtils.ts";
-import { terminateWorker } from "./lib/src/worker/splitWorker.ts";
-
+import { LogAddOn } from "./features/CmdStatusInsideEditor.ts";
+import { eventHub } from "./lib/src/hub/hub.ts";
+import { EVENT_FILE_RENAMED, EVENT_LAYOUT_READY, EVENT_LEAF_ACTIVE_CHANGED, EVENT_PLUGIN_LOADED, EVENT_PLUGIN_UNLOADED, EVENT_SETTING_SAVED } from "./common/events.ts";
+import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import { yieldMicrotask } from "octagonal-wheels/promises";
 
 setNoticeClass(Notice);
 
 // DI the log again.
-setGlobalLogFunction((message: any, level?: LOG_LEVEL, key?: string) => {
+setGlobalLogFunction((message: any, level?: number, key?: string) => {
     const entry = { message, level, key } as LogEntry;
     logStore.enqueue(entry);
 });
@@ -79,7 +82,7 @@ const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
 
 export default class ObsidianLiveSyncPlugin extends Plugin
-    implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv {
+    implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv, HasSettings<ObsidianLiveSyncSettings> {
     _customHandler!: ObsHttpHandler;
     customFetchHandler() {
         if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
@@ -91,7 +94,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     replicator!: LiveSyncAbstractReplicator;
     settingTab!: ObsidianLiveSyncSettingTab;
 
-    statusBar?: HTMLElement;
     _suspended = false;
     get suspended() {
         return this._suspended || !this.settings?.isConfigured;
@@ -116,7 +118,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     addOnHiddenFileSync = new HiddenFileSync(this);
     addOnSetup = new SetupLiveSync(this);
     addOnConfigSync = new ConfigSync(this);
-    addOns = [this.addOnHiddenFileSync, this.addOnSetup, this.addOnConfigSync] as LiveSyncCommands[];
+    addOnLogs = new LogAddOn(this);
+    addOns = [this.addOnHiddenFileSync, this.addOnSetup, this.addOnConfigSync, this.addOnLogs] as LiveSyncCommands[];
 
     periodicSyncProcessor = new PeriodicProcessor(this, async () => await this.replicate());
 
@@ -127,7 +130,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return !this.last_successful_post;
     }
 
-    vaultAccess: SerializedFileAccess = new SerializedFileAccess(this.app);
+    vaultAccess: SerializedFileAccess = new SerializedFileAccess(this.app, this);
 
     _unloaded = false;
 
@@ -139,6 +142,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
     getIsMobile(): boolean {
         return this.isMobile;
+    }
+
+    get shouldCheckCaseInsensitive() {
+        if (this.vaultAccess.isStorageInsensitive()) return false;
+        return !this.settings.handleFilenameCaseSensitive;
     }
 
     requestCount = reactiveSource(0);
@@ -267,7 +275,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         };
 
         const db: PouchDB.Database<EntryDoc> = new PouchDB<EntryDoc>(uri, conf);
-        enableCompression(db, compression);
+        replicationFilter(db, compression);
+        disableEncryption();
         if (passphrase !== "false" && typeof passphrase === "string") {
             enableEncryption(db, passphrase, useDynamicIterationCount, false);
         }
@@ -298,6 +307,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     getActiveFile() {
         return this.app.workspace.getActiveFile();
     }
+    async getActiveFileStatus() {
+        const thisFile = this.app.workspace.getActiveFile();
+        if (!thisFile) return "";
+        // Case Sensitivity
+        if (this.shouldCheckCaseInsensitive) {
+            const f = this.vaultAccess.getFiles().map(e => e.path).filter(e => e.toLowerCase() == thisFile.path.toLowerCase());
+            if (f.length > 1) return "Not synchronised: There are multiple files with the same name";
+        }
+        if (!await this.isTargetFile(thisFile)) return "Not synchronised: not a target file";
+        if (this.isFileSizeExceeded(thisFile.stat.size)) return "Not synchronised: File size exceeded";
+        return "";
+    }
 
     get appId() {
         return `${("appId" in this.app ? this.app.appId : "")}`;
@@ -319,7 +340,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
     }
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
         const destPath = addPrefix(filename, prefix ?? "");
-        return await path2id(destPath, this.settings.usePathObfuscation ? this.settings.passphrase : "");
+        return await path2id(destPath, this.settings.usePathObfuscation ? this.settings.passphrase : "", !this.settings.handleFilenameCaseSensitive);
     }
 
     createPouchDBInstance<T extends object>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> {
@@ -333,10 +354,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return new PouchDB(name, optionPass);
     }
     beforeOnUnload(db: LiveSyncLocalDB): void {
-        this.kvDB.close();
+        if (this.kvDB) this.kvDB.close();
     }
     onClose(db: LiveSyncLocalDB): void {
-        this.kvDB.close();
+        if (this.kvDB) this.kvDB.close();
     }
     getNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): LiveSyncAbstractReplicator {
         const settings = { ...this.settings, ...settingOverride };
@@ -346,8 +367,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         return new LiveSyncCouchDBReplicator(this);
     }
     async onInitializeDatabase(db: LiveSyncLocalDB): Promise<void> {
+        await delay(10);
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        // this.trench = new Trench(this.simpleStore);
         this.replicator = this.getNewReplicator();
     }
     async onResetDatabase(db: LiveSyncLocalDB): Promise<void> {
@@ -355,8 +376,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         this.kvDB.del(kvDBKey);
         // localStorage.removeItem(lsKey);
         await this.kvDB.destroy();
+        await yieldMicrotask();
         this.kvDB = await OpenKeyValueDatabase(db.dbname + "-livesync-kv");
-        // this.trench = new Trench(this.simpleStore);
+        await yieldMicrotask();
         this.replicator = this.getNewReplicator()
     }
     getReplicator() {
@@ -460,6 +482,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         }
     }
 
+    // TODO Check
     async collectDeletedFiles() {
         const limitDays = this.settings.automaticallyDeleteMetadataOfDeletedFiles;
         if (limitDays <= 0) return;
@@ -534,13 +557,171 @@ export default class ObsidianLiveSyncPlugin extends Plugin
         const minioJournal = this.getMinioJournalSyncClient();
         await minioJournal.sync();
     }
+    async migrateToCaseInsensitive(old: number, current: number) {
+        if (this.settings.handleFilenameCaseSensitive !== undefined && this.settings.doNotUseFixedRevisionForChunks !== undefined) {
+            if (current < SETTING_VERSION_SUPPORT_CASE_INSENSITIVE) {
+                this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+                await this.saveSettings();
+            }
+            return true;
+        }
+        if (old >= SETTING_VERSION_SUPPORT_CASE_INSENSITIVE && this.settings.handleFilenameCaseSensitive !== undefined && this.settings.doNotUseFixedRevisionForChunks !== undefined) {
+            return true;
+        }
+
+        let remoteHandleFilenameCaseSensitive: undefined | boolean = undefined;
+        let remoteDoNotUseFixedRevisionForChunks: undefined | boolean = undefined;
+        let remoteChecked = false;
+        try {
+            const remoteInfo = await this.replicator.getRemotePreferredTweakValues(this.settings);
+            if (remoteInfo) {
+                remoteHandleFilenameCaseSensitive = remoteInfo?.handleFilenameCaseSensitive;
+                remoteDoNotUseFixedRevisionForChunks = remoteInfo?.doNotUseFixedRevisionForChunks;
+                if (remoteHandleFilenameCaseSensitive !== undefined || remoteDoNotUseFixedRevisionForChunks !== undefined) {
+                    remoteChecked = true;
+                }
+            } else {
+                Logger("Failed to fetch remote tweak values", LOG_LEVEL_INFO);
+            }
+        } catch (ex) {
+            Logger("Could not get remote tweak values", LOG_LEVEL_INFO);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+        }
+
+        if (remoteChecked) {
+            // The case that the remote could be checked.
+            if (remoteHandleFilenameCaseSensitive && remoteDoNotUseFixedRevisionForChunks) {
+                // Migrated, but configured as same as old behaviour.
+                this.settings.handleFilenameCaseSensitive = true;
+                this.settings.doNotUseFixedRevisionForChunks = true;
+                this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+                Logger(`Migrated to db:${current} with the same behaviour as before`, LOG_LEVEL_INFO);
+                await this.saveSettings();
+                return true;
+            }
+            const message = `As you may already know, the self-hosted LiveSync has changed its default behaviour and database structure.
+
+And thankfully, with your time and efforts, the remote database appears to have already been migrated. Congratulations!
+
+However, we need a bit more. The configuration of this device is not compatible with the remote database. We will need to fetch the remote database again. Should we fetch from the remote again now?
+
+___Note: We cannot synchronise until the configuration has been changed and the database has been fetched again.___
+___Note2: The chunks are completely immutable, we can fetch only the metadata and difference.___
+`;
+            const OPTION_FETCH = "Yes, fetch again";
+            const DISMISS = "No, please ask again";
+            const options = [OPTION_FETCH, DISMISS];
+            const ret = await confirmWithMessage(this, "Case Sensitivity", message, options, "No, please ask again", 40);
+            if (ret == OPTION_FETCH) {
+                this.settings.handleFilenameCaseSensitive = remoteHandleFilenameCaseSensitive || false;
+                this.settings.doNotUseFixedRevisionForChunks = remoteDoNotUseFixedRevisionForChunks || false;
+                this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+                await this.saveSettings();
+                try {
+                    await this.scheduleFetch();
+                    return;
+                } catch (ex) {
+                    Logger("Failed to create redflag2", LOG_LEVEL_VERBOSE);
+                    Logger(ex, LOG_LEVEL_VERBOSE);
+                }
+                return false;
+            } else {
+                return false;
+            }
+
+        }
+
+        const ENABLE_BOTH = "Enable both";
+        const ENABLE_FILENAME_CASE_INSENSITIVE = "Enable only #1";
+        const ENABLE_FIXED_REVISION_FOR_CHUNKS = "Enable only #2";
+        const ADJUST_TO_REMOTE = "Adjust to remote";
+        const DISMISS = "Decide it later";
+        const KEEP = "Keep previous behaviour";
+        const message = `Since v0.23.21, the self-hosted LiveSync has changed the default behaviour and database structure. The following changes have been made:
+
+1. **Case sensitivity of filenames** 
+   The handling of filenames is now case-insensitive. This is a beneficial change for most platforms, other than Linux and iOS, which do not manage filename case sensitivity effectively.
+   (On These, a warning will be displayed for files with the same name but different cases).
+
+2. **Revision handling of the chunks** 
+   Chunks are immutable, which allows their revisions to be fixed. This change will enhance the performance of file saving.
+
+___However, to enable either of these changes, both remote and local databases need to be rebuilt. This process takes a few minutes, and we recommend doing it when you have ample time.___
+
+- If you wish to maintain the previous behaviour, you can skip this process by using \`${KEEP}\`.
+- If you do not have enough time, please choose \`${DISMISS}\`. You will be prompted again later.
+- If you have rebuilt the database on another device, please select \`${DISMISS}\` and try synchronizing again. Since a difference has been detected, you will be prompted again.
+`;
+        const options = [ENABLE_BOTH, ENABLE_FILENAME_CASE_INSENSITIVE, ENABLE_FIXED_REVISION_FOR_CHUNKS];
+        if (remoteChecked) {
+            options.push(ADJUST_TO_REMOTE);
+        }
+        options.push(KEEP, DISMISS);
+        const ret = await confirmWithMessage(this, "Case Sensitivity", message, options, DISMISS, 40);
+        console.dir(ret);
+        switch (ret) {
+            case ENABLE_BOTH:
+                this.settings.handleFilenameCaseSensitive = false;
+                this.settings.doNotUseFixedRevisionForChunks = false;
+                break;
+            case ENABLE_FILENAME_CASE_INSENSITIVE:
+                this.settings.handleFilenameCaseSensitive = false;
+                this.settings.doNotUseFixedRevisionForChunks = true;
+                break;
+            case ENABLE_FIXED_REVISION_FOR_CHUNKS:
+                this.settings.doNotUseFixedRevisionForChunks = false;
+                this.settings.handleFilenameCaseSensitive = true;
+                break;
+            case KEEP:
+                this.settings.handleFilenameCaseSensitive = true;
+                this.settings.doNotUseFixedRevisionForChunks = true;
+                this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+                await this.saveSettings();
+                return true;
+            case DISMISS:
+            default:
+                return false;
+
+        }
+        this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+        await this.saveSettings();
+        await this.scheduleRebuild();
+        await this.performAppReload();
+
+    }
+    async migrateCheckBulkSize() {
+        if (this.settings.sendChunksBulk) {
+            if (this.settings.couchDB_URI != "" && isCloudantURI(this.settings.couchDB_URI)) {
+                if (this.settings.sendChunksBulkMaxSize > 1) {
+                    Logger("Cloudant does not support bulk size more than 1MB, Automatically fixed", LOG_LEVEL_NOTICE);
+                    this.settings.sendChunksBulkMaxSize = 1;
+                    await this.saveSettings();
+                }
+            }
+        }
+    }
+    async migrationCheck() {
+        const old = this.settings.settingVersion;
+        const current = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
+        // Check each migrations(old -> current)
+        if (!await this.migrateToCaseInsensitive(old, current)) {
+            Logger(`Migration failed or cancelled from ${old} to ${current}`, LOG_LEVEL_NOTICE);
+            return;
+        }
+
+    }
     async onLayoutReady() {
+        eventHub.emitEvent(EVENT_LAYOUT_READY);
         this.registerFileWatchEvents();
         if (!this.localDatabase.isReady) {
             Logger(`Something went wrong! The local database is not ready`, LOG_LEVEL_NOTICE);
             return;
         }
+        if (this.settings.isConfigured) {
+            await this.migrationCheck();
+        }
         if (!this.settings.isConfigured) {
+            // Case sensitivity
             const message = `Hello and welcome to Self-hosted LiveSync.
 
 Your device seems to **not be configured yet**. Please finish the setup and synchronise your vaults!
@@ -577,6 +758,20 @@ Click anywhere to stop counting down.
 
         try {
             if (this.isRedFlagRaised() || this.isRedFlag2Raised() || this.isRedFlag3Raised()) {
+                if (this.isRedFlag2Raised()) {
+                    if (await this.askYesNo("Rebuild everything has been scheduled! Are you sure to rebuild everything?") !== "yes") {
+                        await this.deleteRedFlag2();
+                        await this.performAppReload();
+                        return;
+                    }
+                }
+                if (this.isRedFlag3Raised()) {
+                    if (await this.askYesNo("Fetch again has been scheduled! Are you sure?") !== "yes") {
+                        await this.deleteRedFlag3();
+                        await this.performAppReload();
+                        return;
+                    }
+                }
                 this.settings.batchSave = false;
                 this.addOnSetup.suspendAllSync();
                 this.addOnSetup.suspendExtraSync();
@@ -593,7 +788,8 @@ Click anywhere to stop counting down.
                     }
                 } else if (this.isRedFlag3Raised()) {
                     Logger(`${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`, LOG_LEVEL_NOTICE);
-                    await this.addOnSetup.fetchLocal();
+                    const makeLocalChunkBeforeSync = ((await this.askYesNo("Do you want to create local chunks before fetching?")) == "yes");
+                    await this.addOnSetup.fetchLocal(makeLocalChunkBeforeSync);
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
                         if (await this.askYesNo("Do you want to disable Suspend file watching and restart obsidian now?") == "yes") {
@@ -663,10 +859,13 @@ And if your actual storage size exceeds the threshold after the setup, you may w
             const ret = await confirmWithMessage(this, "Remote storage size threshold", message, [ANSWER_0, ANSWER_800, ANSWER_2000], ANSWER_800, 40);
             if (ret == ANSWER_0) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 0;
+                await this.saveSettings();
             } else if (ret == ANSWER_800) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 800;
+                await this.saveSettings();
             } else {
                 this.settings.notifyThresholdOfRemoteStorageSize = 2000;
+                await this.saveSettings();
             }
         }
         if (this.settings.notifyThresholdOfRemoteStorageSize > 0) {
@@ -686,7 +885,8 @@ If you have enough space on the remote storage, you can enlarge the threshold. O
 
 However, **Please make sure that all devices have been synchronised**. \n
 \n`;
-                        const ANSWER_ENLARGE_LIMIT = "Enlarge the limit";
+                        const newMax = ~~(estimatedSize / 1024 / 1024) + 100;
+                        const ANSWER_ENLARGE_LIMIT = `Enlarge to ${newMax}MB`;
                         const ANSWER_REBUILD = "Rebuild now";
                         const ANSWER_IGNORE = "Dismiss";
                         const ret = await confirmWithMessage(this, "Remote storage size exceeded", message, [ANSWER_ENLARGE_LIMIT, ANSWER_REBUILD, ANSWER_IGNORE,], ANSWER_IGNORE, 20);
@@ -697,8 +897,7 @@ However, **Please make sure that all devices have been synchronised**. \n
                                 await this.replicateAllFromServer(true);
                                 await delay(3000);
                                 Logger(`Obsidian will be reloaded to rebuild everything.`, LOG_LEVEL_NOTICE);
-                                await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
-                                this.performAppReload();
+                                await this.scheduleRebuild();
                             }
                         } else if (ret == ANSWER_ENLARGE_LIMIT) {
                             this.settings.notifyThresholdOfRemoteStorageSize = ~~(estimatedSize / 1024 / 1024) + 100;
@@ -708,7 +907,7 @@ However, **Please make sure that all devices have been synchronised**. \n
                             // Dismiss or Close the dialog
                         }
 
-                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize)} `, LOG_LEVEL_INFO);
+                        Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize * 1024 * 1024)} `, LOG_LEVEL_INFO);
                     } else {
                         Logger(`Remote storage size: ${sizeToHumanReadable(estimatedSize)}`, LOG_LEVEL_INFO);
                     }
@@ -961,7 +1160,35 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
     }
 
+    wireUpEvents() {
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+            const settings = evt.detail;
+            this.localDatabase.settings = settings;
+            setLang(settings.displayLanguage);
+            this.settingTab.requestReload();
+            this.ignoreFiles = settings.ignoreFiles.split(",").map(e => e.trim());
+        });
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+            const settings = evt.detail;
+            if (settings.settingSyncFile != "") {
+                fireAndForget(() => this.saveSettingToMarkdown(settings.settingSyncFile));
+            }
+        })
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+            fireAndForget(() => this.realizeSettingSyncMode());
+        })
+    }
+    connectObsidianEvents() {
+        // this.registerEvent(this.app.workspace.on("editor-change", ));
+        this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+            eventHub.emitEvent(EVENT_FILE_RENAMED, { newPath: file.path, old: oldPath });
+        }));
+        this.registerEvent(this.app.workspace.on("active-leaf-change", () => eventHub.emitEvent(EVENT_LEAF_ACTIVE_CHANGED)));
+    }
     async onload() {
+        this.wireUpEvents();
+        this.connectObsidianEvents();
+        eventHub.emitEvent(EVENT_PLUGIN_LOADED, this);
         logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
         Logger("loading plugin");
         __onMissingTranslation(() => { });
@@ -988,6 +1215,36 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                     }
                 });
             })
+            type STUB = {
+                toc: Set<string>,
+                stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } }
+            };
+            eventHub.onEvent("document-stub-created", async (e: CustomEvent<STUB>) => {
+                const stub = e.detail.stub;
+                const toc = e.detail.toc;
+
+                const stubDocX =
+                    Object.entries(stub).map(([key, value]) => {
+                        return [`## ${key}`, Object.entries(value).
+                            map(([key2, value2]) => {
+                                return [`### ${key2}`,
+                                ([...(value2.entries())].map(([key3, value3]) => {
+                                    // return `#### ${key3}` + "\n" + JSON.stringify(value3);
+                                    const isObsolete = value3["is_obsolete"] ? " (obsolete)" : "";
+                                    const desc = value3["desc"] ?? "";
+                                    const key = value3["key"] ? "Setting key: " + value3["key"] + "\n" : "";
+                                    return `#### ${key3}${isObsolete}\n${key}${desc}\n`
+                                }))].flat()
+                            }).flat()].flat()
+                    }).flat();
+                const stubDocMD = `
+| Icon  | Description                                                       |
+| :---: | ----------------------------------------------------------------- |
+` +
+                    [...toc.values()].map(e => `${e}`).join("\n") + "\n\n" +
+                    stubDocX.join("\n");
+                await this.vaultAccess.adapterWrite(this.app.vault.configDir + "/ls-debug/stub-doc.md", stubDocMD);
+            })
         }
         this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this);
         this.addSettingTab(this.settingTab);
@@ -1004,11 +1261,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         await this.loadSettings();
         const lsKey = "obsidian-live-sync-ver" + this.getVaultName();
         const last_version = localStorage.getItem(lsKey);
-        this.observeForLogs();
-        if (this.settings.showStatusOnStatusbar) {
-            this.statusBar = this.addStatusBarItem();
-            this.statusBar.addClass("syncstatusbar");
-        }
+
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
             Logger($f`Self-hosted LiveSync has undergone a major upgrade. Please open the setting dialog, and check the information pane.`, LOG_LEVEL_NOTICE);
@@ -1070,7 +1323,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
     }
 
     onunload() {
-        terminateWorker();
+        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
         cancelAllPeriodicTask();
         cancelAllTasks();
         stopAllRunningProcessors();
@@ -1083,7 +1336,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
         }
         this.periodicSyncProcessor?.disable();
         if (this.localDatabase != null) {
-            this.replicator.closeReplication();
+            this.replicator?.closeReplication();
             this.localDatabase.close();
         }
         Logger($f`unloading plugin`);
@@ -1274,13 +1527,7 @@ Note: We can always able to read V1 format. It will be progressively converted. 
 
         }
         await this.saveData(settings);
-        this.localDatabase.settings = this.settings;
-        setLang(this.settings.displayLanguage);
-        this.settingTab.requestReload();
-        this.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
-        if (this.settings.settingSyncFile != "") {
-            fireAndForget(() => this.saveSettingToMarkdown(this.settings.settingSyncFile));
-        }
+        eventHub.emitEvent(EVENT_SETTING_SAVED, settings);
     }
 
     extractSettingFromWholeText(data: string): { preamble: string, body: string, postscript: string } {
@@ -1372,10 +1619,10 @@ Note: We can always able to read V1 format. It will be progressively converted. 
                         return;
                     }
                     if (result == APPLY_AND_REBUILD) {
-                        await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
+                        await this.scheduleRebuild();
                     }
                     if (result == APPLY_AND_FETCH) {
-                        await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG3_HR, "");
+                        await this.scheduleFetch();
                     }
                     this.performAppReload();
                 }
@@ -1383,6 +1630,24 @@ Note: We can always able to read V1 format. It will be progressively converted. 
             )
         })
     }
+    async scheduleRebuild() {
+        try {
+            await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG2_HR, "");
+        } catch (ex) {
+            Logger("Could not create red_flag_rebuild.md", LOG_LEVEL_NOTICE);
+        }
+        this.performAppReload();
+    }
+    async scheduleFetch() {
+        try {
+            await this.vaultAccess.vaultCreate(FLAGMD_REDFLAG3_HR, "");
+        } catch (ex) {
+            Logger("Could not create red_flag_fetch.md", LOG_LEVEL_NOTICE);
+        }
+        this.performAppReload();
+    }
+
+
     generateSettingForMarkdown(settings?: ObsidianLiveSyncSettings, keepCredential?: boolean): Partial<ObsidianLiveSyncSettings> {
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
@@ -1436,7 +1701,6 @@ We can perform a command in this file.
 
     async saveSettings() {
         await this.saveSettingData();
-        fireAndForget(() => this.realizeSettingSyncMode());
     }
 
     vaultManager: StorageEventManager = new StorageEventManagerObsidian(this);
@@ -1726,6 +1990,7 @@ We can perform a command in this file.
             this.vaultAccess.adapterAppend(normalizePath(logDate), vaultName + ":" + newMessage + "\n");
         }
         recentLogProcessor.enqueue(newMessage);
+        this.addOnLogs.logLines.push({ ttl: now.getTime() + 3000, message: newMessage });
 
         if (level >= LOG_LEVEL_NOTICE) {
             if (!key) key = messageContent;
@@ -2043,136 +2308,10 @@ We can perform a command in this file.
 
     lastMessage = "";
 
-    observeForLogs() {
-        const padSpaces = `\u{2007}`.repeat(10);
-        // const emptyMark = `\u{2003}`;
-        function padLeftSpComputed(numI: ReactiveValue<number>, mark: string) {
-            const formatted = reactiveSource("");
-            let timer: ReturnType<typeof setTimeout> | undefined = undefined;
-            let maxLen = 1;
-            numI.onChanged(numX => {
-                const num = numX.value;
-                const numLen = `${Math.abs(num)}`.length + 1;
-                maxLen = maxLen < numLen ? numLen : maxLen;
-                if (timer) clearTimeout(timer);
-                if (num == 0) {
-                    timer = setTimeout(() => {
-                        formatted.value = "";
-                        maxLen = 1;
-                    }, 3000);
-                }
-                formatted.value = ` ${mark}${`${padSpaces}${num}`.slice(-(maxLen))}`;
-            })
-            return computed(() => formatted.value);
-        }
-        const labelReplication = padLeftSpComputed(this.replicationResultCount, `📥`);
-        const labelDBCount = padLeftSpComputed(this.databaseQueueCount, `📄`);
-        const labelStorageCount = padLeftSpComputed(this.storageApplyingCount, `💾`);
-        const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
-        const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
-        const labelConflictProcessCount = padLeftSpComputed(this.conflictProcessQueueCount, `🔩`);
-        const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value + hiddenFilesProcessingCount.value);
-        const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`)
-        const queueCountLabelX = reactive(() => {
-            return `${labelReplication()}${labelDBCount()}${labelStorageCount()}${labelChunkCount()}${labelPluginScanCount()}${labelHiddenFilesCount()}${labelConflictProcessCount()}`;
-        })
-        const queueCountLabel = () => queueCountLabelX.value;
 
-        const requestingStatLabel = computed(() => {
-            const diff = this.requestCount.value - this.responseCount.value;
-            return diff != 0 ? "📲 " : "";
-        })
 
-        const replicationStatLabel = computed(() => {
-            const e = this.replicationStat.value;
-            const sent = e.sent;
-            const arrived = e.arrived;
-            const maxPullSeq = e.maxPullSeq;
-            const maxPushSeq = e.maxPushSeq;
-            const lastSyncPullSeq = e.lastSyncPullSeq;
-            const lastSyncPushSeq = e.lastSyncPushSeq;
-            let pushLast = "";
-            let pullLast = "";
-            let w = "";
-            const labels: Partial<Record<DatabaseConnectingStatus, string>> = {
-                "CONNECTED": "⚡",
-                "JOURNAL_SEND": "📦↑",
-                "JOURNAL_RECEIVE": "📦↓",
-            }
-            switch (e.syncStatus) {
-                case "CLOSED":
-                case "COMPLETED":
-                case "NOT_CONNECTED":
-                    w = "⏹";
-                    break;
-                case "STARTED":
-                    w = "🌀";
-                    break;
-                case "PAUSED":
-                    w = "💤";
-                    break;
-                case "CONNECTED":
-                case "JOURNAL_SEND":
-                case "JOURNAL_RECEIVE":
-                    w = labels[e.syncStatus] || "⚡";
-                    pushLast = ((lastSyncPushSeq == 0) ? "" : (lastSyncPushSeq >= maxPushSeq ? " (LIVE)" : ` (${maxPushSeq - lastSyncPushSeq})`));
-                    pullLast = ((lastSyncPullSeq == 0) ? "" : (lastSyncPullSeq >= maxPullSeq ? " (LIVE)" : ` (${maxPullSeq - lastSyncPullSeq})`));
-                    break;
-                case "ERRORED":
-                    w = "⚠";
-                    break;
-                default:
-                    w = "?";
-            }
-            return { w, sent, pushLast, arrived, pullLast };
-        })
-        const labelProc = padLeftSpComputed(this.vaultManager.processing, `⏳`);
-        const labelPend = padLeftSpComputed(this.vaultManager.totalQueued, `🛫`);
-        const labelInBatchDelay = padLeftSpComputed(this.vaultManager.batched, `📬`);
-        const waitingLabel = computed(() => {
-            return `${labelProc()}${labelPend()}${labelInBatchDelay()}`;
-        })
-        const statusLineLabel = computed(() => {
-            const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel();
-            const queued = queueCountLabel();
-            const waiting = waitingLabel();
-            const networkActivity = requestingStatLabel();
-            return {
-                message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}`,
-            };
-        })
-        const statusBarLabels = reactive(() => {
-            const scheduleMessage = this.isReloadingScheduled ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n` : "";
-            const { message } = statusLineLabel();
-            const status = scheduleMessage + this.statusLog.value;
-            return {
-                message, status
-            }
-        })
 
-        const applyToDisplay = throttle((label: typeof statusBarLabels.value) => {
-            const v = label;
-            this.applyStatusBarText(v.message, v.status);
 
-        }, 20);
-        statusBarLabels.onChanged(label => applyToDisplay(label.value))
-    }
-
-    applyStatusBarText(message: string, log: string) {
-        const newMsg = message.replace(/\n/g, "\\A ");
-        const newLog = log.replace(/\n/g, "\\A ");
-
-        this.statusBar?.setText(newMsg.split("\n")[0]);
-        if (this.settings.showStatusOnEditor) {
-            const root = activeDocument.documentElement;
-            root.style.setProperty("--sls-log-text", "'" + (newMsg + "\\A " + newLog) + "'");
-        } else {
-            // const root = activeDocument.documentElement;
-            // root.style.setProperty("--log-text", "'" + (newMsg + "\\A " + newLog) + "'");
-        }
-
-        scheduleTask("log-hide", 3000, () => { this.statusLog.value = "" });
-    }
     async askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
         if (!this.replicator.tweakSettingsMismatched) {
             return "OK";
@@ -2180,6 +2319,8 @@ We can perform a command in this file.
         const preferred = extractObject(TweakValuesShouldMatchedTemplate, this.replicator.preferredTweakValue!);
         const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
+        let rebuildRequired = false;
+
         // Making tables:
         let table = `| Value name | This device | Configured | \n` +
             `|: --- |: --- :|: ---- :| \n`;
@@ -2190,8 +2331,17 @@ We can perform a command in this file.
             const valueMine = escapeMarkdownValue(mine[key]);
             const valuePreferred = escapeMarkdownValue(preferred[key]);
             if (valueMine == valuePreferred) continue;
+            if (CompatibilityBreakingTweakValues.indexOf(key) !== -1) {
+                rebuildRequired = true;
+            }
             table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
         }
+
+        const additionalMessage = rebuildRequired ? `
+
+**Note**: We have detected that some of the values are different to make incompatible the local database with the remote database.
+If you choose to use the configured values, the local database will be rebuilt, and if you choose to use the values of this device, the remote database will be rebuilt. 
+Both of them takes a few minutes. Please choose after considering the situation.` : "";
 
         const message = `
 Your configuration has not been matched with the one on the remote server.
@@ -2204,11 +2354,11 @@ ${table}
 Please select which one you want to use.
 
 - Use configured: Update settings of this device by configured one on the remote server.
-  You should select this if you have changed the settings on **another device**.
+  You should select this if you have changed the settings on ** another device **.
 - Update with mine: Update settings on the remote server by the settings of this device.
-  You should select this if you have changed the settings on **this device**.
+  You should select this if you have changed the settings on ** this device **.
 - Dismiss: Ignore this message and keep the current settings.
-  You cannot synchronise until you resolve this issue without enabling \`Do not check configuration mismatch before replication\`.`;
+  You cannot synchronise until you resolve this issue without enabling \`Do not check configuration mismatch before replication\`.${additionalMessage}`;
 
         const CHOICE_USE_REMOTE = "Use configured";
         const CHOICE_USR_MINE = "Update with mine";
@@ -2225,6 +2375,9 @@ Please select which one you want to use.
 
         if (conf === true) {
             await this.replicator.setPreferredRemoteTweakSettings(this.settings);
+            if (rebuildRequired) {
+                await this.addOnSetup.rebuildRemote();
+            }
             Logger(`Tweak values on the remote server have been updated. Your other device will see this message.`, LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
@@ -2232,6 +2385,9 @@ Please select which one you want to use.
             this.settings = { ...this.settings, ...conf };
             await this.replicator.setPreferredRemoteTweakSettings(this.settings);
             await this.saveSettingData();
+            if (rebuildRequired) {
+                await this.addOnSetup.fetchLocal();
+            }
             Logger(`Configuration has been updated as configured by the other device.`, LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
@@ -2383,7 +2539,66 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return false;
     }
 
+    async createAllChunks(showingNotice?: boolean) {
+        Logger("Collecting local files on the storage", LOG_LEVEL_VERBOSE);
+        const semaphore = Semaphore(10);
+
+        let processed = 0;
+        const filesStorageSrc = this.vaultAccess.getFiles();
+        const incProcessed = () => {
+            processed++;
+            if (processed % 25 == 0) Logger(`Creating missing chunks: ${processed} of ${total} files`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "chunkCreation");
+        }
+        const total = filesStorageSrc.length;
+        const procAllChunks = filesStorageSrc.map(async (file) => {
+            if (!await this.isTargetFile(file)) {
+                incProcessed();
+                return true;
+            }
+            if (shouldBeIgnored(file.path)) {
+                incProcessed();
+                return true;
+            }
+            const release = await semaphore.acquire();
+            incProcessed();
+            try {
+                Logger(`Chunk Creation: Started ${file.path}`, LOG_LEVEL_VERBOSE);
+                const content = createBlob(await this.vaultAccess.vaultReadAuto(file));
+                const datatype = determineTypeFromBlob(content);
+                const fullPath = getPathFromTFile(file);
+                const id = await this.path2id(fullPath);
+                const d: SavingEntry = {
+                    _id: id,
+                    path: getPathFromTFile(file),
+                    data: content,
+                    ctime: file.stat.ctime,
+                    mtime: file.stat.mtime,
+                    size: file.stat.size,
+                    children: [],
+                    datatype: datatype,
+                    type: datatype,
+                    eden: {},
+                };
+                if (await this.localDatabase.putDBEntry(d, true) !== false) {
+                    Logger(`Chunk Creation: Done ${file.path}`, LOG_LEVEL_VERBOSE);
+                } else {
+                    Logger(`Chunk Creation: Failed ${file.path}`, LOG_LEVEL_NOTICE);
+                }
+            } catch (ex) {
+                Logger(ex, LOG_LEVEL_VERBOSE);
+            } finally {
+                release();
+            }
+        });
+        await Promise.all(procAllChunks);
+        Logger(`Creating chunks Done: ${processed} of ${total} files`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "chunkCreation");
+    }
+
+
     async syncAllFiles(showingNotice?: boolean) {
+
+        Logger("Opening the key-value database", LOG_LEVEL_VERBOSE);
+        const isInitialized = await (this.kvDB.get<boolean>("initialized")) || false;
         // synchronize all files between database and storage.
         if (!this.settings.isConfigured) {
             if (showingNotice) {
@@ -2391,6 +2606,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             }
             return;
         }
+
         if (showingNotice) {
             Logger("Initializing", LOG_LEVEL_NOTICE, "syncAll");
         }
@@ -2402,39 +2618,73 @@ Or if you are sure know what had been happened, we can unlock the database from 
         Logger("Collecting local files on the storage", LOG_LEVEL_VERBOSE);
         const filesStorageSrc = this.vaultAccess.getFiles();
 
-        const filesStorage = [] as typeof filesStorageSrc;
+        const _filesStorage = [] as typeof filesStorageSrc;
+
         for (const f of filesStorageSrc) {
-            if (await this.isTargetFile(f.path)) {
-                filesStorage.push(f);
+            if (await this.isTargetFile(f.path, f != filesStorageSrc[0])) {
+                _filesStorage.push(f);
             }
         }
 
-        const filesStorageName = filesStorage.map((e) => e.path);
+        const convertCase = <FilePathWithPrefix>(path: FilePathWithPrefix): FilePathWithPrefixLC => {
+            if (this.settings.handleFilenameCaseSensitive) {
+                return path as FilePathWithPrefixLC;
+            }
+            return (path as string).toLowerCase() as FilePathWithPrefixLC;
+        }
+
+        // If handleFilenameCaseSensitive is enabled, `FilePathWithPrefixLC` is the same as `FilePathWithPrefix`.
+
+        const storageFileNameMap = Object.fromEntries(_filesStorage.map((e) => [e.path as FilePathWithPrefix, e]));
+
+        const storageFileNames = Object.keys(storageFileNameMap) as FilePathWithPrefix[];
+
+        const storageFileNameCapsPair = storageFileNames.map((e) => [e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]);
+
+        // const storageFileNameCS2CI = Object.fromEntries(storageFileNameCapsPair) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
+        const storageFileNameCI2CS = Object.fromEntries(storageFileNameCapsPair.map(e => [e[1], e[0]])) as Record<FilePathWithPrefixLC, FilePathWithPrefix>;
+
+
         Logger("Collecting local files on the DB", LOG_LEVEL_VERBOSE);
-        const filesDatabase = [] as FilePathWithPrefix[]
+        const _DBEntries = [] as MetaEntry[];
+        // const _DBEntriesTask = [] as (() => Promise<MetaEntry | false>)[];
         let count = 0;
         for await (const doc of this.localDatabase.findAllNormalDocs()) {
             count++;
             if (count % 25 == 0) Logger(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
             const path = getPath(doc);
-            // const docPath = doc.path;
-            // if (path != docPath) {
-            //     debugger;
-            // }
-            if (isValidPath(path) && await this.isTargetFile(path)) {
-                filesDatabase.push(path);
+
+            if (isValidPath(path) && await this.isTargetFile(path, true)) {
+                if (!isMetaEntry(doc)) {
+                    Logger(`Invalid entry: ${path}`, LOG_LEVEL_INFO);
+                    continue;
+                }
+                _DBEntries.push(doc);
             }
         }
-        Logger("Opening the key-value database", LOG_LEVEL_VERBOSE);
-        const isInitialized = await (this.kvDB.get<boolean>("initialized")) || false;
 
-        const onlyInStorage = filesStorage.filter((e) => filesDatabase.indexOf(getPathFromTFile(e)) == -1);
-        const onlyInDatabase = filesDatabase.filter((e) => filesStorageName.indexOf(e) == -1);
+        const databaseFileNameMap = Object.fromEntries(_DBEntries.map((e) => [getPath(e), e]));
+        const databaseFileNames = Object.keys(databaseFileNameMap) as FilePathWithPrefix[];
+        const databaseFileNameCapsPair = databaseFileNames.map((e) => [e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]);
+        // const databaseFileNameCS2CI = Object.fromEntries(databaseFileNameCapsPair) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
+        const databaseFileNameCI2CS = Object.fromEntries(databaseFileNameCapsPair.map(e => [e[1], e[0]])) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
 
-        const onlyInStorageNames = onlyInStorage.map((e) => e.path);
+        const allFiles = unique([...Object.keys(databaseFileNameCI2CS), ...Object.keys(storageFileNameCI2CS)]) as FilePathWithPrefixLC[];
 
-        const syncFiles = filesStorage.filter((e) => onlyInStorageNames.indexOf(e.path) == -1);
-        Logger("Updating database by new files");
+        Logger(`Total files in the database: ${databaseFileNames.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+        Logger(`Total files in the storage: ${storageFileNames.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+        Logger(`Total files: ${allFiles.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+
+
+        const filesExistOnlyInStorage = allFiles.filter((e) => !databaseFileNameCI2CS[e]);
+        const filesExistOnlyInDatabase = allFiles.filter((e) => !storageFileNameCI2CS[e]);
+        const filesExistBoth = allFiles.filter((e) => databaseFileNameCI2CS[e] && storageFileNameCI2CS[e]);
+
+        Logger(`Files exist only in storage: ${filesExistOnlyInStorage.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+        Logger(`Files exist only in database: ${filesExistOnlyInDatabase.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+        Logger(`Files exist both in storage and database: ${filesExistBoth.length}`, LOG_LEVEL_VERBOSE, "syncAll");
+
+        Logger("Synchronising...");
         const processStatus = {} as Record<string, string>;
         const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         const updateLog = throttle((key: string, msg: string) => {
@@ -2469,82 +2719,100 @@ Or if you are sure know what had been happened, we can unlock the database from 
                     updateLog(procedureName, msg);
                 }
                 return;
-            }, { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, objects)
+            }, { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true, maintainDelay: false, interval: 0 }, objects)
             await processor.waitForAllDoneAndTerminate();
             const msg = `${procedureName} All done: DONE:${success}, FAILED:${failed}`;
             updateLog(procedureName, msg)
         }
-        initProcess.push(runAll("UPDATE DATABASE", onlyInStorage, async (e) => {
-            if (!this.isFileSizeExceeded(e.stat.size)) {
-                await this.updateIntoDB(e);
-                fireAndForget(() => this.checkAndApplySettingFromMarkdown(e.path, true));
+        initProcess.push(runAll("UPDATE DATABASE", filesExistOnlyInStorage, async (e) => {
+            // console.warn("UPDATE DATABASE", e);
+            const file = storageFileNameMap[storageFileNameCI2CS[e]];
+            if (!this.isFileSizeExceeded(file.stat.size)) {
+                await this.updateIntoDB(file);
+                const path = getPathFromTFile(file);
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(path, true));
             } else {
-                Logger(`UPDATE DATABASE: ${e.path} has been skipped due to file size exceeding the limit`, logLevel);
+                Logger(`UPDATE DATABASE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
             }
         }));
-        initProcess.push(runAll("UPDATE STORAGE", onlyInDatabase, async (e) => {
-            const w = await this.localDatabase.getDBEntryMeta(e, {}, true);
+        initProcess.push(runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
+            const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
+            const path = getPath(w) ?? e;
             if (w && !(w.deleted || w._deleted)) {
                 if (!this.isFileSizeExceeded(w.size)) {
-                    await this.pullFile(e, filesStorage, false, undefined, false);
+                    await this.pullFile(path, undefined, false, undefined, false);
                     fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
-                    Logger(`Check or pull from db:${e} OK`);
+                    Logger(`Check or pull from db:${path} OK`);
                 } else {
-                    Logger(`UPDATE STORAGE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
+                    Logger(`UPDATE STORAGE: ${path} has been skipped due to file size exceeding the limit`, logLevel);
                 }
             } else if (w) {
-                Logger(`Deletion history skipped: ${e}`, LOG_LEVEL_VERBOSE);
+                Logger(`Deletion history skipped: ${path}`, LOG_LEVEL_VERBOSE);
             } else {
-                Logger(`entry not found: ${e}`);
+                Logger(`entry not found: ${path}`);
             }
         }));
-        type FileDocPair = { file: TFile, id: DocumentID };
 
-        const processPrepareSyncFile = new QueueProcessor(
-            async (files) => {
-                const file = files[0];
-                const id = await this.path2id(getPathFromTFile(file));
-                const pair: FileDocPair = { file, id };
-                return [pair];
+        const fileMap = filesExistBoth.map(path => {
+            const file = storageFileNameMap[storageFileNameCI2CS[path]];
+            const doc = databaseFileNameMap[databaseFileNameCI2CS[path]];
+            return { file, doc }
+        })
+        initProcess.push(runAll("SYNC DATABASE AND STORAGE", fileMap, async (e) => {
+            const { file, doc } = e;
+            if (!this.isFileSizeExceeded(file.stat.size) && !this.isFileSizeExceeded(doc.size)) {
+                await this.syncFileBetweenDBandStorage(file, doc);
+                fireAndForget(() => this.checkAndApplySettingFromMarkdown(getPath(doc), true));
+            } else {
+                Logger(`SYNC DATABASE AND STORAGE: ${getPath(doc)} has been skipped due to file size exceeding the limit`, logLevel);
             }
-            , { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, syncFiles);
-        processPrepareSyncFile
-            .pipeTo(
-                new QueueProcessor(
-                    async (pairs) => {
-                        const docs = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: pairs.map(e => e.id), include_docs: true });
-                        const docsMap = Object.fromEntries(docs.rows.map(e => [e.id, e.doc]));
-                        const syncFilesToSync = pairs.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
-                        return syncFilesToSync;
-                    }
-                    , { batchSize: 100, concurrentLimit: 1, delay: 10, suspended: false, maintainDelay: true, yieldThreshold: 100 }))
-            .pipeTo(
-                new QueueProcessor(
-                    async (loadedPairs) => {
-                        for (const pair of loadedPairs)
-                            try {
-                                const e = pair;
-                                await this.syncFileBetweenDBandStorage(e.file, e.doc);
-                            } catch (ex) {
-                                Logger("Error while syncFileBetweenDBandStorage", LOG_LEVEL_NOTICE);
-                                Logger(ex, LOG_LEVEL_VERBOSE);
-                            }
-                        return;
-                    }, { batchSize: 5, concurrentLimit: 10, delay: 10, suspended: false, yieldThreshold: 10, maintainDelay: true }
-                ))
+        }))
 
-        const allSyncFiles = syncFiles.length;
-        let lastRemain = allSyncFiles;
-        const step = 25;
-        const remainLog = (remain: number) => {
-            if (lastRemain - remain > step) {
-                const msg = ` CHECK AND SYNC: ${allSyncFiles - remain} / ${allSyncFiles}`;
-                updateLog("sync", msg);
-                lastRemain = remain;
-            }
-        }
-        processPrepareSyncFile.startPipeline().onUpdateProgress(() => remainLog(processPrepareSyncFile.totalRemaining + processPrepareSyncFile.nowProcessing))
-        initProcess.push(processPrepareSyncFile.waitForAllDoneAndTerminate());
+        // const processPrepareSyncFile = new QueueProcessor(
+        //     async (files) => {
+        //         const file = files[0];
+        //         const id = await this.path2id(getPathFromTFile(file));
+        //         const pair: FileDocPair = { file, id };
+        //         return [pair];
+        //     }
+        //     , { batchSize: 1, concurrentLimit: 10, delay: 0, suspended: true }, syncFiles);
+        // processPrepareSyncFile
+        //     .pipeTo(
+        //         new QueueProcessor(
+        //             async (pairs) => {
+        //                 const docs = await this.localDatabase.allDocsRaw<EntryDoc>({ keys: pairs.map(e => e.id), include_docs: true });
+        //                 const docsMap = Object.fromEntries(docs.rows.map(e => [e.id, e.doc]));
+        //                 const syncFilesToSync = pairs.map((e) => ({ file: e.file, doc: docsMap[e.id] as LoadedEntry }));
+        //                 return syncFilesToSync;
+        //             }
+        //             , { batchSize: 100, concurrentLimit: 1, delay: 10, suspended: false, maintainDelay: true, yieldThreshold: 100 }))
+        //     .pipeTo(
+        //         new QueueProcessor(
+        //             async (loadedPairs) => {
+        //                 for (const pair of loadedPairs)
+        //                     try {
+        //                         const e = pair;
+        //                         await this.syncFileBetweenDBandStorage(e.file, e.doc);
+        //                     } catch (ex) {
+        //                         Logger("Error while syncFileBetweenDBandStorage", LOG_LEVEL_NOTICE);
+        //                         Logger(ex, LOG_LEVEL_VERBOSE);
+        //                     }
+        //                 return;
+        //             }, { batchSize: 5, concurrentLimit: 10, delay: 10, suspended: false, yieldThreshold: 10, maintainDelay: true }
+        //         ))
+
+        // const allSyncFiles = syncFiles.length;
+        // let lastRemain = allSyncFiles;
+        // const step = 25;
+        // const remainLog = (remain: number) => {
+        //     if (lastRemain - remain > step) {
+        //         const msg = ` CHECK AND SYNC: ${allSyncFiles - remain} / ${allSyncFiles}`;
+        //         updateLog("sync", msg);
+        //         lastRemain = remain;
+        //     }
+        // }
+        // processPrepareSyncFile.startPipeline().onUpdateProgress(() => remainLog(processPrepareSyncFile.totalRemaining + processPrepareSyncFile.nowProcessing))
+        // initProcess.push(processPrepareSyncFile.waitForAllDoneAndTerminate());
         await Promise.all(initProcess);
 
         // this.setStatusBarText(`NOW TRACKING!`);
@@ -3011,7 +3279,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return false;
     }
 
-    async pullFile(filename: FilePathWithPrefix, fileList?: TFile[], force?: boolean, rev?: string, waitForReady = true) {
+    async pullFile(filename: FilePathWithPrefix, _: void, force?: boolean, rev?: string, waitForReady = true) {
         const targetFile = this.vaultAccess.getAbstractFileByPath(stripAllPrefixes(filename));
         if (!await this.isTargetFile(filename)) return;
         if (targetFile == null) {
@@ -3038,7 +3306,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         //when to opened file;
     }
 
-    async syncFileBetweenDBandStorage(file: TFile, doc: LoadedEntry) {
+    async syncFileBetweenDBandStorage(file: TFile, doc: MetaEntry) {
         if (!doc) {
             throw new Error(`Missing doc:${(file as any).path}`)
         }
@@ -3254,12 +3522,49 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return false;
     }
 
-    async isTargetFile(file: string | TAbstractFile) {
+
+
+    async isTargetFile(file: string | TAbstractFile, keepFileCheckList = false) {
+        const fileCount = useMemo<Record<string, number>>({
+            key: "fileCount",
+            forceUpdate: !keepFileCheckList,
+        }, (ctx, prev) => {
+            const fileList = (ctx.get("fileList") ?? []) as FilePathWithPrefix[];
+            const vaultFiles = this.vaultAccess.getFiles().map(e => e.path);
+            if (prev && vaultFiles.length == fileList.length) {
+                const fl3 = new Set([...fileList, ...vaultFiles]);
+                if (fileList.length == fl3.size && vaultFiles.length == fl3.size) {
+                    return prev;
+                }
+            }
+            ctx.set("fileList", vaultFiles);
+
+            const fileCount: Record<string, number> = {};
+            for (const file of vaultFiles) {
+                const lc = file.toLowerCase();
+                if (!fileCount[lc]) {
+                    fileCount[lc] = 1;
+                } else {
+                    fileCount[lc]++;
+                }
+            }
+            return fileCount;
+        })
+
         const filepath = file instanceof TFile ? file.path : file as string;
+        const lc = filepath.toLowerCase();
+        if (this.shouldCheckCaseInsensitive) {
+            if (lc in fileCount && fileCount[lc] > 1) {
+                return false;
+            }
+        }
         if (this.settings.useIgnoreFiles && await this.isIgnoredByIgnoreFiles(file)) {
             return false;
         }
-        return this.localDatabase.isTargetFile(filepath);
+        if (!this.localDatabase.isTargetFile(filepath)) return false;
+        return true
+
+
     }
     async dryRunGC() {
         await skipIfDuplicated("cleanup", async () => {
@@ -3298,6 +3603,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
 
     askYesNo(message: string): Promise<"yes" | "no"> {
         return askYesNo(this.app, message);
+
+    }
+    async askYesNoDialog(message: string, opt: { title: string, defaultOption: "Yes" | "No", timeout?: number } = { title: "Confirmation", defaultOption: "No" }): Promise<"yes" | "no"> {
+        const ret = await confirmWithMessage(this, opt.title, message, ["Yes", "No"], opt.defaultOption, opt.timeout);
+        return ret == "Yes" ? "yes" : "no";
     }
     askSelectString(message: string, items: string[]): Promise<string> {
         return askSelectString(this.app, message, items);
@@ -3406,4 +3716,5 @@ Or if you are sure know what had been happened, we can unlock the database from 
         }
     }
 }
+
 

@@ -374,7 +374,7 @@ Of course, we are able to disable these features.`
         await this.plugin.openDatabase();
         this.plugin.isReady = true;
         if (makeLocalChunkBeforeSync) {
-            await this.plugin.initializeDatabase(true);
+            await this.plugin.createAllChunks(true);
         }
         await this.plugin.markRemoteResolved();
         await delay(500);
@@ -390,6 +390,7 @@ Of course, we are able to disable these features.`
     async rebuildRemote() {
         this.suspendExtraSync();
         this.plugin.settings.isConfigured = true;
+
         await this.plugin.realizeSettingSyncMode();
         await this.plugin.markRemoteLocked();
         await this.plugin.tryResetRemoteDatabase();

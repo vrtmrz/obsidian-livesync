@@ -18,54 +18,80 @@ I have a lot of respect for that plugin, even though it is sometimes treated as 
 Hooray for open source, and generous licences, and the sharing of knowledge by experts.
 
 #### Version history
-- 0.23.18:
-  - New feature:
-    - Per-file-saved customization sync has been shipped.
-      - We can synchronise plug-igs etc., more smoothly.
-      - Default: disabled. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost compatibility with old versions.
-    - Customisation sync has got beta3.
-      - We can set `Flag` to each item to select the newest, automatically.
-        - This configuration is per device.
-  - Improved:
-    - Start-up speed has been improved.
+- 0.23.23:
+  - Refined:
+    - Setting dialogue very slightly refined.
+      - The hodgepodge inside the `Hatch` pane has been sorted into more explicit categorised panes.
+        - Now we have new panes for:
+          - `Selector`
+          - `Advanced`
+          - `Power users`
+          - `Patches (Edge case)`
+      - Applying the settings will now be more informative.
+        - The header bar will be shown for applying the settings which needs a database rebuild.
+        - Applying methods are now more clearly navigated.
+      - Definitely, drastic change. I hope this will be more user-friendly. However, if you notice any issues, please let me know. I hope that nothing missed.
+  - New features:
+    - Word-segmented chunk building on users language
+      - Chunks can now be built with word-segmented data, enhancing efficiency for markdown files which contains the multiple sentences in a single line.
+      - This feature is enabled by default through `Use Segmented-splitter`. 
+        - (Default: Disabled, Please be relived, I have learnt).
   - Fixed:
-    - On the customisation sync dialogue, buttons are kept within the screen.
-    - No more unnecessary entries on `data.json` for customisation sync.
-    - Selections are no longer lost while updating customisation items.
-  - Tidied on source codes:
-    - Many typos have been fixed.
-    - Some unnecessary type casting removed.
-- 0.23.17:
-  - Improved:
-    - Overall performance has been improved by using PouchDB 9.0.0.
-    - Configuration mismatch detection is refined. We can resolve mismatches more smoothly and naturally.
-    More detail is on `troubleshooting.md` on the repository.
+    - Sending chunks on `Send chunk in bulk` are now buffered to avoid the out-of-memory error.
+    - `Send chunk in bulk` is back to default disabled. (Sorry, not applied to the migrated users; I did not think we should deepen the wound any further "automatically").
+    - Merging conflicts of JSON files are now works fine even if it contains `null`.
+  - Development:
+    - Implemented the logic for automatically generating the stub of document for the setting dialogue.
+- 0.23.22:
   - Fixed:
-    - Customisation Sync will be disabled when a corrupted configuration is detected.
-      Therefore, the Device Name can be changed even in the event of a configuration mismatch.
-  - New feature:
-    - We can get a notification about the storage usage of the remote database.
-      - Default: We will be asked.
-      - If the remote storage usage approaches the configured value, we will be asked whether we want to Rebuild or increase the limit.
-- 0.23.16:
-  - Maintenance Update:
-    - Library refining (Phase 1 - step 2). There are no significant changes on the user side.
-    - Including the following fixes of potentially problems:
-      - the problem which the path had been obfuscating twice has been resolved.
-      - Note: Potential problems of the library; which has not happened in Self-hosted LiveSync for some reasons.
-- 0.23.15:
-  - Maintenance Update:
-    - Library refining (Phase 1). There are no significant changes on the user side.
-- 0.23.14:
+    - Case-insensitive file handling
+      - Full-lower-case files are no longer created during database checking.
+    - Bulk chunk transfer
+      - The default value will automatically adjust to an acceptable size when using IBM Cloudant.
+- 0.23.21:
+  - New Features:
+    - Case-insensitive file handling
+      - Files can now be handled case-insensitively.
+      - This behaviour can be modified in the settings under `Handle files as Case-Sensitive` (Default: Prompt, Enabled for previous behaviour).
+    - Improved chunk revision fixing
+        - Revisions for chunks can now be fixed for faster chunk creation.
+        - This can be adjusted in the settings under `Compute revisions for chunks` (Default: Prompt, Enabled for previous behaviour).
+    - Bulk chunk transfer
+      - Chunks can now be transferred in bulk during uploads.
+      - This feature is enabled by default through `Send chunks in bulk`.
+    - Creation of missing chunks without
+      - Missing chunks can be created without storing notes, enhancing efficiency for first synchronisation or after prolonged periods without synchronisation.
+  - Improvements:
+    - File status scanning on the startup
+      - Quite significant performance improvements.
+      - No more missing scans of some files.
+    - Status in editor enhancements
+      - Significant performance improvements in the status display within the editor.
+      - Notifications for files that will not be synchronised will now be properly communicated.
+    - Encryption and Decryption
+      - These processes are now performed in background threads to ensure fast and stable transfers.
+    - Verify and repair all files
+      - Got faster through parallel checking.
+    - Migration on update
+      - Migration messages and wizards have become more helpful.
+  - Behavioural changes:
+    - Chunk size adjustments
+      - Large chunks will no longer be created for older, stable files, addressing storage consumption issues.
+    - Flag file automation
+      - Confirmation will be shown and we can cancel it.
   - Fixed:
-    - No longer batch-saving ignores editor inputs.
-    - The file-watching and serialisation processes have been changed to the one which is similar to previous implementations.
-    - We can configure the settings (Especially about text-boxes) even if we have configured the device name.
+    - Database File Scanning
+      - All files in the database will now be enumerated correctly.
+  - Miscellaneous
+    - Dependency updated.
+    - Now, tree shaking is left to terser, from esbuild.
+- 0.23.20:
+  - Fixed:
+    - Customisation Sync now checks the difference while storing or applying the configuration.
+      - No longer storing the same configuration multiple times.
+    - Time difference in the dialogue has been fixed.
+    - Remote Storage Limit Notification dialogue has been fixed, now the chosen value is saved.
   - Improved:
-    - We can configure the delay of batch-saving.
-      - Default: 5 seconds, the same as the previous hard-coded value. (Note: also, the previous behaviour was not correct).
-    - Also, we can configure the limit of delaying batch-saving.
-    - The performance of showing status indicators has been improved.
-
+    - The Enlarging button on the enlarging threshold dialogue now displays the new value.
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

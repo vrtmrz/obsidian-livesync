@@ -53,7 +53,7 @@
             canApply = true;
         } else {
             const dtDiff = (local?.mtime ?? 0) - (remote?.mtime ?? 0);
-            const diff = timeDeltaToHumanReadable(Math.abs(dtDiff / 1000));
+            const diff = timeDeltaToHumanReadable(Math.abs(dtDiff));
             if (dtDiff / 1000 < -10) {
                 // freshness = "✓ Newer";
                 freshness = `Newer (${diff})`;
