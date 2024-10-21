@@ -23,6 +23,19 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc5
+
+### Improved
+
+-   A note relating to device names has been added to Customisation Sync on the setting dialogue.
+-   Logs of Hidden File Sync and Customisation Sync have been prefixed with the respective feature names.
+
+### Fixed
+
+-   Hidden file sync is now working correctly.
+-   Customisation Sync is now working correctly together with hidden file sync
+-   No longer database suffix is stored in the setting sharing markdown.
+
 ## 0.24.0.dev-rc4
 
 ### Improved

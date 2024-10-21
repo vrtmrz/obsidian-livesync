@@ -5,7 +5,6 @@ import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, File
 import { CANCELLED, LEAVE_TO_SUBSEQUENT, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_SHINY } from "../../lib/src/common/types.ts";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../../common/types.ts";
 import { createBlob, createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, getDocDataAsArray, isDocContentSame, isLoadedEntry, isObjectDifferent } from "../../lib/src/common/utils.ts";
-import { Logger } from "../../lib/src/common/logger.ts";
 import { digestHash } from "../../lib/src/string_and_binary/hash.ts";
 import { arrayBufferToBase64, decodeBinary, readString } from '../../lib/src/string_and_binary/convert.ts';
 import { serialized, shareRunningResult } from "../../lib/src/concurrency/lock.ts";
@@ -419,12 +418,12 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     async $everyOnDatabaseInitialized(showNotice: boolean) {
         if (!this._isThisModuleEnabled()) return true;
         try {
-            Logger("Scanning customizations...");
+            this._log("Scanning customizations...");
             await this.scanAllConfigFiles(showNotice);
-            Logger("Scanning customizations : done");
+            this._log("Scanning customizations : done");
         } catch (ex) {
-            Logger("Scanning customizations : failed");
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log("Scanning customizations : failed");
+            this._log(ex, LOG_LEVEL_VERBOSE);
         }
         return true;
     }
@@ -477,7 +476,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 xFiles.push(work);
             }
             if (missingHash) {
-                Logger(`Digest created for ${path} to improve checking`, LOG_LEVEL_VERBOSE);
+                this._log(`Digest created for ${path} to improve checking`, LOG_LEVEL_VERBOSE);
                 wx.data = serialize(data);
                 fireAndForget(() => this.localDatabase.putDBEntry(createSavingEntryFromLoadedEntry(wx)));
             }
@@ -512,8 +511,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             return [];
 
         } catch (ex) {
-            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+            this._log(ex, LOG_LEVEL_VERBOSE);
         }
         return [];
     }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline();
@@ -536,8 +535,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             return [];
 
         } catch (ex) {
-            Logger(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+            this._log(ex, LOG_LEVEL_VERBOSE);
         }
         return [];
     }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline();
@@ -583,11 +582,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         if (!loaded) {
             const d = await this.localDatabase.getDBEntry(unifiedPathV2);
             if (!d) {
-                Logger(`The file ${unifiedPathV2} is not found`, LOG_LEVEL_VERBOSE);
+                this._log(`The file ${unifiedPathV2} is not found`, LOG_LEVEL_VERBOSE);
                 return false;
             }
             if (!isLoadedEntry(d)) {
-                Logger(`The file ${unifiedPathV2} is not a note`, LOG_LEVEL_VERBOSE);
+                this._log(`The file ${unifiedPathV2} is not a note`, LOG_LEVEL_VERBOSE);
                 return false;
             }
             loaded = d;
@@ -613,8 +612,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     this.pluginList.filter(e => e instanceof PluginDataExDisplayV2 && e.confKey == confKey).forEach(e => (e as PluginDataExDisplayV2).applyLoadedManifest());
                     pluginList.set(this.pluginList);
                 } catch (ex) {
-                    Logger(`The file ${loaded.path} seems to manifest, but could not be decoded as JSON`, LOG_LEVEL_VERBOSE);
-                    Logger(ex, LOG_LEVEL_VERBOSE);
+                    this._log(`The file ${loaded.path} seems to manifest, but could not be decoded as JSON`, LOG_LEVEL_VERBOSE);
+                    this._log(ex, LOG_LEVEL_VERBOSE);
                 }
                 this.loadedManifest_mTime.set(confKey, file.mtime);
             } else {
@@ -687,22 +686,22 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
     async migrateV1ToV2(showMessage: boolean, entry: AnyEntry): Promise<void> {
         const v1Path = entry.path;
-        Logger(`Migrating ${entry.path} to V2`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        this._log(`Migrating ${entry.path} to V2`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         if (entry.deleted) {
-            Logger(`The entry ${v1Path} is already deleted`, LOG_LEVEL_VERBOSE);
+            this._log(`The entry ${v1Path} is already deleted`, LOG_LEVEL_VERBOSE);
             return;
         }
         if (!v1Path.endsWith(".md") && !v1Path.startsWith(ICXHeader)) {
-            Logger(`The entry ${v1Path} is not a customisation sync binder`, LOG_LEVEL_VERBOSE);
+            this._log(`The entry ${v1Path} is not a customisation sync binder`, LOG_LEVEL_VERBOSE);
             return
         }
         if (v1Path.indexOf("%") !== -1) {
-            Logger(`The entry ${v1Path} is already migrated`, LOG_LEVEL_VERBOSE);
+            this._log(`The entry ${v1Path} is already migrated`, LOG_LEVEL_VERBOSE);
             return;
         }
         const loadedEntry = await this.localDatabase.getDBEntry(v1Path);
         if (!loadedEntry) {
-            Logger(`The entry ${v1Path} is not found`, LOG_LEVEL_VERBOSE);
+            this._log(`The entry ${v1Path} is not found`, LOG_LEVEL_VERBOSE);
             return;
         }
 
@@ -723,7 +722,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             const relativeFilename = f.filename.split("/").slice(deletePrefixCount).join("/");
             const v2Path = (prefixPath + relativeFilename) as FilePathWithPrefix;
             // console.warn(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`);
-            Logger(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
+            this._log(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
             const newId = await this.plugin.$$path2id(v2Path);
             // const buf = 
 
@@ -742,12 +741,12 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
             const r = await this.plugin.localDatabase.putDBEntry(saving);
             if (r && r.ok) {
-                Logger(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
+                this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
                 const delR = await this.deleteConfigOnDatabase(v1Path);
                 if (delR) {
-                    Logger(`Deleted ${v1Path} successfully`, LOG_LEVEL_INFO);
+                    this._log(`Deleted ${v1Path} successfully`, LOG_LEVEL_INFO);
                 } else {
-                    Logger(`Failed to delete ${v1Path}`, LOG_LEVEL_NOTICE);
+                    this._log(`Failed to delete ${v1Path}`, LOG_LEVEL_NOTICE);
                 }
             }
         }
@@ -802,9 +801,9 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         const fileA = await loadFile(dataA);
         const fileB = await loadFile(dataB);
-        Logger(`Comparing: ${dataA.documentPath} <-> ${dataB.documentPath}`, LOG_LEVEL_VERBOSE);
+        this._log(`Comparing: ${dataA.documentPath} <-> ${dataB.documentPath}`, LOG_LEVEL_VERBOSE);
         if (!fileA || !fileB) {
-            Logger(`Could not load ${dataA.name} for comparison: ${!fileA ? dataA.term : ""}${!fileB ? dataB.term : ""}`, LOG_LEVEL_NOTICE);
+            this._log(`Could not load ${dataA.name} for comparison: ${!fileA ? dataA.term : ""}${!fileB ? dataB.term : ""}`, LOG_LEVEL_NOTICE);
             return false;
         }
         let path = stripAllPrefixes(fileA.path.split("/").slice(-1).join("/") as FilePath); // TODO:adjust
@@ -813,15 +812,15 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         if (fileA.path.endsWith(".json")) {
             return serialized("config:merge-data", () => new Promise<boolean>((res) => {
-                Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
+                this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
                 // const docs = [docA, docB];
                 const modal = new JsonResolveModal(this.app, path, [fileA, fileB], async (keep, result) => {
                     if (result == null) return res(false);
                     try {
                         res(await this.applyData(dataA, result));
                     } catch (ex) {
-                        Logger("Could not apply merged file");
-                        Logger(ex, LOG_LEVEL_VERBOSE);
+                        this._log("Could not apply merged file");
+                        this._log(ex, LOG_LEVEL_VERBOSE);
                         res(false);
                     }
                 }, "Local", `${dataB.term}`, "B", true, true, "Difference between local and remote");
@@ -847,7 +846,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 right: { rev: "B", ...fileB, data: docBData },
                 diff: diff
             }
-            console.dir(diffResult);
+            // console.dir(diffResult);
             const d = new ConflictResolveModal(this.app, path, diffResult, true, dataB.term);
             d.open();
             const ret = await d.waitForResult();
@@ -866,7 +865,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             if (content) {
                 // const dt = createBlob(content);
                 const filename = data.files[0].filename;
-                Logger(`Applying ${filename} of ${data.displayName || data.name}..`);
+                this._log(`Applying ${filename} of ${data.displayName || data.name}..`);
                 const path = `${baseDir}/${filename}` as FilePath;
                 await this.plugin.storageAccess.ensureDir(path);
                 // If the content has applied, modified time will be updated to the current time.
@@ -879,7 +878,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     // If files have applied, modified time will be updated to the current time.
                     const stat = { mtime: f.mtime, ctime: f.ctime };
                     const path = `${baseDir}/${f.filename}` as FilePath;
-                    Logger(`Applying ${f.filename} of ${data.displayName || data.name}..`);
+                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
                     await this.plugin.storageAccess.ensureDir(path);
 
@@ -888,13 +887,13 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         try {
                             oldData = await this.plugin.storageAccess.readHiddenFileBinary(path);
                         } catch (ex) {
-                            Logger(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                             oldData = new ArrayBuffer(0);
                         }
                         const content = base64ToArrayBuffer(f.data);
                         if (await isDocContentSame(oldData, content)) {
-                            Logger(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
+                            this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
@@ -903,30 +902,30 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         try {
                             oldData = await this.plugin.storageAccess.readHiddenFileText(path);
                         } catch (ex) {
-                            Logger(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                             oldData = "";
                         }
                         const content = getDocData(f.data);
                         if (await isDocContentSame(oldData, content)) {
-                            Logger(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
+                            this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
-                    Logger(`Applied ${f.filename} of ${data.displayName || data.name}..`);
+                    this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
                     await this.storeCustomisationFileV2(path, this.plugin.deviceAndVaultName);
                 }
             }
         } catch (ex) {
-            Logger(`Applying ${data.displayName || data.name}.. Failed`, LOG_LEVEL_NOTICE);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Applying ${data.displayName || data.name}.. Failed`, LOG_LEVEL_NOTICE);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
         return true;
     }
     async applyData(data: IPluginDataExDisplay, content?: string): Promise<boolean> {
-        Logger(`Applying ${data.displayName || data.name
+        this._log(`Applying ${data.displayName || data.name
             }..`);
 
         if (data instanceof PluginDataExDisplayV2) {
@@ -941,7 +940,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
             const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
-                Logger(`Applying ${f.filename} of ${data.displayName || data.name}..`);
+                this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                 try {
                     // console.dir(f);
                     const path = `${baseDir}/${f.filename}`;
@@ -952,11 +951,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     } else {
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
                     }
-                    Logger(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
+                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
 
                 } catch (ex) {
-                    Logger(`Applying ${f.filename} of ${data.displayName || data.name}.. Failed`);
-                    Logger(ex, LOG_LEVEL_VERBOSE);
+                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Failed`);
+                    this._log(ex, LOG_LEVEL_VERBOSE);
                 }
 
             }
@@ -964,7 +963,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             await this.storeCustomizationFiles(uPath);
             await this.updatePluginList(true, uPath);
             await delay(100);
-            Logger(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
+            this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
                 //@ts-ignore
                 const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
@@ -972,20 +971,20 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
                 const pluginManifest = manifests.find((manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`);
                 if (pluginManifest) {
-                    Logger(`Unloading plugin: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
+                    this._log(`Unloading plugin: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
                     // @ts-ignore
                     await this.app.plugins.unloadPlugin(pluginManifest.id);
                     // @ts-ignore
                     await this.app.plugins.loadPlugin(pluginManifest.id);
-                    Logger(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
+                    this._log(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
                 }
             } else if (data.category == "CONFIG") {
                 this.plugin.$$askReload();
             }
             return true;
         } catch (ex) {
-            Logger(`Applying ${data.displayName || data.name}.. Failed`);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Applying ${data.displayName || data.name}.. Failed`);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
     }
@@ -1007,12 +1006,12 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 await Promise.allSettled(p);
                 // await this.deleteConfigOnDatabase(data.documentPath);
                 // await this.updatePluginList(false, data.documentPath);
-                Logger(`Deleted: ${data.category}/${data.name} of ${data.category} (${delList.length} items)`, LOG_LEVEL_NOTICE);
+                this._log(`Deleted: ${data.category}/${data.name} of ${data.category} (${delList.length} items)`, LOG_LEVEL_NOTICE);
             }
             return true;
         } catch (ex) {
-            Logger(`Failed to delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Failed to delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
 
         }
@@ -1096,13 +1095,13 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         displayName = `${json.name}`;
                     }
                 } catch (ex) {
-                    Logger(`Configuration sync data: ${path} looks like manifest, but could not read the version`, LOG_LEVEL_INFO);
-                    Logger(ex, LOG_LEVEL_VERBOSE);
+                    this._log(`Configuration sync data: ${path} looks like manifest, but could not read the version`, LOG_LEVEL_INFO);
+                    this._log(ex, LOG_LEVEL_VERBOSE);
                 }
             }
         } catch (ex) {
-            Logger(`The file ${path} could not be encoded`);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`The file ${path} could not be encoded`);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
         const mtime = stat.mtime;
@@ -1150,7 +1149,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     };
                 } else {
                     if (isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
-                        Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`, LOG_LEVEL_DEBUG);
+                        this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`, LOG_LEVEL_DEBUG);
                         return;
                     }
                     const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
@@ -1162,7 +1161,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     const oldContent = dataSrc.substring(dataStart + DUMMY_END.length);
                     const oldContentArray = base64ToArrayBuffer(oldContent);
                     if (await isDocContentSame(oldContentArray, content)) {
-                        Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`, LOG_LEVEL_VERBOSE);
+                        this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`, LOG_LEVEL_VERBOSE);
                         markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
                         return true;
                     }
@@ -1179,12 +1178,12 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
-                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
+                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
                 fireAndForget(() => this.updatePluginListV2(false, this.filenameWithUnifiedKey(path)));
                 return ret;
             } catch (ex) {
-                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         })
@@ -1192,7 +1191,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         const term = termOverRide || this.plugin.deviceAndVaultName;
         if (term == "") {
-            Logger("We have to configure the device name", LOG_LEVEL_NOTICE);
+            this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
             return;
         }
         if (this.useV2) {
@@ -1234,7 +1233,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target);
                 if (data == false) {
-                    Logger(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
+                    this._log(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
                     continue;
                 }
                 if (data.version) {
@@ -1249,9 +1248,9 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
             dt.mtime = mtime;
 
-            // Logger(`Configuration saving: ${prefixedFileName}`);
+            // this._log(`Configuration saving: ${prefixedFileName}`);
             if (dt.files.length == 0) {
-                Logger(`Nothing left: deleting.. ${path}`);
+                this._log(`Nothing left: deleting.. ${path}`);
                 await this.deleteConfigOnDatabase(prefixedFileName);
                 await this.updatePluginList(false, prefixedFileName);
                 return
@@ -1277,7 +1276,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     };
                 } else {
                     if (old.mtime == mtime) {
-                        // Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
+                        // this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
                     const oldC = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
@@ -1289,7 +1288,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                             }))
                             const isSame = (await Promise.all(diffs)).every(e => e == true);
                             if (isSame) {
-                                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
+                                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
                                 return true;
                             }
                         }
@@ -1308,25 +1307,24 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
                 await this.updatePluginList(false, saveData.path);
-                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
+                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
                 return ret;
             } catch (ex) {
-                Logger(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         })
-
     }
     async $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
         return await this.watchVaultRawEventsAsync(path);
     }
 
     async watchVaultRawEventsAsync(path: FilePath) {
-        if (!this._isMainReady) return true;
-        if (!this._isMainSuspended()) return true;
-        if (!this._isThisModuleEnabled()) return true;
-        if (!this.isTargetPath(path)) return false;
+        if (!this._isMainReady) return false;
+        if (this._isMainSuspended()) return false;
+        if (!this._isThisModuleEnabled()) return false;
+        // if (!this.isTargetPath(path)) return false;
         const stat = await this.plugin.storageAccess.statHidden(path);
         // Make sure that target is a file.
         if (stat && stat.type != "file")
@@ -1337,10 +1335,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY
         ).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
         if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
-            Logger(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
+            this._log(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
             // This file could be handled by the other module.
             return false;
         }
+        // this._log(`Customization file detected: ${path}`, LOG_LEVEL_VERBOSE);
         const storageMTime = ~~((stat && stat.mtime || 0) / 1000);
         const key = `${path}-${storageMTime}`;
         if (this.recentProcessedInternalFiles.contains(key)) {
@@ -1359,16 +1358,13 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return true;
     }
 
-
-
-
     async scanAllConfigFiles(showMessage: boolean) {
         await shareRunningResult("scanAllConfigFiles", async () => {
             const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-            Logger("Scanning customizing files.", logLevel, "scan-all-config");
+            this._log("Scanning customizing files.", logLevel, "scan-all-config");
             const term = this.plugin.deviceAndVaultName;
             if (term == "") {
-                Logger("We have to configure the device name", LOG_LEVEL_NOTICE);
+                this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
                 return;
             }
             const filesAll = await this.scanInternalFiles();
@@ -1396,8 +1392,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                                 await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
                             }
                         } catch (ex) {
-                            Logger(`scanAllConfigFiles - Error: ${item._id}`, LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log(`scanAllConfigFiles - Error: ${item._id}`, LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                         } finally {
                             releaser();
                         }
@@ -1412,8 +1408,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         try {
                             await this.storeCustomisationFileV2(filePath, term);
                         } catch (ex) {
-                            Logger(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                         }
                         finally {
                             releaser();
@@ -1430,7 +1426,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 for (const vp of virtualPathsOfLocalFiles) {
                     const p = files.find(e => e.key == vp)?.file;
                     if (!p) {
-                        Logger(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
+                        this._log(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
                         continue;
                     }
                     await this.storeCustomizationFiles(p);
@@ -1453,11 +1449,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;
                 if (old === false) {
-                    Logger(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted (Not found on database)`);
+                    this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted (Not found on database)`);
                     return true;
                 } else {
                     if (old.deleted) {
-                        Logger(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted`);
+                        this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted`);
                         return true;
                     }
                     saveData =
@@ -1472,11 +1468,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 }
                 await this.localDatabase.putRaw(saveData);
                 await this.updatePluginList(false, prefixedFileName);
-                Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
+                this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
                 return true;
             } catch (ex) {
-                Logger(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         });
@@ -1530,7 +1526,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
     $allSuspendExtraSync(): Promise<boolean> {
         if (this.plugin.settings.usePluginSync || this.plugin.settings.autoSweepPlugins) {
-            Logger("Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
+            this._log("Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
             this.plugin.settings.usePluginSync = false;
             this.plugin.settings.autoSweepPlugins = false;
         }
@@ -1590,8 +1586,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         try {
             w = await this.app.vault.adapter.list(path);
         } catch (ex) {
-            Logger(`Could not traverse(ConfigSync):${path}`, LOG_LEVEL_INFO);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Could not traverse(ConfigSync):${path}`, LOG_LEVEL_INFO);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
         let files = [

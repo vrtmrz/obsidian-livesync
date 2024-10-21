@@ -1,5 +1,6 @@
+import { Logger } from "octagonal-wheels/common/logger";
 import { getPath } from "../common/utils.ts";
-import { type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "../lib/src/common/types.ts";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type LOG_LEVEL } from "../lib/src/common/types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 
 
@@ -40,4 +41,12 @@ export abstract class LiveSyncCommands {
     _isDatabaseReady() {
         return this.plugin._isDatabaseReady();
     }
+
+    _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
+        if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
+            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
+        }
+        // console.log(msg);
+        Logger(msg, level, key);
+    };
 }

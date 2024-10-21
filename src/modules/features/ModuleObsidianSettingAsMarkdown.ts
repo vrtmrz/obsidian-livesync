@@ -162,6 +162,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
         delete saveData.encryptedPassphrase;
+        delete saveData.additionalSuffixOfDatabaseName;
         if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
             delete saveData.couchDB_USER;
             delete saveData.couchDB_PASSWORD;

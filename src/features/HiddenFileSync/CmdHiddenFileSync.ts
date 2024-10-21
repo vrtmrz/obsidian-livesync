@@ -1,9 +1,8 @@
 import { normalizePath, type PluginManifest, type ListedFiles } from "../../deps.ts";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID } from "../../lib/src/common/types.ts";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID, type UXStat, MODE_AUTOMATIC } from "../../lib/src/common/types.ts";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "../../common/types.ts";
 import { readAsBlob, isDocContentSame, sendSignal, readContent, createBlob, fireAndForget } from "../../lib/src/common/utils.ts";
-import { Logger } from "../../lib/src/common/logger.ts";
-import { getPath, isInternalMetadata, PeriodicProcessor } from "../../common/utils.ts";
+import { BASE_IS_NEW, compareMTime, EVEN, getPath, isInternalMetadata, isMarkedAsSameChanges, markChangesAreSame, PeriodicProcessor, TARGET_IS_NEW } from "../../common/utils.ts";
 import { serialized } from "../../lib/src/concurrency/lock.ts";
 import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "../LiveSyncCommands.ts";
@@ -41,12 +40,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
     async $everyOnDatabaseInitialized(showNotice: boolean) {
         if (this._isThisModuleEnabled()) {
             try {
-                Logger("Synchronizing hidden files...");
+                this._log("Synchronizing hidden files...");
                 await this.syncInternalFilesAndDatabase("push", showNotice);
-                Logger("Synchronizing hidden files done");
+                this._log("Synchronizing hidden files done");
             } catch (ex) {
-                Logger("Synchronizing hidden files failed");
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log("Synchronizing hidden files failed");
+                this._log(ex, LOG_LEVEL_VERBOSE);
             }
         }
         return true;
@@ -58,6 +57,13 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return true;
     }
 
+    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
+        this.ignorePatterns = ignorePatterns;
+        return Promise.resolve(true);
+    }
 
     async $everyOnResumeProcess(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
@@ -77,6 +83,10 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         if (!this.plugin.isReady)
             return Promise.resolve(true);
         this.periodicInternalFileScanProcessor.enable(this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
+        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
+            .replace(/\n| /g, "")
+            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
+        this.ignorePatterns = ignorePatterns;
         return Promise.resolve(true);
     }
 
@@ -85,56 +95,56 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
     }
     internalFileProcessor = new QueueProcessor<string, any>(
         async (filenames) => {
-            Logger(`START :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
+            this._log(`START :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
             await this.syncInternalFilesAndDatabase("pull", false, false, filenames);
-            Logger(`DONE  :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
+            this._log(`DONE  :Applying hidden ${filenames.length} files change`, LOG_LEVEL_VERBOSE);
             return;
         }, { batchSize: 100, concurrentLimit: 1, delay: 10, yieldThreshold: 100, suspended: false, totalRemainingReactiveSource: hiddenFilesEventCount }
     );
-
-    recentProcessedInternalFiles = [] as string[];
 
     async $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
         return await this.watchVaultRawEventsAsync(path);
     }
     async watchVaultRawEventsAsync(path: FilePath): Promise<boolean | undefined> {
+        if (!this._isMainReady) return false;
+        if (this._isMainSuspended()) return false;
         if (!this._isThisModuleEnabled()) return false;
-        if (!isInternalMetadata(path)) return false;
 
         // Exclude files handled by customization sync
         const configDir = normalizePath(this.app.vault.configDir);
-        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] : Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
+        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] :
+            Object.values(this.settings.pluginSyncExtendedSetting).
+                filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).
+                map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
         if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
-            Logger(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
+            this._log(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
             return false;
         }
+
         const stat = await this.plugin.storageAccess.statHidden(path);
         // sometimes folder is coming.
         if (stat != null && stat.type != "file") {
             return false;
         }
-        const mtime = stat == null ? 0 : stat?.mtime ?? 0;
-        const storageMTime = ~~((mtime) / 1000);
-        const key = `${path}-${storageMTime}`;
-        if (mtime != 0 && this.recentProcessedInternalFiles.contains(key)) {
-            //If recently processed, it may caused by self.
-            // Return true to prevent further processing.
+
+        if (this.isKnownChange(path, stat?.mtime ?? 0)) {
+            // This could be caused by self. so return true to prevent further processing.
             return true;
         }
-        this.recentProcessedInternalFiles = [key, ...this.recentProcessedInternalFiles].slice(0, 100);
-        // const id = await this.path2id(path, ICHeader);
+        const mtime = stat == null ? 0 : stat?.mtime ?? 0;
+        const storageMTime = ~~((mtime) / 1000);
+
         const prefixedFileName = addPrefix(path, ICHeader);
         const filesOnDB = await this.localDatabase.getDBEntryMeta(prefixedFileName);
         const dbMTime = ~~((filesOnDB && filesOnDB.mtime || 0) / 1000);
 
         // Skip unchanged file.
         if (dbMTime == storageMTime) {
-            // Logger(`STORAGE --> DB:${path}: (hidden) Nothing changed`);
+            // this._log(`STORAGE --> DB:${path}: (hidden) Nothing changed`);
             // Handled, but nothing changed. also return true to prevent further processing.
             return true;
         }
 
-        // Do not compare timestamp. Always local data should be preferred except this plugin wrote one.
         try {
             if (storageMTime == 0) {
                 await this.deleteInternalFileOnDatabase(path);
@@ -144,8 +154,8 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             // Surely processed.
             return true;
         } catch (ex) {
-            Logger(`Failed to process hidden file:${path}`);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Failed to process hidden file:${path}`);
+            this._log(ex, LOG_LEVEL_VERBOSE);
         }
         // Could not be processed. but it was own task. so return true to prevent further processing.
         return true;
@@ -164,8 +174,8 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 }
             }
         } catch (ex) {
-            Logger("something went wrong on resolving all conflicted internal files");
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log("something went wrong on resolving all conflicted internal files");
+            this._log(ex, LOG_LEVEL_VERBOSE);
         }
         await this.conflictResolutionProcessor.startPipeline().waitForAllProcessed();
     }
@@ -176,12 +186,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         // simply check modified time
         const mtimeCurrent = ("mtime" in currentDoc && currentDoc.mtime) || 0;
         const mtimeConflicted = ("mtime" in conflictedDoc && conflictedDoc.mtime) || 0;
-        // Logger(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
+        // this._log(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
         // console.log(`mtime:${mtimeA} - ${mtimeB}`);
         const delRev = mtimeCurrent < mtimeConflicted ? currentRev : conflictedRev;
         // delete older one.
         await this.localDatabase.removeRevision(id, delRev);
-        Logger(`Older one has been deleted:${path}`);
+        this._log(`Older one has been deleted:${path}`);
         const cc = await this.localDatabase.getRaw(id, { conflicts: true });
         if (cc._conflicts?.length === 0) {
             await this.extractInternalFileFromDatabase(stripAllPrefixes(path))
@@ -204,7 +214,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             if (doc._conflicts === undefined) return [];
             if (doc._conflicts.length == 0)
                 return [];
-            Logger(`Hidden file conflicted:${path}`);
+            this._log(`Hidden file conflicted:${path}`);
             const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
             const revA = doc._rev;
             const revB = conflicts[0];
@@ -217,7 +227,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 const commonBase = revFrom._revs_info?.filter(e => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo).first()?.rev ?? "";
                 const result = await this.plugin.localDatabase.mergeObject(path, commonBase, doc._rev, conflictedRev);
                 if (result) {
-                    Logger(`Object merge:${path}`, LOG_LEVEL_INFO);
+                    this._log(`Object merge:${path}`, LOG_LEVEL_INFO);
                     const filename = stripAllPrefixes(path);
                     const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(filename);
                     if (!isExists) {
@@ -234,7 +244,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     this.conflictResolutionProcessor.enqueue(path);
                     return [];
                 } else {
-                    Logger(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
+                    this._log(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                 }
                 return [{ path, revA, revB, id, doc }];
             }
@@ -242,8 +252,8 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             await this.resolveByNewerEntry(id, path, doc, revA, revB);
             return [];
         } catch (ex) {
-            Logger(`Failed to resolve conflict (Hidden): ${path}`);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Failed to resolve conflict (Hidden): ${path}`);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
     }, {
@@ -281,7 +291,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 this.procInternalFile(filename);
                 return true;
             } else {
-                Logger(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE);
+                this._log(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE);
                 return false;
             }
         }
@@ -291,30 +301,46 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         this.conflictResolutionProcessor.enqueue(path);
     }
 
+    knownChanges: { [key: string]: number; } = {};
+    markAsKnownChange(path: string, mtime: number) {
+        this.knownChanges[path] = mtime;
+    }
+    isKnownChange(path: string, mtime: number) {
+        return this.knownChanges[path] == mtime;
+    }
+    ignorePatterns: RegExp[] = [];
     //TODO: Tidy up. Even though it is experimental feature, So dirty...
-    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe" | "pullForce" | "pushForce", showMessage: boolean, filesAll: InternalFileInfo[] | false = false, targetFiles: string[] | false = false) {
+    async syncInternalFilesAndDatabase(direction: "push" | "pull" | "safe" | "pullForce" | "pushForce", showMessage: boolean, filesAll: InternalFileInfo[] | false = false, targetFilesSrc: string[] | false = false) {
+        const targetFiles = targetFilesSrc ? targetFilesSrc.map(e => stripAllPrefixes(e as FilePathWithPrefix)) : false;
+        // debugger;
         await this.resolveConflictOnInternalFiles();
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-        Logger("Scanning hidden files.", logLevel, "sync_internal");
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
+        this._log("Scanning hidden files.", logLevel, "sync_internal");
 
         const configDir = normalizePath(this.app.vault.configDir);
         let files: InternalFileInfo[] =
             filesAll ? filesAll : (await this.scanInternalFiles())
+        const allowedInHiddenFileSync = this.settings.usePluginSync ? Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_AUTOMATIC).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase()) : undefined;
+        if (allowedInHiddenFileSync) {
+            const systemOrNot = files.reduce((acc, cur) => {
+                if (cur.path.startsWith(configDir)) {
+                    acc.system.push(cur);
+                } else {
+                    acc.user.push(cur);
+                }
+                return acc;
+            }, { system: [] as InternalFileInfo[], user: [] as InternalFileInfo[] });
 
-        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] : Object.values(this.settings.pluginSyncExtendedSetting).filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
-        files = files.filter(file => synchronisedInConfigSync.every(filterFile => !file.path.toLowerCase().startsWith(filterFile)))
+            files =
+                [...systemOrNot.user,
+                ...systemOrNot.system.filter(file => allowedInHiddenFileSync.some(filterFile => file.path.toLowerCase().startsWith(filterFile)))];
+        }
 
         const filesOnDB = ((await this.localDatabase.allDocsRaw({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
         const allFileNamesSrc = [...new Set([...files.map(e => normalizePath(e.path)), ...filesOnDB.map(e => stripAllPrefixes(this.getPath(e)))])];
-        const allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1)).filter(path => synchronisedInConfigSync.every(filterFile => !path.toLowerCase().startsWith(filterFile)))
-        function compareMTime(a: number, b: number) {
-            const wa = ~~(a / 1000);
-            const wb = ~~(b / 1000);
-            const diff = wa - wb;
-            return diff;
+        let allFileNames = allFileNamesSrc.filter(filename => !targetFiles || (targetFiles && targetFiles.indexOf(filename) !== -1));
+        if (allowedInHiddenFileSync) {
+            allFileNames = allFileNames.filter(file => allowedInHiddenFileSync.some(filterFile => file.toLowerCase().startsWith(filterFile)));
         }
 
         const fileCount = allFileNames.length;
@@ -342,9 +368,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 c = pieces.shift();
             }
         };
-        // Cache update time information for files which have already been processed (mainly for files that were skipped due to the same content)
-        let caches: { [key: string]: { storageMtime: number; docMtime: number; }; } = {};
-        caches = await this.kvDB.get<{ [key: string]: { storageMtime: number; docMtime: number; }; }>("diff-caches-internal") || {};
+
         const filesMap = files.reduce((acc, cur) => {
             acc[cur.path] = cur;
             return acc;
@@ -357,10 +381,10 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             const filename = filenames[0];
             processed++;
             if (processed % 100 == 0) {
-                Logger(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
+                this._log(`Hidden file: ${processed}/${fileCount}`, logLevel, "sync_internal");
             }
             if (!filename) return [];
-            if (ignorePatterns.some(e => filename.match(e)))
+            if (this.ignorePatterns.some(e => filename.match(e)))
                 return [];
             if (await this.plugin.$$isIgnoredByIgnoreFiles(filename)) {
                 return [];
@@ -384,25 +408,24 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         fileOnDatabase: xFileOnDatabase
                     } = params[0];
                 if (xFileOnStorage && xFileOnDatabase) {
-                    const cache = filename in caches ? caches[filename] : { storageMtime: 0, docMtime: 0 };
                     // Both => Synchronize
-                    if ((direction != "pullForce" && direction != "pushForce") && xFileOnDatabase.mtime == cache.docMtime && xFileOnStorage.mtime == cache.storageMtime) {
+                    if ((direction != "pullForce" && direction != "pushForce") && isMarkedAsSameChanges(filename, [xFileOnDatabase.mtime, xFileOnStorage.mtime]) == EVEN) {
+                        this._log(`Hidden file skipped: ${filename} is marked as same`, LOG_LEVEL_VERBOSE);
                         return;
                     }
+
                     const nw = compareMTime(xFileOnStorage.mtime, xFileOnDatabase.mtime);
-                    if (nw > 0 || direction == "pushForce") {
-                        await this.storeInternalFileToDatabase(xFileOnStorage);
-                    }
-                    if (nw < 0 || direction == "pullForce") {
+                    if (nw == BASE_IS_NEW || direction == "pushForce") {
+                        if (await this.storeInternalFileToDatabase(xFileOnStorage) !== false) {
+                            // countUpdatedFolder(filename);
+                        }
+                    } else if (nw == TARGET_IS_NEW || direction == "pullForce") {
                         // skip if not extraction performed.
-                        if (!await this.extractInternalFileFromDatabase(filename))
-                            return;
+                        if (await this.extractInternalFileFromDatabase(filename))
+                            countUpdatedFolder(filename);
+                    } else {
+                        // Even, or not forced. skip.
                     }
-                    // If process successfully updated or file contents are same, update cache.
-                    cache.docMtime = xFileOnDatabase.mtime;
-                    cache.storageMtime = xFileOnStorage.mtime;
-                    caches[filename] = cache;
-                    countUpdatedFolder(filename);
                 } else if (!xFileOnStorage && xFileOnDatabase) {
                     if (direction == "push" || direction == "pushForce") {
                         if (xFileOnDatabase.deleted)
@@ -423,7 +446,9 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     if (direction == "push" || direction == "pushForce" || direction == "safe") {
                         await this.storeInternalFileToDatabase(xFileOnStorage);
                     } else {
-                        await this.extractInternalFileFromDatabase(xFileOnStorage.path);
+                        // if (await this.extractInternalFileFromDatabase(xFileOnStorage.path)) {
+                        //     countUpdatedFolder(xFileOnStorage.path);
+                        // }
                     }
                 } else {
                     throw new Error("Invalid state on hidden file sync");
@@ -434,8 +459,6 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             .root
             .enqueueAll(allFileNames)
             .startPipeline().waitForAllDoneAndTerminate();
-
-        await this.kvDB.set("diff-caches-internal", caches);
 
         // When files has been retrieved from the database. they must be reloaded.
         if ((direction == "pull" || direction == "pullForce") && filesChanged != 0) {
@@ -459,12 +482,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                                 anchor.text = "HERE";
                                 anchor.addEventListener("click", () => {
                                     fireAndForget(async () => {
-                                        Logger(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
+                                        this._log(`Unloading plugin: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
                                         // @ts-ignore
                                         await this.app.plugins.unloadPlugin(updatePluginId);
                                         // @ts-ignore
                                         await this.app.plugins.loadPlugin(updatePluginId);
-                                        Logger(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
+                                        this._log(`Plugin reloaded: ${updatePluginName}`, LOG_LEVEL_NOTICE, "plugin-reload-" + updatePluginId);
                                     });
                                 });
                             }
@@ -472,8 +495,8 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         }
                     }
                 } catch (ex) {
-                    Logger("Error on checking plugin status.");
-                    Logger(ex, LOG_LEVEL_VERBOSE);
+                    this._log("Error on checking plugin status.");
+                    this._log(ex, LOG_LEVEL_VERBOSE);
 
                 }
 
@@ -491,17 +514,19 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             }
         }
 
-        Logger(`Hidden files scanned: ${filesChanged} files had been modified`, logLevel, "sync_internal");
+        this._log(`Hidden files scanned: ${filesChanged} files had been modified`, logLevel, "sync_internal");
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo, forceWrite = false) {
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(file.path)) {
-            return
+        const storeFilePath = file.path;
+        const storageFilePath = file.path;
+        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+            return undefined;
         }
 
-        const id = await this.path2id(file.path, ICHeader);
-        const prefixedFileName = addPrefix(file.path, ICHeader);
-        const content = createBlob(await this.plugin.storageAccess.readHiddenFileAuto(file.path));
+        const id = await this.path2id(storeFilePath, ICHeader);
+        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
+        const content = createBlob(await this.plugin.storageAccess.readHiddenFileAuto(storageFilePath));
         const mtime = file.mtime;
         return await serialized("file-" + prefixedFileName, async () => {
             try {
@@ -523,8 +548,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     };
                 } else {
                     if (await isDocContentSame(readAsBlob(old), content) && !forceWrite) {
-                        // Logger(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
-                        return;
+                        // this._log(`STORAGE --> DB:${file.path}: (hidden) Not changed`, LOG_LEVEL_VERBOSE);
+                        const stat = await this.plugin.storageAccess.statHidden(storageFilePath);
+                        if (stat) {
+                            markChangesAreSame(storageFilePath, old.mtime, stat.mtime);
+                        }
+                        return undefined;
                     }
                     saveData =
                     {
@@ -539,24 +568,32 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
-                Logger(`STORAGE --> DB:${file.path}: (hidden) Done`);
-                return ret;
+                if (ret !== false) {
+                    this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Done`);
+                    return true;
+                } else {
+                    this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Failed`);
+                    return false;
+                }
             } catch (ex) {
-                Logger(`STORAGE --> DB:${file.path}: (hidden) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         });
     }
 
-    async deleteInternalFileOnDatabase(filename: FilePath, forceWrite = false) {
-        const id = await this.path2id(filename, ICHeader);
-        const prefixedFileName = addPrefix(filename, ICHeader);
+    async deleteInternalFileOnDatabase(filenameSrc: FilePath, forceWrite = false) {
+        const storeFilePath = filenameSrc;
+        const storageFilePath = filenameSrc;
+        const displayFileName = filenameSrc;
+        const id = await this.path2id(storeFilePath, ICHeader);
+        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
         const mtime = new Date().getTime();
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(filename)) {
-            return
+        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+            return undefined
         }
-        await serialized("file-" + prefixedFileName, async () => {
+        return await serialized("file-" + prefixedFileName, async () => {
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, true) as InternalFileEntry | false;
                 let saveData: InternalFileEntry;
@@ -578,12 +615,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     if (conflicts._conflicts !== undefined) {
                         for (const conflictRev of conflicts._conflicts) {
                             await this.localDatabase.removeRevision(old._id, conflictRev);
-                            Logger(`STORAGE -x> DB:${filename}: (hidden) conflict removed ${old._rev} =>  ${conflictRev}`, LOG_LEVEL_VERBOSE);
+                            this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) conflict removed ${old._rev} =>  ${conflictRev}`, LOG_LEVEL_VERBOSE);
                         }
                     }
                     if (old.deleted) {
-                        Logger(`STORAGE -x> DB:${filename}: (hidden) already deleted`);
-                        return;
+                        this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) already deleted`);
+                        return undefined;
                     }
                     saveData =
                     {
@@ -595,85 +632,104 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         type: "newnote",
                     };
                 }
-                await this.localDatabase.putRaw(saveData);
-                Logger(`STORAGE -x> DB:${filename}: (hidden) Done`);
+                const ret = await this.localDatabase.putRaw(saveData);
+                if (ret && ret.ok) {
+                    this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Done`);
+                    return true;
+                } else {
+                    this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
+                    return false;
+                }
             } catch (ex) {
-                Logger(`STORAGE -x> DB:${filename}: (hidden) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         });
     }
 
-    async extractInternalFileFromDatabase(filename: FilePath, force = false) {
-        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(filename);
-        const prefixedFileName = addPrefix(filename, ICHeader);
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(filename)) {
-            return;
+    async extractInternalFileFromDatabase(filenameSrc: FilePath, force = false) {
+        const storeFilePath = filenameSrc;
+        const storageFilePath = filenameSrc;
+        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(storageFilePath);
+        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
+        const displayFileName = `${storeFilePath}`;
+        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+            return undefined;
         }
         return await serialized("file-" + prefixedFileName, async () => {
             try {
                 // Check conflicted status 
                 const fileOnDB = await this.localDatabase.getDBEntry(prefixedFileName, { conflicts: true }, false, true, true);
                 if (fileOnDB === false)
-                    throw new Error(`File not found on database.:${filename}`);
+                    throw new Error(`File not found on database.:${displayFileName}`);
                 // Prevent overwrite for Prevent overwriting while some conflicted revision exists.
                 if (fileOnDB?._conflicts?.length) {
-                    Logger(`Hidden file ${filename} has conflicted revisions, to keep in safe, writing to storage has been prevented`, LOG_LEVEL_INFO);
-                    return;
+                    this._log(`Hidden file ${displayFileName} has conflicted revisions, to keep in safe, writing to storage has been prevented`, LOG_LEVEL_INFO);
+                    return false;
                 }
                 const deleted = fileOnDB.deleted || fileOnDB._deleted || false;
                 if (deleted) {
                     if (!isExists) {
-                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden) Deleted on DB, but the file is already not found on storage.`);
+                        this._log(`STORAGE <x- DB: ${displayFileName}: deleted (hidden) Deleted on DB, but the file is already not found on storage.`);
                     } else {
-                        Logger(`STORAGE <x- DB:${filename}: deleted (hidden).`);
-                        await this.plugin.storageAccess.removeHidden(filename);
+                        this._log(`STORAGE <x- DB: ${displayFileName}: deleted (hidden).`);
+                        await this.plugin.storageAccess.removeHidden(storageFilePath);
                         try {
                             // -- @ts-ignore internalAPI
                             // await this.app.vault.adapter.reconcileInternalFile(filename);
-                            await this.plugin.storageAccess.triggerHiddenFile(filename);
+                            await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
                         } catch (ex) {
-                            Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                         }
                     }
                     return true;
                 }
                 if (!isExists) {
-                    await this.plugin.storageAccess.ensureDir(filename);
-                    await this.plugin.storageAccess.writeHiddenFileAuto(filename, readContent(fileOnDB), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
+                    await this.plugin.storageAccess.ensureDir(storageFilePath);
+                    await this.plugin.storageAccess.writeHiddenFileAuto(storageFilePath, readContent(fileOnDB), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
                         //@ts-ignore internalAPI
                         await this.app.vault.adapter.reconcileInternalFile(filename);
                     } catch (ex) {
-                        Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-                        Logger(ex, LOG_LEVEL_VERBOSE);
+                        this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
                     }
-                    Logger(`STORAGE <-- DB:${filename}: written (hidden,new${force ? ", force" : ""})`);
+                    this._log(`STORAGE <-- DB: ${displayFileName}: written (hidden,new${force ? ", force" : ""})`);
                     return true;
                 } else {
-                    const content = await this.plugin.storageAccess.readHiddenFileAuto(filename);
+                    const content = await this.plugin.storageAccess.readHiddenFileAuto(storageFilePath);
                     const docContent = readContent(fileOnDB);
                     if (await isDocContentSame(content, docContent) && !force) {
-                        // Logger(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
-                        return true;
+                        // this._log(`STORAGE <-- DB:${filename}: skipped (hidden) Not changed`, LOG_LEVEL_VERBOSE);
+                        const stat = await this.plugin.storageAccess.statHidden(storageFilePath);
+                        if (stat) {
+                            markChangesAreSame(storageFilePath, fileOnDB.mtime, stat.mtime);
+                        }
+                        return undefined;
                     }
-                    await this.plugin.storageAccess.writeHiddenFileAuto(filename, docContent, { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
-                    try {
-                        // await this.app.vault.adapter.reconcileInternalFile(filename);
-                        await this.plugin.storageAccess.triggerHiddenFile(filename);
-                    } catch (ex) {
-                        Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-                        Logger(ex, LOG_LEVEL_VERBOSE);
-                    }
-                    Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""})`);
-                    return true;
+                    if (await this.plugin.storageAccess.writeHiddenFileAuto(storageFilePath, docContent, { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime })) {
+                        const stat = await this.plugin.storageAccess.statHidden(storageFilePath) as UXStat;
+                        this.markAsKnownChange(storageFilePath, stat.mtime);
+                        try {
+                            // await this.app.vault.adapter.reconcileInternalFile(filename);
+                            await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
+                        } catch (ex) {
+                            this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
+                        }
+                        this._log(`STORAGE <-- DB: ${displayFileName}: written (hidden, overwrite${force ? ", force" : ""})`);
 
+                        return true;
+                    } else {
+                        this._log(`STORAGE <-- DB: ${displayFileName}: written (hidden, overwrite${force ? ", force" : ""}) Failed`);
+                        return false;
+                    }
                 }
             } catch (ex) {
-                Logger(`STORAGE <-- DB:${filename}: written (hidden, overwrite${force ? ", force" : ""}) Failed`);
-                Logger(ex, LOG_LEVEL_VERBOSE);
+                this._log(`STORAGE <-- DB: ${displayFileName}: written (hidden, overwrite${force ? ", force" : ""}) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
         });
@@ -683,16 +739,20 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
 
     showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
         return new Promise((res) => {
-            Logger("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
+            this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             const docs = [docA, docB];
-            const path = stripAllPrefixes(docA.path);
-            const modal = new JsonResolveModal(this.app, path, [docA, docB], async (keep, result) => {
+            const strippedPath = stripAllPrefixes(docA.path);
+            const storageFilePath = strippedPath;
+            const storeFilePath = strippedPath;
+            const displayFilename = `${storeFilePath}`;
+            // const path = this.prefixedConfigDir2configDir(stripAllPrefixes(docA.path)) || docA.path;
+            const modal = new JsonResolveModal(this.app, storageFilePath, [docA, docB], async (keep, result) => {
                 // modal.close();
                 try {
-                    const filename = path;
+                    // const filename = storeFilePath;
                     let needFlush = false;
                     if (!result && !keep) {
-                        Logger(`Skipped merging: ${filename}`);
+                        this._log(`Skipped merging: ${displayFilename}`);
                         res(false);
                         return;
                     }
@@ -701,41 +761,44 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         for (const doc of docs) {
                             if (doc._rev != keep) {
                                 if (await this.localDatabase.deleteDBEntry(this.getPath(doc), { rev: doc._rev })) {
-                                    Logger(`Conflicted revision has been deleted: ${filename}`);
+                                    this._log(`Conflicted revision has been deleted: ${displayFilename}`);
                                     needFlush = true;
                                 }
                             }
                         }
                     }
                     if (!keep && result) {
-                        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(filename);
+                        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(storageFilePath);
                         if (!isExists) {
-                            await this.plugin.storageAccess.ensureDir(filename);
+                            await this.plugin.storageAccess.ensureDir(storageFilePath);
                         }
-                        await this.plugin.storageAccess.writeHiddenFileAuto(filename, result);
-                        const stat = await this.plugin.storageAccess.statHidden(filename);
+                        await this.plugin.storageAccess.writeHiddenFileAuto(storageFilePath, result);
+                        const stat = await this.plugin.storageAccess.statHidden(storageFilePath);
                         if (!stat) {
                             throw new Error("Stat failed");
                         }
                         const mtime = stat?.mtime ?? 0;
-                        await this.storeInternalFileToDatabase({ path: filename, mtime, ctime: stat?.ctime ?? mtime, size: stat?.size ?? 0 }, true);
+                        await this.storeInternalFileToDatabase({ path: storageFilePath, mtime, ctime: stat?.ctime ?? mtime, size: stat?.size ?? 0 }, true);
                         try {
                             //@ts-ignore internalAPI
-                            await this.app.vault.adapter.reconcileInternalFile(filename);
+                            await this.app.vault.adapter.reconcileInternalFile(storageFilePath);
                         } catch (ex) {
-                            Logger("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-                            Logger(ex, LOG_LEVEL_VERBOSE);
+                            this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
+                            this._log(ex, LOG_LEVEL_VERBOSE);
                         }
-                        Logger(`STORAGE <-- DB:${filename}: written (hidden,merged)`);
+                        this._log(`STORAGE <-- DB:${displayFilename}: written (hidden,merged)`);
                     }
                     if (needFlush) {
-                        await this.extractInternalFileFromDatabase(filename, false);
-                        Logger(`STORAGE --> DB:${filename}: extracted (hidden,merged)`);
+                        if (await this.extractInternalFileFromDatabase(storeFilePath, false)) {
+                            this._log(`STORAGE --> DB:${displayFilename}: extracted (hidden,merged)`);
+                        } else {
+                            this._log(`STORAGE --> DB:${displayFilename}: extracted (hidden,merged) Failed`);
+                        }
                     }
                     res(true);
                 } catch (ex) {
-                    Logger("Could not merge conflicted json");
-                    Logger(ex, LOG_LEVEL_VERBOSE);
+                    this._log("Could not merge conflicted json");
+                    this._log(ex, LOG_LEVEL_VERBOSE);
                     res(false);
                 }
             });
@@ -789,7 +852,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
 
     $allSuspendExtraSync(): Promise<boolean> {
         if (this.plugin.settings.syncInternalFiles) {
-            Logger("Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
+            this._log("Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
             this.plugin.settings.syncInternalFiles = false;
         }
         return Promise.resolve(true);
@@ -810,7 +873,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
             await this.plugin.saveSettings();
             return;
         }
-        Logger("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
+        this._log("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
         if (mode == "FETCH") {
             await this.syncInternalFilesAndDatabase("pullForce", true);
         } else if (mode == "OVERWRITE") {
@@ -821,7 +884,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         this.plugin.settings.useAdvancedMode = true;
         this.plugin.settings.syncInternalFiles = true;
         await this.plugin.saveSettings();
-        Logger(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
+        this._log(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
 
     }
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
@@ -869,8 +932,8 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         try {
             w = await this.app.vault.adapter.list(path);
         } catch (ex) {
-            Logger(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
-            Logger(ex, LOG_LEVEL_VERBOSE);
+            this._log(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
+            this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
         const filesSrc = [

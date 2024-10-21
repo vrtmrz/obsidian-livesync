@@ -1727,6 +1727,17 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 const enableOnlyOnPluginSyncIsNotEnabled = enableOnly(() => this.isConfiguredAs("usePluginSync", false));
                 const visibleOnlyOnPluginSyncEnabled = visibleOnly(() => this.isConfiguredAs("usePluginSync", true));
 
+                this.createEl(paneEl, "div", {
+                    text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
+                    cls: "op-warn"
+                }, c => {
+                }, visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", "")));
+                this.createEl(paneEl, "div", {
+                    text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
+                    cls: "op-warn-info"
+                }, c => {
+                }, visibleOnly(() => this.isConfiguredAs("usePluginSync", true)));
+
                 new Setting(paneEl)
                     .autoWireText("deviceAndVaultName", {
                         placeHolder: "desktop", onUpdate: enableOnlyOnPluginSyncIsNotEnabled
