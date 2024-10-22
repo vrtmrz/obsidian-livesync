@@ -23,6 +23,13 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc6
+
+### Fixed
+
+-   We can resolve the conflict of the JSON file correctly now.
+-   This would be the final Release Candidate.
+
 ## 0.24.0.dev-rc5
 
 ### Improved

@@ -32,9 +32,12 @@ export class JsonResolveModal extends Modal {
         this.hideLocal = hideLocal ?? false;
         void waitForSignal(`cancel-internal-conflict:${filename}`).then(() => this.close());
     }
+
     async UICallback(keepRev?: string, mergedStr?: string) {
+        if (this.callback) {
+            await this.callback(keepRev, mergedStr);
+        }
         this.close();
-        await this.callback?.(keepRev, mergedStr);
         this.callback = undefined;
     }
 
