@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, MarkdownRenderer, stringifyYaml } from "../../../deps.ts";
 import {
-    DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, PREFERRED_JOURNAL_SYNC, FLAGMD_REDFLAG, type ConfigLevel, LEVEL_POWER_USER, LEVEL_ADVANCED, LEVEL_EDGE_CASE, type MetaEntry, type FilePath
+    DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, type ConfigPassphraseStore, type RemoteDBSettings, type FilePathWithPrefix, type HashAlgorithm, type DocumentID, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_INFO, type LoadedEntry, PREFERRED_SETTING_CLOUDANT, PREFERRED_SETTING_SELF_HOSTED, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, REMOTE_COUCHDB, REMOTE_MINIO, PREFERRED_JOURNAL_SYNC, FLAGMD_REDFLAG, type ConfigLevel, LEVEL_POWER_USER, LEVEL_ADVANCED, LEVEL_EDGE_CASE, type MetaEntry, type FilePath,
 } from "../../../lib/src/common/types.ts";
 import { createBlob, delay, isDocContentSame, isObjectDifferent, readAsBlob, sizeToHumanReadable } from "../../../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
@@ -9,8 +9,8 @@ import { balanceChunkPurgedDBs, checkSyncInfo, isCloudantURI, purgeUnreferencedC
 import { testCrypt } from "../../../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import { getPath, requestToCouchDB, scheduleTask } from "../../../common/utils.ts";
-import { request, TFile } from "obsidian";
-import { shouldBeIgnored } from "../../../lib/src/string_and_binary/path.ts";
+import { request } from "obsidian";
+import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
 import MultipleRegExpControl from './MultipleRegExpControl.svelte';
 import { LiveSyncCouchDBReplicator } from "../../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 import { type AllSettingItemKey, type AllStringItemKey, type AllNumericItemKey, type AllBooleanItemKey, type AllSettings, OnDialogSettingsDefault, type OnDialogSettings, getConfName } from "./settingConstants.ts";
@@ -23,6 +23,8 @@ import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, EVENT_REQUEST_OPEN_SETUP_URI, EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_REQUEST_SHOW_HISTORY, eventHub } from "../../../common/events.ts";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
+import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
+import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 
 export type OnUpdateResult = {
     visibility?: boolean,
@@ -1867,11 +1869,12 @@ ${stringifyYaml(pluginConfig)}`;
 
             void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
 
-                const addResult = (path: string, file: TFile | false, fileOnDB: LoadedEntry | false) => {
+                const addResult = async (path: string, file: FilePathWithPrefix | false, fileOnDB: LoadedEntry | false) => {
+                    const storageFileStat = file ? await this.plugin.storageAccess.statHidden(file) : null;
                     resultArea.appendChild(this.createEl(resultArea, "div", {}, el => {
                         el.appendChild(this.createEl(el, "h6", { text: path }));
                         el.appendChild(this.createEl(el, "div", {}, infoGroupEl => {
-                            infoGroupEl.appendChild(this.createEl(infoGroupEl, "div", { text: `Storage : Modified: ${!file ? `Missing:` : `${new Date(file.stat.mtime).toLocaleString()}, Size:${file.stat.size}`}` }))
+                            infoGroupEl.appendChild(this.createEl(infoGroupEl, "div", { text: `Storage : Modified: ${!storageFileStat ? `Missing:` : `${new Date(storageFileStat.mtime).toLocaleString()}, Size:${storageFileStat.size}`}` }))
                             infoGroupEl.appendChild(this.createEl(infoGroupEl, "div", { text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size}`}` }))
                         }));
                         if (fileOnDB && file) {
@@ -1886,20 +1889,24 @@ ${stringifyYaml(pluginConfig)}`;
                         if (file) {
                             el.appendChild(this.createEl(el, "button", { text: "Storage -> Database" }, buttonEl => {
                                 buttonEl.onClickEvent(async () => {
-                                    // const file = this.plugin.storageAccess.getFileStub(path);
-                                    // if (!file) {
-                                    //     Logger(`File not found: ${path}`, LOG_LEVEL_NOTICE);
-                                    //     return;
-                                    // }
-                                    // const content = await this.plugin.storageAccess.readStubContent(file);
-                                    // if (!content) {
-                                    //     Logger(`Content cannot be read: ${path}`, LOG_LEVEL_NOTICE);
-                                    //     return;
-                                    // }
-                                    // this.plugin.databaseFileAccess.store(content, true);
-                                    if (!await this.plugin.fileHandler.storeFileToDB(file.path as FilePath, true)) {
-                                        Logger(`Failed to store the file to the database: ${file.path}`, LOG_LEVEL_NOTICE);
-                                        return;
+                                    if (file.startsWith(".")) {
+                                        const addOn = this.plugin.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+                                        if (addOn) {
+                                            const file = (await addOn.scanInternalFiles()).find(e => e.path == path);
+                                            if (!file) {
+                                                Logger(`Failed to find the file in the internal files: ${path}`, LOG_LEVEL_NOTICE);
+                                                return;
+                                            }
+                                            if (!await addOn.storeInternalFileToDatabase(file, true)) {
+                                                Logger(`Failed to store the file to the database (Hidden file): ${file}`, LOG_LEVEL_NOTICE);
+                                                return;
+                                            }
+                                        }
+                                    } else {
+                                        if (!await this.plugin.fileHandler.storeFileToDB(file as FilePath, true)) {
+                                            Logger(`Failed to store the file to the database: ${file}`, LOG_LEVEL_NOTICE);
+                                            return;
+                                        }
                                     }
                                     el.remove();
                                 })
@@ -1908,10 +1915,20 @@ ${stringifyYaml(pluginConfig)}`;
                         if (fileOnDB) {
                             el.appendChild(this.createEl(el, "button", { text: "Database -> Storage" }, buttonEl => {
                                 buttonEl.onClickEvent(async () => {
-                                    // this.plugin.pullFile(this.plugin.getPath(fileOnDB), undefined, true, undefined, false);
-                                    if (!await this.plugin.fileHandler.dbToStorage(fileOnDB as MetaEntry, null, true)) {
-                                        Logger(`Failed to store the file to the storage: ${fileOnDB.path}`, LOG_LEVEL_NOTICE);
-                                        return;
+                                    if (fileOnDB.path.startsWith(ICHeader)) {
+                                        const addOn = this.plugin.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+                                        if (addOn) {
+                                            if (!await addOn.extractInternalFileFromDatabase(path as FilePath, true)) {
+                                                Logger(`Failed to store the file to the database (Hidden file): ${file}`, LOG_LEVEL_NOTICE);
+                                                return;
+                                            }
+                                        }
+
+                                    } else {
+                                        if (!await this.plugin.fileHandler.dbToStorage(fileOnDB as MetaEntry, null, true)) {
+                                            Logger(`Failed to store the file to the storage: ${fileOnDB.path}`, LOG_LEVEL_NOTICE);
+                                            return;
+                                        }
                                     }
                                     el.remove();
                                 })
@@ -1921,14 +1938,14 @@ ${stringifyYaml(pluginConfig)}`;
                     }))
                 }
 
-                const checkBetweenStorageAndDatabase = async (file: TFile, fileOnDB: LoadedEntry) => {
+                const checkBetweenStorageAndDatabase = async (file: FilePathWithPrefix, fileOnDB: LoadedEntry) => {
                     const dataContent = readAsBlob(fileOnDB);
-                    const content = createBlob(await this.plugin.storageAccess.readFileAuto(file.path))
+                    const content = createBlob(await this.plugin.storageAccess.readHiddenFileBinary(file))
                     if (await isDocContentSame(content, dataContent)) {
-                        Logger(`Compare: SAME: ${file.path}`)
+                        Logger(`Compare: SAME: ${file}`)
                     } else {
-                        Logger(`Compare: CONTENT IS NOT MATCHED! ${file.path}`, LOG_LEVEL_NOTICE);
-                        addResult(file.path, file, fileOnDB)
+                        Logger(`Compare: CONTENT IS NOT MATCHED! ${file}`, LOG_LEVEL_NOTICE);
+                        void addResult(file, file, fileOnDB)
                     }
                 }
                 new Setting(paneEl)
@@ -1956,17 +1973,26 @@ ${stringifyYaml(pluginConfig)}`;
                         .setDisabled(false)
                         .setCta()
                         .onClick(async () => {
+                            Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
+                            const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns
+                                .replace(/\n| /g, "")
+                                .split(",").filter(e => e).map(e => new RegExp(e, "i"));
                             this.plugin.localDatabase.hashCaches.clear();
                             Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                            const files = this.app.vault.getFiles();
-                            const documents = [] as FilePathWithPrefix[];
+                            const files = await this.plugin.storageAccess.getFilesIncludeHidden("/", undefined, ignorePatterns)
+                            const documents = [] as FilePath[];
 
-                            const adn = this.plugin.localDatabase.findAllNormalDocs()
-                            for await (const i of adn) documents.push(getPath(i));
+                            const adn = this.plugin.localDatabase.findAllDocs()
+                            for await (const i of adn) {
+                                const path = getPath(i);
+                                if (path.startsWith(ICXHeader)) continue;
+                                if (path.startsWith(PSCHeader)) continue;
+                                documents.push(stripAllPrefixes(path));
+                            }
                             const allPaths = [
                                 ...new Set([
                                     ...documents,
-                                    ...files.map(e => e.path as FilePathWithPrefix)])];
+                                    ...files])];
                             let i = 0;
                             const incProc = () => {
                                 i++;
@@ -1978,27 +2004,29 @@ ${stringifyYaml(pluginConfig)}`;
                                     if (shouldBeIgnored(path)) {
                                         return incProc();
                                     }
-                                    const abstractFile = this.plugin.storageAccess.getFileStub(path);
-                                    const fileOnStorage = abstractFile instanceof TFile ? abstractFile : false;
+                                    const stat = await this.plugin.storageAccess.isExistsIncludeHidden(path) ? await this.plugin.storageAccess.statHidden(path) : false;
+                                    const fileOnStorage = stat != null ? stat : false;
                                     if (!await this.plugin.$$isTargetFile(path)) return incProc();
                                     const releaser = await semaphore.acquire(1)
-                                    if (fileOnStorage && this.plugin.$$isFileSizeExceeded(fileOnStorage.stat.size)) return incProc();
+                                    if (fileOnStorage && this.plugin.$$isFileSizeExceeded(fileOnStorage.size)) return incProc();
                                     try {
-                                        const fileOnDB = await this.plugin.localDatabase.getDBEntry(path);
+                                        const isHiddenFile = path.startsWith(".");
+                                        const dbPath = isHiddenFile ? addPrefix(path, ICHeader) : path;
+                                        const fileOnDB = await this.plugin.localDatabase.getDBEntry(dbPath);
                                         if (fileOnDB && this.plugin.$$isFileSizeExceeded(fileOnDB.size)) return incProc();
 
                                         if (!fileOnDB && fileOnStorage) {
                                             Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
-                                            addResult(path, fileOnStorage, false)
+                                            void addResult(path, path, false)
                                             return incProc();
                                         }
                                         if (fileOnDB && !fileOnStorage) {
                                             Logger(`Compare: Not found on the storage: ${path}`, LOG_LEVEL_NOTICE);
-                                            addResult(path, false, fileOnDB)
+                                            void addResult(path, false, fileOnDB)
                                             return incProc();
                                         }
                                         if (fileOnStorage && fileOnDB) {
-                                            await checkBetweenStorageAndDatabase(fileOnStorage, fileOnDB)
+                                            await checkBetweenStorageAndDatabase(path, fileOnDB)
                                         }
                                     } catch (ex) {
                                         Logger(`Error while processing ${path}`, LOG_LEVEL_NOTICE);

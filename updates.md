@@ -23,6 +23,16 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc7
+
+### Fixed
+
+-   Verifying files between the local database and storage is now working correctly.
+
+### New Features
+
+-   We can verify and resolve also the hidden files now.
+
 ## 0.24.0.dev-rc6
 
 ### Fixed
