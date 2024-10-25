@@ -407,7 +407,8 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         fileOnStorage: xFileOnStorage,
                         fileOnDatabase: xFileOnDatabase
                     } = params[0];
-                if (xFileOnStorage && xFileOnDatabase) {
+                const xFileOnDatabaseExists = xFileOnDatabase !== undefined && !(xFileOnDatabase.deleted || xFileOnDatabase._deleted);
+                if (xFileOnStorage && xFileOnDatabaseExists) {
                     // Both => Synchronize
                     if ((direction != "pullForce" && direction != "pushForce") && isMarkedAsSameChanges(filename, [xFileOnDatabase.mtime, xFileOnStorage.mtime]) == EVEN) {
                         this._log(`Hidden file skipped: ${filename} is marked as same`, LOG_LEVEL_VERBOSE);
@@ -426,7 +427,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     } else {
                         // Even, or not forced. skip.
                     }
-                } else if (!xFileOnStorage && xFileOnDatabase) {
+                } else if (!xFileOnStorage && xFileOnDatabaseExists) {
                     if (direction == "push" || direction == "pushForce") {
                         if (xFileOnDatabase.deleted)
                             return;
@@ -442,13 +443,14 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                             countUpdatedFolder(filename);
                         }
                     }
-                } else if (xFileOnStorage && !xFileOnDatabase) {
+                } else if (xFileOnStorage && !xFileOnDatabaseExists) {
                     if (direction == "push" || direction == "pushForce" || direction == "safe") {
                         await this.storeInternalFileToDatabase(xFileOnStorage);
                     } else {
-                        // if (await this.extractInternalFileFromDatabase(xFileOnStorage.path)) {
-                        //     countUpdatedFolder(xFileOnStorage.path);
-                        // }
+                        // Apply the deletion
+                        if (await this.extractInternalFileFromDatabase(xFileOnStorage.path)) {
+                            countUpdatedFolder(xFileOnStorage.path);
+                        }
                     }
                 } else {
                     throw new Error("Invalid state on hidden file sync");
@@ -676,8 +678,6 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         this._log(`STORAGE <x- DB: ${displayFileName}: deleted (hidden).`);
                         await this.plugin.storageAccess.removeHidden(storageFilePath);
                         try {
-                            // -- @ts-ignore internalAPI
-                            // await this.app.vault.adapter.reconcileInternalFile(filename);
                             await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
                         } catch (ex) {
                             this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
@@ -690,8 +690,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                     await this.plugin.storageAccess.ensureDir(storageFilePath);
                     await this.plugin.storageAccess.writeHiddenFileAuto(storageFilePath, readContent(fileOnDB), { mtime: fileOnDB.mtime, ctime: fileOnDB.ctime });
                     try {
-                        //@ts-ignore internalAPI
-                        await this.app.vault.adapter.reconcileInternalFile(filename);
+                        await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
                     } catch (ex) {
                         this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
                         this._log(ex, LOG_LEVEL_VERBOSE);

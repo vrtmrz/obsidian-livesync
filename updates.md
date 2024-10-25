@@ -23,6 +23,12 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.0.dev-rc8
+
+### Fixed
+
+-   Now the deletion of hidden files are correctly synchronised.
+
 ## 0.24.0.dev-rc7
 
 ### Fixed
