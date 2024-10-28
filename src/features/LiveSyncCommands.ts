@@ -1,5 +1,6 @@
-import { type AnyEntry, type DocumentID, type EntryDoc, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "../lib/src/common/types.ts";
-import { PouchDB } from "../lib/src/pouchdb/pouchdb-browser.js";
+import { Logger } from "octagonal-wheels/common/logger";
+import { getPath } from "../common/utils.ts";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type LOG_LEVEL } from "../lib/src/common/types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 
 
@@ -14,17 +15,15 @@ export abstract class LiveSyncCommands {
     get localDatabase() {
         return this.plugin.localDatabase;
     }
-    get vaultAccess() {
-        return this.plugin.vaultAccess;
-    }
+
     id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
-        return this.plugin.id2path(id, entry, stripPrefix);
+        return this.plugin.$$id2path(id, entry, stripPrefix);
     }
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        return await this.plugin.path2id(filename, prefix);
+        return await this.plugin.$$path2id(filename, prefix);
     }
     getPath(entry: AnyEntry): FilePathWithPrefix {
-        return this.plugin.getPath(entry);
+        return getPath(entry);
     }
 
     constructor(plugin: ObsidianLiveSyncPlugin) {
@@ -32,9 +31,22 @@ export abstract class LiveSyncCommands {
     }
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;
-    abstract onInitializeDatabase(showNotice: boolean): void | Promise<void>;
-    abstract beforeReplicate(showNotice: boolean): void | Promise<void>;
-    abstract onResume(): void | Promise<void>;
-    abstract parseReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>): Promise<boolean> | boolean;
-    abstract realizeSettingSyncMode(): Promise<void>;
+
+    _isMainReady() {
+        return this.plugin._isMainReady();
+    }
+    _isMainSuspended() {
+        return this.plugin._isMainSuspended();
+    }
+    _isDatabaseReady() {
+        return this.plugin._isDatabaseReady();
+    }
+
+    _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
+        if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
+            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
+        }
+        // console.log(msg);
+        Logger(msg, level, key);
+    };
 }

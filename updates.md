@@ -1,97 +1,123 @@
-### 0.23.0
-Incredibly new features!
+## 0.24.0 RC Release Note
 
-Now, we can use object storage (MinIO, S3, R2 or anything you like) for synchronising! Moreover, despite that, we can use all the features as if we were using CouchDB.
-Note: As this is a pretty experimental feature, hence we have some limitations.
-- This is built on the append-only architecture. It will not shrink used storage if we do not perform a rebuild.
-- A bit fragile. However, our version x.yy.0 is always so.
-- When the first synchronisation, the entire history to date is transferred. For this reason, it is preferable to do this under the WiFi network.
-- Do not worry, from the second synchronisation, we always transfer only differences.
+**Note:** This will be rewritten with the stable release. I confess, before you take the time, this is quite long.
 
-I hope this feature empowers users to maintain independence and self-host their data, offering an alternative for those who prefer to manage their own storage solutions and avoid being stuck on the right side of a sudden change in business model.
+Over the past three years since the inception of the plugin, various features have been implemented to address diverse user needs. This is so honourable and I am grateful for your years of support.
+However, However, this process has resulted in a codebase that has become increasingly disorganised, with features becoming entangled.
 
-Of course, I use Self-hosted MinIO for testing and recommend this. It is for the same reason as using CouchDB. -- open, controllable, auditable and indeed already audited by numerous eyes.
+Consequently, this has led to a situation where bugs can go unnoticed or resolving one issue may inadvertently introduce another.
 
-Let me write one more acknowledgement.
+In 0.24.0, I reorganised the previously disjointed main codebase into clearly defined modules. Although I anticipated that the overall volume of code would not increase, I discovered that it has, in fact, expanded. While the complexity may still be considerable, the refactoring has enhanced clarity regarding the current structure of the code. (The next focus may involve a review of dependencies).
 
-I have a lot of respect for that plugin, even though it is sometimes treated as if it is a competitor, remotely-save. I think it is a great architecture that embodies a different approach to my approach of recreating history. This time, with all due respect, I have used some of its code as a reference.
-Hooray for open source, and generous licences, and the sharing of knowledge by experts.
+Throughout this process, a significant number of bugs have been resolved. And it may be worth mentioning that these bugs may had given rise to other bugs. I kindly request that you verify whether your issues have been addressed. At least conflict resolution and related issues have improved significantly.
 
-#### Version history
-- 0.23.23:
-  - Refined:
-    - Setting dialogue very slightly refined.
-      - The hodgepodge inside the `Hatch` pane has been sorted into more explicit categorised panes.
-        - Now we have new panes for:
-          - `Selector`
-          - `Advanced`
-          - `Power users`
-          - `Patches (Edge case)`
-      - Applying the settings will now be more informative.
-        - The header bar will be shown for applying the settings which needs a database rebuild.
-        - Applying methods are now more clearly navigated.
-      - Definitely, drastic change. I hope this will be more user-friendly. However, if you notice any issues, please let me know. I hope that nothing missed.
-  - New features:
-    - Word-segmented chunk building on users language
-      - Chunks can now be built with word-segmented data, enhancing efficiency for markdown files which contains the multiple sentences in a single line.
-      - This feature is enabled by default through `Use Segmented-splitter`. 
-        - (Default: Disabled, Please be relived, I have learnt).
-  - Fixed:
-    - Sending chunks on `Send chunk in bulk` are now buffered to avoid the out-of-memory error.
-    - `Send chunk in bulk` is back to default disabled. (Sorry, not applied to the migrated users; I did not think we should deepen the wound any further "automatically").
-    - Merging conflicts of JSON files are now works fine even if it contains `null`.
-  - Development:
-    - Implemented the logic for automatically generating the stub of document for the setting dialogue.
-- 0.23.22:
-  - Fixed:
-    - Case-insensitive file handling
-      - Full-lower-case files are no longer created during database checking.
-    - Bulk chunk transfer
-      - The default value will automatically adjust to an acceptable size when using IBM Cloudant.
-- 0.23.21:
-  - New Features:
-    - Case-insensitive file handling
-      - Files can now be handled case-insensitively.
-      - This behaviour can be modified in the settings under `Handle files as Case-Sensitive` (Default: Prompt, Enabled for previous behaviour).
-    - Improved chunk revision fixing
-        - Revisions for chunks can now be fixed for faster chunk creation.
-        - This can be adjusted in the settings under `Compute revisions for chunks` (Default: Prompt, Enabled for previous behaviour).
-    - Bulk chunk transfer
-      - Chunks can now be transferred in bulk during uploads.
-      - This feature is enabled by default through `Send chunks in bulk`.
-    - Creation of missing chunks without
-      - Missing chunks can be created without storing notes, enhancing efficiency for first synchronisation or after prolonged periods without synchronisation.
-  - Improvements:
-    - File status scanning on the startup
-      - Quite significant performance improvements.
-      - No more missing scans of some files.
-    - Status in editor enhancements
-      - Significant performance improvements in the status display within the editor.
-      - Notifications for files that will not be synchronised will now be properly communicated.
-    - Encryption and Decryption
-      - These processes are now performed in background threads to ensure fast and stable transfers.
-    - Verify and repair all files
-      - Got faster through parallel checking.
-    - Migration on update
-      - Migration messages and wizards have become more helpful.
-  - Behavioural changes:
-    - Chunk size adjustments
-      - Large chunks will no longer be created for older, stable files, addressing storage consumption issues.
-    - Flag file automation
-      - Confirmation will be shown and we can cancel it.
-  - Fixed:
-    - Database File Scanning
-      - All files in the database will now be enumerated correctly.
-  - Miscellaneous
-    - Dependency updated.
-    - Now, tree shaking is left to terser, from esbuild.
-- 0.23.20:
-  - Fixed:
-    - Customisation Sync now checks the difference while storing or applying the configuration.
-      - No longer storing the same configuration multiple times.
-    - Time difference in the dialogue has been fixed.
-    - Remote Storage Limit Notification dialogue has been fixed, now the chosen value is saved.
-  - Improved:
-    - The Enlarging button on the enlarging threshold dialogue now displays the new value.
+It is also the first step towards a fully-fledged-fancy LiveSync, not just a plug-in from Obsidian. Of course, it will still be a plug-in as a first class and foremost, but this development marks a significant step towards the self-hosting concept.
+
+This dev release is very close to the beta version that I had previously indicated would not be released. As a result, I have faced challenges in maintaining the main branch while working on this dev release. Regrettably, I have not been able to make any commits to the main branch in the last three weeks. Thus, the dev branch will remain reserved for major changes only.
+
+The Release Candidate will be available for a few days and will only be officially released once users, including myself, have confirmed that there are no issues.
+
+Finally, I would like to once again express my respect and gratitude to all of you once again. Thank you for your interest in the development version. Your contributions and dedication are greatly appreciated through testing.
+
+Thank you, and I hope your troubles will be resolved!
+
+---
+
+## 0.24.0.dev-rc8
+
+### Fixed
+
+-   Now the deletion of hidden files are correctly synchronised.
+
+## 0.24.0.dev-rc7
+
+### Fixed
+
+-   Verifying files between the local database and storage is now working correctly.
+
+### New Features
+
+-   We can verify and resolve also the hidden files now.
+
+## 0.24.0.dev-rc6
+
+### Fixed
+
+-   We can resolve the conflict of the JSON file correctly now.
+-   This would be the final Release Candidate.
+
+## 0.24.0.dev-rc5
+
+### Improved
+
+-   A note relating to device names has been added to Customisation Sync on the setting dialogue.
+-   Logs of Hidden File Sync and Customisation Sync have been prefixed with the respective feature names.
+
+### Fixed
+
+-   Hidden file sync is now working correctly.
+-   Customisation Sync is now working correctly together with hidden file sync
+-   No longer database suffix is stored in the setting sharing markdown.
+
+## 0.24.0.dev-rc4
+
+### Improved
+
+-   The welcome message is now more simple to encourage the use of the Setup-URI.
+    -   And the secondary message is also simpler to guide users to Minimal Setup.
+        -   But Setup-URI will be recommended again, due to its importance.
+    -   These dialogues contain a link to the documentation which can be clicked.
+-   The minimal setup is more minimal now. And, the setup is more user-friendly.
+    -   Now the Configuration of the remote database is checked more robust, but we can ignore the warning and proceed with the setup.
+-   Before we are asked about each feature, we are asked if we want to use optional features in the first place.
+    -   This is to prevent the user from being overwhelmed by the features.
+    -   And made it clear that it is not recommended for new users.
+-   Many messages have been improved for better understanding.
+    -   Ridiculous messages have been (carefully) refined.
+    -   Dialogues are more informative and friendly.
+        -   A lot of messages have been mostly rewritten, leveraging Markdown.
+        -   Especially auto-closing dialogues are now explicitly labelled: `To stop the countdown, tap anywhere on the dialogue`.
+-   Now if the is plugin configured to ignore some events, we will get a chance to fix it, in addition to the warning.
+    -   And why that has happened is also explained in the dialogue.
+
+### Fixed
+
+-   While restarting the plug-in, the shown dialogues will be automatically closed to avoid unexpected behaviour.
+-   Replicated documents that the local device has configured to ignore are now correctly ignored.
+-   The chunks of the document on the local device during the first transfer will be created correctly.
+    -   And why we should create them is now explained in the dialogue.
+-   If optional features have been enabled in the wizard, `Enable advanced features` will be toggled correctly.
+
+### Changed
+
+-   Some default settings have been changed for easier new user experience.
+    -   Preventing the meaningless migration of the settings.
+
+### Tidied
+
+-   Commented-out codes have been gradually removed.
+
+## 0.24.0.dev-rc3
+
+### Fixed
+
+-   No longer Missing Translation Warning is shown in the console.
+-   Fixed the issue where some functions were not working properly (`_` started functions).
+
+## 0.24.0.dev-rc2
+
+### Fixed
+
+-   Some status icons is now shown correctly.
+
+## 0.24.0-rc1
+
+### Fixed
+
+-   A fair numbers of bugs have been fixed.
+
+### Tiding
+
+-   The codebase has been reorganised into clearly defined modules.
 
 Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
