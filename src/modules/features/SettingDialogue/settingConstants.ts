@@ -329,7 +329,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     "usePluginSyncV2": {
         name: "Enable per-file customization sync",
         desc: "If enabled, efficient per-file customization sync will be used. A minor migration is required when enabling this feature, and all devices must be updated to v0.23.18. Enabling this feature will result in losing compatibility with older versions."
-    }
+    },
     "handleFilenameCaseSensitive": {
         name: "Handle files as Case-Sensitive",
         desc: "If this enabled, All files are handled as case-Sensitive (Previous behaviour)."
