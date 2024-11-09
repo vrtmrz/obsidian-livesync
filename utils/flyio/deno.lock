@@ -1,0 +1,25 @@
+{
+  "version": "4",
+  "specifiers": {
+    "npm:octagonal-wheels@0.1.11": "0.1.11"
+  },
+  "npm": {
+    "idb@8.0.0": {
+      "integrity": "sha512-l//qvlAKGmQO31Qn7xdzagVPPaHTxXx199MhrAFuVBTPqydcPYBWjkrbv4Y0ktB+GmWOiwHl237UUOrLmQxLvw=="
+    },
+    "octagonal-wheels@0.1.11": {
+      "integrity": "sha512-KsXfpziFHmlLEBe5VAXFz9OyyjJEEdSg7xxASqdzmbe5oo9dhcOeWGrQfyipRJwHAhlFkI4vEf8JCSgkcyRxYg==",
+      "dependencies": [
+        "idb",
+        "xxhash-wasm@0.4.2",
+        "xxhash-wasm-102@npm:xxhash-wasm@1.0.2"
+      ]
+    },
+    "xxhash-wasm@0.4.2": {
+      "integrity": "sha512-/eyHVRJQCirEkSZ1agRSCwriMhwlyUcFkXD5TPVSLP+IPzjsqMVzZwdoczLp1SoQU0R3dxz1RpIK+4YNQbCVOA=="
+    },
+    "xxhash-wasm@1.0.2": {
+      "integrity": "sha512-ibF0Or+FivM9lNrg+HGJfVX8WJqgo+kCLDc4vx6xMeTce7Aj+DLttKbxxRR/gNLSAelRc1omAPlJ77N/Jem07A=="
+    }
+  }
+}
