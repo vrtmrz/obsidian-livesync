@@ -35,8 +35,8 @@ async function main() {
     }
     const encryptedConf = encodeURIComponent(await encrypt(JSON.stringify(conf), uri_passphrase, false));
     const theURI = `${URIBASE}${encryptedConf}`;
-    console.log(theURI);
     console.log("\nYour passphrase of Setup-URI is: ", uri_passphrase);
     console.log("This passphrase is never shown again, so please note it in a safe place.")
+    console.log(theURI);
 }
 await main();
