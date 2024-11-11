@@ -14,12 +14,30 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.1
+
+#### Fixed
+
+-   Vault History can show the correct information of match-or-not for each file and database even if it is a binary file.
+-   `Sync settings via markdown` is now hidden during the setup wizard.
+-   Verify and Fix will ignore the hidden files if the hidden file sync is disabled.
+
+#### New feature
+
+-   Now we can fetch the tweaks from the remote database while the setting dialogue and wizard are processing.
+
+#### Improved
+
+-   More things are moved to the modules.
+    -   Includes the Main codebase. Now `main.ts` is almost stub.
+-   EventHub is now more robust and typesafe.
+
 ## 0.24.0
 
 ### Improved
 
 -   The welcome message is now more simple to encourage the use of the Setup-URI.
-    - The secondary message is also simpler to guide users to Minimal Setup.
+    -   The secondary message is also simpler to guide users to Minimal Setup.
         -   But Setup-URI will be recommended again, due to its importance.
     -   These dialogues contain a link to the documentation which can be clicked.
 -   The minimal setup is more minimal now. And, the setup is more user-friendly.
@@ -46,12 +64,10 @@ Thank you, and I hope your troubles will be resolved!
 -   The chunks of the document on the local device during the first transfer will be created correctly.
     -   And why we should create them is now explained in the dialogue.
 -   If optional features have been enabled in the wizard, `Enable advanced features` will be toggled correctly.
-The hidden file sync is now working correctly.
-    -   Now the deletion of hidden files is correctly synchronised.
+    The hidden file sync is now working correctly. - Now the deletion of hidden files is correctly synchronised.
 -   Customisation Sync is now working correctly together with hidden file sync.
 -   No longer database suffix is stored in the setting sharing markdown.
 -   A fair number of bugs have been fixed.
-
 
 ### Changed
 
@@ -62,6 +78,5 @@ The hidden file sync is now working correctly.
 
 -   The codebase has been reorganised into clearly defined modules.
 -   Commented-out codes have been gradually removed.
-
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
