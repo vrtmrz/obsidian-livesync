@@ -1,16 +1,29 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { FileEventItem } from "../../common/types";
-import type { FilePath, FilePathWithPrefix, MetaEntry, UXFileInfo, UXFileInfoStub, UXInternalFileInfoStub } from "../../lib/src/common/types";
+import type {
+    FilePath,
+    FilePathWithPrefix,
+    MetaEntry,
+    UXFileInfo,
+    UXFileInfoStub,
+    UXInternalFileInfoStub,
+} from "../../lib/src/common/types";
 import { AbstractModule } from "../AbstractModule.ts";
-import { compareFileFreshness, EVEN, getPath, getPathFromUXFileInfo, getPathWithoutPrefix, markChangesAreSame } from "../../common/utils";
+import {
+    compareFileFreshness,
+    EVEN,
+    getPath,
+    getPathFromUXFileInfo,
+    getPathWithoutPrefix,
+    markChangesAreSame,
+} from "../../common/utils";
 import { getDocDataAsArray, isDocContentSame, readContent } from "../../lib/src/common/utils";
 import { shouldBeIgnored } from "../../lib/src/string_and_binary/path";
 import type { ICoreModule } from "../ModuleTypes";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 
 export class ModuleFileHandler extends AbstractModule implements ICoreModule {
-
     get db() {
         return this.core.databaseFileAccess;
     }
@@ -31,10 +44,14 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         if (!readFile) {
             throw new Error(`File ${file.path} is not exist on the storage`);
         }
-        return readFile
+        return readFile;
     }
 
-    async storeFileToDB(info: UXFileInfoStub | UXFileInfo | UXInternalFileInfoStub | FilePathWithPrefix, force: boolean = false, onlyChunks: boolean = false): Promise<boolean | undefined> {
+    async storeFileToDB(
+        info: UXFileInfoStub | UXFileInfo | UXInternalFileInfoStub | FilePathWithPrefix,
+        force: boolean = false,
+        onlyChunks: boolean = false
+    ): Promise<boolean | undefined> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         if (file == null) {
             this._log(`File ${info} is not exist on the storage`, LOG_LEVEL_VERBOSE);
@@ -42,10 +59,13 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         }
         // const file = item.args.file;
         if (file.isInternal) {
-            this._log(`Internal file ${file.path} is not allowed to be processed on processFileEvent`, LOG_LEVEL_VERBOSE);
+            this._log(
+                `Internal file ${file.path} is not allowed to be processed on processFileEvent`,
+                LOG_LEVEL_VERBOSE
+            );
             return false;
         }
-        // First, check the file on the database 
+        // First, check the file on the database
         const entry = await this.db.fetchEntry(file, undefined, true, true);
 
         if (!entry || entry.deleted || entry._deleted) {
@@ -114,10 +134,13 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         }
         // const file = item.args.file;
         if (file.isInternal) {
-            this._log(`Internal file ${file.path} is not allowed to be processed on processFileEvent`, LOG_LEVEL_VERBOSE);
+            this._log(
+                `Internal file ${file.path} is not allowed to be processed on processFileEvent`,
+                LOG_LEVEL_VERBOSE
+            );
             return false;
         }
-        // First, check the file on the database 
+        // First, check the file on the database
         const entry = await this.db.fetchEntry(file, undefined, true, true);
         if (!entry || entry.deleted || entry._deleted) {
             this._log(`File ${file.path} is not exist or already deleted on the database`, LOG_LEVEL_VERBOSE);
@@ -135,24 +158,39 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         return await this.db.delete(file);
     }
 
-    async deleteRevisionFromDB(info: UXFileInfoStub | FilePath | FilePathWithPrefix, rev: string): Promise<boolean | undefined> {
+    async deleteRevisionFromDB(
+        info: UXFileInfoStub | FilePath | FilePathWithPrefix,
+        rev: string
+    ): Promise<boolean | undefined> {
         //TODO: Possibly check the conflicting.
         return await this.db.delete(info, rev);
     }
 
-
-    async resolveConflictedByDeletingRevision(info: UXFileInfoStub | FilePath, rev: string): Promise<boolean | undefined> {
-        if (!await this.deleteRevisionFromDB(info, rev)) {
-            this._log(`Failed to delete the conflicted revision ${rev} of ${getPathFromUXFileInfo(info)}`, LOG_LEVEL_VERBOSE);
+    async resolveConflictedByDeletingRevision(
+        info: UXFileInfoStub | FilePath,
+        rev: string
+    ): Promise<boolean | undefined> {
+        if (!(await this.deleteRevisionFromDB(info, rev))) {
+            this._log(
+                `Failed to delete the conflicted revision ${rev} of ${getPathFromUXFileInfo(info)}`,
+                LOG_LEVEL_VERBOSE
+            );
             return false;
         }
-        if (!await this.dbToStorageWithSpecificRev(info, rev, true)) {
-            this._log(`Failed to apply the resolved revision ${rev} of ${getPathFromUXFileInfo(info)} to the storage`, LOG_LEVEL_VERBOSE);
+        if (!(await this.dbToStorageWithSpecificRev(info, rev, true))) {
+            this._log(
+                `Failed to apply the resolved revision ${rev} of ${getPathFromUXFileInfo(info)} to the storage`,
+                LOG_LEVEL_VERBOSE
+            );
             return false;
         }
     }
 
-    async dbToStorageWithSpecificRev(info: UXFileInfoStub | UXFileInfo | FilePath | null, rev: string, force?: boolean): Promise<boolean> {
+    async dbToStorageWithSpecificRev(
+        info: UXFileInfoStub | UXFileInfo | FilePath | null,
+        rev: string,
+        force?: boolean
+    ): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         if (file == null) {
             this._log(`File ${info} is not exist on the storage`, LOG_LEVEL_VERBOSE);
@@ -166,12 +204,18 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         return await this.dbToStorage(docEntry, file, force);
     }
 
-    async dbToStorage(entryInfo: MetaEntry | FilePathWithPrefix, info: UXFileInfoStub | UXFileInfo | FilePath | null, force?: boolean): Promise<boolean> {
+    async dbToStorage(
+        entryInfo: MetaEntry | FilePathWithPrefix,
+        info: UXFileInfoStub | UXFileInfo | FilePath | null,
+        force?: boolean
+    ): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         const mode = file == null ? "create" : "modify";
 
-        const docEntry = typeof entryInfo === "string" ?
-            await this.db.fetchEntryMeta(entryInfo, undefined, true) : await this.db.fetchEntryMeta(entryInfo.path, undefined, true);
+        const docEntry =
+            typeof entryInfo === "string"
+                ? await this.db.fetchEntryMeta(entryInfo, undefined, true)
+                : await this.db.fetchEntryMeta(entryInfo.path, undefined, true);
         if (!docEntry) {
             this._log(`File ${entryInfo} is not exist on the database`, LOG_LEVEL_VERBOSE);
             return false;
@@ -255,7 +299,10 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             }
             // Let's apply the changes.
         } else {
-            this._log(`File ${docRead.path} ${existOnStorage ? "(new) " : ""} ${force ? " (forced)" : ""}`, LOG_LEVEL_VERBOSE);
+            this._log(
+                `File ${docRead.path} ${existOnStorage ? "(new) " : ""} ${force ? " (forced)" : ""}`,
+                LOG_LEVEL_VERBOSE
+            );
         }
         await this.storage.ensureDir(path);
         const ret = await this.storage.writeFileAuto(path, docData, { ctime: docRead.ctime, mtime: docRead.mtime });
@@ -268,7 +315,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         const eventItem = item.args;
         const type = item.type;
         const path = eventItem.file.path;
-        if (!await this.core.$$isTargetFile(path)) {
+        if (!(await this.core.$$isTargetFile(path))) {
             this._log(`File ${path} is not the target file`, LOG_LEVEL_VERBOSE);
             return false;
         }
@@ -296,7 +343,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
 
     async $anyProcessReplicatedDoc(entry: MetaEntry): Promise<boolean | undefined> {
         return await serialized(entry.path, async () => {
-            if (!await this.core.$$isTargetFile(entry.path)) {
+            if (!(await this.core.$$isTargetFile(entry.path))) {
                 this._log(`File ${entry.path} is not the target file`, LOG_LEVEL_VERBOSE);
                 return false;
             }
@@ -312,13 +359,15 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                 // Nothing to do and other modules should also nothing to do.
                 return true;
             } else {
-                this._log(`Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) :Started...`, LOG_LEVEL_VERBOSE);
+                this._log(
+                    `Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) :Started...`,
+                    LOG_LEVEL_VERBOSE
+                );
                 const ret = await this.dbToStorage(entry, targetFile);
                 this._log(`Processing ${path} (${entry._id.substring(0, 8)} :${entry._rev?.substring(0, 5)}) : Done`);
                 return ret;
             }
         });
-
     }
 
     async createAllChunks(showingNotice?: boolean): Promise<void> {
@@ -329,11 +378,16 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         const filesStorageSrc = this.storage.getFiles();
         const incProcessed = () => {
             processed++;
-            if (processed % 25 == 0) this._log(`Creating missing chunks: ${processed} of ${total} files`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "chunkCreation");
-        }
+            if (processed % 25 == 0)
+                this._log(
+                    `Creating missing chunks: ${processed} of ${total} files`,
+                    showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO,
+                    "chunkCreation"
+                );
+        };
         const total = filesStorageSrc.length;
         const procAllChunks = filesStorageSrc.map(async (file) => {
-            if (!await this.core.$$isTargetFile(file)) {
+            if (!(await this.core.$$isTargetFile(file))) {
                 incProcessed();
                 return true;
             }
@@ -352,6 +406,10 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             }
         });
         await Promise.all(procAllChunks);
-        this._log(`Creating chunks Done: ${processed} of ${total} files`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "chunkCreation");
+        this._log(
+            `Creating chunks Done: ${processed} of ${total} files`,
+            showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO,
+            "chunkCreation"
+        );
     }
 }

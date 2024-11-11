@@ -18,7 +18,7 @@ class AutoClosableModal extends Modal {
     onClose() {
         if (this.removeEvent) {
             this.removeEvent();
-            this.removeEvent = undefined
+            this.removeEvent = undefined;
         }
     }
 }
@@ -32,7 +32,14 @@ export class InputStringDialog extends AutoClosableModal {
     isManuallyClosed = false;
     isPassword = false;
 
-    constructor(app: App, title: string, key: string, placeholder: string, isPassword: boolean, onSubmit: (result: string | false) => void) {
+    constructor(
+        app: App,
+        title: string,
+        key: string,
+        placeholder: string,
+        isPassword: boolean,
+        onSubmit: (result: string | false) => void
+    ) {
         super(app);
         this.onSubmit = onSubmit;
         this.title = title;
@@ -45,27 +52,32 @@ export class InputStringDialog extends AutoClosableModal {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         const formEl = contentEl.createDiv();
-        new Setting(formEl).setName(this.key).setClass(this.isPassword ? "password-input" : "normal-input").addText((text) =>
-            text.onChange((value) => {
-                this.result = value;
-            })
-        );
-        new Setting(formEl).addButton((btn) =>
-            btn
-                .setButtonText("Ok")
-                .setCta()
-                .onClick(() => {
-                    this.isManuallyClosed = true;
-                    this.close();
+        new Setting(formEl)
+            .setName(this.key)
+            .setClass(this.isPassword ? "password-input" : "normal-input")
+            .addText((text) =>
+                text.onChange((value) => {
+                    this.result = value;
                 })
-        ).addButton((btn) =>
-            btn
-                .setButtonText("Cancel")
-                .setCta()
-                .onClick(() => {
-                    this.close();
-                })
-        );
+            );
+        new Setting(formEl)
+            .addButton((btn) =>
+                btn
+                    .setButtonText("Ok")
+                    .setCta()
+                    .onClick(() => {
+                        this.isManuallyClosed = true;
+                        this.close();
+                    })
+            )
+            .addButton((btn) =>
+                btn
+                    .setButtonText("Cancel")
+                    .setCta()
+                    .onClick(() => {
+                        this.close();
+                    })
+            );
     }
 
     onClose() {
@@ -81,13 +93,18 @@ export class InputStringDialog extends AutoClosableModal {
 }
 export class PopoverSelectString extends FuzzySuggestModal<string> {
     app: App;
-    callback: ((e: string) => void) | undefined = () => { };
+    callback: ((e: string) => void) | undefined = () => {};
     getItemsFun: () => string[] = () => {
         return ["yes", "no"];
+    };
 
-    }
-
-    constructor(app: App, note: string, placeholder: string | undefined, getItemsFun: (() => string[]) | undefined, callback: (e: string) => void) {
+    constructor(
+        app: App,
+        note: string,
+        placeholder: string | undefined,
+        getItemsFun: (() => string[]) | undefined,
+        callback: (e: string) => void
+    ) {
         super(app);
         this.app = app;
         this.setPlaceholder((placeholder ?? "y/n) ") + note);
@@ -119,7 +136,6 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
 }
 
 export class MessageBox extends AutoClosableModal {
-
     plugin: Plugin;
     title: string;
     contentMd: string;
@@ -134,7 +150,16 @@ export class MessageBox extends AutoClosableModal {
 
     onSubmit: (result: string | false) => void;
 
-    constructor(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout: number | undefined, wideButton: boolean, onSubmit: (result: (typeof buttons)[number] | false) => void) {
+    constructor(
+        plugin: Plugin,
+        title: string,
+        contentMd: string,
+        buttons: string[],
+        defaultAction: (typeof buttons)[number],
+        timeout: number | undefined,
+        wideButton: boolean,
+        onSubmit: (result: (typeof buttons)[number] | false) => void
+    ) {
         super(plugin.app);
         this.plugin = plugin;
         this.title = title;
@@ -196,20 +221,18 @@ export class MessageBox extends AutoClosableModal {
                 this.timer = undefined;
                 this.defaultButtonComponent?.setButtonText(`${this.defaultAction}`);
             }
-        })
+        });
         for (const button of this.buttons) {
             buttonSetting.addButton((btn) => {
-                btn
-                    .setButtonText(button)
-                    .onClick(() => {
-                        this.isManuallyClosed = true;
-                        this.result = button;
-                        if (this.timer) {
-                            clearInterval(this.timer);
-                            this.timer = undefined;
-                        }
-                        this.close();
-                    })
+                btn.setButtonText(button).onClick(() => {
+                    this.isManuallyClosed = true;
+                    this.result = button;
+                    if (this.timer) {
+                        clearInterval(this.timer);
+                        this.timer = undefined;
+                    }
+                    this.close();
+                });
                 if (button == this.defaultAction) {
                     this.defaultButtonComponent = btn;
                     btn.setCta();
@@ -219,8 +242,7 @@ export class MessageBox extends AutoClosableModal {
                     btn.buttonEl.style.width = "100%";
                 }
                 return btn;
-            }
-            )
+            });
         }
     }
 
@@ -240,25 +262,42 @@ export class MessageBox extends AutoClosableModal {
     }
 }
 
-
-
-
-export function confirmWithMessage(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout?: number): Promise<(typeof buttons)[number] | false> {
+export function confirmWithMessage(
+    plugin: Plugin,
+    title: string,
+    contentMd: string,
+    buttons: string[],
+    defaultAction: (typeof buttons)[number],
+    timeout?: number
+): Promise<(typeof buttons)[number] | false> {
     return new Promise((res) => {
-        const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, false, (result) => res(result));
+        const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, false, (result) =>
+            res(result)
+        );
         dialog.open();
     });
 }
-export function confirmWithMessageWithWideButton(plugin: Plugin, title: string, contentMd: string, buttons: string[], defaultAction: (typeof buttons)[number], timeout?: number): Promise<(typeof buttons)[number] | false> {
+export function confirmWithMessageWithWideButton(
+    plugin: Plugin,
+    title: string,
+    contentMd: string,
+    buttons: string[],
+    defaultAction: (typeof buttons)[number],
+    timeout?: number
+): Promise<(typeof buttons)[number] | false> {
     return new Promise((res) => {
-        const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, true, (result) => res(result));
+        const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, true, (result) =>
+            res(result)
+        );
         dialog.open();
     });
 }
 
 export const askYesNo = (app: App, message: string): Promise<"yes" | "no"> => {
     return new Promise((res) => {
-        const popover = new PopoverSelectString(app, message, undefined, undefined, (result) => res(result as "yes" | "no"));
+        const popover = new PopoverSelectString(app, message, undefined, undefined, (result) =>
+            res(result as "yes" | "no")
+        );
         popover.open();
     });
 };
@@ -271,11 +310,15 @@ export const askSelectString = (app: App, message: string, items: string[]): Pro
     });
 };
 
-
-export const askString = (app: App, title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> => {
+export const askString = (
+    app: App,
+    title: string,
+    key: string,
+    placeholder: string,
+    isPassword: boolean = false
+): Promise<string | false> => {
     return new Promise((res) => {
         const dialog = new InputStringDialog(app, title, key, placeholder, isPassword, (result) => res(result));
         dialog.open();
     });
 };
-

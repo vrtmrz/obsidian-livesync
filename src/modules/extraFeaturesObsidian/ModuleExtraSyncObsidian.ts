@@ -1,4 +1,4 @@
-import { AbstractObsidianModule, type IObsidianModule } from '../AbstractObsidianModule.ts';
+import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 
 export class ModuleExtraSyncObsidian extends AbstractObsidianModule implements IObsidianModule {
     deviceAndVaultName: string = "";
@@ -9,5 +9,4 @@ export class ModuleExtraSyncObsidian extends AbstractObsidianModule implements I
     $$setDeviceAndVaultName(name: string): void {
         this.deviceAndVaultName = name;
     }
-
 }

@@ -1,19 +1,15 @@
-import {
-    ItemView,
-    WorkspaceLeaf
-} from "obsidian";
-import TestPaneComponent from "./TestPane.svelte"
-import type ObsidianLiveSyncPlugin from "../../../main.ts"
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import TestPaneComponent from "./TestPane.svelte";
+import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import type { ModuleDev } from "../ModuleDev.ts";
 export const VIEW_TYPE_TEST = "ols-pane-test";
 //Log view
 export class TestPaneView extends ItemView {
-
     component?: TestPaneComponent;
     plugin: ObsidianLiveSyncPlugin;
     moduleDev: ModuleDev;
     icon = "view-log";
-    title: string = "Self-hosted LiveSync Test and Results"
+    title: string = "Self-hosted LiveSync Test and Results";
     navigation = true;
 
     getIcon(): string {
@@ -25,7 +21,6 @@ export class TestPaneView extends ItemView {
         this.plugin = plugin;
         this.moduleDev = moduleDev;
     }
-
 
     getViewType() {
         return VIEW_TYPE_TEST;
@@ -41,7 +36,7 @@ export class TestPaneView extends ItemView {
             target: this.contentEl,
             props: {
                 plugin: this.plugin,
-                moduleDev: this.moduleDev
+                moduleDev: this.moduleDev,
             },
         });
         await Promise.resolve();

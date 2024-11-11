@@ -1,13 +1,9 @@
-import {
-    ItemView,
-    WorkspaceLeaf
-} from "obsidian";
+import { ItemView, WorkspaceLeaf } from "obsidian";
 import LogPaneComponent from "./LogPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 export const VIEW_TYPE_LOG = "log-log";
 //Log view
 export class LogPaneView extends ItemView {
-
     component?: LogPaneComponent;
     plugin: ObsidianLiveSyncPlugin;
     icon = "view-log";
@@ -23,7 +19,6 @@ export class LogPaneView extends ItemView {
         this.plugin = plugin;
     }
 
-
     getViewType() {
         return VIEW_TYPE_LOG;
     }
@@ -35,8 +30,7 @@ export class LogPaneView extends ItemView {
     async onOpen() {
         this.component = new LogPaneComponent({
             target: this.contentEl,
-            props: {
-            },
+            props: {},
         });
         await Promise.resolve();
     }

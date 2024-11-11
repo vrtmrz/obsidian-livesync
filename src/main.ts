@@ -1,9 +1,31 @@
 import { Plugin } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type LOG_LEVEL, type diff_result, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, type HasSettings, type MetaEntry, type UXFileInfoStub, type MISSING_OR_ERROR, type AUTO_MERGED, type RemoteDBSettings, type TweakValues, } from "./lib/src/common/types.ts";
+import {
+    type EntryDoc,
+    type LoadedEntry,
+    type ObsidianLiveSyncSettings,
+    type LOG_LEVEL,
+    type diff_result,
+    type DatabaseConnectingStatus,
+    type EntryHasPath,
+    type DocumentID,
+    type FilePathWithPrefix,
+    type FilePath,
+    LOG_LEVEL_INFO,
+    type HasSettings,
+    type MetaEntry,
+    type UXFileInfoStub,
+    type MISSING_OR_ERROR,
+    type AUTO_MERGED,
+    type RemoteDBSettings,
+    type TweakValues,
+} from "./lib/src/common/types.ts";
 import { type FileEventItem } from "./common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
-import { LiveSyncAbstractReplicator, type LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
+import {
+    LiveSyncAbstractReplicator,
+    type LiveSyncReplicatorEnv,
+} from "./lib/src/replication/LiveSyncAbstractReplicator.js";
 import { type KeyValueDatabase } from "./common/KeyValueDB.ts";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
@@ -60,7 +82,6 @@ import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
 import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
 
-
 function throwShouldBeOverridden(): never {
     throw new Error("This function should be overridden by the module.");
 }
@@ -78,11 +99,15 @@ const InterceptiveAny = Promise.resolve(undefined);
  * All of above performed on injectModules function.
  */
 
-export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv, HasSettings<ObsidianLiveSyncSettings> {
-
-
-
-
+export default class ObsidianLiveSyncPlugin
+    extends Plugin
+    implements
+        LiveSyncLocalDBEnv,
+        LiveSyncReplicatorEnv,
+        LiveSyncJournalReplicatorEnv,
+        LiveSyncCouchDBReplicatorEnv,
+        HasSettings<ObsidianLiveSyncSettings>
+{
     // --> Module System
     getAddOn<T extends LiveSyncCommands>(cls: string) {
         for (const addon of this.addOns) {
@@ -134,7 +159,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
         // Common modules
         // Note: Platform-dependent functions are not entirely dependent on the core only, as they are from platform-dependent modules. Stubbing is sometimes required.
         new ModuleCheckRemoteSize(this),
-        // Test and Dev Modules 
+        // Test and Dev Modules
         new ModuleDev(this, this),
         new ModuleReplicateTest(this, this),
         new ModuleIntegratedTest(this, this),
@@ -142,25 +167,43 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     injected = injectModules(this, [...this.modules, ...this.addOns] as ICoreModule[]);
     // <-- Module System
 
-    $$isSuspended(): boolean { throwShouldBeOverridden(); }
+    $$isSuspended(): boolean {
+        throwShouldBeOverridden();
+    }
 
-    $$setSuspended(value: boolean): void { throwShouldBeOverridden(); }
+    $$setSuspended(value: boolean): void {
+        throwShouldBeOverridden();
+    }
 
-    $$isDatabaseReady(): boolean { throwShouldBeOverridden(); }
+    $$isDatabaseReady(): boolean {
+        throwShouldBeOverridden();
+    }
 
-    $$getDeviceAndVaultName(): string { throwShouldBeOverridden(); }
-    $$setDeviceAndVaultName(name: string): void { throwShouldBeOverridden(); }
+    $$getDeviceAndVaultName(): string {
+        throwShouldBeOverridden();
+    }
+    $$setDeviceAndVaultName(name: string): void {
+        throwShouldBeOverridden();
+    }
 
-    $$addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void { throwShouldBeOverridden() }
-    $$isReady(): boolean { throwShouldBeOverridden(); }
-    $$markIsReady(): void { throwShouldBeOverridden(); }
-    $$resetIsReady(): void { throwShouldBeOverridden(); }
+    $$addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
+        throwShouldBeOverridden();
+    }
+    $$isReady(): boolean {
+        throwShouldBeOverridden();
+    }
+    $$markIsReady(): void {
+        throwShouldBeOverridden();
+    }
+    $$resetIsReady(): void {
+        throwShouldBeOverridden();
+    }
 
     // Following are plugged by the modules.
 
     settings!: ObsidianLiveSyncSettings;
     localDatabase!: LiveSyncLocalDB;
-    simpleStore!: SimpleStore<CheckPointInfo>
+    simpleStore!: SimpleStore<CheckPointInfo>;
     replicator!: LiveSyncAbstractReplicator;
     confirm!: Confirm;
     storageAccess!: StorageAccess;
@@ -169,24 +212,36 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     rebuilder!: Rebuilder;
 
     kvDB!: KeyValueDatabase;
-    getDatabase(): PouchDB.Database<EntryDoc> { return this.localDatabase.localDatabase; }
-    getSettings(): ObsidianLiveSyncSettings { return this.settings; }
+    getDatabase(): PouchDB.Database<EntryDoc> {
+        return this.localDatabase.localDatabase;
+    }
+    getSettings(): ObsidianLiveSyncSettings {
+        return this.settings;
+    }
 
+    $$markFileListPossiblyChanged(): void {
+        throwShouldBeOverridden();
+    }
 
+    $$customFetchHandler(): ObsHttpHandler {
+        throwShouldBeOverridden();
+    }
 
-    $$markFileListPossiblyChanged(): void { throwShouldBeOverridden(); }
+    $$getLastPostFailedBySize(): boolean {
+        throwShouldBeOverridden();
+    }
 
-    $$customFetchHandler(): ObsHttpHandler { throwShouldBeOverridden(); }
+    $$isStorageInsensitive(): boolean {
+        throwShouldBeOverridden();
+    }
 
-    $$getLastPostFailedBySize(): boolean { throwShouldBeOverridden(); }
+    $$shouldCheckCaseInsensitive(): boolean {
+        throwShouldBeOverridden();
+    }
 
-
-
-    $$isStorageInsensitive(): boolean { throwShouldBeOverridden() }
-
-    $$shouldCheckCaseInsensitive(): boolean { throwShouldBeOverridden(); }
-
-    $$isUnloaded(): boolean { throwShouldBeOverridden(); }
+    $$isUnloaded(): boolean {
+        throwShouldBeOverridden();
+    }
 
     requestCount = reactiveSource(0);
     responseCount = reactiveSource(0);
@@ -202,7 +257,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
 
     _totalProcessingCount?: ReactiveValue<number>;
 
-
     replicationStat = reactiveSource({
         sent: 0,
         arrived: 0,
@@ -210,61 +264,102 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
         maxPushSeq: 0,
         lastSyncPullSeq: 0,
         lastSyncPushSeq: 0,
-        syncStatus: "CLOSED" as DatabaseConnectingStatus
+        syncStatus: "CLOSED" as DatabaseConnectingStatus,
     });
 
-    $$isReloadingScheduled(): boolean { throwShouldBeOverridden(); }
-    $$getReplicator(): LiveSyncAbstractReplicator { throwShouldBeOverridden(); }
-
-    $$connectRemoteCouchDB(uri: string, auth: {
-        username: string;
-        password: string
-    }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean): Promise<string | {
-        db: PouchDB.Database<EntryDoc>;
-        info: PouchDB.Core.DatabaseInfo
-    }> {
+    $$isReloadingScheduled(): boolean {
+        throwShouldBeOverridden();
+    }
+    $$getReplicator(): LiveSyncAbstractReplicator {
         throwShouldBeOverridden();
     }
 
+    $$connectRemoteCouchDB(
+        uri: string,
+        auth: {
+            username: string;
+            password: string;
+        },
+        disableRequestURI: boolean,
+        passphrase: string | false,
+        useDynamicIterationCount: boolean,
+        performSetup: boolean,
+        skipInfo: boolean,
+        compression: boolean
+    ): Promise<
+        | string
+        | {
+              db: PouchDB.Database<EntryDoc>;
+              info: PouchDB.Core.DatabaseInfo;
+          }
+    > {
+        throwShouldBeOverridden();
+    }
 
-    $$isMobile(): boolean { throwShouldBeOverridden(); }
-    $$vaultName(): string { throwShouldBeOverridden(); }
+    $$isMobile(): boolean {
+        throwShouldBeOverridden();
+    }
+    $$vaultName(): string {
+        throwShouldBeOverridden();
+    }
 
     // --> Path
 
-    $$getActiveFilePath(): FilePathWithPrefix | undefined { throwShouldBeOverridden(); }
+    $$getActiveFilePath(): FilePathWithPrefix | undefined {
+        throwShouldBeOverridden();
+    }
 
     // <-- Path
 
     // --> Path conversion
-    $$id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix { throwShouldBeOverridden(); }
+    $$id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
+        throwShouldBeOverridden();
+    }
 
-    $$path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> { throwShouldBeOverridden(); }
+    $$path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
+        throwShouldBeOverridden();
+    }
 
     // <!-- Path conversion
 
     // --> Database
-    $$createPouchDBInstance<T extends object>(name?: string, options?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database<T> { throwShouldBeOverridden(); }
+    $$createPouchDBInstance<T extends object>(
+        name?: string,
+        options?: PouchDB.Configuration.DatabaseConfiguration
+    ): PouchDB.Database<T> {
+        throwShouldBeOverridden();
+    }
 
-    $allOnDBUnload(db: LiveSyncLocalDB): void { return; }
-    $allOnDBClose(db: LiveSyncLocalDB): void { return; }
+    $allOnDBUnload(db: LiveSyncLocalDB): void {
+        return;
+    }
+    $allOnDBClose(db: LiveSyncLocalDB): void {
+        return;
+    }
 
     // <!-- Database
 
-    $anyNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<LiveSyncAbstractReplicator> { throwShouldBeOverridden(); }
+    $anyNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<LiveSyncAbstractReplicator> {
+        throwShouldBeOverridden();
+    }
 
-    $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> { return InterceptiveEvery; }
+    $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
-    $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> { return InterceptiveEvery; }
-
-
+    $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
     // end interfaces
 
-    $$getVaultName(): string { throwShouldBeOverridden(); }
+    $$getVaultName(): string {
+        throwShouldBeOverridden();
+    }
 
-
-    $$getSimpleStore<T>(kind: string): SimpleStore<T> { throwShouldBeOverridden(); }
+    $$getSimpleStore<T>(kind: string): SimpleStore<T> {
+        throwShouldBeOverridden();
+    }
     // trench!: Trench;
 
     // --> Events
@@ -306,64 +401,114 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
 
     */
 
-
-    $everyOnLayoutReady(): Promise<boolean> { return InterceptiveEvery }
-    $everyOnFirstInitialize(): Promise<boolean> { return InterceptiveEvery }
+    $everyOnLayoutReady(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
+    $everyOnFirstInitialize(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
     // Some Module should call this function to start the plugin.
-    $$onLiveSyncReady(): Promise<false | undefined> { throwShouldBeOverridden(); }
-    $$wireUpEvents(): void { throwShouldBeOverridden(); }
-    $$onLiveSyncLoad(): Promise<void> { throwShouldBeOverridden(); }
+    $$onLiveSyncReady(): Promise<false | undefined> {
+        throwShouldBeOverridden();
+    }
+    $$wireUpEvents(): void {
+        throwShouldBeOverridden();
+    }
+    $$onLiveSyncLoad(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$onLiveSyncUnload(): Promise<void> { throwShouldBeOverridden(); }
+    $$onLiveSyncUnload(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
     $allScanStat(): Promise<boolean> {
         return InterceptiveAll;
     }
-    $everyOnloadStart(): Promise<boolean> { return InterceptiveEvery; }
+    $everyOnloadStart(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
-    $everyOnloadAfterLoadSettings(): Promise<boolean> { return InterceptiveEvery; }
+    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
-    $everyOnload(): Promise<boolean> { return InterceptiveEvery; }
+    $everyOnload(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
-    $anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean | undefined> { return InterceptiveAny; }
+    $anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean | undefined> {
+        return InterceptiveAny;
+    }
 
+    $allStartOnUnload(): Promise<boolean> {
+        return InterceptiveAll;
+    }
+    $allOnUnload(): Promise<boolean> {
+        return InterceptiveAll;
+    }
 
-    $allStartOnUnload(): Promise<boolean> { return InterceptiveAll }
-    $allOnUnload(): Promise<boolean> { return InterceptiveAll; }
+    $$openDatabase(): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
 
+    $$realizeSettingSyncMode(): Promise<void> {
+        throwShouldBeOverridden();
+    }
+    $$performRestart() {
+        throwShouldBeOverridden();
+    }
 
-    $$openDatabase(): Promise<boolean> { throwShouldBeOverridden() }
+    $$clearUsedPassphrase(): void {
+        throwShouldBeOverridden();
+    }
+    $$loadSettings(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$realizeSettingSyncMode(): Promise<void> { throwShouldBeOverridden(); }
-    $$performRestart() { throwShouldBeOverridden(); }
+    $$saveDeviceAndVaultName(): void {
+        throwShouldBeOverridden();
+    }
 
-    $$clearUsedPassphrase(): void { throwShouldBeOverridden() }
-    $$loadSettings(): Promise<void> { throwShouldBeOverridden() }
+    $$saveSettingData(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$saveDeviceAndVaultName(): void { throwShouldBeOverridden(); }
+    $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
+        return InterceptiveAny;
+    }
 
-    $$saveSettingData(): Promise<void> { throwShouldBeOverridden() }
+    $everyCommitPendingFileEvent(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
 
-    $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> { return InterceptiveAny; }
+    // ->
+    $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | undefined | "newer"> {
+        return InterceptiveAny;
+    }
 
-    $everyCommitPendingFileEvent(): Promise<boolean> { return InterceptiveEvery }
+    $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    // -> 
-    $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | undefined | "newer"> { return InterceptiveAny; }
+    $$queueConflictCheck(file: FilePathWithPrefix): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> { throwShouldBeOverridden() }
-
-    $$queueConflictCheck(file: FilePathWithPrefix): Promise<void> { throwShouldBeOverridden() }
-
-    $$waitForAllConflictProcessed(): Promise<boolean> { throwShouldBeOverridden() }
+    $$waitForAllConflictProcessed(): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
 
     //<-- Conflict Check
 
-    $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> { return InterceptiveAny; }
+    $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> {
+        return InterceptiveAny;
+    }
 
-    $anyProcessReplicatedDoc(doc: MetaEntry): Promise<boolean | undefined> { return InterceptiveAny; }
-
+    $anyProcessReplicatedDoc(doc: MetaEntry): Promise<boolean | undefined> {
+        return InterceptiveAny;
+    }
 
     //---> Sync
     $$parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
@@ -393,93 +538,169 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
         return InterceptiveEvery;
     }
 
+    $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+        throwShouldBeOverridden();
+    }
 
+    $$checkAndAskUseRemoteConfiguration(
+        settings: RemoteDBSettings
+    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        throwShouldBeOverridden();
+    }
 
-    $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> { throwShouldBeOverridden(); }
+    $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
+        return InterceptiveEvery;
+    }
+    $$replicate(showMessage: boolean = false): Promise<boolean | void> {
+        throwShouldBeOverridden();
+    }
 
-    $$checkAndAskUseRemoteConfiguration(settings: RemoteDBSettings): Promise<{ result: false | TweakValues, requireFetch: boolean }> { throwShouldBeOverridden(); }
+    $everyOnDatabaseInitialized(showingNotice: boolean): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
 
-    $everyBeforeReplicate(showMessage: boolean): Promise<boolean> { return InterceptiveEvery; }
-    $$replicate(showMessage: boolean = false): Promise<boolean | void> { throwShouldBeOverridden() }
+    $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
 
-    $everyOnDatabaseInitialized(showingNotice: boolean): Promise<boolean> { throwShouldBeOverridden() }
+    $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
+        return InterceptiveAny;
+    }
 
-    $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> { throwShouldBeOverridden() }
-
-    $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> { return InterceptiveAny; }
-
-    $$replicateAllToServer(showingNotice: boolean = false, sendChunksInBulkDisabled: boolean = false): Promise<boolean> { throwShouldBeOverridden() }
-    $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> { throwShouldBeOverridden() }
+    $$replicateAllToServer(
+        showingNotice: boolean = false,
+        sendChunksInBulkDisabled: boolean = false
+    ): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+    $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
 
     // Remote Governing
-    $$markRemoteLocked(lockByClean: boolean = false): Promise<void> { throwShouldBeOverridden() }
+    $$markRemoteLocked(lockByClean: boolean = false): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$markRemoteUnlocked(): Promise<void> { throwShouldBeOverridden() }
+    $$markRemoteUnlocked(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
-    $$markRemoteResolved(): Promise<void> { throwShouldBeOverridden() }
+    $$markRemoteResolved(): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
     // <-- Remote Governing
 
-
-    $$isFileSizeExceeded(size: number): boolean { throwShouldBeOverridden() }
-
-    $$performFullScan(showingNotice?: boolean): Promise<void> { throwShouldBeOverridden(); }
-
-    $anyResolveConflictByUI(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean | undefined> { return InterceptiveAny; }
-    $$resolveConflictByDeletingRev(path: FilePathWithPrefix, deleteRevision: string, subTitle = ""): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> { throwShouldBeOverridden(); }
-    $$resolveConflict(filename: FilePathWithPrefix): Promise<void> { throwShouldBeOverridden(); }
-    $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> { throwShouldBeOverridden(); }
-
-    $$waitForReplicationOnce(): Promise<boolean | void> { throwShouldBeOverridden(); }
-
-    $$resetLocalDatabase(): Promise<void> { throwShouldBeOverridden(); }
-
-    $$tryResetRemoteDatabase(): Promise<void> { throwShouldBeOverridden(); }
-
-    $$tryCreateRemoteDatabase(): Promise<void> { throwShouldBeOverridden(); }
-
-    $$isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> { throwShouldBeOverridden(); }
-
-    $$isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false): Promise<boolean> { throwShouldBeOverridden(); }
-
-
-
-    $$askReload(message?: string) { throwShouldBeOverridden(); }
-    $$scheduleAppReload() { throwShouldBeOverridden(); }
-
-    //--- Setup
-    $allSuspendAllSync(): Promise<boolean> { return InterceptiveAll; }
-    $allSuspendExtraSync(): Promise<boolean> { return InterceptiveAll; }
-
-    $allAskUsingOptionalSyncFeature(opt: {
-        enableFetch?: boolean,
-        enableOverwrite?: boolean
-    }): Promise<boolean> {
+    $$isFileSizeExceeded(size: number): boolean {
         throwShouldBeOverridden();
     }
-    $anyConfigureOptionalSyncFeature(mode: string): Promise<void> { throwShouldBeOverridden(); }
 
-    $$showView(viewType: string): Promise<void> { throwShouldBeOverridden(); }
+    $$performFullScan(showingNotice?: boolean): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
+    $anyResolveConflictByUI(
+        filename: FilePathWithPrefix,
+        conflictCheckResult: diff_result
+    ): Promise<boolean | undefined> {
+        return InterceptiveAny;
+    }
+    $$resolveConflictByDeletingRev(
+        path: FilePathWithPrefix,
+        deleteRevision: string,
+        subTitle = ""
+    ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> {
+        throwShouldBeOverridden();
+    }
+    $$resolveConflict(filename: FilePathWithPrefix): Promise<void> {
+        throwShouldBeOverridden();
+    }
+    $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+
+    $$waitForReplicationOnce(): Promise<boolean | void> {
+        throwShouldBeOverridden();
+    }
+
+    $$resetLocalDatabase(): Promise<void> {
+        throwShouldBeOverridden();
+    }
+
+    $$tryResetRemoteDatabase(): Promise<void> {
+        throwShouldBeOverridden();
+    }
+
+    $$tryCreateRemoteDatabase(): Promise<void> {
+        throwShouldBeOverridden();
+    }
+
+    $$isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+
+    $$isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+
+    $$askReload(message?: string) {
+        throwShouldBeOverridden();
+    }
+    $$scheduleAppReload() {
+        throwShouldBeOverridden();
+    }
+
+    //--- Setup
+    $allSuspendAllSync(): Promise<boolean> {
+        return InterceptiveAll;
+    }
+    $allSuspendExtraSync(): Promise<boolean> {
+        return InterceptiveAll;
+    }
+
+    $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+    $anyConfigureOptionalSyncFeature(mode: string): Promise<void> {
+        throwShouldBeOverridden();
+    }
+
+    $$showView(viewType: string): Promise<void> {
+        throwShouldBeOverridden();
+    }
 
     // For Development: Ensure reliability MORE AND MORE. May the this plug-in helps all of us.
-    $everyModuleTest(): Promise<boolean> { return InterceptiveEvery; }
-    $everyModuleTestMultiDevice(): Promise<boolean> { return InterceptiveEvery; }
-    $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void { throwShouldBeOverridden(); }
+    $everyModuleTest(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
+    $everyModuleTestMultiDevice(): Promise<boolean> {
+        return InterceptiveEvery;
+    }
+    $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void {
+        throwShouldBeOverridden();
+    }
 
-    _isThisModuleEnabled(): boolean { return true; }
+    _isThisModuleEnabled(): boolean {
+        return true;
+    }
 
-
-    $anyGetAppId(): Promise<string | undefined> { return InterceptiveAny; }
-
+    $anyGetAppId(): Promise<string | undefined> {
+        return InterceptiveAny;
+    }
 
     // Plug-in's overrideable functions
-    onload() { void this.$$onLiveSyncLoad(); }
-    async saveSettings() { await this.$$saveSettingData(); }
-    onunload() { return void this.$$onLiveSyncUnload(); }
+    onload() {
+        void this.$$onLiveSyncLoad();
+    }
+    async saveSettings() {
+        await this.$$saveSettingData();
+    }
+    onunload() {
+        return void this.$$onLiveSyncUnload();
+    }
     // <-- Plug-in's overrideable functions
 }
-
 
 // For now,
 export type LiveSyncCore = ObsidianLiveSyncPlugin;

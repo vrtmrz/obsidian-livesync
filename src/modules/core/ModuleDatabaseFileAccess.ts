@@ -1,14 +1,28 @@
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
 import { getPathFromUXFileInfo, isInternalMetadata, markChangesAreSame } from "../../common/utils";
-import type { UXFileInfoStub, FilePathWithPrefix, UXFileInfo, MetaEntry, LoadedEntry, FilePath, SavingEntry } from "../../lib/src/common/types";
+import type {
+    UXFileInfoStub,
+    FilePathWithPrefix,
+    UXFileInfo,
+    MetaEntry,
+    LoadedEntry,
+    FilePath,
+    SavingEntry,
+} from "../../lib/src/common/types";
 import type { DatabaseFileAccess } from "../interfaces/DatabaseFileAccess";
 import { type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { isPlainText, shouldBeIgnored } from "../../lib/src/string_and_binary/path";
-import { createBlob, createTextBlob, delay, determineTypeFromBlob, isDocContentSame, readContent } from "../../lib/src/common/utils";
+import {
+    createBlob,
+    createTextBlob,
+    delay,
+    determineTypeFromBlob,
+    isDocContentSame,
+    readContent,
+} from "../../lib/src/common/utils";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { AbstractModule } from "../AbstractModule.ts";
-
 
 export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidianModule, DatabaseFileAccess {
     $everyOnload(): Promise<boolean> {
@@ -18,7 +32,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
 
     async $everyModuleTest(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        const testString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec nunc"
+        const testString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec nunc";
         // Before test, we need to delete completely.
         const conflicts = await this.getConflictedRevs("autoTest.md" as FilePathWithPrefix);
         for (const rev of conflicts) {
@@ -27,16 +41,21 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         await this.delete("autoTest.md" as FilePathWithPrefix);
         // OK, begin!
 
-        await this._test("storeContent", async () => (await this.storeContent("autoTest.md" as FilePathWithPrefix, testString)));
+        await this._test(
+            "storeContent",
+            async () => await this.storeContent("autoTest.md" as FilePathWithPrefix, testString)
+        );
         // For test, we need to clear the caches.
         await this.localDatabase.hashCaches.clear();
         await this._test("readContent", async () => {
             const content = await this.fetch("autoTest.md" as FilePathWithPrefix);
             if (!content) return "File not found";
             if (content.deleted) return "File is deleted";
-            return (await content.body.text() == testString) ? true : `Content is not same ${await content.body.text()}`;
+            return (await content.body.text()) == testString
+                ? true
+                : `Content is not same ${await content.body.text()}`;
         });
-        await this._test("delete", async () => (await this.delete("autoTest.md" as FilePathWithPrefix)));
+        await this._test("delete", async () => await this.delete("autoTest.md" as FilePathWithPrefix));
         await this._test("read deleted content", async () => {
             const content = await this.fetch("autoTest.md" as FilePathWithPrefix);
             if (!content) return true;
@@ -49,7 +68,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
 
     async checkIsTargetFile(file: UXFileInfoStub | FilePathWithPrefix): Promise<boolean> {
         const path = getPathFromUXFileInfo(file);
-        if (!await this.core.$$isTargetFile(path)) {
+        if (!(await this.core.$$isTargetFile(path))) {
             this._log(`File is not target`, LOG_LEVEL_VERBOSE);
             return false;
         }
@@ -61,7 +80,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
     }
 
     async delete(file: UXFileInfoStub | FilePathWithPrefix, rev?: string): Promise<boolean> {
-        if (!await this.checkIsTargetFile(file)) {
+        if (!(await this.checkIsTargetFile(file))) {
             return true;
         }
         const fullPath = getPathFromUXFileInfo(file);
@@ -95,13 +114,18 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
                 type: "file",
             },
             body: blob,
-        }
+        };
         return await this._store(dummyUXFileInfo, true, false, false);
     }
 
-    async _store(file: UXFileInfo, force: boolean = false, skipCheck?: boolean, onlyChunks?: boolean): Promise<boolean> {
+    async _store(
+        file: UXFileInfo,
+        force: boolean = false,
+        skipCheck?: boolean,
+        onlyChunks?: boolean
+    ): Promise<boolean> {
         if (!skipCheck) {
-            if (!await this.checkIsTargetFile(file)) {
+            if (!(await this.checkIsTargetFile(file))) {
                 return true;
             }
         }
@@ -147,17 +171,33 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
                     const oldData = { data: old.data, deleted: old._deleted || old.deleted };
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
                     if (oldData.deleted != newData.deleted) return false;
-                    if (!await isDocContentSame(old.data, newData.data)) return false;
-                    this._log(msg + "Skipped (not changed) " + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
+                    if (!(await isDocContentSame(old.data, newData.data))) return false;
+                    this._log(
+                        msg + "Skipped (not changed) " + fullPath + (d._deleted || d.deleted ? " (deleted)" : ""),
+                        LOG_LEVEL_VERBOSE
+                    );
                     markChangesAreSame(old, d.mtime, old.mtime);
                     return true;
                     // d._rev = old._rev;
                 }
             } catch (ex) {
                 if (force) {
-                    this._log(msg + "Error, Could not check the diff for the old one." + (force ? "force writing." : "") + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
+                    this._log(
+                        msg +
+                            "Error, Could not check the diff for the old one." +
+                            (force ? "force writing." : "") +
+                            fullPath +
+                            (d._deleted || d.deleted ? " (deleted)" : ""),
+                        LOG_LEVEL_VERBOSE
+                    );
                 } else {
-                    this._log(msg + "Error, Could not check the diff for the old one." + fullPath + ((d._deleted || d.deleted) ? " (deleted)" : ""), LOG_LEVEL_VERBOSE);
+                    this._log(
+                        msg +
+                            "Error, Could not check the diff for the old one." +
+                            fullPath +
+                            (d._deleted || d.deleted ? " (deleted)" : ""),
+                        LOG_LEVEL_VERBOSE
+                    );
                 }
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return !force;
@@ -177,7 +217,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
     }
 
     async getConflictedRevs(file: UXFileInfoStub | FilePathWithPrefix): Promise<string[]> {
-        if (!await this.checkIsTargetFile(file)) {
+        if (!(await this.checkIsTargetFile(file))) {
             return [];
         }
         const filename = getPathFromUXFileInfo(file);
@@ -188,9 +228,13 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         return doc._conflicts || [];
     }
 
-    async fetch(file: UXFileInfoStub | FilePathWithPrefix,
-        rev?: string, waitForReady?: boolean, skipCheck = false): Promise<UXFileInfo | false> {
-        if (skipCheck && !await this.checkIsTargetFile(file)) {
+    async fetch(
+        file: UXFileInfoStub | FilePathWithPrefix,
+        rev?: string,
+        waitForReady?: boolean,
+        skipCheck = false
+    ): Promise<UXFileInfo | false> {
+        if (skipCheck && !(await this.checkIsTargetFile(file))) {
             return false;
         }
 
@@ -210,39 +254,55 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             },
             body: data,
             deleted: entry.deleted || entry._deleted,
-        }
+        };
         if (isInternalMetadata(entry.path)) {
             fileInfo.isInternal = true;
         }
         return fileInfo;
     }
-    async fetchEntryMeta(file: UXFileInfoStub | FilePathWithPrefix,
-        rev?: string, skipCheck = false): Promise<MetaEntry | false> {
+    async fetchEntryMeta(
+        file: UXFileInfoStub | FilePathWithPrefix,
+        rev?: string,
+        skipCheck = false
+    ): Promise<MetaEntry | false> {
         const filename = getPathFromUXFileInfo(file);
-        if (skipCheck && !await this.checkIsTargetFile(file)) {
+        if (skipCheck && !(await this.checkIsTargetFile(file))) {
             return false;
         }
 
-        const doc = await this.localDatabase.getDBEntryMeta(
-            filename, rev ? { rev: rev } : undefined, true);
+        const doc = await this.localDatabase.getDBEntryMeta(filename, rev ? { rev: rev } : undefined, true);
         if (doc === false) {
             return false;
         }
         return doc as MetaEntry;
     }
-    async fetchEntryFromMeta(meta: MetaEntry, waitForReady: boolean = true, skipCheck = false): Promise<LoadedEntry | false> {
-        if (skipCheck && !await this.checkIsTargetFile(meta.path)) {
+    async fetchEntryFromMeta(
+        meta: MetaEntry,
+        waitForReady: boolean = true,
+        skipCheck = false
+    ): Promise<LoadedEntry | false> {
+        if (skipCheck && !(await this.checkIsTargetFile(meta.path))) {
             return false;
         }
-        const doc = await this.localDatabase.getDBEntryFromMeta(meta as LoadedEntry, undefined, false, waitForReady, true);
+        const doc = await this.localDatabase.getDBEntryFromMeta(
+            meta as LoadedEntry,
+            undefined,
+            false,
+            waitForReady,
+            true
+        );
         if (doc === false) {
             return false;
         }
         return doc;
     }
-    async fetchEntry(file: UXFileInfoStub | FilePathWithPrefix,
-        rev?: string, waitForReady: boolean = true, skipCheck = false): Promise<LoadedEntry | false> {
-        if (skipCheck && !await this.checkIsTargetFile(file)) {
+    async fetchEntry(
+        file: UXFileInfoStub | FilePathWithPrefix,
+        rev?: string,
+        waitForReady: boolean = true,
+        skipCheck = false
+    ): Promise<LoadedEntry | false> {
+        if (skipCheck && !(await this.checkIsTargetFile(file))) {
             return false;
         }
         const entry = await this.fetchEntryMeta(file, rev, true);
@@ -253,7 +313,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         return doc;
     }
     async deleteFromDBbyPath(fullPath: FilePath | FilePathWithPrefix, rev?: string): Promise<boolean> {
-        if (!await this.checkIsTargetFile(fullPath)) {
+        if (!(await this.checkIsTargetFile(fullPath))) {
             this._log(`storeFromStorage: File is not target: ${fullPath}`);
             return true;
         }
@@ -262,5 +322,4 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         eventHub.emitEvent(EVENT_FILE_SAVED);
         return ret;
     }
-
 }

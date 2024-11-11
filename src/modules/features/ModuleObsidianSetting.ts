@@ -1,19 +1,25 @@
 import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
-import { type BucketSyncSetting, type ConfigPassphraseStore, type CouchDBConnection, DEFAULT_SETTINGS, type ObsidianLiveSyncSettings, SALT_OF_PASSPHRASE } from "../../lib/src/common/types";
+import {
+    type BucketSyncSetting,
+    type ConfigPassphraseStore,
+    type CouchDBConnection,
+    DEFAULT_SETTINGS,
+    type ObsidianLiveSyncSettings,
+    SALT_OF_PASSPHRASE,
+} from "../../lib/src/common/types";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { encrypt, tryDecrypt } from "octagonal-wheels/encryption";
 import { setLang } from "../../lib/src/common/i18n";
 import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb";
 export class ModuleObsidianSettings extends AbstractObsidianModule implements IObsidianModule {
-
     getPassphrase(settings: ObsidianLiveSyncSettings) {
-        const methods: Record<ConfigPassphraseStore, (() => Promise<string | false>)> = {
+        const methods: Record<ConfigPassphraseStore, () => Promise<string | false>> = {
             "": () => Promise.resolve("*"),
-            "LOCALSTORAGE": () => Promise.resolve(localStorage.getItem("ls-setting-passphrase") ?? false),
-            "ASK_AT_LAUNCH": () => this.core.confirm.askString("Passphrase", "passphrase", "")
-        }
+            LOCALSTORAGE: () => Promise.resolve(localStorage.getItem("ls-setting-passphrase") ?? false),
+            ASK_AT_LAUNCH: () => this.core.confirm.askString("Passphrase", "passphrase", ""),
+        };
         const method = settings.configPassphraseStore;
         const methodFunc = method in methods ? methods[method] : methods[""];
         return methodFunc();
@@ -29,7 +35,6 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         this.usedPassphrase = "";
     }
 
-
     async decryptConfigurationItem(encrypted: string, passphrase: string) {
         const dec = await tryDecrypt(encrypted, passphrase + SALT_OF_PASSPHRASE, false);
         if (dec) {
@@ -39,7 +44,6 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         return false;
     }
 
-
     async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
         if (this.usedPassphrase != "") {
             return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
@@ -47,7 +51,10 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
 
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            this._log("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL_URGENT);
+            this._log(
+                "Could not determine passphrase to save data.json! You probably make the configuration sure again!",
+                LOG_LEVEL_URGENT
+            );
             return "";
         }
         const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
@@ -60,17 +67,25 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
     }
 
     get appId() {
-        return `${("appId" in this.app ? this.app.appId : "")}`;
+        return `${"appId" in this.app ? this.app.appId : ""}`;
     }
 
     async $$saveSettingData() {
         this.core.$$saveDeviceAndVaultName();
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
-        if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
-            this._log("Could not determine passphrase for saving data.json! Our data.json have insecure items!", LOG_LEVEL_NOTICE);
+        if (this.usedPassphrase == "" && !(await this.getPassphrase(settings))) {
+            this._log(
+                "Could not determine passphrase for saving data.json! Our data.json have insecure items!",
+                LOG_LEVEL_NOTICE
+            );
         } else {
-            if (settings.couchDB_PASSWORD != "" || settings.couchDB_URI != "" || settings.couchDB_USER != "" || settings.couchDB_DBNAME) {
+            if (
+                settings.couchDB_PASSWORD != "" ||
+                settings.couchDB_URI != "" ||
+                settings.couchDB_USER != "" ||
+                settings.couchDB_DBNAME
+            ) {
                 const connectionSetting: CouchDBConnection & BucketSyncSetting = {
                     couchDB_DBNAME: settings.couchDB_DBNAME,
                     couchDB_PASSWORD: settings.couchDB_PASSWORD,
@@ -81,9 +96,12 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     endpoint: settings.endpoint,
                     region: settings.region,
                     secretKey: settings.secretKey,
-                    useCustomRequestHandler: settings.useCustomRequestHandler
+                    useCustomRequestHandler: settings.useCustomRequestHandler,
                 };
-                settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(JSON.stringify(connectionSetting), settings);
+                settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(
+                    JSON.stringify(connectionSetting),
+                    settings
+                );
                 settings.couchDB_PASSWORD = "";
                 settings.couchDB_DBNAME = "";
                 settings.couchDB_URI = "";
@@ -98,7 +116,6 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 settings.encryptedPassphrase = await this.encryptConfigurationItem(settings.passphrase, settings);
                 settings.passphrase = "";
             }
-
         }
         await this.core.saveData(settings);
         eventHub.emitEvent(EVENT_SETTING_SAVED, settings);
@@ -127,7 +144,10 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            this._log("Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
+            this._log(
+                "Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
+                LOG_LEVEL_URGENT
+            );
         } else {
             if (settings.encryptedCouchDBConnection) {
                 const keys = [
@@ -139,17 +159,23 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     "bucket",
                     "endpoint",
                     "region",
-                    "secretKey"] as (keyof CouchDBConnection | keyof BucketSyncSetting)[];
-                const decrypted = this.tryDecodeJson(await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)) as (CouchDBConnection & BucketSyncSetting);
+                    "secretKey",
+                ] as (keyof CouchDBConnection | keyof BucketSyncSetting)[];
+                const decrypted = this.tryDecodeJson(
+                    await this.decryptConfigurationItem(settings.encryptedCouchDBConnection, passphrase)
+                ) as CouchDBConnection & BucketSyncSetting;
                 if (decrypted) {
                     for (const key of keys) {
                         if (key in decrypted) {
                             //@ts-ignore
-                            settings[key] = decrypted[key]
+                            settings[key] = decrypted[key];
                         }
                     }
                 } else {
-                    this._log("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
+                    this._log(
+                        "Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
+                        LOG_LEVEL_URGENT
+                    );
                     for (const key of keys) {
                         //@ts-ignore
                         settings[key] = "";
@@ -162,11 +188,13 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 if (decrypted) {
                     settings.passphrase = decrypted;
                 } else {
-                    this._log("Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!", LOG_LEVEL_URGENT);
+                    this._log(
+                        "Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
+                        LOG_LEVEL_URGENT
+                    );
                     settings.passphrase = "";
                 }
             }
-
         }
         this.settings = settings;
         setLang(this.settings.displayLanguage);
@@ -191,7 +219,10 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             }
         }
         if (isCloudantURI(this.settings.couchDB_URI) && this.settings.customChunkSize != 0) {
-            this._log("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL_NOTICE)
+            this._log(
+                "Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.",
+                LOG_LEVEL_NOTICE
+            );
             this.settings.customChunkSize = 0;
         }
         this.core.$$setDeviceAndVaultName(localStorage.getItem(lsKey) || "");

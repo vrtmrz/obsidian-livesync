@@ -3,8 +3,14 @@ import type { LOG_LEVEL } from "../lib/src/common/types";
 import type { LiveSyncCore } from "../main";
 import { unique } from "octagonal-wheels/collection";
 import type { IObsidianModule } from "./AbstractObsidianModule.ts";
-import type { ICoreModuleBase, AllInjectableProps, AllExecuteProps, EveryExecuteProps, AnyExecuteProps, ICoreModule } from "./ModuleTypes";
-
+import type {
+    ICoreModuleBase,
+    AllInjectableProps,
+    AllExecuteProps,
+    EveryExecuteProps,
+    AnyExecuteProps,
+    ICoreModule,
+} from "./ModuleTypes";
 
 function isOverridableKey(key: string): key is keyof ICoreModuleBase {
     return key.startsWith("$");
@@ -13,7 +19,6 @@ function isOverridableKey(key: string): key is keyof ICoreModuleBase {
 function isInjectableKey(key: string): key is keyof AllInjectableProps {
     return key.startsWith("$$");
 }
-
 
 function isAllExecuteKey(key: string): key is keyof AllExecuteProps {
     return key.startsWith("$all");
@@ -35,15 +40,17 @@ function isAnyExecuteKey(key: string): key is keyof AnyExecuteProps {
  * All of above performed on injectModules function.
  */
 export function injectModules<T extends ICoreModule>(target: T, modules: ICoreModule[]) {
-    const allKeys = unique([...Object.keys(Object.getOwnPropertyDescriptors(target)),
-    ...Object.keys(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(target)))]).filter(e => e.startsWith("$")) as (keyof ICoreModule)[];
+    const allKeys = unique([
+        ...Object.keys(Object.getOwnPropertyDescriptors(target)),
+        ...Object.keys(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(target))),
+    ]).filter((e) => e.startsWith("$")) as (keyof ICoreModule)[];
     const moduleMap = new Map<string, IObsidianModule[]>();
     for (const module of modules) {
         for (const key of allKeys) {
             if (isOverridableKey(key)) {
                 if (key in module) {
                     const list = moduleMap.get(key) || [];
-                    if (typeof module[key] === 'function') {
+                    if (typeof module[key] === "function") {
                         module[key] = module[key].bind(module) as any;
                     }
                     list.push(module);
@@ -74,7 +81,7 @@ export function injectModules<T extends ICoreModule>(target: T, modules: ICoreMo
                     }
                 }
                 return true;
-            }
+            };
             for (const module of modules) {
                 Logger(`[${module.constructor.name}]: Injected (All) ${key} `, LOG_LEVEL_VERBOSE);
             }
@@ -94,7 +101,7 @@ export function injectModules<T extends ICoreModule>(target: T, modules: ICoreMo
                     }
                 }
                 return true;
-            }
+            };
             for (const module of modules) {
                 Logger(`[${module.constructor.name}]: Injected (Every) ${key} `, LOG_LEVEL_VERBOSE);
             }
@@ -115,7 +122,7 @@ export function injectModules<T extends ICoreModule>(target: T, modules: ICoreMo
                     }
                 }
                 return false;
-            }
+            };
             for (const module of modules) {
                 Logger(`[${module.constructor.name}]: Injected (Any) ${key} `, LOG_LEVEL_VERBOSE);
             }
@@ -126,7 +133,6 @@ export function injectModules<T extends ICoreModule>(target: T, modules: ICoreMo
     Logger(`Injected   modules for ${target.constructor.name}`, LOG_LEVEL_VERBOSE);
     return true;
 }
-
 
 export abstract class AbstractModule {
     _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
@@ -173,8 +179,7 @@ export abstract class AbstractModule {
                 return this.testFail(`${key} failed: ${ret}`);
             }
             this.addTestResult(key, true, "");
-        }
-        catch (ex: any) {
+        } catch (ex: any) {
             this.addTestResult(key, false, "Failed by Exception", ex.toString());
             return this.testFail(`${key} failed: ${ex}`);
         }

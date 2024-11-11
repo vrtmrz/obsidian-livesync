@@ -18,16 +18,21 @@ Do you want to enable this?
 > - 2000: Warn if the remote storage size exceeds 2GB.
 
 If we have reached the limit, we will be asked to enlarge the limit step by step.
-`
+`;
             const ANSWER_0 = "No, never warn please";
             const ANSWER_800 = "800MB (Cloudant, fly.io)";
             const ANSWER_2000 = "2GB (Standard)";
             const ASK_ME_NEXT_TIME = "Ask me later";
 
-            const ret = await this.core.confirm.askSelectStringDialogue(message, [ANSWER_0, ANSWER_800, ANSWER_2000, ASK_ME_NEXT_TIME], {
-                defaultAction: ASK_ME_NEXT_TIME,
-                title: "Setting up database size notification", timeout: 40
-            });
+            const ret = await this.core.confirm.askSelectStringDialogue(
+                message,
+                [ANSWER_0, ANSWER_800, ANSWER_2000, ASK_ME_NEXT_TIME],
+                {
+                    defaultAction: ASK_ME_NEXT_TIME,
+                    title: "Setting up database size notification",
+                    timeout: 40,
+                }
+            );
             if (ret == ANSWER_0) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 0;
                 await this.core.saveSettings();
@@ -68,13 +73,20 @@ If we have reached the limit, we will be asked to enlarge the limit step by step
                         const ANSWER_ENLARGE_LIMIT = `increase to ${newMax}MB`;
                         const ANSWER_REBUILD = "Rebuild Everything Now";
                         const ANSWER_IGNORE = "Dismiss";
-                        const ret = await this.core.confirm.askSelectStringDialogue(message, [ANSWER_ENLARGE_LIMIT, ANSWER_REBUILD, ANSWER_IGNORE,], {
-                            defaultAction: ANSWER_IGNORE,
-                            title: "Remote storage size exceeded the limit", timeout: 60
-
-                        });
+                        const ret = await this.core.confirm.askSelectStringDialogue(
+                            message,
+                            [ANSWER_ENLARGE_LIMIT, ANSWER_REBUILD, ANSWER_IGNORE],
+                            {
+                                defaultAction: ANSWER_IGNORE,
+                                title: "Remote storage size exceeded the limit",
+                                timeout: 60,
+                            }
+                        );
                         if (ret == ANSWER_REBUILD) {
-                            const ret = await this.core.confirm.askYesNoDialog("This may take a bit of a long time. Do you really want to rebuild everything now?", { defaultOption: "No" });
+                            const ret = await this.core.confirm.askYesNoDialog(
+                                "This may take a bit of a long time. Do you really want to rebuild everything now?",
+                                { defaultOption: "No" }
+                            );
                             if (ret == "yes") {
                                 this.core.settings.notifyThresholdOfRemoteStorageSize = -1;
                                 await this.saveSettings();
@@ -82,13 +94,19 @@ If we have reached the limit, we will be asked to enlarge the limit step by step
                             }
                         } else if (ret == ANSWER_ENLARGE_LIMIT) {
                             this.settings.notifyThresholdOfRemoteStorageSize = ~~(estimatedSize / 1024 / 1024) + 100;
-                            this._log(`Threshold has been enlarged to ${this.settings.notifyThresholdOfRemoteStorageSize}MB`, LOG_LEVEL_NOTICE);
+                            this._log(
+                                `Threshold has been enlarged to ${this.settings.notifyThresholdOfRemoteStorageSize}MB`,
+                                LOG_LEVEL_NOTICE
+                            );
                             await this.core.saveSettings();
                         } else {
                             // Dismiss or Close the dialog
                         }
 
-                        this._log(`Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize * 1024 * 1024)} `, LOG_LEVEL_INFO);
+                        this._log(
+                            `Remote storage size: ${sizeToHumanReadable(estimatedSize)} exceeded ${sizeToHumanReadable(this.settings.notifyThresholdOfRemoteStorageSize * 1024 * 1024)} `,
+                            LOG_LEVEL_INFO
+                        );
                     } else {
                         this._log(`Remote storage size: ${sizeToHumanReadable(estimatedSize)}`, LOG_LEVEL_INFO);
                     }
@@ -97,5 +115,4 @@ If we have reached the limit, we will be asked to enlarge the limit step by step
         }
         return true;
     }
-
 }

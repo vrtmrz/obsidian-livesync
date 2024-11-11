@@ -1,6 +1,12 @@
 import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
-import { TweakValuesShouldMatchedTemplate, CompatibilityBreakingTweakValues, confName, type TweakValues, type RemoteDBSettings } from "../../lib/src/common/types.ts";
+import {
+    TweakValuesShouldMatchedTemplate,
+    CompatibilityBreakingTweakValues,
+    confName,
+    type TweakValues,
+    type RemoteDBSettings,
+} from "../../lib/src/common/types.ts";
 import { escapeMarkdownValue } from "../../lib/src/common/utils.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
@@ -38,11 +44,13 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
             table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
         }
 
-        const additionalMessage = rebuildRequired ? `
+        const additionalMessage = rebuildRequired
+            ? `
 
 **Note**: We have detected that some of the values are different to make incompatible the local database with the remote database.
 If you choose to use the configured values, the local database will be rebuilt, and if you choose to use the values of this device, the remote database will be rebuilt. 
-Both of them takes a few minutes. Please choose after considering the situation.` : "";
+Both of them takes a few minutes. Please choose after considering the situation.`
+            : "";
 
         const message = `
 Your configuration has not been matched with the one on the remote server.
@@ -67,9 +75,16 @@ Please select which one you want to use.
         const CHOICE_AND_VALUES = [
             [CHOICE_USE_REMOTE, preferred],
             [CHOICE_USR_MINE, true],
-            [CHOICE_DISMISS, false]]
+            [CHOICE_DISMISS, false],
+        ];
         const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
-        const retKey = await this.core.confirm.confirmWithMessage("Tweaks Mismatched or Changed", message, Object.keys(CHOICES), CHOICE_DISMISS, 60);
+        const retKey = await this.core.confirm.confirmWithMessage(
+            "Tweaks Mismatched or Changed",
+            message,
+            Object.keys(CHOICES),
+            CHOICE_DISMISS,
+            60
+        );
         if (!retKey) return "IGNORE";
         const conf = CHOICES[retKey];
 
@@ -78,7 +93,10 @@ Please select which one you want to use.
             if (rebuildRequired) {
                 await this.core.rebuilder.$rebuildRemote();
             }
-            Logger(`Tweak values on the remote server have been updated. Your other device will see this message.`, LOG_LEVEL_NOTICE);
+            Logger(
+                `Tweak values on the remote server have been updated. Your other device will see this message.`,
+                LOG_LEVEL_NOTICE
+            );
             return "CHECKAGAIN";
         }
         if (conf) {
@@ -92,10 +110,11 @@ Please select which one you want to use.
             return "CHECKAGAIN";
         }
         return "IGNORE";
-
     }
 
-    async $$checkAndAskUseRemoteConfiguration(trialSetting: RemoteDBSettings): Promise<{ result: false | TweakValues, requireFetch: boolean }> {
+    async $$checkAndAskUseRemoteConfiguration(
+        trialSetting: RemoteDBSettings
+    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
         const replicator = await this.core.$anyNewReplicator(trialSetting);
         if (await replicator.tryConnectRemote(trialSetting)) {
             const preferred = await replicator.getRemotePreferredTweakValues(trialSetting);
@@ -122,14 +141,20 @@ Please select which one you want to use.
                 }
 
                 if (differenceCount === 0) {
-                    this._log("The settings in the remote database are the same as the local database.", LOG_LEVEL_NOTICE);
+                    this._log(
+                        "The settings in the remote database are the same as the local database.",
+                        LOG_LEVEL_NOTICE
+                    );
                     return { result: false, requireFetch: false };
                 }
-                const additionalMessage = (rebuildRequired && this.core.settings.isConfigured) ? `
+                const additionalMessage =
+                    rebuildRequired && this.core.settings.isConfigured
+                        ? `
 
 >[!WARNING]
 > Some remote configurations are not compatible with the local database of this device. Rebuilding the local database will be required.
-***Please ensure that you have time and are connected to a stable network to apply!***` : "";
+***Please ensure that you have time and are connected to a stable network to apply!***`
+                        : "";
 
                 const message = `
 The settings in the remote database are as follows.
@@ -152,7 +177,7 @@ ${additionalMessage}`;
                 const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
                     title: "Use Remote Configuration",
                     timeout: 0,
-                    defaultAction: CHOICE_DISMISS
+                    defaultAction: CHOICE_DISMISS,
                 });
                 if (!retKey) return { result: false, requireFetch: false };
                 if (retKey === CHOICE_DISMISS) return { result: false, requireFetch: false };

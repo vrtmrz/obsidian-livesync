@@ -15,15 +15,12 @@ declare global {
 }
 
 export class ModuleReplicateTest extends AbstractObsidianModule implements IObsidianModule {
-
-
     testRootPath = "_test/";
     testInfoPath = "_testinfo/";
 
     get isLeader() {
         return this.core.$$getVaultName().indexOf("dev") >= 0 && this.core.$$vaultName().indexOf("recv") < 0;
     }
-
 
     get nameByKind() {
         if (!this.isLeader) {
@@ -51,7 +48,6 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
         }
     }
 
-
     async dumpList() {
         if (this.settings.syncInternalFiles) {
             this._log("Write file list (Include Hidden)");
@@ -75,39 +71,38 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
                 void this._dumpFileList("files.md").finally(() => {
                     void this.refreshSyncStatus();
                 });
-
-            }
-        })
+            },
+        });
         this.addCommand({
             id: "dump-file-structure-ih",
             name: "Dump Structure (Include Hidden)",
             callback: () => {
                 const d = "files.md";
                 void this._dumpFileListIncludeHidden(d);
-            }
-        })
+            },
+        });
         this.addCommand({
             id: "dump-file-structure-auto",
             name: "Dump Structure",
             callback: () => {
                 void this.dumpList();
-            }
-        })
+            },
+        });
         this.addCommand({
             id: "dump-file-test",
             name: `Perform Test (Dev) ${this.isLeader ? "(Leader)" : "(Recv)"}`,
             callback: () => {
                 void this.performTestManually();
-            }
-        })
+            },
+        });
         this.addCommand({
             id: "watch-sync-result",
             name: `Watch sync result is matched between devices`,
             callback: () => {
                 this.watchIsSynchronised = !this.watchIsSynchronised;
                 void this.refreshSyncStatus();
-            }
-        })
+            },
+        });
         this.app.vault.on("modify", async (file) => {
             if (file.path.startsWith(this.testInfoPath)) {
                 await this.refreshSyncStatus();
@@ -117,7 +112,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
                     return true;
                 });
             }
-        })
+        });
         this.statusBarSyncStatus = this.plugin.addStatusBarItem();
         return Promise.resolve(true);
     }
@@ -164,12 +159,11 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
         }
     }
 
-
     async _dumpFileList(outFile?: string) {
         const files = this.core.storageAccess.getFiles();
         const out = [] as any[];
         for (const file of files) {
-            if (!await this.core.$$isTargetFile(file.path)) {
+            if (!(await this.core.$$isTargetFile(file.path))) {
                 continue;
             }
             if (file.path.startsWith(this.testInfoPath)) continue;
@@ -183,8 +177,8 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
                     name: file.name,
                     size: stat.size,
                     mtime: stat.mtime,
-                    hash: hashStr
-                }
+                    hash: hashStr,
+                };
                 // const fileLine = `-${file.path}:${stat.size}:${stat.mtime}:${hashStr}`;
                 out.push(item);
             }
@@ -203,7 +197,9 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     async _dumpFileListIncludeHidden(outFile?: string) {
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
+            .split(",")
+            .filter((e) => e)
+            .map((e) => new RegExp(e, "i"));
         const out = [] as any[];
         const files = await this.core.storageAccess.getFilesIncludeHidden("", undefined, ignorePatterns);
         console.dir(files);
@@ -222,8 +218,8 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
                     name: file.split("/").pop(),
                     size: stat.size,
                     mtime: stat.mtime,
-                    hash: hashStr
-                }
+                    hash: hashStr,
+                };
                 // const fileLine = `-${file.path}:${stat.size}:${stat.mtime}:${hashStr}`;
                 out.push(item);
             }
@@ -263,27 +259,27 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
             "docs/tech_info.md",
             "docs/terms.md",
             "docs/troubleshooting.md",
-            'images/1.png',
-            'images/2.png',
-            'images/corrupted_data.png',
-            'images/hatch.png',
-            'images/lock_pattern1.png',
-            'images/lock_pattern2.png',
-            'images/quick_setup_1.png',
-            'images/quick_setup_2.png',
-            'images/quick_setup_3.png',
-            'images/quick_setup_3b.png',
-            'images/quick_setup_4.png',
-            'images/quick_setup_5.png',
-            'images/quick_setup_6.png',
-            'images/quick_setup_7.png',
-            'images/quick_setup_8.png',
-            'images/quick_setup_9_1.png',
-            'images/quick_setup_9_2.png',
-            'images/quick_setup_10.png',
-            'images/remote_db_setting.png',
-            'images/write_logs_into_the_file.png',
-        ]
+            "images/1.png",
+            "images/2.png",
+            "images/corrupted_data.png",
+            "images/hatch.png",
+            "images/lock_pattern1.png",
+            "images/lock_pattern2.png",
+            "images/quick_setup_1.png",
+            "images/quick_setup_2.png",
+            "images/quick_setup_3.png",
+            "images/quick_setup_3b.png",
+            "images/quick_setup_4.png",
+            "images/quick_setup_5.png",
+            "images/quick_setup_6.png",
+            "images/quick_setup_7.png",
+            "images/quick_setup_8.png",
+            "images/quick_setup_9_1.png",
+            "images/quick_setup_9_2.png",
+            "images/quick_setup_10.png",
+            "images/remote_db_setting.png",
+            "images/write_logs_into_the_file.png",
+        ];
         for (const file of files) {
             const remote = remoteTopDir + file;
             const local = this.testRootPath + file;
@@ -303,7 +299,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     async waitFor(proc: () => Promise<boolean>, timeout = 10000): Promise<boolean> {
         await delay(100);
         const start = Date.now();
-        while (!await proc()) {
+        while (!(await proc())) {
             if (timeout > 0) {
                 if (Date.now() - start > timeout) {
                     this._log(`Timeout`);
@@ -316,7 +312,6 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     }
 
     async testConflictedManually1() {
-
         await this.core.$$replicate();
 
         const commonFile = `Resolve! 
@@ -328,18 +323,20 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
 
         await this.core.$$replicate();
         await this.core.$$replicate();
-        if (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 1?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 1?", {
+                timeout: 30,
+                defaultOption: "Yes",
+            })) == "no"
+        ) {
             return;
         }
 
-
         const fileA = `Resolve to KEEP THIS
-Willy Wonka, Willy Wonka, the amazing chocolatier!!`
+Willy Wonka, Willy Wonka, the amazing chocolatier!!`;
 
         const fileB = `Resolve to DISCARD THIS
-Charlie Bucket, Charlie Bucket, the amazing chocolatier!!`
-
-
+Charlie Bucket, Charlie Bucket, the amazing chocolatier!!`;
 
         if (this.isLeader) {
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "wonka.md", fileA);
@@ -347,25 +344,37 @@ Charlie Bucket, Charlie Bucket, the amazing chocolatier!!`
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "wonka.md", fileB);
         }
 
-        if (await this.core.confirm.askYesNoDialog("Ready to check the result of Manually 1?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to check the result of Manually 1?", {
+                timeout: 30,
+                defaultOption: "Yes",
+            })) == "no"
+        ) {
             return;
         }
         await this.core.$$replicate();
         await this.core.$$replicate();
 
-
-        if (!await this.waitFor(async () => {
-            await this.core.$$replicate();
-            return await this.__assertStorageContent(this.testRootPath + "wonka.md" as FilePath, fileA, false, true) == true;
-        }, 30000)) {
-            return await this.__assertStorageContent(this.testRootPath + "wonka.md" as FilePath, fileA, false, true);
+        if (
+            !(await this.waitFor(async () => {
+                await this.core.$$replicate();
+                return (
+                    (await this.__assertStorageContent(
+                        (this.testRootPath + "wonka.md") as FilePath,
+                        fileA,
+                        false,
+                        true
+                    )) == true
+                );
+            }, 30000))
+        ) {
+            return await this.__assertStorageContent((this.testRootPath + "wonka.md") as FilePath, fileA, false, true);
         }
         return true;
         // We have to check the result
     }
 
     async testConflictedManually2() {
-
         await this.core.$$replicate();
 
         const commonFile = `Resolve To concatenate
@@ -377,56 +386,82 @@ ABCDEFG`;
 
         await this.core.$$replicate();
         await this.core.$$replicate();
-        if (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 2?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 2?", {
+                timeout: 30,
+                defaultOption: "Yes",
+            })) == "no"
+        ) {
             return;
         }
 
         const fileA = `Resolve to Concatenate
-ABCDEFGHIJKLMNOPQRSTYZ`
+ABCDEFGHIJKLMNOPQRSTYZ`;
 
         const fileB = `Resolve to Concatenate
-AJKLMNOPQRSTUVWXYZ`
+AJKLMNOPQRSTUVWXYZ`;
 
         const concatenated = `Resolve to Concatenate
-ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         if (this.isLeader) {
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "concat.md", fileA);
         } else {
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "concat.md", fileB);
         }
-        if (await this.core.confirm.askYesNoDialog("Ready to test conflict Manually 2?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to test conflict Manually 2?", {
+                timeout: 30,
+                defaultOption: "Yes",
+            })) == "no"
+        ) {
             return;
         }
         await this.core.$$replicate();
         await this.core.$$replicate();
 
-
-        if (!await this.waitFor(async () => {
-            await this.core.$$replicate();
-            return await this.__assertStorageContent(this.testRootPath + "concat.md" as FilePath, concatenated, false, true) == true;
-        }, 30000)) {
-            return await this.__assertStorageContent(this.testRootPath + "concat.md" as FilePath, concatenated, false, true);
+        if (
+            !(await this.waitFor(async () => {
+                await this.core.$$replicate();
+                return (
+                    (await this.__assertStorageContent(
+                        (this.testRootPath + "concat.md") as FilePath,
+                        concatenated,
+                        false,
+                        true
+                    )) == true
+                );
+            }, 30000))
+        ) {
+            return await this.__assertStorageContent(
+                (this.testRootPath + "concat.md") as FilePath,
+                concatenated,
+                false,
+                true
+            );
         }
         return true;
-
     }
 
     async testConflictAutomatic() {
-
         if (this.isLeader) {
             const baseDoc = `Tasks!
 - [ ] Task 1
 - [ ] Task 2
 - [ ] Task 3
 - [ ] Task 4
-`
+`;
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "task.md", baseDoc);
         }
-        await delay(100)
+        await delay(100);
         await this.core.$$replicate();
         await this.core.$$replicate();
 
-        if (await this.core.confirm.askYesNoDialog("Ready to test conflict?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to test conflict?", {
+                timeout: 30,
+                defaultOption: "Yes",
+            })) == "no"
+        ) {
             return;
         }
         const mod1Doc = `Tasks!
@@ -434,14 +469,14 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 - [v] Task 2
 - [ ] Task 3
 - [ ] Task 4
-`
+`;
 
         const mod2Doc = `Tasks!
 - [ ] Task 1
 - [ ] Task 2
 - [v] Task 3
 - [ ] Task 4
-`
+`;
         if (this.isLeader) {
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "task.md", mod1Doc);
         } else {
@@ -451,7 +486,10 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`
         await this.core.$$replicate();
         await this.core.$$replicate();
         await delay(1000);
-        if (await this.core.confirm.askYesNoDialog("Ready to check result?", { timeout: 30, defaultOption: "Yes" }) == "no") {
+        if (
+            (await this.core.confirm.askYesNoDialog("Ready to check result?", { timeout: 30, defaultOption: "Yes" })) ==
+            "no"
+        ) {
             return;
         }
         await this.core.$$replicate();
@@ -461,8 +499,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 - [v] Task 2
 - [v] Task 3
 - [ ] Task 4
-`
-        return this.__assertStorageContent(this.testRootPath + "task.md" as FilePath, mergedDoc, false, true);
+`;
+        return this.__assertStorageContent((this.testRootPath + "task.md") as FilePath, mergedDoc, false, true);
     }
 
     async checkConflictResolution() {
@@ -471,24 +509,27 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`
         await this.core.rebuilder.resolveAllConflictedFilesByNewerOnes();
         await this.core.$$replicate();
         await delay(1000);
-        if (!await this.testConflictAutomatic()) {
+        if (!(await this.testConflictAutomatic())) {
             this._log("Conflict resolution (Auto) failed", LOG_LEVEL_NOTICE);
             return false;
         }
-        if (!await this.testConflictedManually1()) {
+        if (!(await this.testConflictedManually1())) {
             this._log("Conflict resolution (Manual1) failed", LOG_LEVEL_NOTICE);
             return false;
         }
-        if (!await this.testConflictedManually2()) {
+        if (!(await this.testConflictedManually2())) {
             this._log("Conflict resolution (Manual2) failed", LOG_LEVEL_NOTICE);
             return false;
         }
         return true;
-
     }
 
-
-    async __assertStorageContent(fileName: FilePath, content: string, inverted = false, showResult = false): Promise<boolean | string> {
+    async __assertStorageContent(
+        fileName: FilePath,
+        content: string,
+        inverted = false,
+        showResult = false
+    ): Promise<boolean | string> {
         try {
             const fileContent = await this.core.storageAccess.readHiddenFileText(fileName);
             let result = fileContent === content;

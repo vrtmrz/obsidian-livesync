@@ -4,9 +4,7 @@ import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 
 export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsidianModule {
-
     $everyOnloadStart(): Promise<boolean> {
-
         // UI
         addIcon(
             "replicate",
@@ -21,7 +19,6 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
         this.addRibbonIcon("replicate", "Replicate", async () => {
             await this.core.$$replicate(true);
         }).addClass("livesync-ribbon-replicate");
-
 
         this.addCommand({
             id: "livesync-replicate",
@@ -84,9 +81,9 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             id: "livesync-scan-files",
             name: "Scan storage and database again",
             callback: async () => {
-                await this.core.$$performFullScan(true)
-            }
-        })
+                await this.core.$$performFullScan(true);
+            },
+        });
 
         this.addCommand({
             id: "livesync-runbatch",
@@ -94,7 +91,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             callback: async () => {
                 await this.core.$everyCommitPendingFileEvent();
             },
-        })
+        });
 
         // TODO, Replicator is possibly one of features. It should be moved to features.
         this.addCommand({
@@ -103,9 +100,8 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             callback: () => {
                 this.core.replicator.terminateSync();
             },
-        })
+        });
         return Promise.resolve(true);
-
     }
     $everyOnload(): Promise<boolean> {
         this.app.workspace.onLayoutReady(this.core.$$onLiveSyncReady.bind(this.core));
@@ -124,13 +120,10 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             await leaves[0].setViewState({
                 type: viewType,
                 active: true,
-            })
+            });
         }
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(
-                leaves[0]
-            );
+            this.app.workspace.revealLeaf(leaves[0]);
         }
     }
-
 }

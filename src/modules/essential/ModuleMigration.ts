@@ -1,16 +1,23 @@
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from 'octagonal-wheels/common/logger.js';
-import { SETTING_VERSION_SUPPORT_CASE_INSENSITIVE } from '../../lib/src/common/types.js';
-import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI, eventHub } from '../../common/events.ts';
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger.js";
+import { SETTING_VERSION_SUPPORT_CASE_INSENSITIVE } from "../../lib/src/common/types.js";
+import {
+    EVENT_REQUEST_OPEN_SETTING_WIZARD,
+    EVENT_REQUEST_OPEN_SETTINGS,
+    EVENT_REQUEST_OPEN_SETUP_URI,
+    eventHub,
+} from "../../common/events.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 const URI_DOC = "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use";
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
-
     async migrateDisableBulkSend() {
         if (this.settings.sendChunksBulk) {
-            this._log("Send chunks in bulk has been enabled, however, this feature had been corrupted. Sorry for your inconvenience. Automatically disabled.", LOG_LEVEL_NOTICE);
+            this._log(
+                "Send chunks in bulk has been enabled, however, this feature had been corrupted. Sorry for your inconvenience. Automatically disabled.",
+                LOG_LEVEL_NOTICE
+            );
             this.settings.sendChunksBulk = false;
             this.settings.sendChunksBulkMaxSize = 1;
             await this.saveSettings();
@@ -20,20 +27,27 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         const old = this.settings.settingVersion;
         const current = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
         // Check each migrations(old -> current)
-        if (!await this.migrateToCaseInsensitive(old, current)) {
+        if (!(await this.migrateToCaseInsensitive(old, current))) {
             this._log(`Migration failed or cancelled from ${old} to ${current}`, LOG_LEVEL_NOTICE);
             return;
         }
     }
     async migrateToCaseInsensitive(old: number, current: number) {
-        if (this.settings.handleFilenameCaseSensitive !== undefined && this.settings.doNotUseFixedRevisionForChunks !== undefined) {
+        if (
+            this.settings.handleFilenameCaseSensitive !== undefined &&
+            this.settings.doNotUseFixedRevisionForChunks !== undefined
+        ) {
             if (current < SETTING_VERSION_SUPPORT_CASE_INSENSITIVE) {
                 this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
                 await this.saveSettings();
             }
             return true;
         }
-        if (old >= SETTING_VERSION_SUPPORT_CASE_INSENSITIVE && this.settings.handleFilenameCaseSensitive !== undefined && this.settings.doNotUseFixedRevisionForChunks !== undefined) {
+        if (
+            old >= SETTING_VERSION_SUPPORT_CASE_INSENSITIVE &&
+            this.settings.handleFilenameCaseSensitive !== undefined &&
+            this.settings.doNotUseFixedRevisionForChunks !== undefined
+        ) {
             return true;
         }
 
@@ -43,9 +57,14 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         try {
             const remoteInfo = await this.core.replicator.getRemotePreferredTweakValues(this.settings);
             if (remoteInfo) {
-                remoteHandleFilenameCaseSensitive = "handleFilenameCaseSensitive" in remoteInfo ? remoteInfo.handleFilenameCaseSensitive : false;
-                remoteDoNotUseFixedRevisionForChunks = "doNotUseFixedRevisionForChunks" in remoteInfo ? remoteInfo.doNotUseFixedRevisionForChunks : false;
-                if (remoteHandleFilenameCaseSensitive !== undefined || remoteDoNotUseFixedRevisionForChunks !== undefined) {
+                remoteHandleFilenameCaseSensitive =
+                    "handleFilenameCaseSensitive" in remoteInfo ? remoteInfo.handleFilenameCaseSensitive : false;
+                remoteDoNotUseFixedRevisionForChunks =
+                    "doNotUseFixedRevisionForChunks" in remoteInfo ? remoteInfo.doNotUseFixedRevisionForChunks : false;
+                if (
+                    remoteHandleFilenameCaseSensitive !== undefined ||
+                    remoteDoNotUseFixedRevisionForChunks !== undefined
+                ) {
                     remoteChecked = true;
                 }
             } else {
@@ -79,7 +98,13 @@ ___Note2: The chunks are completely immutable, we can fetch only the metadata an
             const OPTION_FETCH = "Yes, fetch again";
             const DISMISS = "No, please ask again";
             const options = [OPTION_FETCH, DISMISS];
-            const ret = await this.core.confirm.confirmWithMessage("Case Sensitivity", message, options, "No, please ask again", 40);
+            const ret = await this.core.confirm.confirmWithMessage(
+                "Case Sensitivity",
+                message,
+                options,
+                "No, please ask again",
+                40
+            );
             if (ret == OPTION_FETCH) {
                 this.settings.handleFilenameCaseSensitive = remoteHandleFilenameCaseSensitive || false;
                 this.settings.doNotUseFixedRevisionForChunks = remoteDoNotUseFixedRevisionForChunks || false;
@@ -96,7 +121,6 @@ ___Note2: The chunks are completely immutable, we can fetch only the metadata an
             } else {
                 return false;
             }
-
         }
 
         const ENABLE_BOTH = "Enable both";
@@ -120,10 +144,7 @@ ___However, to enable either of these changes, both remote and local databases n
 - If you do not have enough time, please choose \`${DISMISS}\`. You will be prompted again later.
 - If you have rebuilt the database on another device, please select \`${DISMISS}\` and try synchronizing again. Since a difference has been detected, you will be prompted again.
 `;
-        const options = [
-            ENABLE_BOTH,
-            ENABLE_FILENAME_CASE_INSENSITIVE,
-            ENABLE_FIXED_REVISION_FOR_CHUNKS];
+        const options = [ENABLE_BOTH, ENABLE_FILENAME_CASE_INSENSITIVE, ENABLE_FIXED_REVISION_FOR_CHUNKS];
         if (remoteChecked) {
             options.push(ADJUST_TO_REMOTE);
         }
@@ -152,13 +173,11 @@ ___However, to enable either of these changes, both remote and local databases n
             case DISMISS:
             default:
                 return false;
-
         }
         this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
         await this.saveSettings();
         await this.core.rebuilder.scheduleRebuild();
         await this.core.$$performRestart();
-
     }
 
     async initialMessage() {
@@ -174,16 +193,14 @@ Note: If you do not know what it is, please refer to the [documentation](${URI_D
         const USE_SETUP = "Yes, I have";
         const NEXT = "No, I do not have";
 
-        const ret = await this.core.confirm.askSelectStringDialogue(message, [
-            USE_SETUP, NEXT], {
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_SETUP, NEXT], {
             title: "Welcome to Self-hosted LiveSync",
-            defaultAction: USE_SETUP
+            defaultAction: USE_SETUP,
         });
         if (ret === USE_SETUP) {
             eventHub.emitEvent(EVENT_REQUEST_OPEN_SETUP_URI);
             return false;
-        }
-        else if (ret == NEXT) {
+        } else if (ret == NEXT) {
             return true;
         }
         return false;
@@ -199,10 +216,9 @@ How do you want to set it up manually?`;
         const USE_SETUP = "Set it up all manually";
         const NEXT = "Remind me at the next launch";
 
-        const ret = await this.core.confirm.askSelectStringDialogue(message, [
-            USE_MINIMAL, USE_SETUP, NEXT], {
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, NEXT], {
             title: "Recommendation to use Setup URI",
-            defaultAction: USE_MINIMAL
+            defaultAction: USE_MINIMAL,
         });
         if (ret === USE_MINIMAL) {
             eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTING_WIZARD);
@@ -211,8 +227,7 @@ How do you want to set it up manually?`;
         if (ret === USE_SETUP) {
             eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTINGS);
             return false;
-        }
-        else if (ret == NEXT) {
+        } else if (ret == NEXT) {
             return false;
         }
         return false;
@@ -229,11 +244,13 @@ How do you want to set it up manually?`;
         }
         if (!this.settings.isConfigured) {
             // Case sensitivity
-            if (!await this.initialMessage() || !await this.askAgainForSetupURI()) {
-                this._log("The setup has been cancelled, Self-hosted LiveSync waiting for your setup!", LOG_LEVEL_NOTICE);
+            if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
+                this._log(
+                    "The setup has been cancelled, Self-hosted LiveSync waiting for your setup!",
+                    LOG_LEVEL_NOTICE
+                );
                 return false;
             }
-
         }
         return true;
     }

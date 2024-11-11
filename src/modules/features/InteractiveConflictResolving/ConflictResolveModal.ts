@@ -27,7 +27,7 @@ export class ConflictResolveModal extends Modal {
         if (this.pluginPickMode) {
             this.title = "Pick a version";
             this.remoteName = `Use ${remoteName || "Remote"}`;
-            this.localName = "Use Local"
+            this.localName = "Use Local";
         }
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
@@ -48,7 +48,7 @@ export class ConflictResolveModal extends Modal {
                     this.sendResponse(CANCELLED);
                 }
             });
-        }, 10)
+        }, 10);
         // sendValue("close-resolve-conflict:" + this.filename, false);
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -60,28 +60,47 @@ export class ConflictResolveModal extends Modal {
             const x1 = v[0];
             const x2 = v[1];
             if (x1 == DIFF_DELETE) {
-                diff += "<span class='deleted'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
+                diff +=
+                    "<span class='deleted'>" +
+                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
+                    "</span>";
             } else if (x1 == DIFF_EQUAL) {
-                diff += "<span class='normal'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
+                diff +=
+                    "<span class='normal'>" +
+                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
+                    "</span>";
             } else if (x1 == DIFF_INSERT) {
-                diff += "<span class='added'>" + escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") + "</span>";
+                diff +=
+                    "<span class='added'>" +
+                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
+                    "</span>";
             }
         }
 
         diff = diff.replace(/\n/g, "<br>");
         div.innerHTML = diff;
         const div2 = contentEl.createDiv("");
-        const date1 = new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
-        const date2 = new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
+        const date1 =
+            new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
+        const date2 =
+            new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
         div2.innerHTML = `
 <span class='deleted'>A:${date1}</span><br /><span class='added'>B:${date2}</span><br> 
         `;
-        contentEl.createEl("button", { text: this.localName }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.right.rev))).style.marginRight = "4px";
-        contentEl.createEl("button", { text: this.remoteName }, (e) => e.addEventListener("click", () => this.sendResponse(this.result.left.rev))).style.marginRight = "4px";
+        contentEl.createEl("button", { text: this.localName }, (e) =>
+            e.addEventListener("click", () => this.sendResponse(this.result.right.rev))
+        ).style.marginRight = "4px";
+        contentEl.createEl("button", { text: this.remoteName }, (e) =>
+            e.addEventListener("click", () => this.sendResponse(this.result.left.rev))
+        ).style.marginRight = "4px";
         if (!this.pluginPickMode) {
-            contentEl.createEl("button", { text: "Concat both" }, (e) => e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))).style.marginRight = "4px";
+            contentEl.createEl("button", { text: "Concat both" }, (e) =>
+                e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))
+            ).style.marginRight = "4px";
         }
-        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => e.addEventListener("click", () => this.sendResponse(CANCELLED))).style.marginRight = "4px";
+        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) =>
+            e.addEventListener("click", () => this.sendResponse(CANCELLED))
+        ).style.marginRight = "4px";
     }
 
     sendResponse(result: MergeDialogResult) {

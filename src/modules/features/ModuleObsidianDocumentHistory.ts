@@ -7,20 +7,15 @@ import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts"
 import { getPath } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 
-
-
 export class ModuleObsidianDocumentHistory extends AbstractObsidianModule implements IObsidianModule {
-
-
     $everyOnloadStart(): Promise<boolean> {
-
         this.addCommand({
             id: "livesync-history",
             name: "Show history",
             callback: () => {
                 const file = this.core.$$getActiveFilePath();
                 if (file) this.showHistory(file, undefined);
-            }
+            },
         });
 
         this.addCommand({
@@ -30,9 +25,12 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule implem
                 fireAndForget(async () => await this.fileHistory());
             },
         });
-        eventHub.onEvent(EVENT_REQUEST_SHOW_HISTORY, ({ file, fileOnDB }: { file: TFile | FilePathWithPrefix, fileOnDB: LoadedEntry }) => {
-            this.showHistory(file, fileOnDB._id);
-        })
+        eventHub.onEvent(
+            EVENT_REQUEST_SHOW_HISTORY,
+            ({ file, fileOnDB }: { file: TFile | FilePathWithPrefix; fileOnDB: LoadedEntry }) => {
+                this.showHistory(file, fileOnDB._id);
+            }
+        );
         return Promise.resolve(true);
     }
 
@@ -41,17 +39,16 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule implem
     }
 
     async fileHistory() {
-        const notes: { id: DocumentID, path: FilePathWithPrefix, dispPath: string, mtime: number }[] = [];
+        const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs()) {
             notes.push({ id: doc._id, path: getPath(doc), dispPath: getPath(doc), mtime: doc.mtime });
         }
         notes.sort((a, b) => b.mtime - a.mtime);
-        const notesList = notes.map(e => e.dispPath);
+        const notesList = notes.map((e) => e.dispPath);
         const target = await this.core.confirm.askSelectString("File to view History", notesList);
         if (target) {
-            const targetId = notes.find(e => e.dispPath == target)!;
+            const targetId = notes.find((e) => e.dispPath == target)!;
             this.showHistory(targetId.path, targetId.id);
         }
     }
-
 }

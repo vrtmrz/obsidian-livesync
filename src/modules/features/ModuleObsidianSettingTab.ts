@@ -4,7 +4,6 @@ import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidia
 import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "../../common/events.ts";
 
 export class ModuleObsidianSettingDialogue extends AbstractObsidianModule implements IObsidianModule {
-
     settingTab!: ObsidianLiveSyncSettingTab;
 
     $everyOnloadStart(): Promise<boolean> {
@@ -28,8 +27,6 @@ export class ModuleObsidianSettingDialogue extends AbstractObsidianModule implem
     }
 
     get appId() {
-        return `${("appId" in this.app ? this.app.appId : "")}`;
+        return `${"appId" in this.app ? this.app.appId : ""}`;
     }
-
-
 }

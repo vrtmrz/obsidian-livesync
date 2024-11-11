@@ -1,5 +1,12 @@
 import { delay } from "octagonal-wheels/promises";
-import { FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, REMOTE_COUCHDB, REMOTE_MINIO } from "../../lib/src/common/types.ts";
+import {
+    FLAGMD_REDFLAG2_HR,
+    FLAGMD_REDFLAG3_HR,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+} from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { Rebuilder } from "../interfaces/DatabaseRebuilder.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
@@ -7,12 +14,13 @@ import type { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchd
 import { fetchAllUsedChunks } from "../../lib/src/pouchdb/utils_couchdb.ts";
 
 export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebuilder {
-
     $everyOnload(): Promise<boolean> {
         this.core.rebuilder = this;
         return Promise.resolve(true);
     }
-    async $performRebuildDB(method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks"): Promise<void> {
+    async $performRebuildDB(
+        method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks"
+    ): Promise<void> {
         if (method == "localOnly") {
             await this.$fetchLocal();
         }
@@ -27,11 +35,13 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         }
     }
 
-    async askUsingOptionalFeature(opt: {
-        enableFetch?: boolean;
-        enableOverwrite?: boolean;
-    }) {
-        if (await this.core.confirm.askYesNoDialog("Do you want to enable extra features? If you are new to Self-hosted LiveSync, try the core feature first!", { title: "Enable extra features", defaultOption: "No", timeout: 15 }) == "yes") {
+    async askUsingOptionalFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
+        if (
+            (await this.core.confirm.askYesNoDialog(
+                "Do you want to enable extra features? If you are new to Self-hosted LiveSync, try the core feature first!",
+                { title: "Enable extra features", defaultOption: "No", timeout: 15 }
+            )) == "yes"
+        ) {
             await this.core.$allAskUsingOptionalSyncFeature(opt);
         }
     }
@@ -55,7 +65,6 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         return this.rebuildRemote();
     }
 
-
     async rebuildEverything() {
         await this.core.$allSuspendExtraSync();
         await this.askUseNewAdapter();
@@ -73,7 +82,6 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$replicateAllToServer(true);
         await delay(1000);
         await this.core.$$replicateAllToServer(true, true);
-
     }
 
     $rebuildEverything(): Promise<void> {
@@ -116,7 +124,6 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.localDatabase.resetDatabase();
     }
 
-
     async suspendAllSync() {
         this.core.settings.liveSync = false;
         this.core.settings.periodicReplication = false;
@@ -130,7 +137,10 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
     async suspendReflectingDatabase() {
         if (this.core.settings.doNotSuspendOnFetching) return;
         if (this.core.settings.remoteType == REMOTE_MINIO) return;
-        this._log(`Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`, LOG_LEVEL_NOTICE);
+        this._log(
+            `Suspending reflection: Database and storage changes will not be reflected in each other until completely finished the fetching.`,
+            LOG_LEVEL_NOTICE
+        );
         this.core.settings.suspendParseReplicationResult = true;
         this.core.settings.suspendFileWatching = true;
         await this.core.saveSettings();
@@ -144,7 +154,6 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$performFullScan(true);
         await this.core.$everyBeforeReplicate(false); //TODO: Check actual need of this.
         await this.core.saveSettings();
-
     }
     async askUseNewAdapter() {
         if (!this.core.settings.useIndexedDBAdapter) {
@@ -153,7 +162,13 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
             const CHOICE_NO = "No, keep compatibility";
             const choices = [CHOICE_YES, CHOICE_NO];
 
-            const ret = await this.core.confirm.confirmWithMessage("Database adapter", message, choices, CHOICE_YES, 10);
+            const ret = await this.core.confirm.confirmWithMessage(
+                "Database adapter",
+                message,
+                choices,
+                CHOICE_YES,
+                10
+            );
             if (ret == CHOICE_YES) {
                 this.core.settings.useIndexedDBAdapter = true;
             }
@@ -200,10 +215,18 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$resetLocalDatabase();
     }
     async fetchRemoteChunks() {
-        if (!this.core.settings.doNotSuspendOnFetching && this.core.settings.readChunksOnline && this.core.settings.remoteType == REMOTE_COUCHDB) {
+        if (
+            !this.core.settings.doNotSuspendOnFetching &&
+            this.core.settings.readChunksOnline &&
+            this.core.settings.remoteType == REMOTE_COUCHDB
+        ) {
             this._log(`Fetching chunks`, LOG_LEVEL_NOTICE);
             const replicator = this.core.$$getReplicator() as LiveSyncCouchDBReplicator;
-            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.core.$$isMobile(), true);
+            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
+                this.settings,
+                this.core.$$isMobile(),
+                true
+            );
             if (typeof remoteDB == "string") {
                 this._log(remoteDB, LOG_LEVEL_NOTICE);
             } else {
@@ -218,7 +241,12 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
 
         let i = 0;
         for (const file of files) {
-            if (i++ % 10) this._log(`Check and Processing ${i} / ${files.length}`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+            if (i++ % 10)
+                this._log(
+                    `Check and Processing ${i} / ${files.length}`,
+                    LOG_LEVEL_NOTICE,
+                    "resolveAllConflictedFilesByNewerOnes"
+                );
             await this.core.$anyResolveConflictByNewest(file);
         }
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
