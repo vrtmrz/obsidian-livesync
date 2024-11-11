@@ -32,6 +32,10 @@ async function main() {
         "syncAfterMerge": false,
         "concurrencyOfReadChunksOnline": 100,
         "minimumIntervalOfReadChunksOnline": 100,
+        "handleFilenameCaseSensitive": false,
+        "doNotUseFixedRevisionForChunks": false,
+        "settingVersion": 10,
+        "notifyThresholdOfRemoteStorageSize": 800
     }
     const encryptedConf = encodeURIComponent(await encrypt(JSON.stringify(conf), uri_passphrase, false));
     const theURI = `${URIBASE}${encryptedConf}`;
