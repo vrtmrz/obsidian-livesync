@@ -20,4 +20,8 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICore
         return await this.localDatabase.initializeDatabase();
     }
 
+    $$isDatabaseReady(): boolean {
+        return this.localDatabase != null && this.localDatabase.isReady;
+    }
+
 }

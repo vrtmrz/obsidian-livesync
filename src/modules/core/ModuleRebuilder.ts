@@ -40,7 +40,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$allSuspendExtraSync();
         this.core.settings.isConfigured = true;
 
-        await this.core.realizeSettingSyncMode();
+        await this.core.$$realizeSettingSyncMode();
         await this.core.$$markRemoteLocked();
         await this.core.$$tryResetRemoteDatabase();
         await this.core.$$markRemoteLocked();
@@ -60,7 +60,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$allSuspendExtraSync();
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
-        await this.core.realizeSettingSyncMode();
+        await this.core.$$realizeSettingSyncMode();
         await this.resetLocalDatabase();
         await delay(1000);
         await this.core.$$initializeDatabase(true);
@@ -164,11 +164,12 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
-        await this.core.realizeSettingSyncMode();
+        await this.core.$$realizeSettingSyncMode();
         await this.resetLocalDatabase();
         await delay(1000);
         await this.core.$$openDatabase();
-        this.core.isReady = true;
+        // this.core.isReady = true;
+        this.core.$$markIsReady();
         if (makeLocalChunkBeforeSync) {
             await this.core.fileHandler.createAllChunks(true);
         }
@@ -201,8 +202,8 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
     async fetchRemoteChunks() {
         if (!this.core.settings.doNotSuspendOnFetching && this.core.settings.readChunksOnline && this.core.settings.remoteType == REMOTE_COUCHDB) {
             this._log(`Fetching chunks`, LOG_LEVEL_NOTICE);
-            const replicator = this.core.getReplicator() as LiveSyncCouchDBReplicator;
-            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.core.getIsMobile(), true);
+            const replicator = this.core.$$getReplicator() as LiveSyncCouchDBReplicator;
+            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.core.$$isMobile(), true);
             if (typeof remoteDB == "string") {
                 this._log(remoteDB, LOG_LEVEL_NOTICE);
             } else {

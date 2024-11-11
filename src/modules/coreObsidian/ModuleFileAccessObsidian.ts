@@ -43,6 +43,11 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         return this.vaultAccess.isStorageInsensitive();
     }
 
+    $$shouldCheckCaseInsensitive(): boolean {
+        if (this.$$isStorageInsensitive()) return false;
+        return !this.settings.handleFilenameCaseSensitive;
+    }
+
     async writeFileAuto(path: string, data: string | ArrayBuffer, opt?: UXDataWriteOptions): Promise<boolean> {
         const file = this.vaultAccess.getAbstractFileByPath(path);
         if (file instanceof TFile) {
@@ -115,6 +120,9 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     async removeHidden(path: string): Promise<boolean> {
         try {
             await this.vaultAccess.adapterRemove(path);
+            if (this.vaultAccess.adapterStat(path) !== null) {
+                return false;
+            }
             return true;
         } catch (e) {
             this._log(`Could not remove hidden file: ${path}`, LOG_LEVEL_VERBOSE);

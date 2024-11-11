@@ -427,3 +427,13 @@ span.ls-mark-cr::after {
     backdrop-filter: blur(4px);
     border-radius: 30%;
 }
+
+.sls-dialogue-note-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.sls-dialogue-note-countdown {
+    font-size: 0.8em;
+}

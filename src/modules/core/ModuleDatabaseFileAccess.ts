@@ -133,6 +133,10 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         //upsert should locked
         const msg = `STORAGE -> DB (${datatype}) `;
         const isNotChanged = await serialized("file-" + fullPath, async () => {
+            if (force) {
+                this._log(msg + "Force writing " + fullPath, LOG_LEVEL_VERBOSE);
+                return false;
+            }
             // Commented out temporarily: this checks that the file was made ourself.
             // if (this.core.storageAccess.recentlyTouched(file)) {
             //     return true;

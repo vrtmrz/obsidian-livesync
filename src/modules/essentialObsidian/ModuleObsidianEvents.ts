@@ -13,7 +13,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
     $everyOnloadStart(): Promise<boolean> {
         // this.registerEvent(this.app.workspace.on("editor-change", ));
         this.plugin.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-            eventHub.emitEvent(EVENT_FILE_RENAMED, { newPath: file.path, old: oldPath });
+            eventHub.emitEvent(EVENT_FILE_RENAMED, { newPath: file.path as FilePathWithPrefix, old: oldPath as FilePathWithPrefix });
         }));
         this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", () => eventHub.emitEvent(EVENT_LEAF_ACTIVE_CHANGED)));
         return Promise.resolve(true);
@@ -41,7 +41,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
-                    if (this.plugin._unloaded) {
+                    if (this.core.$$isUnloaded()) {
                         this._log("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
                         saveCommandDefinition.callback = this.initialCallback;
                         this.initialCallback = undefined;
@@ -98,14 +98,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         // TODO:FIXME AT V0.17.31, this logic has been disabled.
         if (navigator.onLine && this.localDatabase.needScanning) {
             this.localDatabase.needScanning = false;
-            await this.plugin.$$performFullScan();
+            await this.core.$$performFullScan();
         }
     }
 
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.plugin.isReady) return;
+        if (!this.core.$$isReady()) return;
 
         if (this.isLastHidden && !this.hasFocus) {
             // NO OP while non-focused after made hidden;
@@ -124,7 +124,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             await this.core.$everyBeforeSuspendProcess();
         } else {
             // suspend all temporary.
-            if (this.plugin.suspended) return;
+            if (this.core.$$isSuspended()) return;
             if (!this.hasFocus) return;
             await this.core.$everyOnResumeProcess();
             await this.core.$everyAfterResumeProcess();
@@ -133,7 +133,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
     watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.plugin.isReady) return;
+        if (!this.core.$$isReady()) return;
         if (!file) return;
         scheduleTask("watch-workspace-open", 500, () => fireAndForget(() => this.watchWorkspaceOpenAsync(file)));
     }
@@ -141,12 +141,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
     async watchWorkspaceOpenAsync(file: TFile) {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.plugin.isReady) return;
+        if (!this.core.$$isReady()) return;
         await this.core.$everyCommitPendingFileEvent();
         if (file == null) {
             return;
         }
-        if (this.settings.syncOnFileOpen && !this.plugin.suspended) {
+        if (this.settings.syncOnFileOpen && !this.core.$$isSuspended()) {
             await this.core.$$replicate();
         }
         await this.core.$$queueConflictCheckIfOpen(file.path as FilePathWithPrefix);
@@ -160,7 +160,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
 
 
     $$askReload(message?: string) {
-        if (this.core.isReloadingScheduled) {
+        if (this.core.$$isReloadingScheduled()) {
             this._log(`Reloading is already scheduled`, LOG_LEVEL_VERBOSE);
             return;
         }

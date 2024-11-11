@@ -6,7 +6,6 @@
     import { diff_match_patch } from "../../../deps.ts";
     import { DocumentHistoryModal } from "../DocumentHistory/DocumentHistoryModal.ts";
     import { isPlainText, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
-    import { TFile } from "../../../deps.ts";
     import { getPath } from "../../../common/utils.ts";
     export let plugin: ObsidianLiveSyncPlugin;
 
@@ -105,9 +104,9 @@
                         }
                         if (rev == docA._rev) {
                             if (checkStorageDiff) {
-                                const isExist = await plugin.storageAccess.isExists(stripAllPrefixes(getPath(docA)));
+                                const isExist = await plugin.storageAccess.isExistsIncludeHidden(stripAllPrefixes(getPath(docA)));
                                 if (isExist) {
-                                    const data = await plugin.storageAccess.readFileAuto(stripAllPrefixes(getPath(docA)));
+                                    const data = await plugin.storageAccess.readHiddenFileBinary(stripAllPrefixes(getPath(docA)));
                                     const d = readAsBlob(doc);
                                     const result = await isDocContentSame(data, d);
                                     if (result) {

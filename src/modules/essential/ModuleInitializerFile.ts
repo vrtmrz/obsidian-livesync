@@ -307,7 +307,7 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
     }
 
     async $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> {
-        this.core.isReady = false;
+        this.core.$$resetIsReady();
         if ((!reopenDatabase) || await this.core.$$openDatabase()) {
             if (this.localDatabase.isReady) {
                 await this.core.$$performFullScan(showingNotice);
@@ -316,12 +316,12 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                 this._log(`Initializing database has been failed on some module`, LOG_LEVEL_NOTICE);
                 return false;
             }
-            this.core.isReady = true;
+            this.core.$$markIsReady();
             // run queued event once.
             await this.core.$everyCommitPendingFileEvent();
             return true;
         } else {
-            this.core.isReady = false;
+            this.core.$$resetIsReady();
             return false;
         }
     }

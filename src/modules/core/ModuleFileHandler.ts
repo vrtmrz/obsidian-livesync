@@ -223,12 +223,9 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         }
         const docData = readContent(docRead);
 
-        if (!existOnStorage) {
-            // The file is not exist on the storage. We do not care about the differences.
-            await this.storage.ensureDir(path);
-            return await this.storage.writeFileAuto(path, docData, { ctime: docRead.ctime, mtime: docRead.mtime });
-        }
-        if (!force) {
+        if (existOnStorage && !force) {
+            // The file is exist on the storage. Let's check the difference between the file and the entry.
+            // But, if force is true, then it should be updated.
             // Ok, we have to compare.
             let shouldApplied = false;
             // 1. if the time stamp is far different, then it should be updated.
@@ -257,6 +254,8 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                 return true;
             }
             // Let's apply the changes.
+        } else {
+            this._log(`File ${docRead.path} ${existOnStorage ? "(new) " : ""} ${force ? " (forced)" : ""}`, LOG_LEVEL_VERBOSE);
         }
         await this.storage.ensureDir(path);
         const ret = await this.storage.writeFileAuto(path, docData, { ctime: docRead.ctime, mtime: docRead.mtime });

@@ -72,7 +72,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
         // In here, some merge has been processed.
         // So we have to run replication if configured.
         // TODO: Make this is as a event request
-        if (this.settings.syncAfterMerge && !this.plugin.suspended) {
+        if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
             await this.core.$$waitForReplicationOnce();
         }
         // And, check it again.
@@ -96,7 +96,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
             this._log("There are no conflicted documents", LOG_LEVEL_NOTICE);
             return false;
         }
-        const target = await this.plugin.confirm.askSelectString("File to resolve conflict", notesList);
+        const target = await this.core.confirm.askSelectString("File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find(e => e.dispPath == target)!;
             await this.core.$$queueConflictCheck(targetItem.path);
@@ -114,7 +114,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
             notes.push({ path: getPath(doc), mtime: doc.mtime });
         }
         if (notes.length > 0) {
-            this.plugin.confirm.askInPopup(`conflicting-detected-on-safety`, `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`, (anchor) => {
+            this.core.confirm.askInPopup(`conflicting-detected-on-safety`, `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`, (anchor) => {
                 anchor.text = "HERE";
                 anchor.addEventListener("click", () => {
                     fireAndForget(() => this.allConflictCheck())

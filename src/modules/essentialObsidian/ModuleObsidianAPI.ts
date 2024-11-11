@@ -33,9 +33,13 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
     authHeader = reactive(() =>
         this.authHeaderSource.value == "" ? "" : "Basic " + window.btoa(this.authHeaderSource.value));
 
+    last_successful_post = false;
     $$customFetchHandler(): ObsHttpHandler {
         if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
         return this._customHandler;
+    }
+    $$getLastPostFailedBySize(): boolean {
+        return !this.last_successful_post;
     }
 
     async $$connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
@@ -62,7 +66,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     if (opts_length > 1000 * 1000 * 10) {
                         // over 10MB
                         if (isCloudantURI(uri)) {
-                            this.plugin.last_successful_post = false;
+                            this.last_successful_post = false;
                             this._log("This request should fail on IBM Cloudant.", LOG_LEVEL_VERBOSE);
                             throw new Error("This request should fail on IBM Cloudant.");
                         }
@@ -91,9 +95,9 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                         const r = await fetchByAPI(requestParam);
                         if (method == "POST" || method == "PUT") {
-                            this.plugin.last_successful_post = r.status - (r.status % 100) == 200;
+                            this.last_successful_post = r.status - (r.status % 100) == 200;
                         } else {
-                            this.plugin.last_successful_post = true;
+                            this.last_successful_post = true;
                         }
                         this._log(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL_DEBUG);
 
@@ -106,7 +110,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                         this._log(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                         // limit only in bulk_docs.
                         if (url.toString().indexOf("_bulk_docs") !== -1) {
-                            this.plugin.last_successful_post = false;
+                            this.last_successful_post = false;
                         }
                         this._log(ex);
                         throw ex;
@@ -123,9 +127,9 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                     const response: Response = await fetch(url, opts);
                     if (method == "POST" || method == "PUT") {
-                        this.plugin.last_successful_post = response.ok;
+                        this.last_successful_post = response.ok;
                     } else {
-                        this.plugin.last_successful_post = true;
+                        this.last_successful_post = true;
                     }
                     this._log(`HTTP:${method}${size} to:${localURL} -> ${response.status}`, LOG_LEVEL_DEBUG);
                     if (Math.floor(response.status / 100) !== 2) {
@@ -148,7 +152,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     this._log(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                     // limit only in bulk_docs.
                     if (url.toString().indexOf("_bulk_docs") !== -1) {
-                        this.plugin.last_successful_post = false;
+                        this.last_successful_post = false;
                     }
                     this._log(ex);
                     throw ex;

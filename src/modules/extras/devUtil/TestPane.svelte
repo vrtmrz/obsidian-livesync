@@ -41,7 +41,7 @@
         isReady = true;
         // performTest();
 
-        eventHub.once(EVENT_LAYOUT_READY, async () => {
+        eventHub.onceEvent(EVENT_LAYOUT_READY, async () => {
             if (await plugin.storageAccess.isExistsIncludeHidden("_AUTO_TEST.md")) {
                 new Notice("Auto test file found, running tests...");
                 fireAndForget(async () => {
@@ -83,7 +83,7 @@
     $: resultLines = $results;
 
     let syncStatus = [] as string[];
-    eventHub.on<string[]>("debug-sync-status", (status) => {
+    eventHub.onEvent("debug-sync-status", (status) => {
         syncStatus = [...status];
     });
 </script>

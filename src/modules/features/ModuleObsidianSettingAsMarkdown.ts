@@ -19,7 +19,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                     return this.settings.settingSyncFile != "";
                 }
                 fireAndForget(async () => {
-                    await this.plugin.$$saveSettingData();
+                    await this.core.$$saveSettingData();
                 });
             }
         })
@@ -38,13 +38,12 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                 }
             },
         })
-        eventHub.on("event-file-changed", (info: {
+        eventHub.onEvent("event-file-changed", (info: {
             file: FilePathWithPrefix, automated: boolean
         }) => {
             fireAndForget(() => this.checkAndApplySettingFromMarkdown(info.file, info.automated));
         });
-        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
-            const settings = evt.detail;
+        eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             if (settings.settingSyncFile != "") {
                 fireAndForget(() => this.saveSettingToMarkdown(settings.settingSyncFile));
             }
@@ -123,7 +122,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
             return
         }
         const addMsg = this.settings.settingSyncFile != filename ? " (This is not-active file)" : "";
-        this.plugin.confirm.askInPopup("apply-setting-from-md", `Setting markdown ${filename}${addMsg} has been detected. Apply this from {HERE}.`, (anchor) => {
+        this.core.confirm.askInPopup("apply-setting-from-md", `Setting markdown ${filename}${addMsg} has been detected. Apply this from {HERE}.`, (anchor) => {
             anchor.text = "HERE";
             anchor.addEventListener("click", () => {
                 fireAndForget(async () => {
@@ -132,26 +131,26 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                     const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
                     const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
                     const CANCEL = "Cancel";
-                    const result = await this.plugin.confirm.askSelectStringDialogue("Ready for apply the setting.", [
+                    const result = await this.core.confirm.askSelectStringDialogue("Ready for apply the setting.", [
                         APPLY_AND_RESTART,
                         APPLY_ONLY,
                         APPLY_AND_FETCH,
                         APPLY_AND_REBUILD,
                         CANCEL], { defaultAction: APPLY_AND_RESTART });
                     if (result == APPLY_ONLY || result == APPLY_AND_RESTART || result == APPLY_AND_REBUILD || result == APPLY_AND_FETCH) {
-                        this.plugin.settings = settingToApply;
-                        await this.plugin.$$saveSettingData();
+                        this.core.settings = settingToApply;
+                        await this.core.$$saveSettingData();
                         if (result == APPLY_ONLY) {
                             this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
                             return;
                         }
                         if (result == APPLY_AND_REBUILD) {
-                            await this.plugin.rebuilder.scheduleRebuild();
+                            await this.core.rebuilder.scheduleRebuild();
                         }
                         if (result == APPLY_AND_FETCH) {
-                            await this.plugin.rebuilder.scheduleFetch();
+                            await this.core.rebuilder.scheduleFetch();
                         }
-                        this.plugin.$$performRestart();
+                        this.core.$$performRestart();
                     }
                 })
             })

@@ -14,12 +14,13 @@ import { getPath, isChunk, isValidPath, scheduleTask } from "../../common/utils"
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
 import { isAnyNote } from "../../lib/src/common/utils";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
+import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 
 export class ModuleReplicator extends AbstractModule implements ICoreModule {
 
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
-            if (this.settings.syncOnSave && !this.core.suspended) {
+            if (this.settings.syncOnSave && !this.core.$$isSuspended()) {
                 scheduleTask("perform-replicate-after-save", 250, () => this.core.$$waitForReplicationOnce());
             }
         })
@@ -36,6 +37,11 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         await yieldMicrotask();
         return true;
     }
+
+    $$getReplicator(): LiveSyncAbstractReplicator {
+        return this.core.replicator;
+    }
+
     $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.setReplicator();
     }
@@ -51,7 +57,7 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
     }
     async $$replicate(showMessage: boolean = false): Promise<boolean | void> {
         //--? 
-        if (!this.core.isReady) return;
+        if (!this.core.$$isReady()) return;
         if (isLockAcquired("cleanup")) {
             Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL_NOTICE);
             return;
@@ -97,9 +103,9 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                                 await this.core.rebuilder.$performRebuildDB("localOnly");
                             }
                             if (ret == CHOICE_CLEAN) {
-                                const replicator = this.core.getReplicator();
+                                const replicator = this.core.$$getReplicator();
                                 if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-                                const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.core.getIsMobile(), true);
+                                const remoteDB = await replicator.connectRemoteCouchDBWithSetting(this.settings, this.core.$$isMobile(), true);
                                 if (typeof remoteDB == "string") {
                                     Logger(remoteDB, LOG_LEVEL_NOTICE);
                                     return false;
@@ -112,7 +118,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                                     await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                                     await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                                     this.localDatabase.hashCaches.clear();
-                                    await this.core.getReplicator().markRemoteResolved(this.settings);
+                                    await this.core.$$getReplicator().markRemoteResolved(this.settings);
                                     Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
                                 } else {
                                     Logger("Replication has been cancelled. Please try it again.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO)
@@ -315,7 +321,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     }
 
     async $$replicateAllToServer(showingNotice: boolean = false, sendChunksInBulkDisabled: boolean = false): Promise<boolean> {
-        if (!this.core.isReady) return false;
+        if (!this.core.$$isReady()) return false;
         if (!await this.core.$everyBeforeReplicate(showingNotice)) {
             Logger(`Replication has been cancelled by some module failure`, LOG_LEVEL_NOTICE);
             return false;
@@ -334,7 +340,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return !checkResult;
     }
     async $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
-        if (!this.core.isReady) return false;
+        if (!this.core.$$isReady()) return false;
         const ret = await this.core.replicator.replicateAllFromServer(this.settings, showingNotice);
         if (ret) return true;
         const checkResult = await this.core.$anyAfterConnectCheckFailed();

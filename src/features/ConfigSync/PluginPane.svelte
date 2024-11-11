@@ -12,7 +12,7 @@
     export let plugin: ObsidianLiveSyncPlugin;
 
     $: hideNotApplicable = false;
-    $: thisTerm = plugin.deviceAndVaultName;
+    $: thisTerm = plugin.$$getDeviceAndVaultName();
 
     const addOn = plugin.getAddOn(ConfigSync.name) as ConfigSync;
     if (!addOn) {

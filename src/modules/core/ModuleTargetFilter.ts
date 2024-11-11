@@ -13,10 +13,10 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
 
     }
     $everyOnload(): Promise<boolean> {
-        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: ObsidianLiveSyncSettings) => {
             this.reloadIgnoreFiles();
         });
-        eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
+        eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
             this.reloadIgnoreFiles();
         });
         return Promise.resolve(true);
@@ -45,8 +45,13 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         return false;
     }
 
+
+    $$markFileListPossiblyChanged(): void {
+        this.totalFileEventCount++;
+    }
+    totalFileEventCount = 0;
     get fileListPossiblyChanged() {
-        if (isDirty("totalFileEventCount", this.core.totalFileEventCount)) {
+        if (isDirty("totalFileEventCount", this.totalFileEventCount)) {
             return true;
         }
         return false;
@@ -88,7 +93,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
 
         const filepath = getPathFromUXFileInfo(file);
         const lc = filepath.toLowerCase();
-        if (this.core.shouldCheckCaseInsensitive) {
+        if (this.core.$$shouldCheckCaseInsensitive()) {
             if (lc in fileCount && fileCount[lc] > 1) {
                 return false;
             }

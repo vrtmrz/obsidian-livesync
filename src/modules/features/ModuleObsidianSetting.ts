@@ -12,7 +12,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         const methods: Record<ConfigPassphraseStore, (() => Promise<string | false>)> = {
             "": () => Promise.resolve("*"),
             "LOCALSTORAGE": () => Promise.resolve(localStorage.getItem("ls-setting-passphrase") ?? false),
-            "ASK_AT_LAUNCH": () => this.plugin.confirm.askString("Passphrase", "passphrase", "")
+            "ASK_AT_LAUNCH": () => this.core.confirm.askString("Passphrase", "passphrase", "")
         }
         const method = settings.configPassphraseStore;
         const methodFunc = method in methods ? methods[method] : methods[""];
@@ -20,8 +20,8 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
     }
 
     $$saveDeviceAndVaultName(): void {
-        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.plugin.$$getVaultName();
-        localStorage.setItem(lsKey, this.plugin.deviceAndVaultName || "");
+        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.core.$$getVaultName();
+        localStorage.setItem(lsKey, this.core.$$getDeviceAndVaultName() || "");
     }
 
     usedPassphrase = "";
@@ -64,7 +64,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
     }
 
     async $$saveSettingData() {
-        this.plugin.$$saveDeviceAndVaultName();
+        this.core.$$saveDeviceAndVaultName();
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
         if (this.usedPassphrase == "" && !await this.getPassphrase(settings)) {
@@ -182,11 +182,11 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         // So, use history is always enabled.
         this.settings.useHistory = true;
 
-        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.plugin.$$getVaultName();
+        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.core.$$getVaultName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsKey)) {
-                this.core.deviceAndVaultName = this.settings.deviceAndVaultName;
-                localStorage.setItem(lsKey, this.core.deviceAndVaultName);
+                this.core.$$setDeviceAndVaultName(this.settings.deviceAndVaultName);
+                this.$$saveDeviceAndVaultName();
                 this.settings.deviceAndVaultName = "";
             }
         }
@@ -194,8 +194,8 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             this._log("Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.", LOG_LEVEL_NOTICE)
             this.settings.customChunkSize = 0;
         }
-        this.core.deviceAndVaultName = localStorage.getItem(lsKey) || "";
-        if (this.core.deviceAndVaultName == "") {
+        this.core.$$setDeviceAndVaultName(localStorage.getItem(lsKey) || "");
+        if (this.core.$$getDeviceAndVaultName() == "") {
             if (this.settings.usePluginSync) {
                 this._log("Device name is not set. Plug-in sync has been disabled.", LOG_LEVEL_NOTICE);
                 this.settings.usePluginSync = false;

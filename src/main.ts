@@ -1,25 +1,18 @@
 import { Plugin } from "./deps";
-import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type LOG_LEVEL, VER, DEFAULT_SETTINGS, type diff_result, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, type HasSettings, type MetaEntry, type UXFileInfoStub, type MISSING_OR_ERROR, type AUTO_MERGED, } from "./lib/src/common/types.ts";
+import { type EntryDoc, type LoadedEntry, type ObsidianLiveSyncSettings, type LOG_LEVEL, type diff_result, type DatabaseConnectingStatus, type EntryHasPath, type DocumentID, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, type HasSettings, type MetaEntry, type UXFileInfoStub, type MISSING_OR_ERROR, type AUTO_MERGED, type RemoteDBSettings, type TweakValues, } from "./lib/src/common/types.ts";
 import { type FileEventItem } from "./common/types.ts";
-import { fireAndForget, type SimpleStore } from "./lib/src/common/utils.ts";
-import { Logger } from "./lib/src/common/logger.ts";
-import { cancelAllPeriodicTask, cancelAllTasks } from "./common/utils.ts";
-import { versionNumberString2Number } from "./lib/src/string_and_binary/convert.ts";
+import { type SimpleStore } from "./lib/src/common/utils.ts";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { LiveSyncAbstractReplicator, type LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
 import { type KeyValueDatabase } from "./common/KeyValueDB.ts";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { stopAllRunningProcessors } from "./lib/src/concurrency/processor.js";
 import { reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
 import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
 import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
 import { ObsHttpHandler } from "./modules/essentialObsidian/APILib/ObsHttpHandler.js";
-import { $f, setLang } from "./lib/src/common/i18n.ts";
-import { eventHub } from "./lib/src/hub/hub.ts";
-import { EVENT_LAYOUT_READY, EVENT_PLUGIN_LOADED, EVENT_PLUGIN_UNLOADED, EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED } from "./common/events.ts";
 import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
 
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
@@ -64,6 +57,8 @@ import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleRe
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
 import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
+import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
+import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
 
 
 function throwShouldBeOverridden(): never {
@@ -85,31 +80,8 @@ const InterceptiveAny = Promise.resolve(undefined);
 
 export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv, HasSettings<ObsidianLiveSyncSettings> {
 
-    _log = Logger;
-    settings!: ObsidianLiveSyncSettings;
-    localDatabase!: LiveSyncLocalDB;
-    replicator!: LiveSyncAbstractReplicator;
 
-    _suspended = false;
-    get suspended() {
-        return this._suspended || !this.settings?.isConfigured;
-    }
-    set suspended(value: boolean) {
-        this._suspended = value;
-    }
-    get shouldBatchSave() {
-        return this.settings?.batchSave && this.settings?.liveSync != true;
-    }
-    get batchSaveMinimumDelay(): number {
-        return this.settings?.batchSaveMinimumDelay ?? DEFAULT_SETTINGS.batchSaveMinimumDelay
-    }
-    get batchSaveMaximumDelay(): number {
-        return this.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay
-    }
-    deviceAndVaultName = "";
-    isReady = false;
-    packageVersion = "";
-    manifestVersion = "";
+
 
     // --> Module System
     getAddOn<T extends LiveSyncCommands>(cls: string) {
@@ -123,6 +95,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     addOns = [new ConfigSync(this), new HiddenFileSync(this)] as LiveSyncCommands[];
 
     modules = [
+        new ModuleLiveSyncMain(this),
+        new ModuleExtraSyncObsidian(this, this),
         // Only on Obsidian
         new ModuleDatabaseFileAccess(this),
         // Common
@@ -166,48 +140,53 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
         new ModuleIntegratedTest(this, this),
     ] as (IObsidianModule | AbstractModule)[];
     injected = injectModules(this, [...this.modules, ...this.addOns] as ICoreModule[]);
+    // <-- Module System
+
+    $$isSuspended(): boolean { throwShouldBeOverridden(); }
+
+    $$setSuspended(value: boolean): void { throwShouldBeOverridden(); }
+
+    $$isDatabaseReady(): boolean { throwShouldBeOverridden(); }
+
+    $$getDeviceAndVaultName(): string { throwShouldBeOverridden(); }
+    $$setDeviceAndVaultName(name: string): void { throwShouldBeOverridden(); }
 
     $$addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void { throwShouldBeOverridden() }
+    $$isReady(): boolean { throwShouldBeOverridden(); }
+    $$markIsReady(): void { throwShouldBeOverridden(); }
+    $$resetIsReady(): void { throwShouldBeOverridden(); }
 
     // Following are plugged by the modules.
+
+    settings!: ObsidianLiveSyncSettings;
+    localDatabase!: LiveSyncLocalDB;
+    simpleStore!: SimpleStore<CheckPointInfo>
+    replicator!: LiveSyncAbstractReplicator;
     confirm!: Confirm;
     storageAccess!: StorageAccess;
     databaseFileAccess!: DatabaseFileAccess;
     fileHandler!: ModuleFileHandler;
     rebuilder!: Rebuilder;
 
-    // implementing interfaces
     kvDB!: KeyValueDatabase;
-    last_successful_post = false;
-
-    totalFileEventCount = 0;
-
-    $$customFetchHandler(): ObsHttpHandler {
-        throw new Error("This function should be overridden by the module.");
-    }
-
-    customFetchHandler() {
-        return this.$$customFetchHandler();
-    }
-
-    getLastPostFailedBySize() {
-        return !this.last_successful_post;
-    }
-
-
-
     getDatabase(): PouchDB.Database<EntryDoc> { return this.localDatabase.localDatabase; }
     getSettings(): ObsidianLiveSyncSettings { return this.settings; }
-    getIsMobile(): boolean { return this.isMobile; }
+
+
+
+    $$markFileListPossiblyChanged(): void { throwShouldBeOverridden(); }
+
+    $$customFetchHandler(): ObsHttpHandler { throwShouldBeOverridden(); }
+
+    $$getLastPostFailedBySize(): boolean { throwShouldBeOverridden(); }
+
+
 
     $$isStorageInsensitive(): boolean { throwShouldBeOverridden() }
 
-    get shouldCheckCaseInsensitive() {
-        if (this.$$isStorageInsensitive()) return false;
-        return !this.settings.handleFilenameCaseSensitive;
-    }
+    $$shouldCheckCaseInsensitive(): boolean { throwShouldBeOverridden(); }
 
-    _unloaded = false;
+    $$isUnloaded(): boolean { throwShouldBeOverridden(); }
 
     requestCount = reactiveSource(0);
     responseCount = reactiveSource(0);
@@ -222,9 +201,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     processingFileEventCount = reactiveSource(0);
 
     _totalProcessingCount?: ReactiveValue<number>;
-    get isReloadingScheduled() {
-        return this._totalProcessingCount !== undefined;
-    }
+
 
     replicationStat = reactiveSource({
         sent: 0,
@@ -236,14 +213,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
         syncStatus: "CLOSED" as DatabaseConnectingStatus
     });
 
-    get isMobile() { return this.$$isMobile(); }
-
-
-    // Plug-in's overrideable functions
-    onload() { void this.onLiveSyncLoad(); }
-    async saveSettings() { await this.$$saveSettingData(); }
-    onunload() { return void this.onLiveSyncUnload(); }
-    // <-- Plug-in's overrideable functions
+    $$isReloadingScheduled(): boolean { throwShouldBeOverridden(); }
+    $$getReplicator(): LiveSyncAbstractReplicator { throwShouldBeOverridden(); }
 
     $$connectRemoteCouchDB(uri: string, auth: {
         username: string;
@@ -286,19 +257,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
 
     $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> { return InterceptiveEvery; }
 
-    getReplicator() {
-        return this.replicator;
-    }
+
 
     // end interfaces
 
     $$getVaultName(): string { throwShouldBeOverridden(); }
 
-    simpleStore!: SimpleStore<CheckPointInfo>
 
     $$getSimpleStore<T>(kind: string): SimpleStore<T> { throwShouldBeOverridden(); }
     // trench!: Trench;
-
 
     // --> Events
 
@@ -344,139 +311,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin implements LiveSyncLo
     $everyOnFirstInitialize(): Promise<boolean> { return InterceptiveEvery }
 
     // Some Module should call this function to start the plugin.
-    async onLiveSyncReady() {
-        if (!await this.$everyOnLayoutReady()) return;
-        eventHub.emitEvent(EVENT_LAYOUT_READY);
-        if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
-            const ANSWER_KEEP = "Keep this plug-in suspended";
-            const ANSWER_RESUME = "Resume and restart Obsidian";
-            const message = `Self-hosted LiveSync has been configured to ignore some events. Is this intentional for you?
+    $$onLiveSyncReady(): Promise<false | undefined> { throwShouldBeOverridden(); }
+    $$wireUpEvents(): void { throwShouldBeOverridden(); }
+    $$onLiveSyncLoad(): Promise<void> { throwShouldBeOverridden(); }
 
-| Type | Status | Note |
-|:---:|:---:|---|
-| Storage Events | ${this.settings.suspendFileWatching ? "suspended" : "active"} | Every modification will be ignored |
-| Database Events | ${this.settings.suspendParseReplicationResult ? "suspended" : "active"} | Every synchronised change will be postponed |
-
-Do you want to resume them and restart Obsidian?
-
-> [!DETAILS]-
-> These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.
-> If you are not sure, you can try to rerun these processes. Make sure to back your vault up.
-`;
-            if (await this.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], { defaultAction: ANSWER_KEEP, title: "Scram Enabled" }) == ANSWER_RESUME) {
-                this.settings.suspendFileWatching = false;
-                this.settings.suspendParseReplicationResult = false;
-                await this.saveSettings();
-                await this.$$scheduleAppReload();
-                return;
-            }
-        }
-        const isInitialized = await this.$$initializeDatabase(false, false);
-        if (!isInitialized) {
-            //TODO:stop all sync.
-            return false;
-        }
-        if (!await this.$everyOnFirstInitialize()) return;
-        await this.realizeSettingSyncMode();
-        fireAndForget(async () => {
-            Logger(`Additional safety scan..`, LOG_LEVEL_VERBOSE);
-            if (!await this.$allScanStat()) {
-                Logger(`Additional safety scan has been failed on some module`, LOG_LEVEL_NOTICE);
-            } else {
-                Logger(`Additional safety scan done`, LOG_LEVEL_VERBOSE);
-            }
-        });
-    }
-    wireUpEvents() {
-        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
-            const settings = evt.detail;
-            this.localDatabase.settings = settings;
-            setLang(settings.displayLanguage);
-            eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
-        });
-        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: CustomEvent<ObsidianLiveSyncSettings>) => {
-            fireAndForget(() => this.realizeSettingSyncMode());
-        })
-    }
-
-
-    async onLiveSyncLoad() {
-        this.wireUpEvents();
-        // debugger;
-        eventHub.emitEvent(EVENT_PLUGIN_LOADED, this);
-        Logger("loading plugin");
-        if (!await this.$everyOnloadStart()) {
-            Logger("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
-            return;
-        }
-        // this.addUIs();
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
-        this.manifestVersion = manifestVersion;
-        this.packageVersion = packageVersion;
-
-        Logger($f`Self-hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
-        await this.$$loadSettings();
-        if (!await this.$everyOnloadAfterLoadSettings()) {
-            Logger("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
-            return;
-        }
-        const lsKey = "obsidian-live-sync-ver" + this.$$getVaultName();
-        const last_version = localStorage.getItem(lsKey);
-
-        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
-        if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            Logger($f`You have some unread release notes! Please read them once!`, LOG_LEVEL_NOTICE);
-        }
-
-        //@ts-ignore
-        if (this.isMobile) {
-            this.settings.disableRequestURI = true;
-        }
-        if (last_version && Number(last_version) < VER) {
-            this.settings.liveSync = false;
-            this.settings.syncOnSave = false;
-            this.settings.syncOnEditorSave = false;
-            this.settings.syncOnStart = false;
-            this.settings.syncOnFileOpen = false;
-            this.settings.syncAfterMerge = false;
-            this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = $f`Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.`;
-            await this.saveSettings();
-        }
-        localStorage.setItem(lsKey, `${VER}`);
-        await this.$$openDatabase();
-        this.realizeSettingSyncMode = this.realizeSettingSyncMode.bind(this);
-        // this.$$parseReplicationResult = this.$$parseReplicationResult.bind(this);
-        // this.$$replicate = this.$$replicate.bind(this);
-        this.onLiveSyncReady = this.onLiveSyncReady.bind(this);
-        await this.$everyOnload();
-        await Promise.all(this.addOns.map(e => e.onload()));
-    }
-
-    async onLiveSyncUnload() {
-        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
-        await this.$allStartOnUnload();
-        cancelAllPeriodicTask();
-        cancelAllTasks();
-        stopAllRunningProcessors();
-        await this.$allOnUnload();
-        this._unloaded = true;
-        for (const addOn of this.addOns) {
-            addOn.onunload();
-        }
-        if (this.localDatabase != null) {
-            this.localDatabase.onunload();
-            if (this.replicator) {
-                this.replicator?.closeReplication();
-            }
-            await this.localDatabase.close();
-        }
-        Logger($f`unloading plugin`);
-    }
+    $$onLiveSyncUnload(): Promise<void> { throwShouldBeOverridden(); }
 
     $allScanStat(): Promise<boolean> {
         return InterceptiveAll;
@@ -496,18 +335,7 @@ Do you want to resume them and restart Obsidian?
 
     $$openDatabase(): Promise<boolean> { throwShouldBeOverridden() }
 
-    async realizeSettingSyncMode() {
-        await this.$everyBeforeSuspendProcess();
-        await this.$everyBeforeRealizeSetting();
-        this.localDatabase.refreshSettings();
-        await this.$everyCommitPendingFileEvent();
-        await this.$everyRealizeSettingSyncMode();
-        // disable all sync temporary.
-        if (this.suspended) return;
-        await this.$everyOnResumeProcess();
-        await this.$everyAfterResumeProcess();
-        await this.$everyAfterRealizeSetting();
-    }
+    $$realizeSettingSyncMode(): Promise<void> { throwShouldBeOverridden(); }
     $$performRestart() { throwShouldBeOverridden(); }
 
     $$clearUsedPassphrase(): void { throwShouldBeOverridden() }
@@ -568,6 +396,9 @@ Do you want to resume them and restart Obsidian?
 
 
     $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> { throwShouldBeOverridden(); }
+
+    $$checkAndAskUseRemoteConfiguration(settings: RemoteDBSettings): Promise<{ result: false | TweakValues, requireFetch: boolean }> { throwShouldBeOverridden(); }
+
     $everyBeforeReplicate(showMessage: boolean): Promise<boolean> { return InterceptiveEvery; }
     $$replicate(showMessage: boolean = false): Promise<boolean | void> { throwShouldBeOverridden() }
 
@@ -636,12 +467,17 @@ Do you want to resume them and restart Obsidian?
     $everyModuleTestMultiDevice(): Promise<boolean> { return InterceptiveEvery; }
     $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void { throwShouldBeOverridden(); }
 
-    _isMainReady(): boolean { return this.isReady; }
-    _isMainSuspended(): boolean { return this.suspended; }
     _isThisModuleEnabled(): boolean { return true; }
-    _isDatabaseReady(): boolean { return this.localDatabase.isReady; }
+
 
     $anyGetAppId(): Promise<string | undefined> { return InterceptiveAny; }
+
+
+    // Plug-in's overrideable functions
+    onload() { void this.$$onLiveSyncLoad(); }
+    async saveSettings() { await this.$$saveSettingData(); }
+    onunload() { return void this.$$onLiveSyncUnload(); }
+    // <-- Plug-in's overrideable functions
 }
 
 

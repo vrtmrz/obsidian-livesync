@@ -1,7 +1,7 @@
 import { TAbstractFile, TFile, TFolder } from "../../../deps.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { shouldBeIgnored } from "../../../lib/src/string_and_binary/path.ts";
-import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, type FilePath, type FilePathWithPrefix, type UXFileInfoStub, type UXInternalFileInfoStub } from "../../../lib/src/common/types.ts";
+import { DEFAULT_SETTINGS, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, type FilePath, type FilePathWithPrefix, type UXFileInfoStub, type UXInternalFileInfoStub } from "../../../lib/src/common/types.ts";
 import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "../../../lib/src/concurrency/lock.ts";
@@ -38,13 +38,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     core: LiveSyncCore;
 
     get shouldBatchSave() {
-        return this.plugin.shouldBatchSave;
+        return this.core.settings?.batchSave && this.core.settings?.liveSync != true;
     }
     get batchSaveMinimumDelay(): number {
-        return this.plugin.batchSaveMinimumDelay;
+        return this.core.settings?.batchSaveMinimumDelay ?? DEFAULT_SETTINGS.batchSaveMinimumDelay
     }
     get batchSaveMaximumDelay(): number {
-        return this.plugin.batchSaveMaximumDelay
+        return this.core.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay
     }
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
         super();
@@ -155,9 +155,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Cache file and waiting to can be proceed.
     async appendQueue(params: FileEvent[], ctx?: any) {
-        if (!this.plugin.settings.isConfigured) return;
-        if (this.plugin.settings.suspendFileWatching) return;
-        this.plugin.totalFileEventCount++;
+        if (!this.core.settings.isConfigured) return;
+        if (this.core.settings.suspendFileWatching) return;
+        this.core.$$markFileListPossiblyChanged();
         // Flag up to be reload
         const processFiles = new Set<FilePath>();
         for (const param of params) {
@@ -176,13 +176,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             const oldPath = param.oldPath;
             if (type !== "INTERNAL") {
                 const size = (file as UXFileInfoStub).stat.size;
-                if (this.plugin.$$isFileSizeExceeded(size) && (type == "CREATE" || type == "CHANGED")) {
+                if (this.core.$$isFileSizeExceeded(size) && (type == "CREATE" || type == "CHANGED")) {
                     Logger(`The storage file has been changed but exceeds the maximum size. Skipping: ${param.file.path}`, LOG_LEVEL_NOTICE);
                     continue;
                 }
             }
             if (file instanceof TFolder) continue;
-            if (!await this.plugin.$$isTargetFile(file.path)) continue;
+            if (!await this.core.$$isTargetFile(file.path)) continue;
 
             // Stop cache using to prevent the corruption;
             // let cache: null | string | ArrayBuffer;
@@ -190,7 +190,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
                 // Wait for a bit while to let the writer has marked `touched` at the file.
                 await delay(10);
-                if (this.plugin.storageAccess.recentlyTouched(file)) {
+                if (this.core.storageAccess.recentlyTouched(file)) {
                     continue;
                 }
             }
@@ -338,11 +338,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             const key = `file-last-proc-${queue.type}-${file.path}`;
             const last = Number(await this.core.kvDB.get(key) || 0);
             if (queue.type == "INTERNAL" || file.isInternal) {
-                await this.plugin.$anyProcessOptionalFileEvent(file.path as unknown as FilePath);
+                await this.core.$anyProcessOptionalFileEvent(file.path as unknown as FilePath);
             } else {
                 // let mtime = file.stat.mtime;
                 if (queue.type == "DELETE") {
-                    await this.plugin.$anyHandlerProcessesFileEvent(queue);
+                    await this.core.$anyHandlerProcessesFileEvent(queue);
                 } else {
                     if (file.stat.mtime == last) {
                         Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
@@ -350,7 +350,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                         // this.cancelRelativeEvent(queue);
                         return;
                     }
-                    if (!await this.plugin.$anyHandlerProcessesFileEvent(queue)) {
+                    if (!await this.core.$anyHandlerProcessesFileEvent(queue)) {
                         Logger(`STORAGE -> DB: Handler failed, cancel the relative operations: ${file.path}`, LOG_LEVEL_INFO);
                         // cancel running queues and remove one of atomic operation (e.g. rename) 
                         this.cancelRelativeEvent(queue);

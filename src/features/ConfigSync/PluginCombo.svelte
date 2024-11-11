@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ConfigSync, PluginDataExDisplayV2, type IPluginDataExDisplay } from "./CmdConfigSync.ts";
+    import { ConfigSync, PluginDataExDisplayV2, type IPluginDataExDisplay, type PluginDataExFile } from "./CmdConfigSync.ts";
     import { Logger } from "../../lib/src/common/logger";
     import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types";
     import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
@@ -287,9 +287,17 @@
         menu.addItem((item) => item.setTitle("Compare file").setIsLabel(true));
         menu.addSeparator();
         const files = unique(local.files.map((e) => e.filename).concat(selectedItem.files.map((e) => e.filename)));
+        const convDate = (dt: PluginDataExFile | undefined) => {
+            if (!dt) return "(Missing)";
+            const d = new Date(dt.mtime);
+            return d.toLocaleString();
+        };
         for (const filename of files) {
             menu.addItem((item) => {
-                item.setTitle(filename).onClick((e) => compareItems(local, selectedItem, filename));
+                const localFile = local.files.find((e) => e.filename == filename);
+                const remoteFile = selectedItem.files.find((e) => e.filename == filename);
+                const title = `${filename} (${convDate(localFile)} <--> ${convDate(remoteFile)})`;
+                item.setTitle(title).onClick((e) => compareItems(local, selectedItem, filename));
             });
         }
         menu.showAtMouseEvent(evt);

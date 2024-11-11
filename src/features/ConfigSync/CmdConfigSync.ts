@@ -543,7 +543,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.plugin.deviceAndVaultName;
+        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         const category = this.getFileCategory(path);
         const name = (category == "CONFIG" || category == "SNIPPET") ?
             (path.split("/").slice(-1)[0]) :
@@ -554,7 +554,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     filenameWithUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.plugin.deviceAndVaultName;
+        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         const category = this.getFileCategory(path);
         const name = (category == "CONFIG" || category == "SNIPPET") ?
             (path.split("/").slice(-1)[0]) : path.split("/").slice(-2)[0];
@@ -563,7 +563,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     unifiedKeyPrefixOfTerminal(termOverRide?: string) {
-        const term = termOverRide || this.plugin.deviceAndVaultName;
+        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         return `${ICXHeader}${term}/` as FilePathWithPrefix;
     }
 
@@ -870,7 +870,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 await this.plugin.storageAccess.ensureDir(path);
                 // If the content has applied, modified time will be updated to the current time.
                 await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
-                await this.storeCustomisationFileV2(path, this.plugin.deviceAndVaultName);
+                await this.storeCustomisationFileV2(path, this.plugin.$$getDeviceAndVaultName());
 
             } else {
                 const files = data.files;
@@ -914,7 +914,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
-                    await this.storeCustomisationFileV2(path, this.plugin.deviceAndVaultName);
+                    await this.storeCustomisationFileV2(path, this.plugin.$$getDeviceAndVaultName());
                 }
             }
         } catch (ex) {
@@ -1189,7 +1189,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         })
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
-        const term = termOverRide || this.plugin.deviceAndVaultName;
+        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         if (term == "") {
             this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
             return;
@@ -1362,7 +1362,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         await shareRunningResult("scanAllConfigFiles", async () => {
             const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             this._log("Scanning customizing files.", logLevel, "scan-all-config");
-            const term = this.plugin.deviceAndVaultName;
+            const term = this.plugin.$$getDeviceAndVaultName();
             if (term == "") {
                 this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
                 return;
@@ -1505,7 +1505,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         choices.push(CHOICE_DISABLE);
         choices.push(CHOICE_DISMISS);
 
-        const ret = await this.plugin.confirm.confirmWithMessage("Customisation sync", message, choices, CHOICE_DISMISS, 40);
+        const ret = await this.plugin.confirm.askSelectStringDialogue(message, choices, {
+            defaultAction: CHOICE_DISMISS, timeout: 40,
+            title: "Customisation sync"
+        });
         if (ret == CHOICE_CUSTOMIZE) {
             await this.configureHiddenFileSync("CUSTOMIZE");
         } else if (ret == CHOICE_DISABLE) {
@@ -1544,7 +1547,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
 
         if (mode == "CUSTOMIZE") {
-            if (!this.plugin.deviceAndVaultName) {
+            if (!this.plugin.$$getDeviceAndVaultName()) {
                 let name = await this.plugin.confirm.askString("Device name", "Please set this device name", `desktop`);
                 if (!name) {
                     if (Platform.isAndroidApp) {
@@ -1568,7 +1571,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     }
                     name = name + Math.random().toString(36).slice(-4);
                 }
-                this.plugin.deviceAndVaultName = name;
+                this.plugin.$$setDeviceAndVaultName(name);
             }
             this.plugin.settings.usePluginSync = true;
             this.plugin.settings.useAdvancedMode = true;

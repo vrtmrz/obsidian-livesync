@@ -1,5 +1,5 @@
 import { normalizePath, type PluginManifest, type ListedFiles } from "../../deps.ts";
-import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID, type UXStat, MODE_AUTOMATIC } from "../../lib/src/common/types.ts";
+import { type EntryDoc, type LoadedEntry, type InternalFileEntry, type FilePathWithPrefix, type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_PAUSED, type SavingEntry, type DocumentID, type UXStat, MODE_AUTOMATIC, type FilePathWithPrefixLC } from "../../lib/src/common/types.ts";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "../../common/types.ts";
 import { readAsBlob, isDocContentSame, sendSignal, readContent, createBlob, fireAndForget } from "../../lib/src/common/utils.ts";
 import { BASE_IS_NEW, compareMTime, EVEN, getPath, isInternalMetadata, isMarkedAsSameChanges, markChangesAreSame, PeriodicProcessor, TARGET_IS_NEW } from "../../common/utils.ts";
@@ -10,6 +10,7 @@ import { addPrefix, stripAllPrefixes } from "../../lib/src/string_and_binary/pat
 import { QueueProcessor } from "../../lib/src/concurrency/processor.ts";
 import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src/mock_and_interop/stores.ts";
 import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
+import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
 
 export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule {
 
@@ -36,8 +37,13 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 void this.syncInternalFilesAndDatabase("safe", true);
             },
         });
+        eventHub.onEvent(EVENT_SETTING_SAVED, () => {
+            this.updateSettingCache();
+        });
+
     }
     async $everyOnDatabaseInitialized(showNotice: boolean) {
+        this.knownChanges = await this.plugin.kvDB.get("knownChanges") ?? {};
         if (this._isThisModuleEnabled()) {
             try {
                 this._log("Synchronizing hidden files...");
@@ -58,12 +64,26 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
     }
 
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
+        this.updateSettingCache();
+        return Promise.resolve(true);
+    }
+    updateSettingCache() {
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
             .split(",").filter(e => e).map(e => new RegExp(e, "i"));
         this.ignorePatterns = ignorePatterns;
-        return Promise.resolve(true);
+        this.shouldSkipFile = [] as FilePathWithPrefixLC[];
+        // Exclude files handled by customization sync
+        const configDir = normalizePath(this.app.vault.configDir);
+        const shouldSKip = !this.settings.usePluginSync ? [] :
+            Object.values(this.settings.pluginSyncExtendedSetting).
+                filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).
+                map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
+        this.shouldSkipFile = shouldSKip as FilePathWithPrefixLC[];
+        this._log(`Hidden file will skip ${this.shouldSkipFile.length} files`, LOG_LEVEL_INFO);
+
     }
+    shouldSkipFile = [] as FilePathWithPrefixLC[];
 
     async $everyOnResumeProcess(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
@@ -80,7 +100,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended())
             return Promise.resolve(true);
-        if (!this.plugin.isReady)
+        if (!this.plugin.$$isReady())
             return Promise.resolve(true);
         this.periodicInternalFileScanProcessor.enable(this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval ? (this.settings.syncInternalFilesInterval * 1000) : 0);
         const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
@@ -110,13 +130,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         if (this._isMainSuspended()) return false;
         if (!this._isThisModuleEnabled()) return false;
 
-        // Exclude files handled by customization sync
-        const configDir = normalizePath(this.app.vault.configDir);
-        const synchronisedInConfigSync = !this.settings.usePluginSync ? [] :
-            Object.values(this.settings.pluginSyncExtendedSetting).
-                filter(e => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED).
-                map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
-        if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
+        if (this.shouldSkipFile.some(e => e.startsWith(path.toLowerCase()))) {
             this._log(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
             return false;
         }
@@ -504,7 +518,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
 
                 // If something changes left, notify for reloading Obsidian.
                 if (updatedCount != 0) {
-                    if (!this.plugin.isReloadingScheduled) {
+                    if (!this.plugin.$$isReloadingScheduled()) {
                         this.plugin.confirm.askInPopup(`updated-any-hidden`, `Hidden files have been synchronised, Press {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`, (anchor) => {
                             anchor.text = "HERE";
                             anchor.addEventListener("click", () => {
@@ -676,12 +690,16 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                         this._log(`STORAGE <x- DB: ${displayFileName}: deleted (hidden) Deleted on DB, but the file is already not found on storage.`);
                     } else {
                         this._log(`STORAGE <x- DB: ${displayFileName}: deleted (hidden).`);
-                        await this.plugin.storageAccess.removeHidden(storageFilePath);
-                        try {
-                            await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
-                        } catch (ex) {
-                            this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
+                        if (await this.plugin.storageAccess.removeHidden(storageFilePath)) {
+                            try {
+                                await this.plugin.storageAccess.triggerHiddenFile(storageFilePath);
+                            } catch (ex) {
+                                this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
+                                this._log(ex, LOG_LEVEL_VERBOSE);
+                            }
+                        } else {
+                            this._log(`STORAGE <x- DB: ${storageFilePath}: deleted (hidden) Failed`);
+                            return false;
                         }
                     }
                     return true;

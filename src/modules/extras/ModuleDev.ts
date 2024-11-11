@@ -42,10 +42,10 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
             toc: Set<string>,
             stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } }
         };
-        eventHub.onEvent("document-stub-created", (e: CustomEvent<STUB>) => {
+        eventHub.onEvent("document-stub-created", (detail: STUB) => {
             fireAndForget(async () => {
-                const stub = e.detail.stub;
-                const toc = e.detail.toc;
+                const stub = detail.stub;
+                const toc = detail.toc;
 
                 const stubDocX =
                     Object.entries(stub).map(([key, value]) => {

@@ -67,12 +67,12 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             })
             return computed(() => formatted.value);
         }
-        const labelReplication = padLeftSpComputed(this.plugin.replicationResultCount, `📥`);
-        const labelDBCount = padLeftSpComputed(this.plugin.databaseQueueCount, `📄`);
-        const labelStorageCount = padLeftSpComputed(this.plugin.storageApplyingCount, `💾`);
+        const labelReplication = padLeftSpComputed(this.core.replicationResultCount, `📥`);
+        const labelDBCount = padLeftSpComputed(this.core.databaseQueueCount, `📄`);
+        const labelStorageCount = padLeftSpComputed(this.core.storageApplyingCount, `💾`);
         const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
         const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
-        const labelConflictProcessCount = padLeftSpComputed(this.plugin.conflictProcessQueueCount, `🔩`);
+        const labelConflictProcessCount = padLeftSpComputed(this.core.conflictProcessQueueCount, `🔩`);
         const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value + hiddenFilesProcessingCount.value);
         const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`)
         const queueCountLabelX = reactive(() => {
@@ -81,12 +81,12 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         const queueCountLabel = () => queueCountLabelX.value;
 
         const requestingStatLabel = computed(() => {
-            const diff = this.plugin.requestCount.value - this.plugin.responseCount.value;
+            const diff = this.core.requestCount.value - this.core.responseCount.value;
             return diff != 0 ? "📲 " : "";
         })
 
         const replicationStatLabel = computed(() => {
-            const e = this.plugin.replicationStat.value;
+            const e = this.core.replicationStat.value;
             const sent = e.sent;
             const arrived = e.arrived;
             const maxPullSeq = e.maxPullSeq;
@@ -128,9 +128,9 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             }
             return { w, sent, pushLast, arrived, pullLast };
         })
-        const labelProc = padLeftSpComputed(this.plugin.processing, `⏳`);
-        const labelPend = padLeftSpComputed(this.plugin.totalQueued, `🛫`);
-        const labelInBatchDelay = padLeftSpComputed(this.plugin.batched, `📬`);
+        const labelProc = padLeftSpComputed(this.core.processing, `⏳`);
+        const labelPend = padLeftSpComputed(this.core.totalQueued, `🛫`);
+        const labelInBatchDelay = padLeftSpComputed(this.core.batched, `📬`);
         const waitingLabel = computed(() => {
             return `${labelProc()}${labelPend()}${labelInBatchDelay()}`;
         })
@@ -144,7 +144,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             };
         })
         const statusBarLabels = reactive(() => {
-            const scheduleMessage = this.plugin.isReloadingScheduled ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n` : "";
+            const scheduleMessage = this.core.$$isReloadingScheduled() ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n` : "";
             const { message } = statusLineLabel();
             const status = scheduleMessage + this.statusLog.value;
 
@@ -181,7 +181,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         const thisFile = this.app.workspace.getActiveFile();
         if (!thisFile) return "";
         // Case Sensitivity
-        if (this.core.shouldCheckCaseInsensitive) {
+        if (this.core.$$shouldCheckCaseInsensitive()) {
             const f = this.core.storageAccess.getFiles().map(e => e.path).filter(e => e.toLowerCase() == thisFile.path.toLowerCase());
             if (f.length > 1) return "Not synchronised: There are multiple files with the same name";
         }
@@ -274,7 +274,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
     }
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         logStore.pipeTo(new QueueProcessor(logs => logs.forEach(e => this.core.$$addLog(e.message, e.level, e.key)), { suspended: false, batchSize: 20, concurrentLimit: 1, delay: 0 })).startPipeline();
-        eventHub.onEvent(EVENT_FILE_RENAMED, (evt: CustomEvent<{ oldPath: string, newPath: string }>) => {
+        eventHub.onEvent(EVENT_FILE_RENAMED, (data) => {
             void this.setFileStatus();
         });
 
@@ -290,7 +290,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
-            this.statusBar = this.plugin.addStatusBarItem();
+            this.statusBar = this.core.addStatusBarItem();
             this.statusBar.addClass("syncstatusbar");
         }
         this.adjustStatusDivPosition();
@@ -318,7 +318,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL_VERBOSE) {
             return;
         }
-        const vaultName = this.plugin.$$getVaultName();
+        const vaultName = this.core.$$getVaultName();
         const now = new Date();
         const timestamp = now.toLocaleString();
         const messageContent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);

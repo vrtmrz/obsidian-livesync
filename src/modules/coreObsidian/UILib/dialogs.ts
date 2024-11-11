@@ -8,7 +8,7 @@ class AutoClosableModal extends Modal {
 
     constructor(app: App) {
         super(app);
-        this.removeEvent = eventHub.on(EVENT_PLUGIN_UNLOADED, async () => {
+        this.removeEvent = eventHub.onEvent(EVENT_PLUGIN_UNLOADED, async () => {
             await delay(100);
             if (!this.removeEvent) return;
             this.close();

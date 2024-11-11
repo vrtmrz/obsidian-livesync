@@ -8,6 +8,12 @@ import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
 import type { FilePath } from "../../lib/src/common/types.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 
+declare global {
+    interface LSEvents {
+        "debug-sync-status": string[];
+    }
+}
+
 export class ModuleReplicateTest extends AbstractObsidianModule implements IObsidianModule {
 
 

@@ -143,7 +143,7 @@ export class PeriodicProcessor {
         if (interval == 0) return;
         this._timer = window.setInterval(() => fireAndForget(async () => {
             await this.process();
-            if (this._plugin._unloaded) {
+            if (this._plugin.$$isUnloaded()) {
                 this.disable();
             }
         }), interval);

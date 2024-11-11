@@ -99,7 +99,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             }
             if (conflictCheckResult === AUTO_MERGED) {
                 //auto resolved, but need check again;
-                if (this.settings.syncAfterMerge && !this.core.suspended) {
+                if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
                     //Wait for the running replication, if not running replication, run it once.
                     await this.core.$$waitForReplicationOnce();
                 }

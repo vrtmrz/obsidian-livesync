@@ -33,13 +33,13 @@ export abstract class LiveSyncCommands {
     abstract onload(): void | Promise<void>;
 
     _isMainReady() {
-        return this.plugin._isMainReady();
+        return this.plugin.$$isReady();
     }
     _isMainSuspended() {
-        return this.plugin._isMainSuspended();
+        return this.plugin.$$isSuspended();
     }
     _isDatabaseReady() {
-        return this.plugin._isDatabaseReady();
+        return this.plugin.$$isDatabaseReady();
     }
 
     _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
@@ -49,4 +49,5 @@ export abstract class LiveSyncCommands {
         // console.log(msg);
         Logger(msg, level, key);
     };
+
 }

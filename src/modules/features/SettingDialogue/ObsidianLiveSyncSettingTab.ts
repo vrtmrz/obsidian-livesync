@@ -20,11 +20,12 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
-import { EVENT_REQUEST_COPY_SETUP_URI, EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, EVENT_REQUEST_OPEN_SETUP_URI, EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_REQUEST_SHOW_HISTORY, eventHub } from "../../../common/events.ts";
+import { EVENT_REQUEST_COPY_SETUP_URI, EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, EVENT_REQUEST_OPEN_SETUP_URI, EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "../../../common/events.ts";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
 import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
+import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
 
 export type OnUpdateResult = {
     visibility?: boolean,
@@ -162,7 +163,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return await Promise.resolve();
         }
         if (key == "deviceAndVaultName") {
-            this.plugin.deviceAndVaultName = this.editingSettings?.[key] ?? "";
+            this.plugin.$$setDeviceAndVaultName(this.editingSettings?.[key] ?? "");
             this.plugin.$$saveDeviceAndVaultName();
             return await Promise.resolve();
         }
@@ -230,7 +231,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const ret = { ...OnDialogSettingsDefault };
         ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = ""
-        ret.deviceAndVaultName = this.plugin.deviceAndVaultName;
+        ret.deviceAndVaultName = this.plugin.$$getDeviceAndVaultName();
         return ret;
     }
     computeAllLocalSettings(): Partial<OnDialogSettings> {
@@ -304,7 +305,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
         Setting.env = this;
-        eventHub.on(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
+        eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
             this.requestReload();
         })
     }
@@ -710,7 +711,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             const replicator = this.plugin.$anyNewReplicator(settingForCheck);
             if (!(replicator instanceof LiveSyncCouchDBReplicator)) return true;
 
-            const db = await replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.isMobile, true);
+            const db = await replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.$$isMobile(), true);
             if (typeof db === "string") {
                 Logger(`ERROR: Failed to check passphrase with the remote server: \n${db}.`, LOG_LEVEL_NOTICE);
                 return false;
@@ -1187,7 +1188,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
 
                 void addPanel(paneEl, "CouchDB", undefined, onlyOnCouchDB).then(paneEl => {
-                    if (this.plugin.isMobile) {
+                    if (this.plugin.$$isMobile()) {
                         this.createEl(paneEl, "div", {
                             text: `Configured as using non-HTTPS. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.`,
                         }, undefined, visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://")))
@@ -1280,6 +1281,23 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     }).setClass("wizardHidden");
 
             });
+
+            void addPanel(paneEl, "Fetch settings").then((paneEl) => {
+                new Setting(paneEl)
+                    .setName("Fetch tweaks from the remote")
+                    .setDesc("Fetch other necessary settings from already configured remote.")
+                    .addButton((button) => button
+                        .setButtonText("Fetch")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            const trialSetting = { ...this.initialSettings, ...this.editingSettings, };
+                            const newTweaks = await this.plugin.$$checkAndAskUseRemoteConfiguration(trialSetting);
+                            if (newTweaks.result !== false) {
+                                this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
+                                this.requestUpdate();
+                            }
+                        }));
+            });
             new Setting(paneEl)
                 .setClass("wizardOnly")
                 .addButton((button) => button
@@ -1312,6 +1330,16 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             this.editingSettings = { ...this.editingSettings, ...PREFERRED_JOURNAL_SYNC };
                         } else {
                             this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_SELF_HOSTED };
+                        }
+                        if (await this.plugin.confirm.askYesNoDialog("Do you want to fetch the tweaks from the remote?", { defaultOption: "Yes", title: "Fetch tweaks" }) == "yes") {
+                            const trialSetting = { ...this.initialSettings, ...this.editingSettings, };
+                            const newTweaks = await this.plugin.$$checkAndAskUseRemoteConfiguration(trialSetting);
+                            if (newTweaks.result !== false) {
+                                this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
+                                this.requestUpdate();
+                            } else {
+                                // Messages should be already shown.
+                            }
                         }
                         changeDisplay("30")
                     }));
@@ -1360,7 +1388,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     }).addButton(button => {
                         button.setButtonText("Apply");
                         button.onClick(async () => {
-                            await this.saveSettings(["preset"]);
+                            // await this.saveSettings(["preset"]);
+                            await this.saveAllDirtySettings();
                         })
                     })
 
@@ -1416,7 +1445,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         if (!this.editingSettings.isConfigured) {
                             this.editingSettings.isConfigured = true;
                             await this.saveAllDirtySettings();
-                            await this.plugin.realizeSettingSyncMode();
+                            await this.plugin.$$realizeSettingSyncMode();
                             await rebuildDB("localOnly");
                             // this.resetEditingSettings();
                             if (await this.plugin.confirm.askYesNoDialog(
@@ -1430,13 +1459,13 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                                 await confirmRebuild();
                             } else {
                                 await this.saveAllDirtySettings();
-                                await this.plugin.realizeSettingSyncMode();
+                                await this.plugin.$$realizeSettingSyncMode();
                                 this.plugin.$$askReload();
                             }
                         }
                     } else {
                         await this.saveAllDirtySettings();
-                        await this.plugin.realizeSettingSyncMode();
+                        await this.plugin.$$realizeSettingSyncMode();
                     }
                 })
 
@@ -1471,7 +1500,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     }
                     await this.saveSettings(["liveSync", "periodicReplication"]);
 
-                    await this.plugin.realizeSettingSyncMode();
+                    await this.plugin.$$realizeSettingSyncMode();
                 })
 
 
@@ -1546,6 +1575,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
             });
 
             void addPanel(paneEl, "Sync settings via markdown", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+                paneEl.addClass("wizardHidden");
+
                 new Setting(paneEl)
                     .autoWireText("settingSyncFile", { holdValue: true })
                     .addApplyButton(["settingSyncFile"])
@@ -1569,7 +1600,6 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl
                 const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
                 hiddenFileSyncSettingDiv.innerText = this.editingSettings.syncInternalFiles ? LABEL_ENABLED : LABEL_DISABLED;
-
                 if (this.editingSettings.syncInternalFiles) {
                     new Setting(paneEl)
                         .setName("Disable Hidden files sync")
@@ -1979,7 +2009,7 @@ ${stringifyYaml(pluginConfig)}`;
                                 .split(",").filter(e => e).map(e => new RegExp(e, "i"));
                             this.plugin.localDatabase.hashCaches.clear();
                             Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                            const files = await this.plugin.storageAccess.getFilesIncludeHidden("/", undefined, ignorePatterns)
+                            const files = this.plugin.settings.syncInternalFiles ? (await this.plugin.storageAccess.getFilesIncludeHidden("/", undefined, ignorePatterns)) : (await this.plugin.storageAccess.getFileNames());
                             const documents = [] as FilePath[];
 
                             const adn = this.plugin.localDatabase.findAllDocs()
@@ -1987,6 +2017,7 @@ ${stringifyYaml(pluginConfig)}`;
                                 const path = getPath(i);
                                 if (path.startsWith(ICXHeader)) continue;
                                 if (path.startsWith(PSCHeader)) continue;
+                                if (!this.plugin.settings.syncInternalFiles && path.startsWith(ICHeader)) continue;
                                 documents.push(stripAllPrefixes(path));
                             }
                             const allPaths = [
@@ -2648,9 +2679,9 @@ ${stringifyYaml(pluginConfig)}`;
 
     async dryRunGC() {
         await skipIfDuplicated("cleanup", async () => {
-            const replicator = this.plugin.getReplicator();
+            const replicator = this.plugin.$$getReplicator();
             if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-            const remoteDBConn = await replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile)
+            const remoteDBConn = await replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.$$isMobile())
             if (typeof (remoteDBConn) == "string") {
                 Logger(remoteDBConn);
                 return;
@@ -2664,10 +2695,10 @@ ${stringifyYaml(pluginConfig)}`;
     async dbGC() {
         // Lock the remote completely once.
         await skipIfDuplicated("cleanup", async () => {
-            const replicator = this.plugin.getReplicator();
+            const replicator = this.plugin.$$getReplicator();
             if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-            await this.plugin.getReplicator().markRemoteLocked(this.plugin.settings, true, true);
-            const remoteDBConnection = await replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.isMobile)
+            await this.plugin.$$getReplicator().markRemoteLocked(this.plugin.settings, true, true);
+            const remoteDBConnection = await replicator.connectRemoteCouchDBWithSetting(this.plugin.settings, this.plugin.$$isMobile())
             if (typeof (remoteDBConnection) == "string") {
                 Logger(remoteDBConnection);
                 return;

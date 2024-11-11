@@ -39,13 +39,13 @@ export abstract class AbstractObsidianModule extends AbstractModule {
 
 
     _isMainReady() {
-        return this.core._isMainReady();
+        return this.core.$$isReady();
     }
     _isMainSuspended() {
-        return this.core._isMainSuspended();
+        return this.core.$$isSuspended();
     }
     _isDatabaseReady() {
-        return this.core._isDatabaseReady();
+        return this.core.$$isDatabaseReady();
     }
 
     //should be overridden

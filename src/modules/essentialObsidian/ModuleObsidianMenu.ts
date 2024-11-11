@@ -19,7 +19,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
         );
 
         this.addRibbonIcon("replicate", "Replicate", async () => {
-            await this.plugin.$$replicate(true);
+            await this.core.$$replicate(true);
         }).addClass("livesync-ribbon-replicate");
 
 
@@ -27,14 +27,14 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             id: "livesync-replicate",
             name: "Replicate now",
             callback: async () => {
-                await this.plugin.$$replicate();
+                await this.core.$$replicate();
             },
         });
         this.addCommand({
             id: "livesync-dump",
             name: "Dump information of this doc ",
             callback: () => {
-                const file = this.plugin.$$getActiveFilePath();
+                const file = this.core.$$getActiveFilePath();
                 if (!file) return;
                 fireAndForget(() => this.localDatabase.getDBEntry(file, {}, true, false));
             },
@@ -45,7 +45,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
                 const file = view.file;
                 if (!file) return;
-                void this.plugin.$$queueConflictCheckIfOpen(file.path as FilePathWithPrefix);
+                void this.core.$$queueConflictCheckIfOpen(file.path as FilePathWithPrefix);
             },
         });
 
@@ -60,23 +60,23 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
                     this.settings.liveSync = true;
                     this._log("LiveSync Enabled.", LOG_LEVEL_NOTICE);
                 }
-                await this.plugin.realizeSettingSyncMode();
-                await this.plugin.saveSettings();
+                await this.core.$$realizeSettingSyncMode();
+                await this.core.$$saveSettingData();
             },
         });
         this.addCommand({
             id: "livesync-suspendall",
             name: "Toggle All Sync.",
             callback: async () => {
-                if (this.plugin.suspended) {
-                    this.plugin.suspended = false;
+                if (this.core.$$isSuspended()) {
+                    this.core.$$setSuspended(false);
                     this._log("Self-hosted LiveSync resumed", LOG_LEVEL_NOTICE);
                 } else {
-                    this.plugin.suspended = true;
+                    this.core.$$setSuspended(true);
                     this._log("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
                 }
-                await this.plugin.realizeSettingSyncMode();
-                await this.plugin.saveSettings();
+                await this.core.$$realizeSettingSyncMode();
+                await this.core.$$saveSettingData();
             },
         });
 
@@ -84,7 +84,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             id: "livesync-scan-files",
             name: "Scan storage and database again",
             callback: async () => {
-                await this.plugin.$$performFullScan(true)
+                await this.core.$$performFullScan(true)
             }
         })
 
@@ -101,14 +101,14 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             id: "livesync-abortsync",
             name: "Abort synchronization immediately",
             callback: () => {
-                this.plugin.replicator.terminateSync();
+                this.core.replicator.terminateSync();
             },
         })
         return Promise.resolve(true);
 
     }
     $everyOnload(): Promise<boolean> {
-        this.app.workspace.onLayoutReady(this.plugin.onLiveSyncReady.bind(this.plugin));
+        this.app.workspace.onLayoutReady(this.core.$$onLiveSyncReady.bind(this.core));
         // eslint-disable-next-line no-unused-labels
         return Promise.resolve(true);
     }
