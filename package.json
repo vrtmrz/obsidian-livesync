@@ -13,7 +13,7 @@
         "tsc-check": "tsc --noEmit",
         "pretty": "npm run prettyNoWrite -- --write --log-level error",
         "prettyCheck": "npm run prettyNoWrite -- --check",
-        "prettyNoWrite": "prettier --config ./.prettierrc \"**/*.js\" \"**/*.ts\"",
+        "prettyNoWrite": "prettier --config ./.prettierrc \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
         "check": "npm run lint && npm run svelte-check && npm run tsc-check"
     },
     "keywords": [],
