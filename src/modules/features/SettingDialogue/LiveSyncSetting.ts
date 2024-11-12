@@ -1,9 +1,35 @@
-import { Setting, TextComponent, type ToggleComponent, type DropdownComponent, ButtonComponent, type TextAreaComponent, type ValueComponent } from "obsidian";
+import {
+    Setting,
+    TextComponent,
+    type ToggleComponent,
+    type DropdownComponent,
+    ButtonComponent,
+    type TextAreaComponent,
+    type ValueComponent,
+} from "obsidian";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "../../../lib/src/common/types.ts";
-import { type ObsidianLiveSyncSettingTab, type AutoWireOption, wrapMemo, type OnUpdateResult, createStub, findAttrFromParent } from "./ObsidianLiveSyncSettingTab.ts";
-import { type AllSettingItemKey, getConfig, type AllSettings, type AllStringItemKey, type AllNumericItemKey, type AllBooleanItemKey } from "./settingConstants.ts";
-
+import {
+    LEVEL_ADVANCED,
+    LEVEL_POWER_USER,
+    statusDisplay,
+    type ConfigurationItem,
+} from "../../../lib/src/common/types.ts";
+import {
+    type ObsidianLiveSyncSettingTab,
+    type AutoWireOption,
+    wrapMemo,
+    type OnUpdateResult,
+    createStub,
+    findAttrFromParent,
+} from "./ObsidianLiveSyncSettingTab.ts";
+import {
+    type AllSettingItemKey,
+    getConfig,
+    type AllSettings,
+    type AllStringItemKey,
+    type AllNumericItemKey,
+    type AllBooleanItemKey,
+} from "./settingConstants.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -29,8 +55,9 @@ export class LiveSyncSetting extends Setting {
         DEV: {
             const paneName = findAttrFromParent(this.settingEl, "data-pane");
             const panelName = findAttrFromParent(this.settingEl, "data-panel");
-            const itemName = typeof this.nameBuf == "string" ? this.nameBuf : this.nameBuf.textContent?.toString() ?? "";
-            const strValue = typeof value == "string" ? value : value.textContent?.toString() ?? "";
+            const itemName =
+                typeof this.nameBuf == "string" ? this.nameBuf : (this.nameBuf.textContent?.toString() ?? "");
+            const strValue = typeof value == "string" ? value : (value.textContent?.toString() ?? "");
 
             createStub(itemName, key, strValue, panelName, paneName);
         }
@@ -111,9 +138,11 @@ export class LiveSyncSetting extends Setting {
     }
     autoWireText(key: AllStringItemKey, opt?: AutoWireOption) {
         const conf = this.autoWireSetting(key, opt);
-        this.addText(text => {
+        this.addText((text) => {
             this.autoWiredComponent = text;
-            const setValue = wrapMemo((value: string) => { text.setValue(value) });
+            const setValue = wrapMemo((value: string) => {
+                text.setValue(value);
+            });
             this.invalidateValue = () => setValue(`${LiveSyncSetting.env.editingSettings[key]}`);
             this.invalidateValue();
             text.onChange(async (value) => {
@@ -129,9 +158,11 @@ export class LiveSyncSetting extends Setting {
     }
     autoWireTextArea(key: AllStringItemKey, opt?: AutoWireOption) {
         const conf = this.autoWireSetting(key, opt);
-        this.addTextArea(text => {
+        this.addTextArea((text) => {
             this.autoWiredComponent = text;
-            const setValue = wrapMemo((value: string) => { text.setValue(value) });
+            const setValue = wrapMemo((value: string) => {
+                text.setValue(value);
+            });
             this.invalidateValue = () => setValue(`${LiveSyncSetting.env.editingSettings[key]}`);
             this.invalidateValue();
             text.onChange(async (value) => {
@@ -145,9 +176,12 @@ export class LiveSyncSetting extends Setting {
         });
         return this;
     }
-    autoWireNumeric(key: AllNumericItemKey, opt: AutoWireOption & { clampMin?: number; clampMax?: number; acceptZero?: boolean; }) {
+    autoWireNumeric(
+        key: AllNumericItemKey,
+        opt: AutoWireOption & { clampMin?: number; clampMax?: number; acceptZero?: boolean }
+    ) {
         const conf = this.autoWireSetting(key, opt);
-        this.addText(text => {
+        this.addText((text) => {
             this.autoWiredComponent = text;
             if (opt.clampMin) {
                 text.inputEl.setAttribute("min", `${opt.clampMin}`);
@@ -156,7 +190,9 @@ export class LiveSyncSetting extends Setting {
                 text.inputEl.setAttribute("max", `${opt.clampMax}`);
             }
             let lastError = false;
-            const setValue = wrapMemo((value: string) => { text.setValue(value) });
+            const setValue = wrapMemo((value: string) => {
+                text.setValue(value);
+            });
             this.invalidateValue = () => {
                 if (!lastError) setValue(`${LiveSyncSetting.env.editingSettings[key]}`);
             };
@@ -193,9 +229,11 @@ export class LiveSyncSetting extends Setting {
     }
     autoWireToggle(key: AllBooleanItemKey, opt?: AutoWireOption) {
         const conf = this.autoWireSetting(key, opt);
-        this.addToggle(toggle => {
+        this.addToggle((toggle) => {
             this.autoWiredComponent = toggle;
-            const setValue = wrapMemo((value: boolean) => { toggle.setValue(opt?.invert ? !value : value) });
+            const setValue = wrapMemo((value: boolean) => {
+                toggle.setValue(opt?.invert ? !value : value);
+            });
             this.invalidateValue = () => setValue(LiveSyncSetting.env.editingSettings[key] ?? false);
             this.invalidateValue();
 
@@ -207,16 +245,15 @@ export class LiveSyncSetting extends Setting {
         });
         return this;
     }
-    autoWireDropDown<T extends string>(key: AllStringItemKey, opt: AutoWireOption & { options: Record<T, string>; }) {
+    autoWireDropDown<T extends string>(key: AllStringItemKey, opt: AutoWireOption & { options: Record<T, string> }) {
         const conf = this.autoWireSetting(key, opt);
-        this.addDropdown(dropdown => {
+        this.addDropdown((dropdown) => {
             this.autoWiredComponent = dropdown;
             const setValue = wrapMemo((value: string) => {
                 dropdown.setValue(value);
             });
 
-            dropdown
-                .addOptions(opt.options);
+            dropdown.addOptions(opt.options);
 
             this.invalidateValue = () => setValue(LiveSyncSetting.env.editingSettings[key] || "");
             this.invalidateValue();
@@ -264,7 +301,6 @@ export class LiveSyncSetting extends Setting {
             const newConf = this._getComputedStatus();
             const keys = Object.keys(newConf) as [keyof OnUpdateResult];
             for (const k of keys) {
-
                 if (k in this.prevStatus && this.prevStatus[k] == newConf[k]) {
                     continue;
                 }
@@ -277,8 +313,8 @@ export class LiveSyncSetting extends Setting {
                     case "classes":
                         break;
                     case "disabled":
-                        this.setDisabled((newConf[k] || false));
-                        this.settingEl.toggleClass("sls-setting-disabled", (newConf[k] || false));
+                        this.setDisabled(newConf[k] || false);
+                        this.settingEl.toggleClass("sls-setting-disabled", newConf[k] || false);
                         this.prevStatus[k] = newConf[k];
                         break;
                     case "isCta":

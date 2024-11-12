@@ -2,12 +2,19 @@ import { normalizePath, TFile, TFolder, type ListedFiles } from "obsidian";
 import { SerializedFileAccess } from "./storageLib/SerializedFileAccess";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import type { FilePath, FilePathWithPrefix, UXDataWriteOptions, UXFileInfo, UXFileInfoStub, UXFolderInfo, UXStat } from "../../lib/src/common/types";
+import type {
+    FilePath,
+    FilePathWithPrefix,
+    UXDataWriteOptions,
+    UXFileInfo,
+    UXFileInfoStub,
+    UXFolderInfo,
+    UXStat,
+} from "../../lib/src/common/types";
 import { TFileToUXFileInfoStub, TFolderToUXFileInfoStub } from "./storageLib/utilObsidian.ts";
 import { StorageEventManagerObsidian, type StorageEventManager } from "./storageLib/StorageEventManager";
 import type { StorageAccess } from "../interfaces/StorageAccess";
 import { createBlob } from "../../lib/src/common/utils";
-
 
 export class ModuleFileAccessObsidian extends AbstractObsidianModule implements IObsidianModule, StorageAccess {
     vaultAccess!: SerializedFileAccess;
@@ -53,7 +60,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         if (file instanceof TFile) {
             return this.vaultAccess.vaultModify(file, data, opt);
         } else if (file === null) {
-            return await this.vaultAccess.vaultCreate(path, data, opt) instanceof TFile;
+            return (await this.vaultAccess.vaultCreate(path, data, opt)) instanceof TFile;
         } else {
             this._log(`Could not write file (Possibly already exists as a folder): ${path}`, LOG_LEVEL_VERBOSE);
             return false;
@@ -90,7 +97,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
     async appendHiddenFile(path: string, data: string, opt?: UXDataWriteOptions): Promise<boolean> {
         try {
-
             await this.vaultAccess.adapterAppend(path, data, opt);
             return true;
         } catch (e) {
@@ -107,12 +113,11 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
                 ctime: file.stat.ctime,
                 mtime: file.stat.mtime,
                 size: file.stat.size,
-                type: "file"
+                type: "file",
             });
         } else {
             throw new Error(`Could not stat file (Possibly does not exist): ${path}`);
         }
-
     }
     statHidden(path: string): Promise<UXStat | null> {
         return this.vaultAccess.adapterStat(path);
@@ -140,7 +145,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         return await this.vaultAccess.adapterReadBinary(path);
     }
     async isExistsIncludeHidden(path: string): Promise<boolean> {
-        return await this.vaultAccess.adapterStat(path) !== null;
+        return (await this.vaultAccess.adapterStat(path)) !== null;
     }
     async ensureDir(path: string): Promise<boolean> {
         try {
@@ -180,8 +185,8 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         const data = await this.vaultAccess.vaultReadAuto(file);
         return {
             ...stub,
-            body: createBlob(data)
-        }
+            body: createBlob(data),
+        };
     }
     getStub(path: string): UXFileInfoStub | UXFolderInfo | null {
         const file = this.vaultAccess.getAbstractFileByPath(path);
@@ -193,10 +198,10 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         return null;
     }
     getFiles(): UXFileInfoStub[] {
-        return this.vaultAccess.getFiles().map(f => TFileToUXFileInfoStub(f));
+        return this.vaultAccess.getFiles().map((f) => TFileToUXFileInfoStub(f));
     }
     getFileNames(): FilePath[] {
-        return this.vaultAccess.getFiles().map(f => f.path as FilePath);
+        return this.vaultAccess.getFiles().map((f) => f.path as FilePath);
     }
 
     async getFilesIncludeHidden(
@@ -213,20 +218,20 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
-        skipFolder = skipFolder.map(e => e.toLowerCase());
+        skipFolder = skipFolder.map((e) => e.toLowerCase());
 
         let files = [] as string[];
         for (const file of w.files) {
-            if (excludeFilter && excludeFilter.some(ee => file.match(ee))) {
+            if (excludeFilter && excludeFilter.some((ee) => file.match(ee))) {
                 // If excludeFilter and includeFilter are both set, the file will be included in the list.
                 if (includeFilter) {
-                    if (!includeFilter.some(e => file.match(e))) continue;
+                    if (!includeFilter.some((e) => file.match(e))) continue;
                 } else {
                     continue;
                 }
             }
             if (includeFilter) {
-                if (!includeFilter.some(e => file.match(e))) continue;
+                if (!includeFilter.some((e) => file.match(e))) continue;
             }
             if (await this.plugin.$$isIgnoredByIgnoreFiles(file)) continue;
             files.push(file);
@@ -234,19 +239,19 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
         for (const v of w.folders) {
             const folderName = (v.split("/").pop() ?? "").toLowerCase();
-            if (skipFolder.some(e => folderName === e)) {
-                continue
+            if (skipFolder.some((e) => folderName === e)) {
+                continue;
             }
-            if (excludeFilter && excludeFilter.some(e => v.match(e))) {
+            if (excludeFilter && excludeFilter.some((e) => v.match(e))) {
                 if (includeFilter) {
-                    if (!includeFilter.some(e => v.match(e))) {
+                    if (!includeFilter.some((e) => v.match(e))) {
                         continue;
                     }
                 }
             }
 
             if (includeFilter) {
-                if (!includeFilter.some(e => v.match(e))) continue;
+                if (!includeFilter.some((e) => v.match(e))) continue;
             }
             // OK, deep dive!
             files = files.concat(await this.getFilesIncludeHidden(v, includeFilter, excludeFilter, skipFolder));
@@ -258,7 +263,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         this.vaultAccess.touch(path as FilePath);
     }
     recentlyTouched(file: UXFileInfoStub | FilePathWithPrefix): boolean {
-        const xFile = typeof file === "string" ? this.vaultAccess.getAbstractFileByPath(file) as TFile : file;
+        const xFile = typeof file === "string" ? (this.vaultAccess.getAbstractFileByPath(file) as TFile) : file;
         if (xFile === null) return false;
         if (xFile instanceof TFolder) return false;
         return this.vaultAccess.recentlyTouched(xFile);
@@ -303,7 +308,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
     async _deleteVaultItem(file: TFile | TFolder) {
         if (file instanceof TFile) {
-            if (!await this.core.$$isTargetFile(file.path)) return;
+            if (!(await this.core.$$isTargetFile(file.path))) return;
         }
         const dir = file.parent;
         if (this.settings.trashInsteadDelete) {
@@ -316,7 +321,9 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             this._log(`files: ${dir.children.length}`);
             if (dir.children.length == 0) {
                 if (!this.settings.doNotDeleteFolder) {
-                    this._log(`All files under the parent directory (${dir.path}) have been deleted, so delete this one.`);
+                    this._log(
+                        `All files under the parent directory (${dir.path}) have been deleted, so delete this one.`
+                    );
                     await this._deleteVaultItem(dir);
                 }
             }

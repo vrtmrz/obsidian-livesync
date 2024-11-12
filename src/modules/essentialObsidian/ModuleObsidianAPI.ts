@@ -1,16 +1,21 @@
-import { AbstractObsidianModule, type IObsidianModule } from '../AbstractObsidianModule.ts';
-import { LOG_LEVEL_DEBUG, LOG_LEVEL_VERBOSE } from 'octagonal-wheels/common/logger';
-import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from '../../deps.ts';
-import { type EntryDoc, type FilePathWithPrefix } from '../../lib/src/common/types.ts';
-import { getPathFromTFile } from '../../common/utils.ts';
-import { disableEncryption, enableEncryption, isCloudantURI, isValidRemoteCouchDBURI, replicationFilter } from '../../lib/src/pouchdb/utils_couchdb.ts';
-import { setNoticeClass } from '../../lib/src/mock_and_interop/wrapper.ts';
-import { ObsHttpHandler } from './APILib/ObsHttpHandler.ts';
-import { PouchDB } from '../../lib/src/pouchdb/pouchdb-browser.ts';
-import { reactive, reactiveSource } from 'octagonal-wheels/dataobject/reactive';
+import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { LOG_LEVEL_DEBUG, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
+import { type EntryDoc, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import { getPathFromTFile } from "../../common/utils.ts";
+import {
+    disableEncryption,
+    enableEncryption,
+    isCloudantURI,
+    isValidRemoteCouchDBURI,
+    replicationFilter,
+} from "../../lib/src/pouchdb/utils_couchdb.ts";
+import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
+import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
+import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
+import { reactive, reactiveSource } from "octagonal-wheels/dataobject/reactive";
 
 setNoticeClass(Notice);
-
 
 async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
     const ret = await requestUrl(request);
@@ -27,11 +32,11 @@ async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse>
 }
 
 export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidianModule {
-
     _customHandler!: ObsHttpHandler;
     authHeaderSource = reactiveSource<string>("");
     authHeader = reactive(() =>
-        this.authHeaderSource.value == "" ? "" : "Basic " + window.btoa(this.authHeaderSource.value));
+        this.authHeaderSource.value == "" ? "" : "Basic " + window.btoa(this.authHeaderSource.value)
+    );
 
     last_successful_post = false;
     $$customFetchHandler(): ObsHttpHandler {
@@ -42,11 +47,20 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         return !this.last_successful_post;
     }
 
-    async $$connectRemoteCouchDB(uri: string, auth: { username: string; password: string }, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
+    async $$connectRemoteCouchDB(
+        uri: string,
+        auth: { username: string; password: string },
+        disableRequestURI: boolean,
+        passphrase: string | false,
+        useDynamicIterationCount: boolean,
+        performSetup: boolean,
+        skipInfo: boolean,
+        compression: boolean
+    ): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
-        const userNameAndPassword = (auth.username && auth.password) ? `${auth.username}:${auth.password}` : "";
+        const userNameAndPassword = auth.username && auth.password ? `${auth.username}:${auth.password}` : "";
         if (this.authHeaderSource.value != userNameAndPassword) {
             this.authHeaderSource.value = userNameAndPassword;
         }
@@ -135,7 +149,9 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     if (Math.floor(response.status / 100) !== 2) {
                         if (method != "GET" && localURL.indexOf("/_local/") === -1 && !localURL.endsWith("/")) {
                             const r = response.clone();
-                            this._log(`The request may have failed. The reason sent by the server: ${r.status}: ${r.statusText}`);
+                            this._log(
+                                `The request may have failed. The reason sent by the server: ${r.status}: ${r.statusText}`
+                            );
 
                             try {
                                 this._log(await (await r.blob()).text(), LOG_LEVEL_VERBOSE);
@@ -144,7 +160,10 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                                 this._log(_, LOG_LEVEL_VERBOSE);
                             }
                         } else {
-                            this._log(`Just checkpoint or some server information has been missing. The 404 error shown above is not an error.`, LOG_LEVEL_VERBOSE)
+                            this._log(
+                                `Just checkpoint or some server information has been missing. The 404 error shown above is not an error.`,
+                                LOG_LEVEL_VERBOSE
+                            );
                         }
                     }
                     return response;
@@ -178,7 +197,8 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         } catch (ex: any) {
             let msg = `${ex?.name}:${ex?.message}`;
             if (ex?.name == "TypeError" && ex?.message == "Failed to fetch") {
-                msg += "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
+                msg +=
+                    "\n**Note** This error caused by many reasons. The only sure thing is you didn't touch the server.\nTo check details, open inspector.";
             }
             this._log(ex, LOG_LEVEL_VERBOSE);
             return msg;
@@ -194,7 +214,10 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         return this.app.vault.getName();
     }
     $$getVaultName(): string {
-        return this.core.$$vaultName() + (this.settings?.additionalSuffixOfDatabaseName ? ("-" + this.settings.additionalSuffixOfDatabaseName) : "");
+        return (
+            this.core.$$vaultName() +
+            (this.settings?.additionalSuffixOfDatabaseName ? "-" + this.settings.additionalSuffixOfDatabaseName : "")
+        );
     }
     $$getActiveFilePath(): FilePathWithPrefix | undefined {
         const file = this.app.workspace.getActiveFile();
@@ -205,7 +228,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
     }
 
     $anyGetAppId(): Promise<string | undefined> {
-        return Promise.resolve(`${("appId" in this.app ? this.app.appId : "")}`);
+        return Promise.resolve(`${"appId" in this.app ? this.app.appId : ""}`);
     }
-
 }

@@ -1,6 +1,13 @@
 import { fireAndForget } from "octagonal-wheels/promises";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "../../lib/src/common/types.ts";
-import { EVENT_LAYOUT_READY, EVENT_PLUGIN_LOADED, EVENT_PLUGIN_UNLOADED, EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
+import {
+    EVENT_LAYOUT_READY,
+    EVENT_PLUGIN_LOADED,
+    EVENT_PLUGIN_UNLOADED,
+    EVENT_REQUEST_RELOAD_SETTING_TAB,
+    EVENT_SETTING_SAVED,
+    eventHub,
+} from "../../common/events.ts";
 import { $f, setLang } from "../../lib/src/common/i18n.ts";
 import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
 import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
@@ -9,9 +16,8 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
-
     async $$onLiveSyncReady() {
-        if (!await this.core.$everyOnLayoutReady()) return;
+        if (!(await this.core.$everyOnLayoutReady())) return;
         eventHub.emitEvent(EVENT_LAYOUT_READY);
         if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
             const ANSWER_KEEP = "Keep this plug-in suspended";
@@ -29,7 +35,12 @@ Do you want to resume them and restart Obsidian?
 > These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.
 > If you are not sure, you can try to rerun these processes. Make sure to back your vault up.
 `;
-            if (await this.core.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], { defaultAction: ANSWER_KEEP, title: "Scram Enabled" }) == ANSWER_RESUME) {
+            if (
+                (await this.core.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], {
+                    defaultAction: ANSWER_KEEP,
+                    title: "Scram Enabled",
+                })) == ANSWER_RESUME
+            ) {
                 this.settings.suspendFileWatching = false;
                 this.settings.suspendParseReplicationResult = false;
                 await this.saveSettings();
@@ -42,11 +53,11 @@ Do you want to resume them and restart Obsidian?
             //TODO:stop all sync.
             return false;
         }
-        if (!await this.core.$everyOnFirstInitialize()) return;
+        if (!(await this.core.$everyOnFirstInitialize())) return;
         await this.core.$$realizeSettingSyncMode();
         fireAndForget(async () => {
             this._log(`Additional safety scan..`, LOG_LEVEL_VERBOSE);
-            if (!await this.core.$allScanStat()) {
+            if (!(await this.core.$allScanStat())) {
                 this._log(`Additional safety scan has been failed on some module`, LOG_LEVEL_NOTICE);
             } else {
                 this._log(`Additional safety scan done`, LOG_LEVEL_VERBOSE);
@@ -62,7 +73,7 @@ Do you want to resume them and restart Obsidian?
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             fireAndForget(() => this.core.$$realizeSettingSyncMode());
-        })
+        });
     }
 
     async $$onLiveSyncLoad(): Promise<void> {
@@ -70,7 +81,7 @@ Do you want to resume them and restart Obsidian?
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
         this._log("loading plugin");
-        if (!await this.core.$everyOnloadStart()) {
+        if (!(await this.core.$everyOnloadStart())) {
             this._log("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
             return;
         }
@@ -82,7 +93,7 @@ Do you want to resume them and restart Obsidian?
 
         this._log($f`Self-hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
         await this.core.$$loadSettings();
-        if (!await this.core.$everyOnloadAfterLoadSettings()) {
+        if (!(await this.core.$everyOnloadAfterLoadSettings())) {
             this._log("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
             return;
         }
@@ -116,7 +127,7 @@ Do you want to resume them and restart Obsidian?
         // this.$$replicate = this.$$replicate.bind(this);
         this.core.$$onLiveSyncReady = this.core.$$onLiveSyncReady.bind(this);
         await this.core.$everyOnload();
-        await Promise.all(this.core.addOns.map(e => e.onload()));
+        await Promise.all(this.core.addOns.map((e) => e.onload()));
     }
 
     async $$onLiveSyncUnload(): Promise<void> {
@@ -159,12 +170,17 @@ Do you want to resume them and restart Obsidian?
 
     isReady = false;
 
-    $$isReady(): boolean { return this.isReady; }
+    $$isReady(): boolean {
+        return this.isReady;
+    }
 
-    $$markIsReady(): void { this.isReady = true; }
+    $$markIsReady(): void {
+        this.isReady = true;
+    }
 
-    $$resetIsReady(): void { this.isReady = false; }
-
+    $$resetIsReady(): void {
+        this.isReady = false;
+    }
 
     _suspended = false;
     $$isSuspended(): boolean {
@@ -178,5 +194,4 @@ Do you want to resume them and restart Obsidian?
     $$isUnloaded(): boolean {
         return this._unloaded;
     }
-
 }

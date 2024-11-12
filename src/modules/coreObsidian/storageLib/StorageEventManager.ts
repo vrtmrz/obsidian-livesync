@@ -1,17 +1,31 @@
 import { TAbstractFile, TFile, TFolder } from "../../../deps.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { shouldBeIgnored } from "../../../lib/src/string_and_binary/path.ts";
-import { DEFAULT_SETTINGS, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, type FilePath, type FilePathWithPrefix, type UXFileInfoStub, type UXInternalFileInfoStub } from "../../../lib/src/common/types.ts";
+import {
+    DEFAULT_SETTINGS,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type FilePath,
+    type FilePathWithPrefix,
+    type UXFileInfoStub,
+    type UXInternalFileInfoStub,
+} from "../../../lib/src/common/types.ts";
 import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "../../../lib/src/concurrency/lock.ts";
-import { finishAllWaitingForTimeout, finishWaitingForTimeout, isWaitingForTimeout, waitForTimeout } from "../../../lib/src/concurrency/task.ts";
+import {
+    finishAllWaitingForTimeout,
+    finishWaitingForTimeout,
+    isWaitingForTimeout,
+    waitForTimeout,
+} from "../../../lib/src/concurrency/task.ts";
 import { Semaphore } from "../../../lib/src/concurrency/semaphore.ts";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 // import { InternalFileToUXFileInfo } from "../platforms/obsidian.ts";
-
 
 export type FileEvent = {
     type: FileEventType;
@@ -21,19 +35,15 @@ export type FileEvent = {
     skipBatchWait?: boolean;
 };
 
-
 export abstract class StorageEventManager {
     abstract beginWatch(): void;
     abstract flushQueue(): void;
     abstract appendQueue(items: FileEvent[], ctx?: any): Promise<void>;
     abstract cancelQueue(key: string): void;
     abstract isWaiting(filename: FilePath): boolean;
-
 }
 
-
 export class StorageEventManagerObsidian extends StorageEventManager {
-
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
 
@@ -41,10 +51,10 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         return this.core.settings?.batchSave && this.core.settings?.liveSync != true;
     }
     get batchSaveMinimumDelay(): number {
-        return this.core.settings?.batchSaveMinimumDelay ?? DEFAULT_SETTINGS.batchSaveMinimumDelay
+        return this.core.settings?.batchSaveMinimumDelay ?? DEFAULT_SETTINGS.batchSaveMinimumDelay;
     }
     get batchSaveMaximumDelay(): number {
-        return this.core.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay
+        return this.core.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay;
     }
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
         super();
@@ -83,10 +93,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         }
         const data = info?.data as string;
         const fi: FileEvent = {
-            type: "CHANGED", file: TFileToUXFileInfoStub(file), cachedData: data,
-        }
-        void this.appendQueue([
-            fi])
+            type: "CHANGED",
+            file: TFileToUXFileInfoStub(file),
+            cachedData: data,
+        };
+        void this.appendQueue([fi]);
     }
 
     watchVaultCreate(file: TAbstractFile, ctx?: any) {
@@ -109,17 +120,27 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
         if (file instanceof TFile) {
             const fileInfo = TFileToUXFileInfoStub(file);
-            void this.appendQueue([
-                {
-                    type: "DELETE", file: {
-                        path: oldFile as FilePath, name: file.name, stat: {
-                            mtime: file.stat.mtime,
-                            ctime: file.stat.ctime,
-                            size: file.stat.size,
-                            type: "file"
-                        }, deleted: true
-                    }, skipBatchWait: true
-                }, { type: "CREATE", file: fileInfo, skipBatchWait: true },], ctx);
+            void this.appendQueue(
+                [
+                    {
+                        type: "DELETE",
+                        file: {
+                            path: oldFile as FilePath,
+                            name: file.name,
+                            stat: {
+                                mtime: file.stat.mtime,
+                                ctime: file.stat.ctime,
+                                size: file.stat.size,
+                                type: "file",
+                            },
+                            deleted: true,
+                        },
+                        skipBatchWait: true,
+                    },
+                    { type: "CREATE", file: fileInfo, skipBatchWait: true },
+                ],
+                ctx
+            );
         }
     }
     // Watch raw events (Internal API)
@@ -142,16 +163,23 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         if (!path.startsWith(this.plugin.app.vault.configDir)) return;
         const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns
             .replace(/\n| /g, "")
-            .split(",").filter(e => e).map(e => new RegExp(e, "i"));
-        if (ignorePatterns.some(e => path.match(e))) return;
+            .split(",")
+            .filter((e) => e)
+            .map((e) => new RegExp(e, "i"));
+        if (ignorePatterns.some((e) => path.match(e))) return;
         if (path.endsWith("/")) {
-            // Folder 
+            // Folder
             return;
         }
-        void this.appendQueue([
-            {
-                type: "INTERNAL", file: InternalFileToUXFileInfoStub(path),
-            }], null);
+        void this.appendQueue(
+            [
+                {
+                    type: "INTERNAL",
+                    file: InternalFileToUXFileInfoStub(path),
+                },
+            ],
+            null
+        );
     }
     // Cache file and waiting to can be proceed.
     async appendQueue(params: FileEvent[], ctx?: any) {
@@ -164,25 +192,22 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             if (shouldBeIgnored(param.file.path)) {
                 continue;
             }
-            const atomicKey = [
-                0,
-                0,
-                0,
-                0,
-                0,
-                0].map(e => `${Math.floor(Math.random() * 100000)}`).join("-");
+            const atomicKey = [0, 0, 0, 0, 0, 0].map((e) => `${Math.floor(Math.random() * 100000)}`).join("-");
             const type = param.type;
             const file = param.file;
             const oldPath = param.oldPath;
             if (type !== "INTERNAL") {
                 const size = (file as UXFileInfoStub).stat.size;
                 if (this.core.$$isFileSizeExceeded(size) && (type == "CREATE" || type == "CHANGED")) {
-                    Logger(`The storage file has been changed but exceeds the maximum size. Skipping: ${param.file.path}`, LOG_LEVEL_NOTICE);
+                    Logger(
+                        `The storage file has been changed but exceeds the maximum size. Skipping: ${param.file.path}`,
+                        LOG_LEVEL_NOTICE
+                    );
                     continue;
                 }
             }
             if (file instanceof TFolder) continue;
-            if (!await this.core.$$isTargetFile(file.path)) continue;
+            if (!(await this.core.$$isTargetFile(file.path))) continue;
 
             // Stop cache using to prevent the corruption;
             // let cache: null | string | ArrayBuffer;
@@ -197,13 +222,19 @@ export class StorageEventManagerObsidian extends StorageEventManager {
 
             let cache: string | undefined = undefined;
             if (param.cachedData) {
-                cache = param.cachedData
+                cache = param.cachedData;
             }
             this.enqueue({
-                type, args: {
-                    file: file, oldPath, cache, ctx,
-                }, skipBatchWait: param.skipBatchWait, key: atomicKey
-            })
+                type,
+                args: {
+                    file: file,
+                    oldPath,
+                    cache,
+                    ctx,
+                },
+                skipBatchWait: param.skipBatchWait,
+                key: atomicKey,
+            });
             processFiles.add(file.path as FilePath);
             if (oldPath) {
                 processFiles.add(oldPath as FilePath);
@@ -238,7 +269,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 Logger(`Processing ${filename}: Started`, LOG_LEVEL_DEBUG);
                 let noMoreFiles = false;
                 do {
-                    const target = this.bufferedQueuedItems.find(e => e.args.file.path == filename);
+                    const target = this.bufferedQueuedItems.find((e) => e.args.file.path == filename);
                     if (target === undefined) {
                         noMoreFiles = true;
                         break;
@@ -251,7 +282,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                     // }
                     const type = target.type;
                     if (target.cancelled) {
-                        Logger(`Processing ${filename}: Cancelled (scheduled): ${operationType}`, LOG_LEVEL_DEBUG)
+                        Logger(`Processing ${filename}: Cancelled (scheduled): ${operationType}`, LOG_LEVEL_DEBUG);
                         this.cancelStandingBy(target);
                         continue;
                     }
@@ -261,19 +292,31 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                             let canWait = true;
                             const now = Date.now();
                             if (waitedSince !== undefined) {
-                                if (waitedSince + (this.batchSaveMaximumDelay * 1000) < now) {
-                                    Logger(`Processing ${filename}: Could not wait no more: ${operationType}`, LOG_LEVEL_INFO)
+                                if (waitedSince + this.batchSaveMaximumDelay * 1000 < now) {
+                                    Logger(
+                                        `Processing ${filename}: Could not wait no more: ${operationType}`,
+                                        LOG_LEVEL_INFO
+                                    );
                                     canWait = false;
                                 }
                             }
                             if (canWait) {
-                                if (waitedSince === undefined) this.waitedSince.set(filename, now)
-                                target.batched = true
-                                Logger(`Processing ${filename}: Waiting for batch save delay: ${operationType}`, LOG_LEVEL_DEBUG)
+                                if (waitedSince === undefined) this.waitedSince.set(filename, now);
+                                target.batched = true;
+                                Logger(
+                                    `Processing ${filename}: Waiting for batch save delay: ${operationType}`,
+                                    LOG_LEVEL_DEBUG
+                                );
                                 this.updateStatus();
-                                const result = await waitForTimeout(`storage-event-manager-batchsave-${filename}`, this.batchSaveMinimumDelay * 1000);
+                                const result = await waitForTimeout(
+                                    `storage-event-manager-batchsave-${filename}`,
+                                    this.batchSaveMinimumDelay * 1000
+                                );
                                 if (!result) {
-                                    Logger(`Processing ${filename}: Cancelled by new queue: ${operationType}`, LOG_LEVEL_DEBUG)
+                                    Logger(
+                                        `Processing ${filename}: Cancelled by new queue: ${operationType}`,
+                                        LOG_LEVEL_DEBUG
+                                    );
                                     // If could not wait for the timeout, possibly we got a new queue. therefore, currently processing one should be cancelled
                                     this.cancelStandingBy(target);
                                     continue;
@@ -281,16 +324,19 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                             }
                         }
                     } else {
-                        Logger(`Processing ${filename}:Requested to perform immediately ${filename}: ${operationType}`, LOG_LEVEL_DEBUG)
+                        Logger(
+                            `Processing ${filename}:Requested to perform immediately ${filename}: ${operationType}`,
+                            LOG_LEVEL_DEBUG
+                        );
                     }
-                    Logger(`Processing ${filename}: Request main to process: ${operationType}`, LOG_LEVEL_DEBUG)
+                    Logger(`Processing ${filename}: Request main to process: ${operationType}`, LOG_LEVEL_DEBUG);
                     await this.requestProcessQueue(target);
-                } while (!noMoreFiles)
+                } while (!noMoreFiles);
             } finally {
-                release()
+                release();
             }
             Logger(`Processing ${filename}: Finished`, LOG_LEVEL_DEBUG);
-        })
+        });
     }
 
     cancelStandingBy(fei: FileEventItem) {
@@ -302,30 +348,30 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         try {
             this.processingCount++;
             this.bufferedQueuedItems.remove(fei);
-            this.updateStatus()
+            this.updateStatus();
             this.waitedSince.delete(fei.args.file.path);
             await this.handleFileEvent(fei);
         } finally {
             this.processingCount--;
-            this.updateStatus()
+            this.updateStatus();
         }
     }
     isWaiting(filename: FilePath) {
         return isWaitingForTimeout(`storage-event-manager-batchsave-${filename}`);
     }
     flushQueue() {
-        this.bufferedQueuedItems.forEach(e => e.skipBatchWait = true)
+        this.bufferedQueuedItems.forEach((e) => (e.skipBatchWait = true));
         finishAllWaitingForTimeout("storage-event-manager-batchsave-", true);
     }
     cancelQueue(key: string) {
-        this.bufferedQueuedItems.forEach(e => {
-            if (e.key === key) e.skipBatchWait = true
-        })
+        this.bufferedQueuedItems.forEach((e) => {
+            if (e.key === key) e.skipBatchWait = true;
+        });
     }
     updateStatus() {
-        const allItems = this.bufferedQueuedItems.filter(e => !e.cancelled)
-        const batchedCount = allItems.filter(e => e.batched && !e.skipBatchWait).length;
-        this.core.batched.value = batchedCount
+        const allItems = this.bufferedQueuedItems.filter((e) => !e.cancelled);
+        const batchedCount = allItems.filter((e) => e.batched && !e.skipBatchWait).length;
+        this.core.batched.value = batchedCount;
         this.core.processing.value = this.processingCount;
         this.core.totalQueued.value = allItems.length - batchedCount;
     }
@@ -336,7 +382,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         return await serialized(lockKey, async () => {
             // TODO CHECK
             const key = `file-last-proc-${queue.type}-${file.path}`;
-            const last = Number(await this.core.kvDB.get(key) || 0);
+            const last = Number((await this.core.kvDB.get(key)) || 0);
             if (queue.type == "INTERNAL" || file.isInternal) {
                 await this.core.$anyProcessOptionalFileEvent(file.path as unknown as FilePath);
             } else {
@@ -346,13 +392,16 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 } else {
                     if (file.stat.mtime == last) {
                         Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
-                        // Should Cancel the relative operations? (e.g. rename) 
+                        // Should Cancel the relative operations? (e.g. rename)
                         // this.cancelRelativeEvent(queue);
                         return;
                     }
-                    if (!await this.core.$anyHandlerProcessesFileEvent(queue)) {
-                        Logger(`STORAGE -> DB: Handler failed, cancel the relative operations: ${file.path}`, LOG_LEVEL_INFO);
-                        // cancel running queues and remove one of atomic operation (e.g. rename) 
+                    if (!(await this.core.$anyHandlerProcessesFileEvent(queue))) {
+                        Logger(
+                            `STORAGE -> DB: Handler failed, cancel the relative operations: ${file.path}`,
+                            LOG_LEVEL_INFO
+                        );
+                        // cancel running queues and remove one of atomic operation (e.g. rename)
                         this.cancelRelativeEvent(queue);
                         return;
                     }

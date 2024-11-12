@@ -2,7 +2,14 @@ import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_pat
 import { getPathFromTFile, isValidPath } from "../../../common/utils.ts";
 import { decodeBinary, escapeStringToHTML, readString } from "../../../lib/src/string_and_binary/convert.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
-import { type DocumentID, type FilePathWithPrefix, type LoadedEntry, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../../lib/src/common/types.ts";
+import {
+    type DocumentID,
+    type FilePathWithPrefix,
+    type LoadedEntry,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+} from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { isErrorOfMissingDoc } from "../../../lib/src/pouchdb/utils_couchdb.ts";
 import { fireAndForget, getDocData, readContent } from "../../../lib/src/common/utils.ts";
@@ -19,7 +26,7 @@ function isComparableText(path: string) {
 }
 function isComparableTextDecode(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
-    return ["json"].includes(ext)
+    return ["json"].includes(ext);
 }
 function readDocument(w: LoadedEntry) {
     if (w.data.length == 0) return "";
@@ -54,10 +61,16 @@ export class DocumentHistoryModal extends Modal {
     currentDeleted = false;
     initialRev?: string;
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin, file: TFile | FilePathWithPrefix, id?: DocumentID, revision?: string) {
+    constructor(
+        app: App,
+        plugin: ObsidianLiveSyncPlugin,
+        file: TFile | FilePathWithPrefix,
+        id?: DocumentID,
+        revision?: string
+    ) {
         super(app);
         this.plugin = plugin;
-        this.file = (file instanceof TFile) ? getPathFromTFile(file) : file;
+        this.file = file instanceof TFile ? getPathFromTFile(file) : file;
         this.id = id;
         this.initialRev = revision;
         if (!file && id) {
@@ -95,7 +108,7 @@ export class DocumentHistoryModal extends Modal {
     async loadRevs(initialRev?: string) {
         if (this.revs_info.length == 0) return;
         if (initialRev) {
-            const rIndex = this.revs_info.findIndex(e => e.rev == initialRev);
+            const rIndex = this.revs_info.findIndex((e) => e.rev == initialRev);
             if (rIndex >= 0) {
                 this.range.value = `${this.revs_info.length - 1 - rIndex}`;
             }
@@ -163,8 +176,7 @@ export class DocumentHistoryModal extends Modal {
                         } else if (isImage(this.file)) {
                             const src = this.generateBlobURL("base", w1data);
                             const overlay = this.generateBlobURL("overlay", readDocument(w2) as Uint8Array);
-                            result =
-                                `<div class='ls-imgdiff-wrap'>
+                            result = `<div class='ls-imgdiff-wrap'>
     <div class='overlay'>
         <img class='img-base' src="${src}">
         <img class='img-overlay' src='${overlay}'>
@@ -174,14 +186,12 @@ export class DocumentHistoryModal extends Modal {
                         }
                     }
                 }
-
             }
             if (result == undefined) {
                 if (typeof w1data != "string") {
                     if (isImage(this.file)) {
                         const src = this.generateBlobURL("base", w1data);
-                        result =
-                            `<div class='ls-imgdiff-wrap'>
+                        result = `<div class='ls-imgdiff-wrap'>
 <div class='overlay'>
 <img class='img-base' src="${src}">
 </div>
@@ -193,7 +203,8 @@ export class DocumentHistoryModal extends Modal {
                 }
             }
             if (result == undefined) result = typeof w1data == "string" ? escapeStringToHTML(w1data) : "Binary file";
-            this.contentView.innerHTML = (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
+            this.contentView.innerHTML =
+                (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
         }
     }
 
@@ -257,9 +268,9 @@ export class DocumentHistoryModal extends Modal {
                 const leaf = this.plugin.app.workspace.getLeaf(false);
                 await leaf.openFile(targetFile);
             } else {
-                Logger("The file could not view on the editor", LOG_LEVEL_NOTICE)
+                Logger("The file could not view on the editor", LOG_LEVEL_NOTICE);
             }
-        }
+        };
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {
             e.addClass("mod-cta");
             e.addEventListener("click", () => {
@@ -285,9 +296,9 @@ export class DocumentHistoryModal extends Modal {
     onClose() {
         const { contentEl } = this;
         contentEl.empty();
-        this.BlobURLs.forEach(value => {
+        this.BlobURLs.forEach((value) => {
             console.log(value);
             if (value) URL.revokeObjectURL(value);
-        })
+        });
     }
 }

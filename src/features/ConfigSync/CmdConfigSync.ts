@@ -1,25 +1,75 @@
-import { writable } from 'svelte/store';
-import { Notice, type PluginManifest, parseYaml, normalizePath, type ListedFiles, diff_match_patch, Platform, addIcon } from "../../deps.ts";
+import { writable } from "svelte/store";
+import {
+    Notice,
+    type PluginManifest,
+    parseYaml,
+    normalizePath,
+    type ListedFiles,
+    diff_match_patch,
+    Platform,
+    addIcon,
+} from "../../deps.ts";
 
-import type { EntryDoc, LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, AnyEntry, SavingEntry, diff_result } from "../../lib/src/common/types.ts";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE, MODE_SHINY } from "../../lib/src/common/types.ts";
-import { ICXHeader, PERIODIC_PLUGIN_SWEEP, } from "../../common/types.ts";
-import { createBlob, createSavingEntryFromLoadedEntry, createTextBlob, delay, fireAndForget, getDocData, getDocDataAsArray, isDocContentSame, isLoadedEntry, isObjectDifferent } from "../../lib/src/common/utils.ts";
+import type {
+    EntryDoc,
+    LoadedEntry,
+    InternalFileEntry,
+    FilePathWithPrefix,
+    FilePath,
+    AnyEntry,
+    SavingEntry,
+    diff_result,
+} from "../../lib/src/common/types.ts";
+import {
+    CANCELLED,
+    LEAVE_TO_SUBSEQUENT,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    MODE_SELECTIVE,
+    MODE_SHINY,
+} from "../../lib/src/common/types.ts";
+import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "../../common/types.ts";
+import {
+    createBlob,
+    createSavingEntryFromLoadedEntry,
+    createTextBlob,
+    delay,
+    fireAndForget,
+    getDocData,
+    getDocDataAsArray,
+    isDocContentSame,
+    isLoadedEntry,
+    isObjectDifferent,
+} from "../../lib/src/common/utils.ts";
 import { digestHash } from "../../lib/src/string_and_binary/hash.ts";
-import { arrayBufferToBase64, decodeBinary, readString } from '../../lib/src/string_and_binary/convert.ts';
+import { arrayBufferToBase64, decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
 import { serialized, shareRunningResult } from "../../lib/src/concurrency/lock.ts";
 import { LiveSyncCommands } from "../LiveSyncCommands.ts";
 import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
-import { EVEN, PeriodicProcessor, disposeMemoObject, isCustomisationSyncMetadata, isMarkedAsSameChanges, isPluginMetadata, markChangesAreSame, memoIfNotExist, memoObject, retrieveMemoObject, scheduleTask } from "../../common/utils.ts";
+import {
+    EVEN,
+    PeriodicProcessor,
+    disposeMemoObject,
+    isCustomisationSyncMetadata,
+    isMarkedAsSameChanges,
+    isPluginMetadata,
+    markChangesAreSame,
+    memoIfNotExist,
+    memoObject,
+    retrieveMemoObject,
+    scheduleTask,
+} from "../../common/utils.ts";
 import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
-import { QueueProcessor } from '../../lib/src/concurrency/processor.ts';
-import { pluginScanningCount } from '../../lib/src/mock_and_interop/stores.ts';
-import type ObsidianLiveSyncPlugin from '../../main.ts';
-import { base64ToArrayBuffer, base64ToString } from 'octagonal-wheels/binary/base64';
-import { ConflictResolveModal } from '../../modules/features/InteractiveConflictResolving/ConflictResolveModal.ts';
-import { Semaphore } from 'octagonal-wheels/concurrency/semaphore';
-import type { IObsidianModule } from '../../modules/AbstractObsidianModule.ts';
-import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from '../../common/events.ts';
+import { QueueProcessor } from "../../lib/src/concurrency/processor.ts";
+import { pluginScanningCount } from "../../lib/src/mock_and_interop/stores.ts";
+import type ObsidianLiveSyncPlugin from "../../main.ts";
+import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
+import { ConflictResolveModal } from "../../modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
+import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
+import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
 
 const d = "\u200b";
@@ -35,10 +85,10 @@ function serialize(data: PluginDataEx): string {
     ret += data.mtime + d2;
     for (const file of data.files) {
         ret += file.filename + d + (file.displayName ?? "") + d + (file.version ?? "") + d2;
-        const hash = digestHash((file.data ?? []));
+        const hash = digestHash(file.data ?? []);
         ret += file.mtime + d + file.size + d + hash + d2;
         for (const data of file.data ?? []) {
-            ret += data + d
+            ret += data + d;
         }
         ret += d2;
     }
@@ -50,7 +100,7 @@ const DUMMY_HEAD = serialize({
     files: [],
     mtime: 0,
     term: "-",
-    displayName: `MIRAGED`
+    displayName: `MIRAGED`,
 });
 const DUMMY_END = d + d2 + "\u200c";
 function splitWithDelimiters(sources: string[]): string[] {
@@ -126,8 +176,8 @@ function getTokenizer(source: string[]) {
                 pos++;
             }
             lineRunOut = false;
-        }
-    }
+        },
+    };
     return t;
 }
 
@@ -142,8 +192,14 @@ function deserialize2(str: string[]): PluginDataEx {
     tokens.nextLine();
     const mtime = Number(tokens.next());
     tokens.nextLine();
-    const result: PluginDataEx = Object.assign(ret,
-        { category, name, term, version, mtime, files: [] as PluginDataExFile[] })
+    const result: PluginDataEx = Object.assign(ret, {
+        category,
+        name,
+        term,
+        version,
+        mtime,
+        files: [] as PluginDataExFile[],
+    });
     let filename = "";
     do {
         filename = tokens.next();
@@ -162,17 +218,15 @@ function deserialize2(str: string[]): PluginDataEx {
             if (piece == "") break;
             data.push(piece);
         } while (piece != "");
-        result.files.push(
-            {
-                filename,
-                displayName,
-                version,
-                mtime,
-                size,
-                data,
-                hash
-            }
-        )
+        result.files.push({
+            filename,
+            displayName,
+            version,
+            mtime,
+            size,
+            data,
+            hash,
+        });
         tokens.nextLine();
     } while (filename);
     return result;
@@ -194,20 +248,19 @@ function deserialize<T>(str: string[], def: T) {
     }
 }
 
-
 export const pluginList = writable([] as PluginDataExDisplay[]);
 export const pluginIsEnumerating = writable(false);
 export const pluginV2Progress = writable(0);
 
 export type PluginDataExFile = {
-    filename: string,
-    data: string[],
-    mtime: number,
-    size: number,
-    version?: string,
-    hash?: string,
-    displayName?: string,
-}
+    filename: string;
+    data: string[];
+    mtime: number;
+    size: number;
+    version?: string;
+    hash?: string;
+    displayName?: string;
+};
 export interface IPluginDataExDisplay {
     documentPath: FilePathWithPrefix;
     category: string;
@@ -219,26 +272,33 @@ export interface IPluginDataExDisplay {
     mtime: number;
 }
 export type PluginDataExDisplay = {
-    documentPath: FilePathWithPrefix,
-    category: string,
-    name: string,
-    term: string,
-    displayName?: string,
-    files: PluginDataExFile[],
-    version?: string,
-    mtime: number,
-}
+    documentPath: FilePathWithPrefix;
+    category: string;
+    name: string;
+    term: string;
+    displayName?: string;
+    files: PluginDataExFile[];
+    version?: string;
+    mtime: number;
+};
 type LoadedEntryPluginDataExFile = LoadedEntry & PluginDataExFile;
 
 function categoryToFolder(category: string, configDir: string = ""): string {
     switch (category) {
-        case "CONFIG": return `${configDir}/`;
-        case "THEME": return `${configDir}/themes/`;
-        case "SNIPPET": return `${configDir}/snippets/`;
-        case "PLUGIN_MAIN": return `${configDir}/plugins/`;
-        case "PLUGIN_DATA": return `${configDir}/plugins/`;
-        case "PLUGIN_ETC": return `${configDir}/plugins/`;
-        default: return "";
+        case "CONFIG":
+            return `${configDir}/`;
+        case "THEME":
+            return `${configDir}/themes/`;
+        case "SNIPPET":
+            return `${configDir}/snippets/`;
+        case "PLUGIN_MAIN":
+            return `${configDir}/plugins/`;
+        case "PLUGIN_DATA":
+            return `${configDir}/plugins/`;
+        case "PLUGIN_ETC":
+            return `${configDir}/plugins/`;
+        default:
+            return "";
     }
 }
 
@@ -269,15 +329,15 @@ export class PluginDataExDisplayV2 {
         this.category = `${data.category}`;
         this.name = `${data.name}`;
         this.term = `${data.term}`;
-        this.files = [...data.files as LoadedEntryPluginDataExFile[]];
+        this.files = [...(data.files as LoadedEntryPluginDataExFile[])];
         this.confKey = `${categoryToFolder(this.category, this.term)}${this.name}`;
         this.applyLoadedManifest();
     }
     async setFile(file: LoadedEntryPluginDataExFile) {
-        const old = this.files.find(e => e.filename == file.filename);
+        const old = this.files.find((e) => e.filename == file.filename);
         if (old) {
-            if (old.mtime == file.mtime && await isDocContentSame(old.data, file.data)) return;
-            this.files = this.files.filter(e => e.filename != file.filename);
+            if (old.mtime == file.mtime && (await isDocContentSame(old.data, file.data))) return;
+            this.files = this.files.filter((e) => e.filename != file.filename);
         }
         this.files.push(file);
         if (file.filename == "manifest.json") {
@@ -285,7 +345,7 @@ export class PluginDataExDisplayV2 {
         }
     }
     deleteFile(filename: string) {
-        this.files = this.files.filter(e => e.filename != filename);
+        this.files = this.files.filter((e) => e.filename != filename);
     }
 
     _displayName: string | undefined;
@@ -313,14 +373,14 @@ export class PluginDataExDisplayV2 {
     }
 }
 export type PluginDataEx = {
-    documentPath?: FilePathWithPrefix,
-    category: string,
-    name: string,
-    displayName?: string,
-    term: string,
-    files: PluginDataExFile[],
-    version?: string,
-    mtime: number,
+    documentPath?: FilePathWithPrefix;
+    category: string;
+    name: string;
+    displayName?: string;
+    term: string;
+    files: PluginDataExFile[];
+    version?: string;
+    mtime: number;
 };
 
 export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
@@ -329,8 +389,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         pluginScanningCount.onChanged((e) => {
             const total = e.value;
             pluginIsEnumerating.set(total != 0);
-        })
-
+        });
     }
     get kvDB() {
         return this.plugin.kvDB;
@@ -393,18 +452,25 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         eventHub.onEvent(EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, () => this.showPluginSyncModal());
     }
 
-    getFileCategory(filePath: string): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
+    getFileCategory(
+        filePath: string
+    ): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
         if (filePath.split("/").length == 2 && filePath.endsWith(".json")) return "CONFIG";
-        if (filePath.split("/").length == 4 && filePath.startsWith(`${this.app.vault.configDir}/themes/`)) return "THEME";
+        if (filePath.split("/").length == 4 && filePath.startsWith(`${this.app.vault.configDir}/themes/`))
+            return "THEME";
         if (filePath.startsWith(`${this.app.vault.configDir}/snippets/`) && filePath.endsWith(".css")) return "SNIPPET";
         if (filePath.startsWith(`${this.app.vault.configDir}/plugins/`)) {
-            if (filePath.endsWith("/styles.css") || filePath.endsWith("/manifest.json") || filePath.endsWith("/main.js")) {
+            if (
+                filePath.endsWith("/styles.css") ||
+                filePath.endsWith("/manifest.json") ||
+                filePath.endsWith("/main.js")
+            ) {
                 return "PLUGIN_MAIN";
             } else if (filePath.endsWith("/data.json")) {
                 return "PLUGIN_DATA";
             } else {
                 // Planned at v0.19.0, realised v0.23.18!
-                return (this.useV2 && this.useSyncPluginEtc) ? "PLUGIN_ETC" : "";
+                return this.useV2 && this.useSyncPluginEtc ? "PLUGIN_ETC" : "";
             }
             // return "PLUGIN";
         }
@@ -443,7 +509,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(false);
         }
-        this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0);
+        this.periodicPluginSweepProcessor.enable(
+            this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges
+                ? PERIODIC_PLUGIN_SWEEP * 1000
+                : 0
+        );
         return true;
     }
     $everyAfterResumeProcess(): Promise<boolean> {
@@ -454,7 +524,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     async reloadPluginList(showMessage: boolean) {
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
-        pluginList.set(this.pluginList)
+        pluginList.set(this.pluginList);
         await this.updatePluginList(showMessage);
     }
     async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
@@ -480,84 +550,104 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 wx.data = serialize(data);
                 fireAndForget(() => this.localDatabase.putDBEntry(createSavingEntryFromLoadedEntry(wx)));
             }
-            return ({
+            return {
                 ...data,
                 documentPath: this.getPath(wx),
-                files: xFiles
-            }) as PluginDataExDisplay;
+                files: xFiles,
+            } as PluginDataExDisplay;
         }
         return false;
     }
 
-    pluginScanProcessor = new QueueProcessor(async (v: AnyEntry[]) => {
-        const plugin = v[0];
-        if (this.useV2) {
-            await this.migrateV1ToV2(false, plugin);
-            return [];
-        }
-        const path = plugin.path || this.getPath(plugin);
-        const oldEntry = (this.pluginList.find(e => e.documentPath == path));
-        if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-        try {
-            const pluginData = await this.loadPluginData(path);
-            if (pluginData) {
-                let newList = [...this.pluginList];
-                newList = newList.filter(x => x.documentPath != pluginData.documentPath);
-                newList.push(pluginData);
-                this.pluginList = newList;
-                pluginList.set(newList);
+    pluginScanProcessor = new QueueProcessor(
+        async (v: AnyEntry[]) => {
+            const plugin = v[0];
+            if (this.useV2) {
+                await this.migrateV1ToV2(false, plugin);
+                return [];
             }
-            // Failed to load
-            return [];
-
-        } catch (ex) {
-            this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-        }
-        return [];
-    }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline();
-
-    pluginScanProcessorV2 = new QueueProcessor(async (v: AnyEntry[]) => {
-        const plugin = v[0];
-        const path = plugin.path || this.getPath(plugin);
-        const oldEntry = (this.pluginList.find(e => e.documentPath == path));
-        if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-        try {
-            const pluginData = await this.loadPluginData(path);
-            if (pluginData) {
-                let newList = [...this.pluginList];
-                newList = newList.filter(x => x.documentPath != pluginData.documentPath);
-                newList.push(pluginData);
-                this.pluginList = newList;
-                pluginList.set(newList);
+            const path = plugin.path || this.getPath(plugin);
+            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
+            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
+            try {
+                const pluginData = await this.loadPluginData(path);
+                if (pluginData) {
+                    let newList = [...this.pluginList];
+                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
+                    newList.push(pluginData);
+                    this.pluginList = newList;
+                    pluginList.set(newList);
+                }
+                // Failed to load
+                return [];
+            } catch (ex) {
+                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+                this._log(ex, LOG_LEVEL_VERBOSE);
             }
-            // Failed to load
             return [];
-
-        } catch (ex) {
-            this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-            this._log(ex, LOG_LEVEL_VERBOSE);
+        },
+        {
+            suspended: false,
+            batchSize: 1,
+            concurrentLimit: 10,
+            delay: 100,
+            yieldThreshold: 10,
+            maintainDelay: false,
+            totalRemainingReactiveSource: pluginScanningCount,
         }
-        return [];
-    }, { suspended: false, batchSize: 1, concurrentLimit: 10, delay: 100, yieldThreshold: 10, maintainDelay: false, totalRemainingReactiveSource: pluginScanningCount }).startPipeline();
+    ).startPipeline();
 
+    pluginScanProcessorV2 = new QueueProcessor(
+        async (v: AnyEntry[]) => {
+            const plugin = v[0];
+            const path = plugin.path || this.getPath(plugin);
+            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
+            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
+            try {
+                const pluginData = await this.loadPluginData(path);
+                if (pluginData) {
+                    let newList = [...this.pluginList];
+                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
+                    newList.push(pluginData);
+                    this.pluginList = newList;
+                    pluginList.set(newList);
+                }
+                // Failed to load
+                return [];
+            } catch (ex) {
+                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+                this._log(ex, LOG_LEVEL_VERBOSE);
+            }
+            return [];
+        },
+        {
+            suspended: false,
+            batchSize: 1,
+            concurrentLimit: 10,
+            delay: 100,
+            yieldThreshold: 10,
+            maintainDelay: false,
+            totalRemainingReactiveSource: pluginScanningCount,
+        }
+    ).startPipeline();
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
         const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         const category = this.getFileCategory(path);
-        const name = (category == "CONFIG" || category == "SNIPPET") ?
-            (path.split("/").slice(-1)[0]) :
-            (category == "PLUGIN_ETC" ?
-                path.split("/").slice(-2).join("/") :
-                path.split("/").slice(-2)[0]);
-        return `${ICXHeader}${term}/${category}/${name}.md` as FilePathWithPrefix
+        const name =
+            category == "CONFIG" || category == "SNIPPET"
+                ? path.split("/").slice(-1)[0]
+                : category == "PLUGIN_ETC"
+                  ? path.split("/").slice(-2).join("/")
+                  : path.split("/").slice(-2)[0];
+        return `${ICXHeader}${term}/${category}/${name}.md` as FilePathWithPrefix;
     }
 
     filenameWithUnifiedKey(path: string, termOverRide?: string) {
         const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
         const category = this.getFileCategory(path);
-        const name = (category == "CONFIG" || category == "SNIPPET") ?
-            (path.split("/").slice(-1)[0]) : path.split("/").slice(-2)[0];
+        const name =
+            category == "CONFIG" || category == "SNIPPET" ? path.split("/").slice(-1)[0] : path.split("/").slice(-2)[0];
         const baseName = category == "CONFIG" || category == "SNIPPET" ? name : path.split("/").slice(3).join("/");
         return `${ICXHeader}${term}/${category}/${name}%${baseName}` as FilePathWithPrefix;
     }
@@ -567,7 +657,13 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return `${ICXHeader}${term}/` as FilePathWithPrefix;
     }
 
-    parseUnifiedPath(unifiedPath: FilePathWithPrefix): { category: string, device: string, key: string, filename: string, pathV1: FilePathWithPrefix } {
+    parseUnifiedPath(unifiedPath: FilePathWithPrefix): {
+        category: string;
+        device: string;
+        key: string;
+        filename: string;
+        pathV1: FilePathWithPrefix;
+    } {
         const [device, category, ...rest] = stripAllPrefixes(unifiedPath).split("/");
         const relativePath = rest.join("/");
         const [key, filename] = relativePath.split("%");
@@ -577,7 +673,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
     loadedManifest_mTime = new Map<string, number>();
 
-    async createPluginDataExFileV2(unifiedPathV2: FilePathWithPrefix, loaded?: LoadedEntry): Promise<false | LoadedEntryPluginDataExFile> {
+    async createPluginDataExFileV2(
+        unifiedPathV2: FilePathWithPrefix,
+        loaded?: LoadedEntry
+    ): Promise<false | LoadedEntryPluginDataExFile> {
         const { category, key, filename, device } = this.parseUnifiedPath(unifiedPathV2);
         if (!loaded) {
             const d = await this.localDatabase.getDBEntry(unifiedPathV2);
@@ -592,7 +691,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             loaded = d;
         }
         const confKey = `${categoryToFolder(category, device)}${key}`;
-        const relativeFilename = `${categoryToFolder(category, "")}${(category == "CONFIG" || category == "SNIPPET") ? "" : (key + "/")}${filename}`.substring(1);
+        const relativeFilename =
+            `${categoryToFolder(category, "")}${category == "CONFIG" || category == "SNIPPET" ? "" : key + "/"}${filename}`.substring(
+                1
+            );
         const dataSrc = getDocData(loaded.data);
         const dataStart = dataSrc.indexOf(DUMMY_END);
         const data = dataSrc.substring(dataStart + DUMMY_END.length);
@@ -609,21 +711,27 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 try {
                     const parsedManifest = JSON.parse(base64ToString(data)) as PluginManifest;
                     setManifest(confKey, parsedManifest);
-                    this.pluginList.filter(e => e instanceof PluginDataExDisplayV2 && e.confKey == confKey).forEach(e => (e as PluginDataExDisplayV2).applyLoadedManifest());
+                    this.pluginList
+                        .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
+                        .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
                     pluginList.set(this.pluginList);
                 } catch (ex) {
-                    this._log(`The file ${loaded.path} seems to manifest, but could not be decoded as JSON`, LOG_LEVEL_VERBOSE);
+                    this._log(
+                        `The file ${loaded.path} seems to manifest, but could not be decoded as JSON`,
+                        LOG_LEVEL_VERBOSE
+                    );
                     this._log(ex, LOG_LEVEL_VERBOSE);
                 }
                 this.loadedManifest_mTime.set(confKey, file.mtime);
             } else {
-                this.pluginList.filter(e => e instanceof PluginDataExDisplayV2 && e.confKey == confKey).forEach(e => (e as PluginDataExDisplayV2).applyLoadedManifest());
+                this.pluginList
+                    .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
+                    .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
                 pluginList.set(this.pluginList);
             }
             // }
         }
         return file;
-
     }
     createPluginDataFromV2(unifiedPathV2: FilePathWithPrefix) {
         const { category, device, key, pathV1 } = this.parseUnifiedPath(unifiedPathV2);
@@ -640,7 +748,6 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return ret;
     }
 
-
     updatingV2Count = 0;
 
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
@@ -650,7 +757,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
-            const oldEntry = this.pluginList.find(e => e.documentPath == pathV1);
+            const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
             let entry: PluginDataExDisplayV2 | undefined = undefined;
 
             if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
@@ -668,10 +775,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             } else {
                 entry.deleteFile(unifiedFilenameWithKey);
                 if (entry.files.length == 0) {
-                    this.pluginList = this.pluginList.filter(e => e.documentPath != pathV1);
+                    this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
                 }
             }
-            const newList = this.pluginList.filter(e => e.documentPath != entry.documentPath);
+            const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
             newList.push(entry);
             this.pluginList = newList;
 
@@ -693,7 +800,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         if (!v1Path.endsWith(".md") && !v1Path.startsWith(ICXHeader)) {
             this._log(`The entry ${v1Path} is not a customisation sync binder`, LOG_LEVEL_VERBOSE);
-            return
+            return;
         }
         if (v1Path.indexOf("%") !== -1) {
             this._log(`The entry ${v1Path} is already migrated`, LOG_LEVEL_VERBOSE);
@@ -706,25 +813,25 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
 
         const pluginData = deserialize(getDocDataAsArray(loadedEntry.data), {}) as PluginDataEx;
-        const prefixPath = v1Path.slice(0, -(".md".length)) + "%";
+        const prefixPath = v1Path.slice(0, -".md".length) + "%";
         const category = pluginData.category;
 
         for (const f of pluginData.files) {
             const stripTable: Record<string, number> = {
-                "CONFIG": 0,
-                "THEME": 2,
-                "SNIPPET": 1,
-                "PLUGIN_MAIN": 2,
-                "PLUGIN_DATA": 2,
-                "PLUGIN_ETC": 2,
-            }
+                CONFIG: 0,
+                THEME: 2,
+                SNIPPET: 1,
+                PLUGIN_MAIN: 2,
+                PLUGIN_DATA: 2,
+                PLUGIN_ETC: 2,
+            };
             const deletePrefixCount = stripTable?.[category] ?? 1;
             const relativeFilename = f.filename.split("/").slice(deletePrefixCount).join("/");
             const v2Path = (prefixPath + relativeFilename) as FilePathWithPrefix;
             // console.warn(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`);
             this._log(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
             const newId = await this.plugin.$$path2id(v2Path);
-            // const buf = 
+            // const buf =
 
             const data = createBlob([DUMMY_HEAD, DUMMY_END, ...getDocDataAsArray(f.data)]);
 
@@ -737,8 +844,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 datatype: "plain",
                 type: "plain",
                 children: [],
-                eden: {}
-            }
+                eden: {},
+            };
             const r = await this.plugin.localDatabase.putDBEntry(saving);
             if (r && r.ok) {
                 this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
@@ -756,16 +863,20 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         if (!this._isThisModuleEnabled()) {
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
-            pluginList.set(this.pluginList)
+            pluginList.set(this.pluginList);
             return;
         }
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
             const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
-            const plugins = updatedDocumentPath ?
-                this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", { include_docs: true, key: updatedDocumentId, limit: 1 }) :
-                this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
+            const plugins = updatedDocumentPath
+                ? this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", {
+                      include_docs: true,
+                      key: updatedDocumentId,
+                      limit: 1,
+                  })
+                : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             for await (const v of plugins) {
                 if (v.deleted || v._deleted) continue;
                 if (v.path.indexOf("%") !== -1) {
@@ -776,7 +887,6 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 const path = v.path || this.getPath(v);
                 if (updatedDocumentPath && updatedDocumentPath != path) continue;
                 this.pluginScanProcessor.enqueue(v);
-
             }
         } finally {
             pluginIsEnumerating.set(false);
@@ -798,12 +908,15 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             const file = pluginData.files[0];
             const doc = { ...loadDoc, ...file, datatype: "newnote" } as LoadedEntryPluginDataExFile;
             return doc;
-        }
+        };
         const fileA = await loadFile(dataA);
         const fileB = await loadFile(dataB);
         this._log(`Comparing: ${dataA.documentPath} <-> ${dataB.documentPath}`, LOG_LEVEL_VERBOSE);
         if (!fileA || !fileB) {
-            this._log(`Could not load ${dataA.name} for comparison: ${!fileA ? dataA.term : ""}${!fileB ? dataB.term : ""}`, LOG_LEVEL_NOTICE);
+            this._log(
+                `Could not load ${dataA.name} for comparison: ${!fileA ? dataA.term : ""}${!fileB ? dataB.term : ""}`,
+                LOG_LEVEL_NOTICE
+            );
             return false;
         }
         let path = stripAllPrefixes(fileA.path.split("/").slice(-1).join("/") as FilePath); // TODO:adjust
@@ -811,21 +924,36 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             path = path.split("%")[1] as FilePath;
         }
         if (fileA.path.endsWith(".json")) {
-            return serialized("config:merge-data", () => new Promise<boolean>((res) => {
-                this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
-                // const docs = [docA, docB];
-                const modal = new JsonResolveModal(this.app, path, [fileA, fileB], async (keep, result) => {
-                    if (result == null) return res(false);
-                    try {
-                        res(await this.applyData(dataA, result));
-                    } catch (ex) {
-                        this._log("Could not apply merged file");
-                        this._log(ex, LOG_LEVEL_VERBOSE);
-                        res(false);
-                    }
-                }, "Local", `${dataB.term}`, "B", true, true, "Difference between local and remote");
-                modal.open();
-            }));
+            return serialized(
+                "config:merge-data",
+                () =>
+                    new Promise<boolean>((res) => {
+                        this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
+                        // const docs = [docA, docB];
+                        const modal = new JsonResolveModal(
+                            this.app,
+                            path,
+                            [fileA, fileB],
+                            async (keep, result) => {
+                                if (result == null) return res(false);
+                                try {
+                                    res(await this.applyData(dataA, result));
+                                } catch (ex) {
+                                    this._log("Could not apply merged file");
+                                    this._log(ex, LOG_LEVEL_VERBOSE);
+                                    res(false);
+                                }
+                            },
+                            "Local",
+                            `${dataB.term}`,
+                            "B",
+                            true,
+                            true,
+                            "Difference between local and remote"
+                        );
+                        modal.open();
+                    })
+            );
         } else {
             const dmp = new diff_match_patch();
             let docAData = getDocData(fileA.data);
@@ -844,8 +972,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             const diffResult: diff_result = {
                 left: { rev: "A", ...fileA, data: docAData },
                 right: { rev: "B", ...fileB, data: docBData },
-                diff: diff
-            }
+                diff: diff,
+            };
             // console.dir(diffResult);
             const d = new ConflictResolveModal(this.app, path, diffResult, true, dataB.term);
             d.open();
@@ -871,7 +999,6 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 // If the content has applied, modified time will be updated to the current time.
                 await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
                 await this.storeCustomisationFileV2(path, this.plugin.$$getDeviceAndVaultName());
-
             } else {
                 const files = data.files;
                 for (const f of files) {
@@ -925,8 +1052,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return true;
     }
     async applyData(data: IPluginDataExDisplay, content?: string): Promise<boolean> {
-        this._log(`Applying ${data.displayName || data.name
-            }..`);
+        this._log(`Applying ${data.displayName || data.name}..`);
 
         if (data instanceof PluginDataExDisplayV2) {
             return this.applyDataV2(data, content);
@@ -936,7 +1062,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             if (!data.documentPath) throw "InternalError: Document path not exist";
             const dx = await this.localDatabase.getDBEntry(data.documentPath);
             if (dx == false) {
-                throw "Not found on database"
+                throw "Not found on database";
             }
             const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
@@ -952,12 +1078,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
                     }
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
-
                 } catch (ex) {
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Failed`);
                     this._log(ex, LOG_LEVEL_VERBOSE);
                 }
-
             }
             const uPath = `${baseDir}/${loadedData.files[0].filename}` as FilePath;
             await this.storeCustomizationFiles(uPath);
@@ -969,14 +1093,24 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
                 //@ts-ignore
                 const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
-                const pluginManifest = manifests.find((manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`);
+                const pluginManifest = manifests.find(
+                    (manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`
+                );
                 if (pluginManifest) {
-                    this._log(`Unloading plugin: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
+                    this._log(
+                        `Unloading plugin: ${pluginManifest.name}`,
+                        LOG_LEVEL_NOTICE,
+                        "plugin-reload-" + pluginManifest.id
+                    );
                     // @ts-ignore
                     await this.app.plugins.unloadPlugin(pluginManifest.id);
                     // @ts-ignore
                     await this.app.plugins.loadPlugin(pluginManifest.id);
-                    this._log(`Plugin reloaded: ${pluginManifest.name}`, LOG_LEVEL_NOTICE, "plugin-reload-" + pluginManifest.id);
+                    this._log(
+                        `Plugin reloaded: ${pluginManifest.name}`,
+                        LOG_LEVEL_NOTICE,
+                        "plugin-reload-" + pluginManifest.id
+                    );
                 }
             } else if (data.category == "CONFIG") {
                 this.plugin.$$askReload();
@@ -993,45 +1127,56 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             if (data.documentPath) {
                 const delList = [];
                 if (this.useV2) {
-                    const deleteList = this.pluginList.filter(e => e.documentPath == data.documentPath).filter(e => e instanceof PluginDataExDisplayV2).map(e => e.files).flat();
+                    const deleteList = this.pluginList
+                        .filter((e) => e.documentPath == data.documentPath)
+                        .filter((e) => e instanceof PluginDataExDisplayV2)
+                        .map((e) => e.files)
+                        .flat();
                     for (const e of deleteList) {
                         delList.push(e.path);
                     }
                 }
                 delList.push(data.documentPath);
-                const p = delList.map(async e => {
+                const p = delList.map(async (e) => {
                     await this.deleteConfigOnDatabase(e);
-                    await this.updatePluginList(false, e)
+                    await this.updatePluginList(false, e);
                 });
                 await Promise.allSettled(p);
                 // await this.deleteConfigOnDatabase(data.documentPath);
                 // await this.updatePluginList(false, data.documentPath);
-                this._log(`Deleted: ${data.category}/${data.name} of ${data.category} (${delList.length} items)`, LOG_LEVEL_NOTICE);
+                this._log(
+                    `Deleted: ${data.category}/${data.name} of ${data.category} (${delList.length} items)`,
+                    LOG_LEVEL_NOTICE
+                );
             }
             return true;
         } catch (ex) {
             this._log(`Failed to delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
-
         }
     }
     async $anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (!docs._id.startsWith(ICXHeader)) return undefined;
         if (this._isThisModuleEnabled()) {
-            await this.updatePluginList(false, (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath((docs as AnyEntry)));
+            await this.updatePluginList(
+                false,
+                (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath(docs as AnyEntry)
+            );
         }
         if (this._isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
             if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                 const fragment = createFragment((doc) => {
                     doc.createEl("span", undefined, (a) => {
                         a.appendText(`Some configuration has been arrived, Press `);
-                        a.appendChild(a.createEl("a", undefined, (anchor) => {
-                            anchor.text = "HERE";
-                            anchor.addEventListener("click", () => {
-                                this.showPluginSyncModal();
-                            });
-                        }));
+                        a.appendChild(
+                            a.createEl("a", undefined, (anchor) => {
+                                anchor.text = "HERE";
+                                anchor.addEventListener("click", () => {
+                                    this.showPluginSyncModal();
+                                });
+                            })
+                        );
 
                         a.appendText(` to open the config sync dialog , or press elsewhere to dismiss this message.`);
                     });
@@ -1047,8 +1192,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     }
                     scheduleTask(updatedPluginKey + "-close", 20000, () => {
                         const popup = retrieveMemoObject<Notice>(updatedPluginKey);
-                        if (!popup)
-                            return;
+                        if (!popup) return;
                         //@ts-ignore
                         if (popup?.noticeEl?.isShown()) {
                             popup.hide();
@@ -1068,7 +1212,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(false);
         }
-        this.periodicPluginSweepProcessor.enable(this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges ? (PERIODIC_PLUGIN_SWEEP * 1000) : 0);
+        this.periodicPluginSweepProcessor.enable(
+            this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges
+                ? PERIODIC_PLUGIN_SWEEP * 1000
+                : 0
+        );
         return true;
     }
 
@@ -1095,7 +1243,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         displayName = `${json.name}`;
                     }
                 } catch (ex) {
-                    this._log(`Configuration sync data: ${path} looks like manifest, but could not read the version`, LOG_LEVEL_INFO);
+                    this._log(
+                        `Configuration sync data: ${path} looks like manifest, but could not read the version`,
+                        LOG_LEVEL_INFO
+                    );
                     this._log(ex, LOG_LEVEL_VERBOSE);
                 }
             }
@@ -1112,9 +1263,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             size: stat.size,
             version,
             displayName: displayName,
-        }
+        };
     }
-
 
     async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
         const vf = this.filenameWithUnifiedKey(path, term);
@@ -1128,7 +1278,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
             const mtime = stat.mtime;
             const content = await this.plugin.storageAccess.readHiddenFileBinary(path);
-            const contentBlob = createBlob([DUMMY_HEAD, DUMMY_END, ...await arrayBufferToBase64(content)]);
+            const contentBlob = createBlob([DUMMY_HEAD, DUMMY_END, ...(await arrayBufferToBase64(content))]);
             // const contentBlob = createBlob(content);
             try {
                 const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false);
@@ -1145,11 +1295,14 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         children: [],
                         deleted: false,
                         type: "plain",
-                        eden: {}
+                        eden: {},
                     };
                 } else {
                     if (isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
-                        this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`, LOG_LEVEL_DEBUG);
+                        this._log(
+                            `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`,
+                            LOG_LEVEL_DEBUG
+                        );
                         return;
                     }
                     const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
@@ -1161,12 +1314,14 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     const oldContent = dataSrc.substring(dataStart + DUMMY_END.length);
                     const oldContentArray = base64ToArrayBuffer(oldContent);
                     if (await isDocContentSame(oldContentArray, content)) {
-                        this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`, LOG_LEVEL_VERBOSE);
+                        this._log(
+                            `STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`,
+                            LOG_LEVEL_VERBOSE
+                        );
                         markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
                         return true;
                     }
-                    saveData =
-                    {
+                    saveData = {
                         ...old,
                         data: contentBlob,
                         mtime,
@@ -1186,7 +1341,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
-        })
+        });
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
@@ -1200,15 +1355,15 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         const vf = this.filenameToUnifiedKey(path, term);
         // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
 
-
         return await serialized(`plugin-${vf}`, async () => {
             const category = this.getFileCategory(path);
             let mtime = 0;
             let fileTargets = [] as FilePath[];
             // let savePath = "";
-            const name = (category == "CONFIG" || category == "SNIPPET") ?
-                (path.split("/").reverse()[0]) :
-                (path.split("/").reverse()[1]);
+            const name =
+                category == "CONFIG" || category == "SNIPPET"
+                    ? path.split("/").reverse()[0]
+                    : path.split("/").reverse()[1];
             const parentPath = path.split("/").slice(0, -1).join("/");
             const prefixedFileName = this.filenameToUnifiedKey(path, term);
             const id = await this.path2id(prefixedFileName);
@@ -1217,18 +1372,23 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 files: [],
                 name: name,
                 mtime: 0,
-                term: term
-            }
+                term: term,
+            };
             // let scheduleKey = "";
-            if (category == "CONFIG" || category == "SNIPPET" || category == "PLUGIN_ETC" || category == "PLUGIN_DATA") {
+            if (
+                category == "CONFIG" ||
+                category == "SNIPPET" ||
+                category == "PLUGIN_ETC" ||
+                category == "PLUGIN_DATA"
+            ) {
                 fileTargets = [path];
                 if (category == "PLUGIN_ETC") {
                     dt.displayName = path.split("/").slice(-1).join("/");
                 }
             } else if (category == "PLUGIN_MAIN") {
-                fileTargets = ["manifest.json", "main.js", "styles.css"].map(e => `${parentPath}/${e}` as FilePath);
+                fileTargets = ["manifest.json", "main.js", "styles.css"].map((e) => `${parentPath}/${e}` as FilePath);
             } else if (category == "THEME") {
-                fileTargets = ["manifest.json", "theme.css"].map(e => `${parentPath}/${e}` as FilePath);
+                fileTargets = ["manifest.json", "theme.css"].map((e) => `${parentPath}/${e}` as FilePath);
             }
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target);
@@ -1243,7 +1403,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     dt.displayName = data.displayName;
                 }
                 // Use average for total modified time.
-                mtime = mtime == 0 ? data.mtime : ((data.mtime + mtime) / 2);
+                mtime = mtime == 0 ? data.mtime : (data.mtime + mtime) / 2;
                 dt.files.push(data);
             }
             dt.mtime = mtime;
@@ -1253,7 +1413,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 this._log(`Nothing left: deleting.. ${path}`);
                 await this.deleteConfigOnDatabase(prefixedFileName);
                 await this.updatePluginList(false, prefixedFileName);
-                return
+                return;
             }
 
             const content = createTextBlob(serialize(dt));
@@ -1272,7 +1432,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         children: [],
                         deleted: false,
                         type: "newnote",
-                        eden: {}
+                        eden: {},
                     };
                 } else {
                     if (old.mtime == mtime) {
@@ -1281,20 +1441,31 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     }
                     const oldC = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
                     if (oldC) {
-                        const d = await deserialize(getDocDataAsArray(oldC.data), {}) as PluginDataEx;
+                        const d = (await deserialize(getDocDataAsArray(oldC.data), {})) as PluginDataEx;
                         if (d.files.length == dt.files.length) {
-                            const diffs = (d.files.map(previous => ({ prev: previous, curr: dt.files.find(e => e.filename == previous.filename) })).map(async e => {
-                                try { return await isDocContentSame(e.curr?.data ?? [], e.prev.data) } catch { return false }
-                            }))
-                            const isSame = (await Promise.all(diffs)).every(e => e == true);
+                            const diffs = d.files
+                                .map((previous) => ({
+                                    prev: previous,
+                                    curr: dt.files.find((e) => e.filename == previous.filename),
+                                }))
+                                .map(async (e) => {
+                                    try {
+                                        return await isDocContentSame(e.curr?.data ?? [], e.prev.data);
+                                    } catch {
+                                        return false;
+                                    }
+                                });
+                            const isSame = (await Promise.all(diffs)).every((e) => e == true);
                             if (isSame) {
-                                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`, LOG_LEVEL_VERBOSE);
+                                this._log(
+                                    `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`,
+                                    LOG_LEVEL_VERBOSE
+                                );
                                 return true;
                             }
                         }
                     }
-                    saveData =
-                    {
+                    saveData = {
                         ...old,
                         data: content,
                         mtime,
@@ -1314,7 +1485,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
-        })
+        });
     }
     async $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
         return await this.watchVaultRawEventsAsync(path);
@@ -1327,20 +1498,21 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         // if (!this.isTargetPath(path)) return false;
         const stat = await this.plugin.storageAccess.statHidden(path);
         // Make sure that target is a file.
-        if (stat && stat.type != "file")
-            return false;
+        if (stat && stat.type != "file") return false;
 
         const configDir = normalizePath(this.app.vault.configDir);
-        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting).filter(e =>
-            e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY
-        ).map(e => e.files).flat().map(e => `${configDir}/${e}`.toLowerCase());
-        if (synchronisedInConfigSync.some(e => e.startsWith(path.toLowerCase()))) {
+        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting)
+            .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
+            .map((e) => e.files)
+            .flat()
+            .map((e) => `${configDir}/${e}`.toLowerCase());
+        if (synchronisedInConfigSync.some((e) => e.startsWith(path.toLowerCase()))) {
             this._log(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
             // This file could be handled by the other module.
             return false;
         }
         // this._log(`Customization file detected: ${path}`, LOG_LEVEL_VERBOSE);
-        const storageMTime = ~~((stat && stat.mtime || 0) / 1000);
+        const storageMTime = ~~(((stat && stat.mtime) || 0) / 1000);
         const key = `${path}-${storageMTime}`;
         if (this.recentProcessedInternalFiles.contains(key)) {
             // If recently processed, it may caused by self.
@@ -1352,7 +1524,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         const keySchedule = this.filenameToUnifiedKey(path);
         scheduleTask(keySchedule, 100, async () => {
             await this.storeCustomizationFiles(path);
-        })
+        });
         // Okay, it may handled after 100ms.
         // This was my own job.
         return true;
@@ -1369,10 +1541,14 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
             const filesAll = await this.scanInternalFiles();
             if (this.useV2) {
-                const filesAllUnified = filesAll.filter(e => this.isTargetPath(e)).map(e => [this.filenameWithUnifiedKey(e, term), e] as [FilePathWithPrefix, FilePath]);
-                const localFileMap = new Map(filesAllUnified.map(e => [e[0], e[1]]));
+                const filesAllUnified = filesAll
+                    .filter((e) => this.isTargetPath(e))
+                    .map((e) => [this.filenameWithUnifiedKey(e, term), e] as [FilePathWithPrefix, FilePath]);
+                const localFileMap = new Map(filesAllUnified.map((e) => [e[0], e[1]]));
                 const prefix = this.unifiedKeyPrefixOfTerminal(term);
-                const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, { include_docs: true });
+                const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, {
+                    include_docs: true,
+                });
                 const tasks = [] as (() => Promise<void>)[];
                 const concurrency = 10;
                 const semaphore = Semaphore(concurrency);
@@ -1397,9 +1573,9 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         } finally {
                             releaser();
                         }
-                    })
+                    });
                 }
-                await Promise.all(tasks.map(e => e()));
+                await Promise.all(tasks.map((e) => e()));
                 // Extra files
                 const taskExtra = [] as (() => Promise<void>)[];
                 for (const [, filePath] of localFileMap) {
@@ -1410,43 +1586,55 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         } catch (ex) {
                             this._log(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
-                        }
-                        finally {
+                        } finally {
                             releaser();
                         }
-                    })
+                    });
                 }
-                await Promise.all(taskExtra.map(e => e()));
+                await Promise.all(taskExtra.map((e) => e()));
                 fireAndForget(() => this.updatePluginList(false));
             } else {
-                const files = filesAll.filter(e => this.isTargetPath(e)).map(e => ({ key: this.filenameToUnifiedKey(e), file: e }));
-                const virtualPathsOfLocalFiles = [...new Set(files.map(e => e.key))];
-                const filesOnDB = ((await this.localDatabase.allDocsRaw({ startkey: ICXHeader + "", endkey: `${ICXHeader}\u{10ffff}`, include_docs: true })).rows.map(e => e.doc) as InternalFileEntry[]).filter(e => !e.deleted);
-                let deleteCandidate = filesOnDB.map(e => this.getPath(e)).filter(e => e.startsWith(`${ICXHeader}${term}/`));
+                const files = filesAll
+                    .filter((e) => this.isTargetPath(e))
+                    .map((e) => ({ key: this.filenameToUnifiedKey(e), file: e }));
+                const virtualPathsOfLocalFiles = [...new Set(files.map((e) => e.key))];
+                const filesOnDB = (
+                    (
+                        await this.localDatabase.allDocsRaw({
+                            startkey: ICXHeader + "",
+                            endkey: `${ICXHeader}\u{10ffff}`,
+                            include_docs: true,
+                        })
+                    ).rows.map((e) => e.doc) as InternalFileEntry[]
+                ).filter((e) => !e.deleted);
+                let deleteCandidate = filesOnDB
+                    .map((e) => this.getPath(e))
+                    .filter((e) => e.startsWith(`${ICXHeader}${term}/`));
                 for (const vp of virtualPathsOfLocalFiles) {
-                    const p = files.find(e => e.key == vp)?.file;
+                    const p = files.find((e) => e.key == vp)?.file;
                     if (!p) {
                         this._log(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
                         continue;
                     }
                     await this.storeCustomizationFiles(p);
-                    deleteCandidate = deleteCandidate.filter(e => e != vp);
+                    deleteCandidate = deleteCandidate.filter((e) => e != vp);
                 }
                 for (const vp of deleteCandidate) {
                     await this.deleteConfigOnDatabase(vp);
                 }
-                fireAndForget(() => this.updatePluginList(false))
+                fireAndForget(() => this.updatePluginList(false));
             }
         });
     }
 
     async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false) {
-
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
         return await serialized("file-x-" + prefixedFileName, async () => {
             try {
-                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false) as InternalFileEntry | false;
+                const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
+                    | InternalFileEntry
+                    | false;
                 let saveData: InternalFileEntry;
                 if (old === false) {
                     this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted (Not found on database)`);
@@ -1456,8 +1644,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted`);
                         return true;
                     }
-                    saveData =
-                    {
+                    saveData = {
                         ...old,
                         mtime,
                         size: 0,
@@ -1479,15 +1666,17 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     async scanInternalFiles(): Promise<FilePath[]> {
-        const filenames = (await this.getFiles(this.app.vault.configDir, 2)).filter(e => e.startsWith(".")).filter(e => !e.startsWith(".trash"));
+        const filenames = (await this.getFiles(this.app.vault.configDir, 2))
+            .filter((e) => e.startsWith("."))
+            .filter((e) => !e.startsWith(".trash"));
         return filenames as FilePath[];
     }
 
-    async $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean, enableOverwrite?: boolean }): Promise<boolean> {
+    async $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }): Promise<boolean> {
         await this._askHiddenFileConfiguration(opt);
         return true;
     }
-    async _askHiddenFileConfiguration(opt: { enableFetch?: boolean, enableOverwrite?: boolean }) {
+    async _askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         const message = `Would you like to enable **Customization sync**?
 
 > [!DETAILS]-
@@ -1495,7 +1684,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 > 
 > You may use this feature alongside hidden file synchronisation. When both features are enabled, items configured as \`Automatic\` in this feature will be managed by **hidden file synchronisation**.
 > Do not worry, you will be prompted to enable or keep disabled **hidden file synchronisation** after this dialogue.
-`
+`;
         const CHOICE_CUSTOMIZE = "Yes, Enable it";
         const CHOICE_DISABLE = "No, Disable it";
         const CHOICE_DISMISS = "Later";
@@ -1506,20 +1695,20 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         choices.push(CHOICE_DISMISS);
 
         const ret = await this.plugin.confirm.askSelectStringDialogue(message, choices, {
-            defaultAction: CHOICE_DISMISS, timeout: 40,
-            title: "Customisation sync"
+            defaultAction: CHOICE_DISMISS,
+            timeout: 40,
+            title: "Customisation sync",
         });
         if (ret == CHOICE_CUSTOMIZE) {
             await this.configureHiddenFileSync("CUSTOMIZE");
         } else if (ret == CHOICE_DISABLE) {
             await this.configureHiddenFileSync("DISABLE_CUSTOM");
         }
-
     }
 
     $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isPluginMetadata(path)) {
-            return Promise.resolve("newer")
+            return Promise.resolve("newer");
         }
         if (isCustomisationSyncMetadata(path)) {
             return Promise.resolve("newer");
@@ -1529,7 +1718,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
 
     $allSuspendExtraSync(): Promise<boolean> {
         if (this.plugin.settings.usePluginSync || this.plugin.settings.autoSweepPlugins) {
-            this._log("Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.", LOG_LEVEL_NOTICE)
+            this._log(
+                "Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.",
+                LOG_LEVEL_NOTICE
+            );
             this.plugin.settings.usePluginSync = false;
             this.plugin.settings.autoSweepPlugins = false;
         }
@@ -1551,23 +1743,23 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 let name = await this.plugin.confirm.askString("Device name", "Please set this device name", `desktop`);
                 if (!name) {
                     if (Platform.isAndroidApp) {
-                        name = "android-app"
+                        name = "android-app";
                     } else if (Platform.isIosApp) {
-                        name = "ios"
+                        name = "ios";
                     } else if (Platform.isMacOS) {
-                        name = "macos"
+                        name = "macos";
                     } else if (Platform.isMobileApp) {
-                        name = "mobile-app"
+                        name = "mobile-app";
                     } else if (Platform.isMobile) {
-                        name = "mobile"
+                        name = "mobile";
                     } else if (Platform.isSafari) {
-                        name = "safari"
+                        name = "safari";
                     } else if (Platform.isDesktop) {
-                        name = "desktop"
+                        name = "desktop";
                     } else if (Platform.isDesktopApp) {
-                        name = "desktop-app"
+                        name = "desktop-app";
                     } else {
-                        name = "unknown"
+                        name = "unknown";
                     }
                     name = name + Math.random().toString(36).slice(-4);
                 }
@@ -1580,10 +1772,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
     }
 
-    async getFiles(
-        path: string,
-        lastDepth: number
-    ) {
+    async getFiles(path: string, lastDepth: number) {
         if (lastDepth == -1) return [];
         let w: ListedFiles;
         try {
@@ -1593,9 +1782,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
-        let files = [
-            ...w.files
-        ];
+        let files = [...w.files];
         for (const v of w.folders) {
             files = files.concat(await this.getFiles(v, lastDepth - 1));
         }

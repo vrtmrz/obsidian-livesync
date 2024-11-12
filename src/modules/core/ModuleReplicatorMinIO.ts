@@ -12,6 +12,4 @@ export class ModuleReplicatorMinIO extends AbstractModule implements ICoreModule
         }
         return undefined!;
     }
-
-
 }

@@ -17,12 +17,9 @@ export const EVENT_REQUEST_OPEN_SETTING_WIZARD = "request-open-setting-wizard";
 export const EVENT_REQUEST_OPEN_SETUP_URI = "request-open-setup-uri";
 export const EVENT_REQUEST_COPY_SETUP_URI = "request-copy-setup-uri";
 
-
-
 export const EVENT_REQUEST_RELOAD_SETTING_TAB = "reload-setting-tab";
 
 export const EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG = "request-open-plugin-sync-dialog";
-
 
 // export const EVENT_FILE_CHANGED = "file-changed";
 
@@ -37,17 +34,16 @@ declare global {
         [EVENT_SETTING_SAVED]: ObsidianLiveSyncSettings;
         [EVENT_PLUGIN_LOADED]: ObsidianLiveSyncPlugin;
         [EVENT_LAYOUT_READY]: undefined;
-        "event-file-changed": { file: FilePathWithPrefix, automated: boolean };
-        "document-stub-created":
-        {
-            toc: Set<string>, stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } }
-        },
+        "event-file-changed": { file: FilePathWithPrefix; automated: boolean };
+        "document-stub-created": {
+            toc: Set<string>;
+            stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } };
+        };
         [EVENT_REQUEST_OPEN_SETTINGS]: undefined;
         [EVENT_REQUEST_OPEN_SETTING_WIZARD]: undefined;
-        [EVENT_FILE_RENAMED]: { newPath: FilePathWithPrefix, old: FilePathWithPrefix };
+        [EVENT_FILE_RENAMED]: { newPath: FilePathWithPrefix; old: FilePathWithPrefix };
         [EVENT_LEAF_ACTIVE_CHANGED]: undefined;
     }
 }
 
 export { eventHub };
-

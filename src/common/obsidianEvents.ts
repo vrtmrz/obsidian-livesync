@@ -5,6 +5,8 @@ export const EVENT_REQUEST_SHOW_HISTORY = "show-history";
 
 declare global {
     interface LSEvents {
-        [EVENT_REQUEST_SHOW_HISTORY]: { file: TFile, fileOnDB: LoadedEntry } | { file: FilePathWithPrefix, fileOnDB: LoadedEntry };
+        [EVENT_REQUEST_SHOW_HISTORY]:
+            | { file: TFile; fileOnDB: LoadedEntry }
+            | { file: FilePathWithPrefix; fileOnDB: LoadedEntry };
     }
 }

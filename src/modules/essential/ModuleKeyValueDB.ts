@@ -6,7 +6,6 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleKeyValueDB extends AbstractModule implements ICoreModule {
-
     tryCloseKvDB() {
         try {
             this.core.kvDB?.close();
@@ -42,7 +41,7 @@ export class ModuleKeyValueDB extends AbstractModule implements ICoreModule {
     }
 
     async $everyOnloadAfterLoadSettings(): Promise<boolean> {
-        if (!await this.openKeyValueDB()) {
+        if (!(await this.openKeyValueDB())) {
             return false;
         }
         this.core.simpleStore = this.core.$$getSimpleStore<any>("os");
@@ -60,11 +59,21 @@ export class ModuleKeyValueDB extends AbstractModule implements ICoreModule {
             delete: async (key: string): Promise<void> => {
                 await this.core.kvDB.del(`${prefix}${key}`);
             },
-            keys: async (from: string | undefined, to: string | undefined, count?: number | undefined): Promise<string[]> => {
-                const ret = this.core.kvDB.keys(IDBKeyRange.bound(`${prefix}${from || ""}`, `${prefix}${to || ""}`), count);
-                return (await ret).map(e => e.toString()).filter(e => e.startsWith(prefix)).map(e => e.substring(prefix.length));
-            }
-        }
+            keys: async (
+                from: string | undefined,
+                to: string | undefined,
+                count?: number | undefined
+            ): Promise<string[]> => {
+                const ret = this.core.kvDB.keys(
+                    IDBKeyRange.bound(`${prefix}${from || ""}`, `${prefix}${to || ""}`),
+                    count
+                );
+                return (await ret)
+                    .map((e) => e.toString())
+                    .filter((e) => e.startsWith(prefix))
+                    .map((e) => e.substring(prefix.length));
+            },
+        };
     }
     $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.openKeyValueDB();
@@ -72,7 +81,7 @@ export class ModuleKeyValueDB extends AbstractModule implements ICoreModule {
 
     async $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         try {
-            const kvDBKey = "queued-files"
+            const kvDBKey = "queued-files";
             await this.core.kvDB.del(kvDBKey);
             // localStorage.removeItem(lsKey);
             await this.core.kvDB.destroy();

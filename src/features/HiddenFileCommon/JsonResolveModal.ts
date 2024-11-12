@@ -16,10 +16,18 @@ export class JsonResolveModal extends Modal {
     hideLocal: boolean;
     title: string = "Conflicted Setting";
 
-    constructor(app: App, filename: FilePath,
-        docs: LoadedEntry[], callback: (keepRev?: string, mergedStr?: string) => Promise<void>,
-        nameA?: string, nameB?: string, defaultSelect?: string,
-        keepOrder?: boolean, hideLocal?: boolean, title: string = "Conflicted Setting") {
+    constructor(
+        app: App,
+        filename: FilePath,
+        docs: LoadedEntry[],
+        callback: (keepRev?: string, mergedStr?: string) => Promise<void>,
+        nameA?: string,
+        nameB?: string,
+        defaultSelect?: string,
+        keepOrder?: boolean,
+        hideLocal?: boolean,
+        title: string = "Conflicted Setting"
+    ) {
         super(app);
         this.callback = callback;
         this.filename = filename;
@@ -57,13 +65,13 @@ export class JsonResolveModal extends Modal {
                     defaultSelect: this.defaultSelect,
                     keepOrder: this.keepOrder,
                     hideLocal: this.hideLocal,
-                    callback: (keepRev: string | undefined, mergedStr: string | undefined) => this.UICallback(keepRev, mergedStr),
+                    callback: (keepRev: string | undefined, mergedStr: string | undefined) =>
+                        this.UICallback(keepRev, mergedStr),
                 },
             });
         }
         return;
     }
-
 
     onClose() {
         const { contentEl } = this;

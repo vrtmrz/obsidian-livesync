@@ -6,10 +6,22 @@ import type { SerializedFileAccess } from "./SerializedFileAccess.ts";
 import { addPrefix, isPlainText } from "../../../lib/src/string_and_binary/path.ts";
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import { createBlob } from "../../../lib/src/common/utils.ts";
-import type { FilePath, FilePathWithPrefix, UXFileInfo, UXFileInfoStub, UXFolderInfo, UXInternalFileInfoStub } from "../../../lib/src/common/types.ts";
+import type {
+    FilePath,
+    FilePathWithPrefix,
+    UXFileInfo,
+    UXFileInfoStub,
+    UXFolderInfo,
+    UXInternalFileInfoStub,
+} from "../../../lib/src/common/types.ts";
 import type { LiveSyncCore } from "../../../main.ts";
 
-export async function TFileToUXFileInfo(core: LiveSyncCore, file: TFile, prefix?: string, deleted?: boolean): Promise<UXFileInfo> {
+export async function TFileToUXFileInfo(
+    core: LiveSyncCore,
+    file: TFile,
+    prefix?: string,
+    deleted?: boolean
+): Promise<UXFileInfo> {
     const isPlain = isPlainText(file.name);
     const possiblyLarge = !isPlain;
     let content: Blob;
@@ -34,11 +46,14 @@ export async function TFileToUXFileInfo(core: LiveSyncCore, file: TFile, prefix?
             type: "file",
         },
         body: content,
-    }
+    };
 }
 
-export async function InternalFileToUXFileInfo(fullPath: string, vaultAccess: SerializedFileAccess, prefix: string = ICHeader): Promise<UXFileInfo> {
-
+export async function InternalFileToUXFileInfo(
+    fullPath: string,
+    vaultAccess: SerializedFileAccess,
+    prefix: string = ICHeader
+): Promise<UXFileInfo> {
     const name = fullPath.split("/").pop() as string;
     const stat = await vaultAccess.adapterStat(fullPath);
     if (stat == null) throw new Error(`File not found: ${fullPath}`);
@@ -64,7 +79,7 @@ export async function InternalFileToUXFileInfo(fullPath: string, vaultAccess: Se
             type: "file",
         },
         body: content,
-    }
+    };
 }
 
 export function TFileToUXFileInfoStub(file: TFile | TAbstractFile, deleted?: boolean): UXFileInfoStub {
@@ -81,8 +96,8 @@ export function TFileToUXFileInfoStub(file: TFile | TAbstractFile, deleted?: boo
             ctime: file.stat.ctime,
             type: "file",
         },
-        deleted: deleted
-    }
+        deleted: deleted,
+    };
     return ret;
 }
 export function InternalFileToUXFileInfoStub(filename: FilePathWithPrefix, deleted?: boolean): UXInternalFileInfoStub {
@@ -93,8 +108,8 @@ export function InternalFileToUXFileInfoStub(filename: FilePathWithPrefix, delet
         isFolder: false,
         stat: undefined,
         isInternal: true,
-        deleted
-    }
+        deleted,
+    };
     return ret;
 }
 export function TFolderToUXFileInfoStub(file: TFolder): UXFolderInfo {
@@ -103,7 +118,7 @@ export function TFolderToUXFileInfoStub(file: TFolder): UXFolderInfo {
         path: file.path as FilePathWithPrefix,
         parent: file.parent?.path as FilePath | undefined,
         isFolder: true,
-        children: file.children.map(e => TFileToUXFileInfoStub(e)),
-    }
+        children: file.children.map((e) => TFileToUXFileInfoStub(e)),
+    };
     return ret;
 }

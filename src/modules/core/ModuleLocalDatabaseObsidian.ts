@@ -5,7 +5,6 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICoreModule {
-
     $everyOnloadStart(): Promise<boolean> {
         return Promise.resolve(true);
     }
@@ -23,5 +22,4 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICore
     $$isDatabaseReady(): boolean {
         return this.localDatabase != null && this.localDatabase.isReady;
     }
-
 }

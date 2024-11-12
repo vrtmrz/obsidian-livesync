@@ -3,22 +3,35 @@ import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { throttle } from "octagonal-wheels/function";
 import { eventHub } from "../../common/events.ts";
 import { BASE_IS_NEW, compareFileFreshness, EVEN, getPath, isValidPath, TARGET_IS_NEW } from "../../common/utils.ts";
-import { type FilePathWithPrefixLC, type FilePathWithPrefix, type MetaEntry, isMetaEntry, type EntryDoc, LOG_LEVEL_VERBOSE, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, type UXFileInfoStub } from "../../lib/src/common/types.ts";
+import {
+    type FilePathWithPrefixLC,
+    type FilePathWithPrefix,
+    type MetaEntry,
+    isMetaEntry,
+    type EntryDoc,
+    LOG_LEVEL_VERBOSE,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_DEBUG,
+    type UXFileInfoStub,
+} from "../../lib/src/common/types.ts";
 import { isAnyNote } from "../../lib/src/common/utils.ts";
 import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleInitializerFile extends AbstractModule implements ICoreModule {
-
     async $$performFullScan(showingNotice?: boolean): Promise<void> {
-
         this._log("Opening the key-value database", LOG_LEVEL_VERBOSE);
-        const isInitialized = await (this.core.kvDB.get<boolean>("initialized")) || false;
+        const isInitialized = (await this.core.kvDB.get<boolean>("initialized")) || false;
         // synchronize all files between database and storage.
         if (!this.settings.isConfigured) {
             if (showingNotice) {
-                this._log("LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.", LOG_LEVEL_NOTICE, "syncAll");
+                this._log(
+                    "LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.",
+                    LOG_LEVEL_NOTICE,
+                    "syncAll"
+                );
             }
             return;
         }
@@ -47,22 +60,25 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                 return path as FilePathWithPrefixLC;
             }
             return (path as string).toLowerCase() as FilePathWithPrefixLC;
-        }
+        };
 
         // If handleFilenameCaseSensitive is enabled, `FilePathWithPrefixLC` is the same as `FilePathWithPrefix`.
 
-        const storageFileNameMap = Object.fromEntries(_filesStorage.map((e) => [
-            e.path, e] as [FilePathWithPrefix, UXFileInfoStub]));
+        const storageFileNameMap = Object.fromEntries(
+            _filesStorage.map((e) => [e.path, e] as [FilePathWithPrefix, UXFileInfoStub])
+        );
 
         const storageFileNames = Object.keys(storageFileNameMap) as FilePathWithPrefix[];
 
-        const storageFileNameCapsPair = storageFileNames.map((e) => [
-            e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]);
+        const storageFileNameCapsPair = storageFileNames.map(
+            (e) => [e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]
+        );
 
         // const storageFileNameCS2CI = Object.fromEntries(storageFileNameCapsPair) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
-        const storageFileNameCI2CS = Object.fromEntries(storageFileNameCapsPair.map(e => [
-            e[1], e[0]])) as Record<FilePathWithPrefixLC, FilePathWithPrefix>;
-
+        const storageFileNameCI2CS = Object.fromEntries(storageFileNameCapsPair.map((e) => [e[1], e[0]])) as Record<
+            FilePathWithPrefixLC,
+            FilePathWithPrefix
+        >;
 
         this._log("Collecting local files on the DB", LOG_LEVEL_VERBOSE);
         const _DBEntries = [] as MetaEntry[];
@@ -70,10 +86,15 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         let count = 0;
         for await (const doc of this.localDatabase.findAllNormalDocs()) {
             count++;
-            if (count % 25 == 0) this._log(`Collecting local files on the DB: ${count}`, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
+            if (count % 25 == 0)
+                this._log(
+                    `Collecting local files on the DB: ${count}`,
+                    showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO,
+                    "syncAll"
+                );
             const path = getPath(doc);
 
-            if (isValidPath(path) && await this.core.$$isTargetFile(path, true)) {
+            if (isValidPath(path) && (await this.core.$$isTargetFile(path, true))) {
                 if (!isMetaEntry(doc)) {
                     this._log(`Invalid entry: ${path}`, LOG_LEVEL_INFO);
                     continue;
@@ -82,23 +103,27 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             }
         }
 
-        const databaseFileNameMap = Object.fromEntries(_DBEntries.map((e) => [
-            getPath(e), e] as [FilePathWithPrefix, MetaEntry]));
+        const databaseFileNameMap = Object.fromEntries(
+            _DBEntries.map((e) => [getPath(e), e] as [FilePathWithPrefix, MetaEntry])
+        );
         const databaseFileNames = Object.keys(databaseFileNameMap) as FilePathWithPrefix[];
-        const databaseFileNameCapsPair = databaseFileNames.map((e) => [
-            e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]);
+        const databaseFileNameCapsPair = databaseFileNames.map(
+            (e) => [e, convertCase(e)] as [FilePathWithPrefix, FilePathWithPrefixLC]
+        );
         // const databaseFileNameCS2CI = Object.fromEntries(databaseFileNameCapsPair) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
-        const databaseFileNameCI2CS = Object.fromEntries(databaseFileNameCapsPair.map(e => [
-            e[1], e[0]])) as Record<FilePathWithPrefix, FilePathWithPrefixLC>;
+        const databaseFileNameCI2CS = Object.fromEntries(databaseFileNameCapsPair.map((e) => [e[1], e[0]])) as Record<
+            FilePathWithPrefix,
+            FilePathWithPrefixLC
+        >;
 
         const allFiles = unique([
             ...Object.keys(databaseFileNameCI2CS),
-            ...Object.keys(storageFileNameCI2CS)]) as FilePathWithPrefixLC[];
+            ...Object.keys(storageFileNameCI2CS),
+        ]) as FilePathWithPrefixLC[];
 
         this._log(`Total files in the database: ${databaseFileNames.length}`, LOG_LEVEL_VERBOSE, "syncAll");
         this._log(`Total files in the storage: ${storageFileNames.length}`, LOG_LEVEL_VERBOSE, "syncAll");
         this._log(`Total files: ${allFiles.length}`, LOG_LEVEL_VERBOSE, "syncAll");
-
 
         const filesExistOnlyInStorage = allFiles.filter((e) => !databaseFileNameCI2CS[e]);
         const filesExistOnlyInDatabase = allFiles.filter((e) => !storageFileNameCI2CS[e]);
@@ -128,92 +153,110 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             let success = 0;
             let failed = 0;
             const step = 10;
-            const processor = new QueueProcessor(async (e) => {
-                try {
-                    await callback(e[0]);
-                    success++;
-                    // return 
-                } catch (ex) {
-                    this._log(`Error while ${procedureName}`, LOG_LEVEL_NOTICE);
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                    failed++;
-                }
-                if ((success + failed) % step == 0) {
-                    const msg = `${procedureName}: DONE:${success}, FAILED:${failed}, LAST:${processor._queue.length}`;
-                    updateLog(procedureName, msg);
-                }
-                return;
-            }, {
-                batchSize: 1,
-                concurrentLimit: 10,
-                delay: 0,
-                suspended: true,
-                maintainDelay: false,
-                interval: 0
-            }, objects)
+            const processor = new QueueProcessor(
+                async (e) => {
+                    try {
+                        await callback(e[0]);
+                        success++;
+                        // return
+                    } catch (ex) {
+                        this._log(`Error while ${procedureName}`, LOG_LEVEL_NOTICE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        failed++;
+                    }
+                    if ((success + failed) % step == 0) {
+                        const msg = `${procedureName}: DONE:${success}, FAILED:${failed}, LAST:${processor._queue.length}`;
+                        updateLog(procedureName, msg);
+                    }
+                    return;
+                },
+                {
+                    batchSize: 1,
+                    concurrentLimit: 10,
+                    delay: 0,
+                    suspended: true,
+                    maintainDelay: false,
+                    interval: 0,
+                },
+                objects
+            );
             await processor.waitForAllDoneAndTerminate();
             const msg = `${procedureName} All done: DONE:${success}, FAILED:${failed}`;
-            updateLog(procedureName, msg)
-        }
-        initProcess.push(runAll("UPDATE DATABASE", filesExistOnlyInStorage, async (e) => {
-            // console.warn("UPDATE DATABASE", e);
-            const file = storageFileNameMap[storageFileNameCI2CS[e]];
-            if (!this.core.$$isFileSizeExceeded(file.stat.size)) {
-                const path = file.path;
-                await this.core.fileHandler.storeFileToDB(file);
-                // fireAndForget(() => this.checkAndApplySettingFromMarkdown(path, true));
-                eventHub.emitEvent("event-file-changed", { file: path, automated: true });
-            } else {
-                this._log(`UPDATE DATABASE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
-            }
-        }));
-        initProcess.push(runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
-            const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
-            const path = getPath(w) ?? e;
-            if (w && !(w.deleted || w._deleted)) {
-                if (!this.core.$$isFileSizeExceeded(w.size)) {
-                    // await this.pullFile(path, undefined, false, undefined, false);
-                    // Memo: No need to force
-                    await this.core.fileHandler.dbToStorage(path, null, true);
-                    // fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
-                    eventHub.emitEvent("event-file-changed", {
-                        file: e, automated: true
-                    });
-                    this._log(`Check or pull from db:${path} OK`);
+            updateLog(procedureName, msg);
+        };
+        initProcess.push(
+            runAll("UPDATE DATABASE", filesExistOnlyInStorage, async (e) => {
+                // console.warn("UPDATE DATABASE", e);
+                const file = storageFileNameMap[storageFileNameCI2CS[e]];
+                if (!this.core.$$isFileSizeExceeded(file.stat.size)) {
+                    const path = file.path;
+                    await this.core.fileHandler.storeFileToDB(file);
+                    // fireAndForget(() => this.checkAndApplySettingFromMarkdown(path, true));
+                    eventHub.emitEvent("event-file-changed", { file: path, automated: true });
                 } else {
-                    this._log(`UPDATE STORAGE: ${path} has been skipped due to file size exceeding the limit`, logLevel);
+                    this._log(`UPDATE DATABASE: ${e} has been skipped due to file size exceeding the limit`, logLevel);
                 }
-            } else if (w) {
-                this._log(`Deletion history skipped: ${path}`, LOG_LEVEL_VERBOSE);
-            } else {
-                this._log(`entry not found: ${path}`);
-            }
-        }));
+            })
+        );
+        initProcess.push(
+            runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
+                const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
+                const path = getPath(w) ?? e;
+                if (w && !(w.deleted || w._deleted)) {
+                    if (!this.core.$$isFileSizeExceeded(w.size)) {
+                        // await this.pullFile(path, undefined, false, undefined, false);
+                        // Memo: No need to force
+                        await this.core.fileHandler.dbToStorage(path, null, true);
+                        // fireAndForget(() => this.checkAndApplySettingFromMarkdown(e, true));
+                        eventHub.emitEvent("event-file-changed", {
+                            file: e,
+                            automated: true,
+                        });
+                        this._log(`Check or pull from db:${path} OK`);
+                    } else {
+                        this._log(
+                            `UPDATE STORAGE: ${path} has been skipped due to file size exceeding the limit`,
+                            logLevel
+                        );
+                    }
+                } else if (w) {
+                    this._log(`Deletion history skipped: ${path}`, LOG_LEVEL_VERBOSE);
+                } else {
+                    this._log(`entry not found: ${path}`);
+                }
+            })
+        );
 
-        const fileMap = filesExistBoth.map(path => {
+        const fileMap = filesExistBoth.map((path) => {
             const file = storageFileNameMap[storageFileNameCI2CS[path]];
             const doc = databaseFileNameMap[databaseFileNameCI2CS[path]];
-            return { file, doc }
-        })
-        initProcess.push(runAll("SYNC DATABASE AND STORAGE", fileMap, async (e) => {
-            const { file, doc } = e;
-            if (!this.core.$$isFileSizeExceeded(file.stat.size) && !this.core.$$isFileSizeExceeded(doc.size)) {
-                await this.syncFileBetweenDBandStorage(file, doc);
-                // fireAndForget(() => this.checkAndApplySettingFromMarkdown(getPath(doc), true));
-                eventHub.emitEvent("event-file-changed", {
-                    file: getPath(doc), automated: true
-                });
-            } else {
-                this._log(`SYNC DATABASE AND STORAGE: ${getPath(doc)} has been skipped due to file size exceeding the limit`, logLevel);
-            }
-        }))
+            return { file, doc };
+        });
+        initProcess.push(
+            runAll("SYNC DATABASE AND STORAGE", fileMap, async (e) => {
+                const { file, doc } = e;
+                if (!this.core.$$isFileSizeExceeded(file.stat.size) && !this.core.$$isFileSizeExceeded(doc.size)) {
+                    await this.syncFileBetweenDBandStorage(file, doc);
+                    // fireAndForget(() => this.checkAndApplySettingFromMarkdown(getPath(doc), true));
+                    eventHub.emitEvent("event-file-changed", {
+                        file: getPath(doc),
+                        automated: true,
+                    });
+                } else {
+                    this._log(
+                        `SYNC DATABASE AND STORAGE: ${getPath(doc)} has been skipped due to file size exceeding the limit`,
+                        logLevel
+                    );
+                }
+            })
+        );
 
         await Promise.all(initProcess);
 
         // this.setStatusBarText(`NOW TRACKING!`);
         this._log("Initialized, NOW TRACKING!");
         if (!isInitialized) {
-            await (this.core.kvDB.set("initialized", true))
+            await this.core.kvDB.set("initialized", true);
         }
         if (showingNotice) {
             this._log("Initialize done!", LOG_LEVEL_NOTICE, "syncAll");
@@ -222,14 +265,14 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
 
     async syncFileBetweenDBandStorage(file: UXFileInfoStub, doc: MetaEntry) {
         if (!doc) {
-            throw new Error(`Missing doc:${(file as any).path}`)
+            throw new Error(`Missing doc:${(file as any).path}`);
         }
         if ("path" in file) {
             const w = this.core.storageAccess.getFileStub((file as any).path);
             if (w) {
                 file = w;
             } else {
-                throw new Error(`Missing file:${(file as any).path}`)
+                throw new Error(`Missing file:${(file as any).path}`);
             }
         }
 
@@ -240,21 +283,28 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                     this._log("STORAGE -> DB :" + file.path);
                     await this.core.fileHandler.storeFileToDB(file);
                     eventHub.emitEvent("event-file-changed", {
-                        file: file.path, automated: true
+                        file: file.path,
+                        automated: true,
                     });
                 } else {
-                    this._log(`STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                    this._log(
+                        `STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`,
+                        LOG_LEVEL_NOTICE
+                    );
                 }
                 break;
             case TARGET_IS_NEW:
                 if (!this.core.$$isFileSizeExceeded(doc.size)) {
                     this._log("STORAGE <- DB :" + file.path);
-                    if (!await this.core.fileHandler.dbToStorage(doc, stripAllPrefixes(file.path), true)) {
+                    if (!(await this.core.fileHandler.dbToStorage(doc, stripAllPrefixes(file.path), true))) {
                         this._log(`STORAGE <- DB : Cloud not read ${file.path}, possibly deleted`, LOG_LEVEL_NOTICE);
                     }
                     return caches;
                 } else {
-                    this._log(`STORAGE <- DB : ${file.path} has been skipped due to file size exceeding the limit`, LOG_LEVEL_NOTICE);
+                    this._log(
+                        `STORAGE <- DB : ${file.path} has been skipped due to file size exceeding the limit`,
+                        LOG_LEVEL_NOTICE
+                    );
                 }
                 break;
             case EVEN:
@@ -263,9 +313,7 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             default:
                 this._log("STORAGE ?? DB :" + file.path + " Something got weird");
         }
-
     }
-
 
     // This method uses an old version of database accessor, which is not recommended.
     // TODO: Fix
@@ -273,21 +321,21 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         const limitDays = this.settings.automaticallyDeleteMetadataOfDeletedFiles;
         if (limitDays <= 0) return;
         this._log(`Checking expired file history`);
-        const limit = Date.now() - (86400 * 1000 * limitDays);
+        const limit = Date.now() - 86400 * 1000 * limitDays;
         const notes: {
-            path: string,
-            mtime: number,
-            ttl: number,
-            doc: PouchDB.Core.ExistingDocument<EntryDoc & PouchDB.Core.AllDocsMeta>
+            path: string;
+            mtime: number;
+            ttl: number;
+            doc: PouchDB.Core.ExistingDocument<EntryDoc & PouchDB.Core.AllDocsMeta>;
         }[] = [];
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (isAnyNote(doc)) {
-                if (doc.deleted && (doc.mtime - limit) < 0) {
+                if (doc.deleted && doc.mtime - limit < 0) {
                     notes.push({
                         path: getPath(doc),
                         mtime: doc.mtime,
                         ttl: (doc.mtime - limit) / 1000 / 86400,
-                        doc: doc
+                        doc: doc,
                     });
                 }
             }
@@ -308,11 +356,11 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
 
     async $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> {
         this.core.$$resetIsReady();
-        if ((!reopenDatabase) || await this.core.$$openDatabase()) {
+        if (!reopenDatabase || (await this.core.$$openDatabase())) {
             if (this.localDatabase.isReady) {
                 await this.core.$$performFullScan(showingNotice);
             }
-            if (!await this.core.$everyOnDatabaseInitialized(showingNotice)) {
+            if (!(await this.core.$everyOnDatabaseInitialized(showingNotice))) {
                 this._log(`Initializing database has been failed on some module`, LOG_LEVEL_NOTICE);
                 return false;
             }

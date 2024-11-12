@@ -1,24 +1,34 @@
-import { AbstractObsidianModule, type IObsidianModule } from '../AbstractObsidianModule.ts';
-import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from '../../common/events.js';
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from 'octagonal-wheels/common/logger';
-import { scheduleTask } from 'octagonal-wheels/concurrency/task';
-import { type TFile } from '../../deps.ts';
-import { fireAndForget } from 'octagonal-wheels/promises';
-import { type FilePathWithPrefix } from '../../lib/src/common/types.ts';
-import { reactive, reactiveSource } from 'octagonal-wheels/dataobject/reactive';
-import { collectingChunks, pluginScanningCount, hiddenFilesEventCount, hiddenFilesProcessingCount } from '../../lib/src/mock_and_interop/stores.ts';
+import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import { scheduleTask } from "octagonal-wheels/concurrency/task";
+import { type TFile } from "../../deps.ts";
+import { fireAndForget } from "octagonal-wheels/promises";
+import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import { reactive, reactiveSource } from "octagonal-wheels/dataobject/reactive";
+import {
+    collectingChunks,
+    pluginScanningCount,
+    hiddenFilesEventCount,
+    hiddenFilesProcessingCount,
+} from "../../lib/src/mock_and_interop/stores.ts";
 
 export class ModuleObsidianEvents extends AbstractObsidianModule implements IObsidianModule {
-
     $everyOnloadStart(): Promise<boolean> {
         // this.registerEvent(this.app.workspace.on("editor-change", ));
-        this.plugin.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-            eventHub.emitEvent(EVENT_FILE_RENAMED, { newPath: file.path as FilePathWithPrefix, old: oldPath as FilePathWithPrefix });
-        }));
-        this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", () => eventHub.emitEvent(EVENT_LEAF_ACTIVE_CHANGED)));
+        this.plugin.registerEvent(
+            this.app.vault.on("rename", (file, oldPath) => {
+                eventHub.emitEvent(EVENT_FILE_RENAMED, {
+                    newPath: file.path as FilePathWithPrefix,
+                    old: oldPath as FilePathWithPrefix,
+                });
+            })
+        );
+        this.plugin.registerEvent(
+            this.app.workspace.on("active-leaf-change", () => eventHub.emitEvent(EVENT_LEAF_ACTIVE_CHANGED))
+        );
         return Promise.resolve(true);
     }
-
 
     $$performRestart(): void {
         this._performAppReload();
@@ -33,9 +43,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
-        const saveCommandDefinition = (this.app as any).commands?.commands?.[
-            "editor:save-file"
-        ];
+        const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
         if (typeof save === "function") {
             this.initialCallback = save;
@@ -60,7 +68,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
-            _this.app.commands.executeCommandById('editor:save-file')
+            _this.app.commands.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
         };
     }
@@ -158,7 +166,6 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         return Promise.resolve(true);
     }
 
-
     $$askReload(message?: string) {
         if (this.core.$$isReloadingScheduled()) {
             this._log(`Reloading is already scheduled`, LOG_LEVEL_VERBOSE);
@@ -168,16 +175,17 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             const RESTART_NOW = "Yes, restart immediately";
             const RESTART_AFTER_STABLE = "Yes, schedule a restart after stabilisation";
             const RETRY_LATER = "No, Leave it to me";
-            const ret = await this.core.confirm.askSelectStringDialogue(message || "Do you want to restart and reload Obsidian now?", [
-                RESTART_AFTER_STABLE,
-                RESTART_NOW,
-                RETRY_LATER], { defaultAction: RETRY_LATER });
+            const ret = await this.core.confirm.askSelectStringDialogue(
+                message || "Do you want to restart and reload Obsidian now?",
+                [RESTART_AFTER_STABLE, RESTART_NOW, RETRY_LATER],
+                { defaultAction: RETRY_LATER }
+            );
             if (ret == RESTART_NOW) {
                 this._performAppReload();
             } else if (ret == RESTART_AFTER_STABLE) {
                 this.core.$$scheduleAppReload();
             }
-        })
+        });
     }
     $$scheduleAppReload() {
         if (!this.core._totalProcessingCount) {
@@ -194,24 +202,39 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
                 const proc = this.core.processingFileEventCount.value;
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const __ = __tick.value;
-                return dbCount + replicationCount + storageApplyingCount + chunkCount + pluginScanCount + hiddenFilesCount + conflictProcessCount + e + proc;
-            })
-            this.plugin.registerInterval(setInterval(() => {
-                __tick.value++;
-            }, 1000) as unknown as number);
+                return (
+                    dbCount +
+                    replicationCount +
+                    storageApplyingCount +
+                    chunkCount +
+                    pluginScanCount +
+                    hiddenFilesCount +
+                    conflictProcessCount +
+                    e +
+                    proc
+                );
+            });
+            this.plugin.registerInterval(
+                setInterval(() => {
+                    __tick.value++;
+                }, 1000) as unknown as number
+            );
 
             let stableCheck = 3;
-            this.core._totalProcessingCount.onChanged(e => {
+            this.core._totalProcessingCount.onChanged((e) => {
                 if (e.value == 0) {
                     if (stableCheck-- <= 0) {
                         this._performAppReload();
                     }
-                    this._log(`Obsidian will be restarted soon! (Within ${stableCheck} seconds)`, LOG_LEVEL_NOTICE, "restart-notice");
+                    this._log(
+                        `Obsidian will be restarted soon! (Within ${stableCheck} seconds)`,
+                        LOG_LEVEL_NOTICE,
+                        "restart-notice"
+                    );
                 } else {
                     stableCheck = 3;
                 }
-            })
+            });
         }
     }
-
 }

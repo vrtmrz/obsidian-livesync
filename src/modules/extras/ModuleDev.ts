@@ -8,9 +8,8 @@ import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
 
 export class ModuleDev extends AbstractObsidianModule implements IObsidianModule {
-
     $everyOnloadStart(): Promise<boolean> {
-        __onMissingTranslation(() => { });
+        __onMissingTranslation(() => {});
         return Promise.resolve(true);
     }
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
@@ -18,70 +17,80 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
         // eslint-disable-next-line no-unused-labels
         __onMissingTranslation((key) => {
             const now = new Date();
-            const filename = `missing-translation-`
+            const filename = `missing-translation-`;
             const time = now.toISOString().split("T")[0];
             const outFile = `${filename}${time}.jsonl`;
-            const piece = JSON.stringify(
-                {
-                    [key]: {}
-                }
-            )
+            const piece = JSON.stringify({
+                [key]: {},
+            });
             const writePiece = piece.substring(1, piece.length - 1) + ",";
             fireAndForget(async () => {
                 try {
                     await this.core.storageAccess.ensureDir(this.app.vault.configDir + "/ls-debug/");
-                    await this.core.storageAccess.appendHiddenFile(this.app.vault.configDir + "/ls-debug/" + outFile, writePiece + "\n")
+                    await this.core.storageAccess.appendHiddenFile(
+                        this.app.vault.configDir + "/ls-debug/" + outFile,
+                        writePiece + "\n"
+                    );
                 } catch (ex) {
                     this._log(`Could not write ${outFile}`, LOG_LEVEL_VERBOSE);
                     this._log(`Missing translation: ${writePiece}`, LOG_LEVEL_VERBOSE);
                     this._log(ex, LOG_LEVEL_VERBOSE);
                 }
             });
-        })
+        });
         type STUB = {
-            toc: Set<string>,
-            stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } }
+            toc: Set<string>;
+            stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } };
         };
         eventHub.onEvent("document-stub-created", (detail: STUB) => {
             fireAndForget(async () => {
                 const stub = detail.stub;
                 const toc = detail.toc;
 
-                const stubDocX =
-                    Object.entries(stub).map(([key, value]) => {
-                        return [`## ${key}`, Object.entries(value).
-                            map(([key2, value2]) => {
-                                return [`### ${key2}`,
-                                ([...(value2.entries())].map(([key3, value3]) => {
-                                    // return `#### ${key3}` + "\n" + JSON.stringify(value3);
-                                    const isObsolete = value3["is_obsolete"] ? " (obsolete)" : "";
-                                    const desc = value3["desc"] ?? "";
-                                    const key = value3["key"] ? "Setting key: " + value3["key"] + "\n" : "";
-                                    return `#### ${key3}${isObsolete}\n${key}${desc}\n`
-                                }))].flat()
-                            }).flat()].flat()
-                    }).flat();
-                const stubDocMD = `
+                const stubDocX = Object.entries(stub)
+                    .map(([key, value]) => {
+                        return [
+                            `## ${key}`,
+                            Object.entries(value)
+                                .map(([key2, value2]) => {
+                                    return [
+                                        `### ${key2}`,
+                                        [...value2.entries()].map(([key3, value3]) => {
+                                            // return `#### ${key3}` + "\n" + JSON.stringify(value3);
+                                            const isObsolete = value3["is_obsolete"] ? " (obsolete)" : "";
+                                            const desc = value3["desc"] ?? "";
+                                            const key = value3["key"] ? "Setting key: " + value3["key"] + "\n" : "";
+                                            return `#### ${key3}${isObsolete}\n${key}${desc}\n`;
+                                        }),
+                                    ].flat();
+                                })
+                                .flat(),
+                        ].flat();
+                    })
+                    .flat();
+                const stubDocMD =
+                    `
 | Icon  | Description                                                       |
 | :---: | ----------------------------------------------------------------- |
 ` +
-                    [...toc.values()].map(e => `${e}`).join("\n") + "\n\n" +
+                    [...toc.values()].map((e) => `${e}`).join("\n") +
+                    "\n\n" +
                     stubDocX.join("\n");
-                await this.core.storageAccess.writeHiddenFileAuto(this.app.vault.configDir + "/ls-debug/stub-doc.md", stubDocMD);
-            })
+                await this.core.storageAccess.writeHiddenFileAuto(
+                    this.app.vault.configDir + "/ls-debug/stub-doc.md",
+                    stubDocMD
+                );
+            });
         });
 
         enableTestFunction(this.plugin);
-        this.registerView(
-            VIEW_TYPE_TEST,
-            (leaf) => new TestPaneView(leaf, this.plugin, this)
-        );
+        this.registerView(VIEW_TYPE_TEST, (leaf) => new TestPaneView(leaf, this.plugin, this));
         this.addCommand({
             id: "view-test",
             name: "Open Test dialogue",
             callback: () => {
                 void this.core.$$showView(VIEW_TYPE_TEST);
-            }
+            },
         });
         return Promise.resolve(true);
     }

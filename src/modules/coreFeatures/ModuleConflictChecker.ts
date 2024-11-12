@@ -5,7 +5,6 @@ import { sendValue } from "octagonal-wheels/messagepassing/signal";
 import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleConflictChecker extends AbstractModule implements ICoreModule {
-
     async $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
         const path = file;
         if (this.settings.checkConflictOnlyOnOpen) {
@@ -36,40 +35,44 @@ export class ModuleConflictChecker extends AbstractModule implements ICoreModule
     }
 
     // TODO-> Move to ModuleConflictResolver?
-    conflictResolveQueue = new QueueProcessor(async (filenames: FilePathWithPrefix[]) => {
-        await this.core.$$resolveConflict(filenames[0]);
-    }, {
-        suspended: false,
-        batchSize: 1,
-        concurrentLimit: 1,
-        delay: 10,
-        keepResultUntilDownstreamConnected: false
-    }).replaceEnqueueProcessor((queue, newEntity) => {
+    conflictResolveQueue = new QueueProcessor(
+        async (filenames: FilePathWithPrefix[]) => {
+            await this.core.$$resolveConflict(filenames[0]);
+        },
+        {
+            suspended: false,
+            batchSize: 1,
+            concurrentLimit: 1,
+            delay: 10,
+            keepResultUntilDownstreamConnected: false,
+        }
+    ).replaceEnqueueProcessor((queue, newEntity) => {
         const filename = newEntity;
         sendValue("cancel-resolve-conflict:" + filename, true);
-        const newQueue = [...queue].filter(e => e != newEntity);
+        const newQueue = [...queue].filter((e) => e != newEntity);
         return [...newQueue, newEntity];
     });
 
-
     conflictCheckQueue = // First process - Check is the file actually need resolve -
-        new QueueProcessor((files: FilePathWithPrefix[]) => {
-            const filename = files[0];
-            // const file = await this.core.storageAccess.isExists(filename);
-            // if (!file) return [];
-            // if (!(file instanceof TFile)) return;
-            // if ((file instanceof TFolder)) return [];
-            // Check again?
-            return Promise.resolve([filename]);
-            // this.conflictResolveQueue.enqueueWithKey(filename, { filename, file });
-        }, {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 5,
-            delay: 10,
-            keepResultUntilDownstreamConnected: true,
-            pipeTo: this.conflictResolveQueue,
-            totalRemainingReactiveSource: this.core.conflictProcessQueueCount
-        });
-
+        new QueueProcessor(
+            (files: FilePathWithPrefix[]) => {
+                const filename = files[0];
+                // const file = await this.core.storageAccess.isExists(filename);
+                // if (!file) return [];
+                // if (!(file instanceof TFile)) return;
+                // if ((file instanceof TFolder)) return [];
+                // Check again?
+                return Promise.resolve([filename]);
+                // this.conflictResolveQueue.enqueueWithKey(filename, { filename, file });
+            },
+            {
+                suspended: false,
+                batchSize: 1,
+                concurrentLimit: 5,
+                delay: 10,
+                keepResultUntilDownstreamConnected: true,
+                pipeTo: this.conflictResolveQueue,
+                totalRemainingReactiveSource: this.core.conflictProcessQueueCount,
+            }
+        );
 }

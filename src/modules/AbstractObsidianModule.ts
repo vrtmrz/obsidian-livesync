@@ -4,15 +4,12 @@ import type ObsidianLiveSyncPlugin from "../main";
 import { AbstractModule } from "./AbstractModule.ts";
 import type { ChainableExecuteFunction, OverridableFunctionsKeys } from "./ModuleTypes";
 
-
 export type IObsidianModuleBase = OverridableFunctionsKeys<ObsidianLiveSyncPlugin>;
-export type IObsidianModule = Prettify<Partial<IObsidianModuleBase>>
+export type IObsidianModule = Prettify<Partial<IObsidianModuleBase>>;
 export type ModuleKeys = keyof IObsidianModule;
 export type ChainableModuleProps = ChainableExecuteFunction<ObsidianLiveSyncPlugin>;
 
-
 export abstract class AbstractObsidianModule extends AbstractModule {
-
     addCommand = this.plugin.addCommand.bind(this.plugin);
     registerView = this.plugin.registerView.bind(this.plugin);
     addRibbonIcon = this.plugin.addRibbonIcon.bind(this.plugin);
@@ -31,12 +28,14 @@ export abstract class AbstractObsidianModule extends AbstractModule {
         return this.plugin.app;
     }
 
-    constructor(public plugin: ObsidianLiveSyncPlugin, public core: LiveSyncCore) {
+    constructor(
+        public plugin: ObsidianLiveSyncPlugin,
+        public core: LiveSyncCore
+    ) {
         super(core);
     }
 
     saveSettings = this.plugin.saveSettings.bind(this.plugin);
-
 
     _isMainReady() {
         return this.core.$$isReady();
@@ -50,6 +49,6 @@ export abstract class AbstractObsidianModule extends AbstractModule {
 
     //should be overridden
     _isThisModuleEnabled() {
-        return true
+        return true;
     }
 }

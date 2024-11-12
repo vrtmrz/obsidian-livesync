@@ -18,10 +18,11 @@ export class PluginDialogModal extends Modal {
         this.contentEl.style.overflow = "auto";
         this.contentEl.style.display = "flex";
         this.contentEl.style.flexDirection = "column";
-        this.titleEl.setText("Customization Sync (Beta3)")
+        this.titleEl.setText("Customization Sync (Beta3)");
         if (!this.component) {
             this.component = new PluginPane({
-                target: contentEl, props: { plugin: this.plugin },
+                target: contentEl,
+                props: { plugin: this.plugin },
             });
         }
     }

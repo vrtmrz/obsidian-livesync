@@ -1,8 +1,16 @@
 import { Logger } from "octagonal-wheels/common/logger";
 import { getPath } from "../common/utils.ts";
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type LOG_LEVEL } from "../lib/src/common/types.ts";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    type AnyEntry,
+    type DocumentID,
+    type EntryHasPath,
+    type FilePath,
+    type FilePathWithPrefix,
+    type LOG_LEVEL,
+} from "../lib/src/common/types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
-
 
 export abstract class LiveSyncCommands {
     plugin: ObsidianLiveSyncPlugin;
@@ -49,5 +57,4 @@ export abstract class LiveSyncCommands {
         // console.log(msg);
         Logger(msg, level, key);
     };
-
 }

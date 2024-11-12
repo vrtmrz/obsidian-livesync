@@ -1,13 +1,9 @@
-import {
-    ItemView,
-    WorkspaceLeaf
-} from "../../../deps.ts";
+import { ItemView, WorkspaceLeaf } from "../../../deps.ts";
 import GlobalHistoryComponent from "./GlobalHistory.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 
 export const VIEW_TYPE_GLOBAL_HISTORY = "global-history";
 export class GlobalHistoryView extends ItemView {
-
     component?: GlobalHistoryComponent;
     plugin: ObsidianLiveSyncPlugin;
     icon = "clock";
@@ -22,7 +18,6 @@ export class GlobalHistoryView extends ItemView {
         super(leaf);
         this.plugin = plugin;
     }
-
 
     getViewType() {
         return VIEW_TYPE_GLOBAL_HISTORY;

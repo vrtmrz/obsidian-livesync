@@ -11,6 +11,9 @@
         "lint": "eslint src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
         "tsc-check": "tsc --noEmit",
+        "pretty": "npm run prettyNoWrite -- --write --log-level error",
+        "prettyCheck": "npm run prettyNoWrite -- --check",
+        "prettyNoWrite": "prettier --config ./.prettierrc \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
         "check": "npm run lint && npm run svelte-check && npm run tsc-check"
     },
     "keywords": [],
@@ -51,6 +54,7 @@
         "pouchdb-merge": "^9.0.0",
         "pouchdb-replication": "^9.0.0",
         "pouchdb-utils": "^9.0.0",
+        "prettier": "^3.3.3",
         "svelte": "^4.2.19",
         "svelte-preprocess": "^6.0.2",
         "terser": "^5.31.6",

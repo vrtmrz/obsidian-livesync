@@ -9,7 +9,6 @@ import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } 
 const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
 export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule implements IObsidianModule {
-
     $everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-export-config",
@@ -21,8 +20,8 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                 fireAndForget(async () => {
                     await this.core.$$saveSettingData();
                 });
-            }
-        })
+            },
+        });
         this.addCommand({
             id: "livesync-import-config",
             name: "Parse setting file",
@@ -33,32 +32,33 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                     return ret.body != "";
                 }
                 if (ctx.file) {
-                    const file = ctx.file
+                    const file = ctx.file;
                     fireAndForget(async () => await this.checkAndApplySettingFromMarkdown(file.path, false));
                 }
             },
-        })
-        eventHub.onEvent("event-file-changed", (info: {
-            file: FilePathWithPrefix, automated: boolean
-        }) => {
+        });
+        eventHub.onEvent("event-file-changed", (info: { file: FilePathWithPrefix; automated: boolean }) => {
             fireAndForget(() => this.checkAndApplySettingFromMarkdown(info.file, info.automated));
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             if (settings.settingSyncFile != "") {
                 fireAndForget(() => this.saveSettingToMarkdown(settings.settingSyncFile));
             }
-        })
+        });
         return Promise.resolve(true);
     }
 
-
     extractSettingFromWholeText(data: string): {
-        preamble: string, body: string, postscript: string
+        preamble: string;
+        body: string;
+        postscript: string;
     } {
         if (data.indexOf(SETTING_HEADER) === -1) {
             return {
-                preamble: data, body: "", postscript: ""
-            }
+                preamble: data,
+                body: "",
+                postscript: "",
+            };
         }
         const startMarkerPos = data.indexOf(SETTING_HEADER);
         const dataStartPos = startMarkerPos == -1 ? data.length : startMarkerPos;
@@ -68,27 +68,33 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
         const ret = {
             preamble: data.substring(0, dataStartPos),
             body,
-            postscript: data.substring(dataEndPos + SETTING_FOOTER.length + 1)
-        }
+            postscript: data.substring(dataEndPos + SETTING_FOOTER.length + 1),
+        };
         return ret;
     }
 
     async parseSettingFromMarkdown(filename: string, data?: string) {
         const file = await this.core.storageAccess.isExists(filename);
-        if (!file) return {
-            preamble: "", body: "", postscript: "",
-        };
+        if (!file)
+            return {
+                preamble: "",
+                body: "",
+                postscript: "",
+            };
         if (data) {
             return this.extractSettingFromWholeText(data);
         }
-        const parseData = data ?? await this.core.storageAccess.readFileText(filename);
+        const parseData = data ?? (await this.core.storageAccess.readFileText(filename));
         return this.extractSettingFromWholeText(parseData);
     }
 
     async checkAndApplySettingFromMarkdown(filename: string, automated?: boolean) {
         if (automated && !this.settings.notifyAllSettingSyncFile) {
             if (!this.settings.settingSyncFile || this.settings.settingSyncFile != filename) {
-                this._log(`Setting file (${filename}) is not matched to the current configuration. skipped.`, LOG_LEVEL_DEBUG);
+                this._log(
+                    `Setting file (${filename}) is not matched to the current configuration. skipped.`,
+                    LOG_LEVEL_DEBUG
+                );
                 return;
             }
         }
@@ -103,61 +109,80 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
         }
 
         if ("settingSyncFile" in newSetting && newSetting.settingSyncFile != filename) {
-            this._log("This setting file seems to backed up one. Please fix the filename or settingSyncFile value.", automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE);
+            this._log(
+                "This setting file seems to backed up one. Please fix the filename or settingSyncFile value.",
+                automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE
+            );
             return;
         }
 
-
         let settingToApply = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
-        settingToApply = { ...settingToApply, ...newSetting }
-        if (!(settingToApply?.writeCredentialsForSettingSync)) {
-            //New setting does not contains credentials. 
+        settingToApply = { ...settingToApply, ...newSetting };
+        if (!settingToApply?.writeCredentialsForSettingSync) {
+            //New setting does not contains credentials.
             settingToApply.couchDB_USER = this.settings.couchDB_USER;
             settingToApply.couchDB_PASSWORD = this.settings.couchDB_PASSWORD;
             settingToApply.passphrase = this.settings.passphrase;
         }
-        const oldSetting = this.generateSettingForMarkdown(this.settings, settingToApply.writeCredentialsForSettingSync);
+        const oldSetting = this.generateSettingForMarkdown(
+            this.settings,
+            settingToApply.writeCredentialsForSettingSync
+        );
         if (!isObjectDifferent(oldSetting, this.generateSettingForMarkdown(settingToApply))) {
-            this._log("Setting markdown has been detected, but not changed.", automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE);
-            return
+            this._log(
+                "Setting markdown has been detected, but not changed.",
+                automated ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE
+            );
+            return;
         }
         const addMsg = this.settings.settingSyncFile != filename ? " (This is not-active file)" : "";
-        this.core.confirm.askInPopup("apply-setting-from-md", `Setting markdown ${filename}${addMsg} has been detected. Apply this from {HERE}.`, (anchor) => {
-            anchor.text = "HERE";
-            anchor.addEventListener("click", () => {
-                fireAndForget(async () => {
-                    const APPLY_ONLY = "Apply settings";
-                    const APPLY_AND_RESTART = "Apply settings and restart obsidian";
-                    const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
-                    const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
-                    const CANCEL = "Cancel";
-                    const result = await this.core.confirm.askSelectStringDialogue("Ready for apply the setting.", [
-                        APPLY_AND_RESTART,
-                        APPLY_ONLY,
-                        APPLY_AND_FETCH,
-                        APPLY_AND_REBUILD,
-                        CANCEL], { defaultAction: APPLY_AND_RESTART });
-                    if (result == APPLY_ONLY || result == APPLY_AND_RESTART || result == APPLY_AND_REBUILD || result == APPLY_AND_FETCH) {
-                        this.core.settings = settingToApply;
-                        await this.core.$$saveSettingData();
-                        if (result == APPLY_ONLY) {
-                            this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
-                            return;
+        this.core.confirm.askInPopup(
+            "apply-setting-from-md",
+            `Setting markdown ${filename}${addMsg} has been detected. Apply this from {HERE}.`,
+            (anchor) => {
+                anchor.text = "HERE";
+                anchor.addEventListener("click", () => {
+                    fireAndForget(async () => {
+                        const APPLY_ONLY = "Apply settings";
+                        const APPLY_AND_RESTART = "Apply settings and restart obsidian";
+                        const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
+                        const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
+                        const CANCEL = "Cancel";
+                        const result = await this.core.confirm.askSelectStringDialogue(
+                            "Ready for apply the setting.",
+                            [APPLY_AND_RESTART, APPLY_ONLY, APPLY_AND_FETCH, APPLY_AND_REBUILD, CANCEL],
+                            { defaultAction: APPLY_AND_RESTART }
+                        );
+                        if (
+                            result == APPLY_ONLY ||
+                            result == APPLY_AND_RESTART ||
+                            result == APPLY_AND_REBUILD ||
+                            result == APPLY_AND_FETCH
+                        ) {
+                            this.core.settings = settingToApply;
+                            await this.core.$$saveSettingData();
+                            if (result == APPLY_ONLY) {
+                                this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
+                                return;
+                            }
+                            if (result == APPLY_AND_REBUILD) {
+                                await this.core.rebuilder.scheduleRebuild();
+                            }
+                            if (result == APPLY_AND_FETCH) {
+                                await this.core.rebuilder.scheduleFetch();
+                            }
+                            this.core.$$performRestart();
                         }
-                        if (result == APPLY_AND_REBUILD) {
-                            await this.core.rebuilder.scheduleRebuild();
-                        }
-                        if (result == APPLY_AND_FETCH) {
-                            await this.core.rebuilder.scheduleFetch();
-                        }
-                        this.core.$$performRestart();
-                    }
-                })
-            })
-        })
+                    });
+                });
+            }
+        );
     }
 
-    generateSettingForMarkdown(settings?: ObsidianLiveSyncSettings, keepCredential?: boolean): Partial<ObsidianLiveSyncSettings> {
+    generateSettingForMarkdown(
+        settings?: ObsidianLiveSyncSettings,
+        keepCredential?: boolean
+    ): Partial<ObsidianLiveSyncSettings> {
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
         delete saveData.encryptedPassphrase;
@@ -174,7 +199,6 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
         const saveData = this.generateSettingForMarkdown();
         const file = await this.core.storageAccess.isExists(filename);
 
-
         if (!file) {
             await this.core.storageAccess.ensureDir(filename);
             const initialContent = `This file contains Self-hosted LiveSync settings as YAML.
@@ -188,8 +212,11 @@ We can perform a command in this file.
 **Note** Please handle it with all of your care if you have configured to write credentials in.
 
 
-`
-            await this.core.storageAccess.writeFileAuto(filename, initialContent + SETTING_HEADER + "\n" + SETTING_FOOTER);
+`;
+            await this.core.storageAccess.writeFileAuto(
+                filename,
+                initialContent + SETTING_HEADER + "\n" + SETTING_FOOTER
+            );
         }
         // if (!(file instanceof TFile)) {
         //     this._log(`Markdown Setting: ${filename} already exists as a folder`, LOG_LEVEL_NOTICE);
@@ -203,9 +230,11 @@ We can perform a command in this file.
         if (newBody == body) {
             this._log("Markdown setting: Nothing had been changed", LOG_LEVEL_VERBOSE);
         } else {
-            await this.core.storageAccess.writeFileAuto(filename, preamble + SETTING_HEADER + newBody + SETTING_FOOTER + postscript);
+            await this.core.storageAccess.writeFileAuto(
+                filename,
+                preamble + SETTING_HEADER + newBody + SETTING_FOOTER + postscript
+            );
             this._log(`Markdown setting: ${filename} has been updated!`, LOG_LEVEL_VERBOSE);
         }
     }
-
 }
