@@ -463,7 +463,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         // And modified.
                         this.plugin.confirm.askInPopup(
                             `config-reloaded-${k}`,
-                            `The setting "${getConfName(k as AllSettingItemKey)}" being in editing has been changed from somewhere. We can discard modification and reload by clicking {HERE}. Click elsewhere to ignore changes`,
+                            `The setting "${getConfName(k as AllSettingItemKey)}" was modified from another device. Click {HERE} to reload settings. Click elsewhere to ignore changes`,
                             (anchor) => {
                                 anchor.text = "HERE";
                                 anchor.addEventListener("click", () => {
@@ -622,7 +622,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
 | Symbol | Meaning |
 |: ------ :| ------- |
-| ⇔ | Synchronised or well balanced |
+| ⇔ | Up to Date |
 | ⇄ | Synchronise to balance |
 | ⇐,⇒ | Transfer to overwrite |
 | ⇠,⇢ | Transfer to overwrite from other side |
@@ -847,7 +847,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     return true;
                 } else {
                     Logger(
-                        "ERROR: Passphrase is not compatible with the remote server! Please confirm it again!",
+                        "ERROR: Passphrase is not compatible with the remote server! Please check it again!",
                         LOG_LEVEL_NOTICE
                     );
                     return false;
@@ -856,7 +856,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         };
         const isPassphraseValid = async () => {
             if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
+                Logger("You cannot enable encryption without a passphrase", LOG_LEVEL_NOTICE);
                 return false;
             }
             if (this.editingSettings.encrypt && !(await testCrypt())) {
@@ -870,11 +870,11 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks"
         ) => {
             if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-                Logger("If you enable encryption, you have to set the passphrase", LOG_LEVEL_NOTICE);
+                Logger("You cannot enable encryption without a passphrase", LOG_LEVEL_NOTICE);
                 return;
             }
             if (this.editingSettings.encrypt && !(await testCrypt())) {
-                Logger("WARNING! Your device does not support encryption.", LOG_LEVEL_NOTICE);
+                Logger("Your device does not support encryption.", LOG_LEVEL_NOTICE);
                 return;
             }
             if (!this.editingSettings.encrypt) {
@@ -886,7 +886,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             this.reloadAllSettings();
             this.editingSettings.isConfigured = true;
             Logger(
-                "All synchronizations have been temporarily disabled. Please enable them after the fetching, if you need them.",
+                "Syncing has been disabled, fetch and re-enabled if desired.",
                 LOG_LEVEL_NOTICE
             );
             await this.saveAllDirtySettings();
@@ -896,14 +896,14 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         };
         // Panes
 
-        void addPane(containerEl, "Update Information", "💬", 100, false).then((paneEl) => {
+        void addPane(containerEl, "Change Log", "💬", 100, false).then((paneEl) => {
             const informationDivEl = this.createEl(paneEl, "div", { text: "" });
 
             const tmpDiv = createDiv();
             // tmpDiv.addClass("sls-header-button");
             tmpDiv.addClass("op-warn-info");
 
-            tmpDiv.innerHTML = `<p>Did you come here because of an upgrade notification? Read the version history and, if you are satisfied, press the button. I will bring it out again in the next version.</p><button> OK, I read everything. </button>`;
+            tmpDiv.innerHTML = `<p>Here due to an upgrade notification? Please review the version history. If you're satisfied, click the button. A new update will prompt this again.</p><button> OK, I have read everything. </button>`;
             if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
                 const informationButtonDiv = informationDivEl.appendChild(tmpDiv);
                 informationButtonDiv.querySelector("button")?.addEventListener("click", () => {
@@ -922,8 +922,8 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         void addPane(containerEl, "Setup", "🧙‍♂️", 110, false).then((paneEl) => {
             void addPanel(paneEl, "Quick Setup").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Use the copied setup URI")
-                    .setDesc("To setup Self-hosted LiveSync, this method is the most preferred one.")
+                    .setName("Connect with Setup URI")
+                    .setDesc("This is the recommended method to set up Self-hosted LiveSync with a Setup URI.")
                     .addButton((text) => {
                         text.setButtonText("Use").onClick(() => {
                             this.closeSetting();
@@ -931,13 +931,16 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                         });
                     });
 
-                new Setting(paneEl).setName("Minimal setup").addButton((text) => {
-                    text.setButtonText("Start").onClick(async () => {
-                        await this.enableMinimalSetup();
-                    });
+                new Setting(paneEl)
+                    .setName("Manual setup").addButton((text)
+                    .setDesc("Not recommended, but useful if you don't have a Setup URI") => {
+                        text.setButtonText("Start").onClick(async () => {
+                            await this.enableMinimalSetup();
+                        });
                 });
                 new Setting(paneEl)
-                    .setName("Enable LiveSync on this device as the setup was completed manually")
+                    .setName("Enable LiveSync")
+                    .setDesc("Only enable this after configuring either of the above two options.")
                     .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
                     .addButton((text) => {
                         text.setButtonText("Enable").onClick(async () => {
@@ -954,11 +957,14 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 undefined,
                 visibleOnly(() => this.isConfiguredAs("isConfigured", true))
             ).then((paneEl) => {
-                new Setting(paneEl).setName("Copy current settings as a new setup URI").addButton((text) => {
-                    text.setButtonText("Copy").onClick(() => {
-                        // await this.plugin.addOnSetup.command_copySetupURI();
-                        eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
-                    });
+                new Setting(paneEl)
+                    .setName("Copy the current settings to a Setup URI")
+                    .setDesc("Perfect for setting up a new device!")
+                    .addButton((text) => {
+                        text.setButtonText("Copy").onClick(() => {
+                            // await this.plugin.addOnSetup.command_copySetupURI();
+                            eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
+                        });
                 });
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
@@ -1182,7 +1188,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 };
                 addResult("---Notice---", ["ob-btn-config-head"]);
                 addResult(
-                    "If the server configuration is not persistent (e.g., running on docker), the values set from here will also be volatile. Once you are able to connect, please reflect the settings in the server's local.ini.",
+                    "If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini.",
                     ["ob-btn-config-info"]
                 );
 
@@ -1191,9 +1197,9 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 // Admin check
                 //  for database creation and deletion
                 if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
-                    addResult(`⚠ You do not have administrative privileges.`);
+                    addResult(`⚠ You do not have administrator privileges.`);
                 } else {
-                    addResult("✔ You have administrative privileges.");
+                    addResult("✔ You have administrator privileges.");
                 }
                 // HTTP user-authorization check
                 if (responseConfig?.chttpd?.require_valid_user != "true") {
@@ -1313,7 +1319,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 }
                 addResult("--Done--", ["ob-btn-config-head"]);
                 addResult(
-                    "If you have some trouble with Connection-check even though all Config-check has been passed, please check your reverse proxy's configuration.",
+                    "If you're having trouble with the Connection-check (even after checking config), please check your reverse proxy configuration.",
                     ["ob-btn-config-info"]
                 );
                 Logger(`Checking configuration done`, LOG_LEVEL_INFO);
@@ -1348,13 +1354,14 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     const syncWarnMinio = this.createEl(paneEl, "div", {
                         text: "",
                     });
-                    const ObjectStorageMessage = `Kindly notice: this is a pretty experimental feature, hence we have some limitations. 
-- Append only architecture. It will not shrink used storage if we do not perform a rebuild.
+                    const ObjectStorageMessage = `WARNING: This feature is a Work In Progress, so please keep in mind the following:
+- Append only architecture. A rebuild is required to shrink the storage.
 - A bit fragile.
-- During the first synchronization, the entire history to date will be transferred. For this reason, it is preferable to do this while connected to a Wi-Fi network.
-- From the second, we always transfer only differences.
+- When first syncing, all history will be transferred from the server. Be mindful of data caps and slow speeds.
+- Only differences are synced live.
 
-However, your report is needed to stabilise this. I appreciate you for your great dedication.
+If you run into any issues, or have ideas about this feature, please create a issue on GitHub.
+I appreciate you for your great dedication.
 `;
 
                     void MarkdownRenderer.render(
@@ -1408,7 +1415,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             paneEl,
                             "div",
                             {
-                                text: `Configured as using non-HTTPS. We cannot connect to the remote. Please set up the credentials and use HTTPS for the remote URI.`,
+                                text: `Cannot connect to non-HTTPS URI. Please update your config and try again.`,
                             },
                             undefined,
                             visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
@@ -1418,7 +1425,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             paneEl,
                             "div",
                             {
-                                text: `Configured as using non-HTTPS. We might fail on mobile devices.`,
+                                text: `Configured as non-HTTPS URI. Be warned that this may not work on mobile devices.`,
                             },
                             undefined,
                             visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
@@ -1429,7 +1436,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         paneEl,
                         "div",
                         {
-                            text: `These settings are kept locked while any synchronization options are enabled. Disable these options in the "Sync Settings" tab to unlock.`,
+                            text: `These settings are unable to be changed during synchronization. Please disable all syncing in the "Sync Settings" to unlock.`,
                         },
                         undefined,
                         visibleOnly(() => isAnySyncEnabled())
@@ -1457,7 +1464,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         .setName("Test Database Connection")
                         .setClass("wizardHidden")
                         .setDesc(
-                            "Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created."
+                            "Open database connection. If the remote database is not found and you have permission to create a database, the database will be created."
                         )
                         .addButton((button) =>
                             button
@@ -1469,8 +1476,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         );
 
                     new Setting(paneEl)
-                        .setName("Check and fix database configuration")
-                        .setDesc("Check the database configuration, and fix if there are any problems.")
+                        .setName("Validate Database Configuration")
+                        .setDesc("Checks and fixes any potential issues with the database config.")
                         .addButton((button) =>
                             button
                                 .setButtonText("Check")
@@ -1501,7 +1508,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "Confidentiality").then((paneEl) => {
+            void addPanel(paneEl, "Privacy & Encryption").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("encrypt", { holdValue: true });
 
                 const isEncryptEnabled = visibleOnly(() => this.isConfiguredAs("encrypt", true));
@@ -1526,8 +1533,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
 
             void addPanel(paneEl, "Fetch settings").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Fetch tweaks from the remote")
-                    .setDesc("Fetch other necessary settings from already configured remote.")
+                    .setName("Fetch config from server")
+                    .setDesc("Fetch necessary settings from already configured server.")
                     .addButton((button) =>
                         button
                             .setButtonText("Fetch")
@@ -1563,7 +1570,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         if (isEncryptionFullyEnabled) {
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "Enabling End-to-End Encryption and Path Obfuscation is strongly recommended. Do you surely want to continue without encryption?",
+                                    "We recommend enabling End-To-End Encryption, and Path Obfuscation. Are you sure you want to continue without encryption?",
                                     { defaultOption: "No", title: "Encryption is not enabled" }
                                 )) == "no"
                             ) {
@@ -1576,8 +1583,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         if (!(await isPassphraseValid())) {
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "End-to-End encryption seems to have trouble. Do you surely want to continue with the current settings?",
-                                    { defaultOption: "No", title: "Encryption has some trouble" }
+                                    "Your encryption passphrase might be invalid. Are you sure you want to continue?",
+                                    { defaultOption: "No", title: "Encryption Passphrase Invalid?" }
                                 )) == "no"
                             ) {
                                 return;
@@ -1592,8 +1599,8 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                         }
                         if (
                             (await this.plugin.confirm.askYesNoDialog(
-                                "Do you want to fetch the tweaks from the remote?",
-                                { defaultOption: "Yes", title: "Fetch tweaks" }
+                                "Do you want to fetch the config from the server?",
+                                { defaultOption: "Yes", title: "Fetch config" }
                             )) == "yes"
                         ) {
                             const trialSetting = { ...this.initialSettings, ...this.editingSettings };
@@ -1702,18 +1709,18 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             ...this.editingSettings,
                             ...presetLiveSync,
                         };
-                        Logger("Synchronization setting configured as LiveSync.", LOG_LEVEL_NOTICE);
+                        Logger("Configured synchronization mode: LiveSync", LOG_LEVEL_NOTICE);
                     } else if (currentPreset == "PERIODIC") {
                         this.editingSettings = {
                             ...this.editingSettings,
                             ...presetPeriodic,
                         };
                         Logger(
-                            "Synchronization setting configured as Periodic sync with batch database update.",
+                            "Configured synchronization mode: Periodic",
                             LOG_LEVEL_NOTICE
                         );
                     } else {
-                        Logger("All synchronizations disabled.", LOG_LEVEL_NOTICE);
+                        Logger("Configured synchronization mode: DISABLED", LOG_LEVEL_NOTICE);
                         this.editingSettings = {
                             ...this.editingSettings,
                             ...presetAllDisabled,
@@ -1731,7 +1738,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                             // this.resetEditingSettings();
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "All done!, do you want to generate a setup URI to set up other devices?",
+                                    "All done! Do you want to generate a setup URI to set up other devices?",
                                     { defaultOption: "Yes", title: "Congratulations!" }
                                 )) == "yes"
                             ) {
@@ -1752,7 +1759,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     }
                 });
             });
-            void addPanel(paneEl, "Synchronization Methods").then((paneEl) => {
+            void addPanel(paneEl, "Synchronization Method").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 // const onlyOnLiveSync = visibleOnly(() => this.isConfiguredAs("syncMode", "LIVESYNC"));
@@ -1763,10 +1770,10 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
                               ONEVENTS: "On events",
-                              PERIODIC: "Periodic and On events",
+                              PERIODIC: "Periodic and on events",
                               LIVESYNC: "LiveSync",
                           }
-                        : { ONEVENTS: "On events", PERIODIC: "Periodic and On events" };
+                        : { ONEVENTS: "On events", PERIODIC: "Periodic and on events" };
 
                 new Setting(paneEl)
                     .autoWireDropDown("syncMode", {
@@ -1852,7 +1859,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 new Setting(paneEl).autoWireToggle("notifyAllSettingSyncFile");
             });
 
-            void addPanel(paneEl, "Hidden files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 const LABEL_ENABLED = "🔁 : Enabled";
@@ -2778,7 +2785,7 @@ ${stringifyYaml(pluginConfig)}`;
                 paneEl,
                 "div",
                 {
-                    text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization, and this device was not marked as 'resolved'. It caused by some operations like this. Re-initialized. Local database initialization should be required. Please back your vault up, reset the local database, and press 'Mark this device as resolved'. This warning kept showing until confirming the device is resolved by the replication.",
+                    text: "The remote database is locked for synchronization to prevent vault corruption because this device isn't marked as 'resolved'. Please backup your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until the device is confirmed as resolved by replication.",
                     cls: "op-warn",
                 },
                 (c) => {
@@ -2786,7 +2793,7 @@ ${stringifyYaml(pluginConfig)}`;
                         c,
                         "button",
                         {
-                            text: "I'm ready, mark this device 'resolved'",
+                            text: "I've made a backup, mark this device 'resolved'",
                             cls: "mod-warning",
                         },
                         (e) => {
@@ -2830,8 +2837,8 @@ ${stringifyYaml(pluginConfig)}`;
 
             void addPanel(paneEl, "Scram!").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Lock remote")
-                    .setDesc("Lock remote to prevent synchronization with other devices.")
+                    .setName("Lock Server")
+                    .setDesc("Lock the remote server to prevent synchronization with other devices.")
                     .addButton((button) =>
                         button
                             .setButtonText("Lock")
@@ -2844,7 +2851,7 @@ ${stringifyYaml(pluginConfig)}`;
 
                 new Setting(paneEl)
                     .setName("Emergency restart")
-                    .setDesc("place the flag file to prevent all operation and restart.")
+                    .setDesc("Disables all synchronization and restart.")
                     .addButton((button) =>
                         button
                             .setButtonText("Flag and restart")
@@ -2857,7 +2864,7 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
 
-            void addPanel(paneEl, "Data-complementary Operations").then((paneEl) => {
+            void addPanel(paneEl, "Syncing").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Resend")
                     .setDesc("Resend all chunks to the remote.")
@@ -2982,9 +2989,9 @@ ${stringifyYaml(pluginConfig)}`;
             });
             void addPanel(paneEl, "Rebuilding Operations (Remote Only)").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Perform compaction")
+                    .setName("Perform cleanup")
                     .setDesc(
-                        "Compaction discards all of Eden in the non-latest revisions, reducing the storage usage. However, this operation requires the same free space on the remote as the current database."
+                        "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
                     )
                     .addButton((button) =>
                         button
@@ -2992,11 +2999,11 @@ ${stringifyYaml(pluginConfig)}`;
                             .setDisabled(false)
                             .onClick(async () => {
                                 const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
-                                Logger(`Compaction has been began`, LOG_LEVEL_NOTICE, "compaction");
+                                Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
                                 if (await replicator.compactRemote(this.editingSettings)) {
-                                    Logger(`Compaction has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                                    Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
                                 } else {
-                                    Logger(`Compaction has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                                    Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
                                 }
                             })
                     )
@@ -3032,7 +3039,7 @@ ${stringifyYaml(pluginConfig)}`;
 
                 new Setting(paneEl)
                     .setName("Purge all journal counter")
-                    .setDesc("Purge all sending and downloading cache.")
+                    .setDesc("Purge all download/upload cache.")
                     .addButton((button) =>
                         button
                             .setButtonText("Reset all")
@@ -3040,14 +3047,14 @@ ${stringifyYaml(pluginConfig)}`;
                             .setDisabled(false)
                             .onClick(async () => {
                                 await this.getMinioJournalSyncClient().resetAllCaches();
-                                Logger(`Journal sending and downloading cache has been cleared.`, LOG_LEVEL_NOTICE);
+                                Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
                             })
                     )
                     .addOnUpdate(onlyOnMinIO);
 
                 new Setting(paneEl)
-                    .setName("Make empty the bucket")
-                    .setDesc("Delete all data on the remote.")
+                    .setName("Fresh Start Wipe")
+                    .setDesc("Delete all data on the remote server.")
                     .addButton((button) =>
                         button
                             .setButtonText("Delete")
@@ -3063,18 +3070,18 @@ ${stringifyYaml(pluginConfig)}`;
                                     sentFiles: new Set(),
                                 }));
                                 await this.resetRemoteBucket();
-                                Logger(`the bucket has been cleared.`, LOG_LEVEL_NOTICE);
+                                Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
                             })
                     )
                     .addOnUpdate(onlyOnMinIO);
             });
 
-            void addPanel(paneEl, "Niches").then((paneEl) => {
+            void addPanel(paneEl, "Deprecated").then((paneEl) => {
                 new Setting(paneEl)
                     .setClass("sls-setting-obsolete")
-                    .setName("(Obsolete) Clean up databases")
+                    .setName("Run database cleanup")
                     .setDesc(
-                        "Delete unused chunks to shrink the database. However, this feature could be not effective in some cases. Please use rebuild everything instead."
+                        "Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul."
                     )
                     .addButton((button) =>
                         button
@@ -3098,10 +3105,10 @@ ${stringifyYaml(pluginConfig)}`;
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Discard local database to reset or uninstall Self-hosted LiveSync")
+                    .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
                     .addButton((button) =>
                         button
-                            .setButtonText("Discard")
+                            .setButtonText("Delete")
                             .setWarning()
                             .setDisabled(false)
                             .onClick(async () => {

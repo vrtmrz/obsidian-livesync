@@ -45,7 +45,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Sync Mode",
     },
     couchDB_URI: {
-        name: "URI",
+        name: "Server URI",
         placeHolder: "https://........",
     },
     couchDB_USER: {
@@ -57,30 +57,30 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "password",
     },
     couchDB_DBNAME: {
-        name: "Database name",
+        name: "Database Name",
     },
     passphrase: {
         name: "Passphrase",
-        desc: "Encrypting passphrase. If you change the passphrase of an existing database, overwriting the remote database is strongly recommended.",
+        desc: "Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.",
     },
     showStatusOnEditor: {
         name: "Show status inside the editor",
-        desc: "Reflected after reboot",
+        desc: "Requires restart of Obsidian.",
     },
     showOnlyIconsOnEditor: {
         name: "Show status as icons only",
     },
     showStatusOnStatusbar: {
         name: "Show status on the status bar",
-        desc: "Reflected after reboot.",
+        desc: "Requires restart of Obsidian.",
     },
     lessInformationInLog: {
         name: "Show only notifications",
-        desc: "Prevent logging and show only notification. Please disable when you report the logs",
+        desc: "Disables logging, only shows notifications. Please disable if you report an issue.",
     },
     showVerboseLog: {
         name: "Verbose Log",
-        desc: "Show verbose log. Please enable when you report the logs",
+        desc: "Show verbose log. Please enable if you report an issue.",
     },
     hashCacheMaxCount: {
         name: "Memory cache size (by total items)",
@@ -105,7 +105,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     syncOnSave: {
         name: "Sync on Save",
-        desc: "When you save a file, sync automatically",
+        desc: "Forces a sync of the file when it's saved.",
     },
     syncOnEditorSave: {
         name: "Sync on Editor Save",
@@ -113,11 +113,11 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     syncOnFileOpen: {
         name: "Sync on File Open",
-        desc: "When you open a file, sync automatically",
+        desc: "Forces the file to be synced when opened.",
     },
     syncOnStart: {
-        name: "Sync on Start",
-        desc: "Start synchronization after launching Obsidian.",
+        name: "Sync on Startup",
+        desc: "Automatically Sync all files when opening Obsidian.",
     },
     syncAfterMerge: {
         name: "Sync after merging file",
@@ -125,28 +125,30 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     trashInsteadDelete: {
         name: "Use the trash bin",
-        desc: "Do not delete files that are deleted in remote, just move to trash.",
+        desc: "Move remotely deleted files to the trash, instead of deleting.",
     },
     doNotDeleteFolder: {
         name: "Keep empty folder",
-        desc: "Normally, a folder is deleted when it becomes empty after a synchronization. Enabling this will prevent it from getting deleted",
+        desc: "Should we keep folders that don't have any files inside?",
     },
     resolveConflictsByNewerFile: {
-        name: "Always overwrite with a newer file (beta)",
-        desc: "(Def off) Resolve conflicts by newer files automatically.",
+        name: "(BETA) Always overwrite with a newer file",
+        desc: "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.",
     },
     checkConflictOnlyOnOpen: {
-        name: "Postpone resolution of inactive files",
+        name: "Delay conflict resolution of inactive files",
+        desc: "Should we only check for conflicts when a file is opened?"
     },
     showMergeDialogOnlyOnActive: {
-        name: "Postpone manual resolution of inactive files",
+        name: "Delay merge conflict prompt for inactive files.",
+        desc: "Should we prompt you about conflicting files when a file is opened?"
     },
     disableMarkdownAutoMerge: {
-        name: "Always resolve conflicts manually",
-        desc: "If this switch is turned on, a merge dialog will be displayed, even if the sensible-merge is possible automatically. (Turn on to previous behavior)",
+        name: "Always prompt merge conflicts",
+        desc: "Should we prompt you for every single merge, even if we can safely merge automatcially?",
     },
     writeDocumentsIfConflicted: {
-        name: "Always reflect synchronized changes even if the note has a conflict",
+        name: "Sync changes even if the file has a conflict.",
         desc: "Turn on to previous behavior",
     },
     syncInternalFilesInterval: {
@@ -171,11 +173,11 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     ignoreFiles: {
         name: "Ignore files",
-        desc: "We can use multiple ignore files, e.g.) `.gitignore, .dockerignore`",
+        desc: "Comma separated `.gitignore, .dockerignore`",
     },
     batch_size: {
         name: "Batch size",
-        desc: "Number of change feed items to process at a time. Defaults to 50. Minimum is 2.",
+        desc: "Number of changes to sync at a time. Defaults to 50. Minimum is 2.",
     },
     batches_limit: {
         name: "Batch limit",
@@ -193,7 +195,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     suspendFileWatching: {
         name: "Suspend file watching",
-        desc: "Stop watching for file change.",
+        desc: "Stop watching for file changes.",
     },
     suspendParseReplicationResult: {
         name: "Suspend database reflecting",
@@ -259,7 +261,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     useCustomRequestHandler: {
         name: "Use Custom HTTP Handler",
-        desc: "If your Object Storage could not configured accepting CORS, enable this.",
+        desc: "Enable this if your Object Storage doesn't accept CORS",
     },
     maxChunksInEden: {
         name: "Maximum Incubating Chunks",
@@ -275,7 +277,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     settingSyncFile: {
         name: "Filename",
-        desc: "If you set this, all settings are saved in a markdown file. You will be notified when new settings arrive. You can set different files by the platform.",
+        desc: "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.",
     },
     preset: {
         name: "Presets",
@@ -356,7 +358,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         // desc: "Enable advanced mode"
     },
     usePowerUserMode: {
-        name: "Enable power user features",
+        name: "Enable poweruser features",
         // desc: "Enable power user mode",
         // level: LEVEL_ADVANCED
     },
@@ -365,7 +367,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     enableDebugTools: {
         name: "Enable Developers' Debug Tools.",
-        desc: "You need a restart to apply this setting.",
+        desc: "Requires restart of Obsidian",
     },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {

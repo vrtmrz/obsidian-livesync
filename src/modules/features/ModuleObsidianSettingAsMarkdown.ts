@@ -92,7 +92,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
         if (automated && !this.settings.notifyAllSettingSyncFile) {
             if (!this.settings.settingSyncFile || this.settings.settingSyncFile != filename) {
                 this._log(
-                    `Setting file (${filename}) is not matched to the current configuration. skipped.`,
+                    `Setting file (${filename}) does not match the current configuration. skipped.`,
                     LOG_LEVEL_DEBUG
                 );
                 return;
