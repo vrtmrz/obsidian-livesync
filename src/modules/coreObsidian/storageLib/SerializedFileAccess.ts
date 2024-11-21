@@ -42,6 +42,13 @@ export class SerializedFileAccess {
         this.plugin = plugin;
     }
 
+    async tryAdapterStat(file: TFile | string) {
+        const path = file instanceof TFile ? file.path : file;
+        return await processReadFile(file, async () => {
+            if (!(await this.app.vault.adapter.exists(path))) return null;
+            return this.app.vault.adapter.stat(path);
+        });
+    }
     async adapterStat(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
         return await processReadFile(file, () => this.app.vault.adapter.stat(path));

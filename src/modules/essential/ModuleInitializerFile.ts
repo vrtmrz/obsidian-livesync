@@ -238,10 +238,10 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                 if (!this.core.$$isFileSizeExceeded(file.stat.size) && !this.core.$$isFileSizeExceeded(doc.size)) {
                     await this.syncFileBetweenDBandStorage(file, doc);
                     // fireAndForget(() => this.checkAndApplySettingFromMarkdown(getPath(doc), true));
-                    eventHub.emitEvent("event-file-changed", {
-                        file: getPath(doc),
-                        automated: true,
-                    });
+                    // eventHub.emitEvent("event-file-changed", {
+                    //     file: getPath(doc),
+                    //     automated: true,
+                    // });
                 } else {
                     this._log(
                         `SYNC DATABASE AND STORAGE: ${getPath(doc)} has been skipped due to file size exceeding the limit`,
@@ -282,10 +282,6 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                 if (!this.core.$$isFileSizeExceeded(file.stat.size)) {
                     this._log("STORAGE -> DB :" + file.path);
                     await this.core.fileHandler.storeFileToDB(file);
-                    eventHub.emitEvent("event-file-changed", {
-                        file: file.path,
-                        automated: true,
-                    });
                 } else {
                     this._log(
                         `STORAGE -> DB : ${file.path} has been skipped due to file size exceeding the limit`,
@@ -296,7 +292,12 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             case TARGET_IS_NEW:
                 if (!this.core.$$isFileSizeExceeded(doc.size)) {
                     this._log("STORAGE <- DB :" + file.path);
-                    if (!(await this.core.fileHandler.dbToStorage(doc, stripAllPrefixes(file.path), true))) {
+                    if (await this.core.fileHandler.dbToStorage(doc, stripAllPrefixes(file.path), true)) {
+                        eventHub.emitEvent("event-file-changed", {
+                            file: file.path,
+                            automated: true,
+                        });
+                    } else {
                         this._log(`STORAGE <- DB : Cloud not read ${file.path}, possibly deleted`, LOG_LEVEL_NOTICE);
                     }
                     return caches;

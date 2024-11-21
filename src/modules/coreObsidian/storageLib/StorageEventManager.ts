@@ -171,11 +171,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             // Folder
             return;
         }
+
         void this.appendQueue(
             [
                 {
                     type: "INTERNAL",
                     file: InternalFileToUXFileInfoStub(path),
+                    skipBatchWait: true, // Internal files should be processed immediately.
                 },
             ],
             null
@@ -212,11 +214,14 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             // Stop cache using to prevent the corruption;
             // let cache: null | string | ArrayBuffer;
             // new file or something changed, cache the changes.
-            if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
-                // Wait for a bit while to let the writer has marked `touched` at the file.
-                await delay(10);
-                if (this.core.storageAccess.recentlyTouched(file)) {
-                    continue;
+            // if (file instanceof TFile && (type == "CREATE" || type == "CHANGED")) {
+            if (file instanceof TFile || !file.isFolder) {
+                if (type == "CREATE" || type == "CHANGED") {
+                    // Wait for a bit while to let the writer has marked `touched` at the file.
+                    await delay(10);
+                    if (this.core.storageAccess.recentlyTouched(file.path)) {
+                        continue;
+                    }
                 }
             }
 
@@ -380,13 +385,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         const file = queue.args.file;
         const lockKey = `handleFile:${file.path}`;
         return await serialized(lockKey, async () => {
-            // TODO CHECK
-            const key = `file-last-proc-${queue.type}-${file.path}`;
-            const last = Number((await this.core.kvDB.get(key)) || 0);
             if (queue.type == "INTERNAL" || file.isInternal) {
                 await this.core.$anyProcessOptionalFileEvent(file.path as unknown as FilePath);
             } else {
-                // let mtime = file.stat.mtime;
+                const key = `file-last-proc-${queue.type}-${file.path}`;
+                const last = Number((await this.core.kvDB.get(key)) || 0);
                 if (queue.type == "DELETE") {
                     await this.core.$anyHandlerProcessesFileEvent(queue);
                 } else {

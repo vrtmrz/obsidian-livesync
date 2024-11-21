@@ -14,8 +14,8 @@ import {
     compareFileFreshness,
     EVEN,
     getPath,
-    getPathFromUXFileInfo,
     getPathWithoutPrefix,
+    getStoragePathFromUXFileInfo,
     markChangesAreSame,
 } from "../../common/utils";
 import { getDocDataAsArray, isDocContentSame, readContent } from "../../lib/src/common/utils";
@@ -94,11 +94,9 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             if (!shouldApplied) {
                 readFile = await this.readFileFromStub(file);
                 if (await isDocContentSame(getDocDataAsArray(entry.data), readFile.body)) {
-                    if (shouldApplied) {
-                        // Timestamp is different but the content is same. therefore, two timestamps should be handled as same.
-                        // So, mark the changes are same.
-                        markChangesAreSame(file, file.stat.mtime, entry.mtime);
-                    }
+                    // Timestamp is different but the content is same. therefore, two timestamps should be handled as same.
+                    // So, mark the changes are same.
+                    markChangesAreSame(file, file.stat.mtime, entry.mtime);
                 } else {
                     shouldApplied = true;
                 }
@@ -170,18 +168,13 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         info: UXFileInfoStub | FilePath,
         rev: string
     ): Promise<boolean | undefined> {
+        const path = getStoragePathFromUXFileInfo(info);
         if (!(await this.deleteRevisionFromDB(info, rev))) {
-            this._log(
-                `Failed to delete the conflicted revision ${rev} of ${getPathFromUXFileInfo(info)}`,
-                LOG_LEVEL_VERBOSE
-            );
+            this._log(`Failed to delete the conflicted revision ${rev} of ${path}`, LOG_LEVEL_VERBOSE);
             return false;
         }
         if (!(await this.dbToStorageWithSpecificRev(info, rev, true))) {
-            this._log(
-                `Failed to apply the resolved revision ${rev} of ${getPathFromUXFileInfo(info)} to the storage`,
-                LOG_LEVEL_VERBOSE
-            );
+            this._log(`Failed to apply the resolved revision ${rev} of ${path} to the storage`, LOG_LEVEL_VERBOSE);
             return false;
         }
     }

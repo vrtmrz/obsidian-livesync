@@ -329,7 +329,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             } else if (isValidPath(getPath(doc))) {
                 this.storageApplyingProcessor.enqueue(doc as MetaEntry);
             } else {
-                Logger(`Skipped: ${doc._id.substring(0, 8)}`, LOG_LEVEL_VERBOSE);
+                Logger(`Skipped: ${path} (${doc._id.substring(0, 8)})`, LOG_LEVEL_VERBOSE);
             }
             return;
         },

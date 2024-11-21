@@ -55,7 +55,7 @@ export async function InternalFileToUXFileInfo(
     prefix: string = ICHeader
 ): Promise<UXFileInfo> {
     const name = fullPath.split("/").pop() as string;
-    const stat = await vaultAccess.adapterStat(fullPath);
+    const stat = await vaultAccess.tryAdapterStat(fullPath);
     if (stat == null) throw new Error(`File not found: ${fullPath}`);
     if (stat.type == "folder") throw new Error(`File not found: ${fullPath}`);
     const file = await vaultAccess.adapterReadAuto(fullPath);

@@ -1,6 +1,6 @@
 import { LRUCache } from "octagonal-wheels/memory/LRUCache";
 import {
-    getPathFromUXFileInfo,
+    getStoragePathFromUXFileInfo,
     id2path,
     isInternalMetadata,
     path2id,
@@ -16,7 +16,7 @@ import {
     type ObsidianLiveSyncSettings,
     type UXFileInfoStub,
 } from "../../lib/src/common/types";
-import { addPrefix, isAcceptedAll, stripAllPrefixes } from "../../lib/src/string_and_binary/path";
+import { addPrefix, isAcceptedAll } from "../../lib/src/string_and_binary/path";
 import { AbstractModule } from "../AbstractModule";
 import type { ICoreModule } from "../ModuleTypes";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
@@ -107,14 +107,14 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
             }
         );
 
-        const filepath = getPathFromUXFileInfo(file);
+        const filepath = getStoragePathFromUXFileInfo(file);
         const lc = filepath.toLowerCase();
         if (this.core.$$shouldCheckCaseInsensitive()) {
             if (lc in fileCount && fileCount[lc] > 1) {
                 return false;
             }
         }
-        const fileNameLC = getPathFromUXFileInfo(file).split("/").pop()?.toLowerCase();
+        const fileNameLC = getStoragePathFromUXFileInfo(file).split("/").pop()?.toLowerCase();
         if (this.settings.useIgnoreFiles) {
             if (this.ignoreFiles.some((e) => e.toLowerCase() == fileNameLC)) {
                 // We must reload ignore files due to the its change.
@@ -154,16 +154,12 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         if (!this.settings.useIgnoreFiles) {
             return false;
         }
-        const filepath = getPathFromUXFileInfo(file);
+        const filepath = getStoragePathFromUXFileInfo(file);
         if (this.ignoreFileCache.has(filepath)) {
             // Renew
             await this.readIgnoreFile(filepath);
         }
-        if (
-            !(await isAcceptedAll(stripAllPrefixes(filepath), this.ignoreFiles, (filename) =>
-                this.getIgnoreFile(filename)
-            ))
-        ) {
+        if (!(await isAcceptedAll(filepath, this.ignoreFiles, (filename) => this.getIgnoreFile(filename)))) {
             return true;
         }
         return false;

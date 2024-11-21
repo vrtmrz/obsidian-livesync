@@ -5,6 +5,7 @@ import {
     CANCELLED,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
     MISSING_OR_ERROR,
     NOT_CONFLICTED,
     type diff_check_result,
@@ -114,7 +115,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 conflictCheckResult === CANCELLED
             ) {
                 // nothing to do.
-                this._log(`conflict:Nothing to do:${filename}`);
+                this._log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
                 return;
             }
             if (conflictCheckResult === AUTO_MERGED) {
@@ -123,7 +124,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                     //Wait for the running replication, if not running replication, run it once.
                     await this.core.$$waitForReplicationOnce();
                 }
-                this._log("conflict:Automatically merged, but we have to check it again");
+                this._log("[conflict] Automatically merged, but we have to check it again");
                 await this.core.$$queueConflictCheck(filename);
                 return;
             }
@@ -131,13 +132,13 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 const af = this.core.$$getActiveFilePath();
                 if (af && af != filename) {
                     this._log(
-                        `${filename} is conflicted. Merging process has been postponed to the file have got opened.`,
+                        `[conflict] ${filename} is conflicted. Merging process has been postponed to the file have got opened.`,
                         LOG_LEVEL_NOTICE
                     );
                     return;
                 }
             }
-            this._log("conflict:Manual merge required!");
+            this._log("[conflict] Manual merge required!");
             await this.core.$anyResolveConflictByUI(filename, conflictCheckResult);
         });
     }

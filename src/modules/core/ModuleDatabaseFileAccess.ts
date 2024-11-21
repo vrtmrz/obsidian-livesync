@@ -1,6 +1,11 @@
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
-import { getPathFromUXFileInfo, isInternalMetadata, markChangesAreSame } from "../../common/utils";
+import {
+    getDatabasePathFromUXFileInfo,
+    getStoragePathFromUXFileInfo,
+    isInternalMetadata,
+    markChangesAreSame,
+} from "../../common/utils";
 import type {
     UXFileInfoStub,
     FilePathWithPrefix,
@@ -9,10 +14,11 @@ import type {
     LoadedEntry,
     FilePath,
     SavingEntry,
+    DocumentID,
 } from "../../lib/src/common/types";
 import type { DatabaseFileAccess } from "../interfaces/DatabaseFileAccess";
 import { type IObsidianModule } from "../AbstractObsidianModule.ts";
-import { isPlainText, shouldBeIgnored } from "../../lib/src/string_and_binary/path";
+import { isPlainText, shouldBeIgnored, stripAllPrefixes } from "../../lib/src/string_and_binary/path";
 import {
     createBlob,
     createTextBlob,
@@ -23,6 +29,7 @@ import {
 } from "../../lib/src/common/utils";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { AbstractModule } from "../AbstractModule.ts";
+import { ICHeader } from "../../common/types.ts";
 
 export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidianModule, DatabaseFileAccess {
     $everyOnload(): Promise<boolean> {
@@ -67,7 +74,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
     }
 
     async checkIsTargetFile(file: UXFileInfoStub | FilePathWithPrefix): Promise<boolean> {
-        const path = getPathFromUXFileInfo(file);
+        const path = getStoragePathFromUXFileInfo(file);
         if (!(await this.core.$$isTargetFile(path))) {
             this._log(`File is not target`, LOG_LEVEL_VERBOSE);
             return false;
@@ -83,7 +90,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         if (!(await this.checkIsTargetFile(file))) {
             return true;
         }
-        const fullPath = getPathFromUXFileInfo(file);
+        const fullPath = getDatabasePathFromUXFileInfo(file);
         try {
             this._log(`deleteDB By path:${fullPath}`);
             return await this.deleteFromDBbyPath(fullPath, rev);
@@ -104,6 +111,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
     async storeContent(path: FilePathWithPrefix, content: string): Promise<boolean> {
         const blob = createTextBlob(content);
         const bytes = (await blob.arrayBuffer()).byteLength;
+        const isInternal = path.startsWith(".") ? true : undefined;
         const dummyUXFileInfo: UXFileInfo = {
             name: path.split("/").pop() as string,
             path: path,
@@ -114,6 +122,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
                 type: "file",
             },
             body: blob,
+            isInternal,
         };
         return await this._store(dummyUXFileInfo, true, false, false);
     }
@@ -133,18 +142,47 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             this._log("File seems bad", LOG_LEVEL_VERBOSE);
             return false;
         }
-        const path = getPathFromUXFileInfo(file);
-
+        // const path = getPathFromUXFileInfo(file);
         const isPlain = isPlainText(file.name);
         const possiblyLarge = !isPlain;
         const content = file.body;
-        if (possiblyLarge) this._log(`Processing: ${path}`, LOG_LEVEL_VERBOSE);
+
         const datatype = determineTypeFromBlob(content);
-        const fullPath = file.path;
-        const id = await this.core.$$path2id(fullPath);
+        const idPrefix = file.isInternal ? ICHeader : "";
+        const fullPath = getStoragePathFromUXFileInfo(file);
+        const fullPathOnDB = getDatabasePathFromUXFileInfo(file);
+
+        if (possiblyLarge) this._log(`Processing: ${fullPath}`, LOG_LEVEL_VERBOSE);
+
+        // if (isInternalMetadata(fullPath)) {
+        //     this._log(`Internal file: ${fullPath}`, LOG_LEVEL_VERBOSE);
+        //     return false;
+        // }
+        if (file.isInternal) {
+            if (file.deleted) {
+                file.stat = {
+                    size: 0,
+                    ctime: Date.now(),
+                    mtime: Date.now(),
+                    type: "file",
+                };
+            } else if (file.stat == undefined) {
+                const stat = await this.core.storageAccess.statHidden(file.path);
+                if (!stat) {
+                    // We stored actually deleted or not since here, so this is an unexpected case. we should raise an error.
+                    this._log(`Internal file not found: ${fullPath}`, LOG_LEVEL_VERBOSE);
+                    return false;
+                }
+                file.stat = stat;
+            }
+        }
+
+        const idMain = await this.core.$$path2id(fullPath);
+
+        const id = (idPrefix + idMain) as DocumentID;
         const d: SavingEntry = {
             _id: id,
-            path: file.path,
+            path: fullPathOnDB,
             data: content,
             ctime: file.stat.ctime,
             mtime: file.stat.mtime,
@@ -166,7 +204,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             //     return true;
             // }
             try {
-                const old = await this.localDatabase.getDBEntry(fullPath, undefined, false, true, false);
+                const old = await this.localDatabase.getDBEntry(d.path, undefined, false, true, false);
                 if (old !== false) {
                     const oldData = { data: old.data, deleted: old._deleted || old.deleted };
                     const newData = { data: d.data, deleted: d._deleted || d.deleted };
@@ -181,24 +219,14 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
                     // d._rev = old._rev;
                 }
             } catch (ex) {
-                if (force) {
-                    this._log(
-                        msg +
-                            "Error, Could not check the diff for the old one." +
-                            (force ? "force writing." : "") +
-                            fullPath +
-                            (d._deleted || d.deleted ? " (deleted)" : ""),
-                        LOG_LEVEL_VERBOSE
-                    );
-                } else {
-                    this._log(
-                        msg +
-                            "Error, Could not check the diff for the old one." +
-                            fullPath +
-                            (d._deleted || d.deleted ? " (deleted)" : ""),
-                        LOG_LEVEL_VERBOSE
-                    );
-                }
+                this._log(
+                    msg +
+                        "Error, Could not check the diff for the old one." +
+                        (force ? "force writing." : "") +
+                        fullPath +
+                        (d._deleted || d.deleted ? " (deleted)" : ""),
+                    LOG_LEVEL_VERBOSE
+                );
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return !force;
             }
@@ -220,7 +248,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         if (!(await this.checkIsTargetFile(file))) {
             return [];
         }
-        const filename = getPathFromUXFileInfo(file);
+        const filename = getDatabasePathFromUXFileInfo(file);
         const doc = await this.localDatabase.getDBEntryMeta(filename, { conflicts: true }, true);
         if (doc === false) {
             return [];
@@ -243,9 +271,10 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             return false;
         }
         const data = createBlob(readContent(entry));
+        const path = stripAllPrefixes(entry.path);
         const fileInfo: UXFileInfo = {
-            name: entry.path.split("/").pop() as string,
-            path: entry.path,
+            name: path.split("/").pop() as string,
+            path: path,
             stat: {
                 size: entry.size,
                 ctime: entry.ctime,
@@ -265,12 +294,12 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         rev?: string,
         skipCheck = false
     ): Promise<MetaEntry | false> {
-        const filename = getPathFromUXFileInfo(file);
+        const dbFileName = getDatabasePathFromUXFileInfo(file);
         if (skipCheck && !(await this.checkIsTargetFile(file))) {
             return false;
         }
 
-        const doc = await this.localDatabase.getDBEntryMeta(filename, rev ? { rev: rev } : undefined, true);
+        const doc = await this.localDatabase.getDBEntryMeta(dbFileName, rev ? { rev: rev } : undefined, true);
         if (doc === false) {
             return false;
         }

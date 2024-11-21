@@ -11,6 +11,8 @@ import {
 
 import { Logger } from "../lib/src/common/logger.ts";
 import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     type AnyEntry,
     type DocumentID,
@@ -25,15 +27,11 @@ import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
 import { sameChangePairs } from "./stores.ts";
+import type { KeyValueDatabase } from "./KeyValueDB.ts";
+import { scheduleTask } from "octagonal-wheels/concurrency/task";
+import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
 
-export {
-    scheduleTask,
-    setPeriodicTask,
-    cancelTask,
-    cancelAllTasks,
-    cancelPeriodicTask,
-    cancelAllPeriodicTask,
-} from "../lib/src/concurrency/task.ts";
+export { scheduleTask, cancelTask, cancelAllTasks } from "../lib/src/concurrency/task.ts";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".
@@ -72,9 +70,24 @@ export function getPathWithoutPrefix(entry: AnyEntry) {
 export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
+
+export function isInternalFile(file: UXFileInfoStub | string | FilePathWithPrefix) {
+    if (typeof file == "string") return file.startsWith(ICHeader);
+    if (file.isInternal) return true;
+    return false;
+}
 export function getPathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
     if (typeof file == "string") return file as FilePathWithPrefix;
     return file.path;
+}
+export function getStoragePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
+    if (typeof file == "string") return stripAllPrefixes(file as FilePathWithPrefix);
+    return stripAllPrefixes(file.path);
+}
+export function getDatabasePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
+    const prefix = isInternalFile(file) ? ICHeader : "";
+    if (typeof file == "string") return (prefix + stripAllPrefixes(file as FilePathWithPrefix)) as FilePathWithPrefix;
+    return (prefix + stripAllPrefixes(file.path)) as FilePathWithPrefix;
 }
 
 const memos: { [key: string]: any } = {};
@@ -148,11 +161,14 @@ export function isCustomisationSyncMetadata(str: string): boolean {
 
 export class PeriodicProcessor {
     _process: () => Promise<any>;
-    _timer?: number;
+    _timer?: number = undefined;
     _plugin: ObsidianLiveSyncPlugin;
     constructor(plugin: ObsidianLiveSyncPlugin, process: () => Promise<any>) {
         this._plugin = plugin;
         this._process = process;
+        eventHub.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
+            this.disable();
+        });
     }
     async process() {
         try {
@@ -265,9 +281,14 @@ export function compareMTime(
     throw new Error("Unexpected error");
 }
 
+function getKey(file: AnyEntry | string | UXFileInfoStub) {
+    const key = typeof file == "string" ? file : stripAllPrefixes(file.path);
+    return key;
+}
+
 export function markChangesAreSame(file: AnyEntry | string | UXFileInfoStub, mtime1: number, mtime2: number) {
     if (mtime1 === mtime2) return true;
-    const key = typeof file == "string" ? file : "_id" in file ? file._id : file.path;
+    const key = getKey(file);
     const pairs = sameChangePairs.get(key, []) || [];
     if (pairs.some((e) => e == mtime1 || e == mtime2)) {
         sameChangePairs.set(key, [...new Set([...pairs, mtime1, mtime2])]);
@@ -275,8 +296,13 @@ export function markChangesAreSame(file: AnyEntry | string | UXFileInfoStub, mti
         sameChangePairs.set(key, [mtime1, mtime2]);
     }
 }
+
+export function unmarkChanges(file: AnyEntry | string | UXFileInfoStub) {
+    const key = getKey(file);
+    sameChangePairs.delete(key);
+}
 export function isMarkedAsSameChanges(file: UXFileInfoStub | AnyEntry | string, mtimes: number[]) {
-    const key = typeof file == "string" ? file : "_id" in file ? file._id : file.path;
+    const key = getKey(file);
     const pairs = sameChangePairs.get(key, []) || [];
     if (mtimes.every((e) => pairs.indexOf(e) !== -1)) {
         return EVEN;
@@ -374,6 +400,95 @@ export function displayRev(rev: string) {
     return `${number}-${hash.substring(0, 6)}`;
 }
 
-// export function getPathFromUXFileInfo(file: UXFileInfoStub | UXFileInfo | string) {
-//     return (typeof file == "string" ? file : file.path) as FilePathWithPrefix;
-// }
+type DocumentProps = {
+    id: DocumentID;
+    rev?: string;
+    prefixedPath: FilePathWithPrefix;
+    path: FilePath;
+    isDeleted: boolean;
+    revDisplay: string;
+    shortenedId: string;
+    shortenedPath: string;
+};
+
+export function getDocProps(doc: AnyEntry): DocumentProps {
+    const id = doc._id;
+    const shortenedId = id.substring(0, 10);
+    const prefixedPath = getPath(doc);
+    const path = stripAllPrefixes(prefixedPath);
+    const rev = doc._rev;
+    const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
+    // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
+    const shortenedPath = path.substring(0, 10);
+    const isDeleted = doc._deleted || doc.deleted || false;
+    return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
+}
+
+export function getLogLevel(showNotice: boolean) {
+    return showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+}
+
+export type MapLike<K, V> = {
+    set(key: K, value: V): Map<K, V>;
+    clear(): void;
+    delete(key: K): boolean;
+    get(key: K): V | undefined;
+    has(key: K): boolean;
+    keys: () => IterableIterator<K>;
+    get size(): number;
+};
+
+export async function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string): Promise<MapLike<K, V>> {
+    const savedData = (await db.get<Map<K, V>>(mapKey)) ?? new Map<K, V>();
+    const _commit = () => {
+        try {
+            scheduleTask("commit-map-save-" + mapKey, 250, async () => {
+                await db.set(mapKey, savedData);
+            });
+        } catch {
+            // NO OP.
+        }
+    };
+    return {
+        set(key: K, value: V) {
+            const modified = savedData.get(key) !== value;
+            const result = savedData.set(key, value);
+            if (modified) {
+                _commit();
+            }
+            return result;
+        },
+        clear(): void {
+            savedData.clear();
+            _commit();
+        },
+        delete(key: K): boolean {
+            const result = savedData.delete(key);
+            if (result) {
+                _commit();
+            }
+            return result;
+        },
+        get(key: K): V | undefined {
+            return savedData.get(key);
+        },
+        has(key) {
+            return savedData.has(key);
+        },
+        keys() {
+            return savedData.keys();
+        },
+        get size() {
+            return savedData.size;
+        },
+    };
+}
+
+export function onlyInNTimes(n: number, proc: (progress: number) => any) {
+    let counter = 0;
+    return function () {
+        if (counter++ % n == 0) {
+            proc(counter);
+        }
+    };
+}

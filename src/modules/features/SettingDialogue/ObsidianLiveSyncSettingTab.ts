@@ -1905,7 +1905,7 @@ However, your report is needed to stabilise this. I appreciate you for your grea
                 }
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncInternalFilesBeforeReplication", {
-                    onUpdate: visibleOnly(() => this.isConfiguredAs("watchInternalFileChanges", false)),
+                    onUpdate: visibleOnly(() => this.isConfiguredAs("watchInternalFileChanges", true)),
                 });
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("syncInternalFilesInterval", {

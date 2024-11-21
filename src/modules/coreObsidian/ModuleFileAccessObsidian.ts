@@ -120,12 +120,12 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         }
     }
     statHidden(path: string): Promise<UXStat | null> {
-        return this.vaultAccess.adapterStat(path);
+        return this.vaultAccess.tryAdapterStat(path);
     }
     async removeHidden(path: string): Promise<boolean> {
         try {
             await this.vaultAccess.adapterRemove(path);
-            if (this.vaultAccess.adapterStat(path) !== null) {
+            if (this.vaultAccess.tryAdapterStat(path) !== null) {
                 return false;
             }
             return true;
@@ -145,7 +145,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         return await this.vaultAccess.adapterReadBinary(path);
     }
     async isExistsIncludeHidden(path: string): Promise<boolean> {
-        return (await this.vaultAccess.adapterStat(path)) !== null;
+        return (await this.vaultAccess.tryAdapterStat(path)) !== null;
     }
     async ensureDir(path: string): Promise<boolean> {
         try {

@@ -12,31 +12,34 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
         __onMissingTranslation(() => {});
         return Promise.resolve(true);
     }
+    async onMissingTranslation(key: string): Promise<void> {
+        const now = new Date();
+        const filename = `missing-translation-`;
+        const time = now.toISOString().split("T")[0];
+        const outFile = `${filename}${time}.jsonl`;
+        const piece = JSON.stringify({
+            [key]: {},
+        });
+        const writePiece = piece.substring(1, piece.length - 1) + ",";
+        try {
+            await this.core.storageAccess.ensureDir(this.app.vault.configDir + "/ls-debug/");
+            await this.core.storageAccess.appendHiddenFile(
+                this.app.vault.configDir + "/ls-debug/" + outFile,
+                writePiece + "\n"
+            );
+        } catch (ex) {
+            this._log(`Could not write ${outFile}`, LOG_LEVEL_VERBOSE);
+            this._log(`Missing translation: ${writePiece}`, LOG_LEVEL_VERBOSE);
+            this._log(ex, LOG_LEVEL_VERBOSE);
+        }
+    }
+
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         // eslint-disable-next-line no-unused-labels
+        this.onMissingTranslation = this.onMissingTranslation.bind(this);
         __onMissingTranslation((key) => {
-            const now = new Date();
-            const filename = `missing-translation-`;
-            const time = now.toISOString().split("T")[0];
-            const outFile = `${filename}${time}.jsonl`;
-            const piece = JSON.stringify({
-                [key]: {},
-            });
-            const writePiece = piece.substring(1, piece.length - 1) + ",";
-            fireAndForget(async () => {
-                try {
-                    await this.core.storageAccess.ensureDir(this.app.vault.configDir + "/ls-debug/");
-                    await this.core.storageAccess.appendHiddenFile(
-                        this.app.vault.configDir + "/ls-debug/" + outFile,
-                        writePiece + "\n"
-                    );
-                } catch (ex) {
-                    this._log(`Could not write ${outFile}`, LOG_LEVEL_VERBOSE);
-                    this._log(`Missing translation: ${writePiece}`, LOG_LEVEL_VERBOSE);
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                }
-            });
+            void this.onMissingTranslation(key);
         });
         type STUB = {
             toc: Set<string>;

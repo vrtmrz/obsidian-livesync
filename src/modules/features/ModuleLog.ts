@@ -46,6 +46,8 @@ const recentLogProcessor = new QueueProcessor(
 ).resumePipeLine();
 // logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
+const showDebugLog = false;
+export const MARK_DONE = "\u{2009}\u{2009}";
 export class ModuleLog extends AbstractObsidianModule implements IObsidianModule {
     registerView = this.plugin.registerView.bind(this.plugin);
 
@@ -89,7 +91,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
         const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
         const labelConflictProcessCount = padLeftSpComputed(this.core.conflictProcessQueueCount, `🔩`);
-        const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value + hiddenFilesProcessingCount.value);
+        const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value - hiddenFilesProcessingCount.value);
         const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`);
         const queueCountLabelX = reactive(() => {
             return `${labelReplication()}${labelDBCount()}${labelStorageCount()}${labelChunkCount()}${labelPluginScanCount()}${labelHiddenFilesCount()}${labelConflictProcessCount()}`;
@@ -355,7 +357,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         );
     }
     $$addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
-        if (level == LOG_LEVEL_DEBUG) {
+        if (level == LOG_LEVEL_DEBUG && !showDebugLog) {
             return;
         }
         if (level < LOG_LEVEL_INFO && this.settings && this.settings.lessInformationInLog) {
@@ -412,15 +414,17 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
                 };
             }
             const timeout = 5000;
-            scheduleTask(`notify-${key}`, timeout, () => {
-                const notify = this.notifies[key].notice;
-                delete this.notifies[key];
-                try {
-                    notify.hide();
-                } catch {
-                    // NO OP
-                }
-            });
+            if (!key.startsWith("keepalive-") || messageContent.indexOf(MARK_DONE) !== -1) {
+                scheduleTask(`notify-${key}`, timeout, () => {
+                    const notify = this.notifies[key].notice;
+                    delete this.notifies[key];
+                    try {
+                        notify.hide();
+                    } catch {
+                        // NO OP
+                    }
+                });
+            }
         }
     }
 }

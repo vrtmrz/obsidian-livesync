@@ -77,7 +77,8 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$tryResetRemoteDatabase();
         await this.core.$$markRemoteLocked();
         await delay(500);
-        await this.askUsingOptionalFeature({ enableOverwrite: true });
+        // We do not have any other devices' data, so we do not need to ask for overwriting.
+        await this.askUsingOptionalFeature({ enableOverwrite: false });
         await delay(1000);
         await this.core.$$replicateAllToServer(true);
         await delay(1000);

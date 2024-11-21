@@ -1,11 +1,24 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import ObsidianLiveSyncPlugin from "../../main";
-    import { ConfigSync, type IPluginDataExDisplay, pluginIsEnumerating, pluginList, pluginManifestStore, pluginV2Progress } from "./CmdConfigSync.ts";
+    import {
+        ConfigSync,
+        type IPluginDataExDisplay,
+        pluginIsEnumerating,
+        pluginList,
+        pluginManifestStore,
+        pluginV2Progress,
+    } from "./CmdConfigSync.ts";
     import PluginCombo from "./PluginCombo.svelte";
     import { Menu, type PluginManifest } from "obsidian";
     import { unique } from "../../lib/src/common/utils";
-    import { MODE_SELECTIVE, MODE_AUTOMATIC, MODE_PAUSED, type SYNC_MODE, type PluginSyncSettingEntry, MODE_SHINY } from "../../lib/src/common/types";
+    import {
+        MODE_SELECTIVE,
+        MODE_AUTOMATIC,
+        MODE_PAUSED,
+        type SYNC_MODE,
+        MODE_SHINY,
+    } from "../../lib/src/common/types";
     import { normalizePath } from "../../deps";
     import { HiddenFileSync } from "../HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
@@ -16,13 +29,15 @@
 
     const addOn = plugin.getAddOn(ConfigSync.name) as ConfigSync;
     if (!addOn) {
-        const msg = "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.";
+        const msg =
+            "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.";
         Logger(msg, LOG_LEVEL_NOTICE);
         throw new Error(msg);
     }
     const addOnHiddenFileSync = plugin.getAddOn(HiddenFileSync.name) as HiddenFileSync;
     if (!addOnHiddenFileSync) {
-        const msg = "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.";
+        const msg =
+            "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.";
         Logger(msg, LOG_LEVEL_NOTICE);
         throw new Error(msg);
     }
@@ -99,7 +114,11 @@
     async function applyData(data: IPluginDataExDisplay): Promise<boolean> {
         return await addOn.applyData(data);
     }
-    async function compareData(docA: IPluginDataExDisplay, docB: IPluginDataExDisplay, compareEach = false): Promise<boolean> {
+    async function compareData(
+        docA: IPluginDataExDisplay,
+        docB: IPluginDataExDisplay,
+        compareEach = false
+    ): Promise<boolean> {
         return await addOn.compareUsingDisplayData(docA, docB, compareEach);
     }
     async function deleteData(data: IPluginDataExDisplay): Promise<boolean> {
@@ -130,7 +149,7 @@
         setMode(key, MODE_AUTOMATIC);
         const configDir = normalizePath(plugin.app.vault.configDir);
         const files = (plugin.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((e) => `${configDir}/${e}`);
-        addOnHiddenFileSync.syncInternalFilesAndDatabase(direction, true, false, files);
+        addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
         const menu = new Menu();
@@ -199,7 +218,7 @@
                 .filter((e) => `${e.category}/${e.name}` == key)
                 .map((e) => e.files)
                 .flat()
-                .map((e) => e.filename),
+                .map((e) => e.filename)
         );
         if (mode == MODE_SELECTIVE) {
             automaticList.delete(key);
@@ -249,7 +268,15 @@
                 .map((e) => ({ category: e[0], name: e[1], displayName: e[1] })),
         ]
             .sort((a, b) => (a.displayName ?? a.name).localeCompare(b.displayName ?? b.name))
-            .reduce((p, c) => ({ ...p, [c.category]: unique(c.category in p ? [...p[c.category], c.displayName ?? c.name] : [c.displayName ?? c.name]) }), {} as Record<string, string[]>);
+            .reduce(
+                (p, c) => ({
+                    ...p,
+                    [c.category]: unique(
+                        c.category in p ? [...p[c.category], c.displayName ?? c.name] : [c.displayName ?? c.name]
+                    ),
+                }),
+                {} as Record<string, string[]>
+            );
     }
     $: {
         displayKeys = computeDisplayKeys(list);
@@ -337,7 +364,12 @@
                         </div>
                         <div class="body">
                             {#if mode == MODE_SELECTIVE || mode == MODE_SHINY}
-                                <PluginCombo {...options} isFlagged={mode == MODE_SHINY} list={list.filter((e) => e.category == key && e.name == name)} hidden={false} />
+                                <PluginCombo
+                                    {...options}
+                                    isFlagged={mode == MODE_SHINY}
+                                    list={list.filter((e) => e.category == key && e.name == name)}
+                                    hidden={false}
+                                />
                             {:else}
                                 <div class="statusnote">{TITLES[mode]}</div>
                             {/if}
@@ -359,7 +391,10 @@
                 {@const modeEtc = automaticListDisp.get(bindKeyETC) ?? MODE_SELECTIVE}
                 <div class="labelrow {hideEven ? 'hideeven' : ''}">
                     <div class="title">
-                        <button class="status" on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_ALL}/${name}`, bindKeyAll)}>
+                        <button
+                            class="status"
+                            on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_ALL}/${name}`, bindKeyAll)}
+                        >
                             {getIcon(modeAll)}
                         </button>
                         <span class="name">{nameMap.get(`plugins/${name}`) || name}</span>
@@ -373,14 +408,22 @@
                 {#if modeAll == MODE_SELECTIVE || modeAll == MODE_SHINY}
                     <div class="filerow {hideEven ? 'hideeven' : ''}">
                         <div class="filetitle">
-                            <button class="status" on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_MAIN}/${name}/MAIN`, bindKeyMain)}>
+                            <button
+                                class="status"
+                                on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_MAIN}/${name}/MAIN`, bindKeyMain)}
+                            >
                                 {getIcon(modeMain)}
                             </button>
                             <span class="name">MAIN</span>
                         </div>
                         <div class="body">
                             {#if modeMain == MODE_SELECTIVE || modeMain == MODE_SHINY}
-                                <PluginCombo {...options} isFlagged={modeMain == MODE_SHINY} list={filterList(listX, ["PLUGIN_MAIN"])} hidden={false} />
+                                <PluginCombo
+                                    {...options}
+                                    isFlagged={modeMain == MODE_SHINY}
+                                    list={filterList(listX, ["PLUGIN_MAIN"])}
+                                    hidden={false}
+                                />
                             {:else}
                                 <div class="statusnote">{TITLES[modeMain]}</div>
                             {/if}
@@ -388,14 +431,22 @@
                     </div>
                     <div class="filerow {hideEven ? 'hideeven' : ''}">
                         <div class="filetitle">
-                            <button class="status" on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_DATA}/${name}`, bindKeyData)}>
+                            <button
+                                class="status"
+                                on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_DATA}/${name}`, bindKeyData)}
+                            >
                                 {getIcon(modeData)}
                             </button>
                             <span class="name">DATA</span>
                         </div>
                         <div class="body">
                             {#if modeData == MODE_SELECTIVE || modeData == MODE_SHINY}
-                                <PluginCombo {...options} isFlagged={modeData == MODE_SHINY} list={filterList(listX, ["PLUGIN_DATA"])} hidden={false} />
+                                <PluginCombo
+                                    {...options}
+                                    isFlagged={modeData == MODE_SHINY}
+                                    list={filterList(listX, ["PLUGIN_DATA"])}
+                                    hidden={false}
+                                />
                             {:else}
                                 <div class="statusnote">{TITLES[modeData]}</div>
                             {/if}
@@ -404,14 +455,22 @@
                     {#if useSyncPluginEtc}
                         <div class="filerow {hideEven ? 'hideeven' : ''}">
                             <div class="filetitle">
-                                <button class="status" on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_ETC}/${name}`, bindKeyETC)}>
+                                <button
+                                    class="status"
+                                    on:click={(evt) => askMode(evt, `${PREFIX_PLUGIN_ETC}/${name}`, bindKeyETC)}
+                                >
                                     {getIcon(modeEtc)}
                                 </button>
                                 <span class="name">Other files</span>
                             </div>
                             <div class="body">
                                 {#if modeEtc == MODE_SELECTIVE || modeEtc == MODE_SHINY}
-                                    <PluginCombo {...options} isFlagged={modeEtc == MODE_SHINY} list={filterList(listX, ["PLUGIN_ETC"])} hidden={false} />
+                                    <PluginCombo
+                                        {...options}
+                                        isFlagged={modeEtc == MODE_SHINY}
+                                        list={filterList(listX, ["PLUGIN_ETC"])}
+                                        hidden={false}
+                                    />
                                 {:else}
                                     <div class="statusnote">{TITLES[modeEtc]}</div>
                                 {/if}
