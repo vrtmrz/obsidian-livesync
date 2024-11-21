@@ -14,6 +14,34 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.2
+
+#### Rewritten
+
+-   Hidden File Sync is now respects the file changes on the storage. Not simply comparing modified times.
+    -   This makes hidden file sync more robust and reliable.
+
+#### Fixed
+
+-   `Scan hidden files before replication` is now configurable again.
+-   Some unexpected errors are now handled more gracefully.
+-   Meaningless event passing during boot sequence is now prevented.
+-   Error handling for non-existing files has been fixed.
+-   Hidden files will not be batched to avoid the potential error.
+    -   This behaviour had been causing the error in the previous versions in specific situations.
+-   The log which checking automatic conflict resolution is now in verbose level.
+-   Replication log (skipping non-targetting files) shows the correct information.
+-   The dialogue that asking enabling optional feature during `Rebuild Everything` now prevents to show the `overwrite` option.
+    -   The rebuilding device is the first, meaningless.
+-   Files with different modified time but identical content are no longer processed repeatedly.
+-   Some unexpected errors which caused after terminating plug-in are now avoided.
+-   
+
+#### Improved
+
+-   JSON files are now more transferred efficiently.
+    -   Now the JSON files are transferred in more fine chunks, which makes the transfer more efficient.
+
 ## 0.24.1
 
 #### Fixed
