@@ -142,7 +142,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                     const setupJustImport = "Don't sync anything, just apply the settings.";
                     const setupAsNew = "This is a new client - sync everything from the remote server.";
                     const setupAsMerge = "This is an existing client - merge existing files with the server.";
-                    const setupAgain = "This is a new server - reset remote server and use local files.";
+                    const setupAgain = "Initialise new server data - ideal for new or broken servers.";
                     const setupManually = "Continue and configure manually.";
                     newSettingW.syncInternalFiles = false;
                     newSettingW.usePluginSync = false;

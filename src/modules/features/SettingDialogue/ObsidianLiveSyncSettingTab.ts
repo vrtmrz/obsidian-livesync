@@ -940,7 +940,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 });
                 new Setting(paneEl)
                     .setName("Enable LiveSync")
-                    .setDesc("Only enable this after configuring either of the above two options.")
+                    .setDesc("Only enable this after configuring either of the above two options or completing all configuration manually.")
                     .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
                     .addButton((text) => {
                         text.setButtonText("Enable").onClick(async () => {
@@ -1357,7 +1357,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     const ObjectStorageMessage = `WARNING: This feature is a Work In Progress, so please keep in mind the following:
 - Append only architecture. A rebuild is required to shrink the storage.
 - A bit fragile.
-- When first syncing, all history will be transferred from the server. Be mindful of data caps and slow speeds.
+- When first syncing, all history will be transferred from the remote. Be mindful of data caps and slow speeds.
 - Only differences are synced live.
 
 If you run into any issues, or have ideas about this feature, please create a issue on GitHub.
@@ -1533,8 +1533,8 @@ I appreciate you for your great dedication.
 
             void addPanel(paneEl, "Fetch settings").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Fetch config from server")
-                    .setDesc("Fetch necessary settings from already configured server.")
+                    .setName("Fetch config from remote server")
+                    .setDesc("Fetch necessary settings from already configured remote server.")
                     .addButton((button) =>
                         button
                             .setButtonText("Fetch")
@@ -1599,7 +1599,7 @@ I appreciate you for your great dedication.
                         }
                         if (
                             (await this.plugin.confirm.askYesNoDialog(
-                                "Do you want to fetch the config from the server?",
+                                "Do you want to fetch the config from the remote server?",
                                 { defaultOption: "Yes", title: "Fetch config" }
                             )) == "yes"
                         ) {

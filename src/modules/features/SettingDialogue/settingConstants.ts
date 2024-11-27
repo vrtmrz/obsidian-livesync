@@ -105,11 +105,11 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     syncOnSave: {
         name: "Sync on Save",
-        desc: "Forces a sync of the file when it's saved.",
+        desc: "Starts synchronisation when a file is saved.",
     },
     syncOnEditorSave: {
         name: "Sync on Editor Save",
-        desc: "When you save a file in the editor, sync automatically",
+        desc: "When you save a file in the editor, start a sync automatically",
     },
     syncOnFileOpen: {
         name: "Sync on File Open",
@@ -148,8 +148,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Should we prompt you for every single merge, even if we can safely merge automatcially?",
     },
     writeDocumentsIfConflicted: {
-        name: "Sync changes even if the file has a conflict.",
-        desc: "Turn on to previous behavior",
+        name: "Apply Latest Change if Conflicting",
+        desc: "Enable this option to automatically apply the most recent change to documents even when it conflicts",
     },
     syncInternalFilesInterval: {
         name: "Scan hidden files periodically",
@@ -261,7 +261,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     useCustomRequestHandler: {
         name: "Use Custom HTTP Handler",
-        desc: "Enable this if your Object Storage doesn't accept CORS",
+        desc: "Enable this if your Object Storage doesn't support CORS",
     },
     maxChunksInEden: {
         name: "Maximum Incubating Chunks",
