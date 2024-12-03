@@ -148,7 +148,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
                 this._log(`Conflicted: ${note.path}`);
             }
         } else {
-            this._log(`There are no conflicted files`, LOG_LEVEL_VERBOSE);
+            this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
         }
         return true;
     }

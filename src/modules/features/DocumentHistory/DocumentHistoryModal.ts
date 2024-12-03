@@ -98,9 +98,9 @@ export class DocumentHistoryModal extends Modal {
                 this.range.max = "0";
                 this.range.value = "";
                 this.range.disabled = true;
-                this.contentView.setText(`History of this file was not recorded.`);
+                this.contentView.setText(`We don't have any history for this note.`);
             } else {
-                this.contentView.setText(`Error occurred.`);
+                this.contentView.setText(`Error while loading file.`);
                 Logger(ex, LOG_LEVEL_VERBOSE);
             }
         }
@@ -268,7 +268,7 @@ export class DocumentHistoryModal extends Modal {
                 const leaf = this.plugin.app.workspace.getLeaf(false);
                 await leaf.openFile(targetFile);
             } else {
-                Logger("The file could not view on the editor", LOG_LEVEL_NOTICE);
+                Logger("Unable to display the file in the editor", LOG_LEVEL_NOTICE);
             }
         };
         buttons.createEl("button", { text: "Back to this revision" }, (e) => {

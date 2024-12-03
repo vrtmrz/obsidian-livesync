@@ -20,9 +20,9 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         if (!(await this.core.$everyOnLayoutReady())) return;
         eventHub.emitEvent(EVENT_LAYOUT_READY);
         if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
-            const ANSWER_KEEP = "Keep this plug-in suspended";
+            const ANSWER_KEEP = "Keep LiveSync disabled";
             const ANSWER_RESUME = "Resume and restart Obsidian";
-            const message = `Self-hosted LiveSync has been configured to ignore some events. Is this intentional for you?
+            const message = `Self-hosted LiveSync has been configured to ignore some events. Is this correct?
 
 | Type | Status | Note |
 |:---:|:---:|---|
@@ -58,9 +58,9 @@ Do you want to resume them and restart Obsidian?
         fireAndForget(async () => {
             this._log(`Additional safety scan..`, LOG_LEVEL_VERBOSE);
             if (!(await this.core.$allScanStat())) {
-                this._log(`Additional safety scan has been failed on some module`, LOG_LEVEL_NOTICE);
+                this._log(`Additional safety scan has failed on a module`, LOG_LEVEL_NOTICE);
             } else {
-                this._log(`Additional safety scan done`, LOG_LEVEL_VERBOSE);
+                this._log(`Additional safety scan completed`, LOG_LEVEL_VERBOSE);
             }
         });
     }
@@ -82,7 +82,7 @@ Do you want to resume them and restart Obsidian?
         eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
         this._log("loading plugin");
         if (!(await this.core.$everyOnloadStart())) {
-            this._log("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
+            this._log("Plugin initialisation was cancelled by a module", LOG_LEVEL_NOTICE);
             return;
         }
         // this.addUIs();
@@ -94,7 +94,7 @@ Do you want to resume them and restart Obsidian?
         this._log($f`Self-hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
         await this.core.$$loadSettings();
         if (!(await this.core.$everyOnloadAfterLoadSettings())) {
-            this._log("Plugin initialising has been cancelled by some module", LOG_LEVEL_NOTICE);
+            this._log("Plugin initialisation was cancelled by a module", LOG_LEVEL_NOTICE);
             return;
         }
         const lsKey = "obsidian-live-sync-ver" + this.core.$$getVaultName();
@@ -102,7 +102,7 @@ Do you want to resume them and restart Obsidian?
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            this._log($f`You have some unread release notes! Please read them once!`, LOG_LEVEL_NOTICE);
+            this._log($f`LiveSync has updated, please read the changelog!`, LOG_LEVEL_NOTICE);
         }
 
         //@ts-ignore
@@ -117,7 +117,7 @@ Do you want to resume them and restart Obsidian?
             this.settings.syncOnFileOpen = false;
             this.settings.syncAfterMerge = false;
             this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = $f`Self-hosted LiveSync has been upgraded and some behaviors have changed incompatibly. All automatic synchronization is now disabled temporary. Ensure that other devices are also upgraded, and enable synchronization again.`;
+            this.settings.versionUpFlash = $f`LiveSync has been updated, In case of breaking updates, all automatic synchronization has been temporarily disabled. Ensure that all devices are up to date before enabling.`;
             await this.saveSettings();
         }
         localStorage.setItem(lsKey, `${VER}`);

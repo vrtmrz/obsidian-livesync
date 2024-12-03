@@ -139,11 +139,11 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                     newSettingW.encryptedPassphrase = "";
                     newSettingW.encryptedCouchDBConnection = "";
                     newSettingW.additionalSuffixOfDatabaseName = `${"appId" in this.app ? this.app.appId : ""}`;
-                    const setupJustImport = "Just import setting";
-                    const setupAsNew = "Set it up as secondary or subsequent device";
-                    const setupAsMerge = "Secondary device but try keeping local changes";
-                    const setupAgain = "Reconfigure and reconstitute the data";
-                    const setupManually = "Leave everything to me";
+                    const setupJustImport = "Don't sync anything, just apply the settings.";
+                    const setupAsNew = "This is a new client - sync everything from the remote server.";
+                    const setupAsMerge = "This is an existing client - merge existing files with the server.";
+                    const setupAgain = "Initialise new server data - ideal for new or broken servers.";
+                    const setupManually = "Continue and configure manually.";
                     newSettingW.syncInternalFiles = false;
                     newSettingW.usePluginSync = false;
                     newSettingW.isConfigured = true;
@@ -171,10 +171,10 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                         await this.core.rebuilder.$fetchLocal(true);
                     } else if (setupType == setupAgain) {
                         const confirm =
-                            "I know this operation will rebuild all my databases with files on this device, and files that are on the remote database and I didn't synchronize to any other devices will be lost and want to proceed indeed.";
+                            "This operation will rebuild all databases with files on this device. Any files on the remote database not synced here will be lost.";
                         if (
                             (await this.core.confirm.askSelectStringDialogue(
-                                "Do you really want to do this?",
+                                "Are you sure you want to do this?",
                                 ["Cancel", confirm],
                                 { defaultAction: "Cancel" }
                             )) != confirm
