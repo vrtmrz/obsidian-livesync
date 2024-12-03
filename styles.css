@@ -376,7 +376,6 @@ span.ls-mark-cr::after {
     z-index: calc(var(--layer-cover) + 1);
 
     font-variant-numeric: tabular-nums;
-    font-variant-emoji: emoji;
     tab-size: 4;
     text-align: right;
     white-space: pre-wrap;
