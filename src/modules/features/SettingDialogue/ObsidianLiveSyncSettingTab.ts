@@ -954,7 +954,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
 
             void addPanel(
                 paneEl,
-                "To setup the other devices",
+                "To setup other devices",
                 undefined,
                 visibleOnly(() => this.isConfiguredAs("isConfigured", true))
             ).then((paneEl) => {
