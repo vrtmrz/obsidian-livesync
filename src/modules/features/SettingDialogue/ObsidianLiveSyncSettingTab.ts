@@ -932,12 +932,14 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     });
 
                 new Setting(paneEl)
-                    .setName("Manual setup").addButton((text)
-                    .setDesc("Not recommended, but useful if you don't have a Setup URI") => {
-                        text.setButtonText("Start").onClick(async () => {
-                            await this.enableMinimalSetup();
-                        });
+                    .setName("Manual setup")
+                    .setDesc("Not recommended, but useful if you don't have a Setup URI")
+                    .addButton((text) => {
+                    text.setButtonText("Start").onClick(async () => {
+                        await this.enableMinimalSetup();
+                    });
                 });
+                
                 new Setting(paneEl)
                     .setName("Enable LiveSync")
                     .setDesc("Only enable this after configuring either of the above two options or completing all configuration manually.")
