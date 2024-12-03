@@ -137,11 +137,11 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     checkConflictOnlyOnOpen: {
         name: "Delay conflict resolution of inactive files",
-        desc: "Should we only check for conflicts when a file is opened?"
+        desc: "Should we only check for conflicts when a file is opened?",
     },
     showMergeDialogOnlyOnActive: {
         name: "Delay merge conflict prompt for inactive files.",
-        desc: "Should we prompt you about conflicting files when a file is opened?"
+        desc: "Should we prompt you about conflicting files when a file is opened?",
     },
     disableMarkdownAutoMerge: {
         name: "Always prompt merge conflicts",

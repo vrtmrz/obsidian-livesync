@@ -75,10 +75,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
         if (this.usedPassphrase == "" && !(await this.getPassphrase(settings))) {
-            this._log(
-                "Failed to retrieve passphrase. data.json contains unencrypted items!",
-                LOG_LEVEL_NOTICE
-            );
+            this._log("Failed to retrieve passphrase. data.json contains unencrypted items!", LOG_LEVEL_NOTICE);
         } else {
             if (
                 settings.couchDB_PASSWORD != "" ||
@@ -144,10 +141,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            this._log(
-                "No passphrase found for data.json! Verify configuration before syncing.",
-                LOG_LEVEL_URGENT
-            );
+            this._log("No passphrase found for data.json! Verify configuration before syncing.", LOG_LEVEL_URGENT);
         } else {
             if (settings.encryptedCouchDBConnection) {
                 const keys = [

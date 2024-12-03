@@ -885,10 +885,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             await this.plugin.$allSuspendExtraSync();
             this.reloadAllSettings();
             this.editingSettings.isConfigured = true;
-            Logger(
-                "Syncing has been disabled, fetch and re-enabled if desired.",
-                LOG_LEVEL_NOTICE
-            );
+            Logger("Syncing has been disabled, fetch and re-enabled if desired.", LOG_LEVEL_NOTICE);
             await this.saveAllDirtySettings();
             this.closeSetting();
             await delay(2000);
@@ -935,14 +932,16 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     .setName("Manual setup")
                     .setDesc("Not recommended, but useful if you don't have a Setup URI")
                     .addButton((text) => {
-                    text.setButtonText("Start").onClick(async () => {
-                        await this.enableMinimalSetup();
+                        text.setButtonText("Start").onClick(async () => {
+                            await this.enableMinimalSetup();
+                        });
                     });
-                });
-                
+
                 new Setting(paneEl)
                     .setName("Enable LiveSync")
-                    .setDesc("Only enable this after configuring either of the above two options or completing all configuration manually.")
+                    .setDesc(
+                        "Only enable this after configuring either of the above two options or completing all configuration manually."
+                    )
                     .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
                     .addButton((text) => {
                         text.setButtonText("Enable").onClick(async () => {
@@ -967,7 +966,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                             // await this.plugin.addOnSetup.command_copySetupURI();
                             eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
                         });
-                });
+                    });
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
@@ -1717,10 +1716,7 @@ I appreciate you for your great dedication.
                             ...this.editingSettings,
                             ...presetPeriodic,
                         };
-                        Logger(
-                            "Configured synchronization mode: Periodic",
-                            LOG_LEVEL_NOTICE
-                        );
+                        Logger("Configured synchronization mode: Periodic", LOG_LEVEL_NOTICE);
                     } else {
                         Logger("Configured synchronization mode: DISABLED", LOG_LEVEL_NOTICE);
                         this.editingSettings = {
