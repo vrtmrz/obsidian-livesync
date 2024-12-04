@@ -73,7 +73,7 @@
         "idb": "^8.0.0",
         "minimatch": "^10.0.1",
         "octagonal-wheels": "^0.1.15",
-        "svelte-check": "^4.0.4",
+        "svelte-check": "^4.0.7",
         "xxhash-wasm": "0.4.2",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }
