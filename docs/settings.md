@@ -6,7 +6,7 @@ There are many settings in Self-hosted LiveSync. This document describes each se
 
 | Icon | Description                                                        |
 | :--: | ------------------------------------------------------------------ |
-|  💬  | [0. Update Information](#0-update-information)                     |
+|  💬  | [0. Change Log](#0-change-log)                                     |
 |  🧙‍♂️  | [1. Setup](#1-setup)                                               |
 |  ⚙️  | [2. General Settings](#2-general-settings)                         |
 |  🛰️  | [3. Remote Configuration](#3-remote-configuration)                 |
@@ -19,7 +19,7 @@ There are many settings in Self-hosted LiveSync. This document describes each se
 |  🩹  | [10. Patches (Edge Case)](#10-patches-edge-case)                   |
 |  🎛️  | [11. Maintenance](#11-maintenance)                                 |
 
-## 0. Update Information
+## 0. Change Log
 
 This pane shows version up information. You can check what has been changed in recent versions.
 
@@ -31,21 +31,21 @@ This pane is used for setting up Self-hosted LiveSync. There are several options
 
 Most preferred method to setup Self-hosted LiveSync. You can setup Self-hosted LiveSync with a few clicks.
 
-#### Use the copied setup URI
+#### Connect with Setup URI
 
 Setup the Self-hosted LiveSync with the `setup URI` which is [copied from another device](#copy-current-settings-as-a-new-setup-uri) or the setup script.
 
-#### Minimal setup
+#### Manual setup
 
 Step-by-step setup for Self-hosted LiveSync. You can setup Self-hosted LiveSync manually with Minimal setting items.
 
-#### Enable LiveSync on this device as the setup was completed manually
+#### Enable LiveSync
 
 This button only appears when the setup was not completed. If you have completed the setup manually, you can enable LiveSync on this device by this button.
 
-### 2. To setup the other devices
+### 2. To setup other devices
 
-#### Copy current settings as a new setup URI
+#### Copy the current settings to a Setup URI
 
 You can copy the current settings as a new setup URI. And this URI can be used to setup the other devices as [Use the copied setup URI](#use-the-copied-setup-uri).
 
@@ -71,7 +71,7 @@ Following panes will be shown when you enable this setting.
 | 🔌 | [6. Customization sync (Advanced)](#6-customization-sync-advanced) |
 | 🔧 | [8. Advanced (Advanced)](#8-advanced-advanced) |
 
-#### Enable power user features
+#### Enable poweruser features
 
 Setting key: usePowerUserMode
 
@@ -152,7 +152,7 @@ Setting key: notifyThresholdOfRemoteStorageSize
 
 MB (0 to disable). We can get a notification when the estimated remote storage size exceeds this value.
 
-### 3. Confidentiality
+### 3. Privacy & Encryption
 
 #### End-to-End Encryption
 
@@ -178,13 +178,19 @@ Setting key: useDynamicIterationCount
 
 This is an experimental feature and not recommended. If you enable this, the iteration count of the encryption will be dynamically determined. This is useful when you want to improve the performance.
 
---- 
+---
 
 **now writing from here onwards, sorry**
 
---- 
+---
 
-### 4. Minio,S3,R2
+### 4. Fetch settings
+
+#### Fetch config from remote server
+
+Fetch necessary settings from already configured remote server.
+
+### 5. Minio,S3,R2
 
 #### Endpoint URL
 
@@ -209,15 +215,15 @@ Setting key: bucket
 #### Use Custom HTTP Handler
 
 Setting key: useCustomRequestHandler
-If your Object Storage could not configured accepting CORS, enable this.
+Enable this if your Object Storage doesn't support CORS
 
 #### Test Connection
 
 #### Apply Settings
 
-### 5. CouchDB
+### 6. CouchDB
 
-#### URI
+#### Server URI
 
 Setting key: couchDB_URI
 
@@ -231,17 +237,17 @@ username
 Setting key: couchDB_PASSWORD
 password
 
-#### Database name
+#### Database Name
 
 Setting key: couchDB_DBNAME
 
 #### Test Database Connection
 
-Open database connection. If the remote database is not found and you have the privilege to create a database, the database will be created.
+Open database connection. If the remote database is not found and you have permission to create a database, the database will be created.
 
-#### Check and fix database configuration
+#### Validate Database Configuration
 
-Check the database configuration, and fix if there are any problems.
+Checks and fixes any potential issues with the database config.
 
 #### Apply Settings
 
@@ -254,7 +260,7 @@ Check the database configuration, and fix if there are any problems.
 Setting key: preset
 Apply preset configuration
 
-### 2. Synchronization Methods
+### 2. Synchronization Method
 
 #### Sync Mode
 
@@ -268,22 +274,22 @@ Interval (sec)
 #### Sync on Save
 
 Setting key: syncOnSave
-When you save a file, sync automatically
+Starts synchronisation when a file is saved.
 
 #### Sync on Editor Save
 
 Setting key: syncOnEditorSave
-When you save a file in the editor, sync automatically
+When you save a file in the editor, start a sync automatically
 
 #### Sync on File Open
 
 Setting key: syncOnFileOpen
-When you open a file, sync automatically
+Forces the file to be synced when opened.
 
-#### Sync on Start
+#### Sync on Startup
 
 Setting key: syncOnStart
-Start synchronization after launching Obsidian.
+Automatically Sync all files when opening Obsidian.
 
 #### Sync after merging file
 
@@ -312,34 +318,36 @@ Saving will be performed forcefully after this number of seconds.
 #### Use the trash bin
 
 Setting key: trashInsteadDelete
-Do not delete files that are deleted in remote, just move to trash.
+Move remotely deleted files to the trash, instead of deleting.
 
 #### Keep empty folder
 
 Setting key: doNotDeleteFolder
-Normally, a folder is deleted when it becomes empty after a synchronization. Enabling this will prevent it from getting deleted
+Should we keep folders that don't have any files inside?
 
 ### 5. Conflict resolution (Advanced)
 
-#### Always overwrite with a newer file (beta)
+#### (BETA) Always overwrite with a newer file
 
 Setting key: resolveConflictsByNewerFile
-(Def off) Resolve conflicts by newer files automatically.
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.
 
-#### Postpone resolution of inactive files
+#### Delay conflict resolution of inactive files
 
 Setting key: checkConflictOnlyOnOpen
+Should we only check for conflicts when a file is opened?
 
-#### Postpone manual resolution of inactive files
+#### Delay merge conflict prompt for inactive files.
 
 Setting key: showMergeDialogOnlyOnActive
+Should we prompt you about conflicting files when a file is opened?
 
 ### 6. Sync settings via markdown (Advanced)
 
 #### Filename
 
 Setting key: settingSyncFile
-If you set this, all settings are saved in a markdown file. You will be notified when new settings arrive. You can set different files by the platform.
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.
 
 #### Write credentials in the file
 
@@ -350,7 +358,7 @@ Setting key: writeCredentialsForSettingSync
 
 Setting key: notifyAllSettingSyncFile
 
-### 7. Hidden files (Advanced)
+### 7. Hidden Files (Advanced)
 
 #### Hidden file synchronization
 
@@ -390,7 +398,7 @@ If this is set, changes to local files which are matched by the ignore files wil
 #### Ignore files
 
 Setting key: ignoreFiles
-We can use multiple ignore files, e.g.) `.gitignore, .dockerignore`
+Comma separated `.gitignore, .dockerignore`
 
 ### 2. Hidden Files (Advanced)
 
@@ -451,7 +459,7 @@ Warning! This will have a serious impact on performance. And the logs will not b
 #### Suspend file watching
 
 Setting key: suspendFileWatching
-Stop watching for file change.
+Stop watching for file changes.
 
 #### Suspend database reflecting
 
@@ -463,6 +471,10 @@ Stop reflecting database changes to storage files.
 #### Recreate missing chunks for all files
 
 This will recreate chunks for all files. If there were missing chunks, this may fix the errors.
+
+#### Resolve All conflicted files by the newer one
+
+Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.
 
 #### Verify and repair all files
 
@@ -520,16 +532,6 @@ Setting key: concurrencyOfReadChunksOnline
 
 Setting key: minimumIntervalOfReadChunksOnline
 
-#### Send chunks in bulk
-
-Setting key: sendChunksBulk
-If this enabled, all chunks will be sent in bulk. This is useful for the environment that has a high latency.
-
-#### Maximum size of chunks to send in one request
-
-Setting key: sendChunksBulkMaxSize
-MB
-
 ## 9. Power users (Power User)
 
 ### 1. Remote Database Tweak
@@ -563,7 +565,7 @@ Setting key: enableCompression
 #### Batch size
 
 Setting key: batch_size
-Number of change feed items to process at a time. Defaults to 50. Minimum is 2.
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.
 
 #### Batch limit
 
@@ -586,6 +588,13 @@ Setting key: configPassphraseStore
 Setting key: configPassphrase
 This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.
 
+### 4. Developer
+
+#### Enable Developers' Debug Tools.
+
+Setting key: enableDebugTools
+Requires restart of Obsidian
+
 ## 10. Patches (Edge Case)
 
 ### 1. Compatibility (Metadata)
@@ -601,15 +610,15 @@ Setting key: automaticallyDeleteMetadataOfDeletedFiles
 
 ### 2. Compatibility (Conflict Behaviour)
 
-#### Always resolve conflicts manually
+#### Always prompt merge conflicts
 
 Setting key: disableMarkdownAutoMerge
-If this switch is turned on, a merge dialog will be displayed, even if the sensible-merge is possible automatically. (Turn on to previous behavior)
+Should we prompt you for every single merge, even if we can safely merge automatcially?
 
-#### Always reflect synchronized changes even if the note has a conflict
+#### Apply Latest Change if Conflicting
 
 Setting key: writeDocumentsIfConflicted
-Turn on to previous behavior
+Enable this option to automatically apply the most recent change to documents even when it conflicts
 
 ### 3. Compatibility (Database structure)
 
@@ -655,7 +664,7 @@ Setting key: doNotSuspendOnFetching
 #### Keep empty folder
 
 Setting key: doNotDeleteFolder
-Normally, a folder is deleted when it becomes empty after a synchronization. Enabling this will prevent it from getting deleted
+Should we keep folders that don't have any files inside?
 
 ### 7. Edge case addressing (Processing)
 
@@ -679,15 +688,15 @@ Setting key: disableCheckingConfigMismatch
 
 ### 1. Scram!
 
-#### Lock remote
+#### Lock Server
 
-Lock remote to prevent synchronization with other devices.
+Lock the remote server to prevent synchronization with other devices.
 
 #### Emergency restart
 
-place the flag file to prevent all operation and restart.
+Disables all synchronization and restart.
 
-### 2. Data-complementary Operations
+### 2. Syncing
 
 #### Resend
 
@@ -719,9 +728,9 @@ Rebuild local and remote database with local files.
 
 ### 5. Rebuilding Operations (Remote Only)
 
-#### Perform compaction
+#### Perform cleanup
 
-Compaction discards all of Eden in the non-latest revisions, reducing the storage usage. However, this operation requires the same free space on the remote as the current database.
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.
 
 #### Overwrite remote
 
@@ -733,18 +742,18 @@ Initialise all journal history, On the next sync, every item will be received an
 
 #### Purge all journal counter
 
-Purge all sending and downloading cache.
+Purge all download/upload cache.
 
-#### Make empty the bucket
+#### Fresh Start Wipe
 
-Delete all data on the remote.
+Delete all data on the remote server.
 
-### 6. Niches
+### 6. Deprecated
 
-#### (Obsolete) Clean up databases
+#### Run database cleanup
 
-Delete unused chunks to shrink the database. However, this feature could be not effective in some cases. Please use rebuild everything instead.
+Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul.
 
 ### 7. Reset
 
-#### Discard local database to reset or uninstall Self-hosted LiveSync
+#### Delete local database to reset or uninstall Self-hosted LiveSync
