@@ -52,7 +52,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
             this._log(
-                "Could not determine passphrase to save data.json! You probably make the configuration sure again!",
+                "Failed to obtain passphrase when saving data.json! Please verify the configuration.",
                 LOG_LEVEL_URGENT
             );
             return "";
@@ -75,10 +75,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
         if (this.usedPassphrase == "" && !(await this.getPassphrase(settings))) {
-            this._log(
-                "Could not determine passphrase for saving data.json! Our data.json have insecure items!",
-                LOG_LEVEL_NOTICE
-            );
+            this._log("Failed to retrieve passphrase. data.json contains unencrypted items!", LOG_LEVEL_NOTICE);
         } else {
             if (
                 settings.couchDB_PASSWORD != "" ||
@@ -144,10 +141,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
-            this._log(
-                "Could not determine passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
-                LOG_LEVEL_URGENT
-            );
+            this._log("No passphrase found for data.json! Verify configuration before syncing.", LOG_LEVEL_URGENT);
         } else {
             if (settings.encryptedCouchDBConnection) {
                 const keys = [
@@ -173,7 +167,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     }
                 } else {
                     this._log(
-                        "Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
+                        "Failed to decrypt passphrase from data.json! Ensure configuration is correct before syncing with remote.",
                         LOG_LEVEL_URGENT
                     );
                     for (const key of keys) {
@@ -189,7 +183,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     settings.passphrase = decrypted;
                 } else {
                     this._log(
-                        "Could not decrypt passphrase for reading data.json! DO NOT synchronize with the remote before making sure your configuration is!",
+                        "Failed to decrypt passphrase from data.json! Ensure configuration is correct before syncing with remote.",
                         LOG_LEVEL_URGENT
                     );
                     settings.passphrase = "";
@@ -220,7 +214,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
         if (isCloudantURI(this.settings.couchDB_URI) && this.settings.customChunkSize != 0) {
             this._log(
-                "Configuration verification founds problems with your configuration. This has been fixed automatically. But you may already have data that cannot be synchronised. If this is the case, please rebuild everything.",
+                "Configuration issues detected and automatically resolved. However, unsynchronized data may exist. Consider rebuilding if necessary.",
                 LOG_LEVEL_NOTICE
             );
             this.settings.customChunkSize = 0;
@@ -228,7 +222,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         this.core.$$setDeviceAndVaultName(localStorage.getItem(lsKey) || "");
         if (this.core.$$getDeviceAndVaultName() == "") {
             if (this.settings.usePluginSync) {
-                this._log("Device name is not set. Plug-in sync has been disabled.", LOG_LEVEL_NOTICE);
+                this._log("Device name missing. Disabling plug-in sync.", LOG_LEVEL_NOTICE);
                 this.settings.usePluginSync = false;
             }
         }
