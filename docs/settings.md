@@ -301,12 +301,12 @@ Sync automatically after merging files
 #### Batch database update
 
 Setting key: batchSave
-Reducing the frequency with which on-disk changes are reflected into the DB
+Reduces the frequency with which on-disk changes are pushed to the DB.
 
 #### Minimum delay for batch database updating
 
 Setting key: batchSaveMinimumDelay
-Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.
+Saving to the local database will be delayed until this many seconds after we stop typing or saving.
 
 #### Maximum delay for batch database updating
 
@@ -388,7 +388,7 @@ Seconds, 0 to disable
 #### Maximum file size
 
 Setting key: syncMaxSizeInMB
-(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped.
 
 #### (Beta) Use ignore files
 
@@ -418,7 +418,7 @@ Unique name between all synchronized devices. To edit this setting, please disab
 #### Per-file-saved customization sync
 
 Setting key: usePluginSyncV2
-If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.
+If enabled, per-filed efficient customization sync will be used. We need a small migration when enabling this. All devices should be updated to v0.23.18. Once this is enabled, compatibility with older versions is lost.
 
 #### Enable customization sync
 
@@ -593,7 +593,7 @@ This passphrase will not be copied to another device. It will be set to `Default
 #### Enable Developers' Debug Tools.
 
 Setting key: enableDebugTools
-Requires restart of Obsidian
+Requires restart of Obsidian.
 
 ## 10. Patches (Edge Case)
 
@@ -618,7 +618,7 @@ Should we prompt you for every single merge, even if we can safely merge automat
 #### Apply Latest Change if Conflicting
 
 Setting key: writeDocumentsIfConflicted
-Enable this option to automatically apply the most recent change to documents even when it conflicts
+Enable this option to automatically apply the most recent change to documents even if there is a conflict.
 
 ### 3. Compatibility (Database structure)
 
@@ -635,7 +635,7 @@ If this enabled, all chunks will be stored with the revision made from its conte
 #### Handle files as Case-Sensitive
 
 Setting key: handleFilenameCaseSensitive
-If this enabled, All files are handled as case-Sensitive (Previous behaviour).
+If this enabled, All files are handled as case-sensitive (Previous behaviour).
 
 ### 4. Compatibility (Internal API Usage)
 
@@ -649,7 +649,7 @@ Do not use internal API
 #### Database suffix
 
 Setting key: additionalSuffixOfDatabaseName
-LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.
+LiveSync could not handle multiple vaults which have same name without different prefixes. This should be automatically configured.
 
 #### The Hash algorithm for chunk IDs (Experimental)
 
@@ -671,12 +671,12 @@ Should we keep folders that don't have any files inside?
 #### Do not split chunks in the background
 
 Setting key: disableWorkerForGeneratingChunks
-If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).
+If disabled (toggled), chunks will be split on the UI thread (Previous behaviour).
 
 #### Process small files in the foreground
 
 Setting key: processSmallFilesInUIThread
-If enabled, the file under 1kb will be processed in the UI thread.
+If enabled, files under 1kB will be processed in the UI thread.
 
 ### 8. Compatibility (Trouble addressed)
 

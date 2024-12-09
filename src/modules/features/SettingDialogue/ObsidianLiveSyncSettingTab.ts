@@ -2045,7 +2045,7 @@ I appreciate you for your great dedication.
                     paneEl,
                     "div",
                     {
-                        text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
+                        text: "Please set the device name to identify this device. This name should be unique among your devices. While not configured, this feature cannot be enabled.",
                         cls: "op-warn",
                     },
                     (c) => {},
