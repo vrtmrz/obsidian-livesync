@@ -14,14 +14,22 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.3
+
+### Improved
+
+-   Many messages have been improved for better understanding as thanks to the fine works of @Volkor3-16! Thank you so much!
+-   Documentations also have been updated to reflect the changes in the messages.
+-   Now the style of In-Editor Status has been solid for some Android devices.
+
 ## 0.24.2
 
-#### Rewritten
+### Rewritten
 
 -   Hidden File Sync is now respects the file changes on the storage. Not simply comparing modified times.
     -   This makes hidden file sync more robust and reliable.
 
-#### Fixed
+### Fixed
 
 -   `Scan hidden files before replication` is now configurable again.
 -   Some unexpected errors are now handled more gracefully.
@@ -35,16 +43,16 @@ Thank you, and I hope your troubles will be resolved!
     -   The rebuilding device is the first, meaningless.
 -   Files with different modified time but identical content are no longer processed repeatedly.
 -   Some unexpected errors which caused after terminating plug-in are now avoided.
--   
+-
 
-#### Improved
+### Improved
 
 -   JSON files are now more transferred efficiently.
     -   Now the JSON files are transferred in more fine chunks, which makes the transfer more efficient.
 
 ## 0.24.1
 
-#### Fixed
+### Fixed
 
 -   Vault History can show the correct information of match-or-not for each file and database even if it is a binary file.
 -   `Sync settings via markdown` is now hidden during the setup wizard.
@@ -54,7 +62,7 @@ Thank you, and I hope your troubles will be resolved!
 
 -   Now we can fetch the tweaks from the remote database while the setting dialogue and wizard are processing.
 
-#### Improved
+### Improved
 
 -   More things are moved to the modules.
     -   Includes the Main codebase. Now `main.ts` is almost stub.
