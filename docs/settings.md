@@ -126,13 +126,13 @@ We can show the status of synchronisation on the status bar. (Default: On)
 
 Setting key: lessInformationInLog
 
-Prevent logging and show only notification. Please disable when you report the logs
+Prevent logging and show only notification. Please disable when you report the logs.
 
 #### Verbose Log
 
 Setting key: showVerboseLog
 
-Show verbose log. Please enable when you report the logs
+Show verbose log. Please enable when you report the logs.
 
 ## 3. Remote Configuration
 
