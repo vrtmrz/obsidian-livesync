@@ -14,6 +14,19 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.4
+
+### Fixed
+
+-   Fixed so many inefficient and buggy modules inherited from the past.
+
+### Improved
+
+-   Tasks are now executed in an efficient asynchronous library.
+-   On-demand chunk fetching is now more efficient and keeps the interval between requests.
+    -   This will reduce the load on the server and the network.
+    -   And, safe for the Cloudant.
+
 ## 0.24.3
 
 ### Improved
