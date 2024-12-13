@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
     import { logMessages } from "../../../lib/src/mock_and_interop/stores";
-    import type { ReactiveInstance } from "../../../lib/src/dataobject/reactive";
+    import { reactive, type ReactiveInstance } from "../../../lib/src/dataobject/reactive";
     import { Logger } from "../../../lib/src/common/logger";
 
     let unsubscribe: () => void;
@@ -19,9 +19,10 @@
         }
     }
     onMount(async () => {
-        logMessages.onChanged(updateLog);
+        const _logMessages = reactive(() => logMessages.value);
+        _logMessages.onChanged(updateLog);
         Logger("Log window opened");
-        unsubscribe = () => logMessages.offChanged(updateLog);
+        unsubscribe = () => _logMessages.offChanged(updateLog);
     });
     onDestroy(() => {
         if (unsubscribe) unsubscribe();
