@@ -13,6 +13,12 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+## 0.24.6
+
+### Fixed (Quick Fix)
+
+-   Fixed the issue of log is not displayed on the log pane if the pane has not been shown on startup.
+    -   This release is only for it. However, fixing this had been necessary to report any other issues.
 
 ## 0.24.5
 
