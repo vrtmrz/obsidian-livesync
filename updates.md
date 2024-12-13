@@ -14,6 +14,17 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.5
+
+### Fixed
+
+-   Fixed incorrect behaviour when comparing objects with undefined as a property value.
+
+### Improved
+
+-   The status line and the log summary are now displayed more smoothly and efficiently.
+    -   This improvement has also been applied to the logs displayed in the log pane.
+
 ## 0.24.4
 
 ### Fixed
