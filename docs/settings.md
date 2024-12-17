@@ -622,7 +622,7 @@ Enable this option to automatically apply the most recent change to documents ev
 
 ### 3. Compatibility (Database structure)
 
-#### (Obsolete) Use an old adapter for compatibility (obsolete)
+#### (Obsolete) Use an old adapter for compatibility (Obsolete)
 
 Setting key: useIndexedDBAdapter
 Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.
@@ -630,12 +630,12 @@ Before v0.17.16, we used an old adapter for the local database. Now the new adap
 #### Compute revisions for chunks (Previous behaviour)
 
 Setting key: doNotUseFixedRevisionForChunks
-If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)
+If this enabled, all chunks will be stored with the revision made from its content (previous behaviour).
 
 #### Handle files as Case-Sensitive
 
 Setting key: handleFilenameCaseSensitive
-If this enabled, All files are handled as case-sensitive (Previous behaviour).
+If this enabled, All files are handled as case-sensitive (previous behaviour).
 
 ### 4. Compatibility (Internal API Usage)
 
@@ -671,7 +671,7 @@ Should we keep folders that don't have any files inside?
 #### Do not split chunks in the background
 
 Setting key: disableWorkerForGeneratingChunks
-If disabled (toggled), chunks will be split on the UI thread (Previous behaviour).
+If disabled (toggled), chunks will be split on the UI thread (previous behaviour).
 
 #### Process small files in the foreground
 
