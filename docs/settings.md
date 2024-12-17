@@ -620,19 +620,19 @@ Should we prompt you for every single merge, even if we can safely merge automat
 Setting key: writeDocumentsIfConflicted
 Enable this option to automatically apply the most recent change to documents even if there is a conflict.
 
-### 3. Compatibility (Database structure)
+### 3. Compatibility (Database Structure)
 
-#### (Obsolete) Use an old adapter for compatibility (Obsolete)
+#### (Obsolete) Use an old adapter for compatibility
 
 Setting key: useIndexedDBAdapter
 Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.
 
-#### Compute revisions for chunks (Previous behaviour)
+#### Compute revisions for chunks (Previous Behaviour)
 
 Setting key: doNotUseFixedRevisionForChunks
 If this enabled, all chunks will be stored with the revision made from its content (previous behaviour).
 
-#### Handle files as Case-Sensitive
+#### Handle files as case-sensitive
 
 Setting key: handleFilenameCaseSensitive
 If this enabled, All files are handled as case-sensitive (previous behaviour).
