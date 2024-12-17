@@ -13,15 +13,16 @@ import {
     VER,
     type EntryBody,
     type EntryDoc,
+    type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
 } from "../../lib/src/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { getPath, isChunk, isValidPath, scheduleTask } from "../../common/utils";
-import { sendValue } from "octagonal-wheels/messagepassing/signal";
 import { isAnyNote } from "../../lib/src/common/utils";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
+import { globalSlipBoard } from "../../lib/src/bureau/bureau";
 
 export class ModuleReplicator extends AbstractModule implements ICoreModule {
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
@@ -242,9 +243,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const change = docs[0];
             if (!change) return;
             if (isChunk(change._id)) {
-                // SendSignal?
-                // this.parseIncomingChunk(change);
-                sendValue(`leaf-${change._id}`, change);
+                globalSlipBoard.submit("read-chunk", change._id, change as EntryLeaf);
                 return;
             }
             if (await this.core.$anyModuleParsedReplicationResultItem(change)) return;

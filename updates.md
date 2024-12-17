@@ -13,6 +13,36 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+## 0.24.6
+
+### Fixed (Quick Fix)
+
+-   Fixed the issue of log is not displayed on the log pane if the pane has not been shown on startup.
+    -   This release is only for it. However, fixing this had been necessary to report any other issues.
+
+## 0.24.5
+
+### Fixed
+
+-   Fixed incorrect behaviour when comparing objects with undefined as a property value.
+
+### Improved
+
+-   The status line and the log summary are now displayed more smoothly and efficiently.
+    -   This improvement has also been applied to the logs displayed in the log pane.
+
+## 0.24.4
+
+### Fixed
+
+-   Fixed so many inefficient and buggy modules inherited from the past.
+
+### Improved
+
+-   Tasks are now executed in an efficient asynchronous library.
+-   On-demand chunk fetching is now more efficient and keeps the interval between requests.
+    -   This will reduce the load on the server and the network.
+    -   And, safe for the Cloudant.
 
 ## 0.24.3
 
