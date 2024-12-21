@@ -84,6 +84,11 @@ Whatever solutions we can use. For the simplicity, following sample uses Cloudfl
 
 ```
 cloudflared tunnel --url http://localhost:5984
+```
+
+You will then get the following output:
+
+```
 2024-02-14T10:35:25Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
 2024-02-14T10:35:25Z INF Requesting new quick Tunnel on trycloudflare.com...
 2024-02-14T10:35:26Z INF +--------------------------------------------------------------------------------------------+
