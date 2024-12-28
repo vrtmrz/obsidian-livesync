@@ -122,11 +122,11 @@ We can show the status of synchronisation on the status bar (default: on).
 
 ### 2. Logging
 
-#### Show only notifications
+#### Only show Notifications
 
 Setting key: lessInformationInLog
 
-Prevent logging and show only notifications. Please disable when you report the logs.
+Prevent logging and only show notifications. Please disable when you report the logs.
 
 #### Verbose Log
 
