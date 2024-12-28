@@ -920,7 +920,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             void addPanel(paneEl, "Quick Setup").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Connect with Setup URI")
-                    .setDesc("This is the recommended method to set up Self-Hosted LiveSync with a Setup URI.")
+                    .setDesc("This is the recommended method to set up Self-Hosted LiveSync.")
                     .addButton((text) => {
                         text.setButtonText("Use").onClick(() => {
                             this.closeSetting();
@@ -1465,7 +1465,7 @@ I appreciate you for your great dedication.
                         .setName("Test Database Connection")
                         .setClass("wizardHidden")
                         .setDesc(
-                            "Open database connection. If the remote database is not found and you have permission to create a database, the database will be created."
+                            "Open a database connection. If the remote database is not found and you have permission to create a database, the database will be created."
                         )
                         .addButton((button) =>
                             button
@@ -1504,7 +1504,7 @@ I appreciate you for your great dedication.
                         .addOnUpdate(onlyOnCouchDB);
                 });
             });
-            void addPanel(paneEl, "Notification").then((paneEl) => {
+            void addPanel(paneEl, "Notifications").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
             });
@@ -2032,7 +2032,7 @@ I appreciate you for your great dedication.
             });
         });
 
-        void addPane(containerEl, "Customization sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
+        void addPane(containerEl, "Customization Sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
             // With great respect, thank you TfTHacker!
             // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
             void addPanel(paneEl, "Customization Sync").then((paneEl) => {
@@ -2045,7 +2045,7 @@ I appreciate you for your great dedication.
                     paneEl,
                     "div",
                     {
-                        text: "Please set the device name to identify this device. This name should be unique among your devices. While not configured, this feature cannot be enabled.",
+                        text: "Please set the device name to identify this device. This name should be unique among your devices. This feature cannot be enabled until this is configured.",
                         cls: "op-warn",
                     },
                     (c) => {},
@@ -2055,7 +2055,7 @@ I appreciate you for your great dedication.
                     paneEl,
                     "div",
                     {
-                        text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
+                        text: "The device name cannot be changed while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
                     (c) => {},
@@ -2108,9 +2108,9 @@ I appreciate you for your great dedication.
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
             void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
-                new Setting(paneEl).setName("Make report to inform the issue").addButton((button) =>
+                new Setting(paneEl).setName("Copy system information for reporting issues").addButton((button) =>
                     button
-                        .setButtonText("Make report")
+                        .setButtonText("Create Report")
                         .setCta()
                         .setDisabled(false)
                         .onClick(async () => {
@@ -2342,16 +2342,16 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Recreate all")
+                            .setButtonText("Recreate All")
                             .setCta()
                             .onClick(async () => {
                                 await this.plugin.fileHandler.createAllChunks(true);
                             })
                     );
                 new Setting(paneEl)
-                    .setName("Resolve All conflicted files by the newer one")
+                    .setName("Use the newer file in case of a merge conflict")
                     .setDesc(
-                        "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                        "Resolve all file conflicts by using the newer one. Caution: This will overwrite the older file, and you cannot restore the overwritten one."
                     )
                     .addButton((button) =>
                         button
@@ -2369,7 +2369,7 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Verify all")
+                            .setButtonText("Verify All")
                             .setDisabled(false)
                             .setCta()
                             .onClick(async () => {
@@ -2549,9 +2549,9 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
-                new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+                new Setting(paneEl).setName("Reset settings").addButton((button) =>
                     button
-                        .setButtonText("Back")
+                        .setButtonText("Reset")
                         .setDisabled(false)
                         .onClick(async () => {
                             this.editingSettings.isConfigured = false;

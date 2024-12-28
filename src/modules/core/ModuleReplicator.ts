@@ -229,7 +229,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
             const docs = ret.rows.filter((e) => e.doc).map((e) => e.doc) as PouchDB.Core.ExistingDocument<EntryDoc>[];
             const errors = ret.rows.filter((e) => !e.doc && !e.value.deleted);
             if (errors.length > 0) {
-                Logger("Some queued processes were not resurrected");
+                Logger("Some queued processes were not restored");
                 Logger(JSON.stringify(errors), LOG_LEVEL_VERBOSE);
             }
             this.replicationResultProcessor.enqueueAll(docs);

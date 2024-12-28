@@ -73,7 +73,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Requires restart of Obsidian.",
     },
     lessInformationInLog: {
-        name: "Show only notifications",
+        name: "Only show notifications",
         desc: "Disables logging, only shows notifications. Please disable this when reporting an issue.",
     },
     showVerboseLog: {
@@ -88,8 +88,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Characters (millions)",
     },
     writeCredentialsForSettingSync: {
-        name: "Write credentials in the file",
-        desc: "(Not recommended) If set, credentials will be stored in the file.",
+        name: "Write credentials to the file",
+        desc: "Not recommended - If set, credentials will be stored in the file.",
     },
     notifyAllSettingSyncFile: {
         name: "Notify all setting files",
@@ -123,55 +123,55 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     trashInsteadDelete: {
         name: "Use the trash bin",
-        desc: "Move remotely deleted files to the trash, instead of deleting.",
+        desc: "Move remotely deleted files to the trash instead of deleting them.",
     },
     doNotDeleteFolder: {
         name: "Keep empty folder",
-        desc: "Should we keep folders that don't have any files inside?",
+        desc: "Keep folders that don't have any files inside.",
     },
     resolveConflictsByNewerFile: {
         name: "(BETA) Always overwrite with a newer file",
-        desc: "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.",
+        desc: "Testing only - Resolve file conflicts by syncing newer copies of the file. This can overwrite modified files. Be warned.",
     },
     checkConflictOnlyOnOpen: {
         name: "Delay conflict resolution of inactive files",
-        desc: "Should we only check for conflicts when a file is opened?",
+        desc: "Only check for conflicts when a file is opened.",
     },
     showMergeDialogOnlyOnActive: {
         name: "Delay merge conflict prompt for inactive files.",
-        desc: "Should we prompt you about conflicting files when a file is opened?",
+        desc: "Only prompt to merge a conflict when the conflicting file is opened.",
     },
     disableMarkdownAutoMerge: {
         name: "Always prompt merge conflicts",
-        desc: "Should we prompt you for every single merge, even if we can safely merge automatcially?",
+        desc: "Prompt for every merge, even if the conflict can be resolved automatically.",
     },
     writeDocumentsIfConflicted: {
         name: "Apply Latest Change if Conflicting",
-        desc: "Enable this option to automatically apply the most recent change to documents even when it conflicts",
+        desc: "Enable this option to automatically apply the most recent change to documents even if there is a conflict.",
     },
     syncInternalFilesInterval: {
         name: "Scan hidden files periodically",
-        desc: "Seconds, 0 to disable",
+        desc: "Seconds (0 to disable)",
     },
     batchSave: {
         name: "Batch database update",
-        desc: "Reducing the frequency with which on-disk changes are reflected into the DB",
+        desc: "Reduces the frequency at which on-disk changes are pushed to the database.",
     },
     readChunksOnline: {
         name: "Fetch chunks on demand",
-        desc: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.",
+        desc: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing the custom chunk size is recommended.",
     },
     syncMaxSizeInMB: {
         name: "Maximum file size",
-        desc: "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.",
+        desc: "MB - If this is set, changes to local and remote files that are larger than this will be skipped.",
     },
     useIgnoreFiles: {
         name: "(Beta) Use ignore files",
-        desc: "If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.",
+        desc: "Skip changes to local files which are matched by the ignore files. Remote changes are determined using local ignore files.",
     },
     ignoreFiles: {
         name: "Ignore files",
-        desc: "Comma separated `.gitignore, .dockerignore`",
+        desc: "Comma separated: `.gitignore, .dockerignore`",
     },
     batch_size: {
         name: "Batch size",
@@ -200,8 +200,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Stop reflecting database changes to storage files.",
     },
     writeLogToTheFile: {
-        name: "Write logs into the file",
-        desc: "Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.",
+        name: "Write logs to a file",
+        desc: "Warning! This will have a serious impact on performance. The logs will not be synchronised under their default name. Please be careful with logs; they often contain your confidential information.",
     },
     deleteMetadataOfDeletedFiles: {
         name: "Do not keep metadata of deleted files.",
@@ -277,8 +277,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.",
     },
     preset: {
-        name: "Presets",
-        desc: "Apply preset configuration",
+        name: "Configuration Presets",
     },
     syncMode: {
         name: "Sync Mode",
@@ -303,7 +302,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "xxhash64 is the current default.",
     },
     deviceAndVaultName: {
-        name: "Device name",
+        name: "Device Name",
         desc: "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.",
     },
     displayLanguage: {
@@ -331,7 +330,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Saving will be performed forcefully after this number of seconds.",
     },
     notifyThresholdOfRemoteStorageSize: {
-        name: "Remote Storage size warning",
+        name: "Remote Storage Size",
         desc: "MB (0 to disable) - Notify on launch when the estimated remote storage size exceeds this value.",
     },
     usePluginSyncV2: {

@@ -138,19 +138,17 @@ Show verbose log. Please enable when you report the logs.
 
 ### 1. Remote Server
 
-#### Remote Type
+#### Remote Server Type
 
 Setting key: remoteType
 
-Remote server type
+### 2. Notifications
 
-### 2. Notification
-
-#### Notify when the estimated remote storage size exceeds on start up
+#### Remote Storage Size
 
 Setting key: notifyThresholdOfRemoteStorageSize
 
-MB (0 to disable) - Display a notification when the estimated remote storage size exceeds this value.
+MB (0 to disable) - Notify on launch when the estimated remote storage size exceeds this value.
 
 ### 3. Privacy & Encryption
 
@@ -190,7 +188,7 @@ This is an experimental feature and not recommended. If you enable this, the ite
 
 Fetch necessary settings from an already configured remote server.
 
-### 5. Minio,S3,R2
+### 5. MinIO, S3, R2
 
 #### Endpoint URL
 
@@ -258,7 +256,8 @@ Checks and fixes any potential issues with the database config.
 #### Presets
 
 Setting key: preset
-Apply preset configuration
+
+Apply a configuration preset
 
 ### 2. Synchronization Method
 
@@ -301,7 +300,7 @@ Starts synchronisation automatically after merging files.
 #### Batch database update
 
 Setting key: batchSave
-Reduces the frequency with which on-disk changes are pushed to the database.
+Reduces the frequency at which on-disk changes are pushed to the database.
 
 #### Minimum delay for batch database updating
 
@@ -318,7 +317,7 @@ Saving will be performed forcefully after this number of seconds.
 #### Use the trash bin
 
 Setting key: trashInsteadDelete
-Move remotely deleted files to the trash instead of deleting.
+Move remotely deleted files to the trash instead of deleting them.
 
 #### Keep empty folder
 
@@ -330,7 +329,7 @@ Keep folders without any files inside.
 #### (BETA) Always overwrite with a newer file
 
 Setting key: resolveConflictsByNewerFile
-Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be warned.
+Testing only - Resolve file conflicts by syncing newer copies of the file. This can overwrite modified files. Be warned.
 
 #### Delay conflict resolution of inactive files
 
@@ -352,6 +351,7 @@ Save settings to a markdown file. You will be notified when new settings arrive.
 #### Write credentials to the file
 
 Setting key: writeCredentialsForSettingSync
+
 Not recommended - If set, credentials will be stored in the file.
 
 #### Notify all setting files
@@ -388,17 +388,20 @@ RegExp - If this is set, any changes to local and remote files that match this w
 #### Maximum file size
 
 Setting key: syncMaxSizeInMB
+
 MB - If this is set, changes to local and remote files that are larger than this will be skipped.
 
 #### (Beta) Use ignore files
 
 Setting key: useIgnoreFiles
-If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.
+
+Skip changes to local files which are matched by the ignore files. Remote changes are determined using local ignore files.
 
 #### Ignore files
 
 Setting key: ignoreFiles
-Comma separated `.gitignore, .dockerignore`
+
+Comma separated: `.gitignore, .dockerignore`
 
 ### 2. Hidden Files (Advanced)
 
@@ -410,7 +413,7 @@ Comma separated `.gitignore, .dockerignore`
 
 ### 1. Customization Sync
 
-#### Device name
+#### Device Name
 
 Setting key: deviceAndVaultName
 Unique name between all synchronized devices. To edit this setting, please disable customization sync once.
@@ -452,6 +455,7 @@ Open the dialog
 #### Write logs to a file
 
 Setting key: writeLogToTheFile
+
 Warning! This will have a serious impact on performance. The logs will not be synchronised under their default name. Please be careful with logs; they often contain your confidential information.
 
 ### 2. Scram Switches
@@ -472,7 +476,7 @@ Stop reflecting database changes to storage files.
 
 This will recreate chunks for all files. If there were missing chunks, this may fix the errors.
 
-#### Resolve All conflicted files by the newer one
+#### Use the newer file in case of a merge conflict
 
 Resolve all file conflicts by using the newer one. Caution: This will overwrite the older file, and you cannot restore the overwritten one.
 
@@ -522,7 +526,7 @@ If this enabled, chunks will be split into semantically meaningful segments. Not
 #### Fetch chunks on demand
 
 Setting key: readChunksOnline
-(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing the custom chunk size is recommended.
 
 #### Batch size of on-demand fetching
 
@@ -570,11 +574,13 @@ Number of changes to sync at a time. Defaults to 50. Minimum is 2.
 #### Batch limit
 
 Setting key: batches_limit
+
 Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.
 
 #### Use timeouts instead of heartbeats
 
 Setting key: useTimeouts
+
 If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.
 
 ### 3. Configuration Encryption
@@ -586,6 +592,7 @@ Setting key: configPassphraseStore
 #### Passphrase of sensitive configuration items
 
 Setting key: configPassphrase
+
 This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.
 
 ### 4. Developer
@@ -593,6 +600,7 @@ This passphrase will not be copied to another device. It will be set to `Default
 #### Enable Developer Debug Tools.
 
 Setting key: enableDebugTools
+
 Requires restart of Obsidian.
 
 ## 10. Patches (Edge Case)
@@ -606,6 +614,7 @@ Setting key: deleteMetadataOfDeletedFiles
 #### Delete old metadata of deleted files on start-up
 
 Setting key: automaticallyDeleteMetadataOfDeletedFiles
+
 Days - 0 to disable automatic-deletion.
 
 ### 2. Compatibility (Conflict Behaviour)
@@ -613,11 +622,13 @@ Days - 0 to disable automatic-deletion.
 #### Always prompt merge conflicts
 
 Setting key: disableMarkdownAutoMerge
+
 Should we prompt you for every single merge, even if we can safely merge automatically?
 
 #### Apply Latest Change if Conflicting
 
 Setting key: writeDocumentsIfConflicted
+
 Enable this option to automatically apply the most recent change to documents even if there is a conflict.
 
 ### 3. Compatibility (Database Structure)
@@ -625,16 +636,19 @@ Enable this option to automatically apply the most recent change to documents ev
 #### (Obsolete) Use an old adapter for compatibility
 
 Setting key: useIndexedDBAdapter
+
 Before v0.17.16, we used an old adapter for the local database. Now, the new adapter is preferred. However, this requires a rebuild of the local database. Please disable this toggle when you have enough time. If left enabled and fetching from the remote database, you will be asked to disable this.
 
 #### Compute revisions for chunks (Previous Behaviour)
 
 Setting key: doNotUseFixedRevisionForChunks
+
 If this enabled, all chunks will be stored with the revision made from its content (previous behaviour).
 
 #### Handle files as case-sensitive
 
 Setting key: handleFilenameCaseSensitive
+
 If this enabled, all files are handled as case-sensitive (previous behaviour).
 
 ### 4. Compatibility (Internal API Usage)
@@ -642,6 +656,7 @@ If this enabled, all files are handled as case-sensitive (previous behaviour).
 #### Scan changes on customization sync
 
 Setting key: watchInternalFileChanges
+
 Do not use internal API
 
 ### 5. Edge case addressing (Database)
@@ -649,6 +664,7 @@ Do not use internal API
 #### Database suffix
 
 Setting key: additionalSuffixOfDatabaseName
+
 LiveSync could not handle multiple vaults which have the same name without different prefixes. This should be automatically configured.
 
 #### The Hash algorithm for chunk IDs (Experimental)
@@ -664,18 +680,21 @@ Setting key: doNotSuspendOnFetching
 #### Keep empty folder
 
 Setting key: doNotDeleteFolder
-Should we keep folders that don't have any files inside?
+
+Keep folders that don't have any files inside.
 
 ### 7. Edge case addressing (Processing)
 
 #### Do not split chunks in the background
 
 Setting key: disableWorkerForGeneratingChunks
+
 If disabled (toggled), chunks will be split on the UI thread (previous behaviour).
 
 #### Process small files in the foreground
 
 Setting key: processSmallFilesInUIThread
+
 If enabled, files under 1kB will be processed in the UI thread.
 
 ### 8. Compatibility (Trouble addressed)
