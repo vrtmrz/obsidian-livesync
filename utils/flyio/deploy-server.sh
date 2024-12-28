@@ -28,7 +28,7 @@ if command -v deno >/dev/null 2>&1; then
     echo "Setup finished! You can automatically set up LiveSync using the Setup URI below."
     echo "The Setup URI passphrase will only be printed once. Keep it safe!"
     echo "--- Values ---"
-    echo "database       : ${database}"
+    echo "Database       : ${database}"
     echo "E2EE passphrase: ${passphrase}"
     echo "--- Setup URI ---"
     deno run -A generate_setupuri.ts
