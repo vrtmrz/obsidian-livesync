@@ -8,9 +8,9 @@ export hostname="https://$appname.fly.dev"
 
 echo "-- YOUR CONFIGURATION --"
 echo "URL     : $hostname"
-echo "username: $username"
-echo "password: $password"
-echo "region  : $region"
+echo "Username: $username"
+echo "Password: $password"
+echo "Region  : $region"
 echo ""
 echo "-- START DEPLOYING --> "
 
@@ -25,19 +25,20 @@ set +e
 echo "OK!"
 
 if command -v deno >/dev/null 2>&1; then
-    echo "Setup finished! Also, we can set up Self-Hosted LiveSync instantly, by the following setup uri."
-    echo "Passphrase of setup-uri will be printed only one time. Keep it safe!"
-    echo "--- configured ---"
+    echo "Setup finished! You can automatically set up LiveSync using the Setup URI below."
+    echo "The Setup URI passphrase will only be printed once. Keep it safe!"
+    echo "--- Values ---"
     echo "database       : ${database}"
     echo "E2EE passphrase: ${passphrase}"
-    echo "--- setup uri  ---"
+    echo "--- Setup URI ---"
     deno run -A generate_setupuri.ts
 else
-    echo "Setup finished! Here is the configured values (reprise)!"
+    echo "Setup finished! Here are the configured values (reprise)!"
     echo "-- YOUR CONFIGURATION --"
     echo "URL     : $hostname"
-    echo "username: $username"
-    echo "password: $password"
+    echo "Username: $username"
+    echo "Password: $password"
     echo "-- YOUR CONFIGURATION --"
-    echo "If we had Deno, we would got the setup uri directly!"
+    echo "Deno was not installed, so the automatic Setup URI could not be generated."
+    echo "The values above can be used to manually configure LiveSync."
 fi
