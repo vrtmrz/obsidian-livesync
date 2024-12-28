@@ -201,7 +201,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
 
         if (!file) {
             await this.core.storageAccess.ensureDir(filename);
-            const initialContent = `This file contains Self-hosted LiveSync settings as YAML.
+            const initialContent = `This file contains Self-Hosted LiveSync settings as YAML.
 Except for the \`livesync-setting\` code block, we can add a note for free.
 
 If the name of this file matches the value of the "settingSyncFile" setting inside the \`livesync-setting\` block, LiveSync will tell us whenever the settings change. We can decide to accept or decline the remote setting. (In other words, we can back up this file by renaming it to another name).

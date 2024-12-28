@@ -920,7 +920,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             void addPanel(paneEl, "Quick Setup").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Connect with Setup URI")
-                    .setDesc("This is the recommended method to set up Self-hosted LiveSync with a Setup URI.")
+                    .setDesc("This is the recommended method to set up Self-Hosted LiveSync with a Setup URI.")
                     .addButton((text) => {
                         text.setButtonText("Use").onClick(() => {
                             this.closeSetting();
@@ -930,7 +930,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
 
                 new Setting(paneEl)
                     .setName("Manual setup")
-                    .setDesc("Not recommended, but useful if you don't have a Setup URI")
+                    .setDesc("Not recommended, but useful if you don't have a Setup URI.")
                     .addButton((text) => {
                         text.setButtonText("Start").onClick(async () => {
                             await this.enableMinimalSetup();
@@ -3103,7 +3103,7 @@ ${stringifyYaml(pluginConfig)}`;
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
+                    .setName("Delete local database to reset or uninstall Self-Hosted LiveSync")
                     .addButton((button) =>
                         button
                             .setButtonText("Delete")

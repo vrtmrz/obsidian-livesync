@@ -168,7 +168,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                             const CHOICE_WITHOUT_RESTART = "Without restart";
                             if (
                                 (await this.core.confirm.askSelectStringDialogue(
-                                    "Self-hosted LiveSync restarts Obsidian to fetch everything safely. However, you can do it without restarting. Please choose one.",
+                                    "Self-Hosted LiveSync restarts Obsidian to fetch everything safely. However, you can do it without restarting. Please choose one.",
                                     [CHOICE_RESTART, CHOICE_WITHOUT_RESTART],
                                     {
                                         title: "Fetch again",
@@ -257,7 +257,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 if (change.version > VER) {
                     this.core.replicator.closeReplication();
                     Logger(
-                        `Remote database updated to incompatible version. update your Self-hosted LiveSync plugin.`,
+                        `Remote database updated to incompatible version. update your Self-Hosted LiveSync plugin.`,
                         LOG_LEVEL_NOTICE
                     );
                 }

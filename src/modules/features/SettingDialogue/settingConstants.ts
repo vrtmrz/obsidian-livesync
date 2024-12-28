@@ -50,11 +50,9 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     couchDB_USER: {
         name: "Username",
-        desc: "username",
     },
     couchDB_PASSWORD: {
         name: "Password",
-        desc: "password",
     },
     couchDB_DBNAME: {
         name: "Database Name",
@@ -76,18 +74,18 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     lessInformationInLog: {
         name: "Show only notifications",
-        desc: "Disables logging, only shows notifications. Please disable if you report an issue.",
+        desc: "Disables logging, only shows notifications. Please disable this when reporting an issue.",
     },
     showVerboseLog: {
         name: "Verbose Log",
-        desc: "Show verbose log. Please enable if you report an issue.",
+        desc: "Show verbose log. Please enable this when reporting an issue.",
     },
     hashCacheMaxCount: {
         name: "Memory cache size (by total items)",
     },
     hashCacheMaxAmount: {
         name: "Memory cache size (by total characters)",
-        desc: "(Mega chars)",
+        desc: "Characters (millions)",
     },
     writeCredentialsForSettingSync: {
         name: "Write credentials in the file",
@@ -239,8 +237,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Notify when other device has newly customized.",
     },
     remoteType: {
-        name: "Remote Type",
-        desc: "Remote server type",
+        name: "Remote Server Type",
     },
     endpoint: {
         name: "Endpoint URL",
@@ -311,7 +308,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     displayLanguage: {
         name: "Display Language",
-        desc: 'Not all messages have been translated. And, please revert to "Default" when reporting errors.',
+        desc: 'Not all messages have been translated. Please revert to "Default" when reporting errors.',
     },
     enableChunkSplitterV2: {
         name: "Use splitting-limit-capped chunk splitter",
@@ -334,8 +331,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Saving will be performed forcefully after this number of seconds.",
     },
     notifyThresholdOfRemoteStorageSize: {
-        name: "Notify when the estimated remote storage size exceeds on start up",
-        desc: "MB (0 to disable).",
+        name: "Remote Storage size warning",
+        desc: "MB (0 to disable) - Notify on launch when the estimated remote storage size exceeds this value.",
     },
     usePluginSyncV2: {
         name: "Enable per-file customization sync",

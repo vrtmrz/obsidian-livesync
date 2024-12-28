@@ -88,7 +88,7 @@
     });
 </script>
 
-<h2>TESTING BENCH: Self-hosted LiveSync</h2>
+<h2>TESTING BENCH: Self-Hosted LiveSync</h2>
 
 <h3>Module Checks</h3>
 <button on:click={() => moduleMultiDeviceTest()} disabled={moduleTesting}>MultiDevice Test</button>

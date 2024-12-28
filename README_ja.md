@@ -1,5 +1,5 @@
 <!-- For translation: 20240227r0 -->
-# Self-hosted LiveSync
+# Self-Hosted LiveSync
 [英語版ドキュメント](./README.md) - [中国語版ドキュメント](./README_cn.md).
 
 Obsidianで利用可能なすべてのプラットフォームで使える、CouchDBをサーバに使用する、コミュニティ版の同期プラグイン

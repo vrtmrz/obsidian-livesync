@@ -77,7 +77,7 @@ const d2 = "\n";
 
 function serialize(data: PluginDataEx): string {
     // For higher performance, create custom plug-in data strings.
-    // Self-hosted LiveSync uses `\n` to split chunks. Therefore, grouping together those with similar entropy would work nicely.
+    // Self-Hosted LiveSync uses `\n` to split chunks. Therefore, grouping together those with similar entropy would work nicely.
     let ret = "";
     ret += ":";
     ret += data.category + d + data.name + d + data.term + d2;

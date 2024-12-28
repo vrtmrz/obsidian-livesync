@@ -17,7 +17,7 @@
 
 设置 CouchDB 的最简单方法是使用 [CouchDB docker image]((https://hub.docker.com/_/couchdb)).
 
-需要修改一些 `local.ini` 中的配置，以让它可以用于 Self-hosted LiveSync，如下：
+需要修改一些 `local.ini` 中的配置，以让它可以用于 Self-Hosted LiveSync，如下：
 
 ```
 [couchdb]
@@ -102,7 +102,7 @@ CouchDB 部署成功后, 需要手动创建一个数据库, 方便插件连接�
 2. 点击 Create Database, 然后根据个人喜好创建数据库
 
 ## 从移动设备访问
-如果你想要从移动设备访问 Self-hosted LiveSync，你需要一个合法的 SSL 证书。
+如果你想要从移动设备访问 Self-Hosted LiveSync，你需要一个合法的 SSL 证书。
 
 ### 移动设备测试
 测试时，[localhost.run](http://localhost.run/) 这一类的反向隧道服务很实用。（非必须，只是用于终端设备不方便 ssh 的时候的备选方案）

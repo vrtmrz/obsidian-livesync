@@ -1,8 +1,8 @@
 <!-- For translation: 20240227r0 -->
-# Self-hosted LiveSync
+# Self-Hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
-Self-hosted LiveSync is a community-implemented synchronization plugin, available on every obsidian-compatible platform and using CouchDB or Object Storage (e.g., MinIO, S3, R2, etc.) as the server.
+Self-Hosted LiveSync is a community-implemented synchronization plugin, available on every obsidian-compatible platform and using CouchDB or Object Storage (e.g., MinIO, S3, R2, etc.) as the server.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 

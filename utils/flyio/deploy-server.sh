@@ -25,7 +25,7 @@ set +e
 echo "OK!"
 
 if command -v deno >/dev/null 2>&1; then
-    echo "Setup finished! Also, we can set up Self-hosted LiveSync instantly, by the following setup uri."
+    echo "Setup finished! Also, we can set up Self-Hosted LiveSync instantly, by the following setup uri."
     echo "Passphrase of setup-uri will be printed only one time. Keep it safe!"
     echo "--- configured ---"
     echo "database       : ${database}"

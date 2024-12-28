@@ -31,7 +31,7 @@
 </script>
 
 <div class="logpane">
-    <!-- <h1>Self-hosted LiveSync Log</h1> -->
+    <!-- <h1>Self-Hosted LiveSync Log</h1> -->
     <div class="control">
         <div class="row">
             <label><input type="checkbox" bind:checked={wrapRight} /><span>Wrap</span></label>

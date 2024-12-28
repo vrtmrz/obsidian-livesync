@@ -6,7 +6,7 @@ The plugin has so many configuration options to deal with different circumstance
 
 ![](../images/quick_setup_1.png)
 
-There are three methods to set up Self-hosted LiveSync.
+There are three methods to set up Self-Hosted LiveSync.
 
 1. [Using setup URIs](#1-using-setup-uris) *(Recommended)*
 2. [Minimal setup](#2-minimal-setup)
@@ -18,7 +18,7 @@ There are three methods to set up Self-hosted LiveSync.
 
 > [!TIP]
 > What is the setup URI? Why is it required?  
-> The setup URI is the encrypted representation of Self-hosted LiveSync configuration as a URI. This starts `obsidian://setuplivesync?settings=`. This is encrypted with a passphrase, so that it can be shared relatively securely between devices. It is a bit long, but it is one line. This allows a series of settings to be set at once without any inconsistencies. 
+> The setup URI is the encrypted representation of Self-Hosted LiveSync configuration as a URI. This starts `obsidian://setuplivesync?settings=`. This is encrypted with a passphrase, so that it can be shared relatively securely between devices. It is a bit long, but it is one line. This allows a series of settings to be set at once without any inconsistencies. 
 > 
 > If you have configured the remote database by [Automated setup on Fly.io](./setup_flyio.md#a-very-automated-setup) or [set up your server with the tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server), **you should have one of them** 
 
@@ -31,8 +31,8 @@ In this procedure, [this video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 5. Answer `Set it up as secondary or subsequent device` for `How would you like to set it up?`.
 6. Initialisation will begin, please hold a while.
 7. You will asked about the hidden file synchronisation, answer as you like.
-   1. If you are new to Self-hosted LiveSync, we can configure it later so leave it once.
-8. Synchronisation has been started! `Reload app without saving` is recommended after the indicators of Self-hosted LiveSync disappear.
+   1. If you are new to Self-Hosted LiveSync, we can configure it later so leave it once.
+8. Synchronisation has been started! `Reload app without saving` is recommended after the indicators of Self-Hosted LiveSync disappear.
 
 OK, we can proceed the [next step](#).
 
@@ -124,6 +124,6 @@ However, if you have some specific reasons to configure it manually, please clic
 And, please copy the setup URI by `Copy current settings as a new setup URI` and make a note(Not in Obsidian) of this.
 
 ## At the subsequent device
-After installing Self-hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
+After installing Self-Hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
 
 It is completely same as [Using setup URIs on the first device](#1-using-setup-uris). Please refer it.

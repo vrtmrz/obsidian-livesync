@@ -194,7 +194,7 @@ Note: If you do not know what it is, please refer to the [documentation](${URI_D
         const NEXT = "No, I do not have";
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_SETUP, NEXT], {
-            title: "Welcome to Self-hosted LiveSync",
+            title: "Welcome to Self-Hosted LiveSync",
             defaultAction: USE_SETUP,
         });
         if (ret === USE_SETUP) {
@@ -246,7 +246,7 @@ How do you want to set it up manually?`;
             // Case sensitivity
             if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
                 this._log(
-                    "The setup has been cancelled, Self-hosted LiveSync waiting for your setup!",
+                    "The setup has been cancelled, Self-Hosted LiveSync waiting for your setup!",
                     LOG_LEVEL_NOTICE
                 );
                 return false;
