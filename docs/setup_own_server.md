@@ -13,7 +13,7 @@
   - [3. Expose CouchDB to the Internet](#3-expose-couchdb-to-the-internet)
   - [4. Client Setup](#4-client-setup)
     - [1. Generate the setup URI on a desktop device or server](#1-generate-the-setup-uri-on-a-desktop-device-or-server)
-    - [2. Setup Self-hosted LiveSync to Obsidian](#2-setup-self-hosted-livesync-to-obsidian)
+    - [2. Setup Self-Hosted LiveSync to Obsidian](#2-setup-self-hosted-livesync-to-obsidian)
   - [Manual setup information](#manual-setup-information)
     - [Setting up your domain](#setting-up-your-domain)
   - [Reverse Proxies](#reverse-proxies)
@@ -127,9 +127,9 @@ This passphrase is never shown again, so please note it in a safe place.
 
 Please keep your passphrase of Setup-URI.
 
-### 2. Setup Self-hosted LiveSync to Obsidian
+### 2. Setup Self-Hosted LiveSync to Obsidian
 [This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
-1. Install Self-hosted LiveSync
+1. Install Self-Hosted LiveSync
 2. Choose `Use the copied setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
 3. Type the previously displayed passphrase (`patient-haze`) for setup-uri passphrase.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.

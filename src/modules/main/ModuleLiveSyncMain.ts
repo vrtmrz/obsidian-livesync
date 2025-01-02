@@ -22,7 +22,7 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
             const ANSWER_KEEP = "Keep LiveSync disabled";
             const ANSWER_RESUME = "Resume and restart Obsidian";
-            const message = `Self-hosted LiveSync has been configured to ignore some events. Is this correct?
+            const message = `Self-Hosted LiveSync has been configured to ignore some events. Is this correct?
 
 | Type | Status | Note |
 |:---:|:---:|---|
@@ -91,7 +91,7 @@ Do you want to resume them and restart Obsidian?
         //@ts-ignore
         const packageVersion: string = PACKAGE_VERSION || "0.0.0";
 
-        this._log($f`Self-hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
+        this._log($f`Self-Hosted LiveSync${" v"}${manifestVersion} ${packageVersion}`);
         await this.core.$$loadSettings();
         if (!(await this.core.$everyOnloadAfterLoadSettings())) {
             this._log("Plugin initialisation was cancelled by a module", LOG_LEVEL_NOTICE);

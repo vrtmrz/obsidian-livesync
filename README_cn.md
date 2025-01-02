@@ -1,6 +1,6 @@
-# Self-hosted LiveSync
+# Self-Hosted LiveSync
 
-Self-hosted LiveSync (自搭建在线同步) 是一个社区实现的在线同步插件。  
+Self-Hosted LiveSync (自搭建在线同步) 是一个社区实现的在线同步插件。  
 使用一个自搭建的或者购买的 CouchDB 作为中转服务器。兼容所有支持 Obsidian 的平台。
 
 注意: 本插件与官方的 "Obsidian Sync" 服务不兼容。

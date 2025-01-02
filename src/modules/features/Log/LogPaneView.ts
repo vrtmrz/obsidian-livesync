@@ -24,7 +24,7 @@ export class LogPaneView extends ItemView {
     }
 
     getDisplayText() {
-        return "Self-hosted LiveSync Log";
+        return "Self-Hosted LiveSync Log";
     }
 
     async onOpen() {
