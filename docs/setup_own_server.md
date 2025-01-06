@@ -105,6 +105,17 @@ export username=johndoe
 export password=abc123
 deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 ```
+Or you can use docker
+```bash
+docker run \
+  -e hostname=https://example.com \
+  -e database=obsidiannotes \
+  -e username=johndoe \
+  -e password=abc123 \
+  -e passphrase=dfsapkdjaskdjasdas \
+  docker.io/oleduc/docker-obsidian-livesync-couchdb:master \
+  deno -A /scripts/generate_setupuri.ts
+```
 
 You will then get the following output:
 
