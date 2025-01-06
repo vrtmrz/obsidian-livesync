@@ -23,24 +23,14 @@
 ## 1. Prepare CouchDB
 ### A. Using Docker container
 
-#### 1. Prepare
-```bash
-
-# Prepare environment variables.
-export hostname=localhost:5984
-export username=goojdasjdas     #Please change as you like.
-export password=kpkdasdosakpdsa #Please change as you like
-
-# Prepare directories which saving data and configurations.
-mkdir couchdb-data
-mkdir couchdb-etc
 ```
-
-#### 2. Run docker container
-
-1. Boot Check.
-```
-$ docker run --name couchdb-for-ols --rm -it -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
+$ docker run -d \
+  -e SERVER_DOMAIN=example.com \
+  -e COUCHDB_USER=username \
+  -e COUCHDB_PASSWORD=password \
+  -e COUCHDB_DATABASE=obsidian \
+  -p 5984:5984 \
+  docker.io/oleduc/docker-obsidian-livesync-couchdb:master
 ```
 If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
 Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
