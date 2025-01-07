@@ -154,7 +154,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             this.settings.syncInternalFilesBeforeReplication &&
             !this.settings.watchInternalFileChanges
         ) {
-            await this.scanAllStorageChanges();
+            await this.scanAllStorageChanges(showNotice);
         }
         return true;
     }
@@ -1108,6 +1108,9 @@ Offline Changed files: ${files.length}`;
     }
 
     queueNotification(key: FilePath) {
+        if (this.settings.suppressNotifyHiddenFilesChange) {
+            return;
+        }
         const configDir = this.plugin.app.vault.configDir;
         if (!key.startsWith(configDir)) return;
         const dirName = key.split("/").slice(0, -1).join("/");

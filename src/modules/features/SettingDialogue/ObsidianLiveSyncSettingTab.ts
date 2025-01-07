@@ -1909,6 +1909,7 @@ I appreciate you for your great dedication.
                         });
                 }
 
+                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("suppressNotifyHiddenFilesChange", {});
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncInternalFilesBeforeReplication", {
                     onUpdate: visibleOnly(() => this.isConfiguredAs("watchInternalFileChanges", true)),
                 });
@@ -2748,9 +2749,10 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireDropDown("hashAlg", {
                     options: {
                         "": "Old Algorithm",
-                        xxhash32: "xxhash32 (Fast)",
+                        xxhash32: "xxhash32 (Fast but less collision resistance)",
                         xxhash64: "xxhash64 (Fastest)",
-                        sha1: "Fallback (Without WebAssembly)",
+                        "mixed-purejs": "PureJS fallback  (Fast, W/O WebAssembly)",
+                        sha1: "Older fallback (Slow, W/O WebAssembly)",
                     } as Record<HashAlgorithm, string>,
                 });
                 this.addOnSaved("hashAlg", async () => {

@@ -1,10 +1,19 @@
 import { App, Modal } from "../../../deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, RESULT_TIMED_OUT, type diff_result } from "../../../lib/src/common/types.ts";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "../../../lib/src/common/types.ts";
 import { escapeStringToHTML } from "../../../lib/src/string_and_binary/convert.ts";
-import { delay, fireAndForget, sendValue, waitForValue } from "../../../lib/src/common/utils.ts";
+import { delay } from "../../../lib/src/common/utils.ts";
+import { eventHub } from "../../../common/events.ts";
+import { globalSlipBoard } from "../../../lib/src/bureau/bureau.ts";
 
-export type MergeDialogResult = typeof LEAVE_TO_SUBSEQUENT | typeof CANCELLED | string;
+export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
+
+declare global {
+    interface Slips extends LSSlips {
+        "conflict-resolved": typeof CANCELLED | MergeDialogResult;
+    }
+}
+
 export class ConflictResolveModal extends Modal {
     result: diff_result;
     filename: string;
@@ -18,6 +27,7 @@ export class ConflictResolveModal extends Modal {
     pluginPickMode: boolean = false;
     localName: string = "Keep A";
     remoteName: string = "Keep B";
+    offEvent?: ReturnType<typeof eventHub.onEvent>;
 
     constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
         super(app);
@@ -32,23 +42,21 @@ export class ConflictResolveModal extends Modal {
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
         // sendValue("close-resolve-conflict:" + this.filename, false);
-        sendValue("cancel-resolve-conflict:" + this.filename, true);
     }
 
     onOpen() {
         const { contentEl } = this;
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
-        sendValue("cancel-resolve-conflict:" + this.filename, true);
-        setTimeout(() => {
-            fireAndForget(async () => {
-                const forceClose = await waitForValue("cancel-resolve-conflict:" + this.filename);
-                // debugger;
-                if (forceClose) {
-                    this.sendResponse(CANCELLED);
-                }
-            });
-        }, 10);
+        globalSlipBoard.submit("conflict-resolved", this.filename, CANCELLED);
+        if (this.offEvent) {
+            this.offEvent();
+        }
+        this.offEvent = eventHub.onEvent("conflict-cancelled", (path) => {
+            if (path === this.filename) {
+                this.sendResponse(CANCELLED);
+            }
+        });
         // sendValue("close-resolve-conflict:" + this.filename, false);
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -111,18 +119,19 @@ export class ConflictResolveModal extends Modal {
     onClose() {
         const { contentEl } = this;
         contentEl.empty();
+        if (this.offEvent) {
+            this.offEvent();
+        }
         if (this.consumed) {
             return;
         }
         this.consumed = true;
-        sendValue("close-resolve-conflict:" + this.filename, this.response);
-        sendValue("cancel-resolve-conflict:" + this.filename, false);
+        globalSlipBoard.submit("conflict-resolved", this.filename, this.response);
     }
 
     async waitForResult(): Promise<MergeDialogResult> {
         await delay(100);
-        const r = await waitForValue<MergeDialogResult>("close-resolve-conflict:" + this.filename);
-        if (r === RESULT_TIMED_OUT) return CANCELLED;
+        const r = await globalSlipBoard.awaitNext("conflict-resolved", this.filename);
         return r;
     }
 }
