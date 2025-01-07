@@ -13,6 +13,28 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+
+## 0.24.7
+
+### Fixed (Security)
+
+-   Assigning IDs to chunks has been corrected for more safety.
+    -   Before version 0.24.6, there were possibilities in End-to-End encryption where a brute-force attack could be carried out against an E2EE passphrase via a chunk ID if a zero-byte file was present. Now the chunk ID should be assigned more safely, and not all of passphrases are used for generating the chunk ID.
+    -   This is a security fix, and it is recommended to update and rebuild database to this version as soon as possible.
+    -   Note: It keeps the compatibility with the previous versions, but the chunk ID will be changed for the new files and modified files. Hence, deduplication will not work for the files which are modified after the update. It is recommended to rebuild the database to avoid the potential issues, and reduce the database size.
+    -   Note2: This fix is only for with E2EE. Plain synchronisation is not affected by this issue.
+
+### Fixed
+
+-   Now the conflict resolving dialogue is automatically closed after the conflict has been resolved (and transferred from other devices; or written by some other resolution).
+-   Resolving conflicts by timestamp is now working correctly.
+    -   It also fixes customisation sync.
+
+### Improved
+
+-   Notifications can be suppressed for the hidden files update now.
+-   No longer uses the old-xxhash and sha1 for generating the chunk ID. Chunk ID is now generated with the new algorithm (Pure JavaScript hash implementation; which is using Murmur3Hash and FNV-1a now used).
+
 ## 0.24.6
 
 ### Fixed (Quick Fix)
