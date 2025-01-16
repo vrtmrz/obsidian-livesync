@@ -11,10 +11,23 @@ import {
     type diff_check_result,
     type FilePathWithPrefix,
 } from "../../lib/src/common/types";
-import { compareMTime, displayRev, TARGET_IS_NEW } from "../../common/utils";
+import {
+    compareMTime,
+    displayRev,
+    isCustomisationSyncMetadata,
+    isPluginMetadata,
+    TARGET_IS_NEW,
+} from "../../common/utils";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "../../lib/src/string_and_binary/path";
 import type { ICoreModule } from "../ModuleTypes.ts";
+import { eventHub } from "../../common/events.ts";
+
+declare global {
+    interface LSEvents {
+        "conflict-cancelled": FilePathWithPrefix;
+    }
+}
 
 export class ModuleConflictResolver extends AbstractModule implements ICoreModule {
     async $$resolveConflictByDeletingRev(
@@ -30,9 +43,14 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             );
             return MISSING_OR_ERROR;
         }
+        eventHub.emitEvent("conflict-cancelled", path);
         this._log(`${title} Conflicted revision deleted ${displayRev(deleteRevision)} ${path}`, LOG_LEVEL_INFO);
         if ((await this.core.databaseFileAccess.getConflictedRevs(path)).length != 0) {
             this._log(`${title} some conflicts are left in ${path}`, LOG_LEVEL_INFO);
+            return AUTO_MERGED;
+        }
+        this._log(`${title} ${path} is a plugin metadata file, no need to write to storage`, LOG_LEVEL_INFO);
+        if (isPluginMetadata(path) || isCustomisationSyncMetadata(path)) {
             return AUTO_MERGED;
         }
         // If no conflicts were found, write the resolved content to the storage.
@@ -139,26 +157,42 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 }
             }
             this._log("[conflict] Manual merge required!");
+            eventHub.emitEvent("conflict-cancelled", filename);
             await this.core.$anyResolveConflictByUI(filename, conflictCheckResult);
         });
     }
 
     async $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+        const currentRev = await this.core.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
+        if (currentRev == false) {
+            this._log(`Could not get current revision of ${filename}`);
+            return Promise.resolve(false);
+        }
         const revs = await this.core.databaseFileAccess.getConflictedRevs(filename);
         if (revs.length == 0) {
             return Promise.resolve(true);
         }
         const mTimeAndRev = (
-            await Promise.all(
-                revs.map(async (rev) => {
-                    const leaf = await this.core.databaseFileAccess.fetchEntryMeta(filename, rev);
-                    if (leaf == false) {
-                        return [0, rev] as [number, string];
-                    }
-                    return [leaf.mtime, rev] as [number, string];
-                })
-            )
-        ).sort((a, b) => b[0] - a[0]);
+            [
+                [currentRev.mtime, currentRev._rev],
+                ...(await Promise.all(
+                    revs.map(async (rev) => {
+                        const leaf = await this.core.databaseFileAccess.fetchEntryMeta(filename, rev);
+                        if (leaf == false) {
+                            return [0, rev] as [number, string];
+                        }
+                        return [leaf.mtime, rev] as [number, string];
+                    })
+                )),
+            ] as [number, string][]
+        ).sort((a, b) => {
+            const diff = b[0] - a[0];
+            if (diff == 0) {
+                return a[1].localeCompare(b[1], "en", { numeric: true });
+            }
+            return diff;
+        });
+        console.warn(mTimeAndRev);
         this._log(
             `Resolving conflict by newest: ${filename} (Newest: ${new Date(mTimeAndRev[0][0]).toLocaleString()}) (${mTimeAndRev.length} revisions exists)`
         );

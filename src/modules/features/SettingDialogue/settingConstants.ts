@@ -365,6 +365,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Enable Developers' Debug Tools.",
         desc: "Requires restart of Obsidian",
     },
+    suppressNotifyHiddenFilesChange: {
+        name: "Suppress notification of hidden files change",
+        desc: "If enabled, the notification of hidden files change will be suppressed.",
+    },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

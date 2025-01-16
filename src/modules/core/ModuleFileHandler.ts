@@ -22,6 +22,7 @@ import { getDocDataAsArray, isDocContentSame, readContent } from "../../lib/src/
 import { shouldBeIgnored } from "../../lib/src/string_and_binary/path";
 import type { ICoreModule } from "../ModuleTypes";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import { eventHub } from "../../common/events.ts";
 
 export class ModuleFileHandler extends AbstractModule implements ICoreModule {
     get db() {
@@ -356,6 +357,8 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                     `Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) :Started...`,
                     LOG_LEVEL_VERBOSE
                 );
+                // Before writing (or skipped ), merging dialogue should be cancelled.
+                eventHub.emitEvent("conflict-cancelled", path);
                 const ret = await this.dbToStorage(entry, targetFile);
                 this._log(`Processing ${path} (${entry._id.substring(0, 8)} :${entry._rev?.substring(0, 5)}) : Done`);
                 return ret;

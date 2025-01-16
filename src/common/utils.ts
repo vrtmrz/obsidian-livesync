@@ -85,6 +85,7 @@ export function getStoragePathFromUXFileInfo(file: UXFileInfoStub | string | Fil
     return stripAllPrefixes(file.path);
 }
 export function getDatabasePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
+    if (typeof file == "string" && file.startsWith(ICXHeader)) return file as FilePathWithPrefix;
     const prefix = isInternalFile(file) ? ICHeader : "";
     if (typeof file == "string") return (prefix + stripAllPrefixes(file as FilePathWithPrefix)) as FilePathWithPrefix;
     return (prefix + stripAllPrefixes(file.path)) as FilePathWithPrefix;
