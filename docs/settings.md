@@ -104,7 +104,7 @@ Note: Not all messages have been translated. Please revert to "Default" when rep
 
 Setting key: showStatusOnEditor
 
-Show the synchronisation status inside the editor.
+Show the synchronization status inside the editor.
 
 Reflected after reboot
 
@@ -118,7 +118,7 @@ Show status as icons only. This is useful when you want to save space on the sta
 
 Setting key: showStatusOnStatusbar
 
-We can show the status of synchronisation on the status bar (default: on).
+We can show the status of synchronization on the status bar (default: on).
 
 ### 2. Logging
 
@@ -273,17 +273,17 @@ Interval (seconds)
 #### Sync on Save
 
 Setting key: syncOnSave
-Starts synchronisation automatically when a file is saved.
+Starts synchronization automatically when a file is saved.
 
 #### Sync on Editor Save
 
 Setting key: syncOnEditorSave
-Starts synchronisation automatically when a file is saved in the editor.
+Starts synchronization automatically when a file is saved in the editor.
 
 #### Sync on File Open
 
 Setting key: syncOnFileOpen
-Starts synchronisation automatically when a file is opened.
+Starts synchronization automatically when a file is opened.
 
 #### Sync on Startup
 
@@ -293,7 +293,7 @@ Automatically sync all files when opening Obsidian.
 #### Sync after merging file
 
 Setting key: syncAfterMerge
-Starts synchronisation automatically after merging files.
+Starts synchronization automatically after merging files.
 
 ### 3. Update thinning
 
@@ -377,11 +377,11 @@ Seconds (0 to disable)
 
 ### 1. Normal Files
 
-#### Synchronising files
+#### Synchronizing files
 
-RegExp - Empty to sync all files. Set filter as a regular expression to limit synchronising files.
+RegExp - Empty to sync all files. Set filter as a regular expression to limit synchronizing files.
 
-#### Non-Synchronising files
+#### Non-Synchronizing files
 
 RegExp - If this is set, any changes to local and remote files that match this will be skipped.
 
@@ -456,7 +456,7 @@ Open the dialog
 
 Setting key: writeLogToTheFile
 
-Warning! This will have a serious impact on performance. The logs will not be synchronised under their default name. Please be careful with logs; they often contain your confidential information.
+Warning! This will have a serious impact on performance. The logs will not be synchronized under their default name. Please be careful with logs; they often contain your confidential information.
 
 ### 2. Scram Switches
 
@@ -617,7 +617,7 @@ Setting key: automaticallyDeleteMetadataOfDeletedFiles
 
 Days - 0 to disable automatic-deletion.
 
-### 2. Compatibility (Conflict Behaviour)
+### 2. Compatibility (Conflict Behavior)
 
 #### Always prompt merge conflicts
 
@@ -639,17 +639,17 @@ Setting key: useIndexedDBAdapter
 
 Before v0.17.16, we used an old adapter for the local database. Now, the new adapter is preferred. However, this requires a rebuild of the local database. Please disable this toggle when you have enough time. If left enabled and fetching from the remote database, you will be asked to disable this.
 
-#### Compute revisions for chunks (Previous Behaviour)
+#### Compute revisions for chunks (Previous Behavior)
 
 Setting key: doNotUseFixedRevisionForChunks
 
-If this enabled, all chunks will be stored with the revision made from its content (previous behaviour).
+If this enabled, all chunks will be stored with the revision made from its content (previous behavior).
 
 #### Handle files as case-sensitive
 
 Setting key: handleFilenameCaseSensitive
 
-If this enabled, all files are handled as case-sensitive (previous behaviour).
+If this enabled, all files are handled as case-sensitive (previous behavior).
 
 ### 4. Compatibility (Internal API Usage)
 
@@ -671,9 +671,9 @@ LiveSync could not handle multiple vaults which have the same name without diffe
 
 Setting key: hashAlg
 
-### 6. Edge case addressing (Behaviour)
+### 6. Edge case addressing (Behavior)
 
-#### Fetch database with previous behaviour
+#### Fetch database with previous behavior
 
 Setting key: doNotSuspendOnFetching
 
@@ -689,7 +689,7 @@ Keep folders that don't have any files inside.
 
 Setting key: disableWorkerForGeneratingChunks
 
-If disabled (toggled), chunks will be split on the UI thread (previous behaviour).
+If disabled (toggled), chunks will be split on the UI thread (previous behavior).
 
 #### Process small files in the foreground
 
