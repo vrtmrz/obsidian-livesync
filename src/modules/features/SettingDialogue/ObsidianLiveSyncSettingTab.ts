@@ -893,7 +893,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         };
         // Panes
 
-        void addPane(containerEl, "Change Log", "💬", 100, false).then((paneEl) => {
+        void addPane(containerEl, "Changelog", "💬", 100, false).then((paneEl) => {
             const informationDivEl = this.createEl(paneEl, "div", { text: "" });
 
             const tmpDiv = createDiv();
@@ -920,7 +920,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             void addPanel(paneEl, "Quick Setup").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Connect with Setup URI")
-                    .setDesc("This is the recommended method to set up Self-hosted LiveSync with a Setup URI.")
+                    .setDesc("This is the recommended method to set up Self-Hosted LiveSync.")
                     .addButton((text) => {
                         text.setButtonText("Use").onClick(() => {
                             this.closeSetting();
@@ -930,7 +930,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
 
                 new Setting(paneEl)
                     .setName("Manual setup")
-                    .setDesc("Not recommended, but useful if you don't have a Setup URI")
+                    .setDesc("Not recommended, but useful if you don't have a Setup URI.")
                     .addButton((text) => {
                         text.setButtonText("Start").onClick(async () => {
                             await this.enableMinimalSetup();
@@ -1465,7 +1465,7 @@ I appreciate you for your great dedication.
                         .setName("Test Database Connection")
                         .setClass("wizardHidden")
                         .setDesc(
-                            "Open database connection. If the remote database is not found and you have permission to create a database, the database will be created."
+                            "Open a database connection. If the remote database is not found and you have permission to create a database, the database will be created."
                         )
                         .addButton((button) =>
                             button
@@ -1504,7 +1504,7 @@ I appreciate you for your great dedication.
                         .addOnUpdate(onlyOnCouchDB);
                 });
             });
-            void addPanel(paneEl, "Notification").then((paneEl) => {
+            void addPanel(paneEl, "Notifications").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
             });
@@ -1816,7 +1816,7 @@ I appreciate you for your great dedication.
                     .autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
             });
 
-            void addPanel(paneEl, "Update thinning").then((paneEl) => {
+            void addPanel(paneEl, "Update Thinning").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("batchSave");
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMinimumDelay", {
@@ -1845,7 +1845,7 @@ I appreciate you for your great dedication.
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("showMergeDialogOnlyOnActive");
             });
 
-            void addPanel(paneEl, "Sync settings via markdown", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, "Sync Settings via Markdown", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl)
@@ -1925,9 +1925,9 @@ I appreciate you for your great dedication.
                 paneEl.addClass("wizardHidden");
 
                 const syncFilesSetting = new Setting(paneEl)
-                    .setName("Synchronising files")
+                    .setName("Synchronized Files")
                     .setDesc(
-                        "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
+                        "(RegExp) Empty to sync all files. Add a regular expression to limit which files are synchronized."
                     )
                     .setClass("wizardHidden");
                 new MultipleRegExpControl({
@@ -1947,9 +1947,9 @@ I appreciate you for your great dedication.
                 });
 
                 const nonSyncFilesSetting = new Setting(paneEl)
-                    .setName("Non-Synchronising files")
+                    .setName("Non-Synchronized Files")
                     .setDesc(
-                        "(RegExp) If this is set, any changes to local and remote files that match this will be skipped."
+                        "(RegExp) If this is set, any changes to local and remote files that match this expression will be skipped."
                     )
                     .setClass("wizardHidden");
 
@@ -2033,7 +2033,7 @@ I appreciate you for your great dedication.
             });
         });
 
-        void addPane(containerEl, "Customization sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
+        void addPane(containerEl, "Customization Sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
             // With great respect, thank you TfTHacker!
             // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
             void addPanel(paneEl, "Customization Sync").then((paneEl) => {
@@ -2046,7 +2046,7 @@ I appreciate you for your great dedication.
                     paneEl,
                     "div",
                     {
-                        text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
+                        text: "Please set the device name to identify this device. This name should be unique among your devices. This feature cannot be enabled until this is configured.",
                         cls: "op-warn",
                     },
                     (c) => {},
@@ -2056,7 +2056,7 @@ I appreciate you for your great dedication.
                     paneEl,
                     "div",
                     {
-                        text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
+                        text: "The device name cannot be changed while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
                     (c) => {},
@@ -2108,10 +2108,10 @@ I appreciate you for your great dedication.
         void addPane(containerEl, "Hatch", "🧰", 50, true).then((paneEl) => {
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
-            void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
-                new Setting(paneEl).setName("Make report to inform the issue").addButton((button) =>
+            void addPanel(paneEl, "Reporting Issues").then((paneEl) => {
+                new Setting(paneEl).setName("Copy system information for reporting issues").addButton((button) =>
                     button
-                        .setButtonText("Make report")
+                        .setButtonText("Create Report")
                         .setCta()
                         .setDisabled(false)
                         .onClick(async () => {
@@ -2343,16 +2343,16 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Recreate all")
+                            .setButtonText("Recreate All")
                             .setCta()
                             .onClick(async () => {
                                 await this.plugin.fileHandler.createAllChunks(true);
                             })
                     );
                 new Setting(paneEl)
-                    .setName("Resolve All conflicted files by the newer one")
+                    .setName("Use the newer file in case of a merge conflict")
                     .setDesc(
-                        "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                        "Resolve all file conflicts by using the newer one. Caution: This will overwrite the older file, and you cannot restore the overwritten one."
                     )
                     .addButton((button) =>
                         button
@@ -2370,7 +2370,7 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Verify all")
+                            .setButtonText("Verify All")
                             .setDisabled(false)
                             .setCta()
                             .onClick(async () => {
@@ -2550,9 +2550,9 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
-                new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+                new Setting(paneEl).setName("Reset settings").addButton((button) =>
                     button
-                        .setButtonText("Back")
+                        .setButtonText("Reset")
                         .setDisabled(false)
                         .onClick(async () => {
                             this.editingSettings.isConfigured = false;
@@ -2588,11 +2588,11 @@ ${stringifyYaml(pluginConfig)}`;
             });
         });
         void addPane(containerEl, "Advanced", "🔧", 46, false, LEVEL_ADVANCED).then((paneEl) => {
-            void addPanel(paneEl, "Memory cache").then((paneEl) => {
+            void addPanel(paneEl, "Memory Cache").then((paneEl) => {
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
             });
-            void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Local Database Tweaks").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("customChunkSize", { clampMin: 0 });
@@ -2605,7 +2605,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Transfer Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Transfer Tweaks").then((paneEl) => {
                 new Setting(paneEl)
                     .setClass("wizardHidden")
                     .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB });
@@ -2631,7 +2631,7 @@ ${stringifyYaml(pluginConfig)}`;
         });
 
         void addPane(containerEl, "Power users", "💪", 47, true, LEVEL_POWER_USER).then((paneEl) => {
-            void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Remote Database Tweaks").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
                 const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
                 new Setting(paneEl)
@@ -2647,7 +2647,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "CouchDB Connection Tweak", undefined, onlyOnCouchDB).then((paneEl) => {
+            void addPanel(paneEl, "CouchDB Connection Tweaks", undefined, onlyOnCouchDB).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 this.createEl(
@@ -2694,7 +2694,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .addApplyButton(["configPassphrase", "configPassphraseStore"])
                     .setClass("wizardHidden");
             });
-            void addPanel(paneEl, "Developer").then((paneEl) => {
+            void addPanel(paneEl, "Developers").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("enableDebugTools").setClass("wizardHidden");
             });
         });
@@ -2710,13 +2710,13 @@ ${stringifyYaml(pluginConfig)}`;
                     });
             });
 
-            void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Conflict Behavior)").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
             });
 
-            void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Database Structure)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useIndexedDBAdapter", { invert: true, holdValue: true });
 
                 new Setting(paneEl)
@@ -2736,7 +2736,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
             });
 
-            void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
+            void addPanel(paneEl, "Edge Case Fixes (Database)").then((paneEl) => {
                 new Setting(paneEl)
                     .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
                     .addApplyButton(["additionalSuffixOfDatabaseName"]);
@@ -2759,12 +2759,12 @@ ${stringifyYaml(pluginConfig)}`;
                     await this.plugin.localDatabase._prepareHashFunctions();
                 });
             });
-            void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
+            void addPanel(paneEl, "Edge Case Fixes (Behavior)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
             });
 
-            void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {
+            void addPanel(paneEl, "Edge Case Fixes (Processing)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableWorkerForGeneratingChunks");
 
                 new Setting(paneEl).autoWireToggle("processSmallFilesInUIThread", {
@@ -2772,7 +2772,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
             });
         });
@@ -2851,7 +2851,7 @@ ${stringifyYaml(pluginConfig)}`;
 
                 new Setting(paneEl)
                     .setName("Emergency restart")
-                    .setDesc("Disables all synchronization and restart.")
+                    .setDesc("Disables all synchronization and restarts.")
                     .addButton((button) =>
                         button
                             .setButtonText("Flag and restart")
@@ -2864,7 +2864,7 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
 
-            void addPanel(paneEl, "Syncing").then((paneEl) => {
+            void addPanel(paneEl, "Synchronize").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Resend")
                     .setDesc("Resend all chunks to the remote.")
@@ -3081,7 +3081,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .setClass("sls-setting-obsolete")
                     .setName("Run database cleanup")
                     .setDesc(
-                        "Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul."
+                        "Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use 'Rebuild everything' under Total Overhaul."
                     )
                     .addButton((button) =>
                         button
@@ -3105,7 +3105,7 @@ ${stringifyYaml(pluginConfig)}`;
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
+                    .setName("Delete local database to reset or uninstall Self-Hosted LiveSync")
                     .addButton((button) =>
                         button
                             .setButtonText("Delete")

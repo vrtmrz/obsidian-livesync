@@ -1,7 +1,7 @@
 <!-- For translation: 20240209r0 -->
 # Setup CouchDB on fly.io
 
-This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
+This is how to configure fly.io and CouchDB on it for Self-Hosted LiveSync.
 
 > [!WARNING]
 > It is **your** instance. In Obsidian, we have files locally. Hence, do not hesitate to destroy the remote database if you feel something have got weird. We can launch and switch to the new CouchDB instance anytime[^1].
@@ -10,7 +10,7 @@ This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 
 > [!NOTE] 
 > **What and why is the Fly.io?**  
-> At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
+> At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-Hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
 >
 > Then we found Fly.io. Fly.io is the PaaS Platform, which can be useable for a very reasonable price. It generally falls within the `Free Allowances` range in most cases.
 
@@ -168,7 +168,7 @@ Visit your newly deployed app at https://billowing-dawn-6619.fly.dev/
 
 #### 5. Apply CouchDB configuration
 
-After the initial setup, CouchDB needs some more customisations to be used from Self-hosted LiveSync. It can be configured in browsers or by HTTP-REST APIs.
+After the initial setup, CouchDB needs some more customisations to be used from Self-Hosted LiveSync. It can be configured in browsers or by HTTP-REST APIs.
 
 This section is set up using the REST API.
 
@@ -240,9 +240,9 @@ iwr -UseBasicParsing -Method 'PUT' -ContentType 'application/json; charset=utf-8
 
 Note: Each of these should also be repeated until finished in 200.
 
-#### 6. Use it from Self-hosted LiveSync
+#### 6. Use it from Self-Hosted LiveSync
 
-Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-hosted LiveSync. The `Database name` could be anything you want.
+Now the CouchDB is ready to use from Self-Hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-Hosted LiveSync. The `Database name` could be anything you want.
 Please refer to the [Minimal Setup of the Quick Setup](./quick_setup.md#2-minimal-setup).
 
 ## Delete the Instance

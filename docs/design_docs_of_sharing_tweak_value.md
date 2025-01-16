@@ -8,7 +8,7 @@ Share `Tweak values` between clients to match the chunk lengths, and match per-s
 
 ## Motivation
 
-- In the current implementation, Self-hosted LiveSync splits documents into metadata and multiple chunks. In particular, chunks are split so that they do not exceed a certain length.
+- In the current implementation, Self-Hosted LiveSync splits documents into metadata and multiple chunks. In particular, chunks are split so that they do not exceed a certain length.
     - This is to optimise the transfer and take advantage of the properties of CouchDB. This also complies with the restriction of IBM Cloudant on the size of a single document.
 - The length of this chunk is adjusted according to a configured factor. Therefore, if this is inconsistent between clients, de-duplication will not work. This is because, in fact, they point to the same content in total, but are split in different places. This results in unnecessary transfers or storage consumption.
 - The same applies to hash algorithms.
@@ -25,7 +25,7 @@ Share `Tweak values` between clients to match the chunk lengths, and match per-s
 - In the current implementation, each client checks the remote database for the existence of their node information, to detect whether the remote database accepts them.
   - This is what 'Lock' is all about.
 - To achieve this feature, the client will also send each configuration value. However, the configuration contains credentials and/or secret values. Hence we cannot send all of them.
-  - With a favourable prediction, Self-hosted LiveSync will continue to increase in feature. Each time this happens, the number of configuration values to be kept secret will also increase. Therefore, they must be handled by an allow-list.
+  - With a favourable prediction, Self-Hosted LiveSync will continue to increase in feature. Each time this happens, the number of configuration values to be kept secret will also increase. Therefore, they must be handled by an allow-list.
   - This allow-listed configuration are the `Tweak values`.
 - If the plug-in detects mismatched `Tweak values` on checking the remote database, the plug-in will ask us to decide which is win (Mine, or theirs).
 - Node information is one of the documents. Therefore, it will be replicated and saved locally. While showing dialogue, show the notice on each `Match preferred` configuration.

@@ -84,7 +84,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                 await this.saveSettings();
                 if (isRedFlag2Raised) {
                     this._log(
-                        `${FLAGMD_REDFLAG2} or ${FLAGMD_REDFLAG2_HR} has been detected! Self-hosted LiveSync suspends all sync and rebuild everything.`,
+                        `${FLAGMD_REDFLAG2} or ${FLAGMD_REDFLAG2_HR} has been detected! Self-Hosted LiveSync suspends all sync and rebuild everything.`,
                         LOG_LEVEL_NOTICE
                     );
                     await this.core.rebuilder.$rebuildEverything();
@@ -102,7 +102,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                     }
                 } else if (isRedFlag3Raised) {
                     this._log(
-                        `${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`,
+                        `${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-Hosted LiveSync will discard the local database and fetch everything from the remote once again.`,
                         LOG_LEVEL_NOTICE
                     );
                     const makeLocalChunkBeforeSync =

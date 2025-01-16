@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Self-hosted LiveSync has gradually but steadily become very feature-rich and they have created a very heavy `Main` class. This is very difficult to understand and maintain especially new contributors or futures contributors.
+Self-Hosted LiveSync has gradually but steadily become very feature-rich and they have created a very heavy `Main` class. This is very difficult to understand and maintain especially new contributors or futures contributors.
 And some of the features are not used by all users, we should limit the inter-dependencies between modules. And also inter-effects between modules.
 Hence, to make the code more readable and maintainable, I decided to split the code into multiple modules.
 

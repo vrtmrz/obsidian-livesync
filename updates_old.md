@@ -10,7 +10,7 @@ Note: As this is a pretty experimental feature, hence we have some limitations.
 
 I hope this feature empowers users to maintain independence and self-host their data, offering an alternative for those who prefer to manage their own storage solutions and avoid being stuck on the right side of a sudden change in business model.
 
-Of course, I use Self-hosted MinIO for testing and recommend this. It is for the same reason as using CouchDB. -- open, controllable, auditable and indeed already audited by numerous eyes.
+Of course, I use Self-Hosted MinIO for testing and recommend this. It is for the same reason as using CouchDB. -- open, controllable, auditable and indeed already audited by numerous eyes.
 
 Let me write one more acknowledgement.
 
@@ -129,7 +129,7 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - Library refining (Phase 1 - step 2). There are no significant changes on the user side.
     - Including the following fixes of potentially problems:
       - the problem which the path had been obfuscating twice has been resolved.
-      - Note: Potential problems of the library; which has not happened in Self-hosted LiveSync for some reasons.
+      - Note: Potential problems of the library; which has not happened in Self-Hosted LiveSync for some reasons.
 - 0.23.15:
   - Maintenance Update:
     - Library refining (Phase 1). There are no significant changes on the user side.
@@ -192,7 +192,7 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
     - Unused files have been removed.
   - Note:
     - From this version, some test files have been included. However, they are not enabled and released in the release build.
-      - To try them, please run Self-hosted LiveSync in the dev build.
+      - To try them, please run Self-Hosted LiveSync in the dev build.
 - 0.23.7
   - Fixed:
     - No longer missing tasks which have queued as the same key (e.g., for the same operation to the same file).
@@ -250,7 +250,7 @@ Hooray for open source, and generous licences, and the sharing of knowledge by e
 
 
 ### 0.22.0
-A few years passed since Self-hosted LiveSync was born, and our codebase had been very complicated. This could be patient now, but it should be a tremendous hurt.
+A few years passed since Self-Hosted LiveSync was born, and our codebase had been very complicated. This could be patient now, but it should be a tremendous hurt.
 Therefore at v0.22.0, for future maintainability, I refined task scheduling logic totally.
 
 Of course, I think this would be our suffering in some cases. However, I would love to ask you for your cooperation and contribution.
@@ -279,7 +279,7 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
     - Batch database update is now disabled in LiveSync mode.
     - No longer automatically reconnection while off-focused.
     - Status saves are thinned out.
-    - Now Self-hosted LiveSync waits for all files between the local database and storage to be surely checked.
+    - Now Self-Hosted LiveSync waits for all files between the local database and storage to be surely checked.
   - Improved:
     - The job scheduler is now more robust and stable.
     - The status indicator no longer flickers and keeps zero for a while.
@@ -382,9 +382,9 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
   - Improved:
     - `Setup Wizard` is now more clear.
     - `Minimal Setup` is now more simple.
-    - Self-hosted LiveSync now be able to use even if there are vaults with the same name.
+    - Self-Hosted LiveSync now be able to use even if there are vaults with the same name.
       - Database suffix will automatically added.
-    - Now Self-hosted LiveSync waits until set-up is complete.
+    - Now Self-Hosted LiveSync waits until set-up is complete.
     - Show reload prompts when possibly recommended while settings.
   - New feature:
     - A guidance dialogue prompting for settings will be shown after the installation.
@@ -413,7 +413,7 @@ Note at 0.22.2: **Now, to rescue mobile devices, Maximum file size is set to 50 
     - A bit of organisation to write the test.
 - 0.22.3
   - Fixed:
-    - No longer detects storage changes which have been caused by Self-hosted LiveSync itself.
+    - No longer detects storage changes which have been caused by Self-Hosted LiveSync itself.
     - Setting sync file will be detected only if it has been configured now.
       - And its log will be shown only while the verbose log is enabled.
     - Customisation file enumeration has got less blingy.
@@ -512,7 +512,7 @@ It will be addressed soon. Please be patient if you are using filesystem-livesyn
     - WARNING: Since this version, the compatibilities with older Filesystem LiveSync have been lost.
 
 ## 0.20.0
-At 0.20.0, Self-hosted LiveSync has changed the binary file format and encrypting format, for efficient synchronisation.  
+At 0.20.0, Self-Hosted LiveSync has changed the binary file format and encrypting format, for efficient synchronisation.  
 The dialogue will be shown and asks us to decide whether to keep v1 or use v2. Once we have enabled v2, all subsequent edits will be saved in v2. Therefore, devices running 0.19 or below cannot understand this and they might say that decryption error. Please update all devices.  
 Then we will have an impressive performance.
 
@@ -775,7 +775,7 @@ I hope you will give it a try.
 ### 0.18.0
 
 #### Now, paths of files in the database can now be obfuscated. (Experimental Feature)
-At before v0.18.0, Self-hosted LiveSync used the path of files, to detect and resolve conflicts. In naive. The ID of the document stored in the CouchDB was naturally the filename.
+At before v0.18.0, Self-Hosted LiveSync used the path of files, to detect and resolve conflicts. In naive. The ID of the document stored in the CouchDB was naturally the filename.
 However, it means a sort of lacking confidentiality. If the credentials of the database have been leaked, the attacker (or an innocent bystander) can read the path of files. So we could not use confidential things in the filename in some environments.
 Since v0.18.0, they can be obfuscated. so it is no longer possible to decipher the path from the ID. Instead of that, it costs a bit CPU load than before, and the data structure has been changed a bit.
 
@@ -1036,7 +1036,7 @@ I appreciate for reviewing and giving me advice @Pouhon158!
 - 0.15.2 The wizard has been improved and documented!
 - 0.15.3 Fixed the issue about locking/unlocking remote database while rebuilding in the wizard.
 - 0.15.4 Fixed issues about asynchronous processing (e.g., Conflict check or hidden file detection)
-- 0.15.5 Add new features for setting Self-hosted LiveSync up more easier.
+- 0.15.5 Add new features for setting Self-Hosted LiveSync up more easier.
 - 0.15.6 File tracking logic has been refined.
 - 0.15.7 Fixed bug about renaming file.
 - 0.15.8 Fixed bug about deleting empty directory, weird behaviour on boot-sequence on mobile devices.
@@ -1056,7 +1056,7 @@ I appreciate for reviewing and giving me advice @Pouhon158!
 - Added this note.
 - Use local chunks in preference to remote them if present,
 
-#### Recommended configuration for Self-hosted CouchDB
+#### Recommended configuration for Self-Hosted CouchDB
 - Set chunk size to around 100 to 250 (10MB - 25MB per chunk)
 - *Set batch size to 100 and batch limit to 20 (0.14.2)*
 - Be sure to `Read chunks online` checked.

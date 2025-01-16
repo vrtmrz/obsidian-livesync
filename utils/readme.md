@@ -128,7 +128,7 @@ curl: (35) OpenSSL SSL_connect: Connection reset by peer in connection to young-
 ""
 <-- Configuring CouchDB by REST APIs Done!
 OK!
-Setup finished! Also, we can set up Self-hosted LiveSync instantly, by the following setup uri.
+Setup finished! Also, we can set up Self-Hosted LiveSync instantly, by the following setup uri.
 Passphrase of setup-uri will be printed only one time. Keep it safe!
 --- configured ---
 database       : obsidiannotes
@@ -140,7 +140,7 @@ Your passphrase of Setup-URI is:  patient-haze
 This passphrase is never shown again, so please note it in a safe place.
 ```
 
-All we have to do is copy the setup-URI (`obsidian`://...`) and open it from Self-hosted LiveSync on Obsidian.
+All we have to do is copy the setup-URI (`obsidian`://...`) and open it from Self-Hosted LiveSync on Obsidian.
 
 If you did not install Deno, configurations will be printed again, instead of the setup-URI. In this case, we should configure it manually.
 
