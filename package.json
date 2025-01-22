@@ -72,7 +72,7 @@
         "fflate": "^0.8.2",
         "idb": "^8.0.0",
         "minimatch": "^10.0.1",
-        "octagonal-wheels": "^0.1.21",
+        "octagonal-wheels": "^0.1.22",
         "svelte-check": "^4.0.4",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }

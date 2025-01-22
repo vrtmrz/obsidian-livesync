@@ -81,6 +81,7 @@ import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
 import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
+import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 
 function throwShouldBeOverridden(): never {
     throw new Error("This function should be overridden by the module.");
@@ -117,7 +118,7 @@ export default class ObsidianLiveSyncPlugin
     }
 
     // Keep order to display the dialogue in order.
-    addOns = [new ConfigSync(this), new HiddenFileSync(this)] as LiveSyncCommands[];
+    addOns = [new ConfigSync(this), new HiddenFileSync(this), new LocalDatabaseMaintenance(this)] as LiveSyncCommands[];
 
     modules = [
         new ModuleLiveSyncMain(this),

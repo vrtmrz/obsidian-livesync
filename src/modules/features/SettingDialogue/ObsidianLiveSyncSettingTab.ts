@@ -77,6 +77,7 @@ import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectsto
 import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
+import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 
 export type OnUpdateResult = {
     visibility?: boolean;
@@ -118,10 +119,10 @@ function getLevelStr(level: ConfigLevel) {
     return level == LEVEL_POWER_USER
         ? " (Power User)"
         : level == LEVEL_ADVANCED
-          ? " (Advanced)"
-          : level == LEVEL_EDGE_CASE
-            ? " (Edge Case)"
-            : "";
+            ? " (Advanced)"
+            : level == LEVEL_EDGE_CASE
+                ? " (Edge Case)"
+                : "";
 }
 
 export function findAttrFromParent(el: HTMLElement, attr: string): string {
@@ -300,8 +301,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const syncMode = this.editingSettings?.liveSync
             ? "LIVESYNC"
             : this.editingSettings?.periodicReplication
-              ? "PERIODIC"
-              : "ONEVENTS";
+                ? "PERIODIC"
+                : "ONEVENTS";
         return {
             syncMode,
         };
@@ -1651,16 +1652,16 @@ I appreciate you for your great dedication.
                 const options: Record<string, string> =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                              NONE: "",
-                              LIVESYNC: "LiveSync",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          }
+                            NONE: "",
+                            LIVESYNC: "LiveSync",
+                            PERIODIC: "Periodic w/ batch",
+                            DISABLE: "Disable all automatic",
+                        }
                         : {
-                              NONE: "",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          };
+                            NONE: "",
+                            PERIODIC: "Periodic w/ batch",
+                            DISABLE: "Disable all automatic",
+                        };
 
                 new Setting(paneEl)
                     .autoWireDropDown("preset", {
@@ -1767,10 +1768,10 @@ I appreciate you for your great dedication.
                 const optionsSyncMode =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                              ONEVENTS: "On events",
-                              PERIODIC: "Periodic and on events",
-                              LIVESYNC: "LiveSync",
-                          }
+                            ONEVENTS: "On events",
+                            PERIODIC: "Periodic and on events",
+                            LIVESYNC: "LiveSync",
+                        }
                         : { ONEVENTS: "On events", PERIODIC: "Periodic and on events" };
 
                 new Setting(paneEl)
@@ -2049,7 +2050,7 @@ I appreciate you for your great dedication.
                         text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
                         cls: "op-warn",
                     },
-                    (c) => {},
+                    (c) => { },
                     visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", ""))
                 );
                 this.createEl(
@@ -2059,7 +2060,7 @@ I appreciate you for your great dedication.
                         text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
-                    (c) => {},
+                    (c) => { },
                     visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
                 );
 
@@ -2151,8 +2152,8 @@ I appreciate you for your great dedication.
                             const scheme = pluginConfig.couchDB_URI.startsWith("http:")
                                 ? "(HTTP)"
                                 : pluginConfig.couchDB_URI.startsWith("https:")
-                                  ? "(HTTPS)"
-                                  : "";
+                                    ? "(HTTPS)"
+                                    : "";
                             pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
                                 ? "cloudant"
                                 : `self-hosted${scheme}`;
@@ -2172,8 +2173,8 @@ I appreciate you for your great dedication.
                                 const endpointScheme = pluginConfig.endpoint.startsWith("http:")
                                     ? "(HTTP)"
                                     : pluginConfig.endpoint.startsWith("https:")
-                                      ? "(HTTPS)"
-                                      : "";
+                                        ? "(HTTPS)"
+                                        : "";
                                 pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                             }
                             const obsidianInfo = `Navigator: ${navigator.userAgent}
@@ -2384,10 +2385,10 @@ ${stringifyYaml(pluginConfig)}`;
                                 Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                                 const files = this.plugin.settings.syncInternalFiles
                                     ? await this.plugin.storageAccess.getFilesIncludeHidden(
-                                          "/",
-                                          undefined,
-                                          ignorePatterns
-                                      )
+                                        "/",
+                                        undefined,
+                                        ignorePatterns
+                                    )
                                     : await this.plugin.storageAccess.getFileNames();
                                 const documents = [] as FilePath[];
 
@@ -2880,6 +2881,7 @@ ${stringifyYaml(pluginConfig)}`;
                             })
                     )
                     .addOnUpdate(onlyOnCouchDB);
+
                 new Setting(paneEl)
                     .setName("Reset journal received history")
                     .setDesc(
@@ -2923,7 +2925,53 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addOnUpdate(onlyOnMinIO);
             });
+            void addPanel(paneEl, "Garbage Collection (Beta)", (e) => e, onlyOnCouchDB).then((paneEl) => {
+                new Setting(paneEl)
+                    .setName("Remove all orphaned chunks")
+                    .setDesc("Remove all orphaned chunks from the local database.")
+                    .addButton((button) =>
+                        button
+                            .setButtonText("Remove")
+                            .setWarning()
+                            .setDisabled(false)
+                            .onClick(async () => {
+                                await this.plugin
+                                    .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                                    ?.removeUnusedChunks();
+                            })
+                    );
 
+                new Setting(paneEl)
+                    .setName("Resurrect deleted chunks")
+                    .setDesc(
+                        "If you have deleted chunks before fully synchronised and missed some chunks, you possibly can resurrect them."
+                    )
+                    .addButton((button) =>
+                        button
+                            .setButtonText("Try resurrect")
+                            .setWarning()
+                            .setDisabled(false)
+                            .onClick(async () => {
+                                await this.plugin
+                                    .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                                    ?.resurrectChunks();
+                            })
+                    );
+                new Setting(paneEl)
+                    .setName("Commit File Deletion")
+                    .setDesc("Completely delete all deleted documents from the local database.")
+                    .addButton((button) =>
+                        button
+                            .setButtonText("Delete")
+                            .setWarning()
+                            .setDisabled(false)
+                            .onClick(async () => {
+                                await this.plugin
+                                    .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                                    ?.commitFileDeletion();
+                            })
+                    );
+            });
             void addPanel(paneEl, "Rebuilding Operations (Local)").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Fetch from remote")
@@ -3076,33 +3124,6 @@ ${stringifyYaml(pluginConfig)}`;
                     .addOnUpdate(onlyOnMinIO);
             });
 
-            void addPanel(paneEl, "Deprecated").then((paneEl) => {
-                new Setting(paneEl)
-                    .setClass("sls-setting-obsolete")
-                    .setName("Run database cleanup")
-                    .setDesc(
-                        "Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul."
-                    )
-                    .addButton((button) =>
-                        button
-                            .setButtonText("DryRun")
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.dryRunGC();
-                            })
-                    )
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Perform cleaning")
-                            .setDisabled(false)
-                            .setWarning()
-                            .onClick(async () => {
-                                this.closeSetting();
-                                await this.dbGC();
-                            })
-                    )
-                    .addOnUpdate(onlyOnCouchDB);
-            });
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Delete local database to reset or uninstall Self-hosted LiveSync")

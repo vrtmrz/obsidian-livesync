@@ -211,7 +211,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                 ? await this.db.fetchEntryMeta(entryInfo, undefined, true)
                 : await this.db.fetchEntryMeta(entryInfo.path, undefined, true);
         if (!docEntry) {
-            this._log(`File ${entryInfo} is not exist on the database`, LOG_LEVEL_VERBOSE);
+            this._log(`File ${file?.path} is not exist on the database`, LOG_LEVEL_VERBOSE);
             return false;
         }
         const path = getPath(docEntry);
