@@ -14,6 +14,29 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.8
+
+### Fixed
+
+-   Some parallel-processing tasks are now performed more safely.
+-   Some error messages has been fixed.
+
+### Improved
+
+-   Synchronisation is now more efficient and faster.
+-   Saving chunks is a bit more robust.
+
+### New Feature
+
+-   We can remove orphaned chunks again, now!
+    -   Without rebuilding the database!
+    -   Note: Please synchronise devices completely before removing orphaned chunks.
+    -   Note2: Deleted files are using chunks, if you want to remove them, please commit the deletion first. (`Commit File Deletion`)
+    -   Note3: If you lost some chunks, do not worry. They will be resurrected if not so much time has passed. Try `Resurrect deleted chunks`.
+    -   Note4: This feature is still beta. Please report any issues you encounter.
+    -   Note5: Please disable `On demand chunk fetching`, and enable `Compute revisions for each chunk` before using this feature.
+        -   These settings is going to be default in the future.
+
 ## 0.24.7
 
 ### Fixed (Security)
