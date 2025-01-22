@@ -180,7 +180,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     }
 
     async askAgainForSetupURI() {
-        const message = $tf('moduleMigration.msgRecommendSetupUri');
+        const message = $tf('moduleMigration.msgRecommendSetupUri', { URI_DOC: $tf('moduleMigration.docUri') });
         const USE_MINIMAL = $tf('moduleMigration.optionSetupWizard');
         const USE_SETUP = $tf('moduleMigration.optionManualSetup');
         const NEXT = $tf('moduleMigration.optionRemindNextLaunch');
