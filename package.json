@@ -66,7 +66,7 @@
         "@aws-sdk/client-s3": "^3.645.0",
         "@smithy/fetch-http-handler": "^3.2.4",
         "@smithy/protocol-http": "^4.1.0",
-        "@smithy/querystring-builder": "^3.0.3",
+        "@smithy/querystring-builder": "^3.0.8",
         "diff-match-patch": "^1.0.5",
         "esbuild-plugin-inline-worker": "^0.1.1",
         "fflate": "^0.8.2",
