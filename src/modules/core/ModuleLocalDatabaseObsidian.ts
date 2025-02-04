@@ -1,4 +1,4 @@
-import { $tf } from "../../lib/src/common/i18n";
+import { $msg } from "../../lib/src/common/i18n";
 import { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { initializeStores } from "../../common/stores.ts";
 import { AbstractModule } from "../AbstractModule.ts";
@@ -13,7 +13,7 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICore
             await this.localDatabase.close();
         }
         const vaultName = this.core.$$getVaultName();
-        this._log($tf("moduleLocalDatabase.logWaitingForReady"));
+        this._log($msg("moduleLocalDatabase.logWaitingForReady"));
         this.core.localDatabase = new LiveSyncLocalDB(vaultName, this.core);
         initializeStores(vaultName);
         return await this.localDatabase.initializeDatabase();

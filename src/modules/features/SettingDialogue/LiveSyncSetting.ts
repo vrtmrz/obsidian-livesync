@@ -30,7 +30,7 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $tf } from "src/lib/src/common/i18n.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -87,7 +87,7 @@ export class LiveSyncSetting extends Setting {
     autoWireSetting(key: AllSettingItemKey, opt?: AutoWireOption) {
         const conf = getConfig(key);
         if (!conf) {
-            // throw new Error($tf("liveSyncSetting.errorNoSuchSettingItem", { key }));
+            // throw new Error($msg("liveSyncSetting.errorNoSuchSettingItem", { key }));
             return;
         }
         const name = `${conf.name}${statusDisplay(conf.status)}`;
@@ -218,7 +218,7 @@ export class LiveSyncSetting extends Setting {
                     await this.commitValue(value);
                 } else {
                     this.setTooltip(
-                        $tf(
+                        $msg(
                           "liveSyncSetting.valueShouldBeInRange",
                           {
                               min: opt.clampMin?.toString() || "~",
@@ -277,7 +277,7 @@ export class LiveSyncSetting extends Setting {
         this.addButton((button) => {
             this.applyButtonComponent = button;
             this.watchDirtyKeys = unique([...keys, ...this.watchDirtyKeys]);
-            button.setButtonText(text ?? $tf("liveSyncSettings.btnApply"));
+            button.setButtonText(text ?? $msg("liveSyncSettings.btnApply"));
             button.onClick(async () => {
                 await LiveSyncSetting.env.saveSettings(keys);
                 LiveSyncSetting.env.reloadAllSettings();
@@ -373,7 +373,7 @@ export class LiveSyncSetting extends Setting {
         if (this.holdValue && this.selfKey) {
             const isDirty = LiveSyncSetting.env.isDirty(this.selfKey);
             const alt = isDirty
-                ? $tf("liveSyncSetting.originalValue", { value: String(LiveSyncSetting.env.initialSettings?.[this.selfKey] ?? "") })
+                ? $msg("liveSyncSetting.originalValue", { value: String(LiveSyncSetting.env.initialSettings?.[this.selfKey] ?? "") })
                 : "";
             this.controlEl.toggleClass("sls-item-dirty", isDirty);
             if (!this.hasPassword) {

@@ -11,7 +11,7 @@ import {
 } from "./UILib/dialogs.ts";
 import { Notice } from "../../deps.ts";
 import type { Confirm } from "../interfaces/Confirm.ts";
-import { $tf } from "src/lib/src/common/i18n.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 // This module cannot be a common module because it depends on Obsidian's API.
 // However, we have to make compatible one for other platform.
@@ -34,9 +34,9 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
         message: string,
         opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = {}
     ): Promise<"yes" | "no"> {
-        const defaultTitle = $tf("moduleInputUIObsidian.defaultTitleConfirmation");
-        const yesLabel = $tf("moduleInputUIObsidian.optionYes");
-        const noLabel = $tf("moduleInputUIObsidian.optionNo");
+        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleConfirmation");
+        const yesLabel = $msg("moduleInputUIObsidian.optionYes");
+        const noLabel = $msg("moduleInputUIObsidian.optionNo");
         const defaultOption = opt.defaultOption === "Yes" ? yesLabel : noLabel;
         const ret = await confirmWithMessageWithWideButton(
             this.plugin,
@@ -58,7 +58,7 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
         buttons: string[],
         opt: { title?: string; defaultAction: (typeof buttons)[number]; timeout?: number }
     ): Promise<(typeof buttons)[number] | false> {
-        const defaultTitle = $tf("moduleInputUIObsidian.defaultTitleSelect");
+        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
         return confirmWithMessageWithWideButton(
             this.plugin,
             opt.title || defaultTitle,

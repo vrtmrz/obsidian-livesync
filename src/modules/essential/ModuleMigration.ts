@@ -8,12 +8,12 @@ import {
 } from "../../common/events.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
-import { $tf } from "src/lib/src/common/i18n.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
     async migrateDisableBulkSend() {
         if (this.settings.sendChunksBulk) {
-            this._log($tf('moduleMigration.logBulkSendCorrupted'), LOG_LEVEL_NOTICE);
+            this._log($msg('moduleMigration.logBulkSendCorrupted'), LOG_LEVEL_NOTICE);
             this.settings.sendChunksBulk = false;
             this.settings.sendChunksBulkMaxSize = 1;
             await this.saveSettings();
@@ -24,7 +24,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         const current = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
         // Check each migrations(old -> current)
         if (!(await this.migrateToCaseInsensitive(old, current))) {
-            this._log($tf('moduleMigration.logMigrationFailed', {
+            this._log($msg('moduleMigration.logMigrationFailed', {
                 old: old.toString(),
                 current: current.toString()
             }), LOG_LEVEL_NOTICE);
@@ -67,10 +67,10 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                     remoteChecked = true;
                 }
             } else {
-                this._log($tf('moduleMigration.logFetchRemoteTweakFailed'), LOG_LEVEL_INFO);
+                this._log($msg('moduleMigration.logFetchRemoteTweakFailed'), LOG_LEVEL_INFO);
             }
         } catch (ex) {
-            this._log($tf('moduleMigration.logRemoteTweakUnavailable'), LOG_LEVEL_INFO);
+            this._log($msg('moduleMigration.logRemoteTweakUnavailable'), LOG_LEVEL_INFO);
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
 
@@ -81,18 +81,18 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                 this.settings.handleFilenameCaseSensitive = true;
                 this.settings.doNotUseFixedRevisionForChunks = true;
                 this.settings.settingVersion = SETTING_VERSION_SUPPORT_CASE_INSENSITIVE;
-                this._log($tf('moduleMigration.logMigratedSameBehaviour', {
+                this._log($msg('moduleMigration.logMigratedSameBehaviour', {
                     current: current.toString()
                 }), LOG_LEVEL_INFO);
                 await this.saveSettings();
                 return true;
             }
-            const message = $tf('moduleMigration.msgFetchRemoteAgain');
-            const OPTION_FETCH = $tf('moduleMigration.optionYesFetchAgain');
-            const DISMISS =  $tf('moduleMigration.optionNoAskAgain');
+            const message = $msg('moduleMigration.msgFetchRemoteAgain');
+            const OPTION_FETCH = $msg('moduleMigration.optionYesFetchAgain');
+            const DISMISS =  $msg('moduleMigration.optionNoAskAgain');
             const options = [OPTION_FETCH, DISMISS];
             const ret = await this.core.confirm.confirmWithMessage(
-                $tf('moduleMigration.titleCaseSensitivity'),
+                $msg('moduleMigration.titleCaseSensitivity'),
                 message,
                 options,
                 DISMISS,
@@ -107,7 +107,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                     await this.core.rebuilder.scheduleFetch();
                     return;
                 } catch (ex) {
-                    this._log($tf('moduleMigration.logRedflag2CreationFail'), LOG_LEVEL_VERBOSE);
+                    this._log($msg('moduleMigration.logRedflag2CreationFail'), LOG_LEVEL_VERBOSE);
                     this._log(ex, LOG_LEVEL_VERBOSE);
                 }
                 return false;
@@ -116,19 +116,19 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             }
         }
 
-        const ENABLE_BOTH = $tf('moduleMigration.optionEnableBoth');
-        const ENABLE_FILENAME_CASE_INSENSITIVE = $tf('moduleMigration.optionEnableFilenameCaseInsensitive');
-        const ENABLE_FIXED_REVISION_FOR_CHUNKS = $tf('moduleMigration.optionEnableFixedRevisionForChunks');
-        const ADJUST_TO_REMOTE = $tf('moduleMigration.optionAdjustRemote');
-        const KEEP = $tf('moduleMigration.optionKeepPreviousBehaviour');
-        const DISMISS = $tf('moduleMigration.optionDecideLater');
-        const message = $tf('moduleMigration.msgSinceV02321');
+        const ENABLE_BOTH = $msg('moduleMigration.optionEnableBoth');
+        const ENABLE_FILENAME_CASE_INSENSITIVE = $msg('moduleMigration.optionEnableFilenameCaseInsensitive');
+        const ENABLE_FIXED_REVISION_FOR_CHUNKS = $msg('moduleMigration.optionEnableFixedRevisionForChunks');
+        const ADJUST_TO_REMOTE = $msg('moduleMigration.optionAdjustRemote');
+        const KEEP = $msg('moduleMigration.optionKeepPreviousBehaviour');
+        const DISMISS = $msg('moduleMigration.optionDecideLater');
+        const message = $msg('moduleMigration.msgSinceV02321');
         const options = [ENABLE_BOTH, ENABLE_FILENAME_CASE_INSENSITIVE, ENABLE_FIXED_REVISION_FOR_CHUNKS];
         if (remoteChecked) {
             options.push(ADJUST_TO_REMOTE);
         }
         options.push(KEEP, DISMISS);
-        const ret = await this.core.confirm.confirmWithMessage($tf('moduleMigration.titleCaseSensitivity'), message, options, DISMISS, 40);
+        const ret = await this.core.confirm.confirmWithMessage($msg('moduleMigration.titleCaseSensitivity'), message, options, DISMISS, 40);
         console.dir(ret);
         switch (ret) {
             case ENABLE_BOTH:
@@ -160,14 +160,14 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     }
 
     async initialMessage() {
-      const message = $tf('moduleMigration.msgInitialSetup', {
-            URI_DOC: $tf('moduleMigration.docUri'),
+      const message = $msg('moduleMigration.msgInitialSetup', {
+            URI_DOC: $msg('moduleMigration.docUri'),
         });
-      const USE_SETUP = $tf('moduleMigration.optionHaveSetupUri');
-      const NEXT = $tf('moduleMigration.optionNoSetupUri');
+      const USE_SETUP = $msg('moduleMigration.optionHaveSetupUri');
+      const NEXT = $msg('moduleMigration.optionNoSetupUri');
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_SETUP, NEXT], {
-            title: $tf('moduleMigration.titleWelcome'),
+            title: $msg('moduleMigration.titleWelcome'),
             defaultAction: USE_SETUP,
         });
         if (ret === USE_SETUP) {
@@ -180,13 +180,13 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     }
 
     async askAgainForSetupURI() {
-        const message = $tf('moduleMigration.msgRecommendSetupUri', { URI_DOC: $tf('moduleMigration.docUri') });
-        const USE_MINIMAL = $tf('moduleMigration.optionSetupWizard');
-        const USE_SETUP = $tf('moduleMigration.optionManualSetup');
-        const NEXT = $tf('moduleMigration.optionRemindNextLaunch');
+        const message = $msg('moduleMigration.msgRecommendSetupUri', { URI_DOC: $msg('moduleMigration.docUri') });
+        const USE_MINIMAL = $msg('moduleMigration.optionSetupWizard');
+        const USE_SETUP = $msg('moduleMigration.optionManualSetup');
+        const NEXT = $msg('moduleMigration.optionRemindNextLaunch');
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, NEXT], {
-            title: $tf('moduleMigration.titleRecommendSetupUri'),
+            title: $msg('moduleMigration.titleRecommendSetupUri'),
             defaultAction: USE_MINIMAL,
         });
         if (ret === USE_MINIMAL) {
@@ -204,7 +204,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
 
     async $everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
-            this._log($tf('moduleMigration.logLocalDatabaseNotReady'), LOG_LEVEL_NOTICE);
+            this._log($msg('moduleMigration.logLocalDatabaseNotReady'), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.settings.isConfigured) {
@@ -214,7 +214,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         if (!this.settings.isConfigured) {
             // Case sensitivity
             if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
-                this._log($tf('moduleMigration.logSetupCancelled'), LOG_LEVEL_NOTICE);
+                this._log($msg('moduleMigration.logSetupCancelled'), LOG_LEVEL_NOTICE);
                 return false;
             }
         }

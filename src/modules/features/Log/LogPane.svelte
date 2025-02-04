@@ -3,7 +3,7 @@
   import { logMessages } from "../../../lib/src/mock_and_interop/stores";
   import { reactive, type ReactiveInstance } from "../../../lib/src/dataobject/reactive";
   import { Logger } from "../../../lib/src/common/logger";
-  import { $tf as tf, currentLang as lang } from "../../../lib/src/common/i18n.ts";
+  import { $msg as msg, currentLang as lang } from "../../../lib/src/common/i18n.ts";
 
   let unsubscribe: () => void;
   let messages = [] as string[];
@@ -22,7 +22,7 @@
   onMount(async () => {
       const _logMessages = reactive(() => logMessages.value);
       _logMessages.onChanged(updateLog);
-      Logger(tf("logPane.logWindowOpened", {}, lang));
+      Logger(msg("logPane.logWindowOpened", {}, lang));
       unsubscribe = () => _logMessages.offChanged(updateLog);
   });
   onDestroy(() => {
@@ -32,20 +32,20 @@
 </script>
 
 <div class="logpane">
-  <!-- <h1>{tf("logPane.title", {}, lang)}</h1> -->
+  <!-- <h1>{msg("logPane.title", {}, lang)}</h1> -->
   <div class="control">
       <div class="row">
           <label>
               <input type="checkbox" bind:checked={wrapRight} />
-              <span>{tf("logPane.wrap", {}, lang)}</span>
+              <span>{msg("logPane.wrap", {}, lang)}</span>
           </label>
           <label>
               <input type="checkbox" bind:checked={autoScroll} />
-              <span>{tf("logPane.autoScroll", {}, lang)}</span>
+              <span>{msg("logPane.autoScroll", {}, lang)}</span>
           </label>
           <label>
               <input type="checkbox" bind:checked={suspended} />
-              <span>{tf("logPane.pause", {}, lang)}</span>
+              <span>{msg("logPane.pause", {}, lang)}</span>
           </label>
       </div>
   </div>

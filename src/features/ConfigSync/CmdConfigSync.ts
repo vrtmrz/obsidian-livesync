@@ -71,7 +71,7 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
-import { $tf } from "src/lib/src/common/i18n.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -447,7 +447,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 this.showPluginSyncModal();
             },
         });
-        this.addRibbonIcon("custom-sync", $tf("cmdConfigSync.showCustomizationSync"), () => {
+        this.addRibbonIcon("custom-sync", $msg("cmdConfigSync.showCustomizationSync"), () => {
             this.showPluginSyncModal();
         }).addClass("livesync-ribbon-showcustom");
         eventHub.onEvent(EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, () => this.showPluginSyncModal());

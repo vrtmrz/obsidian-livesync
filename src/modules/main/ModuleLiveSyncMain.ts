@@ -8,7 +8,7 @@ import {
     EVENT_SETTING_SAVED,
     eventHub,
 } from "../../common/events.ts";
-import { $tf, setLang } from "../../lib/src/common/i18n.ts";
+import { $msg, setLang } from "../../lib/src/common/i18n.ts";
 import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
 import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
@@ -20,16 +20,16 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         if (!(await this.core.$everyOnLayoutReady())) return;
         eventHub.emitEvent(EVENT_LAYOUT_READY);
         if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
-            const ANSWER_KEEP = $tf("moduleLiveSyncMain.optionKeepLiveSyncDisabled");
-            const ANSWER_RESUME = $tf("moduleLiveSyncMain.optionResumeAndRestart");
-            const message = $tf("moduleLiveSyncMain.msgScramEnabled", {
+            const ANSWER_KEEP = $msg("moduleLiveSyncMain.optionKeepLiveSyncDisabled");
+            const ANSWER_RESUME = $msg("moduleLiveSyncMain.optionResumeAndRestart");
+            const message = $msg("moduleLiveSyncMain.msgScramEnabled", {
                 fileWatchingStatus: this.settings.suspendFileWatching ? "suspended" : "active",
                 parseReplicationStatus: this.settings.suspendParseReplicationResult ? "suspended" : "active"
             });
             if (
                 (await this.core.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], {
                     defaultAction: ANSWER_KEEP,
-                    title: $tf("moduleLiveSyncMain.titleScramEnabled"),
+                    title: $msg("moduleLiveSyncMain.titleScramEnabled"),
                 })) == ANSWER_RESUME
             ) {
                 this.settings.suspendFileWatching = false;
@@ -47,11 +47,11 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         if (!(await this.core.$everyOnFirstInitialize())) return;
         await this.core.$$realizeSettingSyncMode();
         fireAndForget(async () => {
-            this._log($tf("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
+            this._log($msg("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
             if (!(await this.core.$allScanStat())) {
-                this._log($tf("moduleLiveSyncMain.logSafetyScanFailed"), LOG_LEVEL_NOTICE);
+                this._log($msg("moduleLiveSyncMain.logSafetyScanFailed"), LOG_LEVEL_NOTICE);
             } else {
-                this._log($tf("moduleLiveSyncMain.logSafetyScanCompleted"), LOG_LEVEL_VERBOSE);
+                this._log($msg("moduleLiveSyncMain.logSafetyScanCompleted"), LOG_LEVEL_VERBOSE);
             }
         });
     }
@@ -71,9 +71,9 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         this.$$wireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
-        this._log($tf("moduleLiveSyncMain.logLoadingPlugin"));
+        this._log($msg("moduleLiveSyncMain.logLoadingPlugin"));
         if (!(await this.core.$everyOnloadStart())) {
-            this._log($tf("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
+            this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
             return;
         }
         // this.addUIs();
@@ -82,10 +82,10 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
         //@ts-ignore
         const packageVersion: string = PACKAGE_VERSION || "0.0.0";
 
-        this._log($tf("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
+        this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
         await this.core.$$loadSettings();
         if (!(await this.core.$everyOnloadAfterLoadSettings())) {
-            this._log($tf("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
+            this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
             return;
         }
         const lsKey = "obsidian-live-sync-ver" + this.core.$$getVaultName();
@@ -93,7 +93,7 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            this._log($tf("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
+            this._log($msg("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
         }
 
         //@ts-ignore
@@ -108,7 +108,7 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
             this.settings.syncOnFileOpen = false;
             this.settings.syncAfterMerge = false;
             this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = $tf("moduleLiveSyncMain.logVersionUpdate");
+            this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
             await this.saveSettings();
         }
         localStorage.setItem(lsKey, `${VER}`);
@@ -139,7 +139,7 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
             }
             await this.localDatabase.close();
         }
-        this._log($tf("moduleLiveSyncMain.logUnloadingPlugin"));
+        this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
     }
 
     async $$realizeSettingSyncMode(): Promise<void> {
