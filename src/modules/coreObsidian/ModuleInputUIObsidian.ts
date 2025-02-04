@@ -1,3 +1,4 @@
+// ModuleInputUIObsidian.ts
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject } from "../../common/utils.ts";
@@ -10,6 +11,7 @@ import {
 } from "./UILib/dialogs.ts";
 import { Notice } from "../../deps.ts";
 import type { Confirm } from "../interfaces/Confirm.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 // This module cannot be a common module because it depends on Obsidian's API.
 // However, we have to make compatible one for other platform.
@@ -23,23 +25,28 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
     askYesNo(message: string): Promise<"yes" | "no"> {
         return askYesNo(this.app, message);
     }
+
     askString(title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> {
         return askString(this.app, title, key, placeholder, isPassword);
     }
 
     async askYesNoDialog(
         message: string,
-        opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = { title: "Confirmation" }
+        opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = {}
     ): Promise<"yes" | "no"> {
+        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleConfirmation");
+        const yesLabel = $msg("moduleInputUIObsidian.optionYes");
+        const noLabel = $msg("moduleInputUIObsidian.optionNo");
+        const defaultOption = opt.defaultOption === "Yes" ? yesLabel : noLabel;
         const ret = await confirmWithMessageWithWideButton(
             this.plugin,
-            opt.title || "Confirmation",
+            opt.title || defaultTitle,
             message,
-            ["Yes", "No"],
-            opt.defaultOption ?? "No",
+            [yesLabel, noLabel],
+            defaultOption,
             opt.timeout
         );
-        return ret == "Yes" ? "yes" : "no";
+        return ret === yesLabel ? "yes" : "no";
     }
 
     askSelectString(message: string, items: string[]): Promise<string> {
@@ -51,9 +58,10 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
         buttons: string[],
         opt: { title?: string; defaultAction: (typeof buttons)[number]; timeout?: number }
     ): Promise<(typeof buttons)[number] | false> {
+        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
         return confirmWithMessageWithWideButton(
             this.plugin,
-            opt.title || "Select",
+            opt.title || defaultTitle,
             message,
             buttons,
             opt.defaultAction,
@@ -91,6 +99,7 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
             });
         });
     }
+
     confirmWithMessage(
         title: string,
         contentMd: string,

@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import LogPaneComponent from "./LogPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 export const VIEW_TYPE_LOG = "log-log";
 //Log view
 export class LogPaneView extends ItemView {
@@ -24,7 +25,8 @@ export class LogPaneView extends ItemView {
     }
 
     getDisplayText() {
-        return "Self-hosted LiveSync Log";
+        // TODO: This function is not reactive and does not update the title based on the current language
+        return $msg("logPane.title");
     }
 
     async onOpen() {
