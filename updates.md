@@ -14,7 +14,7 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
-## 0.24.9
+## 0.24.10
 
 ### Fixed
 
@@ -28,6 +28,10 @@ Thank you, and I hope your troubles will be resolved!
 ### Internal
 
 -   Some files have been prettified.
+
+## 0.24.9
+
+Skipped.
 
 ## 0.24.8
 
