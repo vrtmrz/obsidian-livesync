@@ -119,10 +119,10 @@ function getLevelStr(level: ConfigLevel) {
     return level == LEVEL_POWER_USER
         ? " (Power User)"
         : level == LEVEL_ADVANCED
-            ? " (Advanced)"
-            : level == LEVEL_EDGE_CASE
-                ? " (Edge Case)"
-                : "";
+          ? " (Advanced)"
+          : level == LEVEL_EDGE_CASE
+            ? " (Edge Case)"
+            : "";
 }
 
 export function findAttrFromParent(el: HTMLElement, attr: string): string {
@@ -301,8 +301,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const syncMode = this.editingSettings?.liveSync
             ? "LIVESYNC"
             : this.editingSettings?.periodicReplication
-                ? "PERIODIC"
-                : "ONEVENTS";
+              ? "PERIODIC"
+              : "ONEVENTS";
         return {
             syncMode,
         };
@@ -1652,16 +1652,16 @@ I appreciate you for your great dedication.
                 const options: Record<string, string> =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                            NONE: "",
-                            LIVESYNC: "LiveSync",
-                            PERIODIC: "Periodic w/ batch",
-                            DISABLE: "Disable all automatic",
-                        }
+                              NONE: "",
+                              LIVESYNC: "LiveSync",
+                              PERIODIC: "Periodic w/ batch",
+                              DISABLE: "Disable all automatic",
+                          }
                         : {
-                            NONE: "",
-                            PERIODIC: "Periodic w/ batch",
-                            DISABLE: "Disable all automatic",
-                        };
+                              NONE: "",
+                              PERIODIC: "Periodic w/ batch",
+                              DISABLE: "Disable all automatic",
+                          };
 
                 new Setting(paneEl)
                     .autoWireDropDown("preset", {
@@ -1768,10 +1768,10 @@ I appreciate you for your great dedication.
                 const optionsSyncMode =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                            ONEVENTS: "On events",
-                            PERIODIC: "Periodic and on events",
-                            LIVESYNC: "LiveSync",
-                        }
+                              ONEVENTS: "On events",
+                              PERIODIC: "Periodic and on events",
+                              LIVESYNC: "LiveSync",
+                          }
                         : { ONEVENTS: "On events", PERIODIC: "Periodic and on events" };
 
                 new Setting(paneEl)
@@ -2050,7 +2050,7 @@ I appreciate you for your great dedication.
                         text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
                         cls: "op-warn",
                     },
-                    (c) => { },
+                    (c) => {},
                     visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", ""))
                 );
                 this.createEl(
@@ -2060,7 +2060,7 @@ I appreciate you for your great dedication.
                         text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
-                    (c) => { },
+                    (c) => {},
                     visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
                 );
 
@@ -2152,8 +2152,8 @@ I appreciate you for your great dedication.
                             const scheme = pluginConfig.couchDB_URI.startsWith("http:")
                                 ? "(HTTP)"
                                 : pluginConfig.couchDB_URI.startsWith("https:")
-                                    ? "(HTTPS)"
-                                    : "";
+                                  ? "(HTTPS)"
+                                  : "";
                             pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
                                 ? "cloudant"
                                 : `self-hosted${scheme}`;
@@ -2173,8 +2173,8 @@ I appreciate you for your great dedication.
                                 const endpointScheme = pluginConfig.endpoint.startsWith("http:")
                                     ? "(HTTP)"
                                     : pluginConfig.endpoint.startsWith("https:")
-                                        ? "(HTTPS)"
-                                        : "";
+                                      ? "(HTTPS)"
+                                      : "";
                                 pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                             }
                             const obsidianInfo = `Navigator: ${navigator.userAgent}
@@ -2385,10 +2385,10 @@ ${stringifyYaml(pluginConfig)}`;
                                 Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                                 const files = this.plugin.settings.syncInternalFiles
                                     ? await this.plugin.storageAccess.getFilesIncludeHidden(
-                                        "/",
-                                        undefined,
-                                        ignorePatterns
-                                    )
+                                          "/",
+                                          undefined,
+                                          ignorePatterns
+                                      )
                                     : await this.plugin.storageAccess.getFileNames();
                                 const documents = [] as FilePath[];
 
