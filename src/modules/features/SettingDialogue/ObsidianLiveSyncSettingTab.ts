@@ -301,8 +301,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const syncMode = this.editingSettings?.liveSync
             ? "LIVESYNC"
             : this.editingSettings?.periodicReplication
-                ? "PERIODIC"
-                : "ONEVENTS";
+              ? "PERIODIC"
+              : "ONEVENTS";
         return {
             syncMode,
         };
@@ -2032,7 +2032,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
                         cls: "op-warn",
                     },
-                    (c) => { },
+                    (c) => {},
                     visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", ""))
                 );
                 this.createEl(
@@ -2042,7 +2042,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
-                    (c) => { },
+                    (c) => {},
                     visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
                 );
 
@@ -2134,8 +2134,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             const scheme = pluginConfig.couchDB_URI.startsWith("http:")
                                 ? "(HTTP)"
                                 : pluginConfig.couchDB_URI.startsWith("https:")
-                                    ? "(HTTPS)"
-                                    : "";
+                                  ? "(HTTPS)"
+                                  : "";
                             pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
                                 ? "cloudant"
                                 : `self-hosted${scheme}`;
@@ -2155,8 +2155,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 const endpointScheme = pluginConfig.endpoint.startsWith("http:")
                                     ? "(HTTP)"
                                     : pluginConfig.endpoint.startsWith("https:")
-                                        ? "(HTTPS)"
-                                        : "";
+                                      ? "(HTTPS)"
+                                      : "";
                                 pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                             }
                             const obsidianInfo = `Navigator: ${navigator.userAgent}
@@ -2367,10 +2367,10 @@ ${stringifyYaml(pluginConfig)}`;
                                 Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                                 const files = this.plugin.settings.syncInternalFiles
                                     ? await this.plugin.storageAccess.getFilesIncludeHidden(
-                                        "/",
-                                        undefined,
-                                        ignorePatterns
-                                    )
+                                          "/",
+                                          undefined,
+                                          ignorePatterns
+                                      )
                                     : await this.plugin.storageAccess.getFileNames();
                                 const documents = [] as FilePath[];
 
