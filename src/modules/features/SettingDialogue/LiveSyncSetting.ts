@@ -218,13 +218,10 @@ export class LiveSyncSetting extends Setting {
                     await this.commitValue(value);
                 } else {
                     this.setTooltip(
-                        $msg(
-                          "liveSyncSetting.valueShouldBeInRange",
-                          {
-                              min: opt.clampMin?.toString() || "~",
-                              max: opt.clampMax?.toString() || "~",
-                          }
-                      )
+                        $msg("liveSyncSetting.valueShouldBeInRange", {
+                            min: opt.clampMin?.toString() || "~",
+                            max: opt.clampMax?.toString() || "~",
+                        })
                     );
                     text.inputEl.toggleClass("sls-item-invalid-value", true);
                     lastError = true;
@@ -373,7 +370,9 @@ export class LiveSyncSetting extends Setting {
         if (this.holdValue && this.selfKey) {
             const isDirty = LiveSyncSetting.env.isDirty(this.selfKey);
             const alt = isDirty
-                ? $msg("liveSyncSetting.originalValue", { value: String(LiveSyncSetting.env.initialSettings?.[this.selfKey] ?? "") })
+                ? $msg("liveSyncSetting.originalValue", {
+                      value: String(LiveSyncSetting.env.initialSettings?.[this.selfKey] ?? ""),
+                  })
                 : "";
             this.controlEl.toggleClass("sls-item-dirty", isDirty);
             if (!this.hasPassword) {

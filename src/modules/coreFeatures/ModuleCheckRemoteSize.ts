@@ -93,9 +93,12 @@ export class ModuleCheckRemoteSize extends AbstractModule implements ICoreModule
                             LOG_LEVEL_INFO
                         );
                     } else {
-                        this._log($msg("moduleCheckRemoteSize.logCurrentStorageSize", {
-                            measuredSize: sizeToHumanReadable(estimatedSize),
-                        }), LOG_LEVEL_INFO);
+                        this._log(
+                            $msg("moduleCheckRemoteSize.logCurrentStorageSize", {
+                                measuredSize: sizeToHumanReadable(estimatedSize),
+                            }),
+                            LOG_LEVEL_INFO
+                        );
                     }
                 }
             }

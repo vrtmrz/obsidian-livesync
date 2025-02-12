@@ -24,7 +24,7 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
             const ANSWER_RESUME = $msg("moduleLiveSyncMain.optionResumeAndRestart");
             const message = $msg("moduleLiveSyncMain.msgScramEnabled", {
                 fileWatchingStatus: this.settings.suspendFileWatching ? "suspended" : "active",
-                parseReplicationStatus: this.settings.suspendParseReplicationResult ? "suspended" : "active"
+                parseReplicationStatus: this.settings.suspendParseReplicationResult ? "suspended" : "active",
             });
             if (
                 (await this.core.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], {
