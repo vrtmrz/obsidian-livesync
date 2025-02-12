@@ -60,7 +60,7 @@ import {
     getConfName,
 } from "./settingConstants.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../../lib/src/common/rosetta.ts";
-import { $t } from "../../../lib/src/common/i18n.ts";
+import { $t, $msg } from "../../../lib/src/common/i18n.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
@@ -117,12 +117,12 @@ type OnSavedHandler<T extends AllSettingItemKey> = {
 
 function getLevelStr(level: ConfigLevel) {
     return level == LEVEL_POWER_USER
-        ? " (Power User)"
+        ? $msg("obsidianLiveSyncSettingTab.levelPowerUser")
         : level == LEVEL_ADVANCED
-          ? " (Advanced)"
-          : level == LEVEL_EDGE_CASE
-            ? " (Edge Case)"
-            : "";
+            ? $msg("obsidianLiveSyncSettingTab.levelAdvanced")
+            : level == LEVEL_EDGE_CASE
+                ? $msg("obsidianLiveSyncSettingTab.levelEdgeCase")
+                : "";
 }
 
 export function findAttrFromParent(el: HTMLElement, attr: string): string {
@@ -384,7 +384,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const status = await replicator.getRemoteStatus(trialSetting);
         if (status) {
             if (status.estimatedSize) {
-                Logger(`Estimated size: ${sizeToHumanReadable(status.estimatedSize)}`, LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logEstimatedSize", { size: sizeToHumanReadable(status.estimatedSize) }), LOG_LEVEL_NOTICE);
             }
         }
     }
@@ -464,9 +464,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         // And modified.
                         this.plugin.confirm.askInPopup(
                             `config-reloaded-${k}`,
-                            `The setting "${getConfName(k as AllSettingItemKey)}" was modified from another device. Click {HERE} to reload settings. Click elsewhere to ignore changes`,
+                            $msg("obsidianLiveSyncSettingTab.msgSettingModified", { setting: getConfName(k as AllSettingItemKey) }),
                             (anchor) => {
-                                anchor.text = "HERE";
+                                anchor.text = $msg("obsidianLiveSyncSettingTab.optionHere");
                                 anchor.addEventListener("click", () => {
                                     this.refreshSetting(k as AllSettingItemKey);
                                     this.display();
@@ -611,35 +611,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 Logger(`Passphrase is not valid, please fix it.`, LOG_LEVEL_NOTICE);
                 return;
             }
-            const OPTION_FETCH = `Fetch from Remote`;
-            const OPTION_REBUILD_BOTH = `Rebuild Both from This Device`;
-            const OPTION_ONLY_SETTING = `(Danger) Save Only Settings`;
-            const OPTION_CANCEL = `Cancel`;
-            const title = `Rebuild Required`;
-            const note = `Rebuilding Databases are required to apply the changes.. Please select the method to apply the changes.
-
-<details>
-<summary>Legends</summary>
-
-| Symbol | Meaning |
-|: ------ :| ------- |
-| ⇔ | Up to Date |
-| ⇄ | Synchronise to balance |
-| ⇐,⇒ | Transfer to overwrite |
-| ⇠,⇢ | Transfer to overwrite from other side |
-
-</details>
-
-## ${OPTION_REBUILD_BOTH}
-At a glance:  📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
-Reconstruct both the local and remote databases using existing files from this device.
-This causes a lockout other devices, and they need to perform fetching. 
-## ${OPTION_FETCH}
-At a glance: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
-Initialise the local database and reconstruct it using data fetched from the remote database.
-This case includes the case which you have rebuilt the remote database.
-## ${OPTION_ONLY_SETTING}
-Store only the settings. **Caution: This may lead to data corruption**; database reconstruction is generally necessary.`;
+            const OPTION_FETCH = $msg("obsidianLiveSyncSettingTab.optionFetchFromRemote");
+            const OPTION_REBUILD_BOTH = $msg("obsidianLiveSyncSettingTab.optionRebuildBoth");
+            const OPTION_ONLY_SETTING = $msg("obsidianLiveSyncSettingTab.optionSaveOnlySettings");
+            const OPTION_CANCEL = $msg("obsidianLiveSyncSettingTab.optionCancel");
+            const title = $msg("obsidianLiveSyncSettingTab.titleRebuildRequired");
+            const note = $msg("obsidianLiveSyncSettingTab.msgRebuildRequired", {
+                OPTION_REBUILD_BOTH,
+                OPTION_FETCH,
+                OPTION_ONLY_SETTING,
+            });
             const buttons = [
                 OPTION_FETCH,
                 OPTION_REBUILD_BOTH, // OPTION_REBUILD_REMOTE,
@@ -651,7 +632,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             if (result == OPTION_FETCH) {
                 if (!(await checkWorkingPassphrase())) {
                     if (
-                        (await this.plugin.confirm.askYesNoDialog("Are you sure to proceed?", {
+                        (await this.plugin.confirm.askYesNoDialog($msg("obsidianLiveSyncSettingTab.msgAreYouSureProceed"), {
                             defaultOption: "No",
                         })) != "yes"
                     )
@@ -682,8 +663,8 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             { cls: "sls-setting-menu-buttons" },
             (el) => {
                 el.addClass("wizardHidden");
-                el.createEl("label", { text: "Changes need to be applied!" });
-                void this.addEl(el, "button", { text: "Apply", cls: "mod-warning" }, (buttonEl) => {
+                el.createEl("label", { text: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied") });
+                void this.addEl(el, "button", { text: $msg("obsidianLiveSyncSettingTab.optionApply"), cls: "mod-warning" }, (buttonEl) => {
                     buttonEl.addEventListener("click", () => fireAndForget(async () => await confirmRebuild()));
                 });
             },
@@ -840,15 +821,15 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 true
             );
             if (typeof db === "string") {
-                Logger(`ERROR: Failed to check passphrase with the remote server: \n${db}.`, LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", { db }), LOG_LEVEL_NOTICE);
                 return false;
             } else {
                 if (await checkSyncInfo(db.db)) {
-                    // Logger("Database connected", LOG_LEVEL_NOTICE);
+                    // Logger($msg("obsidianLiveSyncSettingTab.logDatabaseConnected"), LOG_LEVEL_NOTICE);
                     return true;
                 } else {
                     Logger(
-                        "ERROR: Passphrase is not compatible with the remote server! Please check it again!",
+                        $msg("obsidianLiveSyncSettingTab.logPassphraseNotCompatible"),
                         LOG_LEVEL_NOTICE
                     );
                     return false;
@@ -857,11 +838,11 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         };
         const isPassphraseValid = async () => {
             if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-                Logger("You cannot enable encryption without a passphrase", LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoPassphrase"), LOG_LEVEL_NOTICE);
                 return false;
             }
             if (this.editingSettings.encrypt && !(await testCrypt())) {
-                Logger("Your device does not support encryption.", LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoSupport"), LOG_LEVEL_NOTICE);
                 return false;
             }
             return true;
@@ -871,11 +852,11 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks"
         ) => {
             if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-                Logger("You cannot enable encryption without a passphrase", LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoPassphrase"), LOG_LEVEL_NOTICE);
                 return;
             }
             if (this.editingSettings.encrypt && !(await testCrypt())) {
-                Logger("Your device does not support encryption.", LOG_LEVEL_NOTICE);
+                Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoSupport"), LOG_LEVEL_NOTICE);
                 return;
             }
             if (!this.editingSettings.encrypt) {
@@ -886,7 +867,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             await this.plugin.$allSuspendExtraSync();
             this.reloadAllSettings();
             this.editingSettings.isConfigured = true;
-            Logger("Syncing has been disabled, fetch and re-enabled if desired.", LOG_LEVEL_NOTICE);
+            Logger($msg("obsidianLiveSyncSettingTab.logRebuildNote"), LOG_LEVEL_NOTICE);
             await this.saveAllDirtySettings();
             this.closeSetting();
             await delay(2000);
@@ -894,14 +875,14 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         };
         // Panes
 
-        void addPane(containerEl, "Change Log", "💬", 100, false).then((paneEl) => {
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then((paneEl) => {
             const informationDivEl = this.createEl(paneEl, "div", { text: "" });
 
             const tmpDiv = createDiv();
             // tmpDiv.addClass("sls-header-button");
             tmpDiv.addClass("op-warn-info");
 
-            tmpDiv.innerHTML = `<p>Here due to an upgrade notification? Please review the version history. If you're satisfied, click the button. A new update will prompt this again.</p><button> OK, I have read everything. </button>`;
+            tmpDiv.innerHTML = `<p>${$msg("obsidianLiveSyncSettingTab.msgNewVersionNote")}</p><button>${$msg("obsidianLiveSyncSettingTab.optionOkReadEverything")}</button>`
             if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
                 const informationButtonDiv = informationDivEl.appendChild(tmpDiv);
                 informationButtonDiv.querySelector("button")?.addEventListener("click", () => {
@@ -917,35 +898,33 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             );
         });
 
-        void addPane(containerEl, "Setup", "🧙‍♂️", 110, false).then((paneEl) => {
-            void addPanel(paneEl, "Quick Setup").then((paneEl) => {
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleQuickSetup")).then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Connect with Setup URI")
-                    .setDesc("This is the recommended method to set up Self-hosted LiveSync with a Setup URI.")
+                    .setName($msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"))
+                    .setDesc($msg("obsidianLiveSyncSettingTab.descConnectSetupURI"))
                     .addButton((text) => {
-                        text.setButtonText("Use").onClick(() => {
+                        text.setButtonText($msg("obsidianLiveSyncSettingTab.btnUse")).onClick(() => {
                             this.closeSetting();
                             eventHub.emitEvent(EVENT_REQUEST_OPEN_SETUP_URI);
                         });
                     });
 
                 new Setting(paneEl)
-                    .setName("Manual setup")
-                    .setDesc("Not recommended, but useful if you don't have a Setup URI")
+                    .setName($msg("obsidianLiveSyncSettingTab.nameManualSetup"))
+                    .setDesc($msg("obsidianLiveSyncSettingTab.descManualSetup"))
                     .addButton((text) => {
-                        text.setButtonText("Start").onClick(async () => {
+                        text.setButtonText($msg("obsidianLiveSyncSettingTab.btnStart")).onClick(async () => {
                             await this.enableMinimalSetup();
                         });
                     });
 
                 new Setting(paneEl)
-                    .setName("Enable LiveSync")
-                    .setDesc(
-                        "Only enable this after configuring either of the above two options or completing all configuration manually."
-                    )
+                    .setName($msg("obsidianLiveSyncSettingTab.nameEnableLiveSync"))
+                    .setDesc($msg("obsidianLiveSyncSettingTab.descEnableLiveSync"))
                     .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
                     .addButton((text) => {
-                        text.setButtonText("Enable").onClick(async () => {
+                        text.setButtonText($msg("obsidianLiveSyncSettingTab.btnEnable")).onClick(async () => {
                             this.editingSettings.isConfigured = true;
                             await this.saveAllDirtySettings();
                             this.plugin.$$askReload();
@@ -955,29 +934,29 @@ Store only the settings. **Caution: This may lead to data corruption**; database
 
             void addPanel(
                 paneEl,
-                "To setup other devices",
+                $msg("obsidianLiveSyncSettingTab.titleSetupOtherDevices"),
                 undefined,
                 visibleOnly(() => this.isConfiguredAs("isConfigured", true))
             ).then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Copy the current settings to a Setup URI")
-                    .setDesc("Perfect for setting up a new device!")
+                    .setName($msg("obsidianLiveSyncSettingTab.nameCopySetupURI"))
+                    .setDesc($msg("obsidianLiveSyncSettingTab.descCopySetupURI"))
                     .addButton((text) => {
-                        text.setButtonText("Copy").onClick(() => {
+                        text.setButtonText($msg("obsidianLiveSyncSettingTab.btnCopy")).onClick(() => {
                             // await this.plugin.addOnSetup.command_copySetupURI();
                             eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
                         });
                     });
             });
-            void addPanel(paneEl, "Reset").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleReset")).then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Discard existing settings and databases")
+                    .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
                     .addButton((text) => {
-                        text.setButtonText("Discard")
+                        text.setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
                             .onClick(async () => {
                                 if (
                                     (await this.plugin.confirm.askYesNoDialog(
-                                        "Do you really want to discard existing settings and databases?",
+                                        $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
                                         { defaultOption: "No" }
                                     )) == "yes"
                                 ) {
@@ -993,9 +972,9 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                             .setWarning();
                     })
                     .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
-                // }
             });
-            void addPanel(paneEl, "Enable extra and advanced features").then((paneEl) => {
+
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleExtraFeatures")).then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useAdvancedMode");
 
                 new Setting(paneEl).autoWireToggle("usePowerUserMode");
@@ -1005,17 +984,18 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 this.addOnSaved("usePowerUserMode", () => this.display());
                 this.addOnSaved("useEdgeCaseMode", () => this.display());
             });
-            void addPanel(paneEl, "Online Tips").then((paneEl) => {
-                // this.createEl(paneEl, "h3", { text: "Online Tips" });
+
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleOnlineTips")).then((paneEl) => {
+                // this.createEl(paneEl, "h3", { text: $msg("obsidianLiveSyncSettingTab.titleOnlineTips") });
                 const repo = "vrtmrz/obsidian-livesync";
-                const topPath = "/docs/troubleshooting.md";
+                const topPath = $msg("obsidianLiveSyncSettingTab.linkTroubleshooting");
                 const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
                 this.createEl(
                     paneEl,
                     "div",
                     "",
                     (el) =>
-                        (el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">Open in browser</a>`)
+                        (el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">${$msg("obsidianLiveSyncSettingTab.linkOpenInBrowser")}</a>`)
                 );
                 const troubleShootEl = this.createEl(paneEl, "div", {
                     text: "",
@@ -1035,7 +1015,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     try {
                         remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
                     } catch (ex: any) {
-                        remoteTroubleShootMDSrc = "An error occurred!!\n" + ex.toString();
+                        remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${ex.toString()}`;
                     }
                     const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                         /\((.*?(.png)|(.jpg))\)/g,
@@ -1044,7 +1024,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     // Render markdown
                     await MarkdownRenderer.render(
                         this.plugin.app,
-                        `<a class='sls-troubleshoot-anchor'></a> [Tips and Troubleshooting](${topPath}) [PageTop](${filename})\n\n${remoteTroubleShootMD}`,
+                        `<a class='sls-troubleshoot-anchor'></a> [${$msg("obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting")}](${topPath}) [${$msg("obsidianLiveSyncSettingTab.linkPageTop")}](${filename})\n\n${remoteTroubleShootMD}`,
                         troubleShootEl,
                         `${rawRepoURI}`,
                         this.plugin
@@ -1097,10 +1077,10 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 void loadMarkdownPage(topPath);
             });
         });
-        void addPane(containerEl, "General Settings", "⚙️", 20, false).then((paneEl) => {
-            void addPanel(paneEl, "Appearance").then((paneEl) => {
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20, false).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
                 const languages = Object.fromEntries([
-                    ["", "Default"],
+                    ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
                     ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
                 ]) as Record<I18N_LANGS, string>;
                 new Setting(paneEl).autoWireDropDown("displayLanguage", {
@@ -1113,7 +1093,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                 });
                 new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
             });
-            void addPanel(paneEl, "Logging").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).autoWireToggle("lessInformationInLog");
@@ -1124,7 +1104,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             });
             new Setting(paneEl).setClass("wizardOnly").addButton((button) =>
                 button
-                    .setButtonText("Next")
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.btnNext"))
                     .setCta()
                     .onClick(() => {
                         this.changeDisplay("0");
@@ -1133,7 +1113,7 @@ Store only the settings. **Caution: This may lead to data corruption**; database
         });
         let checkResultDiv: HTMLDivElement;
         const checkConfig = async (checkResultDiv: HTMLDivElement | undefined) => {
-            Logger(`Checking database configuration`, LOG_LEVEL_INFO);
+            Logger($msg("obsidianLiveSyncSettingTab.logCheckingDbConfig"), LOG_LEVEL_INFO);
             let isSuccessful = true;
             const emptyDiv = createDiv();
             emptyDiv.innerHTML = "<span></span>";
@@ -1149,9 +1129,10 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             };
             try {
                 if (isCloudantURI(this.editingSettings.couchDB_URI)) {
-                    Logger("This feature cannot be used with IBM Cloudant.", LOG_LEVEL_NOTICE);
+                    Logger($msg("obsidianLiveSyncSettingTab.logCannotUseCloudant"), LOG_LEVEL_NOTICE);
                     return;
                 }
+                // Tip: Add log for cloudant as Logger($msg("obsidianLiveSyncSettingTab.logServerConfigurationCheck"));
                 const r = await requestToCouchDB(
                     this.editingSettings.couchDB_URI,
                     this.editingSettings.couchDB_USER,
@@ -1164,11 +1145,11 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                     if (!checkResultDiv) return;
                     const tmpDiv = createDiv();
                     tmpDiv.addClass("ob-btn-config-fix");
-                    tmpDiv.innerHTML = `<label>${title}</label><button>Fix</button>`;
+                    tmpDiv.innerHTML = `<label>${title}</label><button>${$msg("obsidianLiveSyncSettingTab.btnFix")}</button>`;
                     const x = checkResultDiv.appendChild(tmpDiv);
                     x.querySelector("button")?.addEventListener("click", () => {
                         fireAndForget(async () => {
-                            Logger(`CouchDB Configuration: ${title} -> Set ${key} to ${value}`);
+                            Logger($msg("obsidianLiveSyncSettingTab.logCouchDbConfigSet", { title, key, value }));
                             const res = await requestToCouchDB(
                                 this.editingSettings.couchDB_URI,
                                 this.editingSettings.couchDB_USER,
@@ -1178,96 +1159,104 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                                 value
                             );
                             if (res.status == 200) {
-                                Logger(`CouchDB Configuration: ${title} successfully updated`, LOG_LEVEL_NOTICE);
+                                Logger($msg("obsidianLiveSyncSettingTab.logCouchDbConfigUpdated", { title }), LOG_LEVEL_NOTICE);
                                 checkResultDiv.removeChild(x);
                                 await checkConfig(checkResultDiv);
                             } else {
-                                Logger(`CouchDB Configuration: ${title} failed`, LOG_LEVEL_NOTICE);
+                                Logger($msg("obsidianLiveSyncSettingTab.logCouchDbConfigFail", { title }), LOG_LEVEL_NOTICE);
                                 Logger(res.text, LOG_LEVEL_VERBOSE);
                             }
                         });
                     });
                 };
-                addResult("---Notice---", ["ob-btn-config-head"]);
-                addResult(
-                    "If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini.",
-                    ["ob-btn-config-info"]
-                );
-
-                addResult("--Config check--", ["ob-btn-config-head"]);
+                addResult($msg("obsidianLiveSyncSettingTab.msgNotice"), ["ob-btn-config-head"]);
+                addResult($msg("obsidianLiveSyncSettingTab.msgIfConfigNotPersistent"), ["ob-btn-config-info"]);
+                addResult($msg("obsidianLiveSyncSettingTab.msgConfigCheck"), ["ob-btn-config-head"]);
 
                 // Admin check
                 //  for database creation and deletion
                 if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
-                    addResult(`⚠ You do not have administrator privileges.`);
+                    addResult($msg("obsidianLiveSyncSettingTab.warnNoAdmin"));
                 } else {
-                    addResult("✔ You have administrator privileges.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okAdminPrivileges"));
                 }
                 // HTTP user-authorization check
                 if (responseConfig?.chttpd?.require_valid_user != "true") {
                     isSuccessful = false;
-                    addResult("❗ chttpd.require_valid_user is wrong.");
-                    addConfigFixButton("Set chttpd.require_valid_user = true", "chttpd/require_valid_user", "true");
+                    addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUser"));
+                    addConfigFixButton(
+                        $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUser"),
+                        "chttpd/require_valid_user",
+                        "true"
+                    );
                 } else {
-                    addResult("✔ chttpd.require_valid_user is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUser"));
                 }
                 if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
                     isSuccessful = false;
-                    addResult("❗ chttpd_auth.require_valid_user is wrong.");
+                    addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUserAuth"));
                     addConfigFixButton(
-                        "Set chttpd_auth.require_valid_user = true",
+                        $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUserAuth"),
                         "chttpd_auth/require_valid_user",
                         "true"
                     );
                 } else {
-                    addResult("✔ chttpd_auth.require_valid_user is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUserAuth"));
                 }
                 // HTTPD check
                 //  Check Authentication header
                 if (!responseConfig?.httpd["WWW-Authenticate"]) {
                     isSuccessful = false;
-                    addResult("❗ httpd.WWW-Authenticate is missing");
-                    addConfigFixButton("Set httpd.WWW-Authenticate", "httpd/WWW-Authenticate", 'Basic realm="couchdb"');
+                    addResult($msg("obsidianLiveSyncSettingTab.errMissingWwwAuth"));
+                    addConfigFixButton(
+                        $msg("obsidianLiveSyncSettingTab.msgSetWwwAuth"),
+                        "httpd/WWW-Authenticate",
+                        'Basic realm="couchdb"'
+                    );
                 } else {
-                    addResult("✔ httpd.WWW-Authenticate is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okWwwAuth"));
                 }
                 if (responseConfig?.httpd?.enable_cors != "true") {
                     isSuccessful = false;
-                    addResult("❗ httpd.enable_cors is wrong");
-                    addConfigFixButton("Set httpd.enable_cors", "httpd/enable_cors", "true");
+                    addResult($msg("obsidianLiveSyncSettingTab.errEnableCors"));
+                    addConfigFixButton($msg("obsidianLiveSyncSettingTab.msgEnableCors"), "httpd/enable_cors", "true");
                 } else {
-                    addResult("✔ httpd.enable_cors is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okEnableCors"));
                 }
                 // If the server is not cloudant, configure request size
                 if (!isCloudantURI(this.editingSettings.couchDB_URI)) {
                     // REQUEST SIZE
                     if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
                         isSuccessful = false;
-                        addResult("❗ chttpd.max_http_request_size is low)");
+                        addResult($msg("obsidianLiveSyncSettingTab.errMaxRequestSize"));
                         addConfigFixButton(
-                            "Set chttpd.max_http_request_size",
+                            $msg("obsidianLiveSyncSettingTab.msgSetMaxRequestSize"),
                             "chttpd/max_http_request_size",
                             "4294967296"
                         );
                     } else {
-                        addResult("✔ chttpd.max_http_request_size is ok.");
+                        addResult($msg("obsidianLiveSyncSettingTab.okMaxRequestSize"));
                     }
                     if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
                         isSuccessful = false;
-                        addResult("❗ couchdb.max_document_size is low)");
-                        addConfigFixButton("Set couchdb.max_document_size", "couchdb/max_document_size", "50000000");
+                        addResult($msg("obsidianLiveSyncSettingTab.errMaxDocumentSize"));
+                        addConfigFixButton(
+                            $msg("obsidianLiveSyncSettingTab.msgSetMaxDocSize"),
+                            "couchdb/max_document_size",
+                            "50000000"
+                        );
                     } else {
-                        addResult("✔ couchdb.max_document_size is ok.");
+                        addResult($msg("obsidianLiveSyncSettingTab.okMaxDocumentSize"));
                     }
                 }
                 // CORS check
                 //  checking connectivity for mobile
                 if (responseConfig?.cors?.credentials != "true") {
                     isSuccessful = false;
-                    addResult("❗ cors.credentials is wrong");
-                    addConfigFixButton("Set cors.credentials", "cors/credentials", "true");
+                    addResult($msg("obsidianLiveSyncSettingTab.errCorsCredentials"));
+                    addConfigFixButton($msg("obsidianLiveSyncSettingTab.msgSetCorsCredentials"), "cors/credentials", "true");
                 } else {
-                    addResult("✔ cors.credentials is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okCorsCredentials"));
                 }
                 const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
                 if (
@@ -1276,18 +1265,18 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                         ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 &&
                         ConfiguredOrigins.indexOf("http://localhost") !== -1)
                 ) {
-                    addResult("✔ cors.origins is ok.");
+                    addResult($msg("obsidianLiveSyncSettingTab.okCorsOrigins"));
                 } else {
-                    addResult("❗ cors.origins is wrong");
+                    addResult($msg("obsidianLiveSyncSettingTab.errCorsOrigins"));
                     addConfigFixButton(
-                        "Set cors.origins",
+                        $msg("obsidianLiveSyncSettingTab.msgSetCorsOrigins"),
                         "cors/origins",
                         "app://obsidian.md,capacitor://localhost,http://localhost"
                     );
                     isSuccessful = false;
                 }
-                addResult("--Connection check--", ["ob-btn-config-head"]);
-                addResult(`Current origin:${window.location.origin}`);
+                addResult($msg("obsidianLiveSyncSettingTab.msgConnectionCheck"), ["ob-btn-config-head"]);
+                addResult($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: window.location.origin }));
 
                 // Request header check
                 const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
@@ -1304,35 +1293,35 @@ Store only the settings. **Caution: This may lead to data corruption**; database
                             return e;
                         })
                     );
-                    addResult(`Origin check:${org}`);
+                    addResult($msg("obsidianLiveSyncSettingTab.msgOriginCheck", { org }));
                     if (responseHeaders["access-control-allow-credentials"] != "true") {
-                        addResult("❗ CORS is not allowing credentials");
+                        addResult($msg("obsidianLiveSyncSettingTab.errCorsNotAllowingCredentials"));
                         isSuccessful = false;
                     } else {
-                        addResult("✔ CORS credentials OK");
+                        addResult($msg("obsidianLiveSyncSettingTab.okCorsCredentialsForOrigin"));
                     }
                     if (responseHeaders["access-control-allow-origin"] != org) {
                         addResult(
-                            `⚠ CORS Origin is unmatched:${origin}->${responseHeaders["access-control-allow-origin"]}`
+                            $msg("obsidianLiveSyncSettingTab.warnCorsOriginUnmatched", {
+                                from: origin,
+                                to: responseHeaders["access-control-allow-origin"],
+                            })
                         );
                     } else {
-                        addResult("✔ CORS origin OK");
+                        addResult($msg("obsidianLiveSyncSettingTab.okCorsOriginMatched"));
                     }
                 }
-                addResult("--Done--", ["ob-btn-config-head"]);
-                addResult(
-                    "If you're having trouble with the Connection-check (even after checking config), please check your reverse proxy configuration.",
-                    ["ob-btn-config-info"]
-                );
-                Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+                addResult($msg("obsidianLiveSyncSettingTab.msgDone"), ["ob-btn-config-head"]);
+                addResult($msg("obsidianLiveSyncSettingTab.msgConnectionProxyNote"), ["ob-btn-config-info"]);
+                Logger($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"), LOG_LEVEL_INFO);
             } catch (ex: any) {
                 if (ex?.status == 401) {
                     isSuccessful = false;
-                    addResult(`❗ Access forbidden.`);
-                    addResult(`We could not continue the test.`);
-                    Logger(`Checking configuration done`, LOG_LEVEL_INFO);
+                    addResult($msg("obsidianLiveSyncSettingTab.errAccessForbidden"));
+                    addResult($msg("obsidianLiveSyncSettingTab.errCannotContinueTest"));
+                    Logger($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"), LOG_LEVEL_INFO);
                 } else {
-                    Logger(`Checking configuration failed`, LOG_LEVEL_NOTICE);
+                    Logger($msg("obsidianLiveSyncSettingTab.logCheckingConfigFailed"), LOG_LEVEL_NOTICE);
                     Logger(ex);
                     isSuccessful = false;
                 }
@@ -1340,31 +1329,23 @@ Store only the settings. **Caution: This may lead to data corruption**; database
             return isSuccessful;
         };
 
-        void addPane(containerEl, "Remote Configuration", "🛰️", 0, false).then((paneEl) => {
-            void addPanel(paneEl, "Remote Server").then((paneEl) => {
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0, false).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer")).then((paneEl) => {
                 // const containerRemoteDatabaseEl = containerEl.createDiv();
                 new Setting(paneEl).autoWireDropDown("remoteType", {
                     holdValue: true,
                     options: {
-                        [REMOTE_COUCHDB]: "CouchDB",
-                        [REMOTE_MINIO]: "Minio,S3,R2",
+                        [REMOTE_COUCHDB]: $msg("obsidianLiveSyncSettingTab.optionCouchDB"),
+                        [REMOTE_MINIO]: $msg("obsidianLiveSyncSettingTab.optionMinioS3R2"),
                     },
                     onUpdate: enableOnlySyncDisabled,
                 });
 
-                void addPanel(paneEl, "Minio,S3,R2", undefined, onlyOnMinIO).then((paneEl) => {
+                void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleMinioS3R2"), undefined, onlyOnMinIO).then((paneEl) => {
                     const syncWarnMinio = this.createEl(paneEl, "div", {
                         text: "",
                     });
-                    const ObjectStorageMessage = `WARNING: This feature is a Work In Progress, so please keep in mind the following:
-- Append only architecture. A rebuild is required to shrink the storage.
-- A bit fragile.
-- When first syncing, all history will be transferred from the remote. Be mindful of data caps and slow speeds.
-- Only differences are synced live.
-
-If you run into any issues, or have ideas about this feature, please create a issue on GitHub.
-I appreciate you for your great dedication.
-`;
+                    const ObjectStorageMessage = $msg("obsidianLiveSyncSettingTab.msgObjectStorageWarning");
 
                     void MarkdownRenderer.render(
                         this.plugin.app,
@@ -1388,16 +1369,16 @@ I appreciate you for your great dedication.
                     new Setting(paneEl).autoWireText("bucket", { holdValue: true });
 
                     new Setting(paneEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
-                    new Setting(paneEl).setName("Test Connection").addButton((button) =>
+                    new Setting(paneEl).setName($msg("obsidianLiveSyncSettingTab.nameTestConnection")).addButton((button) =>
                         button
-                            .setButtonText("Test")
+                            .setButtonText($msg("obsidianLiveSyncSettingTab.btnTest"))
                             .setDisabled(false)
                             .onClick(async () => {
                                 await this.testConnection(this.editingSettings);
                             })
                     );
                     new Setting(paneEl)
-                        .setName("Apply Settings")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
                         .setClass("wizardHidden")
                         .addApplyButton([
                             "remoteType",
@@ -1411,13 +1392,13 @@ I appreciate you for your great dedication.
                         .addOnUpdate(onlyOnMinIO);
                 });
 
-                void addPanel(paneEl, "CouchDB", undefined, onlyOnCouchDB).then((paneEl) => {
+                void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleCouchDB"), undefined, onlyOnCouchDB).then((paneEl) => {
                     if (this.plugin.$$isMobile()) {
                         this.createEl(
                             paneEl,
                             "div",
                             {
-                                text: `Cannot connect to non-HTTPS URI. Please update your config and try again.`,
+                                text:$msg("obsidianLiveSyncSettingTab.msgNonHTTPSWarning"),
                             },
                             undefined,
                             visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
@@ -1427,7 +1408,7 @@ I appreciate you for your great dedication.
                             paneEl,
                             "div",
                             {
-                                text: `Configured as non-HTTPS URI. Be warned that this may not work on mobile devices.`,
+                                text:  $msg("obsidianLiveSyncSettingTab.msgNonHTTPSInfo"),
                             },
                             undefined,
                             visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
@@ -1438,7 +1419,7 @@ I appreciate you for your great dedication.
                         paneEl,
                         "div",
                         {
-                            text: `These settings are unable to be changed during synchronization. Please disable all syncing in the "Sync Settings" to unlock.`,
+                            text: $msg("obsidianLiveSyncSettingTab.msgSettingsUnchangeableDuringSync"),
                         },
                         undefined,
                         visibleOnly(() => isAnySyncEnabled())
@@ -1463,14 +1444,12 @@ I appreciate you for your great dedication.
                     });
 
                     new Setting(paneEl)
-                        .setName("Test Database Connection")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameTestDatabaseConnection"))
                         .setClass("wizardHidden")
-                        .setDesc(
-                            "Open database connection. If the remote database is not found and you have permission to create a database, the database will be created."
-                        )
+                        .setDesc($msg("obsidianLiveSyncSettingTab.descTestDatabaseConnection"))
                         .addButton((button) =>
                             button
-                                .setButtonText("Test")
+                                .setButtonText($msg("obsidianLiveSyncSettingTab.btnTest"))
                                 .setDisabled(false)
                                 .onClick(async () => {
                                     await this.testConnection();
@@ -1478,11 +1457,11 @@ I appreciate you for your great dedication.
                         );
 
                     new Setting(paneEl)
-                        .setName("Validate Database Configuration")
-                        .setDesc("Checks and fixes any potential issues with the database config.")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameValidateDatabaseConfig"))
+                        .setDesc($msg("obsidianLiveSyncSettingTab.descValidateDatabaseConfig"))
                         .addButton((button) =>
                             button
-                                .setButtonText("Check")
+                                .setButtonText($msg("obsidianLiveSyncSettingTab.btnCheck"))
                                 .setDisabled(false)
                                 .onClick(async () => {
                                     await checkConfig(checkResultDiv);
@@ -1493,7 +1472,7 @@ I appreciate you for your great dedication.
                     });
 
                     new Setting(paneEl)
-                        .setName("Apply Settings")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
                         .setClass("wizardHidden")
                         .addApplyButton([
                             "remoteType",
@@ -1505,12 +1484,12 @@ I appreciate you for your great dedication.
                         .addOnUpdate(onlyOnCouchDB);
                 });
             });
-            void addPanel(paneEl, "Notification").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification")).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "Privacy & Encryption").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.panelPrivacyEncryption")).then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("encrypt", { holdValue: true });
 
                 const isEncryptEnabled = visibleOnly(() => this.isConfiguredAs("encrypt", true));
@@ -1533,13 +1512,13 @@ I appreciate you for your great dedication.
                     .setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "Fetch settings").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleFetchSettings")).then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Fetch config from remote server")
-                    .setDesc("Fetch necessary settings from already configured remote server.")
+                    .setName($msg("obsidianLiveSyncSettingTab.titleFetchConfigFromRemote"))
+                    .setDesc($msg("obsidianLiveSyncSettingTab.descFetchConfigFromRemote"))
                     .addButton((button) =>
                         button
-                            .setButtonText("Fetch")
+                            .setButtonText($msg("obsidianLiveSyncSettingTab.buttonFetch"))
                             .setDisabled(false)
                             .onClick(async () => {
                                 const trialSetting = { ...this.initialSettings, ...this.editingSettings };
@@ -1553,15 +1532,15 @@ I appreciate you for your great dedication.
             });
             new Setting(paneEl).setClass("wizardOnly").addButton((button) =>
                 button
-                    .setButtonText("Next")
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.buttonNext"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(async () => {
                         if (!(await checkConfig(checkResultDiv))) {
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "The configuration check has failed. Do you want to continue anyway?",
-                                    { defaultOption: "No", title: "Remote Configuration Check Failed" }
+                                    $msg("obsidianLiveSyncSettingTab.msgConfigCheckFailed"),
+                                    { defaultOption: "No", title: $msg("obsidianLiveSyncSettingTab.titleRemoteConfigCheckFailed") }
                                 )) == "no"
                             ) {
                                 return;
@@ -1572,8 +1551,8 @@ I appreciate you for your great dedication.
                         if (isEncryptionFullyEnabled) {
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "We recommend enabling End-To-End Encryption, and Path Obfuscation. Are you sure you want to continue without encryption?",
-                                    { defaultOption: "No", title: "Encryption is not enabled" }
+                                    $msg("obsidianLiveSyncSettingTab.msgEnableEncryptionRecommendation"),
+                                    { defaultOption: "No", title: $msg("obsidianLiveSyncSettingTab.titleEncryptionNotEnabled") }
                                 )) == "no"
                             ) {
                                 return;
@@ -1585,8 +1564,8 @@ I appreciate you for your great dedication.
                         if (!(await isPassphraseValid())) {
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "Your encryption passphrase might be invalid. Are you sure you want to continue?",
-                                    { defaultOption: "No", title: "Encryption Passphrase Invalid?" }
+                                    $msg("obsidianLiveSyncSettingTab.msgInvalidPassphrase"),
+                                    { defaultOption: "No", title: $msg("obsidianLiveSyncSettingTab.titleEncryptionPassphraseInvalid") }
                                 )) == "no"
                             ) {
                                 return;
@@ -1601,8 +1580,8 @@ I appreciate you for your great dedication.
                         }
                         if (
                             (await this.plugin.confirm.askYesNoDialog(
-                                "Do you want to fetch the config from the remote server?",
-                                { defaultOption: "Yes", title: "Fetch config" }
+                                $msg("obsidianLiveSyncSettingTab.msgFetchConfigFromRemote"),
+                                { defaultOption: "Yes", title: $msg("obsidianLiveSyncSettingTab.titleFetchConfig") }
                             )) == "yes"
                         ) {
                             const trialSetting = { ...this.initialSettings, ...this.editingSettings };
@@ -1618,7 +1597,7 @@ I appreciate you for your great dedication.
                     })
             );
         });
-        void addPane(containerEl, "Sync Settings", "🔄", 30, false).then((paneEl) => {
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30, false).then((paneEl) => {
             if (this.editingSettings.versionUpFlash != "") {
                 const c = this.createEl(
                     paneEl,
@@ -1628,7 +1607,7 @@ I appreciate you for your great dedication.
                         cls: "op-warn sls-setting-hidden",
                     },
                     (el) => {
-                        this.createEl(el, "button", { text: "I got it and updated." }, (e) => {
+                        this.createEl(el, "button", { text: $msg("obsidianLiveSyncSettingTab.btnGotItAndUpdated") }, (e) => {
                             e.addClass("mod-cta");
                             e.addEventListener("click", () => {
                                 fireAndForget(async () => {
@@ -1644,24 +1623,24 @@ I appreciate you for your great dedication.
             }
 
             this.createEl(paneEl, "div", {
-                text: `Please select and apply any preset item to complete the wizard.`,
+                text: $msg("obsidianLiveSyncSettingTab.msgSelectAndApplyPreset"),
                 cls: "wizardOnly",
             }).addClasses(["op-warn-info"]);
 
-            void addPanel(paneEl, "Synchronization Preset").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationPreset")).then((paneEl) => {
                 const options: Record<string, string> =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                              NONE: "",
-                              LIVESYNC: "LiveSync",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          }
+                            NONE: "",
+                            LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                            PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                            DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                        }
                         : {
-                              NONE: "",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          };
+                            NONE: "",
+                            PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                            DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                        };
 
                 new Setting(paneEl)
                     .autoWireDropDown("preset", {
@@ -1669,7 +1648,7 @@ I appreciate you for your great dedication.
                         holdValue: true,
                     })
                     .addButton((button) => {
-                        button.setButtonText("Apply");
+                        button.setButtonText($msg("obsidianLiveSyncSettingTab.btnApply"));
                         button.onClick(async () => {
                             // await this.saveSettings(["preset"]);
                             await this.saveAllDirtySettings();
@@ -1678,7 +1657,7 @@ I appreciate you for your great dedication.
 
                 this.addOnSaved("preset", async (currentPreset) => {
                     if (currentPreset == "") {
-                        Logger("Select any preset.", LOG_LEVEL_NOTICE);
+                        Logger($msg("obsidianLiveSyncSettingTab.logSelectAnyPreset"), LOG_LEVEL_NOTICE);
                         return;
                     }
                     const presetAllDisabled = {
@@ -1711,15 +1690,15 @@ I appreciate you for your great dedication.
                             ...this.editingSettings,
                             ...presetLiveSync,
                         };
-                        Logger("Configured synchronization mode: LiveSync", LOG_LEVEL_NOTICE);
+                        Logger($msg("obsidianLiveSyncSettingTab.logConfiguredLiveSync"), LOG_LEVEL_NOTICE);
                     } else if (currentPreset == "PERIODIC") {
                         this.editingSettings = {
                             ...this.editingSettings,
                             ...presetPeriodic,
                         };
-                        Logger("Configured synchronization mode: Periodic", LOG_LEVEL_NOTICE);
+                        Logger($msg("obsidianLiveSyncSettingTab.logConfiguredPeriodic"), LOG_LEVEL_NOTICE);
                     } else {
-                        Logger("Configured synchronization mode: DISABLED", LOG_LEVEL_NOTICE);
+                        Logger($msg("obsidianLiveSyncSettingTab.logConfiguredDisabled"), LOG_LEVEL_NOTICE);
                         this.editingSettings = {
                             ...this.editingSettings,
                             ...presetAllDisabled,
@@ -1737,8 +1716,8 @@ I appreciate you for your great dedication.
                             // this.resetEditingSettings();
                             if (
                                 (await this.plugin.confirm.askYesNoDialog(
-                                    "All done! Do you want to generate a setup URI to set up other devices?",
-                                    { defaultOption: "Yes", title: "Congratulations!" }
+                                    $msg("obsidianLiveSyncSettingTab.msgGenerateSetupURI"),
+                                    { defaultOption: "Yes", title: $msg("obsidianLiveSyncSettingTab.titleCongratulations") }
                                 )) == "yes"
                             ) {
                                 eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
@@ -1758,7 +1737,7 @@ I appreciate you for your great dedication.
                     }
                 });
             });
-            void addPanel(paneEl, "Synchronization Method").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationMethod")).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 // const onlyOnLiveSync = visibleOnly(() => this.isConfiguredAs("syncMode", "LIVESYNC"));
@@ -1768,11 +1747,14 @@ I appreciate you for your great dedication.
                 const optionsSyncMode =
                     this.editingSettings.remoteType == REMOTE_COUCHDB
                         ? {
-                              ONEVENTS: "On events",
-                              PERIODIC: "Periodic and on events",
-                              LIVESYNC: "LiveSync",
-                          }
-                        : { ONEVENTS: "On events", PERIODIC: "Periodic and on events" };
+                            ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                            PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                            LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                        }
+                        : {
+                              ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                              PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                        };
 
                 new Setting(paneEl)
                     .autoWireDropDown("syncMode", {
@@ -1817,7 +1799,7 @@ I appreciate you for your great dedication.
                     .autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
             });
 
-            void addPanel(paneEl, "Update thinning").then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleUpdateThinning")).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("batchSave");
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMinimumDelay", {
@@ -1830,13 +1812,13 @@ I appreciate you for your great dedication.
                 });
             });
 
-            void addPanel(paneEl, "Deletion Propagation", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleDeletionPropagation"), undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("trashInsteadDelete");
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
             });
-            void addPanel(paneEl, "Conflict resolution", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleConflictResolution"), undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("resolveConflictsByNewerFile");
@@ -1846,7 +1828,7 @@ I appreciate you for your great dedication.
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("showMergeDialogOnlyOnActive");
             });
 
-            void addPanel(paneEl, "Sync settings via markdown", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettingsViaMarkdown"), undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl)
@@ -1858,14 +1840,14 @@ I appreciate you for your great dedication.
                 new Setting(paneEl).autoWireToggle("notifyAllSettingSyncFile");
             });
 
-            void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+            void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleHiddenFiles"), undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
-                const LABEL_ENABLED = "🔁 : Enabled";
-                const LABEL_DISABLED = "⏹️ : Disabled";
+                const LABEL_ENABLED = $msg("obsidianLiveSyncSettingTab.labelEnabled");
+                const LABEL_DISABLED = $msg("obsidianLiveSyncSettingTab.labelDisabled");
 
                 const hiddenFileSyncSetting = new Setting(paneEl)
-                    .setName("Hidden file synchronization")
+                    .setName($msg("obsidianLiveSyncSettingTab.nameHiddenFileSynchronization"))
                     .setClass("wizardHidden");
                 const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl;
                 const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
@@ -1874,10 +1856,10 @@ I appreciate you for your great dedication.
                     : LABEL_DISABLED;
                 if (this.editingSettings.syncInternalFiles) {
                     new Setting(paneEl)
-                        .setName("Disable Hidden files sync")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameDisableHiddenFileSync"))
                         .setClass("wizardHidden")
                         .addButton((button) => {
-                            button.setButtonText("Disable").onClick(async () => {
+                            button.setButtonText($msg("obsidianLiveSyncSettingTab.btnDisable")).onClick(async () => {
                                 this.editingSettings.syncInternalFiles = false;
                                 await this.saveAllDirtySettings();
                                 this.display();
@@ -1885,7 +1867,7 @@ I appreciate you for your great dedication.
                         });
                 } else {
                     new Setting(paneEl)
-                        .setName("Enable Hidden files sync")
+                        .setName($msg("obsidianLiveSyncSettingTab.nameEnableHiddenFileSync"))
                         .setClass("wizardHidden")
                         .addButton((button) => {
                             button.setButtonText("Merge").onClick(async () => {
@@ -2881,7 +2863,6 @@ ${stringifyYaml(pluginConfig)}`;
                             })
                     )
                     .addOnUpdate(onlyOnCouchDB);
-
                 new Setting(paneEl)
                     .setName("Reset journal received history")
                     .setDesc(
