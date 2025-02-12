@@ -30,6 +30,8 @@ const plugins = [
                 } else {
                     console.log("subsequent build:");
                 }
+                const filename = `meta-${prod ? "prod" : "dev"}.json`;
+                await fs.promises.writeFile(filename, JSON.stringify(result.metafile, null, 2));
                 if (prod) {
                     console.log("Performing terser");
                     const src = fs.readFileSync("./main_org.js").toString();
@@ -47,7 +49,22 @@ const plugins = [
     },
 ];
 
-const externals = ["obsidian", "electron", "crypto", "@codemirror/autocomplete", "@codemirror/collab", "@codemirror/commands", "@codemirror/language", "@codemirror/lint", "@codemirror/search", "@codemirror/state", "@codemirror/view", "@lezer/common", "@lezer/highlight", "@lezer/lr"];
+const externals = [
+    "obsidian",
+    "electron",
+    "crypto",
+    "@codemirror/autocomplete",
+    "@codemirror/collab",
+    "@codemirror/commands",
+    "@codemirror/language",
+    "@codemirror/lint",
+    "@codemirror/search",
+    "@codemirror/state",
+    "@codemirror/view",
+    "@lezer/common",
+    "@lezer/highlight",
+    "@lezer/lr",
+];
 const context = await esbuild.context({
     banner: {
         js: "// Leave it all to terser",
@@ -66,6 +83,7 @@ const context = await esbuild.context({
     target: "es2018",
     logLevel: "info",
     platform: "browser",
+    metafile: true,
     sourcemap: prod ? false : "inline",
     treeShaking: false,
     outfile: "main_org.js",
