@@ -26,6 +26,7 @@ import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -292,7 +293,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
        </g>`
         );
-        this.addRibbonIcon("view-log", "Show log", () => {
+        this.addRibbonIcon("view-log", $msg("moduleLog.showLog"), () => {
             void this.core.$$showView(VIEW_TYPE_LOG);
         }).addClass("livesync-ribbon-showlog");
 
