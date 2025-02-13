@@ -10,6 +10,7 @@ package-lock.json
 main.js
 main_org.js
 *.js.map
+meta.json
 meta-*.json
 
 

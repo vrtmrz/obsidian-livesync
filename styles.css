@@ -17,6 +17,7 @@
     /* min-height: 280px; */
     max-height: 280px;
     user-select: text;
+    -webkit-user-select: text;
 }
 
 .op-pre {

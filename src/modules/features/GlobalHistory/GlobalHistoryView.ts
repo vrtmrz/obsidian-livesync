@@ -1,10 +1,20 @@
-import { ItemView, WorkspaceLeaf } from "../../../deps.ts";
+import { WorkspaceLeaf } from "../../../deps.ts";
 import GlobalHistoryComponent from "./GlobalHistory.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
+import { SvelteItemView } from "../../../common/SvelteItemView.ts";
+import { mount } from "svelte";
 
 export const VIEW_TYPE_GLOBAL_HISTORY = "global-history";
-export class GlobalHistoryView extends ItemView {
-    component?: GlobalHistoryComponent;
+export class GlobalHistoryView extends SvelteItemView {
+    instantiateComponent(target: HTMLElement) {
+        return mount(GlobalHistoryComponent, {
+            target: target,
+            props: {
+                plugin: this.plugin,
+            },
+        });
+    }
+
     plugin: ObsidianLiveSyncPlugin;
     icon = "clock";
     title: string = "";
@@ -25,20 +35,5 @@ export class GlobalHistoryView extends ItemView {
 
     getDisplayText() {
         return "Vault history";
-    }
-
-    async onOpen() {
-        this.component = new GlobalHistoryComponent({
-            target: this.contentEl,
-            props: {
-                plugin: this.plugin,
-            },
-        });
-        await Promise.resolve();
-    }
-
-    async onClose() {
-        this.component?.$destroy();
-        await Promise.resolve();
     }
 }

@@ -542,10 +542,12 @@
         padding-right: 4px;
         flex-wrap: wrap;
     }
-    .filerow.hideeven:has(.even),
-    .labelrow.hideeven:has(.even) {
+
+    .filerow.hideeven:has(:global(.even)),
+    .labelrow.hideeven:has(:global(.even)) {
         display: none;
     }
+
     .noterow {
         min-height: 2em;
         display: flex;

@@ -6,10 +6,16 @@
   import { $msg as msg, currentLang as lang } from "../../../lib/src/common/i18n.ts";
 
   let unsubscribe: () => void;
-  let messages = [] as string[];
-  let wrapRight = false;
-  let autoScroll = true;
-  let suspended = false;
+    let messages = $state([] as string[]);
+    let wrapRight = $state(false);
+    let autoScroll = $state(true);
+    let suspended = $state(false);
+
+    type Props = {
+        close: () => void;
+    };
+    let { close }: Props = $props();
+    // export let close: () => void;
   function updateLog(logs: ReactiveInstance<string[]>) {
       const e = logs.value;
       if (!suspended) {
@@ -29,6 +35,9 @@
       if (unsubscribe) unsubscribe();
   });
   let scroll: HTMLDivElement;
+    function closeDialogue() {
+        close();
+    }
 </script>
 
 <div class="logpane">
@@ -47,6 +56,8 @@
               <input type="checkbox" bind:checked={suspended} />
               <span>{msg("logPane.pause", {}, lang)}</span>
           </label>
+            <span class="spacer"></span>
+            <button onclick={() => closeDialogue()}>Close</button>
       </div>
   </div>
   <div class="log" bind:this={scroll}>
@@ -68,6 +79,7 @@
   .log {
       overflow-y: scroll;
       user-select: text;
+        -webkit-user-select: text;
       padding-bottom: 2em;
   }
   .log > pre {

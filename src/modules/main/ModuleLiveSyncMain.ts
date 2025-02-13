@@ -14,6 +14,7 @@ import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurre
 import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
+import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/APIBase.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
     async $$onLiveSyncReady() {
@@ -139,6 +140,8 @@ export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
             }
             await this.localDatabase.close();
         }
+        eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
+        eventHub.offAll();
         this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
     }
 

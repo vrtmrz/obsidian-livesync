@@ -10,7 +10,8 @@ import {
     confirmWithMessageWithWideButton,
 } from "./UILib/dialogs.ts";
 import { Notice } from "../../deps.ts";
-import type { Confirm } from "../interfaces/Confirm.ts";
+import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
+import { setConfirmInstance } from "../../lib/src/PlatformAPIs/obsidian/Confirm.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
 
 // This module cannot be a common module because it depends on Obsidian's API.
@@ -19,20 +20,20 @@ import { $msg } from "src/lib/src/common/i18n.ts";
 export class ModuleInputUIObsidian extends AbstractObsidianModule implements IObsidianModule, Confirm {
     $everyOnload(): Promise<boolean> {
         this.core.confirm = this;
+        setConfirmInstance(this);
         return Promise.resolve(true);
     }
 
     askYesNo(message: string): Promise<"yes" | "no"> {
         return askYesNo(this.app, message);
     }
-
     askString(title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> {
         return askString(this.app, title, key, placeholder, isPassword);
     }
 
     async askYesNoDialog(
         message: string,
-        opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = {}
+        opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = { title: "Confirmation" }
     ): Promise<"yes" | "no"> {
         const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleConfirmation");
         const yesLabel = $msg("moduleInputUIObsidian.optionYes");
@@ -53,11 +54,11 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
         return askSelectString(this.app, message, items);
     }
 
-    askSelectStringDialogue(
+    askSelectStringDialogue<T extends readonly string[]>(
         message: string,
-        buttons: string[],
-        opt: { title?: string; defaultAction: (typeof buttons)[number]; timeout?: number }
-    ): Promise<(typeof buttons)[number] | false> {
+        buttons: T,
+        opt: { title?: string; defaultAction: T[number]; timeout?: number }
+    ): Promise<T[number] | false> {
         const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
         return confirmWithMessageWithWideButton(
             this.plugin,

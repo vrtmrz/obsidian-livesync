@@ -2,7 +2,7 @@ import { delay } from "octagonal-wheels/promises";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { eventHub } from "../../common/events";
-import { webcrypto } from "crypto";
+import { getWebCrypto } from "../../lib/src/mods.ts";
 import { uint8ArrayToHexString } from "octagonal-wheels/binary/hex";
 import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
 import type { FilePath } from "../../lib/src/common/types.ts";
@@ -162,6 +162,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     async _dumpFileList(outFile?: string) {
         const files = this.core.storageAccess.getFiles();
         const out = [] as any[];
+        const webcrypto = await getWebCrypto();
         for (const file of files) {
             if (!(await this.core.$$isTargetFile(file.path))) {
                 continue;
@@ -202,7 +203,8 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
             .map((e) => new RegExp(e, "i"));
         const out = [] as any[];
         const files = await this.core.storageAccess.getFilesIncludeHidden("", undefined, ignorePatterns);
-        console.dir(files);
+        // console.dir(files);
+        const webcrypto = await getWebCrypto();
         for (const file of files) {
             // if (!await this.core.$$isTargetFile(file)) {
             //     continue;

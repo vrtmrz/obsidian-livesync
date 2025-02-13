@@ -136,7 +136,9 @@
     {#if selectedObj != false}
         <div class="op-scrollable json-source">
             {#each diffs as diff}
-                <span class={diff[0] == DIFF_DELETE ? "deleted" : diff[0] == DIFF_INSERT ? "added" : "normal"}>{diff[1]}</span>
+                <span class={diff[0] == DIFF_DELETE ? "deleted" : diff[0] == DIFF_INSERT ? "added" : "normal"}
+                    >{diff[1]}</span
+                >
             {/each}
         </div>
     {:else}
@@ -145,6 +147,7 @@
 
     <div class="infos">
         <table>
+            <tbody>
             <tr>
                 <th>{nameA}</th>
                 <td
@@ -169,6 +172,7 @@
                     {docBContent.length} letters
                 </td>
             </tr>
+            </tbody>
         </table>
     </div>
 
@@ -203,6 +207,7 @@
         overflow-y: scroll;
         max-height: 60vh;
         user-select: text;
+        -webkit-user-select: text;
     }
     .json-source {
         white-space: pre;

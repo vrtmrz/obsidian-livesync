@@ -25,6 +25,7 @@ import {
     LEVEL_EDGE_CASE,
     type MetaEntry,
     type FilePath,
+    REMOTE_P2P,
 } from "../../../lib/src/common/types.ts";
 import {
     createBlob,
@@ -78,6 +79,7 @@ import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
 import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
+import { mount } from "svelte";
 
 export type OnUpdateResult = {
     visibility?: boolean;
@@ -811,6 +813,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return false;
         };
         const enableOnlySyncDisabled = enableOnly(() => !isAnySyncEnabled());
+        const onlyOnP2POrCouchDB = () =>
+            ({
+                visibility:
+                    this.isConfiguredAs("remoteType", REMOTE_P2P) || this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
+            }) as OnUpdateResult;
+
         const onlyOnCouchDB = () =>
             ({
                 visibility: this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
@@ -819,7 +827,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             ({
                 visibility: this.isConfiguredAs("remoteType", REMOTE_MINIO),
             }) as OnUpdateResult;
-
+        const onlyOnOnlyP2P = () =>
+            ({
+                visibility: this.isConfiguredAs("remoteType", REMOTE_P2P),
+            }) as OnUpdateResult;
+        const onlyOnCouchDBOrMinIO = () =>
+            ({
+                visibility:
+                    this.isConfiguredAs("remoteType", REMOTE_COUCHDB) ||
+                    this.isConfiguredAs("remoteType", REMOTE_MINIO),
+            }) as OnUpdateResult;
         // E2EE Function
         const checkWorkingPassphrase = async (): Promise<boolean> => {
             if (this.editingSettings.remoteType == REMOTE_MINIO) return true;
@@ -1364,10 +1381,35 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         options: {
                             [REMOTE_COUCHDB]: $msg("obsidianLiveSyncSettingTab.optionCouchDB"),
                             [REMOTE_MINIO]: $msg("obsidianLiveSyncSettingTab.optionMinioS3R2"),
+                            [REMOTE_P2P]: "Only Peer-to-Peer",
                         },
                         onUpdate: enableOnlySyncDisabled,
                     });
+                    void addPanel(paneEl, "Peer-to-Peer", undefined, onlyOnOnlyP2P).then((paneEl) => {
+                        const syncWarnP2P = this.createEl(paneEl, "div", {
+                            text: "",
+                        });
+                        const p2pMessage = `This feature is a Work In Progress, and configurable on \`P2P Replicator\` Pane.
+The pane also can be launched by \`P2P Replicator\` command from the Command Palette.
+`;
 
+                        void MarkdownRenderer.render(this.plugin.app, p2pMessage, syncWarnP2P, "/", this.plugin);
+                        syncWarnP2P.addClass("op-warn-info");
+                        new Setting(paneEl)
+                            .setName("Apply Settings")
+                            .setClass("wizardHidden")
+                            .addApplyButton(["remoteType"]);
+                        // .addOnUpdate(onlyOnMinIO);
+                        // new Setting(paneEl).addButton((button) =>
+                        //     button
+                        //         .setButtonText("Open P2P Replicator")
+                        //         .onClick(() => {
+                        //             const addOn = this.plugin.getAddOn<P2PReplicator>(P2PReplicator.name);
+                        //             void addOn?.openPane();
+                        //             this.closeSetting();
+                        //         })
+                        // );
+                    });
                     void addPanel(
                         paneEl,
                         $msg("obsidianLiveSyncSettingTab.titleMinioS3R2"),
@@ -1523,7 +1565,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             .addOnUpdate(onlyOnCouchDB);
                     });
                 });
-                void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification")).then((paneEl) => {
+                void addPanel(
+                    paneEl,
+                    $msg("obsidianLiveSyncSettingTab.titleNotification"),
+                    () => {},
+                    onlyOnCouchDB
+                ).then((paneEl) => {
                     paneEl.addClass("wizardHidden");
                     new Setting(paneEl)
                         .autoWireNumeric("notifyThresholdOfRemoteStorageSize", {})
@@ -2001,7 +2048,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
                     )
                     .setClass("wizardHidden");
-                new MultipleRegExpControl({
+                mount(MultipleRegExpControl, {
                     target: syncFilesSetting.controlEl,
                     props: {
                         patterns: this.editingSettings.syncOnlyRegEx.split("|[]|"),
@@ -2024,7 +2071,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     )
                     .setClass("wizardHidden");
 
-                new MultipleRegExpControl({
+                mount(MultipleRegExpControl, {
                     target: nonSyncFilesSetting.controlEl,
                     props: {
                         patterns: this.editingSettings.syncIgnoreRegEx.split("|[]|"),
@@ -2057,7 +2104,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     .filter((x) => x != "");
                 const patSetting = new Setting(paneEl).setName("Ignore patterns").setClass("wizardHidden").setDesc("");
 
-                new MultipleRegExpControl({
+                mount(MultipleRegExpControl, {
                     target: patSetting.controlEl,
                     props: {
                         patterns: pat,
@@ -2233,9 +2280,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             pluginConfig.encryptedCouchDBConnection = REDACTED;
                             pluginConfig.accessKey = REDACTED;
                             pluginConfig.secretKey = REDACTED;
-                            pluginConfig.region = `${REDACTED}(${pluginConfig.region.length} letters)`;
-                            pluginConfig.bucket = `${REDACTED}(${pluginConfig.bucket.length} letters)`;
+                            const redact = (source: string) => `${REDACTED}(${source.length} letters)`;
+                            pluginConfig.region = redact(pluginConfig.region);
+                            pluginConfig.bucket = redact(pluginConfig.bucket);
                             pluginConfig.pluginSyncExtendedSetting = {};
+                            pluginConfig.P2P_AppID = redact(pluginConfig.P2P_AppID);
+                            pluginConfig.P2P_passphrase = redact(pluginConfig.P2P_passphrase);
+                            pluginConfig.P2P_roomID = redact(pluginConfig.P2P_roomID);
+                            pluginConfig.P2P_relays = redact(pluginConfig.P2P_relays);
                             const endpoint = pluginConfig.endpoint;
                             if (endpoint == "") {
                                 pluginConfig.endpoint = "Not configured or AWS";
@@ -2918,7 +2970,8 @@ ${stringifyYaml(pluginConfig)}`;
                             .onClick(async () => {
                                 await this.plugin.$$markRemoteLocked();
                             })
-                    );
+                    )
+                    .addOnUpdate(onlyOnCouchDBOrMinIO);
 
                 new Setting(paneEl)
                     .setName("Emergency restart")
@@ -2935,7 +2988,7 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
 
-            void addPanel(paneEl, "Syncing").then((paneEl) => {
+            void addPanel(paneEl, "Syncing", () => {}, onlyOnCouchDBOrMinIO).then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Resend")
                     .setDesc("Resend all chunks to the remote.")
@@ -2951,6 +3004,7 @@ ${stringifyYaml(pluginConfig)}`;
                             })
                     )
                     .addOnUpdate(onlyOnCouchDB);
+
                 new Setting(paneEl)
                     .setName("Reset journal received history")
                     .setDesc(
@@ -2994,7 +3048,7 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addOnUpdate(onlyOnMinIO);
             });
-            void addPanel(paneEl, "Garbage Collection (Beta)", (e) => e, onlyOnCouchDB).then((paneEl) => {
+            void addPanel(paneEl, "Garbage Collection (Beta)", (e) => e, onlyOnP2POrCouchDB).then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Remove all orphaned chunks")
                     .setDesc("Remove all orphaned chunks from the local database.")
@@ -3080,7 +3134,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .addOnUpdate(onlyOnCouchDB);
             });
 
-            void addPanel(paneEl, "Total Overhaul").then((paneEl) => {
+            void addPanel(paneEl, "Total Overhaul", () => {}, onlyOnCouchDBOrMinIO).then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Rebuild everything")
                     .setDesc("Rebuild local and remote database with local files.")
@@ -3104,94 +3158,98 @@ ${stringifyYaml(pluginConfig)}`;
                             })
                     );
             });
-            void addPanel(paneEl, "Rebuilding Operations (Remote Only)").then((paneEl) => {
-                new Setting(paneEl)
-                    .setName("Perform cleanup")
-                    .setDesc(
-                        "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
-                    )
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Perform")
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
-                                Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
-                                if (await replicator.compactRemote(this.editingSettings)) {
-                                    Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
-                                } else {
-                                    Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
-                                }
-                            })
-                    )
-                    .addOnUpdate(onlyOnCouchDB);
+            void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, onlyOnCouchDBOrMinIO).then(
+                (paneEl) => {
+                    new Setting(paneEl)
+                        .setName("Perform cleanup")
+                        .setDesc(
+                            "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+                        )
+                        .addButton((button) =>
+                            button
+                                .setButtonText("Perform")
+                                .setDisabled(false)
+                                .onClick(async () => {
+                                    const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+                                    Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
+                                    if (await replicator.compactRemote(this.editingSettings)) {
+                                        Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                                    } else {
+                                        Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                                    }
+                                })
+                        )
+                        .addOnUpdate(onlyOnCouchDB);
 
-                new Setting(paneEl)
-                    .setName("Overwrite remote")
-                    .setDesc("Overwrite remote with local DB and passphrase.")
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Send")
-                            .setWarning()
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await rebuildDB("remoteOnly");
-                            })
-                    );
+                    new Setting(paneEl)
+                        .setName("Overwrite remote")
+                        .setDesc("Overwrite remote with local DB and passphrase.")
+                        .addButton((button) =>
+                            button
+                                .setButtonText("Send")
+                                .setWarning()
+                                .setDisabled(false)
+                                .onClick(async () => {
+                                    await rebuildDB("remoteOnly");
+                                })
+                        );
 
-                new Setting(paneEl)
-                    .setName("Reset all journal counter")
-                    .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Reset all")
-                            .setWarning()
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.getMinioJournalSyncClient().resetCheckpointInfo();
-                                Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
-                            })
-                    )
-                    .addOnUpdate(onlyOnMinIO);
+                    new Setting(paneEl)
+                        .setName("Reset all journal counter")
+                        .setDesc(
+                            "Initialise all journal history, On the next sync, every item will be received and sent."
+                        )
+                        .addButton((button) =>
+                            button
+                                .setButtonText("Reset all")
+                                .setWarning()
+                                .setDisabled(false)
+                                .onClick(async () => {
+                                    await this.getMinioJournalSyncClient().resetCheckpointInfo();
+                                    Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
+                                })
+                        )
+                        .addOnUpdate(onlyOnMinIO);
 
-                new Setting(paneEl)
-                    .setName("Purge all journal counter")
-                    .setDesc("Purge all download/upload cache.")
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Reset all")
-                            .setWarning()
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.getMinioJournalSyncClient().resetAllCaches();
-                                Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
-                            })
-                    )
-                    .addOnUpdate(onlyOnMinIO);
+                    new Setting(paneEl)
+                        .setName("Purge all journal counter")
+                        .setDesc("Purge all download/upload cache.")
+                        .addButton((button) =>
+                            button
+                                .setButtonText("Reset all")
+                                .setWarning()
+                                .setDisabled(false)
+                                .onClick(async () => {
+                                    await this.getMinioJournalSyncClient().resetAllCaches();
+                                    Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
+                                })
+                        )
+                        .addOnUpdate(onlyOnMinIO);
 
-                new Setting(paneEl)
-                    .setName("Fresh Start Wipe")
-                    .setDesc("Delete all data on the remote server.")
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Delete")
-                            .setWarning()
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                                    ...info,
-                                    receivedFiles: new Set(),
-                                    knownIDs: new Set(),
-                                    lastLocalSeq: 0,
-                                    sentIDs: new Set(),
-                                    sentFiles: new Set(),
-                                }));
-                                await this.resetRemoteBucket();
-                                Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
-                            })
-                    )
-                    .addOnUpdate(onlyOnMinIO);
-            });
+                    new Setting(paneEl)
+                        .setName("Fresh Start Wipe")
+                        .setDesc("Delete all data on the remote server.")
+                        .addButton((button) =>
+                            button
+                                .setButtonText("Delete")
+                                .setWarning()
+                                .setDisabled(false)
+                                .onClick(async () => {
+                                    await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                                        ...info,
+                                        receivedFiles: new Set(),
+                                        knownIDs: new Set(),
+                                        lastLocalSeq: 0,
+                                        sentIDs: new Set(),
+                                        sentFiles: new Set(),
+                                    }));
+                                    await this.resetRemoteBucket();
+                                    Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
+                                })
+                        )
+                        .addOnUpdate(onlyOnMinIO);
+                }
+            );
 
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)

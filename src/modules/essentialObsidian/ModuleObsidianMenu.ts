@@ -124,7 +124,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             });
         }
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(leaves[0]);
+            await this.app.workspace.revealLeaf(leaves[0]);
         }
     }
 }

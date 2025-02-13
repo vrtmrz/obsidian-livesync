@@ -7,7 +7,7 @@
         "target": "ES2018",
         "allowJs": true,
         "noImplicitAny": true,
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "types": ["svelte", "node"],
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,

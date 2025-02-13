@@ -1,6 +1,7 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger.js";
 import { SETTING_VERSION_SUPPORT_CASE_INSENSITIVE } from "../../lib/src/common/types.js";
 import {
+    EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
     EVENT_REQUEST_OPEN_SETTINGS,
     EVENT_REQUEST_OPEN_SETUP_URI,
@@ -194,15 +195,20 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     async askAgainForSetupURI() {
         const message = $msg("moduleMigration.msgRecommendSetupUri", { URI_DOC: $msg("moduleMigration.docUri") });
         const USE_MINIMAL = $msg("moduleMigration.optionSetupWizard");
+        const USE_P2P = $msg("moduleMigration.optionSetupViaP2P");
         const USE_SETUP = $msg("moduleMigration.optionManualSetup");
         const NEXT = $msg("moduleMigration.optionRemindNextLaunch");
 
-        const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, NEXT], {
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, USE_P2P, NEXT], {
             title: $msg("moduleMigration.titleRecommendSetupUri"),
             defaultAction: USE_MINIMAL,
         });
         if (ret === USE_MINIMAL) {
             eventHub.emitEvent(EVENT_REQUEST_OPEN_SETTING_WIZARD);
+            return false;
+        }
+        if (ret === USE_P2P) {
+            eventHub.emitEvent(EVENT_REQUEST_OPEN_P2P);
             return false;
         }
         if (ret === USE_SETUP) {

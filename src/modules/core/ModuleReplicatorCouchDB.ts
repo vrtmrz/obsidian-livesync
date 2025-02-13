@@ -1,5 +1,5 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, type RemoteDBSettings } from "../../lib/src/common/types";
+import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "../../lib/src/common/types";
 import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "../AbstractModule";
@@ -9,13 +9,13 @@ export class ModuleReplicatorCouchDB extends AbstractModule implements ICoreModu
     $anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
         const settings = { ...this.settings, ...settingOverride };
         // If new remote types were added, add them here. Do not use `REMOTE_COUCHDB` directly for the safety valve.
-        if (settings.remoteType == REMOTE_MINIO) {
+        if (settings.remoteType == REMOTE_MINIO || settings.remoteType == REMOTE_P2P) {
             return undefined!;
         }
         return Promise.resolve(new LiveSyncCouchDBReplicator(this.core));
     }
     $everyAfterResumeProcess(): Promise<boolean> {
-        if (this.settings.remoteType != REMOTE_MINIO) {
+        if (this.settings.remoteType != REMOTE_MINIO && this.settings.remoteType != REMOTE_P2P) {
             // If LiveSync enabled, open replication
             if (this.settings.liveSync) {
                 fireAndForget(() => this.core.replicator.openReplication(this.settings, true, false, false));
