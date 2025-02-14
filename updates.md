@@ -1,6 +1,5 @@
 ## 0.24.11
 
-
 Peer-to-peer synchronisation has been implemented!
 
 Until now, I have not provided a synchronisation server. More people may not even know that I have shut down the test server. I confess that this is a bit repetitive, but I confess it is a cautionary tale. This is out of a sense of self-discipline that someone has occurred who could see your data. Even if the 'someone' is me. I should not be unaware of its superiority, even though well-meaning and am a servant of all. (Half joking, but also serious).
@@ -10,7 +9,21 @@ Also, this signalling server is just a Nostr relay, not my implementation. You c
 Nevertheless, that being said, to be more honest, I still have not decided what to do with this signalling server if too much traffic comes in.
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
----
+
+## 0.24.12
+
+I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
+And, this is just a single web page, without any server-side code. It is a static web page that can be hosted on any static web server, such as GitHub Pages, Netlify, or Vercel. All you have to do is to open the page and enter several items, and leave it open.
+
+### Fixed
+
+- No longer unnecessary acknowledgements are sent when starting peer-to-peer synchronisation.
+
+### Refactored
+
+- Platform impedance-matching-layer has been improved.
+    - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
+- Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
 
 ## 0.24.11
 
