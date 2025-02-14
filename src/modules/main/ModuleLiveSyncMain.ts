@@ -14,7 +14,7 @@ import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurre
 import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
-import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/APIBase.ts";
+import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/base/APIBase.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule implements ICoreModule {
     async $$onLiveSyncReady() {

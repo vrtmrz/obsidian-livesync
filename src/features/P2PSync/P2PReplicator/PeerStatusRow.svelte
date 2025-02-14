@@ -1,11 +1,9 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { AcceptedStatus, ConnectionStatus, type PeerStatus } from "./P2PReplicatorPaneView";
-    import { Menu, Setting } from "obsidian";
-    import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
+    import { AcceptedStatus, type PeerStatus } from "./P2PReplicatorPaneCommon";
     import type { P2PReplicator } from "../CmdP2PSync";
-    import { unique } from "../../../lib/src/common/utils";
-    import { REMOTE_P2P } from "src/lib/src/common/types";
+    import { eventHub } from "../../../common/events";
+    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "./P2PReplicatorPaneCommon";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -94,154 +92,13 @@
     function stopWatching() {
         replicator.unwatchPeer(peer.peerId);
     }
-    function replicateFrom() {
-        replicator.replicateFrom(peer.peerId);
-    }
-    function replicateTo() {
-        replicator.requestSynchroniseToPeer(peer.peerId);
-    }
+
     function sync() {
         replicator.sync(peer.peerId, false);
     }
-    function addToList(item: string, list: string) {
-        return unique(
-            list
-                .split(",")
-                .map((e) => e.trim())
-                .concat(item)
-                .filter((p) => p)
-        ).join(",");
-    }
-    function removeFromList(item: string, list: string) {
-        return list
-            .split(",")
-            .map((e) => e.trim())
-            .filter((p) => p !== item)
-            .filter((p) => p)
-            .join(",");
-    }
+
     function moreMenu(evt: MouseEvent) {
-        const m = new Menu()
-            .addItem((item) => item.setTitle("📥 Only Fetch").onClick(() => replicateFrom()))
-            .addItem((item) => item.setTitle("📤 Only Send").onClick(() => replicateTo()))
-            .addSeparator()
-            .addItem((item) => {
-                item.setTitle("🔧 Get Configuration").onClick(async () => {
-                    Logger(
-                        `Requesting remote config for ${peer.name}. Please input the passphrase on the remote device`,
-                        LOG_LEVEL_NOTICE
-                    );
-                    const remoteConfig = await replicator.getRemoteConfig(peer.peerId);
-                    if (remoteConfig) {
-                        Logger(`Remote config for ${peer.name} is retrieved successfully`);
-                        const DROP = "Yes, and drop local database";
-                        const KEEP = "Yes, but keep local database";
-                        const CANCEL = "No, cancel";
-                        const yn = await replicator.confirm.askSelectStringDialogue(
-                            `Do you really want to apply the remote config? This will overwrite your current config immediately and restart.
-And you can also drop the local database to rebuild from the remote device.`,
-                            [DROP, KEEP, CANCEL] as const,
-                            {
-                                defaultAction: CANCEL,
-                                title: "Apply Remote Config ",
-                            }
-                        );
-                        if (yn === DROP || yn === KEEP) {
-                            if (yn === DROP) {
-                                if (remoteConfig.remoteType !== REMOTE_P2P) {
-                                    const yn2 = await replicator.confirm.askYesNoDialog(
-                                        `Do you want to set the remote type to "P2P Sync" to rebuild by "P2P replication"?`,
-                                        {
-                                            title: "Rebuild from remote device",
-                                        }
-                                    );
-                                    if (yn2 === "yes") {
-                                        remoteConfig.remoteType = REMOTE_P2P;
-                                        remoteConfig.P2P_RebuildFrom = peer.name;
-                                    }
-                                }
-                            }
-                            cmdReplicator.plugin.settings = remoteConfig;
-                            await cmdReplicator.plugin.saveSettings();
-                            // await cmdReplicator.setConfig("rebuildFrom", peer.name);
-                            if (yn === DROP) {
-                                await cmdReplicator.plugin.rebuilder.scheduleFetch();
-                            } else {
-                                await cmdReplicator.plugin.$$scheduleAppReload();
-                            }
-                        } else {
-                            Logger(`Cancelled\nRemote config for ${peer.name} is not applied`, LOG_LEVEL_NOTICE);
-                        }
-                    } else {
-                        Logger(`Cannot retrieve remote config for ${peer.peerId}`);
-                    }
-                });
-            })
-            .addSeparator()
-            .addItem((item) => {
-                const mark = peer.syncOnConnect ? "checkmark" : null;
-                item.setTitle("Toggle Sync on connect")
-                    .onClick(async () => {
-                        // TODO: Fix to prevent writing to settings directly
-                        if (peer.syncOnConnect) {
-                            cmdReplicator.settings.P2P_AutoSyncPeers = removeFromList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_AutoSyncPeers
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        } else {
-                            cmdReplicator.settings.P2P_AutoSyncPeers = addToList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_AutoSyncPeers
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        }
-                    })
-                    .setIcon(mark);
-            })
-            .addItem((item) => {
-                const mark = peer.watchOnConnect ? "checkmark" : null;
-                item.setTitle("Toggle Watch on connect")
-                    .onClick(async () => {
-                        // TODO: Fix to prevent writing to settings directly
-                        if (peer.watchOnConnect) {
-                            cmdReplicator.settings.P2P_AutoWatchPeers = removeFromList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_AutoWatchPeers
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        } else {
-                            cmdReplicator.settings.P2P_AutoWatchPeers = addToList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_AutoWatchPeers
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        }
-                    })
-                    .setIcon(mark);
-            })
-            .addItem((item) => {
-                const mark = peer.syncOnReplicationCommand ? "checkmark" : null;
-                item.setTitle("Toggle Sync on `Replicate now` command")
-                    .onClick(async () => {
-                        // TODO: Fix to prevent writing to settings directly
-                        if (peer.syncOnReplicationCommand) {
-                            cmdReplicator.settings.P2P_SyncOnReplication = removeFromList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_SyncOnReplication
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        } else {
-                            cmdReplicator.settings.P2P_SyncOnReplication = addToList(
-                                peer.name,
-                                cmdReplicator.settings.P2P_SyncOnReplication
-                            );
-                            await cmdReplicator.plugin.saveSettings();
-                        }
-                    })
-                    .setIcon(mark);
-            });
-        m.showAtPosition({ x: evt.x, y: evt.y });
+        eventHub.emitEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, { peer, event: evt });
     }
 </script>
 

@@ -20,6 +20,7 @@ import {
     EVENT_DATABASE_REBUILT,
     EVENT_PLUGIN_UNLOADED,
     EVENT_REQUEST_OPEN_P2P,
+    EVENT_SETTING_SAVED,
     eventHub,
 } from "../../common/events.ts";
 import {
@@ -31,8 +32,9 @@ import {
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator.ts";
 import { Logger } from "octagonal-wheels/common/logger";
 import { $msg } from "../../lib/src/common/i18n.ts";
+import type { CommandShim } from "./P2PReplicator/P2PReplicatorPaneCommon.ts";
 
-export class P2PReplicator extends LiveSyncCommands implements IObsidianModule {
+export class P2PReplicator extends LiveSyncCommands implements IObsidianModule, CommandShim {
     $anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
         const settings = { ...this.settings, ...settingOverride };
         if (settings.remoteType == REMOTE_P2P) {
@@ -65,6 +67,9 @@ export class P2PReplicator extends LiveSyncCommands implements IObsidianModule {
         });
         eventHub.onEvent(EVENT_PLUGIN_UNLOADED, () => {
             void this.close();
+        });
+        eventHub.onEvent(EVENT_SETTING_SAVED, async () => {
+            await this.initialiseP2PReplicator();
         });
         // throw new Error("Method not implemented.");
     }
@@ -154,8 +159,13 @@ export class P2PReplicator extends LiveSyncCommands implements IObsidianModule {
 
         if (!this._replicatorInstance) {
             await this.initialiseP2PReplicator();
+            if (!this.settings.P2P_AutoStart) {
+                // While auto start is enabled, we don't need to open the connection (Literally, it's already opened automatically)
+                await this._replicatorInstance!.open();
+            }
+        } else {
+            await this._replicatorInstance?.open();
         }
-        await this._replicatorInstance?.open();
     }
     async close() {
         await this._replicatorInstance?.close();
@@ -208,7 +218,9 @@ export class P2PReplicator extends LiveSyncCommands implements IObsidianModule {
                 simpleStore: getPlugin().$$getSimpleStore("p2p-sync"),
             };
             this._replicatorInstance = new TrysteroReplicator(env);
-            // p2p_replicator.set(this.p2pReplicator);
+            if (this.settings.P2P_AutoStart && this.settings.P2P_Enabled) {
+                await this.open();
+            }
             return this._replicatorInstance;
         } catch (e) {
             this._log(
@@ -218,5 +230,11 @@ export class P2PReplicator extends LiveSyncCommands implements IObsidianModule {
             this._log(e, LOG_LEVEL_VERBOSE);
             throw e;
         }
+    }
+    enableBroadcastCastings() {
+        return this?._replicatorInstance?.enableBroadcastChanges();
+    }
+    disableBroadcastCastings() {
+        return this?._replicatorInstance?.disableBroadcastChanges();
     }
 }

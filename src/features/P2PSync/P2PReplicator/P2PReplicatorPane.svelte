@@ -1,16 +1,15 @@
 <script lang="ts">
     import { onMount, setContext } from "svelte";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "../../../lib/src/common/types";
     import {
-        AutoAccepting,
-        DEFAULT_SETTINGS,
-        type ObsidianLiveSyncSettings,
-        type P2PSyncSetting,
-    } from "../../../lib/src/common/types";
-    import { type P2PReplicator } from "../CmdP2PSync";
-    import { AcceptedStatus, ConnectionStatus, type PeerStatus } from "./P2PReplicatorPaneView";
+        AcceptedStatus,
+        ConnectionStatus,
+        type CommandShim,
+        type PeerStatus,
+        type PluginShim,
+    } from "./P2PReplicatorPaneCommon";
     import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
-    import type ObsidianLiveSyncPlugin from "../../../main";
     import {
         type PeerInfo,
         type P2PServerInfo,
@@ -22,11 +21,12 @@
     import { $msg as _msg } from "../../../lib/src/common/i18n";
 
     interface Props {
-        plugin: ObsidianLiveSyncPlugin;
+        plugin: PluginShim;
+        cmdSync: CommandShim;
     }
 
-    let { plugin }: Props = $props();
-    const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
+    let { plugin, cmdSync }: Props = $props();
+    // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
     setContext("getReplicator", () => cmdSync);
 
     const initialSettings = { ...plugin.settings };
@@ -34,6 +34,7 @@
     let settings = $state<P2PSyncSetting>(initialSettings);
     // const vaultName = plugin.$$getVaultName();
     // const dbKey = `${vaultName}-p2p-device-name`;
+
     const initialDeviceName = cmdSync.getConfig("p2p_device_name") ?? plugin.$$getVaultName();
     let deviceName = $state<string>(initialDeviceName);
 
@@ -100,7 +101,7 @@
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
-    const applyLoadSettings = (d: ObsidianLiveSyncSettings, force: boolean) => {
+    const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
         const { P2P_relays, P2P_roomID, P2P_passphrase, P2P_AppID, P2P_AutoAccepting } = d;
         if (force || !isP2PEnabledModified) eP2PEnabled = d.P2P_Enabled;
         if (force || !isRelayModified) eRelay = P2P_relays;
@@ -221,10 +222,10 @@
         await cmdSync.close();
     }
     function startBroadcasting() {
-        cmdSync._replicatorInstance?.enableBroadcastChanges();
+        void cmdSync.enableBroadcastCastings();
     }
     function stopBroadcasting() {
-        cmdSync._replicatorInstance?.disableBroadcastChanges();
+        void cmdSync.disableBroadcastCastings();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;
@@ -283,6 +284,7 @@
                                 type="text"
                                 placeholder="wss://exp-relay.vrtmrz.net, wss://xxxxx"
                                 bind:value={eRelay}
+                                autocomplete="off"
                             />
                             <button onclick={() => useDefaultRelay()}> Use vrtmrz's relay </button>
                         </label>
@@ -292,7 +294,7 @@
                     <th> Room ID </th>
                     <td>
                         <label class={{ "is-dirty": isRoomIdModified }}>
-                            <input type="text" placeholder="anything-you-like" bind:value={eRoomId} />
+                            <input type="text" placeholder="anything-you-like" bind:value={eRoomId} autocomplete="off"/>
                             <button onclick={() => chooseRandom()}> Use Random Number </button>
                         </label>
                         <span>
@@ -318,7 +320,8 @@
                     <th> This device name </th>
                     <td>
                         <label class={{ "is-dirty": isDeviceNameModified }}>
-                            <input type="text" placeholder="iphone-16" bind:value={eDeviceName} />
+                            <input type="text" placeholder="iphone-16" bind:value={eDeviceName}
+                            autocomplete="off" />
                         </label>
                     </td>
                 </tr>
