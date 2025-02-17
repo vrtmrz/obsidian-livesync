@@ -1,9 +1,9 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { AcceptedStatus, type PeerStatus } from "./P2PReplicatorPaneCommon";
-    import type { P2PReplicator } from "../CmdP2PSync";
+    import { AcceptedStatus, type PeerStatus } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicator } from "../CmdP2PReplicator";
     import { eventHub } from "../../../common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "./P2PReplicatorPaneCommon";
+    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
 
     interface Props {
         peerStatus: PeerStatus;

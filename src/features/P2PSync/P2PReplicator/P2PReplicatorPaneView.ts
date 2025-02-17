@@ -4,11 +4,15 @@ import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import { mount } from "svelte";
 import { SvelteItemView } from "../../../common/SvelteItemView.ts";
 import { eventHub } from "../../../common/events.ts";
-import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "./P2PReplicatorPaneCommon.ts";
+
 import { unique } from "octagonal-wheels/collection";
 import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
-import { P2PReplicator } from "../CmdP2PSync.ts";
+import { P2PReplicator } from "../CmdP2PReplicator.ts";
+import {
+    EVENT_P2P_PEER_SHOW_EXTRA_MENU,
+    type PeerStatus,
+} from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon.ts";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {

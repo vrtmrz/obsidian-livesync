@@ -7,7 +7,7 @@
         type CommandShim,
         type PeerStatus,
         type PluginShim,
-    } from "./P2PReplicatorPaneCommon";
+    } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
     import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
     import {
@@ -294,7 +294,12 @@
                     <th> Room ID </th>
                     <td>
                         <label class={{ "is-dirty": isRoomIdModified }}>
-                            <input type="text" placeholder="anything-you-like" bind:value={eRoomId} autocomplete="off"/>
+                            <input
+                                type="text"
+                                placeholder="anything-you-like"
+                                bind:value={eRoomId}
+                                autocomplete="off"
+                            />
                             <button onclick={() => chooseRandom()}> Use Random Number </button>
                         </label>
                         <span>
@@ -320,8 +325,7 @@
                     <th> This device name </th>
                     <td>
                         <label class={{ "is-dirty": isDeviceNameModified }}>
-                            <input type="text" placeholder="iphone-16" bind:value={eDeviceName}
-                            autocomplete="off" />
+                            <input type="text" placeholder="iphone-16" bind:value={eDeviceName} autocomplete="off" />
                         </label>
                     </td>
                 </tr>

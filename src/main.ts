@@ -82,7 +82,7 @@ import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
 import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import { P2PReplicator } from "./features/P2PSync/CmdP2PSync.ts";
+import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 
 function throwShouldBeOverridden(): never {
     throw new Error("This function should be overridden by the module.");

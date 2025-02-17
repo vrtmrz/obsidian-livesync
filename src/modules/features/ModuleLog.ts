@@ -27,14 +27,7 @@ import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "src/lib/src/common/i18n.ts";
-import type { P2PReplicationProgress } from "../../lib/src/replication/trystero/TrysteroReplicator.ts";
-import {
-    EVENT_ADVERTISEMENT_RECEIVED,
-    EVENT_DEVICE_LEAVED,
-    EVENT_P2P_CONNECTED,
-    EVENT_P2P_DISCONNECTED,
-    EVENT_P2P_REPLICATOR_PROGRESS,
-} from "src/lib/src/replication/trystero/TrysteroReplicatorP2PServer.ts";
+import { P2PLogCollector } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -71,6 +64,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
     statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
     statusLog = reactiveSource("");
     notifies: { [key: string]: { notice: Notice; count: number } } = {};
+    p2pLogCollector = new P2PLogCollector();
 
     observeForLogs() {
         const padSpaces = `\u{2007}`.repeat(10);
@@ -176,7 +170,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             const queued = queueCountLabel();
             const waiting = waitingLabel();
             const networkActivity = requestingStatLabel();
-            const p2p = this.p2pReplicationLine.value;
+            const p2p = this.p2pLogCollector.p2pReplicationLine.value;
             return {
                 message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}${p2p == "" ? "" : "\n" + p2p}`,
             };
@@ -203,90 +197,10 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         statusBarLabels.onChanged((label) => applyToDisplay(label.value));
     }
 
-    p2pReplicationResult = new Map<string, P2PReplicationProgress>();
-    updateP2PReplicationLine() {
-        const p2pReplicationResultX = [...this.p2pReplicationResult.values()].sort((a, b) =>
-            a.peerId.localeCompare(b.peerId)
-        );
-        const renderProgress = (current: number, max: number) => {
-            if (current == max) return `${current}`;
-            return `${current} (${max})`;
-        };
-        const line = p2pReplicationResultX
-            .map(
-                (e) =>
-                    `${e.fetching.isActive || e.sending.isActive ? "⚡" : "💤"} ${e.peerName} ↑ ${renderProgress(e.sending.current, e.sending.max)} ↓ ${renderProgress(e.fetching.current, e.fetching.max)} `
-            )
-            .join("\n");
-        this.p2pReplicationLine.value = line;
-    }
-    // p2pReplicationResultX = reactiveSource([] as P2PReplicationProgress[]);
-    p2pReplicationLine = reactiveSource("");
-
     $everyOnload(): Promise<boolean> {
         eventHub.onEvent(EVENT_LEAF_ACTIVE_CHANGED, () => this.onActiveLeafChange());
         eventHub.onceEvent(EVENT_LAYOUT_READY, () => this.onActiveLeafChange());
-        eventHub.onEvent(EVENT_ADVERTISEMENT_RECEIVED, (data) => {
-            this.p2pReplicationResult.set(data.peerId, {
-                peerId: data.peerId,
-                peerName: data.name,
-                fetching: {
-                    current: 0,
-                    max: 0,
-                    isActive: false,
-                },
-                sending: {
-                    current: 0,
-                    max: 0,
-                    isActive: false,
-                },
-            });
-            this.updateP2PReplicationLine();
-        });
-        eventHub.onEvent(EVENT_P2P_CONNECTED, () => {
-            this.p2pReplicationResult.clear();
-            this.updateP2PReplicationLine();
-        });
-        eventHub.onEvent(EVENT_P2P_DISCONNECTED, () => {
-            this.p2pReplicationResult.clear();
-            this.updateP2PReplicationLine();
-        });
-        eventHub.onEvent(EVENT_DEVICE_LEAVED, (peerId) => {
-            this.p2pReplicationResult.delete(peerId);
-            this.updateP2PReplicationLine();
-        });
-        eventHub.onEvent(EVENT_P2P_REPLICATOR_PROGRESS, (data) => {
-            const prev = this.p2pReplicationResult.get(data.peerId) || {
-                peerId: data.peerId,
-                peerName: data.peerName,
-                fetching: {
-                    current: 0,
-                    max: 0,
-                    isActive: false,
-                },
-                sending: {
-                    current: 0,
-                    max: 0,
-                    isActive: false,
-                },
-            };
-            if ("fetching" in data) {
-                if (data.fetching.isActive) {
-                    prev.fetching = data.fetching;
-                } else {
-                    prev.fetching.isActive = false;
-                }
-            }
-            if ("sending" in data) {
-                if (data.sending.isActive) {
-                    prev.sending = data.sending;
-                } else {
-                    prev.sending.isActive = false;
-                }
-            }
-            this.p2pReplicationResult.set(data.peerId, prev);
-            this.updateP2PReplicationLine();
-        });
+
         return Promise.resolve(true);
     }
     adjustStatusDivPosition() {
