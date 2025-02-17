@@ -10,6 +10,38 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.13
+
+Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
+
+### Fixed
+
+#### General Replication
+
+- No longer unexpected errors occur when the replication is stopped during for some reason (e.g., network disconnection).
+
+#### Peer-to-Peer Synchronisation
+
+- Set-up process will not receive data from unexpected sources.
+- No longer resource leaks while enabling the `broadcasting changes`
+- Logs are less verbose.
+- Received data is now correctly dispatched to other devices.
+- `Timeout` error now more informative.
+- No longer timeout error occurs for reporting the progress to other devices.
+- Decision dialogues for the same thing are not shown multiply at the same time anymore.
+- Disconnection of the peer-to-peer synchronisation is now more robust and less error-prone.
+
+#### Webpeer
+
+- Now we can toggle Peers' configuration.
+
+### Refactored
+
+- Cross-platform compatibility layer has been improved.
+- Common events are moved to the common library.
+- Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
+- Some file names have been changed to be more consistent.
+
 ## 0.24.12
 
 I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
