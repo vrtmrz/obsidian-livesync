@@ -10,6 +10,20 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.14
+
+### Fixed
+
+- Resolving conflicts of JSON files (and sensibly merging them) is now working fine, again!
+    - And, failure logs are more informative.
+- More robust to release the event listeners on unwatching the local database.
+
+### Refactored
+
+- JSON file conflict resolution dialogue has been rewritten into svelte v5.
+- Upgrade eslint.
+- Remove unnecessary pragma comments for eslint.
+
 ## 0.24.13
 
 Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
