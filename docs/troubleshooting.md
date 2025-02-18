@@ -132,6 +132,12 @@ There are some options to use `redflag.md`.
 | `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuild both local and remote databases by local files.  |
 | `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discard the local database, and fetch from the remote again. |
 
+When fetching everything remotely or performing a rebuild, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out.
+(The use of normal markdown files is a trick to externally force cancellation in the event of faults in the rebuild or fetch function itself, especially on mobile devices).
+This mechanism is also used for set-up. And just for information, these files are also not subject to synchronisation.
+
+However, occasionally the deletion of files may fail. This should generally work normally after restarting Obsidian. (As far as I can observe).
+
 ## Tips
 
 ### How to resolve `Tweaks Mismatched of Changed`
