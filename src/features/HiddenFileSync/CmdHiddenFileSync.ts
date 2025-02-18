@@ -701,7 +701,7 @@ Offline Changed files: ${processFiles.length}`;
                             ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
                             .first()?.rev ?? "";
                     const result = await this.plugin.localDatabase.mergeObject(
-                        path,
+                        doc.path,
                         commonBase,
                         doc._rev,
                         conflictedRev

@@ -106,7 +106,6 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
     }
     $everyOnload(): Promise<boolean> {
         this.app.workspace.onLayoutReady(this.core.$$onLiveSyncReady.bind(this.core));
-        // eslint-disable-next-line no-unused-labels
         return Promise.resolve(true);
     }
 

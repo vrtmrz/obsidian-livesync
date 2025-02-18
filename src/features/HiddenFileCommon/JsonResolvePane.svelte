@@ -2,29 +2,64 @@
     import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "../../deps.ts";
     import type { FilePath, LoadedEntry } from "../../lib/src/common/types.ts";
     import { decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
-    import { getDocData, mergeObject } from "../../lib/src/common/utils.ts";
+    import { getDocData, isObjectDifferent, mergeObject } from "../../lib/src/common/utils.ts";
 
-    export let docs: LoadedEntry[] = [];
-    export let callback: (keepRev?: string, mergedStr?: string) => Promise<void> = async (_, __) => {
-        Promise.resolve();
-    };
-    export let filename: FilePath = "" as FilePath;
-    export let nameA: string = "A";
-    export let nameB: string = "B";
-    export let defaultSelect: string = "";
-    export let keepOrder = false;
-    export let hideLocal: boolean = false;
-    let docA: LoadedEntry;
-    let docB: LoadedEntry;
-    let docAContent = "";
-    let docBContent = "";
-    let objA: any = {};
-    let objB: any = {};
-    let objAB: any = {};
-    let objBA: any = {};
-    let diffs: Diff[];
+    interface Props {
+        docs?: LoadedEntry[];
+        callback?: (keepRev?: string, mergedStr?: string) => Promise<void>;
+        filename?: FilePath;
+        nameA?: string;
+        nameB?: string;
+        defaultSelect?: string;
+        keepOrder?: boolean;
+        hideLocal?: boolean;
+    }
+
+    let {
+        docs = $bindable([]),
+        callback = $bindable((async (_, __) => {
+            Promise.resolve();
+        }) as (keepRev?: string, mergedStr?: string) => Promise<void>),
+        filename = $bindable("" as FilePath),
+        nameA = $bindable("A"),
+        nameB = $bindable("B"),
+        defaultSelect = $bindable("" as string),
+        keepOrder = $bindable(false),
+        hideLocal = $bindable(false),
+    }: Props = $props();
+    type JSONData = Record<string | number | symbol, any> | [any];
+
+    const docsArray = $derived.by(() => {
+        if (docs && docs.length >= 1) {
+            if (keepOrder || docs[0].mtime < docs[1].mtime) {
+                return { a: docs[0], b: docs[1] } as const;
+            } else {
+                return { a: docs[1], b: docs[0] } as const;
+            }
+        }
+        return { a: false, b: false } as const;
+    });
+    const docA = $derived(docsArray.a);
+    const docB = $derived(docsArray.b);
+    const docAContent = $derived(docA && docToString(docA));
+    const docBContent = $derived(docB && docToString(docB));
+
+    function parseJson(json: string | false) {
+        if (json === false) return false;
+        try {
+            return JSON.parse(json) as JSONData;
+        } catch (ex) {
+            return false;
+        }
+    }
+    const objA = $derived(parseJson(docAContent) || {});
+    const objB = $derived(parseJson(docBContent) || {});
+    const objAB = $derived(mergeObject(objA, objB));
+    const objBAw = $derived(mergeObject(objB, objA));
+    const objBA = $derived(isObjectDifferent(objBAw, objAB) ? objBAw : false);
+    let diffs: Diff[] = $derived.by(() => (objA && selectedObj ? getJsonDiff(objA, selectedObj) : []));
     type SelectModes = "" | "A" | "B" | "AB" | "BA";
-    let mode: SelectModes = defaultSelect as SelectModes;
+    let mode: SelectModes = $state(defaultSelect as SelectModes);
 
     function docToString(doc: LoadedEntry) {
         return doc.datatype == "plain" ? getDocData(doc.data) : readString(new Uint8Array(decodeBinary(doc.data)));
@@ -45,6 +80,7 @@
         return getDiff(JSON.stringify(a, null, 2), JSON.stringify(b, null, 2));
     }
     function apply() {
+        if (!docA || !docB) return;
         if (docA._id == docB._id) {
             if (mode == "A") return callback(docA._rev!, undefined);
             if (mode == "B") return callback(docB._rev!, undefined);
@@ -59,50 +95,23 @@
     function cancel() {
         callback(undefined, undefined);
     }
-    $: {
-        if (docs && docs.length >= 1) {
-            if (keepOrder || docs[0].mtime < docs[1].mtime) {
-                docA = docs[0];
-                docB = docs[1];
-            } else {
-                docA = docs[1];
-                docB = docs[0];
-            }
-            docAContent = docToString(docA);
-            docBContent = docToString(docB);
+    const mergedObjs = $derived.by(
+        () =>
+            ({
+                "": false,
+                A: objA,
+                B: objB,
+                AB: objAB,
+                BA: objBA,
+            }) as Record<SelectModes, JSONData | false>
+    );
 
-            try {
-                objA = false;
-                objB = false;
-                objA = JSON.parse(docAContent);
-                objB = JSON.parse(docBContent);
-                objAB = mergeObject(objA, objB);
-                objBA = mergeObject(objB, objA);
-                if (JSON.stringify(objAB) == JSON.stringify(objBA)) {
-                    objBA = false;
-                }
-            } catch (ex) {
-                objBA = false;
-                objAB = false;
-            }
-        }
-    }
-    $: mergedObjs = {
-        "": false,
-        A: objA,
-        B: objB,
-        AB: objAB,
-        BA: objBA,
-    };
+    let selectedObj = $derived(mode in mergedObjs ? mergedObjs[mode] : {});
 
-    $: selectedObj = mode in mergedObjs ? mergedObjs[mode] : {};
-    $: {
-        diffs = getJsonDiff(objA, selectedObj);
-    }
+    let modesSrc = $state([] as ["" | "A" | "B" | "AB" | "BA", string][]);
 
-    let modes = [] as ["" | "A" | "B" | "AB" | "BA", string][];
-    $: {
-        let newModes = [] as typeof modes;
+    const modes = $derived.by(() => {
+        let newModes = [] as typeof modesSrc;
 
         if (!hideLocal) {
             newModes.push(["", "Not now"]);
@@ -111,15 +120,15 @@
         newModes.push(["B", nameB || "B"]);
         newModes.push(["AB", `${nameA || "A"} + ${nameB || "B"}`]);
         newModes.push(["BA", `${nameB || "B"} + ${nameA || "A"}`]);
-        modes = newModes;
-    }
+        return newModes;
+    });
 </script>
 
 <h2>{filename}</h2>
 {#if !docA || !docB}
     <div class="message">Just for a minute, please!</div>
     <div class="buttons">
-        <button on:click={apply}>Dismiss</button>
+        <button onclick={apply}>Dismiss</button>
     </div>
 {:else}
     <div class="options">
@@ -148,39 +157,39 @@
     <div class="infos">
         <table>
             <tbody>
-            <tr>
-                <th>{nameA}</th>
-                <td
-                    >{#if docA._id == docB._id}
-                        Rev:{revStringToRevNumber(docA._rev)}
-                    {/if}
-                    {new Date(docA.mtime).toLocaleString()}</td
-                >
-                <td>
-                    {docAContent.length} letters
-                </td>
-            </tr>
-            <tr>
-                <th>{nameB}</th>
-                <td
-                    >{#if docA._id == docB._id}
-                        Rev:{revStringToRevNumber(docB._rev)}
-                    {/if}
-                    {new Date(docB.mtime).toLocaleString()}</td
-                >
-                <td>
-                    {docBContent.length} letters
-                </td>
-            </tr>
+                <tr>
+                    <th>{nameA}</th>
+                    <td
+                        >{#if docA._id == docB._id}
+                            Rev:{revStringToRevNumber(docA._rev)}
+                        {/if}
+                        {new Date(docA.mtime).toLocaleString()}</td
+                    >
+                    <td>
+                        {docAContent && docAContent.length} letters
+                    </td>
+                </tr>
+                <tr>
+                    <th>{nameB}</th>
+                    <td
+                        >{#if docA._id == docB._id}
+                            Rev:{revStringToRevNumber(docB._rev)}
+                        {/if}
+                        {new Date(docB.mtime).toLocaleString()}</td
+                    >
+                    <td>
+                        {docBContent && docBContent.length} letters
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
 
     <div class="buttons">
         {#if hideLocal}
-            <button on:click={cancel}>Cancel</button>
+            <button onclick={cancel}>Cancel</button>
         {/if}
-        <button on:click={apply}>Apply</button>
+        <button onclick={apply}>Apply</button>
     </div>
 {/if}
 

@@ -2,13 +2,14 @@ import { App, Modal } from "../../deps.ts";
 import { type FilePath, type LoadedEntry } from "../../lib/src/common/types.ts";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 import { waitForSignal } from "../../lib/src/common/utils.ts";
+import { mount, unmount } from "svelte";
 
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;
     filename: FilePath;
     callback?: (keepRev?: string, mergedStr?: string) => Promise<void>;
     docs: LoadedEntry[];
-    component?: JsonResolvePane;
+    component?: ReturnType<typeof mount>;
     nameA: string;
     nameB: string;
     defaultSelect: string;
@@ -55,7 +56,7 @@ export class JsonResolveModal extends Modal {
         contentEl.empty();
 
         if (this.component == undefined) {
-            this.component = new JsonResolvePane({
+            this.component = mount(JsonResolvePane, {
                 target: contentEl,
                 props: {
                     docs: this.docs,
@@ -81,7 +82,7 @@ export class JsonResolveModal extends Modal {
             void this.callback(undefined);
         }
         if (this.component != undefined) {
-            this.component.$destroy();
+            void unmount(this.component);
             this.component = undefined;
         }
     }

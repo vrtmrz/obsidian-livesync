@@ -1,13 +1,34 @@
 {
     "root": true,
     "parser": "@typescript-eslint/parser",
-    "plugins": ["@typescript-eslint"],
-    "extends": ["eslint:recommended", "plugin:@typescript-eslint/eslint-recommended", "plugin:@typescript-eslint/recommended"],
+    "plugins": [
+        "@typescript-eslint",
+        "eslint-plugin-svelte",
+        "eslint-plugin-import"
+    ],
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
     "parserOptions": {
         "sourceType": "module",
-        "project": ["tsconfig.json"]
+        "project": [
+            "tsconfig.json"
+        ]
     },
-    "ignorePatterns": [],
+    "ignorePatterns": [
+        "**/node_modules/*",
+        "**/jest.config.js",
+        "src/lib/coverage",
+        "src/lib/browsertest",
+        "**/test.ts",
+        "**/tests.ts",
+        "**/**test.ts",
+        "**/**.test.ts",
+        "esbuild.*.mjs",
+        "terser.*.mjs"
+    ],
     "rules": {
         "no-unused-vars": "off",
         "@typescript-eslint/no-unused-vars": [
