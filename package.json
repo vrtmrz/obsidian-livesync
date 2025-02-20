@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.24.14",
+    "version": "0.24.15",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -77,7 +77,7 @@
         "fflate": "^0.8.2",
         "idb": "^8.0.2",
         "minimatch": "^10.0.1",
-        "octagonal-wheels": "^0.1.23",
+        "octagonal-wheels": "^0.1.24",
         "svelte-check": "^4.1.4",
         "trystero": "^0.20.1",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"

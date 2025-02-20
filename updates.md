@@ -10,6 +10,12 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.15
+
+### Fixed
+
+- Now, even without WeakRef, Polyfill is used and the whole thing works without error. However, if you can switch WebView Engine, it is recommended to switch to a WebView Engine that supports WeakRef.
+
 ## 0.24.14
 
 ### Fixed
