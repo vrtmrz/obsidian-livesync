@@ -1,170 +1,156 @@
-## 0.24.0
+## 0.24.11
 
-I know that we have been waiting for a long time. It is finally released!
+Peer-to-peer synchronisation has been implemented!
 
-Over the past three years since the inception of the plugin, various features have been implemented to address diverse user needs. This is truly honourable, and I am grateful for your years of support. However, this process has led to an increasingly disorganised codebase, with features becoming entangled. Consequently, this has led to a situation where bugs can go unnoticed and resolving one issue may inadvertently introduce another.
+Until now, I have not provided a synchronisation server. More people may not even know that I have shut down the test server. I confess that this is a bit repetitive, but I confess it is a cautionary tale. This is out of a sense of self-discipline that someone has occurred who could see your data. Even if the 'someone' is me. I should not be unaware of its superiority, even though well-meaning and am a servant of all. (Half joking, but also serious).
+However, now I can provide you with a signalling server. Because, to the best of my knowledge, it is only the network that is connected to your device.
+Also, this signalling server is just a Nostr relay, not my implementation. You can run your implementation, which you consider trustworthy, on a trustworthy server. You do not even have to trust me. Mate, it is great, isn't it? For your information, strfry is running on my signalling server.
 
-In 0.24.0, I reorganised the previously jumbled main codebase into clearly defined modules. Although I had assumed that the total size of the code would not increase, I discovered that it has in fact increased. While the complexity is still considerable, the refactoring has improved the clarity of the code's structure. Additionally, while testing the release candidates, we still found many bugs to fix, which helped to make this plug-in robust and stable. Therefore, we are now ready to use the updated plug-in, and in addition to that, proceed to the next step.
+Nevertheless, that being said, to be more honest, I still have not decided what to do with this signalling server if too much traffic comes in.
 
-This is also the first step towards a fully-fledged-fancy LiveSync, not just a plug-in from Obsidian. Of course, it will still be a plug-in primarily and foremost, but this development marks a significant step towards the self-hosting concept.
+Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
-Finally, I would like to once again express my respect and gratitude to all of you. My gratitude extends to all of the dev testers! Your contributions have certainly made the plug-in robust and stable!
-
-Thank you, and I hope your troubles will be resolved!
-
----
-
-## 0.24.7
-
-### Fixed (Security)
-
--   Assigning IDs to chunks has been corrected for more safety.
-    -   Before version 0.24.6, there were possibilities in End-to-End encryption where a brute-force attack could be carried out against an E2EE passphrase via a chunk ID if a zero-byte file was present. Now the chunk ID should be assigned more safely, and not all of passphrases are used for generating the chunk ID.
-    -   This is a security fix, and it is recommended to update and rebuild database to this version as soon as possible.
-    -   Note: It keeps the compatibility with the previous versions, but the chunk ID will be changed for the new files and modified files. Hence, deduplication will not work for the files which are modified after the update. It is recommended to rebuild the database to avoid the potential issues, and reduce the database size.
-    -   Note2: This fix is only for with E2EE. Plain synchronisation is not affected by this issue.
+## 0.24.15
 
 ### Fixed
 
--   Now the conflict resolving dialogue is automatically closed after the conflict has been resolved (and transferred from other devices; or written by some other resolution).
--   Resolving conflicts by timestamp is now working correctly.
-    -   It also fixes customisation sync.
+- Now, even without WeakRef, Polyfill is used and the whole thing works without error. However, if you can switch WebView Engine, it is recommended to switch to a WebView Engine that supports WeakRef.
 
-### Improved
-
--   Notifications can be suppressed for the hidden files update now.
--   No longer uses the old-xxhash and sha1 for generating the chunk ID. Chunk ID is now generated with the new algorithm (Pure JavaScript hash implementation; which is using Murmur3Hash and FNV-1a now used).
-
-## 0.24.6
-
-### Fixed (Quick Fix)
-
--   Fixed the issue of log is not displayed on the log pane if the pane has not been shown on startup.
-    -   This release is only for it. However, fixing this had been necessary to report any other issues.
-
-## 0.24.5
+## 0.24.14
 
 ### Fixed
 
--   Fixed incorrect behaviour when comparing objects with undefined as a property value.
+- Resolving conflicts of JSON files (and sensibly merging them) is now working fine, again!
+    - And, failure logs are more informative.
+- More robust to release the event listeners on unwatching the local database.
 
-### Improved
+### Refactored
 
--   The status line and the log summary are now displayed more smoothly and efficiently.
-    -   This improvement has also been applied to the logs displayed in the log pane.
+- JSON file conflict resolution dialogue has been rewritten into svelte v5.
+- Upgrade eslint.
+- Remove unnecessary pragma comments for eslint.
 
-## 0.24.4
+## 0.24.13
 
-### Fixed
-
--   Fixed so many inefficient and buggy modules inherited from the past.
-
-### Improved
-
--   Tasks are now executed in an efficient asynchronous library.
--   On-demand chunk fetching is now more efficient and keeps the interval between requests.
-    -   This will reduce the load on the server and the network.
-    -   And, safe for the Cloudant.
-
-## 0.24.3
-
-### Improved
-
--   Many messages have been improved for better understanding as thanks to the fine works of @Volkor3-16! Thank you so much!
--   Documentations also have been updated to reflect the changes in the messages.
--   Now the style of In-Editor Status has been solid for some Android devices.
-
-## 0.24.2
-
-### Rewritten
-
--   Hidden File Sync is now respects the file changes on the storage. Not simply comparing modified times.
-    -   This makes hidden file sync more robust and reliable.
+Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
 
 ### Fixed
 
--   `Scan hidden files before replication` is now configurable again.
--   Some unexpected errors are now handled more gracefully.
--   Meaningless event passing during boot sequence is now prevented.
--   Error handling for non-existing files has been fixed.
--   Hidden files will not be batched to avoid the potential error.
-    -   This behaviour had been causing the error in the previous versions in specific situations.
--   The log which checking automatic conflict resolution is now in verbose level.
--   Replication log (skipping non-targetting files) shows the correct information.
--   The dialogue that asking enabling optional feature during `Rebuild Everything` now prevents to show the `overwrite` option.
-    -   The rebuilding device is the first, meaningless.
--   Files with different modified time but identical content are no longer processed repeatedly.
--   Some unexpected errors which caused after terminating plug-in are now avoided.
--
+#### General Replication
 
-### Improved
+- No longer unexpected errors occur when the replication is stopped during for some reason (e.g., network disconnection).
 
--   JSON files are now more transferred efficiently.
-    -   Now the JSON files are transferred in more fine chunks, which makes the transfer more efficient.
+#### Peer-to-Peer Synchronisation
 
-## 0.24.1
+- Set-up process will not receive data from unexpected sources.
+- No longer resource leaks while enabling the `broadcasting changes`
+- Logs are less verbose.
+- Received data is now correctly dispatched to other devices.
+- `Timeout` error now more informative.
+- No longer timeout error occurs for reporting the progress to other devices.
+- Decision dialogues for the same thing are not shown multiply at the same time anymore.
+- Disconnection of the peer-to-peer synchronisation is now more robust and less error-prone.
 
-### Fixed
+#### Webpeer
 
--   Vault History can show the correct information of match-or-not for each file and database even if it is a binary file.
--   `Sync settings via markdown` is now hidden during the setup wizard.
--   Verify and Fix will ignore the hidden files if the hidden file sync is disabled.
+- Now we can toggle Peers' configuration.
 
-#### New feature
+### Refactored
 
--   Now we can fetch the tweaks from the remote database while the setting dialogue and wizard are processing.
+- Cross-platform compatibility layer has been improved.
+- Common events are moved to the common library.
+- Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
+- Some file names have been changed to be more consistent.
 
-### Improved
+## 0.24.12
 
--   More things are moved to the modules.
-    -   Includes the Main codebase. Now `main.ts` is almost stub.
--   EventHub is now more robust and typesafe.
-
-## 0.24.0
-
-### Improved
-
--   The welcome message is now more simple to encourage the use of the Setup-URI.
-    -   The secondary message is also simpler to guide users to Minimal Setup.
-        -   But Setup-URI will be recommended again, due to its importance.
-    -   These dialogues contain a link to the documentation which can be clicked.
--   The minimal setup is more minimal now. And, the setup is more user-friendly.
-    -   Now the Configuration of the remote database is checked more robustly, but we can ignore the warning and proceed with the setup.
--   Before we are asked about each feature, we are asked if we want to use optional features in the first place.
-    -   This is to prevent the user from being overwhelmed by the features.
-    -   And made it clear that it is not recommended for new users.
--   Many messages have been improved for better understanding.
-    -   Ridiculous messages have been (carefully) refined.
-    -   Dialogues are more informative and friendly.
-        -   A lot of messages have been mostly rewritten, leveraging Markdown.
-        -   Especially auto-closing dialogues are now explicitly labelled: `To stop the countdown, tap anywhere on the dialogue`.
--   Now if the is plugin configured to ignore some events, we will get a chance to fix it, in addition to the warning.
-    -   And why that has happened is also explained in the dialogue.
--   A note relating to device names has been added to Customisation Sync on the setting dialogue.
--   We can verify and resolve also the hidden files now.
+I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
+And, this is just a single web page, without any server-side code. It is a static web page that can be hosted on any static web server, such as GitHub Pages, Netlify, or Vercel. All you have to do is to open the page and enter several items, and leave it open.
 
 ### Fixed
 
--   We can resolve the conflict of the JSON file correctly now.
--   Verifying files between the local database and storage is now working correctly.
--   While restarting the plug-in, the shown dialogues will be automatically closed to avoid unexpected behaviour.
--   Replicated documents that the local device has configured to ignore are now correctly ignored.
--   The chunks of the document on the local device during the first transfer will be created correctly.
-    -   And why we should create them is now explained in the dialogue.
--   If optional features have been enabled in the wizard, `Enable advanced features` will be toggled correctly.
-    The hidden file sync is now working correctly. - Now the deletion of hidden files is correctly synchronised.
--   Customisation Sync is now working correctly together with hidden file sync.
--   No longer database suffix is stored in the setting sharing markdown.
--   A fair number of bugs have been fixed.
+- No longer unnecessary acknowledgements are sent when starting peer-to-peer synchronisation.
 
-### Changed
+### Refactored
 
--   Some default settings have been changed for an easier new user experience.
-    -   Preventing the meaningless migration of the settings.
+- Platform impedance-matching-layer has been improved.
+    - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
+- Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
 
-### Tiding
+## 0.24.11
 
--   The codebase has been reorganised into clearly defined modules.
--   Commented-out codes have been gradually removed.
+### Improved
+
+- New Translation: `es` (Spanish) by @zeedif (Thank you so much)!
+- Now all of messages can be selectable and copyable, also on the iPhone, iPad, and Android devices. Now we can copy or share the messages easily.
+
+### New Feature
+
+- Peer-to-Peer Synchronisation has been implemented!
+    - This feature is still in early beta, and it is recommended to use it with caution.
+    - However, it is a significant step towards the self-hosting concept. It is now possible to synchronise your data without using any remote database or storage. It is a direct connection between your devices.
+    - Note: We should keep the device online to synchronise the data. It is not a background synchronisation. Also it needs a signalling server to establish the connection. But, the signalling server is used only for establishing the connection, and it does not store any data.
+
+### Fixed
+
+- No longer memory or resource leaks when the plug-in is disabled.
+- Now deleted chunks are correctly detected on conflict resolution, and we are guided to resurrect them.
+- Hanging issue during the initial synchronisation has been fixed.
+- Some unnecessary logs have been removed.
+- Now all modal dialogues are correctly closed when the plug-in is disabled.
+
+### Refactor
+
+- Several interfaces have been moved to the separated library.
+- Translations have been moved to each language file, and during the build, they are merged into one file.
+- Non-mobile friendly code has been removed and replaced with the safer code.
+    - (Now a days, mostly server-side engine can use webcrypto, so it will be rewritten in the future more).
+- Started writing Platform impedance-matching-layer.
+- Svelte has been updated to v5.
+- Some function have got more robust type definitions.
+- Terser optimisation has slightly improved.
+- During the build, analysis meta-file of the bundled codes will be generated.
+
+## 0.24.10
+
+### Fixed
+
+- Fixed the issue which the filename is shown as `undefined`.
+- Fixed the issue where files transferred at short intervals were not reflected.
+
+### Improved
+
+- Add more translations: `ja-JP` (Japanese) by @kohki-shikata (Thank you so much)!
+
+### Internal
+
+- Some files have been prettified.
+
+## 0.24.9
+
+Skipped.
+
+## 0.24.8
+
+### Fixed
+
+- Some parallel-processing tasks are now performed more safely.
+- Some error messages has been fixed.
+
+### Improved
+
+- Synchronisation is now more efficient and faster.
+- Saving chunks is a bit more robust.
+
+### New Feature
+
+- We can remove orphaned chunks again, now!
+    - Without rebuilding the database!
+    - Note: Please synchronise devices completely before removing orphaned chunks.
+    - Note2: Deleted files are using chunks, if you want to remove them, please commit the deletion first. (`Commit File Deletion`)
+    - Note3: If you lost some chunks, do not worry. They will be resurrected if not so much time has passed. Try `Resurrect deleted chunks`.
+    - Note4: This feature is still beta. Please report any issues you encounter.
+    - Note5: Please disable `On demand chunk fetching`, and enable `Compute revisions for each chunk` before using this feature.
+        - These settings is going to be default in the future.
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

@@ -84,8 +84,8 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         //<-- Here could be an module.
         const ret = await this.core.replicator.openReplication(this.settings, false, showMessage, false);
         if (!ret) {
-            if (this.core.replicator.tweakSettingsMismatched) {
-                await this.core.$$askResolvingMismatchedTweaks();
+            if (this.core.replicator.tweakSettingsMismatched && this.core.replicator.preferredTweakValue) {
+                await this.core.$$askResolvingMismatchedTweaks(this.core.replicator.preferredTweakValue);
             } else {
                 if (this.core.replicator?.remoteLockedAndDeviceNotAccepted) {
                     if (this.core.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
@@ -220,6 +220,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const ids = [...new Set((await this.core.kvDB.get<string[]>(kvDBKey)) ?? [])];
         const batchSize = 100;
         const chunkedIds = arrayToChunkedArray(ids, batchSize);
+
+        // suspendParseReplicationResult is true, so we have to resume it if it is suspended.
+        if (this.replicationResultProcessor.isSuspended) {
+            this.replicationResultProcessor.resume();
+        }
         for await (const idsBatch of chunkedIds) {
             const ret = await this.localDatabase.allDocsRaw<EntryDoc>({
                 keys: idsBatch,
@@ -233,8 +238,11 @@ Or if you are sure know what had been happened, we can unlock the database from 
                 Logger(JSON.stringify(errors), LOG_LEVEL_VERBOSE);
             }
             this.replicationResultProcessor.enqueueAll(docs);
-            await this.replicationResultProcessor.waitForAllProcessed();
         }
+        if (this.replicationResultProcessor.isSuspended) {
+            this.replicationResultProcessor.resume();
+        }
+        await this.replicationResultProcessor.waitForAllProcessed();
     }
 
     replicationResultProcessor = new QueueProcessor(

@@ -25,10 +25,10 @@ npm run buildDev
 ## Make messages to be translated
 
 1. Find the message that you want to be translated.
-2. Change the literal to a tagged template literal using `$f`, like below.
+2. Change the literal to use `$tf`, like below.
 ```diff
 - Logger("Could not determine passphrase to save data.json! You probably make the configuration sure again!", LOG_LEVEL_URGENT);
-+ Logger($f`Could not determine passphrase to save data.json! You probably make the configuration sure again!`, LOG_LEVEL_URGENT);
++ Logger($tf('someKeyForPassphraseError'), LOG_LEVEL_URGENT);
 ```
 3. Make the PR to `https://github.com/vrtmrz/obsidian-livesync`.
 4. Follow the steps of "Add translations for already defined terms" to add the translations.

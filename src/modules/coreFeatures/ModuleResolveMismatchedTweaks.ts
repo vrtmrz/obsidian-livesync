@@ -13,18 +13,18 @@ import type { ICoreModule } from "../ModuleTypes.ts";
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule implements ICoreModule {
     async $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
-        if (!this.core.replicator.tweakSettingsMismatched) return false;
-        const ret = await this.core.$$askResolvingMismatchedTweaks();
+        if (!this.core.replicator.tweakSettingsMismatched && !this.core.replicator.preferredTweakValue) return false;
+        const preferred = this.core.replicator.preferredTweakValue;
+        if (!preferred) return false;
+        const ret = await this.core.$$askResolvingMismatchedTweaks(preferred);
         if (ret == "OK") return false;
         if (ret == "CHECKAGAIN") return "CHECKAGAIN";
         if (ret == "IGNORE") return true;
     }
 
-    async $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
-        if (!this.core.replicator.tweakSettingsMismatched) {
-            return "OK";
-        }
-        const preferred = extractObject(TweakValuesShouldMatchedTemplate, this.core.replicator.preferredTweakValue!);
+    async $$checkAndAskResolvingMismatchedTweaks(
+        preferred: Partial<TweakValues>
+    ): Promise<[TweakValues | boolean, boolean]> {
         const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         let rebuildRequired = false;
@@ -85,8 +85,22 @@ Please select which one you want to use.
             CHOICE_DISMISS,
             60
         );
-        if (!retKey) return "IGNORE";
-        const conf = CHOICES[retKey];
+        if (!retKey) return [false, false];
+        return [CHOICES[retKey], rebuildRequired];
+    }
+
+    async $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+        if (!this.core.replicator.tweakSettingsMismatched) {
+            return "OK";
+        }
+        const tweaks = this.core.replicator.preferredTweakValue;
+        if (!tweaks) {
+            return "IGNORE";
+        }
+        const preferred = extractObject(TweakValuesShouldMatchedTemplate, tweaks);
+
+        const [conf, rebuildRequired] = await this.core.$$checkAndAskResolvingMismatchedTweaks(preferred);
+        if (!conf) return "IGNORE";
 
         if (conf === true) {
             await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
@@ -119,44 +133,55 @@ Please select which one you want to use.
         if (await replicator.tryConnectRemote(trialSetting)) {
             const preferred = await replicator.getRemotePreferredTweakValues(trialSetting);
             if (preferred) {
-                const items = Object.entries(TweakValuesShouldMatchedTemplate);
-                let rebuildRequired = false;
-                // Making tables:
-                let table = `| Value name | This device | Stored | \n` + `|: --- |: ---- :|: ---- :| \n`;
-                let differenceCount = 0;
-                // const items = [mine,preferred]
-                for (const v of items) {
-                    const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-                    const valuePreferred = escapeMarkdownValue(preferred[key]);
-                    const currentDisp = `${escapeMarkdownValue((trialSetting as TweakValues)?.[key])} |`;
-                    if ((trialSetting as TweakValues)?.[key] !== preferred[key]) {
-                        if (CompatibilityBreakingTweakValues.indexOf(key) !== -1) {
-                            rebuildRequired = true;
-                        }
-                    } else {
-                        continue;
-                    }
-                    table += `| ${confName(key)} | ${currentDisp} ${valuePreferred} | \n`;
-                    differenceCount++;
+                return await this.$$askUseRemoteConfiguration(trialSetting, preferred);
+            } else {
+                this._log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
+            }
+            return { result: false, requireFetch: false };
+        } else {
+            this._log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
+            return { result: false, requireFetch: false };
+        }
+    }
+    async $$askUseRemoteConfiguration(
+        trialSetting: RemoteDBSettings,
+        preferred: TweakValues
+    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        const items = Object.entries(TweakValuesShouldMatchedTemplate);
+        let rebuildRequired = false;
+        // Making tables:
+        let table = `| Value name | This device | Stored | \n` + `|: --- |: ---- :|: ---- :| \n`;
+        let differenceCount = 0;
+        // const items = [mine,preferred]
+        for (const v of items) {
+            const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
+            const valuePreferred = escapeMarkdownValue(preferred[key]);
+            const currentDisp = `${escapeMarkdownValue((trialSetting as TweakValues)?.[key])} |`;
+            if ((trialSetting as TweakValues)?.[key] !== preferred[key]) {
+                if (CompatibilityBreakingTweakValues.indexOf(key) !== -1) {
+                    rebuildRequired = true;
                 }
+            } else {
+                continue;
+            }
+            table += `| ${confName(key)} | ${currentDisp} ${valuePreferred} | \n`;
+            differenceCount++;
+        }
 
-                if (differenceCount === 0) {
-                    this._log(
-                        "The settings in the remote database are the same as the local database.",
-                        LOG_LEVEL_NOTICE
-                    );
-                    return { result: false, requireFetch: false };
-                }
-                const additionalMessage =
-                    rebuildRequired && this.core.settings.isConfigured
-                        ? `
+        if (differenceCount === 0) {
+            this._log("The settings in the remote database are the same as the local database.", LOG_LEVEL_NOTICE);
+            return { result: false, requireFetch: false };
+        }
+        const additionalMessage =
+            rebuildRequired && this.core.settings.isConfigured
+                ? `
 
 >[!WARNING]
 > Some remote configurations are not compatible with the local database of this device. Rebuilding the local database will be required.
 ***Please ensure that you have time and are connected to a stable network to apply!***`
-                        : "";
+                : "";
 
-                const message = `
+        const message = `
 The settings in the remote database are as follows.
 If you want to use these settings, please select "Use configured".
 If you want to keep the settings of this device, please select "Dismiss".
@@ -168,29 +193,22 @@ ${table}
 
 ${additionalMessage}`;
 
-                const CHOICE_USE_REMOTE = "Use configured";
-                const CHOICE_DISMISS = "Dismiss";
-                // const CHOICE_AND_VALUES = [
-                //     [CHOICE_USE_REMOTE, preferred],
-                //     [CHOICE_DISMISS, false]]
-                const CHOICES = [CHOICE_USE_REMOTE, CHOICE_DISMISS];
-                const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
-                    title: "Use Remote Configuration",
-                    timeout: 0,
-                    defaultAction: CHOICE_DISMISS,
-                });
-                if (!retKey) return { result: false, requireFetch: false };
-                if (retKey === CHOICE_DISMISS) return { result: false, requireFetch: false };
-                if (retKey === CHOICE_USE_REMOTE) {
-                    return { result: { ...trialSetting, ...preferred }, requireFetch: rebuildRequired };
-                }
-            } else {
-                this._log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
-            }
-            return { result: false, requireFetch: false };
-        } else {
-            this._log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
-            return { result: false, requireFetch: false };
+        const CHOICE_USE_REMOTE = "Use configured";
+        const CHOICE_DISMISS = "Dismiss";
+        // const CHOICE_AND_VALUES = [
+        //     [CHOICE_USE_REMOTE, preferred],
+        //     [CHOICE_DISMISS, false]]
+        const CHOICES = [CHOICE_USE_REMOTE, CHOICE_DISMISS];
+        const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
+            title: "Use Remote Configuration",
+            timeout: 0,
+            defaultAction: CHOICE_DISMISS,
+        });
+        if (!retKey) return { result: false, requireFetch: false };
+        if (retKey === CHOICE_DISMISS) return { result: false, requireFetch: false };
+        if (retKey === CHOICE_USE_REMOTE) {
+            return { result: { ...trialSetting, ...preferred }, requireFetch: rebuildRequired };
         }
+        return { result: false, requireFetch: false };
     }
 }

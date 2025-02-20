@@ -1,25 +1,20 @@
 import { ButtonComponent } from "obsidian";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
-import { delay } from "octagonal-wheels/promises";
 
 class AutoClosableModal extends Modal {
-    removeEvent: (() => void) | undefined;
+    _closeByUnload() {
+        eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
+        this.close();
+    }
 
     constructor(app: App) {
         super(app);
-        this.removeEvent = eventHub.onEvent(EVENT_PLUGIN_UNLOADED, async () => {
-            await delay(100);
-            if (!this.removeEvent) return;
-            this.close();
-            this.removeEvent = undefined;
-        });
+        this._closeByUnload = this._closeByUnload.bind(this);
+        eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
     onClose() {
-        if (this.removeEvent) {
-            this.removeEvent();
-            this.removeEvent = undefined;
-        }
+        eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }
 
@@ -135,11 +130,11 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
     }
 }
 
-export class MessageBox extends AutoClosableModal {
+export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     plugin: Plugin;
     title: string;
     contentMd: string;
-    buttons: string[];
+    buttons: T;
     result: string | false = false;
     isManuallyClosed = false;
     defaultAction: string | undefined;
@@ -154,11 +149,11 @@ export class MessageBox extends AutoClosableModal {
         plugin: Plugin,
         title: string,
         contentMd: string,
-        buttons: string[],
-        defaultAction: (typeof buttons)[number],
+        buttons: T,
+        defaultAction: T[number],
         timeout: number | undefined,
         wideButton: boolean,
-        onSubmit: (result: (typeof buttons)[number] | false) => void
+        onSubmit: (result: T[number] | false) => void
     ) {
         super(plugin.app);
         this.plugin = plugin;
@@ -194,6 +189,7 @@ export class MessageBox extends AutoClosableModal {
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
         div.style.userSelect = "text";
+        div.style["webkitUserSelect"] = "text";
         void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
         const buttonSetting = new Setting(contentEl);
         const labelWrapper = contentEl.createDiv();
@@ -262,14 +258,14 @@ export class MessageBox extends AutoClosableModal {
     }
 }
 
-export function confirmWithMessage(
+export function confirmWithMessage<T extends readonly string[]>(
     plugin: Plugin,
     title: string,
     contentMd: string,
-    buttons: string[],
-    defaultAction: (typeof buttons)[number],
+    buttons: T,
+    defaultAction: T[number],
     timeout?: number
-): Promise<(typeof buttons)[number] | false> {
+): Promise<T[number] | false> {
     return new Promise((res) => {
         const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, false, (result) =>
             res(result)
@@ -277,14 +273,14 @@ export function confirmWithMessage(
         dialog.open();
     });
 }
-export function confirmWithMessageWithWideButton(
+export function confirmWithMessageWithWideButton<T extends readonly string[]>(
     plugin: Plugin,
     title: string,
     contentMd: string,
-    buttons: string[],
-    defaultAction: (typeof buttons)[number],
+    buttons: T,
+    defaultAction: T[number],
     timeout?: number
-): Promise<(typeof buttons)[number] | false> {
+): Promise<T[number] | false> {
     return new Promise((res) => {
         const dialog = new MessageBox(plugin, title, contentMd, buttons, defaultAction, timeout, true, (result) =>
             res(result)

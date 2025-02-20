@@ -30,7 +30,6 @@ export class TestPaneView extends ItemView {
         return "Self-Hosted LiveSync Test and Results";
     }
 
-    // eslint-disable-next-line require-await
     async onOpen() {
         this.component = new TestPaneComponent({
             target: this.contentEl,
@@ -42,7 +41,6 @@ export class TestPaneView extends ItemView {
         await Promise.resolve();
     }
 
-    // eslint-disable-next-line require-await
     async onClose() {
         this.component?.$destroy();
         await Promise.resolve();

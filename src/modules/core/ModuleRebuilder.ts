@@ -12,6 +12,7 @@ import type { Rebuilder } from "../interfaces/DatabaseRebuilder.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 import type { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 import { fetchAllUsedChunks } from "../../lib/src/pouchdb/utils_couchdb.ts";
+import { EVENT_DATABASE_REBUILT, eventHub } from "src/common/events.ts";
 
 export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebuilder {
     $everyOnload(): Promise<boolean> {
@@ -214,6 +215,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         const suffix = (await this.core.$anyGetAppId()) || "";
         this.core.settings.additionalSuffixOfDatabaseName = suffix;
         await this.core.$$resetLocalDatabase();
+        eventHub.emitEvent(EVENT_DATABASE_REBUILT);
     }
     async fetchRemoteChunks() {
         if (

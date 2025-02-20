@@ -51,7 +51,7 @@ import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
 import type { StorageAccess } from "./modules/interfaces/StorageAccess.ts";
-import type { Confirm } from "./modules/interfaces/Confirm.ts";
+import type { Confirm } from "./lib/src/interfaces/Confirm.ts";
 import type { Rebuilder } from "./modules/interfaces/DatabaseRebuilder.ts";
 import type { DatabaseFileAccess } from "./modules/interfaces/DatabaseFileAccess.ts";
 import { ModuleDatabaseFileAccess } from "./modules/core/ModuleDatabaseFileAccess.ts";
@@ -81,6 +81,8 @@ import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
 import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
+import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
+import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 
 function throwShouldBeOverridden(): never {
     throw new Error("This function should be overridden by the module.");
@@ -117,7 +119,12 @@ export default class ObsidianLiveSyncPlugin
     }
 
     // Keep order to display the dialogue in order.
-    addOns = [new ConfigSync(this), new HiddenFileSync(this)] as LiveSyncCommands[];
+    addOns = [
+        new ConfigSync(this),
+        new HiddenFileSync(this),
+        new LocalDatabaseMaintenance(this),
+        new P2PReplicator(this),
+    ] as LiveSyncCommands[];
 
     modules = [
         new ModuleLiveSyncMain(this),
@@ -398,6 +405,7 @@ export default class ObsidianLiveSyncPlugin
         6. localDatabase.onunload
         7. replicator.closeReplication
         8. localDatabase.close
+        9. (event) EVENT_PLATFORM_UNLOADED
 
     */
 
@@ -537,8 +545,10 @@ export default class ObsidianLiveSyncPlugin
     $everyAfterResumeProcess(): Promise<boolean> {
         return InterceptiveEvery;
     }
-
-    $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+    $$checkAndAskResolvingMismatchedTweaks(preferred: Partial<TweakValues>): Promise<[TweakValues | boolean, boolean]> {
+        throwShouldBeOverridden();
+    }
+    $$askResolvingMismatchedTweaks(preferredSource: TweakValues): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
         throwShouldBeOverridden();
     }
 
@@ -548,6 +558,12 @@ export default class ObsidianLiveSyncPlugin
         throwShouldBeOverridden();
     }
 
+    $$askUseRemoteConfiguration(
+        trialSetting: RemoteDBSettings,
+        preferred: TweakValues
+    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        throwShouldBeOverridden();
+    }
     $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         return InterceptiveEvery;
     }

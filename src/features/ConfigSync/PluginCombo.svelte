@@ -1,5 +1,10 @@
 <script lang="ts">
-    import { ConfigSync, PluginDataExDisplayV2, type IPluginDataExDisplay, type PluginDataExFile } from "./CmdConfigSync.ts";
+    import {
+        ConfigSync,
+        PluginDataExDisplayV2,
+        type IPluginDataExDisplay,
+        type PluginDataExFile,
+    } from "./CmdConfigSync.ts";
     import { Logger } from "../../lib/src/common/logger";
     import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types";
     import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
@@ -15,7 +20,11 @@
     export let applyAllPluse = 0;
 
     export let applyData: (data: IPluginDataExDisplay) => Promise<boolean>;
-    export let compareData: (dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach?: boolean) => Promise<boolean>;
+    export let compareData: (
+        dataA: IPluginDataExDisplay,
+        dataB: IPluginDataExDisplay,
+        compareEach?: boolean
+    ) => Promise<boolean>;
     export let deleteData: (data: IPluginDataExDisplay) => Promise<boolean>;
     export let hidden: boolean;
     export let plugin: ObsidianLiveSyncPlugin;
@@ -151,7 +160,11 @@
         canCompare = result.canCompare;
         pickToCompare = false;
         if (canCompare) {
-            if (local?.files.length == remote?.files.length && local?.files.length == 1 && local?.files[0].filename == remote?.files[0].filename) {
+            if (
+                local?.files.length == remote?.files.length &&
+                local?.files.length == 1 &&
+                local?.files[0].filename == remote?.files[0].filename
+            ) {
                 pickToCompare = false;
             } else {
                 pickToCompare = true;
@@ -250,7 +263,11 @@
         const selectedItem = list.find((e) => e.term == selected);
         await compareItems(local, selectedItem);
     }
-    async function compareItems(local: IPluginDataExDisplay | undefined, remote: IPluginDataExDisplay | undefined, filename?: string) {
+    async function compareItems(
+        local: IPluginDataExDisplay | undefined,
+        remote: IPluginDataExDisplay | undefined,
+        filename?: string
+    ) {
         if (local && remote) {
             if (!filename) {
                 if (await compareData(local, remote)) {
@@ -258,8 +275,10 @@
                 }
                 return;
             } else {
-                const localCopy = local instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(local) : { ...local };
-                const remoteCopy = remote instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(remote) : { ...remote };
+                const localCopy =
+                    local instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(local) : { ...local };
+                const remoteCopy =
+                    remote instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(remote) : { ...remote };
                 localCopy.files = localCopy.files.filter((e) => e.filename == filename);
                 remoteCopy.files = remoteCopy.files.filter((e) => e.filename == filename);
                 if (await compareData(localCopy, remoteCopy, true)) {
@@ -329,7 +348,7 @@
 </script>
 
 {#if terms.length > 0}
-    <span class="spacer" />
+    <span class="spacer"></span>
     {#if !hidden}
         <span class="chip-wrap">
             <span class="chip modified">{freshness}</span>
@@ -351,12 +370,15 @@
                     <button on:click={compareSelected}>⮂</button>
                 {/if}
             {:else}
-                <button disabled />
+                <!-- svelte-ignore a11y_consider_explicit_label -->
+                <button disabled></button>
             {/if}
             <button on:click={applySelected}>✓</button>
         {:else}
-            <button disabled />
-            <button disabled />
+            <!-- svelte-ignore a11y_consider_explicit_label -->
+            <button disabled></button>
+            <!-- svelte-ignore a11y_consider_explicit_label -->
+            <button disabled></button>
         {/if}
         {#if isMaintenanceMode}
             {#if selected != ""}
@@ -367,10 +389,12 @@
         {/if}
     {/if}
 {:else}
-    <span class="spacer" />
+    <span class="spacer"></span>
     <span class="message even">All the same or non-existent</span>
-    <button disabled />
-    <button disabled />
+    <!-- svelte-ignore a11y_consider_explicit_label -->
+    <button disabled></button>
+    <!-- svelte-ignore a11y_consider_explicit_label -->
+    <button disabled></button>
 {/if}
 
 <style>

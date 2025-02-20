@@ -192,7 +192,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             }
             return diff;
         });
-        console.warn(mTimeAndRev);
+        // console.warn(mTimeAndRev);
         this._log(
             `Resolving conflict by newest: ${filename} (Newest: ${new Date(mTimeAndRev[0][0]).toLocaleString()}) (${mTimeAndRev.length} revisions exists)`
         );

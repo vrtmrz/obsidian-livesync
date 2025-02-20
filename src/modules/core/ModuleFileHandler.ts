@@ -205,13 +205,10 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
     ): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         const mode = file == null ? "create" : "modify";
-
-        const docEntry =
-            typeof entryInfo === "string"
-                ? await this.db.fetchEntryMeta(entryInfo, undefined, true)
-                : await this.db.fetchEntryMeta(entryInfo.path, undefined, true);
+        const pathFromEntryInfo = typeof entryInfo === "string" ? entryInfo : getPath(entryInfo);
+        const docEntry = await this.db.fetchEntryMeta(pathFromEntryInfo, undefined, true);
         if (!docEntry) {
-            this._log(`File ${entryInfo} is not exist on the database`, LOG_LEVEL_VERBOSE);
+            this._log(`File ${pathFromEntryInfo} is not exist on the database`, LOG_LEVEL_VERBOSE);
             return false;
         }
         const path = getPath(docEntry);
@@ -275,7 +272,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             }
             // 2. if not, the content should be checked.
 
-            if (shouldApplied) {
+            if (!shouldApplied) {
                 const readFile = await this.readFileFromStub(existDoc);
                 if (await isDocContentSame(docData, readFile.body)) {
                     // The content is same. So, we do not need to update the file.

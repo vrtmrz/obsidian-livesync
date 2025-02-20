@@ -5,6 +5,9 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = process.argv[2] === "production";
+/***
+ * @type import("terser").MinifyOptions
+ */
 const terserOption = {
     sourceMap: !prod
         ? {
@@ -28,7 +31,6 @@ const terserOption = {
         evaluate: true,
         dead_code: true,
         // directives: true,
-        // conditionals: true,
         inline: 3,
         join_vars: true,
         loops: true,
@@ -38,12 +40,25 @@ const terserOption = {
         arrows: true,
         collapse_vars: true,
         comparisons: true,
+        //@ts-ignore
         lhs_constants: true,
         hoist_props: true,
         side_effects: true,
         ecma: 2018,
+        // hoist_vars: true,
+        // hoist_funs: true,
         if_return: true,
+        // unsafe_math: true,
         unused: true,
+        // --
+        typeofs: true,
+        properties: true,
+        module: true,
+        booleans: true,
+        conditionals: true,
+        hoist_funs: true,
+        hoist_vars: true,
+        // toplevel: "vars",
     },
     mangle: false,
 

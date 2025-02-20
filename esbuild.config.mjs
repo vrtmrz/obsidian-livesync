@@ -4,12 +4,13 @@ import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import sveltePlugin from "esbuild-svelte";
-import sveltePreprocess from "svelte-preprocess";
+import { sveltePreprocess } from "svelte-preprocess";
 import fs from "node:fs";
 // import terser from "terser";
 import { minify } from "terser";
 import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
 import { terserOption } from "./terser.config.mjs";
+import path from "node:path";
 
 const prod = process.argv[2] === "production";
 const keepTest = true; //!prod;
@@ -17,6 +18,46 @@ const keepTest = true; //!prod;
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
 const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
 const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
+
+const moduleAliasPlugin = {
+    name: "module-alias",
+    setup(build) {
+        build.onResolve({ filter: /.(dev)(.ts|)$/ }, (args) => {
+            // console.log(args.path);
+            if (prod) {
+                let prodTs = args.path.replace(".dev", ".prod");
+                const statFile = prodTs.endsWith(".ts") ? prodTs : prodTs + ".ts";
+                const realPath = path.join(args.resolveDir, statFile);
+                console.log(`Checking ${statFile}`);
+                if (fs.existsSync(realPath)) {
+                    console.log(`Replaced ${args.path} with ${prodTs}`);
+                    return {
+                        path: realPath,
+                        namespace: "file",
+                    };
+                }
+            }
+            return null;
+        });
+        build.onResolve({ filter: /.(platform)(.ts|)$/ }, (args) => {
+            // console.log(args.path);
+            if (prod) {
+                let prodTs = args.path.replace(".platform", ".obsidian");
+                const statFile = prodTs.endsWith(".ts") ? prodTs : prodTs + ".ts";
+                const realPath = path.join(args.resolveDir, statFile);
+                console.log(`Checking ${statFile}`);
+                if (fs.existsSync(realPath)) {
+                    console.log(`Replaced ${args.path} with ${prodTs}`);
+                    return {
+                        path: realPath,
+                        namespace: "file",
+                    };
+                }
+            }
+            return null;
+        });
+    },
+};
 
 /** @type esbuild.Plugin[] */
 const plugins = [
@@ -26,10 +67,22 @@ const plugins = [
             let count = 0;
             build.onEnd(async (result) => {
                 if (count++ === 0) {
-                    console.log("first build:", result);
+                    console.log("first build:");
+                    if (prod) {
+                        console.log("MetaFile:");
+                        if (result.metafile) {
+                            fs.writeFileSync("meta.json", JSON.stringify(result.metafile));
+                            let text = await esbuild.analyzeMetafile(result.metafile, {
+                                verbose: true,
+                            });
+                            // console.log(text);
+                        }
+                    }
                 } else {
                     console.log("subsequent build:");
                 }
+                const filename = `meta-${prod ? "prod" : "dev"}.json`;
+                await fs.promises.writeFile(filename, JSON.stringify(result.metafile, null, 2));
                 if (prod) {
                     console.log("Performing terser");
                     const src = fs.readFileSync("./main_org.js").toString();
@@ -47,7 +100,22 @@ const plugins = [
     },
 ];
 
-const externals = ["obsidian", "electron", "crypto", "@codemirror/autocomplete", "@codemirror/collab", "@codemirror/commands", "@codemirror/language", "@codemirror/lint", "@codemirror/search", "@codemirror/state", "@codemirror/view", "@lezer/common", "@lezer/highlight", "@lezer/lr"];
+const externals = [
+    "obsidian",
+    "electron",
+    "crypto",
+    "@codemirror/autocomplete",
+    "@codemirror/collab",
+    "@codemirror/commands",
+    "@codemirror/language",
+    "@codemirror/lint",
+    "@codemirror/search",
+    "@codemirror/state",
+    "@codemirror/view",
+    "@lezer/common",
+    "@lezer/highlight",
+    "@lezer/lr",
+];
 const context = await esbuild.context({
     banner: {
         js: "// Leave it all to terser",
@@ -66,6 +134,7 @@ const context = await esbuild.context({
     target: "es2018",
     logLevel: "info",
     platform: "browser",
+    metafile: true,
     sourcemap: prod ? false : "inline",
     treeShaking: false,
     outfile: "main_org.js",
@@ -77,6 +146,7 @@ const context = await esbuild.context({
     dropLabels: prod && !keepTest ? ["TEST", "DEV"] : [],
     // keepNames: true,
     plugins: [
+        moduleAliasPlugin,
         inlineWorkerPlugin({
             external: externals,
             treeShaking: true,

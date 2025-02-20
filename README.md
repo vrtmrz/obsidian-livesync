@@ -18,6 +18,10 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 - Supports end-to-end encryption.
 - Synchronisation of settings, snippets, themes, and plugins, via [Customization Sync (Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
 - WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
+- WebRTC peer-to-peer synchronisation without the need any `host` is now possible. (Experimental)
+  - This feature is still in the experimental stage. Please be careful when using it. 
+  - Instead of using server, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
+
 
 This plugin might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 

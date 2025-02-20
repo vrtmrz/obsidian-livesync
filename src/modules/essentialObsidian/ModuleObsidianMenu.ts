@@ -2,6 +2,7 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { addIcon, type Editor, type MarkdownFileInfo, type MarkdownView } from "../../deps.ts";
 import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { $msg } from "src/lib/src/common/i18n.ts";
 
 export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsidianModule {
     $everyOnloadStart(): Promise<boolean> {
@@ -16,7 +17,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
            </g>`
         );
 
-        this.addRibbonIcon("replicate", "Replicate", async () => {
+        this.addRibbonIcon("replicate", $msg("moduleObsidianMenu.replicate"), async () => {
             await this.core.$$replicate(true);
         }).addClass("livesync-ribbon-replicate");
 
@@ -105,7 +106,6 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
     }
     $everyOnload(): Promise<boolean> {
         this.app.workspace.onLayoutReady(this.core.$$onLiveSyncReady.bind(this.core));
-        // eslint-disable-next-line no-unused-labels
         return Promise.resolve(true);
     }
 
@@ -123,7 +123,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             });
         }
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(leaves[0]);
+            await this.app.workspace.revealLeaf(leaves[0]);
         }
     }
 }

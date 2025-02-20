@@ -36,7 +36,6 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
 
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        // eslint-disable-next-line no-unused-labels
         this.onMissingTranslation = this.onMissingTranslation.bind(this);
         __onMissingTranslation((key) => {
             void this.onMissingTranslation(key);

@@ -66,7 +66,10 @@
 
                 for (const revInfo of reversedRevs) {
                     if (revInfo.status == "available") {
-                        const doc = (!isPlain && showDiffInfo) || (checkStorageDiff && revInfo.rev == docA._rev) ? await db.getDBEntry(path, { rev: revInfo.rev }, false, false, true) : await db.getDBEntryMeta(path, { rev: revInfo.rev }, true);
+                        const doc =
+                            (!isPlain && showDiffInfo) || (checkStorageDiff && revInfo.rev == docA._rev)
+                                ? await db.getDBEntry(path, { rev: revInfo.rev }, false, false, true)
+                                : await db.getDBEntryMeta(path, { rev: revInfo.rev }, true);
                         if (doc === false) continue;
                         const rev = revInfo.rev;
 
@@ -94,7 +97,10 @@
                                     [DIFF_EQUAL]: 0,
                                     [DIFF_INSERT]: 0,
                                 } as { [key: number]: number };
-                                const px = diff.reduce((p, c) => ({ ...p, [c[0]]: (p[c[0]] ?? 0) + c[1].length }), pxInit);
+                                const px = diff.reduce(
+                                    (p, c) => ({ ...p, [c[0]]: (p[c[0]] ?? 0) + c[1].length }),
+                                    pxInit
+                                );
                                 diffDetail = `-${px[DIFF_DELETE]}, +${px[DIFF_INSERT]}`;
                             }
                         }
@@ -104,9 +110,13 @@
                         }
                         if (rev == docA._rev) {
                             if (checkStorageDiff) {
-                                const isExist = await plugin.storageAccess.isExistsIncludeHidden(stripAllPrefixes(getPath(docA)));
+                                const isExist = await plugin.storageAccess.isExistsIncludeHidden(
+                                    stripAllPrefixes(getPath(docA))
+                                );
                                 if (isExist) {
-                                    const data = await plugin.storageAccess.readHiddenFileBinary(stripAllPrefixes(getPath(docA)));
+                                    const data = await plugin.storageAccess.readHiddenFileBinary(
+                                        stripAllPrefixes(getPath(docA))
+                                    );
                                     const d = readAsBlob(doc);
                                     const result = await isDocContentSame(data, d);
                                     if (result) {
@@ -187,19 +197,28 @@
 <div class="globalhistory">
     <h1>Vault history</h1>
     <div class="control">
-        <div class="row"><label for="">From:</label><input type="date" bind:value={dispDateFrom} disabled={loading} /></div>
+        <div class="row">
+            <label for="">From:</label><input type="date" bind:value={dispDateFrom} disabled={loading} />
+        </div>
         <div class="row"><label for="">To:</label><input type="date" bind:value={dispDateTo} disabled={loading} /></div>
         <div class="row">
             <label for="">Info:</label>
             <label><input type="checkbox" bind:checked={showDiffInfo} disabled={loading} /><span>Diff</span></label>
-            <label><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span>Chunks</span></label>
-            <label><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span>File integrity</span></label>
+            <label
+                ><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span>Chunks</span
+                ></label
+            >
+            <label
+                ><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span>File integrity</span
+                ></label
+            >
         </div>
     </div>
     {#if loading}
         <div class="">Gathering information...</div>
     {/if}
     <table>
+        <tbody>
         <tr>
             <th> Date </th>
             <th> Path </th>
@@ -212,7 +231,7 @@
         <tr>
             <td colspan="5" class="more">
                 {#if loading}
-                    <div class="" />
+                        <div class=""></div>
                 {:else}
                     <div><button on:click={() => nextWeek()}>+1 week</button></div>
                 {/if}
@@ -257,12 +276,13 @@
         <tr>
             <td colspan="5" class="more">
                 {#if loading}
-                    <div class="" />
+                        <div class=""></div>
                 {:else}
                     <div><button on:click={() => prevWeek()}>+1 week</button></div>
                 {/if}
             </td>
         </tr>
+        </tbody>
     </table>
 </div>
 

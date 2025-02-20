@@ -26,6 +26,8 @@ import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
+import { $msg } from "src/lib/src/common/i18n.ts";
+import { P2PLogCollector } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -62,6 +64,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
     statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
     statusLog = reactiveSource("");
     notifies: { [key: string]: { notice: Notice; count: number } } = {};
+    p2pLogCollector = new P2PLogCollector();
 
     observeForLogs() {
         const padSpaces = `\u{2007}`.repeat(10);
@@ -167,10 +170,12 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
             const queued = queueCountLabel();
             const waiting = waitingLabel();
             const networkActivity = requestingStatLabel();
+            const p2p = this.p2pLogCollector.p2pReplicationLine.value;
             return {
-                message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}`,
+                message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}${p2p == "" ? "" : "\n" + p2p}`,
             };
         });
+
         const statusBarLabels = reactive(() => {
             const scheduleMessage = this.core.$$isReloadingScheduled()
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
@@ -195,6 +200,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
     $everyOnload(): Promise<boolean> {
         eventHub.onEvent(EVENT_LEAF_ACTIVE_CHANGED, () => this.onActiveLeafChange());
         eventHub.onceEvent(EVENT_LAYOUT_READY, () => this.onActiveLeafChange());
+
         return Promise.resolve(true);
     }
     adjustStatusDivPosition() {
@@ -292,7 +298,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
        </g>`
         );
-        this.addRibbonIcon("view-log", "Show log", () => {
+        this.addRibbonIcon("view-log", $msg("moduleLog.showLog"), () => {
             void this.core.$$showView(VIEW_TYPE_LOG);
         }).addClass("livesync-ribbon-showlog");
 

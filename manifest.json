@@ -1,7 +1,7 @@
 {
     "id": "obsidian-livesync",
     "name": "Self-Hosted LiveSync",
-    "version": "0.24.7",
+    "version": "0.24.15",
     "minAppVersion": "0.9.12",
     "description": "Community implementation of self-hosted LiveSync. Reflect your vault changes to other devices immediately. Please make sure to disable other synchronization solutions to avoid content corruption or duplication.",
     "author": "vorotamoroz",
