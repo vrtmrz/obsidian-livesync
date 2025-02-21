@@ -904,14 +904,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
         // Panes
 
-<<<<<<< HEAD
-        void addPane(containerEl, "Changelog", "💬", 100, false).then((paneEl) => {
-            const informationDivEl = this.createEl(paneEl, "div", { text: "" });
-=======
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then(
             (paneEl) => {
                 const informationDivEl = this.createEl(paneEl, "div", { text: "" });
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
 
                 const tmpDiv = createDiv();
                 // tmpDiv.addClass("sls-header-button");
@@ -937,13 +932,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then((paneEl) => {
             void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleQuickSetup")).then((paneEl) => {
                 new Setting(paneEl)
-<<<<<<< HEAD
-                    .setName("Connect with Setup URI")
-                    .setDesc("This is the recommended method to set up Self-Hosted LiveSync.")
-=======
                     .setName($msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"))
                     .setDesc($msg("obsidianLiveSyncSettingTab.descConnectSetupURI"))
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
                     .addButton((text) => {
                         text.setButtonText($msg("obsidianLiveSyncSettingTab.btnUse")).onClick(() => {
                             this.closeSetting();
@@ -952,13 +942,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     });
 
                 new Setting(paneEl)
-<<<<<<< HEAD
-                    .setName("Manual setup")
-                    .setDesc("Not recommended, but useful if you don't have a Setup URI.")
-=======
                     .setName($msg("obsidianLiveSyncSettingTab.nameManualSetup"))
                     .setDesc($msg("obsidianLiveSyncSettingTab.descManualSetup"))
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
                     .addButton((text) => {
                         text.setButtonText($msg("obsidianLiveSyncSettingTab.btnStart")).onClick(async () => {
                             await this.enableMinimalSetup();
@@ -1602,79 +1587,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         isPassword: true,
                         onUpdate: isEncryptEnabled,
                     });
-
-<<<<<<< HEAD
-                    new Setting(paneEl)
-                        .setName("Test Database Connection")
-                        .setClass("wizardHidden")
-                        .setDesc(
-                            "Open a database connection. If the remote database is not found and you have permission to create a database, the database will be created."
-                        )
-                        .addButton((button) =>
-                            button
-                                .setButtonText("Test")
-                                .setDisabled(false)
-                                .onClick(async () => {
-                                    await this.testConnection();
-                                })
-                        );
-
-                    new Setting(paneEl)
-                        .setName("Validate Database Configuration")
-                        .setDesc("Checks and fixes any potential issues with the database config.")
-                        .addButton((button) =>
-                            button
-                                .setButtonText("Check")
-                                .setDisabled(false)
-                                .onClick(async () => {
-                                    await checkConfig(checkResultDiv);
-                                })
-                        );
-                    checkResultDiv = this.createEl(paneEl, "div", {
-                        text: "",
-                    });
-
-                    new Setting(paneEl)
-                        .setName("Apply Settings")
-                        .setClass("wizardHidden")
-                        .addApplyButton([
-                            "remoteType",
-                            "couchDB_URI",
-                            "couchDB_USER",
-                            "couchDB_PASSWORD",
-                            "couchDB_DBNAME",
-                        ])
-                        .addOnUpdate(onlyOnCouchDB);
-                });
-            });
-            void addPanel(paneEl, "Notifications").then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-                new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
-            });
-
-            void addPanel(paneEl, "Privacy & Encryption").then((paneEl) => {
-                new Setting(paneEl).autoWireToggle("encrypt", { holdValue: true });
-
-                const isEncryptEnabled = visibleOnly(() => this.isConfiguredAs("encrypt", true));
-
-                new Setting(paneEl).autoWireText("passphrase", {
-                    holdValue: true,
-                    isPassword: true,
-                    onUpdate: isEncryptEnabled,
-                });
-
-                new Setting(paneEl).autoWireToggle("usePathObfuscation", {
-                    holdValue: true,
-                    onUpdate: isEncryptEnabled,
-                });
-                new Setting(paneEl)
-                    .autoWireToggle("useDynamicIterationCount", {
-=======
-                    new Setting(paneEl).autoWireToggle("usePathObfuscation", {
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
-                        holdValue: true,
-                        onUpdate: isEncryptEnabled,
-                    });
                     new Setting(paneEl)
                         .autoWireToggle("useDynamicIterationCount", {
                             holdValue: true,
@@ -1778,275 +1690,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         })
                 );
             }
-<<<<<<< HEAD
-
-            this.createEl(paneEl, "div", {
-                text: `Please select and apply any preset item to complete the wizard.`,
-                cls: "wizardOnly",
-            }).addClasses(["op-warn-info"]);
-
-            void addPanel(paneEl, "Synchronization Preset").then((paneEl) => {
-                const options: Record<string, string> =
-                    this.editingSettings.remoteType == REMOTE_COUCHDB
-                        ? {
-                              NONE: "",
-                              LIVESYNC: "LiveSync",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          }
-                        : {
-                              NONE: "",
-                              PERIODIC: "Periodic w/ batch",
-                              DISABLE: "Disable all automatic",
-                          };
-
-                new Setting(paneEl)
-                    .autoWireDropDown("preset", {
-                        options: options,
-                        holdValue: true,
-                    })
-                    .addButton((button) => {
-                        button.setButtonText("Apply");
-                        button.onClick(async () => {
-                            // await this.saveSettings(["preset"]);
-                            await this.saveAllDirtySettings();
-                        });
-                    });
-
-                this.addOnSaved("preset", async (currentPreset) => {
-                    if (currentPreset == "") {
-                        Logger("Select any preset.", LOG_LEVEL_NOTICE);
-                        return;
-                    }
-                    const presetAllDisabled = {
-                        batchSave: false,
-                        liveSync: false,
-                        periodicReplication: false,
-                        syncOnSave: false,
-                        syncOnEditorSave: false,
-                        syncOnStart: false,
-                        syncOnFileOpen: false,
-                        syncAfterMerge: false,
-                    } as Partial<ObsidianLiveSyncSettings>;
-                    const presetLiveSync = {
-                        ...presetAllDisabled,
-                        liveSync: true,
-                    } as Partial<ObsidianLiveSyncSettings>;
-                    const presetPeriodic = {
-                        ...presetAllDisabled,
-                        batchSave: true,
-                        periodicReplication: true,
-                        syncOnSave: false,
-                        syncOnEditorSave: false,
-                        syncOnStart: true,
-                        syncOnFileOpen: true,
-                        syncAfterMerge: true,
-                    } as Partial<ObsidianLiveSyncSettings>;
-
-                    if (currentPreset == "LIVESYNC") {
-                        this.editingSettings = {
-                            ...this.editingSettings,
-                            ...presetLiveSync,
-                        };
-                        Logger("Configured synchronization mode: LiveSync", LOG_LEVEL_NOTICE);
-                    } else if (currentPreset == "PERIODIC") {
-                        this.editingSettings = {
-                            ...this.editingSettings,
-                            ...presetPeriodic,
-                        };
-                        Logger("Configured synchronization mode: Periodic", LOG_LEVEL_NOTICE);
-                    } else {
-                        Logger("Configured synchronization mode: DISABLED", LOG_LEVEL_NOTICE);
-                        this.editingSettings = {
-                            ...this.editingSettings,
-                            ...presetAllDisabled,
-                        };
-                    }
-
-                    if (this.inWizard) {
-                        this.closeSetting();
-                        this.inWizard = false;
-                        if (!this.editingSettings.isConfigured) {
-                            this.editingSettings.isConfigured = true;
-                            await this.saveAllDirtySettings();
-                            await this.plugin.$$realizeSettingSyncMode();
-                            await rebuildDB("localOnly");
-                            // this.resetEditingSettings();
-                            if (
-                                (await this.plugin.confirm.askYesNoDialog(
-                                    "All done! Do you want to generate a setup URI to set up other devices?",
-                                    { defaultOption: "Yes", title: "Congratulations!" }
-                                )) == "yes"
-                            ) {
-                                eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
-                            }
-                        } else {
-                            if (isNeedRebuildLocal() || isNeedRebuildRemote()) {
-                                await confirmRebuild();
-                            } else {
-                                await this.saveAllDirtySettings();
-                                await this.plugin.$$realizeSettingSyncMode();
-                                this.plugin.$$askReload();
-                            }
-                        }
-                    } else {
-                        await this.saveAllDirtySettings();
-                        await this.plugin.$$realizeSettingSyncMode();
-                    }
-                });
-            });
-            void addPanel(paneEl, "Synchronization Method").then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-
-                // const onlyOnLiveSync = visibleOnly(() => this.isConfiguredAs("syncMode", "LIVESYNC"));
-                const onlyOnNonLiveSync = visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"));
-                const onlyOnPeriodic = visibleOnly(() => this.isConfiguredAs("syncMode", "PERIODIC"));
-
-                const optionsSyncMode =
-                    this.editingSettings.remoteType == REMOTE_COUCHDB
-                        ? {
-                              ONEVENTS: "On events",
-                              PERIODIC: "Periodic and on events",
-                              LIVESYNC: "LiveSync",
-                          }
-                        : { ONEVENTS: "On events", PERIODIC: "Periodic and on events" };
-
-                new Setting(paneEl)
-                    .autoWireDropDown("syncMode", {
-                        //@ts-ignore
-                        options: optionsSyncMode,
-                    })
-                    .setClass("wizardHidden");
-                this.addOnSaved("syncMode", async (value) => {
-                    this.editingSettings.liveSync = false;
-                    this.editingSettings.periodicReplication = false;
-                    if (value == "LIVESYNC") {
-                        this.editingSettings.liveSync = true;
-                    } else if (value == "PERIODIC") {
-                        this.editingSettings.periodicReplication = true;
-                    }
-                    await this.saveSettings(["liveSync", "periodicReplication"]);
-
-                    await this.plugin.$$realizeSettingSyncMode();
-                });
-
-                new Setting(paneEl)
-                    .autoWireNumeric("periodicReplicationInterval", {
-                        clampMax: 5000,
-                        onUpdate: onlyOnPeriodic,
-                    })
-                    .setClass("wizardHidden");
-
-                new Setting(paneEl)
-                    .setClass("wizardHidden")
-                    .autoWireToggle("syncOnSave", { onUpdate: onlyOnNonLiveSync });
-                new Setting(paneEl)
-                    .setClass("wizardHidden")
-                    .autoWireToggle("syncOnEditorSave", { onUpdate: onlyOnNonLiveSync });
-                new Setting(paneEl)
-                    .setClass("wizardHidden")
-                    .autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync });
-                new Setting(paneEl)
-                    .setClass("wizardHidden")
-                    .autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync });
-                new Setting(paneEl)
-                    .setClass("wizardHidden")
-                    .autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
-            });
-
-            void addPanel(paneEl, "Update Thinning").then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("batchSave");
-                new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMinimumDelay", {
-                    acceptZero: true,
-                    onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
-                });
-                new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMaximumDelay", {
-                    acceptZero: true,
-                    onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
-                });
-            });
-
-            void addPanel(paneEl, "Deletion Propagation", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("trashInsteadDelete");
-
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
-            });
-            void addPanel(paneEl, "Conflict resolution", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("resolveConflictsByNewerFile");
-
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("checkConflictOnlyOnOpen");
-
-                new Setting(paneEl).setClass("wizardHidden").autoWireToggle("showMergeDialogOnlyOnActive");
-            });
-
-            void addPanel(paneEl, "Sync Settings via Markdown", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-
-                new Setting(paneEl)
-                    .autoWireText("settingSyncFile", { holdValue: true })
-                    .addApplyButton(["settingSyncFile"]);
-
-                new Setting(paneEl).autoWireToggle("writeCredentialsForSettingSync");
-
-                new Setting(paneEl).autoWireToggle("notifyAllSettingSyncFile");
-            });
-
-            void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
-                paneEl.addClass("wizardHidden");
-
-                const LABEL_ENABLED = "🔁 : Enabled";
-                const LABEL_DISABLED = "⏹️ : Disabled";
-
-                const hiddenFileSyncSetting = new Setting(paneEl)
-                    .setName("Hidden file synchronization")
-                    .setClass("wizardHidden");
-                const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl;
-                const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
-                hiddenFileSyncSettingDiv.innerText = this.editingSettings.syncInternalFiles
-                    ? LABEL_ENABLED
-                    : LABEL_DISABLED;
-                if (this.editingSettings.syncInternalFiles) {
-                    new Setting(paneEl)
-                        .setName("Disable Hidden files sync")
-                        .setClass("wizardHidden")
-                        .addButton((button) => {
-                            button.setButtonText("Disable").onClick(async () => {
-                                this.editingSettings.syncInternalFiles = false;
-                                await this.saveAllDirtySettings();
-                                this.display();
-                            });
-                        });
-                } else {
-                    new Setting(paneEl)
-                        .setName("Enable Hidden files sync")
-                        .setClass("wizardHidden")
-                        .addButton((button) => {
-                            button.setButtonText("Merge").onClick(async () => {
-                                this.closeSetting();
-                                // this.resetEditingSettings();
-                                await this.plugin.$anyConfigureOptionalSyncFeature("MERGE");
-                            });
-                        })
-                        .addButton((button) => {
-                            button.setButtonText("Fetch").onClick(async () => {
-                                this.closeSetting();
-                                // this.resetEditingSettings();
-                                await this.plugin.$anyConfigureOptionalSyncFeature("FETCH");
-                            });
-                        })
-                        .addButton((button) => {
-                            button.setButtonText("Overwrite").onClick(async () => {
-                                this.closeSetting();
-                                // this.resetEditingSettings();
-                                await this.plugin.$anyConfigureOptionalSyncFeature("OVERWRITE");
-                            });
-                        });
-=======
-        );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30, false).then(
             (paneEl) => {
                 if (this.editingSettings.versionUpFlash != "") {
@@ -2076,7 +1719,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         },
                         visibleOnly(() => !this.isConfiguredAs("versionUpFlash", ""))
                     );
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
                 }
 
                 this.createEl(paneEl, "div", {
@@ -3340,11 +2982,7 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
 
-<<<<<<< HEAD
-            void addPanel(paneEl, "Synchronize").then((paneEl) => {
-=======
             void addPanel(paneEl, "Syncing", () => {}, onlyOnCouchDBOrMinIO).then((paneEl) => {
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
                 new Setting(paneEl)
                     .setName("Resend")
                     .setDesc("Resend all chunks to the remote.")
@@ -3607,36 +3245,6 @@ ${stringifyYaml(pluginConfig)}`;
                 }
             );
 
-<<<<<<< HEAD
-            void addPanel(paneEl, "Deprecated").then((paneEl) => {
-                new Setting(paneEl)
-                    .setClass("sls-setting-obsolete")
-                    .setName("Run database cleanup")
-                    .setDesc(
-                        "Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use 'Rebuild everything' under Total Overhaul."
-                    )
-                    .addButton((button) =>
-                        button
-                            .setButtonText("DryRun")
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.dryRunGC();
-                            })
-                    )
-                    .addButton((button) =>
-                        button
-                            .setButtonText("Perform cleaning")
-                            .setDisabled(false)
-                            .setWarning()
-                            .onClick(async () => {
-                                this.closeSetting();
-                                await this.dbGC();
-                            })
-                    )
-                    .addOnUpdate(onlyOnCouchDB);
-            });
-=======
->>>>>>> fecefa36319cc51e9d0b5b218fc939f7da780c2c
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
                     .setName("Delete local database to reset or uninstall Self-Hosted LiveSync")
