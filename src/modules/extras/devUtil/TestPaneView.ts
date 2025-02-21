@@ -9,7 +9,7 @@ export class TestPaneView extends ItemView {
     plugin: ObsidianLiveSyncPlugin;
     moduleDev: ModuleDev;
     icon = "view-log";
-    title: string = "Self-hosted LiveSync Test and Results";
+    title: string = "Self-Hosted LiveSync Test and Results";
     navigation = true;
 
     getIcon(): string {
@@ -27,7 +27,7 @@ export class TestPaneView extends ItemView {
     }
 
     getDisplayText() {
-        return "Self-hosted LiveSync Test and Results";
+        return "Self-Hosted LiveSync Test and Results";
     }
 
     async onOpen() {

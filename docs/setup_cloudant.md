@@ -28,7 +28,7 @@ In these instructions, create IBM Cloudant Instance for trial.
 1. When all of the above steps have been done, open "Resource list" on the left pane. you can see the Cloudant instance in the "Service and software". Click it.  
    ![step 8](../instruction_images/cloudant_8.png)
 
-1. In resource details, there's information to connect from Self-hosted LiveSync.  
+1. In resource details, there's information to connect from Self-Hosted LiveSync.  
    Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>. We use this address later, with the database name.  
    ![step 9](../instruction_images/cloudant_9.png)
 
@@ -50,7 +50,7 @@ In these instructions, create IBM Cloudant Instance for trial.
 
 1.  If the database was shown with joyful messages, the setup is almost done.  
     And, once you have confirmed that you can create a database, usually there is no need to open this screen.  
-    You can create a database from Self-hosted LiveSync.
+    You can create a database from Self-Hosted LiveSync.
     ![step 4](../instruction_images/couchdb_4.png)
 
 ### Credentials Setup
@@ -61,7 +61,7 @@ In these instructions, create IBM Cloudant Instance for trial.
 1.  The dialog to create a credential will be shown.  
     type any name or leave it default, hit the "Add" button.  
     ![step 2](../instruction_images/credentials_2.png)  
-    _NOTE: This "name" is not related to your username that uses in Self-hosted LiveSync._
+    _NOTE: This "name" is not related to your username that uses in Self-Hosted LiveSync._
 
 1.  Back to "Service credentials", the new credential should be created.  
     open details.  
@@ -71,7 +71,7 @@ In these instructions, create IBM Cloudant Instance for trial.
     follow the figure, it's  
     "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
 
-## Self-hosted LiveSync settings
+## Self-Hosted LiveSync settings
 
 ![Setting](../images/remote_db_setting.png)
 

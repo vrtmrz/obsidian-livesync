@@ -2,7 +2,7 @@
 
 ## CouchDBのインストールとPCやMacでの使用
 CouchDBを構築するには、[Dockerのイメージ](https://hub.docker.com/_/couchdb)を使用するのが一番簡単です。  
-ただし、インストールしたCouchDBをSelf-hosted LiveSyncから使用するためには、少々設定が必要となります。  
+ただし、インストールしたCouchDBをSelf-Hosted LiveSyncから使用するためには、少々設定が必要となります。  
 具体的には、下記の設定が`local.ini`として必要になります。
 
 ```
@@ -36,7 +36,7 @@ $ docker run --rm -it -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .loc
 ```
 とすると簡単にCouchDBを起動することができます。  
 備考：このとき、local.iniのオーナーが5984:5984になります。これは、Dockerイメージの制限事項です。編集する場合はいったんオーナーを変更してください。  
-正常にSelf-hosted LiveSyncからアクセスすることができたら、お好みでバックグラウンドで起動するように編集して起動してください。  
+正常にSelf-Hosted LiveSyncからアクセスすることができたら、お好みでバックグラウンドで起動するように編集して起動してください。  
 例）  
 ```
 $ docker run -d --restart always -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=password -v .local.ini:/opt/couchdb/etc/local.ini -p 5984:5984 couchdb

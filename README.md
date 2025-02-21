@@ -1,8 +1,8 @@
 <!-- For translation: 20240227r0 -->
-# Self-hosted LiveSync
+# Self-Hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
-Self-hosted LiveSync is a community-implemented synchronization plugin, available on every obsidian-compatible platform and using CouchDB or Object Storage (e.g., MinIO, S3, R2, etc.) as the server.
+Self-Hosted LiveSync is a community-implemented synchronization plugin, available on every Obsidian-compatible platform and using CouchDB or Object Storage (e.g., MinIO, S3, R2, etc.) as the server.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
@@ -11,22 +11,22 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 ## Features
 
 - Synchronize vaults very efficiently with less traffic.
-- Good at conflicted modification.
+- Good at resolving merge conflicts.
   - Automatic merging for simple conflicts.
 - Using OSS solution for the server.
   - Compatible solutions can be used.
-- Supporting End-to-end encryption.
-- Synchronisation of settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
+- Supports end-to-end encryption.
+- Synchronisation of settings, snippets, themes, and plugins, via [Customization Sync (Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
 - WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 - WebRTC peer-to-peer synchronisation without the need any `host` is now possible. (Experimental)
   - This feature is still in the experimental stage. Please be careful when using it. 
   - Instead of using server, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
 
 
-This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
+This plugin might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
 >[!IMPORTANT]
-> - Before installing or upgrading this plug-in, please back your vault up.
+> - Before installing or upgrading this plugin, please back your vault up.
 > - Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
 > - This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
 
@@ -39,20 +39,20 @@ This plug-in might be useful for researchers, engineers, and developers with a n
 [![LiveSync Setup onto Fly.io SpeedRun 2024 using Google Colab](https://img.youtube.com/vi/7sa_I1832Xc/0.jpg)](https://www.youtube.com/watch?v=7sa_I1832Xc)
 
 1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
-2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
+2. Configure the plugin using [Quick Setup](docs/quick_setup.md)
 
-### Manually Setup
+### Manual Setup
 
 1. Setup the server
    1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
    2. [Setup your CouchDB](docs/setup_own_server.md)
-2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
+2. Configure the plugin using [Quick Setup](docs/quick_setup.md)
 
 > [!TIP]
 > Now, fly.io has become not free. Fortunately, even though there are some issues, we are still able to use IBM Cloudant. Here is [Setup IBM Cloudant](docs/setup_cloudant.md). It will be updated soon!
 
 
-## Information in StatusBar
+## Statusbar Icons
 
 Synchronization status is shown in the status bar with the following icons.
 
@@ -77,12 +77,12 @@ Synchronization status is shown in the status bar with the following icons.
      -   🧩 Waiting chunks
      -   🔌 Working Customisation items (Configuration, snippets, and plug-ins)
 
-To prevent file and database corruption, please wait to stop Obsidian until all progress indicators have disappeared as possible (The plugin will also try to resume, though). Especially in case of if you have deleted or renamed files.
+To prevent file and database corruption, please try to wait until all progress indicators have disappeared before closing Obsidian (especially if you have deleted or renamed files). The plugin will also try to resume, though.
 
 
 
 ## Tips and Troubleshooting
-If you are having problems getting the plugin working see: [Tips and Troubleshooting](docs/troubleshooting.md)
+If you are having problems getting the plugin working, see: [Tips and Troubleshooting](docs/troubleshooting.md)
 
 ## Acknowledgements
 

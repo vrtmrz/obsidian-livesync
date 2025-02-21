@@ -39,7 +39,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
     async askUsingOptionalFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         if (
             (await this.core.confirm.askYesNoDialog(
-                "Do you want to enable extra features? If you are new to Self-hosted LiveSync, try the core feature first!",
+                "Do you want to enable extra features? If you are new to Self-Hosted LiveSync, try the core feature first!",
                 { title: "Enable extra features", defaultOption: "No", timeout: 15 }
             )) == "yes"
         ) {

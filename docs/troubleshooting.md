@@ -93,7 +93,7 @@ Especially the CORS error will be reported as a general error to the plug-in for
 ### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
 
 No, even though if files were deleted, chunks were not deleted.
-Self-hosted LiveSync splits the files into multiple chunks and transfers only newly created. This behaviour enables us to less traffic. And, the chunks will be shared between the files to reduce the total usage of the database.
+Self-Hosted LiveSync splits the files into multiple chunks and transfers only newly created. This behaviour enables us to less traffic. And, the chunks will be shared between the files to reduce the total usage of the database.
 
 And one more thing, we can handle the conflicts on any device even though it has happened on other devices. This means that conflicts will happen in the past, after the time we have synchronised. Hence we cannot collect and delete the unused chunks even though if we are not currently referenced.
 
@@ -122,7 +122,7 @@ Obsidian mobile is not able to connect to the non-secure end-point, such as star
 
 Place `redflag.md` on top of the vault, and restart Obsidian. The most simple way is to create a new note and rename it to `redflag`. Of course, we can put it without Obsidian.
 
-If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage processes.
+If there is `redflag.md`, Self-Hosted LiveSync suspends all database and storage processes.
 
 There are some options to use `redflag.md`.
 
@@ -145,7 +145,7 @@ However, occasionally the deletion of files may fail. This should generally work
 (Since v0.23.17)
 
 If you have changed some configurations or tweaks which should be unified between the devices, you will be asked how to reflect (or not) other devices at the next synchronisation. It also occurs on the device itself, where changes are made, to prevent unexpected configuration changes from unwanted propagation.  
-(We may thank this behaviour if we have synchronised or backed up and restored Self-hosted LiveSync. At least, for me so).
+(We may thank this behaviour if we have synchronised or backed up and restored Self-Hosted LiveSync. At least, for me so).
 
 Following dialogue will be shown:
 ![Dialogue](tweak_mismatch_dialogue.png)

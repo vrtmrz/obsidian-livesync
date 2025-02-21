@@ -50,11 +50,9 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     couchDB_USER: {
         name: "Username",
-        desc: "username",
     },
     couchDB_PASSWORD: {
         name: "Password",
-        desc: "password",
     },
     couchDB_DBNAME: {
         name: "Database Name",
@@ -75,23 +73,22 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Requires restart of Obsidian.",
     },
     lessInformationInLog: {
-        name: "Show only notifications",
-        desc: "Disables logging, only shows notifications. Please disable if you report an issue.",
+        name: "Only show notifications",
+        desc: "Disables logging, only shows notifications. Please disable this when reporting an issue.",
     },
     showVerboseLog: {
         name: "Verbose Log",
-        desc: "Show verbose log. Please enable if you report an issue.",
+        desc: "Show verbose log. Please enable this when reporting an issue.",
     },
     hashCacheMaxCount: {
         name: "Memory cache size (by total items)",
     },
     hashCacheMaxAmount: {
         name: "Memory cache size (by total characters)",
-        desc: "(Mega chars)",
     },
     writeCredentialsForSettingSync: {
-        name: "Write credentials in the file",
-        desc: "(Not recommended) If set, credentials will be stored in the file.",
+        name: "Write credentials to the file",
+        desc: "Not recommended - If set, credentials will be stored in the Markdown file.",
     },
     notifyAllSettingSyncFile: {
         name: "Notify all setting files",
@@ -104,76 +101,76 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Encrypting sensitive configuration items",
     },
     syncOnSave: {
-        name: "Sync on Save",
-        desc: "Starts synchronisation when a file is saved.",
+        name: "Save",
+        desc: "Start synchronization when a file is saved.",
     },
     syncOnEditorSave: {
-        name: "Sync on Editor Save",
-        desc: "When you save a file in the editor, start a sync automatically",
+        name: "Editor Save",
+        desc: "Start synchronization when a file is saved in the editor.",
     },
     syncOnFileOpen: {
-        name: "Sync on File Open",
-        desc: "Forces the file to be synced when opened.",
+        name: "File Open",
+        desc: "Start synchronization when a file is opened.",
     },
     syncOnStart: {
-        name: "Sync on Startup",
-        desc: "Automatically Sync all files when opening Obsidian.",
+        name: "Startup",
+        desc: "Start synchronization when opening Obsidian.",
     },
     syncAfterMerge: {
-        name: "Sync after merging file",
-        desc: "Sync automatically after merging files",
+        name: "Merge",
+        desc: "Start synchronization after merging files.",
     },
     trashInsteadDelete: {
         name: "Use the trash bin",
-        desc: "Move remotely deleted files to the trash, instead of deleting.",
+        desc: "Move remotely deleted files to the trash instead of deleting them.",
     },
     doNotDeleteFolder: {
         name: "Keep empty folder",
-        desc: "Should we keep folders that don't have any files inside?",
+        desc: "Keep folders that don't have any files inside.",
     },
     resolveConflictsByNewerFile: {
         name: "(BETA) Always overwrite with a newer file",
-        desc: "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.",
+        desc: "Testing only - Resolve file conflicts by syncing newer copies of the file. This can overwrite modified files. Be warned.",
     },
     checkConflictOnlyOnOpen: {
         name: "Delay conflict resolution of inactive files",
-        desc: "Should we only check for conflicts when a file is opened?",
+        desc: "Only check for conflicts when a file is opened.",
     },
     showMergeDialogOnlyOnActive: {
         name: "Delay merge conflict prompt for inactive files.",
-        desc: "Should we prompt you about conflicting files when a file is opened?",
+        desc: "Only prompt to merge a conflict when the conflicting file is opened.",
     },
     disableMarkdownAutoMerge: {
         name: "Always prompt merge conflicts",
-        desc: "Should we prompt you for every single merge, even if we can safely merge automatcially?",
+        desc: "Prompt for every merge, even if the conflict can be resolved automatically.",
     },
     writeDocumentsIfConflicted: {
-        name: "Apply Latest Change if Conflicting",
-        desc: "Enable this option to automatically apply the most recent change to documents even when it conflicts",
+        name: "Apply latest change even if conflicting",
+        desc: "Automatically applies the most recent change to a document even if there is a conflict.",
     },
     syncInternalFilesInterval: {
         name: "Scan hidden files periodically",
-        desc: "Seconds, 0 to disable",
+        desc: "Seconds (0 to disable)",
     },
     batchSave: {
         name: "Batch database update",
-        desc: "Reducing the frequency with which on-disk changes are reflected into the DB",
+        desc: "Reduces the frequency at which on-disk changes are pushed to the database.",
     },
     readChunksOnline: {
         name: "Fetch chunks on demand",
-        desc: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.",
+        desc: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing the custom chunk size is recommended.",
     },
     syncMaxSizeInMB: {
         name: "Maximum file size",
-        desc: "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.",
+        desc: "MB - If this is set, only files smaller than this value will be synchronized.",
     },
     useIgnoreFiles: {
         name: "(Beta) Use ignore files",
-        desc: "If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.",
+        desc: "Skip changes to local files which are matched by the ignore files. Remote changes are determined using local ignore files.",
     },
     ignoreFiles: {
         name: "Ignore files",
-        desc: "Comma separated `.gitignore, .dockerignore`",
+        desc: "Comma separated: `.gitignore, .dockerignore`",
     },
     batch_size: {
         name: "Batch size",
@@ -185,7 +182,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     },
     useTimeouts: {
         name: "Use timeouts instead of heartbeats",
-        desc: "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.",
+        desc: "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.",
     },
     concurrencyOfReadChunksOnline: {
         name: "Batch size of on-demand fetching",
@@ -202,15 +199,15 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Stop reflecting database changes to storage files.",
     },
     writeLogToTheFile: {
-        name: "Write logs into the file",
-        desc: "Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.",
+        name: "Write logs to a file",
+        desc: "Warning! This will have a serious impact on performance. The logs will not be synchronized under their default name. Please be careful with logs; they often contain confidential information.",
     },
     deleteMetadataOfDeletedFiles: {
         name: "Do not keep metadata of deleted files.",
     },
     useIndexedDBAdapter: {
         name: "(Obsolete) Use an old adapter for compatibility",
-        desc: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
+        desc: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If left enabled, you will be asked to disable this when fetching from the remote database.",
         obsolete: true,
     },
     watchInternalFileChanges: {
@@ -239,8 +236,7 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Notify when other device has newly customized.",
     },
     remoteType: {
-        name: "Remote Type",
-        desc: "Remote server type",
+        name: "Remote Server Type",
     },
     endpoint: {
         name: "Endpoint URL",
@@ -280,15 +276,14 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.",
     },
     preset: {
-        name: "Presets",
-        desc: "Apply preset configuration",
+        name: "Configuration Presets",
     },
     syncMode: {
         name: "Sync Mode",
     },
     periodicReplicationInterval: {
-        name: "Periodic Sync interval",
-        desc: "Interval (sec)",
+        name: "Periodic sync interval",
+        desc: "Interval (seconds)",
     },
     syncInternalFilesBeforeReplication: {
         name: "Scan for hidden files before replication",
@@ -306,12 +301,12 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "xxhash64 is the current default.",
     },
     deviceAndVaultName: {
-        name: "Device name",
+        name: "Device Name",
         desc: "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.",
     },
     displayLanguage: {
         name: "Display Language",
-        desc: 'Not all messages have been translated. And, please revert to "Default" when reporting errors.',
+        desc: 'Not all messages have been translated. Please revert to "Default" when reporting errors.',
     },
     enableChunkSplitterV2: {
         name: "Use splitting-limit-capped chunk splitter",
@@ -334,8 +329,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "Saving will be performed forcefully after this number of seconds.",
     },
     notifyThresholdOfRemoteStorageSize: {
-        name: "Notify when the estimated remote storage size exceeds on start up",
-        desc: "MB (0 to disable).",
+        name: "Remote Storage Size",
+        desc: "MB (0 to disable) - Notify on launch when the estimated remote storage size exceeds this value.",
     },
     usePluginSyncV2: {
         name: "Enable per-file customization sync",
@@ -366,8 +361,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Enable edge case treatment features",
     },
     enableDebugTools: {
-        name: "Enable Developers' Debug Tools.",
-        desc: "Requires restart of Obsidian",
+        name: "Enable developer tools",
+        desc: "Requires restart of Obsidian.",
     },
     suppressNotifyHiddenFilesChange: {
         name: "Suppress notification of hidden files change",

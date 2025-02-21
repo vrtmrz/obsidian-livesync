@@ -17,7 +17,7 @@ npm i -D
 npm run buildDev
 ```
 
-2. Copy the `main.js` to `.obsidian/plugins/obsidian-livesync` folder of your vault, and run Obsidian-Self-hosted LiveSync.
+2. Copy the `main.js` to `.obsidian/plugins/obsidian-livesync` folder of your vault, and run Obsidian-Self-Hosted LiveSync.
 3. You will get the `missing-translation-yyyy-mm-dd.jsonl`, please fill in new translations.
 4. Build the plug-in again, and confirm that displayed things were expected.
 5. Merge them into `rosetta.ts`, and make the PR to `https://github.com/vrtmrz/livesync-commonlib`.

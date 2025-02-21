@@ -68,10 +68,10 @@ export class ModuleObsidianMenu extends AbstractObsidianModule implements IObsid
             callback: async () => {
                 if (this.core.$$isSuspended()) {
                     this.core.$$setSuspended(false);
-                    this._log("Self-hosted LiveSync resumed", LOG_LEVEL_NOTICE);
+                    this._log("Self-Hosted LiveSync resumed", LOG_LEVEL_NOTICE);
                 } else {
                     this.core.$$setSuspended(true);
-                    this._log("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
+                    this._log("Self-Hosted LiveSync suspended", LOG_LEVEL_NOTICE);
                 }
                 await this.core.$$realizeSettingSyncMode();
                 await this.core.$$saveSettingData();
