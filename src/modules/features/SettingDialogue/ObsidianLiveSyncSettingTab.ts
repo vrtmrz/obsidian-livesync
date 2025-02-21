@@ -1587,6 +1587,11 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         isPassword: true,
                         onUpdate: isEncryptEnabled,
                     });
+
+                    new Setting(paneEl).autoWireToggle("usePathObfuscation", {
+                        holdValue: true,
+                        onUpdate: isEncryptEnabled,
+                    });
                     new Setting(paneEl)
                         .autoWireToggle("useDynamicIterationCount", {
                             holdValue: true,
@@ -1690,6 +1695,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         })
                 );
             }
+        );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30, false).then(
             (paneEl) => {
                 if (this.editingSettings.versionUpFlash != "") {
@@ -2037,9 +2043,9 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 paneEl.addClass("wizardHidden");
 
                 const syncFilesSetting = new Setting(paneEl)
-                    .setName("Synchronized Files")
+                    .setName("Synchronising files")
                     .setDesc(
-                        "(RegExp) Empty to sync all files. Add a regular expression to limit which files are synchronized."
+                        "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
                     )
                     .setClass("wizardHidden");
                 mount(MultipleRegExpControl, {
@@ -2059,9 +2065,9 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 });
 
                 const nonSyncFilesSetting = new Setting(paneEl)
-                    .setName("Non-Synchronized Files")
+                    .setName("Non-Synchronising files")
                     .setDesc(
-                        "(RegExp) If this is set, any changes to local and remote files that match this expression will be skipped."
+                        "(RegExp) If this is set, any changes to local and remote files that match this will be skipped."
                     )
                     .setClass("wizardHidden");
 
@@ -2145,7 +2151,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
             });
         });
 
-        void addPane(containerEl, "Customization Sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
+        void addPane(containerEl, "Customization sync", "🔌", 60, false, LEVEL_ADVANCED).then((paneEl) => {
             // With great respect, thank you TfTHacker!
             // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
             void addPanel(paneEl, "Customization Sync").then((paneEl) => {
@@ -2158,7 +2164,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     paneEl,
                     "div",
                     {
-                        text: "Please set the device name to identify this device. This name should be unique among your devices. This feature cannot be enabled until this is configured.",
+                        text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
                         cls: "op-warn",
                     },
                     (c) => {},
@@ -2168,7 +2174,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     paneEl,
                     "div",
                     {
-                        text: "The device name cannot be changed while this feature is enabled. Please disable this feature to change the device name.",
+                        text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
                     (c) => {},
@@ -2220,10 +2226,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
         void addPane(containerEl, "Hatch", "🧰", 50, true).then((paneEl) => {
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
-            void addPanel(paneEl, "Reporting Issues").then((paneEl) => {
-                new Setting(paneEl).setName("Copy system information for reporting issues").addButton((button) =>
+            void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
+                new Setting(paneEl).setName("Make report to inform the issue").addButton((button) =>
                     button
-                        .setButtonText("Create Report")
+                        .setButtonText("Make report")
                         .setCta()
                         .setDisabled(false)
                         .onClick(async () => {
@@ -2460,16 +2466,16 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Recreate All")
+                            .setButtonText("Recreate all")
                             .setCta()
                             .onClick(async () => {
                                 await this.plugin.fileHandler.createAllChunks(true);
                             })
                     );
                 new Setting(paneEl)
-                    .setName("Use the newer file in case of a merge conflict")
+                    .setName("Resolve All conflicted files by the newer one")
                     .setDesc(
-                        "Resolve all file conflicts by using the newer one. Caution: This will overwrite the older file, and you cannot restore the overwritten one."
+                        "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
                     )
                     .addButton((button) =>
                         button
@@ -2487,7 +2493,7 @@ ${stringifyYaml(pluginConfig)}`;
                     )
                     .addButton((button) =>
                         button
-                            .setButtonText("Verify All")
+                            .setButtonText("Verify all")
                             .setDisabled(false)
                             .setCta()
                             .onClick(async () => {
@@ -2667,9 +2673,9 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
-                new Setting(paneEl).setName("Reset settings").addButton((button) =>
+                new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
                     button
-                        .setButtonText("Reset")
+                        .setButtonText("Back")
                         .setDisabled(false)
                         .onClick(async () => {
                             this.editingSettings.isConfigured = false;
@@ -2705,11 +2711,11 @@ ${stringifyYaml(pluginConfig)}`;
             });
         });
         void addPane(containerEl, "Advanced", "🔧", 46, false, LEVEL_ADVANCED).then((paneEl) => {
-            void addPanel(paneEl, "Memory Cache").then((paneEl) => {
+            void addPanel(paneEl, "Memory cache").then((paneEl) => {
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
             });
-            void addPanel(paneEl, "Local Database Tweaks").then((paneEl) => {
+            void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("customChunkSize", { clampMin: 0 });
@@ -2722,7 +2728,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Transfer Tweaks").then((paneEl) => {
+            void addPanel(paneEl, "Transfer Tweak").then((paneEl) => {
                 new Setting(paneEl)
                     .setClass("wizardHidden")
                     .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB });
@@ -2748,7 +2754,7 @@ ${stringifyYaml(pluginConfig)}`;
         });
 
         void addPane(containerEl, "Power users", "💪", 47, true, LEVEL_POWER_USER).then((paneEl) => {
-            void addPanel(paneEl, "Remote Database Tweaks").then((paneEl) => {
+            void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
                 const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
                 new Setting(paneEl)
@@ -2764,7 +2770,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "CouchDB Connection Tweaks", undefined, onlyOnCouchDB).then((paneEl) => {
+            void addPanel(paneEl, "CouchDB Connection Tweak", undefined, onlyOnCouchDB).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 this.createEl(
@@ -2811,7 +2817,7 @@ ${stringifyYaml(pluginConfig)}`;
                     .addApplyButton(["configPassphrase", "configPassphraseStore"])
                     .setClass("wizardHidden");
             });
-            void addPanel(paneEl, "Developers").then((paneEl) => {
+            void addPanel(paneEl, "Developer").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("enableDebugTools").setClass("wizardHidden");
             });
         });
@@ -2827,13 +2833,13 @@ ${stringifyYaml(pluginConfig)}`;
                     });
             });
 
-            void addPanel(paneEl, "Compatibility (Conflict Behavior)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
             });
 
-            void addPanel(paneEl, "Compatibility (Database Structure)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useIndexedDBAdapter", { invert: true, holdValue: true });
 
                 new Setting(paneEl)
@@ -2853,7 +2859,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
             });
 
-            void addPanel(paneEl, "Edge Case Fixes (Database)").then((paneEl) => {
+            void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
                 new Setting(paneEl)
                     .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
                     .addApplyButton(["additionalSuffixOfDatabaseName"]);
@@ -2876,12 +2882,12 @@ ${stringifyYaml(pluginConfig)}`;
                     await this.plugin.localDatabase._prepareHashFunctions();
                 });
             });
-            void addPanel(paneEl, "Edge Case Fixes (Behavior)").then((paneEl) => {
+            void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
             });
 
-            void addPanel(paneEl, "Edge Case Fixes (Processing)").then((paneEl) => {
+            void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableWorkerForGeneratingChunks");
 
                 new Setting(paneEl).autoWireToggle("processSmallFilesInUIThread", {
@@ -2889,7 +2895,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Compatibility").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
             });
         });
@@ -2969,7 +2975,7 @@ ${stringifyYaml(pluginConfig)}`;
 
                 new Setting(paneEl)
                     .setName("Emergency restart")
-                    .setDesc("Disables all synchronization and restarts.")
+                    .setDesc("Disables all synchronization and restart.")
                     .addButton((button) =>
                         button
                             .setButtonText("Flag and restart")
@@ -3247,7 +3253,7 @@ ${stringifyYaml(pluginConfig)}`;
 
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Delete local database to reset or uninstall Self-Hosted LiveSync")
+                    .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
                     .addButton((button) =>
                         button
                             .setButtonText("Delete")
