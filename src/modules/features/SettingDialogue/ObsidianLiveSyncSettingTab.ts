@@ -2043,9 +2043,9 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 paneEl.addClass("wizardHidden");
 
                 const syncFilesSetting = new Setting(paneEl)
-                    .setName("Synchronising files")
+                    .setName("Synchronized Files")
                     .setDesc(
-                        "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
+                        "(RegExp) Empty to sync all files. Add a regular expression to limit which files are synchronized."
                     )
                     .setClass("wizardHidden");
                 mount(MultipleRegExpControl, {
@@ -2065,9 +2065,9 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 });
 
                 const nonSyncFilesSetting = new Setting(paneEl)
-                    .setName("Non-Synchronising files")
+                    .setName("Non-Synchronized Files")
                     .setDesc(
-                        "(RegExp) If this is set, any changes to local and remote files that match this will be skipped."
+                        "(RegExp) If this is set, any changes to local and remote files that match this expression will be skipped."
                     )
                     .setClass("wizardHidden");
 
@@ -2164,7 +2164,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     paneEl,
                     "div",
                     {
-                        text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
+                        text: "Please set device name to identify this device. This name should be unique among your devices. This feature cannot be enabled until this is configured.",
                         cls: "op-warn",
                     },
                     (c) => {},
@@ -2174,7 +2174,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     paneEl,
                     "div",
                     {
-                        text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
+                        text: "The device name cannot be changed while this feature is enabled. Please disable this feature to change the device name.",
                         cls: "op-warn-info",
                     },
                     (c) => {},
@@ -2226,10 +2226,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
         void addPane(containerEl, "Hatch", "🧰", 50, true).then((paneEl) => {
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
-            void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
-                new Setting(paneEl).setName("Make report to inform the issue").addButton((button) =>
+            void addPanel(paneEl, "Reporting Issues").then((paneEl) => {
+                new Setting(paneEl).setName("Copy system information for reporting issues").addButton((button) =>
                     button
-                        .setButtonText("Make report")
+                        .setButtonText("Create report")
                         .setCta()
                         .setDisabled(false)
                         .onClick(async () => {
@@ -2473,9 +2473,9 @@ ${stringifyYaml(pluginConfig)}`;
                             })
                     );
                 new Setting(paneEl)
-                    .setName("Resolve All conflicted files by the newer one")
+                    .setName("Use the newer file in case of a merge conflict")
                     .setDesc(
-                        "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                        "Resolve all file conflicts by using the newer one. Caution: This will overwrite the older file, and you cannot restore the overwritten one."
                     )
                     .addButton((button) =>
                         button
@@ -2673,7 +2673,7 @@ ${stringifyYaml(pluginConfig)}`;
                     );
             });
             void addPanel(paneEl, "Reset").then((paneEl) => {
-                new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+                new Setting(paneEl).setName("Reset Settings").addButton((button) =>
                     button
                         .setButtonText("Back")
                         .setDisabled(false)
@@ -2711,11 +2711,11 @@ ${stringifyYaml(pluginConfig)}`;
             });
         });
         void addPane(containerEl, "Advanced", "🔧", 46, false, LEVEL_ADVANCED).then((paneEl) => {
-            void addPanel(paneEl, "Memory cache").then((paneEl) => {
+            void addPanel(paneEl, "Memory Cache").then((paneEl) => {
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
                 new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
             });
-            void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Local Database Tweaks").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("customChunkSize", { clampMin: 0 });
@@ -2728,7 +2728,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Transfer Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Transfer Tweaks").then((paneEl) => {
                 new Setting(paneEl)
                     .setClass("wizardHidden")
                     .autoWireToggle("readChunksOnline", { onUpdate: onlyOnCouchDB });
@@ -2754,7 +2754,7 @@ ${stringifyYaml(pluginConfig)}`;
         });
 
         void addPane(containerEl, "Power users", "💪", 47, true, LEVEL_POWER_USER).then((paneEl) => {
-            void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
+            void addPanel(paneEl, "Remote Database Tweaks").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
                 const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
                 new Setting(paneEl)
@@ -2770,7 +2770,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
             });
 
-            void addPanel(paneEl, "CouchDB Connection Tweak", undefined, onlyOnCouchDB).then((paneEl) => {
+            void addPanel(paneEl, "CouchDB Connection Tweaks", undefined, onlyOnCouchDB).then((paneEl) => {
                 paneEl.addClass("wizardHidden");
 
                 this.createEl(
@@ -2833,13 +2833,13 @@ ${stringifyYaml(pluginConfig)}`;
                     });
             });
 
-            void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Conflict Behavior)").then((paneEl) => {
                 paneEl.addClass("wizardHidden");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
             });
 
-            void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility (Database Structure)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("useIndexedDBAdapter", { invert: true, holdValue: true });
 
                 new Setting(paneEl)
@@ -2859,7 +2859,7 @@ ${stringifyYaml(pluginConfig)}`;
                 new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
             });
 
-            void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
+            void addPanel(paneEl, "Edge Case Fixes (Database)").then((paneEl) => {
                 new Setting(paneEl)
                     .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
                     .addApplyButton(["additionalSuffixOfDatabaseName"]);
@@ -2882,7 +2882,7 @@ ${stringifyYaml(pluginConfig)}`;
                     await this.plugin.localDatabase._prepareHashFunctions();
                 });
             });
-            void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
+            void addPanel(paneEl, "Edge Case Fixes (Behavior)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
                 new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
             });
@@ -2895,7 +2895,7 @@ ${stringifyYaml(pluginConfig)}`;
                 });
             });
 
-            void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
+            void addPanel(paneEl, "Compatibility").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
             });
         });
@@ -2975,7 +2975,7 @@ ${stringifyYaml(pluginConfig)}`;
 
                 new Setting(paneEl)
                     .setName("Emergency restart")
-                    .setDesc("Disables all synchronization and restart.")
+                    .setDesc("Disables all synchronization and restarts.")
                     .addButton((button) =>
                         button
                             .setButtonText("Flag and restart")
@@ -3253,7 +3253,7 @@ ${stringifyYaml(pluginConfig)}`;
 
             void addPanel(paneEl, "Reset").then((paneEl) => {
                 new Setting(paneEl)
-                    .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
+                    .setName("Delete local database to reset or uninstall Self-Hosted LiveSync")
                     .addButton((button) =>
                         button
                             .setButtonText("Delete")
