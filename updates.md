@@ -10,6 +10,36 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.16
+
+### Improved
+
+#### Peer-to-Peer
+
+- Now peer-to-peer synchronisation checks the settings are compatible with each other.
+    - No longer unexpected database broken, phew.
+- Peer-to-peer synchronisation now handles the platform and detects pseudo-clients.
+    - Pseudo clients will not decrypt/encrypt anything, just relay the data. Hence, always settings are not compatible. Therefore, we have to accept the incompatibility for pseudo clients.
+
+#### General
+
+- New migration method has been implemented, that called `Doctor`.
+
+    - `Doctor` checks the difference between the ideal and actual values and encourages corrective action. To facilitate our decision, the reasons for this and the recommendations are also presented.
+    - This can be used not only during migration. We can invoke the doctor from the settings for trouble-shooting.
+
+- The minimum interval for replication to be caused when an event occurs can now be configurable.
+- Some detail note has been added and change nuance about the `Report` in the setting dialogue, which had less informative.
+
+### Behaviour and default changed
+
+- `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
+    - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
+
+### Refactored
+
+- Platform specific codes are more separated. No longer `node` modules were used in the browser and Obsidian.
+
 ## 0.24.15
 
 ### Fixed
@@ -110,47 +140,5 @@ And, this is just a single web page, without any server-side code. It is a stati
 - Some function have got more robust type definitions.
 - Terser optimisation has slightly improved.
 - During the build, analysis meta-file of the bundled codes will be generated.
-
-## 0.24.10
-
-### Fixed
-
-- Fixed the issue which the filename is shown as `undefined`.
-- Fixed the issue where files transferred at short intervals were not reflected.
-
-### Improved
-
-- Add more translations: `ja-JP` (Japanese) by @kohki-shikata (Thank you so much)!
-
-### Internal
-
-- Some files have been prettified.
-
-## 0.24.9
-
-Skipped.
-
-## 0.24.8
-
-### Fixed
-
-- Some parallel-processing tasks are now performed more safely.
-- Some error messages has been fixed.
-
-### Improved
-
-- Synchronisation is now more efficient and faster.
-- Saving chunks is a bit more robust.
-
-### New Feature
-
-- We can remove orphaned chunks again, now!
-    - Without rebuilding the database!
-    - Note: Please synchronise devices completely before removing orphaned chunks.
-    - Note2: Deleted files are using chunks, if you want to remove them, please commit the deletion first. (`Commit File Deletion`)
-    - Note3: If you lost some chunks, do not worry. They will be resurrected if not so much time has passed. Try `Resurrect deleted chunks`.
-    - Note4: This feature is still beta. Please report any issues you encounter.
-    - Note5: Please disable `On demand chunk fetching`, and enable `Compute revisions for each chunk` before using this feature.
-        - These settings is going to be default in the future.
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
