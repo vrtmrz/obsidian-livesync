@@ -56,7 +56,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
                     } else {
                         if (this.settings.syncOnEditorSave) {
                             this._log("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
-                            fireAndForget(() => this.core.$$replicate());
+                            fireAndForget(() => this.core.$$replicateByEvent());
                         }
                     }
                 });
@@ -155,7 +155,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             return;
         }
         if (this.settings.syncOnFileOpen && !this.core.$$isSuspended()) {
-            await this.core.$$replicate();
+            await this.core.$$replicateByEvent();
         }
         await this.core.$$queueConflictCheckIfOpen(file.path as FilePathWithPrefix);
     }

@@ -18,17 +18,26 @@ import {
     type MetaEntry,
 } from "../../lib/src/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { getPath, isChunk, isValidPath, scheduleTask } from "../../common/utils";
+import {
+    getPath,
+    isChunk,
+    isValidPath,
+    rateLimitedSharedExecution,
+    scheduleTask,
+    updatePreviousExecutionTime,
+} from "../../common/utils";
 import { isAnyNote } from "../../lib/src/common/utils";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { globalSlipBoard } from "../../lib/src/bureau/bureau";
 
+const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
+const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
 export class ModuleReplicator extends AbstractModule implements ICoreModule {
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.$$isSuspended()) {
-                scheduleTask("perform-replicate-after-save", 250, () => this.core.$$waitForReplicationOnce());
+                scheduleTask("perform-replicate-after-save", 250, () => this.core.$$replicateByEvent());
             }
         });
         return Promise.resolve(true);
@@ -61,7 +70,16 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         await this.loadQueuedFiles();
         return true;
     }
+
     async $$replicate(showMessage: boolean = false): Promise<boolean | void> {
+        try {
+            updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT, REPLICATION_ON_EVENT_FORECASTED_TIME);
+            return await this.$$_replicate(showMessage);
+        } finally {
+            updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT);
+        }
+    }
+    async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
         //--?
         if (!this.core.$$isReady()) return;
         if (isLockAcquired("cleanup")) {
@@ -192,6 +210,15 @@ Or if you are sure know what had been happened, we can unlock the database from 
         return ret;
     }
 
+    async $$replicateByEvent(): Promise<boolean | void> {
+        const least = this.settings.syncMinimumInterval;
+        if (least > 0) {
+            return rateLimitedSharedExecution(KEY_REPLICATION_ON_EVENT, least, async () => {
+                return await this.$$replicate();
+            });
+        }
+        return await shareRunningResult(`replication`, () => this.core.$$replicate());
+    }
     $$parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
         if (this.settings.suspendParseReplicationResult && !this.replicationResultProcessor.isSuspended) {
             this.replicationResultProcessor.suspend();
@@ -415,9 +442,5 @@ Or if you are sure know what had been happened, we can unlock the database from 
         const checkResult = await this.core.$anyAfterConnectCheckFailed();
         if (checkResult == "CHECKAGAIN") return await this.core.$$replicateAllFromServer(showingNotice);
         return !checkResult;
-    }
-
-    async $$waitForReplicationOnce(): Promise<boolean | void> {
-        return await shareRunningResult(`replication`, () => this.core.$$replicate());
     }
 }

@@ -346,8 +346,8 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         desc: "If this enabled, All files are handled as case-Sensitive (Previous behaviour).",
     },
     doNotUseFixedRevisionForChunks: {
-        name: "Compute revisions for chunks (Previous behaviour)",
-        desc: "If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)",
+        name: "Compute revisions for chunks",
+        desc: "If this enabled, all chunks will be stored with the revision made from its content.",
     },
     sendChunksBulkMaxSize: {
         name: "Maximum size of chunks to send in one request",
@@ -372,6 +372,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
     suppressNotifyHiddenFilesChange: {
         name: "Suppress notification of hidden files change",
         desc: "If enabled, the notification of hidden files change will be suppressed.",
+    },
+    syncMinimumInterval: {
+        name: "Minimum interval for syncing",
+        desc: "The minimum interval for automatic synchronisation on event.",
     },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {

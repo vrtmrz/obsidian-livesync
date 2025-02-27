@@ -570,6 +570,9 @@ export default class ObsidianLiveSyncPlugin
     $$replicate(showMessage: boolean = false): Promise<boolean | void> {
         throwShouldBeOverridden();
     }
+    $$replicateByEvent(showMessage: boolean = false): Promise<boolean | void> {
+        throwShouldBeOverridden();
+    }
 
     $everyOnDatabaseInitialized(showingNotice: boolean): Promise<boolean> {
         throwShouldBeOverridden();
@@ -633,10 +636,6 @@ export default class ObsidianLiveSyncPlugin
         throwShouldBeOverridden();
     }
     $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
-
-    $$waitForReplicationOnce(): Promise<boolean | void> {
         throwShouldBeOverridden();
     }
 

@@ -299,6 +299,8 @@
                                 placeholder="anything-you-like"
                                 bind:value={eRoomId}
                                 autocomplete="off"
+                                spellcheck="false"
+                                autocorrect="off"
                             />
                             <button onclick={() => chooseRandom()}> Use Random Number </button>
                         </label>
@@ -327,6 +329,12 @@
                         <label class={{ "is-dirty": isDeviceNameModified }}>
                             <input type="text" placeholder="iphone-16" bind:value={eDeviceName} autocomplete="off" />
                         </label>
+                        <span>
+                            <small>
+                                Device name to identify the device. Please use shorter one for the stable peer
+                                detection, i.e., "iphone-16" or "macbook-2021".
+                            </small>
+                        </span>
                     </td>
                 </tr>
                 <tr>

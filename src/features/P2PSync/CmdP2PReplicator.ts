@@ -23,6 +23,7 @@ import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
 import type ObsidianLiveSyncPlugin from "../../main.ts";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
+import { getPlatformName } from "../../lib/src/PlatformAPIs/obsidian/Environment.ts";
 
 class P2PReplicatorCommandBase extends LiveSyncCommands implements P2PReplicatorBase {
     storeP2PStatusLine = reactiveSource("");
@@ -78,6 +79,9 @@ export class P2PReplicator
             return Promise.resolve(new LiveSyncTrysteroReplicator(this.plugin));
         }
         return undefined!;
+    }
+    override getPlatform(): string {
+        return getPlatformName();
     }
 
     override onunload(): void {

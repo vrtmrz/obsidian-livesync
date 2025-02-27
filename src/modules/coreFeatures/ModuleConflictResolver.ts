@@ -140,7 +140,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 //auto resolved, but need check again;
                 if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
                     //Wait for the running replication, if not running replication, run it once.
-                    await this.core.$$waitForReplicationOnce();
+                    await this.core.$$replicateByEvent();
                 }
                 this._log("[conflict] Automatically merged, but we have to check it again");
                 await this.core.$$queueConflictCheck(filename);

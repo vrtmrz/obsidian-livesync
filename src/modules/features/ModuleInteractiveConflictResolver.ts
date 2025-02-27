@@ -90,7 +90,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
         // So we have to run replication if configured.
         // TODO: Make this is as a event request
         if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
-            await this.core.$$waitForReplicationOnce();
+            await this.core.$$replicateByEvent();
         }
         // And, check it again.
         await this.core.$$queueConflictCheck(filename);

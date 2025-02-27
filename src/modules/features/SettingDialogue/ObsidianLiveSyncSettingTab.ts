@@ -71,6 +71,7 @@ import {
     EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG,
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
+    EVENT_REQUEST_RUN_DOCTOR,
     eventHub,
 } from "../../../common/events.ts";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
@@ -1890,6 +1891,9 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         })
                         .setClass("wizardHidden");
 
+                    new Setting(paneEl).autoWireNumeric("syncMinimumInterval", {
+                        onUpdate: onlyOnNonLiveSync,
+                    });
                     new Setting(paneEl)
                         .setClass("wizardHidden")
                         .autoWireToggle("syncOnSave", { onUpdate: onlyOnNonLiveSync });
@@ -2226,10 +2230,23 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
         void addPane(containerEl, "Hatch", "🧰", 50, true).then((paneEl) => {
             // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
             // hatchWarn.addClass("op-warn-info");
-            void addPanel(paneEl, "Reporting Issue").then((paneEl) => {
-                new Setting(paneEl).setName("Make report to inform the issue").addButton((button) =>
+            void addPanel(paneEl, $msg("Setting.TroubleShooting")).then((paneEl) => {
+                new Setting(paneEl)
+                    .setName($msg("Setting.TroubleShooting.Doctor"))
+                    .setDesc($msg("Setting.TroubleShooting.Doctor.Desc"))
+                    .addButton((button) =>
+                        button
+                            .setButtonText("Run Doctor")
+                            .setCta()
+                            .setDisabled(false)
+                            .onClick(() => {
+                                this.closeSetting();
+                                eventHub.emitEvent(EVENT_REQUEST_RUN_DOCTOR, "you wanted(Thank you)!");
+                            })
+                    );
+                new Setting(paneEl).setName("Prepare the 'report' to create an issue").addButton((button) =>
                     button
-                        .setButtonText("Make report")
+                        .setButtonText("Copy Report to clipboard")
                         .setCta()
                         .setDisabled(false)
                         .onClick(async () => {
@@ -2310,7 +2327,10 @@ version:${manifestVersion}
 ${stringifyYaml(pluginConfig)}`;
                             console.log(msgConfig);
                             await navigator.clipboard.writeText(msgConfig);
-                            Logger(`Information has been copied to clipboard`, LOG_LEVEL_NOTICE);
+                            Logger(
+                                `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
+                                LOG_LEVEL_NOTICE
+                            );
                         })
                 );
                 new Setting(paneEl).autoWireToggle("writeLogToTheFile");

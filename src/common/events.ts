@@ -18,6 +18,8 @@ export const EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG = "request-open-plugin-sync-d
 export const EVENT_REQUEST_OPEN_P2P = "request-open-p2p";
 export const EVENT_REQUEST_CLOSE_P2P = "request-close-p2p";
 
+export const EVENT_REQUEST_RUN_DOCTOR = "request-run-doctor";
+
 // export const EVENT_FILE_CHANGED = "file-changed";
 
 declare global {
@@ -33,6 +35,7 @@ declare global {
         [EVENT_REQUEST_OPEN_P2P]: undefined;
         [EVENT_REQUEST_OPEN_SETUP_URI]: undefined;
         [EVENT_REQUEST_COPY_SETUP_URI]: undefined;
+        [EVENT_REQUEST_RUN_DOCTOR]: string;
     }
 }
 
