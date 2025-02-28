@@ -10,6 +10,26 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.18
+
+### Fixed
+
+- Now no chunk creation errors will be raised after switching `Compute revisions for chunks`.
+- Some invisible file can be handled correctly (e.g., `writing-goals-history.csv`).
+- Fetching configuration from the server is now saves the configuration immediately (if we are not in the wizard).
+
+### Improved
+
+- Mismatched configuration dialogue is now more informative, and rewritten to more user-friendly.
+- Applying configuration mismatch is now without rebuilding (at our own risks).
+- Now, rebuilding is decided more fine grained.
+
+### Improved internally
+
+- Translations can be nested. i.e., task:`Some procedure`, check: `%{task} checking`, checkfailed: `%{check} failed` produces `Some procedure checking failed`.
+    - Max to 10 levels of nesting
+
+
 ## 0.24.17
 
 Confession. I got the default values wrong. So scary and sorry.
@@ -18,7 +38,6 @@ Confession. I got the default values wrong. So scary and sorry.
 
 - **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
     - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
-
 
 ## 0.24.16
 
