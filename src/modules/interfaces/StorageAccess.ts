@@ -38,7 +38,7 @@ export interface StorageAccess {
     getFiles(): UXFileInfoStub[];
     getFileNames(): FilePathWithPrefix[];
 
-    touched(file: UXFileInfoStub | FilePathWithPrefix): void;
+    touched(file: UXFileInfoStub | FilePathWithPrefix): Promise<void>;
     recentlyTouched(file: UXFileInfoStub | FilePathWithPrefix): boolean;
     clearTouched(): void;
 

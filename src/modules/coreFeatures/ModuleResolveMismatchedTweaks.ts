@@ -2,14 +2,17 @@ import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
 import {
     TweakValuesShouldMatchedTemplate,
-    CompatibilityBreakingTweakValues,
+    IncompatibleChanges,
     confName,
     type TweakValues,
     type RemoteDBSettings,
+    IncompatibleChangesInSpecificPattern,
+    CompatibleButLossyChanges,
 } from "../../lib/src/common/types.ts";
 import { escapeMarkdownValue } from "../../lib/src/common/utils.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
+import { $msg } from "../../lib/src/common/i18n.ts";
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule implements ICoreModule {
     async $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
@@ -28,65 +31,100 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         let rebuildRequired = false;
-
+        let rebuildRecommended = false;
         // Making tables:
-        let table = `| Value name | This device | Configured | \n` + `|: --- |: --- :|: ---- :| \n`;
-
+        // let table = `| Value name | This device | Configured | \n` + `|: --- |: --- :|: ---- :| \n`;
+        const tableRows = [];
         // const items = [mine,preferred]
         for (const v of items) {
             const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
             const valueMine = escapeMarkdownValue(mine[key]);
             const valuePreferred = escapeMarkdownValue(preferred[key]);
             if (valueMine == valuePreferred) continue;
-            if (CompatibilityBreakingTweakValues.indexOf(key) !== -1) {
+            if (IncompatibleChanges.indexOf(key) !== -1) {
                 rebuildRequired = true;
             }
-            table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
+            for (const pattern of IncompatibleChangesInSpecificPattern) {
+                if (pattern.key !== key) continue;
+                // if from value supplied, check if current value have been violated : in other words, if the current value is the same as the from value, it should require a rebuild.
+                const isFromConditionMet = "from" in pattern ? pattern.from === mine[key] : false;
+                // and, if to value supplied, same as above.
+                const isToConditionMet = "to" in pattern ? pattern.to === preferred[key] : false;
+                // if either of them is true, it should require a rebuild, if the pattern is not a recommendation.
+                if (isFromConditionMet || isToConditionMet) {
+                    if (pattern.isRecommendation) {
+                        rebuildRecommended = true;
+                    } else {
+                        rebuildRequired = true;
+                    }
+                }
+            }
+            if (CompatibleButLossyChanges.indexOf(key) !== -1) {
+                rebuildRecommended = true;
+            }
+
+            // table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
+            tableRows.push(
+                $msg("TweakMismatchResolve.Table.Row", {
+                    name: confName(key),
+                    self: valueMine,
+                    remote: valuePreferred,
+                })
+            );
         }
 
-        const additionalMessage = rebuildRequired
-            ? `
+        const additionalMessage =
+            rebuildRequired && this.core.settings.isConfigured
+                ? $msg("TweakMismatchResolve.Message.WarningIncompatibleRebuildRequired")
+                : "";
+        const additionalMessage2 =
+            rebuildRecommended && this.core.settings.isConfigured
+                ? $msg("TweakMismatchResolve.Message.WarningIncompatibleRebuildRecommended")
+                : "";
 
-**Note**: We have detected that some of the values are different to make incompatible the local database with the remote database.
-If you choose to use the configured values, the local database will be rebuilt, and if you choose to use the values of this device, the remote database will be rebuilt. 
-Both of them takes a few minutes. Please choose after considering the situation.`
-            : "";
+        const table = $msg("TweakMismatchResolve.Table", { rows: tableRows.join("\n") });
 
-        const message = `
-Your configuration has not been matched with the one on the remote server.
-(Which you had decided once before, or set by initially synchronised device).
+        const message = $msg("TweakMismatchResolve.Message.MainTweakResolving", {
+            table: table,
+            additionalMessage: [additionalMessage, additionalMessage2].filter((v) => v).join("\n"),
+        });
 
-Configured values:
+        const CHOICE_USE_REMOTE = $msg("TweakMismatchResolve.Action.UseRemote");
+        const CHOICE_USE_REMOTE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteWithRebuild");
+        const CHOICE_USE_REMOTE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteAcceptIncompatible");
+        const CHOICE_USE_MINE = $msg("TweakMismatchResolve.Action.UseMine");
+        const CHOICE_USE_MINE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseMineWithRebuild");
+        const CHOICE_USE_MINE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseMineAcceptIncompatible");
+        const CHOICE_DISMISS = $msg("TweakMismatchResolve.Action.Dismiss");
 
-${table}
+        const CHOICE_AND_VALUES = [] as [string, [result: TweakValues | boolean, rebuild: boolean]][];
 
-Please select which one you want to use.
-
-- Use configured: Update settings of this device by configured one on the remote server.
-  You should select this if you have changed the settings on ** another device **.
-- Update with mine: Update settings on the remote server by the settings of this device.
-  You should select this if you have changed the settings on ** this device **.
-- Dismiss: Ignore this message and keep the current settings.
-  You cannot synchronise until you resolve this issue without enabling \`Do not check configuration mismatch before replication\`.${additionalMessage}`;
-
-        const CHOICE_USE_REMOTE = "Use configured";
-        const CHOICE_USR_MINE = "Update with mine";
-        const CHOICE_DISMISS = "Dismiss";
-        const CHOICE_AND_VALUES = [
-            [CHOICE_USE_REMOTE, preferred],
-            [CHOICE_USR_MINE, true],
-            [CHOICE_DISMISS, false],
-        ];
-        const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<string, TweakValues | boolean>;
-        const retKey = await this.core.confirm.confirmWithMessage(
-            "Tweaks Mismatched or Changed",
-            message,
-            Object.keys(CHOICES),
-            CHOICE_DISMISS,
-            60
-        );
+        if (rebuildRequired) {
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [preferred, true]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_WITH_REBUILD, [true, true]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_PREVENT_REBUILD, [preferred, false]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_PREVENT_REBUILD, [true, false]]);
+        } else if (rebuildRecommended) {
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_MINE, [true, false]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [true, true]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_WITH_REBUILD, [true, true]]);
+        } else {
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_MINE, [true, false]]);
+        }
+        CHOICE_AND_VALUES.push([CHOICE_DISMISS, [false, false]]);
+        const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<
+            string,
+            [TweakValues | boolean, performRebuild: boolean]
+        >;
+        const retKey = await this.core.confirm.askSelectStringDialogue(message, Object.keys(CHOICES), {
+            title: $msg("TweakMismatchResolve.Title.TweakResolving"),
+            timeout: 60,
+            defaultAction: CHOICE_DISMISS,
+        });
         if (!retKey) return [false, false];
-        return [CHOICES[retKey], rebuildRequired];
+        return CHOICES[retKey];
     }
 
     async $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
@@ -143,28 +181,56 @@ Please select which one you want to use.
             return { result: false, requireFetch: false };
         }
     }
+
     async $$askUseRemoteConfiguration(
         trialSetting: RemoteDBSettings,
         preferred: TweakValues
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         let rebuildRequired = false;
+        let rebuildRecommended = false;
         // Making tables:
-        let table = `| Value name | This device | Stored | \n` + `|: --- |: ---- :|: ---- :| \n`;
+        // let table = `| Value name | This device | On Remote | \n` + `|: --- |: ---- :|: ---- :| \n`;
         let differenceCount = 0;
+        const tableRows = [] as string[];
         // const items = [mine,preferred]
         for (const v of items) {
             const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-            const valuePreferred = escapeMarkdownValue(preferred[key]);
-            const currentDisp = `${escapeMarkdownValue((trialSetting as TweakValues)?.[key])} |`;
+            const remoteValueForDisplay = escapeMarkdownValue(preferred[key]);
+            const currentValueForDisplay = `${escapeMarkdownValue((trialSetting as TweakValues)?.[key])}`;
             if ((trialSetting as TweakValues)?.[key] !== preferred[key]) {
-                if (CompatibilityBreakingTweakValues.indexOf(key) !== -1) {
+                if (IncompatibleChanges.indexOf(key) !== -1) {
                     rebuildRequired = true;
+                }
+                for (const pattern of IncompatibleChangesInSpecificPattern) {
+                    if (pattern.key !== key) continue;
+                    // if from value supplied, check if current value have been violated : in other words, if the current value is the same as the from value, it should require a rebuild.
+                    const isFromConditionMet =
+                        "from" in pattern ? pattern.from === (trialSetting as TweakValues)?.[key] : false;
+                    // and, if to value supplied, same as above.
+                    const isToConditionMet = "to" in pattern ? pattern.to === preferred[key] : false;
+                    // if either of them is true, it should require a rebuild, if the pattern is not a recommendation.
+                    if (isFromConditionMet || isToConditionMet) {
+                        if (pattern.isRecommendation) {
+                            rebuildRecommended = true;
+                        } else {
+                            rebuildRequired = true;
+                        }
+                    }
+                }
+                if (CompatibleButLossyChanges.indexOf(key) !== -1) {
+                    rebuildRecommended = true;
                 }
             } else {
                 continue;
             }
-            table += `| ${confName(key)} | ${currentDisp} ${valuePreferred} | \n`;
+            tableRows.push(
+                $msg("TweakMismatchResolve.Table.Row", {
+                    name: confName(key),
+                    self: currentValueForDisplay,
+                    remote: remoteValueForDisplay,
+                })
+            );
             differenceCount++;
         }
 
@@ -174,33 +240,28 @@ Please select which one you want to use.
         }
         const additionalMessage =
             rebuildRequired && this.core.settings.isConfigured
-                ? `
-
->[!WARNING]
-> Some remote configurations are not compatible with the local database of this device. Rebuilding the local database will be required.
-***Please ensure that you have time and are connected to a stable network to apply!***`
+                ? $msg("TweakMismatchResolve.Message.UseRemote.WarningRebuildRequired")
+                : "";
+        const additionalMessage2 =
+            rebuildRecommended && this.core.settings.isConfigured
+                ? $msg("TweakMismatchResolve.Message.UseRemote.WarningRebuildRecommended")
                 : "";
 
-        const message = `
-The settings in the remote database are as follows.
-If you want to use these settings, please select "Use configured".
-If you want to keep the settings of this device, please select "Dismiss".
+        const table = $msg("TweakMismatchResolve.Table", { rows: tableRows.join("\n") });
 
-${table}
+        const message = $msg("TweakMismatchResolve.Message.Main", {
+            table: table,
+            additionalMessage: [additionalMessage, additionalMessage2].filter((v) => v).join("\n"),
+        });
 
->[!TIP]
-> If you want to synchronise all settings, please use \`Sync settings via markdown\` after applying minimal configuration with this feature.
-
-${additionalMessage}`;
-
-        const CHOICE_USE_REMOTE = "Use configured";
-        const CHOICE_DISMISS = "Dismiss";
+        const CHOICE_USE_REMOTE = $msg("TweakMismatchResolve.Action.UseConfigured");
+        const CHOICE_DISMISS = $msg("TweakMismatchResolve.Action.Dismiss");
         // const CHOICE_AND_VALUES = [
         //     [CHOICE_USE_REMOTE, preferred],
         //     [CHOICE_DISMISS, false]]
         const CHOICES = [CHOICE_USE_REMOTE, CHOICE_DISMISS];
         const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
-            title: "Use Remote Configuration",
+            title: $msg("TweakMismatchResolve.Title.UseRemoteConfig"),
             timeout: 0,
             defaultAction: CHOICE_DISMISS,
         });

@@ -199,9 +199,15 @@ export class SerializedFileAccess {
 
     touchedFiles: string[] = [];
 
-    touch(file: TFile | FilePath) {
-        const f = file instanceof TFile ? file : (this.getAbstractFileByPath(file) as TFile);
-        const key = `${f.path}-${f.stat.mtime}-${f.stat.size}`;
+    _statInternal(file: FilePath) {
+        return this.app.vault.adapter.stat(file);
+    }
+
+    async touch(file: TFile | FilePath) {
+        const path = file instanceof TFile ? (file.path as FilePath) : file;
+        const statOrg = file instanceof TFile ? file.stat : await this._statInternal(path);
+        const stat = statOrg || { mtime: 0, size: 0 };
+        const key = `${path}-${stat.mtime}-${stat.size}`;
         this.touchedFiles.unshift(key);
         this.touchedFiles = this.touchedFiles.slice(0, 100);
     }

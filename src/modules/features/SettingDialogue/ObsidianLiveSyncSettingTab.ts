@@ -1614,8 +1614,33 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                     const newTweaks =
                                         await this.plugin.$$checkAndAskUseRemoteConfiguration(trialSetting);
                                     if (newTweaks.result !== false) {
-                                        this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
-                                        this.requestUpdate();
+                                        if (this.inWizard) {
+                                            this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
+                                            this.requestUpdate();
+                                            return;
+                                        } else {
+                                            this.closeSetting();
+                                            this.plugin.settings = { ...this.plugin.settings, ...newTweaks.result };
+                                            if (newTweaks.requireFetch) {
+                                                if (
+                                                    (await this.plugin.confirm.askYesNoDialog(
+                                                        $msg("SettingTab.Message.AskRebuild"),
+                                                        {
+                                                            defaultOption: "Yes",
+                                                        }
+                                                    )) == "no"
+                                                ) {
+                                                    await this.plugin.$$saveSettingData();
+                                                    return;
+                                                }
+                                                await this.plugin.$$saveSettingData();
+                                                await this.plugin.rebuilder.scheduleFetch();
+                                                await this.plugin.$$scheduleAppReload();
+                                                return;
+                                            } else {
+                                                await this.plugin.$$saveSettingData();
+                                            }
+                                        }
                                     }
                                 })
                         );

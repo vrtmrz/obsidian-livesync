@@ -30,6 +30,7 @@ import { isAnyNote } from "../../lib/src/common/utils";
 import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { globalSlipBoard } from "../../lib/src/bureau/bureau";
+import { $msg } from "../../lib/src/common/i18n";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
@@ -46,7 +47,7 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
     async setReplicator() {
         const replicator = await this.core.$anyNewReplicator();
         if (!replicator) {
-            this._log("No replicator is available, this is the fatal error.", LOG_LEVEL_NOTICE);
+            this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
             return false;
         }
         this.core.replicator = replicator;
@@ -79,23 +80,82 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
             updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT);
         }
     }
+
+    /**
+     * obsolete method. No longer maintained and will be removed in the future.
+     * @deprecated v0.24.17
+     * @param showMessage If true, show message to the user.
+     */
+    async cleaned(showMessage: boolean) {
+        Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        await skipIfDuplicated("cleanup", async () => {
+            const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
+            const message = `The remote database has been cleaned up.
+To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
+However, If there are many chunks to be deleted, maybe fetching again is faster.
+We will lose the history of this device if we fetch the remote database again.
+Even if you choose to clean up, you will see this option again if you exit Obsidian and then synchronise again.`;
+            const CHOICE_FETCH = "Fetch again";
+            const CHOICE_CLEAN = "Cleanup";
+            const CHOICE_DISMISS = "Dismiss";
+            const ret = await this.core.confirm.confirmWithMessage(
+                "Cleaned",
+                message,
+                [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS],
+                CHOICE_DISMISS,
+                30
+            );
+            if (ret == CHOICE_FETCH) {
+                await this.core.rebuilder.$performRebuildDB("localOnly");
+            }
+            if (ret == CHOICE_CLEAN) {
+                const replicator = this.core.$$getReplicator();
+                if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+                const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
+                    this.settings,
+                    this.core.$$isMobile(),
+                    true
+                );
+                if (typeof remoteDB == "string") {
+                    Logger(remoteDB, LOG_LEVEL_NOTICE);
+                    return false;
+                }
+
+                await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                this.localDatabase.hashCaches.clear();
+                // Perform the synchronisation once.
+                if (await this.core.replicator.openReplication(this.settings, false, showMessage, true)) {
+                    await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                    await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                    this.localDatabase.hashCaches.clear();
+                    await this.core.$$getReplicator().markRemoteResolved(this.settings);
+                    Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+                } else {
+                    Logger(
+                        "Replication has been cancelled. Please try it again.",
+                        showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                    );
+                }
+            }
+        });
+    }
     async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
         //--?
         if (!this.core.$$isReady()) return;
         if (isLockAcquired("cleanup")) {
-            Logger("Database cleaning up is in process. replication has been cancelled", LOG_LEVEL_NOTICE);
+            Logger($msg("Replicator.Message.Cleaned"), LOG_LEVEL_NOTICE);
             return;
         }
         if (this.settings.versionUpFlash != "") {
-            Logger("Open settings and check message, please. replication has been cancelled.", LOG_LEVEL_NOTICE);
+            Logger($msg("Replicator.Message.VersionUpFlash"), LOG_LEVEL_NOTICE);
             return;
         }
         if (!(await this.core.$everyCommitPendingFileEvent())) {
-            Logger("Some file events are pending. Replication has been cancelled.", LOG_LEVEL_NOTICE);
+            Logger($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (!(await this.core.$everyBeforeReplicate(showMessage))) {
-            Logger(`Replication has been cancelled by some module failure`, LOG_LEVEL_NOTICE);
+            Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
 
@@ -107,106 +167,35 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
             } else {
                 if (this.core.replicator?.remoteLockedAndDeviceNotAccepted) {
                     if (this.core.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
-                        Logger(
-                            `The remote database has been cleaned.`,
-                            showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
-                        );
-                        await skipIfDuplicated("cleanup", async () => {
-                            const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
-                            const message = `The remote database has been cleaned up.
-To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
-However, If there are many chunks to be deleted, maybe fetching again is faster.
-We will lose the history of this device if we fetch the remote database again.
-Even if you choose to clean up, you will see this option again if you exit Obsidian and then synchronise again.`;
-                            const CHOICE_FETCH = "Fetch again";
-                            const CHOICE_CLEAN = "Cleanup";
-                            const CHOICE_DISMISS = "Dismiss";
-                            const ret = await this.core.confirm.confirmWithMessage(
-                                "Cleaned",
-                                message,
-                                [CHOICE_FETCH, CHOICE_CLEAN, CHOICE_DISMISS],
-                                CHOICE_DISMISS,
-                                30
-                            );
-                            if (ret == CHOICE_FETCH) {
-                                await this.core.rebuilder.$performRebuildDB("localOnly");
-                            }
-                            if (ret == CHOICE_CLEAN) {
-                                const replicator = this.core.$$getReplicator();
-                                if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-                                const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
-                                    this.settings,
-                                    this.core.$$isMobile(),
-                                    true
-                                );
-                                if (typeof remoteDB == "string") {
-                                    Logger(remoteDB, LOG_LEVEL_NOTICE);
-                                    return false;
-                                }
-
-                                await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                                this.localDatabase.hashCaches.clear();
-                                // Perform the synchronisation once.
-                                if (
-                                    await this.core.replicator.openReplication(this.settings, false, showMessage, true)
-                                ) {
-                                    await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
-                                    await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                                    this.localDatabase.hashCaches.clear();
-                                    await this.core.$$getReplicator().markRemoteResolved(this.settings);
-                                    Logger(
-                                        "The local database has been cleaned up.",
-                                        showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
-                                    );
-                                } else {
-                                    Logger(
-                                        "Replication has been cancelled. Please try it again.",
-                                        showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
-                                    );
-                                }
-                            }
-                        });
+                        await this.cleaned(showMessage);
                     } else {
-                        const message = `
-The remote database has been rebuilt.
-To synchronize, this device must fetch everything again once.
-Or if you are sure know what had been happened, we can unlock the database from the setting dialog.
-                    `;
-                        const CHOICE_FETCH = "Fetch again";
-                        const CHOICE_DISMISS = "Dismiss";
-                        const ret = await this.core.confirm.confirmWithMessage(
-                            "Locked",
+                        const message = $msg("Replicator.Dialogue.Locked.Message");
+                        const CHOICE_FETCH = $msg("Replicator.Dialogue.Locked.Action.Fetch");
+                        const CHOICE_DISMISS = $msg("Replicator.Dialogue.Locked.Action.Dismiss");
+                        const CHOICE_UNLOCK = $msg("Replicator.Dialogue.Locked.Action.Unlock");
+                        const ret = await this.core.confirm.askSelectStringDialogue(
                             message,
-                            [CHOICE_FETCH, CHOICE_DISMISS],
-                            CHOICE_DISMISS,
-                            10
+                            [CHOICE_FETCH, CHOICE_UNLOCK, CHOICE_DISMISS],
+                            {
+                                title: $msg("Replicator.Dialogue.Locked.Title"),
+                                defaultAction: CHOICE_DISMISS,
+                                timeout: 60,
+                            }
                         );
                         if (ret == CHOICE_FETCH) {
-                            const CHOICE_RESTART = "Restart";
-                            const CHOICE_WITHOUT_RESTART = "Without restart";
-                            if (
-                                (await this.core.confirm.askSelectStringDialogue(
-                                    "Self-hosted LiveSync restarts Obsidian to fetch everything safely. However, you can do it without restarting. Please choose one.",
-                                    [CHOICE_RESTART, CHOICE_WITHOUT_RESTART],
-                                    {
-                                        title: "Fetch again",
-                                        defaultAction: CHOICE_RESTART,
-                                        timeout: 30,
-                                    }
-                                )) == CHOICE_RESTART
-                            ) {
-                                await this.core.rebuilder.scheduleFetch();
-                                // await this.core.$$scheduleAppReload();
-                                return;
-                            } else {
-                                await this.core.rebuilder.$performRebuildDB("localOnly");
-                            }
+                            this._log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
+                            await this.core.rebuilder.scheduleFetch();
+                            this.core.$$scheduleAppReload();
+                            return;
+                        } else if (ret == CHOICE_UNLOCK) {
+                            await this.core.replicator.markRemoteResolved(this.settings);
+                            this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                            return;
                         }
                     }
                 }
             }
         }
-
         return ret;
     }
 
@@ -414,7 +403,7 @@ Or if you are sure know what had been happened, we can unlock the database from 
     ): Promise<boolean> {
         if (!this.core.$$isReady()) return false;
         if (!(await this.core.$everyBeforeReplicate(showingNotice))) {
-            Logger(`Replication has been cancelled by some module failure`, LOG_LEVEL_NOTICE);
+            Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (!sendChunksInBulkDisabled) {

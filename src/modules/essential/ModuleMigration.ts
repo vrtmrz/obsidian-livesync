@@ -1,4 +1,4 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger.js";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger.js";
 import { type ObsidianLiveSyncSettings } from "../../lib/src/common/types.js";
 import {
     EVENT_REQUEST_OPEN_P2P,
@@ -25,7 +25,10 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         }
         const issues = Object.entries(r.rules);
         if (issues.length == 0) {
-            this._log($msg("Doctor.Message.NoIssues"), LOG_LEVEL_NOTICE);
+            this._log(
+                $msg("Doctor.Message.NoIssues"),
+                activateReason !== "updated" ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+            );
             return;
         } else {
             const OPT_YES = `${$msg("Doctor.Button.Yes")}` as const;
@@ -68,7 +71,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                     [RuleLevel.Must]: $msg("Doctor.Level.Must"),
                 };
                 const level = value.level ? levelMap[value.level] : "Unknown";
-                const options = [OPT_FIX];
+                const options = [OPT_FIX] as [typeof OPT_FIX | typeof OPT_SKIP | typeof OPT_FIXBUTNOREBUILD];
                 if ((!skipRebuild && value.requireRebuild) || value.requireRebuildLocal) {
                     options.push(OPT_FIXBUTNOREBUILD);
                 }

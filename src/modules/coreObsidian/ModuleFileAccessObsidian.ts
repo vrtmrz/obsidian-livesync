@@ -1,4 +1,4 @@
-import { normalizePath, TFile, TFolder, type ListedFiles } from "obsidian";
+import { TFile, TFolder, type ListedFiles } from "obsidian";
 import { SerializedFileAccess } from "./storageLib/SerializedFileAccess";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
@@ -60,7 +60,23 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         if (file instanceof TFile) {
             return this.vaultAccess.vaultModify(file, data, opt);
         } else if (file === null) {
-            return (await this.vaultAccess.vaultCreate(path, data, opt)) instanceof TFile;
+            if (!path.endsWith(".md")) {
+                // Very rare case, we encountered this case with `writing-goals-history.csv` file.
+                // Indeed, that file not appears in the File Explorer, but it exists in the vault.
+                // Hence, we cannot retrieve the file from the vault by getAbstractFileByPath, and we cannot write it via vaultModify.
+                // It makes `File already exists` error.
+                // Therefore, we need to write it via adapterWrite.
+                // Maybe there are others like this, so I will write it via adapterWrite.
+                // This is a workaround for the issue, but I don't know if this is the right solution.
+                // (So limits to non-md files).
+                // Has Obsidian been patched?, anyway, writing directly might be a safer approach.
+                // However, does changes of that file trigger file-change event?
+                await this.vaultAccess.adapterWrite(path, data, opt);
+                // For safety, check existence
+                return await this.vaultAccess.adapterExists(path);
+            } else {
+                return (await this.vaultAccess.vaultCreate(path, data, opt)) instanceof TFile;
+            }
         } else {
             this._log(`Could not write file (Possibly already exists as a folder): ${path}`, LOG_LEVEL_VERBOSE);
             return false;
@@ -158,8 +174,9 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         }
     }
     triggerFileEvent(event: string, path: string): void {
-        // this.app.vault.trigger("file-change", path);
-        this.vaultAccess.trigger(event, this.vaultAccess.getAbstractFileByPath(normalizePath(path)));
+        const file = this.vaultAccess.getAbstractFileByPath(path);
+        if (file === null) return;
+        this.vaultAccess.trigger(event, file);
     }
     async triggerHiddenFile(path: string): Promise<void> {
         //@ts-ignore internal function
@@ -258,9 +275,9 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         }
         return files as FilePath[];
     }
-    touched(file: UXFileInfoStub | FilePathWithPrefix): void {
+    async touched(file: UXFileInfoStub | FilePathWithPrefix): Promise<void> {
         const path = typeof file === "string" ? file : file.path;
-        this.vaultAccess.touch(path as FilePath);
+        await this.vaultAccess.touch(path as FilePath);
     }
     recentlyTouched(file: UXFileInfoStub | FilePathWithPrefix): boolean {
         const xFile = typeof file === "string" ? (this.vaultAccess.getAbstractFileByPath(file) as TFile) : file;

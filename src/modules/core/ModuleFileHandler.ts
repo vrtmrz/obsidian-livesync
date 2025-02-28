@@ -297,7 +297,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         }
         await this.storage.ensureDir(path);
         const ret = await this.storage.writeFileAuto(path, docData, { ctime: docRead.ctime, mtime: docRead.mtime });
-        this.storage.touched(path);
+        await this.storage.touched(path);
         this.storage.triggerFileEvent(mode, path);
         return ret;
     }
