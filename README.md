@@ -20,8 +20,8 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 - WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 - WebRTC peer-to-peer synchronisation without the need any `host` is now possible. (Experimental)
   - This feature is still in the experimental stage. Please be careful when using it. 
-  - Instead of using server, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
-
+  - Instead of using public servers, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
+  - There is an [explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync), although it is in Japanese. I will write the English version soon. 
 
 This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
