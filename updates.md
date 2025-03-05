@@ -10,6 +10,14 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.19
+
+### New Feature
+
+- Now we can generate a QR Code for transferring the configuration to another device.
+    - This QR Code can be scanned by the camera app or something QR Code Reader of another device, and via Obsidian URL, the configuration will be transferred.
+    - Note: This QR Code is not encrypted. So, please be careful when transferring the configuration.
+
 ## 0.24.18
 
 ### Fixed
@@ -28,7 +36,6 @@ Note: Already you have noticed this, but let me mention it again, this is a sign
 
 - Translations can be nested. i.e., task:`Some procedure`, check: `%{task} checking`, checkfailed: `%{check} failed` produces `Some procedure checking failed`.
     - Max to 10 levels of nesting
-
 
 ## 0.24.17
 
@@ -136,38 +143,5 @@ And, this is just a single web page, without any server-side code. It is a stati
     - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
 - Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
 
-## 0.24.11
-
-### Improved
-
-- New Translation: `es` (Spanish) by @zeedif (Thank you so much)!
-- Now all of messages can be selectable and copyable, also on the iPhone, iPad, and Android devices. Now we can copy or share the messages easily.
-
-### New Feature
-
-- Peer-to-Peer Synchronisation has been implemented!
-    - This feature is still in early beta, and it is recommended to use it with caution.
-    - However, it is a significant step towards the self-hosting concept. It is now possible to synchronise your data without using any remote database or storage. It is a direct connection between your devices.
-    - Note: We should keep the device online to synchronise the data. It is not a background synchronisation. Also it needs a signalling server to establish the connection. But, the signalling server is used only for establishing the connection, and it does not store any data.
-
-### Fixed
-
-- No longer memory or resource leaks when the plug-in is disabled.
-- Now deleted chunks are correctly detected on conflict resolution, and we are guided to resurrect them.
-- Hanging issue during the initial synchronisation has been fixed.
-- Some unnecessary logs have been removed.
-- Now all modal dialogues are correctly closed when the plug-in is disabled.
-
-### Refactor
-
-- Several interfaces have been moved to the separated library.
-- Translations have been moved to each language file, and during the build, they are merged into one file.
-- Non-mobile friendly code has been removed and replaced with the safer code.
-    - (Now a days, mostly server-side engine can use webcrypto, so it will be rewritten in the future more).
-- Started writing Platform impedance-matching-layer.
-- Svelte has been updated to v5.
-- Some function have got more robust type definitions.
-- Terser optimisation has slightly improved.
-- During the build, analysis meta-file of the bundled codes will be generated.
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
