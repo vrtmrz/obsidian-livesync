@@ -437,3 +437,10 @@ span.ls-mark-cr::after {
 .sls-dialogue-note-countdown {
     font-size: 0.8em;
 }
+
+.sls-qr {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: max-content;
+}

@@ -538,3 +538,119 @@ export function updatePreviousExecutionTime(key: string, timeDelta: number = 0) 
     }
     waitingTasks[key].leastNext = Math.max(Date.now() + timeDelta, waitingTasks[key].leastNext);
 }
+
+const prefixMapObject = {
+    s: {
+        1: "V",
+        2: "W",
+        3: "X",
+        4: "Y",
+        5: "Z",
+    },
+    o: {
+        1: "v",
+        2: "w",
+        3: "x",
+        4: "y",
+        5: "z",
+    },
+} as Record<string, Record<number, string>>;
+
+const decodePrefixMapObject = Object.fromEntries(
+    Object.entries(prefixMapObject).flatMap(([prefix, map]) =>
+        Object.entries(map).map(([len, char]) => [char, { prefix, len: parseInt(len) }])
+    )
+);
+
+const prefixMapNumber = {
+    n: {
+        1: "a",
+        2: "b",
+        3: "c",
+        4: "d",
+        5: "e",
+    },
+    N: {
+        1: "A",
+        2: "B",
+        3: "C",
+        4: "D",
+        5: "E",
+    },
+} as Record<string, Record<number, string>>;
+
+const decodePrefixMapNumber = Object.fromEntries(
+    Object.entries(prefixMapNumber).flatMap(([prefix, map]) =>
+        Object.entries(map).map(([len, char]) => [char, { prefix, len: parseInt(len) }])
+    )
+);
+export function encodeAnyArray(obj: any[]): string {
+    const tempArray = obj.map((v) => {
+        if (v == null) return "n";
+        if (v == false) return "f";
+        if (v == true) return "t";
+        if (v == undefined) return "u";
+        if (typeof v == "number") {
+            const b36 = v.toString(36);
+            const strNum = v.toString();
+            const expression = b36.length < strNum.length ? "N" : "n";
+            const encodedStr = expression == "N" ? b36 : strNum;
+            const len = encodedStr.length.toString(36);
+            const lenLen = len.length;
+
+            const prefix2 = prefixMapNumber[expression][lenLen];
+            return prefix2 + len + encodedStr;
+        }
+        const str = typeof v == "string" ? v : JSON.stringify(v);
+        const prefix = typeof v == "string" ? "s" : "o";
+        const length = str.length.toString(36);
+        const lenLen = length.length;
+
+        const prefix2 = prefixMapObject[prefix][lenLen];
+        return prefix2 + length + str;
+    });
+    const w = tempArray.join("");
+    return w;
+}
+
+const decodeMapConstant = {
+    u: undefined,
+    n: null,
+    f: false,
+    t: true,
+} as Record<string, any>;
+export function decodeAnyArray(str: string): any[] {
+    const result = [];
+    let i = 0;
+    while (i < str.length) {
+        const char = str[i];
+        i++;
+        if (char in decodeMapConstant) {
+            result.push(decodeMapConstant[char]);
+            continue;
+        }
+        if (char in decodePrefixMapNumber) {
+            const { prefix, len } = decodePrefixMapNumber[char];
+            const lenStr = str.substring(i, i + len);
+            i += len;
+            const radix = prefix == "N" ? 36 : 10;
+            const lenNum = parseInt(lenStr, 36);
+            const value = str.substring(i, i + lenNum);
+            i += lenNum;
+            result.push(parseInt(value, radix));
+            continue;
+        }
+        const { prefix, len } = decodePrefixMapObject[char];
+        const lenStr = str.substring(i, i + len);
+        i += len;
+        const lenNum = parseInt(lenStr, 36);
+        const value = str.substring(i, i + lenNum);
+        i += lenNum;
+        if (prefix == "s") {
+            result.push(value);
+        } else {
+            result.push(JSON.parse(value));
+        }
+    }
+    return result;
+}
