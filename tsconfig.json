@@ -7,30 +7,21 @@
         "target": "ES2018",
         "allowJs": true,
         "noImplicitAny": true,
-        "moduleResolution": "node",
-        "types": [
-            "svelte",
-            "node"
-        ],
+        "moduleResolution": "bundler",
+        "types": ["svelte", "node"],
         // "importsNotUsedAsValues": "error",
         "importHelpers": false,
         "alwaysStrict": true,
         "allowImportingTsExtensions": true,
         "noEmit": true,
-        "lib": [
-            "es2018",
-            "DOM",
-            "ES5",
-            "ES6",
-            "ES7",
-            "es2019.array",
-            "ES2020.BigInt",
-        ]
+        "lib": ["es2018", "DOM", "ES5", "ES6", "ES7", "es2019.array", "ES2021.WeakRef", "ES2020.BigInt", "ESNext.Intl"],
+        "strictBindCallApply": true,
+        "strictFunctionTypes": true,
+        "paths": {
+            "@/*": ["src/*"],
+            "@lib/*": ["src/lib/src/*"]
+        }
     },
-    "include": [
-        "**/*.ts"
-    ],
-    "exclude": [
-        "pouchdb-browser-webpack"
-    ]
+    "include": ["**/*.ts"],
+    "exclude": ["pouchdb-browser-webpack", "utils"]
 }

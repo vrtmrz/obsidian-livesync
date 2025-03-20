@@ -2,7 +2,9 @@
     "root": true,
     "parser": "@typescript-eslint/parser",
     "plugins": [
-        "@typescript-eslint"
+        "@typescript-eslint",
+        "eslint-plugin-svelte",
+        "eslint-plugin-import"
     ],
     "extends": [
         "eslint:recommended",
@@ -15,6 +17,18 @@
             "tsconfig.json"
         ]
     },
+    "ignorePatterns": [
+        "**/node_modules/*",
+        "**/jest.config.js",
+        "src/lib/coverage",
+        "src/lib/browsertest",
+        "**/test.ts",
+        "**/tests.ts",
+        "**/**test.ts",
+        "**/**.test.ts",
+        "esbuild.*.mjs",
+        "terser.*.mjs"
+    ],
     "rules": {
         "no-unused-vars": "off",
         "@typescript-eslint/no-unused-vars": [
@@ -23,12 +37,22 @@
                 "args": "none"
             }
         ],
+        "no-unused-labels": "off",
         "@typescript-eslint/ban-ts-comment": "off",
         "no-prototype-builtins": "off",
         "@typescript-eslint/no-empty-function": "off",
         "require-await": "warn",
-        "no-async-promise-executor": "off",
+        "@typescript-eslint/require-await": "warn",
+        "@typescript-eslint/no-misused-promises": "warn",
+        "@typescript-eslint/no-floating-promises": "warn",
+        "no-async-promise-executor": "warn",
         "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-unnecessary-type-assertion": "error"
+        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "no-constant-condition": [
+            "error",
+            {
+                "checkLoops": false
+            }
+        ]
     }
 }

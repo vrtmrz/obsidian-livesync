@@ -1,79 +1,147 @@
-### 0.23.0
-Incredibly new features!
+## 0.24.11
 
-Now, we can use object storage (MinIO, S3, R2 or anything you like) for synchronising! Moreover, despite that, we can use all the features as if we were using CouchDB.
-Note: As this is a pretty experimental feature, hence we have some limitations.
-- This is built on the append-only architecture. It will not shrink used storage if we do not perform a rebuild.
-- A bit fragile. However, our version x.yy.0 is always so.
-- When the first synchronisation, the entire history to date is transferred. For this reason, it is preferable to do this under the WiFi network.
-- Do not worry, from the second synchronisation, we always transfer only differences.
+Peer-to-peer synchronisation has been implemented!
 
-I hope this feature empowers users to maintain independence and self-host their data, offering an alternative for those who prefer to manage their own storage solutions and avoid being stuck on the right side of a sudden change in business model.
+Until now, I have not provided a synchronisation server. More people may not even know that I have shut down the test server. I confess that this is a bit repetitive, but I confess it is a cautionary tale. This is out of a sense of self-discipline that someone has occurred who could see your data. Even if the 'someone' is me. I should not be unaware of its superiority, even though well-meaning and am a servant of all. (Half joking, but also serious).
+However, now I can provide you with a signalling server. Because, to the best of my knowledge, it is only the network that is connected to your device.
+Also, this signalling server is just a Nostr relay, not my implementation. You can run your implementation, which you consider trustworthy, on a trustworthy server. You do not even have to trust me. Mate, it is great, isn't it? For your information, strfry is running on my signalling server.
 
-Of course, I use Self-hosted MinIO for testing and recommend this. It is for the same reason as using CouchDB. -- open, controllable, auditable and indeed already audited by numerous eyes.
+Nevertheless, that being said, to be more honest, I still have not decided what to do with this signalling server if too much traffic comes in.
 
-Let me write one more acknowledgement.
+Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
-I have a lot of respect for that plugin, even though it is sometimes treated as if it is a competitor, remotely-save. I think it is a great architecture that embodies a different approach to my approach of recreating history. This time, with all due respect, I have used some of its code as a reference.
-Hooray for open source, and generous licences, and the sharing of knowledge by experts.
+## 0.24.19
 
-#### Version history
-- 0.23.13:
-  - Fixed:
-    - No longer files have been trimmed even delimiters have been continuous.
-    - Fixed the toggle title to `Do not split chunks in the background` from `Do not split chunks in the foreground`.
-    - Non-configured item mismatches are no longer detected.
-- 0.23.12:
-  - Improved:
-    - Now notes will be split into chunks in the background thread to improve smoothness.
-      - Default enabled, to disable, toggle `Do not split chunks in the foreground` on `Hatch` -> `Compatibility`.
-      - If you want to process very small notes in the foreground, please enable `Process small files in the foreground` on `Hatch` -> `Compatibility`.
-    - We can use a `splitting-limit-capped chunk splitter`; which performs more simple and make less amount of chunks.
-      - Default disabled, to enable, toggle `Use splitting-limit-capped chunk splitter` on `Sync settings` -> `Performance tweaks`
-  - Tidied
-    - Some files have been separated into multiple files to make them more explicit in what they are responsible for.
-- 0.23.11:
-  - Fixed:
-    - Now we *surely* can set the device name and enable customised synchronisation.
-    - Unnecessary dialogue update processes have been eliminated.
-    - Customisation sync no longer stores half-collected files.
-    - No longer hangs up when removing or renaming files with the `Sync on Save` toggle enabled.
-  - Improved:
-    - Customisation sync now performs data deserialization more smoothly.
-    - New translations have been merged.
-- 0.23.10
-  - Fixed:
-    - No longer configurations have been locked in the minimal setup.
-- 0.23.9
-  - Fixed:
-    - No longer unexpected parallel replication is performed.
-    - Now we can set the device name and enable customised synchronisation again.
-- 0.23.8
-  - New feature:
-    - Now we are ready for i18n. 
-      - Patch or PR of `rosetta.ts` are welcome!
-    - The setting dialogue has been refined. Very controllable, clearly displayed disabled items, and ready to i18n.
-  - Fixed:
-    - Many memory leaks have been rescued.
-    - Chunk caches now work well.
-    - Many trivial but potential bugs are fixed.
-    - No longer error messages will be shown on retrieving checkpoint or server information.
-    - Now we can check and correct tweak mismatch during the setup
-  - Improved:
-    - Customisation synchronisation has got more smoother.
-  - Tidied
-    - Practically unused functions have been removed or are being prepared for removal.
-    - Many of the type-errors and lint errors have been corrected.
-    - Unused files have been removed.
-  - Note:
-    - From this version, some test files have been included. However, they are not enabled and released in the release build.
-      - To try them, please run Self-hosted LiveSync in the dev build.
-- 0.23.7
-  - Fixed:
-    - No longer missing tasks which have queued as the same key (e.g., for the same operation to the same file).
-      - This occurs, for example, with hidden files that have been changed multiple times in a very short period of time, such as `appearance.json`. Thanks for the report!
-    - Some trivial issues have been fixed.
-  - New feature:
-    - Reloading Obsidian can be scheduled until that file and database operations are stable.
+### New Feature
 
-Older notes is in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
+- Now we can generate a QR Code for transferring the configuration to another device.
+    - This QR Code can be scanned by the camera app or something QR Code Reader of another device, and via Obsidian URL, the configuration will be transferred.
+    - Note: This QR Code is not encrypted. So, please be careful when transferring the configuration.
+
+## 0.24.18
+
+### Fixed
+
+- Now no chunk creation errors will be raised after switching `Compute revisions for chunks`.
+- Some invisible file can be handled correctly (e.g., `writing-goals-history.csv`).
+- Fetching configuration from the server is now saves the configuration immediately (if we are not in the wizard).
+
+### Improved
+
+- Mismatched configuration dialogue is now more informative, and rewritten to more user-friendly.
+- Applying configuration mismatch is now without rebuilding (at our own risks).
+- Now, rebuilding is decided more fine grained.
+
+### Improved internally
+
+- Translations can be nested. i.e., task:`Some procedure`, check: `%{task} checking`, checkfailed: `%{check} failed` produces `Some procedure checking failed`.
+    - Max to 10 levels of nesting
+
+## 0.24.17
+
+Confession. I got the default values wrong. So scary and sorry.
+
+### Behaviour and default changed
+
+- **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
+    - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
+
+## 0.24.16
+
+### Improved
+
+#### Peer-to-Peer
+
+- Now peer-to-peer synchronisation checks the settings are compatible with each other.
+    - No longer unexpected database broken, phew.
+- Peer-to-peer synchronisation now handles the platform and detects pseudo-clients.
+    - Pseudo clients will not decrypt/encrypt anything, just relay the data. Hence, always settings are not compatible. Therefore, we have to accept the incompatibility for pseudo clients.
+
+#### General
+
+- New migration method has been implemented, that called `Doctor`.
+
+    - `Doctor` checks the difference between the ideal and actual values and encourages corrective action. To facilitate our decision, the reasons for this and the recommendations are also presented.
+    - This can be used not only during migration. We can invoke the doctor from the settings for trouble-shooting.
+
+- The minimum interval for replication to be caused when an event occurs can now be configurable.
+- Some detail note has been added and change nuance about the `Report` in the setting dialogue, which had less informative.
+
+### Behaviour and default changed
+
+- `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
+    - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
+
+### Refactored
+
+- Platform specific codes are more separated. No longer `node` modules were used in the browser and Obsidian.
+
+## 0.24.15
+
+### Fixed
+
+- Now, even without WeakRef, Polyfill is used and the whole thing works without error. However, if you can switch WebView Engine, it is recommended to switch to a WebView Engine that supports WeakRef.
+
+## 0.24.14
+
+### Fixed
+
+- Resolving conflicts of JSON files (and sensibly merging them) is now working fine, again!
+    - And, failure logs are more informative.
+- More robust to release the event listeners on unwatching the local database.
+
+### Refactored
+
+- JSON file conflict resolution dialogue has been rewritten into svelte v5.
+- Upgrade eslint.
+- Remove unnecessary pragma comments for eslint.
+
+## 0.24.13
+
+Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
+
+### Fixed
+
+#### General Replication
+
+- No longer unexpected errors occur when the replication is stopped during for some reason (e.g., network disconnection).
+
+#### Peer-to-Peer Synchronisation
+
+- Set-up process will not receive data from unexpected sources.
+- No longer resource leaks while enabling the `broadcasting changes`
+- Logs are less verbose.
+- Received data is now correctly dispatched to other devices.
+- `Timeout` error now more informative.
+- No longer timeout error occurs for reporting the progress to other devices.
+- Decision dialogues for the same thing are not shown multiply at the same time anymore.
+- Disconnection of the peer-to-peer synchronisation is now more robust and less error-prone.
+
+#### Webpeer
+
+- Now we can toggle Peers' configuration.
+
+### Refactored
+
+- Cross-platform compatibility layer has been improved.
+- Common events are moved to the common library.
+- Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
+- Some file names have been changed to be more consistent.
+
+## 0.24.12
+
+I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
+And, this is just a single web page, without any server-side code. It is a static web page that can be hosted on any static web server, such as GitHub Pages, Netlify, or Vercel. All you have to do is to open the page and enter several items, and leave it open.
+
+### Fixed
+
+- No longer unnecessary acknowledgements are sent when starting peer-to-peer synchronisation.
+
+### Refactored
+
+- Platform impedance-matching-layer has been improved.
+    - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
+- Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
+
+
+Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

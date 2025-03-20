@@ -1,267 +1,759 @@
-NOTE: This document surely became outdated. I'll improve this doc in a while. but your contributions are always welcome.
+NOTE: This document not completed. I'll improve this doc in a while. but your contributions are always welcome.
 
-# Settings of this plugin
+# Settings of Self-hosted LiveSync
 
-The settings dialog has been quite long, so I split each configuration into tabs.  
-If you feel something, please feel free to inform me.
+There are many settings in Self-hosted LiveSync. This document describes each setting in detail (not how-to). Configuration and settings are divided into several categories and indicated by icons. The icon is as follows:
 
-| icon  | description                                                       |
-| :---: | ----------------------------------------------------------------- |
-|   🛰️   | [Remote Database Configurations](#remote-database-configurations) |
-|   📦   | [Local Database Configurations](#local-database-configurations)   |
-|   ⚙️   | [General Settings](#general-settings)                             |
-|   🔁   | [Sync Settings](#sync-settings)                                   |
-|   🔧   | [Miscellaneous](#miscellaneous)                                   |
-|   🧰   | [Hatch](#miscellaneous)                                           |
-|   🔌   | [Plugin and its settings](#plugin-and-its-settings)               |
-|   🚑   | [Corrupted data](#corrupted-data)                                 |
+| Icon | Description                                                        |
+| :--: | ------------------------------------------------------------------ |
+|  💬  | [0. Change Log](#0-change-log)                                     |
+|  🧙‍♂️  | [1. Setup](#1-setup)                                               |
+|  ⚙️  | [2. General Settings](#2-general-settings)                         |
+|  🛰️  | [3. Remote Configuration](#3-remote-configuration)                 |
+|  🔄  | [4. Sync Settings](#4-sync-settings)                               |
+|  🚦  | [5. Selector (Advanced)](#5-selector-advanced)                     |
+|  🔌  | [6. Customization sync (Advanced)](#6-customization-sync-advanced) |
+|  🧰  | [7. Hatch](#7-hatch)                                               |
+|  🔧  | [8. Advanced (Advanced)](#8-advanced-advanced)                     |
+|  💪  | [9. Power users (Power User)](#9-power-users-power-user)           |
+|  🩹  | [10. Patches (Edge Case)](#10-patches-edge-case)                   |
+|  🎛️  | [11. Maintenance](#11-maintenance)                                 |
 
-## Remote Database Configurations
-Configure the settings of synchronize server. If any synchronization is enabled, you can't edit this section. Please disable all synchronization to change.
+## 0. Change Log
 
-### URI
-URI of CouchDB. In the case of Cloudant, It's "External Endpoint(preferred)".  
-**Do not end it up with a slash** when it doesn't contain the database name.
+This pane shows version up information. You can check what has been changed in recent versions.
 
-### Username
-Your CouchDB's Username. Administrator's privilege is preferred.
+## 1. Setup
 
-### Password
-Your CouchDB's Password.  
-Note: This password is saved into your Obsidian's vault in plain text.
+This pane is used for setting up Self-hosted LiveSync. There are several options to set up Self-hosted LiveSync.
 
-### Database Name
-The Database name to synchronize.  
-⚠️If not exist, created automatically.
+### 1. Quick Setup
 
+Most preferred method to setup Self-hosted LiveSync. You can setup Self-hosted LiveSync with a few clicks.
 
-### End to End Encryption
-Encrypt your database. It affects only the database, your files are left as plain.
+#### Connect with Setup URI
 
-The encryption algorithm is AES-GCM.
+Setup the Self-hosted LiveSync with the `setup URI` which is [copied from another device](#copy-current-settings-as-a-new-setup-uri) or the setup script.
 
-Note: If you want to use "Plugins and their settings", you have to enable this.
+#### Manual setup
 
-### Passphrase
-The passphrase to used as the key of encryption. Please use the long text.
+Step-by-step setup for Self-hosted LiveSync. You can setup Self-hosted LiveSync manually with Minimal setting items.
 
-### Apply
-Set the End to End encryption enabled and its passphrase for use in replication.  
-If you change the passphrase of an existing database, overwriting the remote database is strongly recommended.
+#### Enable LiveSync
 
+This button only appears when the setup was not completed. If you have completed the setup manually, you can enable LiveSync on this device by this button.
 
-### Overwrite remote database
-Overwrite the remote database with the local database using the passphrase you applied.
+### 2. To setup other devices
 
+#### Copy the current settings to a Setup URI
 
-### Rebuild
-Rebuild remote and local databases with local files. It will delete all document history and retained chunks, and shrink the database.
+You can copy the current settings as a new setup URI. And this URI can be used to setup the other devices as [Use the copied setup URI](#use-the-copied-setup-uri).
 
-### Test Database connection
-You can check the connection by clicking this button.
+### 3. Reset
 
-### Check database configuration
-You can check and modify your CouchDB configuration from here directly.
+#### Discard existing settings and databases
 
-### Lock remote database.
-Other devices are banned from the database when you have locked the database.  
-If you have something troubled with other devices, you can protect the vault and remote database with your device.
+Reset the Self-hosted LiveSync settings and databases.
+**Hazardous operation. Please be careful when using this.**
 
-## Local Database Configurations
-"Local Database" is created inside your obsidian.
+### 4. Enable extra and advanced features
 
-### Batch database update
-Delay database update until raise replication, open another file, window visibility changes, or file events except for file modification.  
-This option can not be used with LiveSync at the same time.
+To keep the set-up dialogue simple, some panes are hidden in default. You can enable them here.
 
+#### Enable advanced features
 
-### Fetch rebuilt DB.
-If one device rebuilds or locks the remote database, every other device will be locked out from the remote database until it fetches rebuilt DB.
+Setting key: useAdvancedMode
 
-### minimum chunk size and LongLine threshold
-The configuration of chunk splitting.
+Following panes will be shown when you enable this setting.
+| Icon | Description |
+| :--: | ------------------------------------------------------------------ |
+| 🚦 | [5. Selector (Advanced)](#5-selector-advanced) |
+| 🔌 | [6. Customization sync (Advanced)](#6-customization-sync-advanced) |
+| 🔧 | [8. Advanced (Advanced)](#8-advanced-advanced) |
 
-Self-hosted LiveSync splits the note into chunks for efficient synchronization. This chunk should be longer than the "Minimum chunk size".
+#### Enable poweruser features
 
-Specifically, the length of the chunk is determined by the following orders.
+Setting key: usePowerUserMode
 
-1. Find the nearest newline character, and if it is farther than LongLineThreshold, this piece becomes an independent chunk.
+Following panes will be shown when you enable this setting.
+| Icon | Description |
+| :--: | ------------------------------------------------------------------ |
+| 💪 | [9. Power users (Power User)](#9-power-users-power-user) |
 
-2. If not, find the nearest to these items.
-    1. A newline character
-    2. An empty line (Windows style)
-    3. An empty line (non-Windows style)
-3. Compare the farther in these 3 positions and the next "newline\]#" position, and pick a shorter piece as a chunk.
+#### Enable edge case treatment features
 
-This rule was made empirically from my dataset. If this rule acts as badly on your data. Please give me the information.
+Setting key: useEdgeCaseMode
 
-You can dump saved note structure to `Dump informations of this doc`. Replace every character with x except newline and "#" when sending information to me.
+Following panes will be shown when you enable this setting.
+| Icon | Description |
+| :--: | ------------------------------------------------------------------ |
+| 🩹 | [10. Patches (Edge Case)](#10-patches-edge-case) |
 
-The default values are 20 letters and 250 letters.
+## 2. General Settings
 
-## General Settings
+### 1. Appearance
 
-### Do not show low-priority log
-If you enable this option, log only the entries with the popup.
+#### Display Language
 
-### Verbose log
+Setting key: displayLanguage
 
-## Sync Settings
+You can change the display language. It is independent of the system language and/or Obsidian's language.
+Note: Not all messages have been translated. And, please revert to "Default" when reporting errors. Of course, your contribution to translation is always welcome!
 
-### LiveSync
-Do LiveSync.
+#### Show status inside the editor
 
-It is the one of raison d'être of this plugin.
+Setting key: showStatusOnEditor
 
-Useful, but this method drains many batteries on the mobile and uses not the ignorable amount of data transfer.
+We can show the status of synchronisation inside the editor.
 
-This method is exclusive to other synchronization methods.
+Reflected after reboot
 
-### Periodic Sync
-Synchronize periodically. 
+#### Show status as icons only
 
-### Periodic Sync Interval
-Unit is seconds.
+Setting key: showOnlyIconsOnEditor
 
-### Sync on Save
-Synchronize when the note has been modified or created.
+Show status as icons only. This is useful when you want to save space on the status bar.
 
-### Sync on File Open
-Synchronize when the note is opened.
+#### Show status on the status bar
 
-### Sync on Start
-Synchronize when Obsidian started.
+Setting key: showStatusOnStatusbar
 
-### Use Trash for deleted files
-When the file has been deleted on remote devices, deletion will be replicated to the local device and the file will be deleted.
+We can show the status of synchronisation on the status bar. (Default: On)
 
-If this option is enabled, move deleted files into the trash instead delete actually.
+### 2. Logging
 
-### Do not delete empty folder
-Self-hosted LiveSync will delete the folder when the folder becomes empty. If this option is enabled, leave it as an empty folder.
+#### Show only notifications
 
-### Use newer file if conflicted (beta)
-Always use the newer file to resolve and overwrite when conflict has occurred.
+Setting key: lessInformationInLog
 
+Prevent logging and show only notification. Please disable when you report the logs
 
-### Experimental.
-### Sync hidden files
+#### Verbose Log
 
-Synchronize hidden files.
+Setting key: showVerboseLog
 
-- Scan hidden files before replication.
-If you enable this option, all hidden files are scanned once before replication.
+Show verbose log. Please enable when you report the logs
 
-- Scan hidden files periodicaly.
-If you enable this option, all hidden files will be scanned each [n] seconds.
+## 3. Remote Configuration
 
-Hidden files are not actively detected, so we need scanning.
+### 1. Remote Server
 
-Each scan stores the file with their modification time. And if the file has been disappeared, the fact is also stored. Then, When the entry of the hidden file has been replicated, it will be reflected in the storage if the entry is newer than storage.
+#### Remote Type
 
-Therefore, the clock must be adjusted. If the modification time is determined to be older, the changeset will be skipped or cancelled (It means, **deleted**), even if the file spawned in a hidden folder.
+Setting key: remoteType
 
-### Advanced settings
-Self-hosted LiveSync using PouchDB and synchronizes with the remote by [this protocol](https://docs.couchdb.org/en/stable/replication/protocol.html).
-So, it splits every entry into chunks to be acceptable by the database with limited payload size and document size.
+Remote server type
 
-However, it was not enough.
-According to [2.4.2.5.2. Upload Batch of Changed Documents](https://docs.couchdb.org/en/stable/replication/protocol.html#upload-batch-of-changed-documents) in [Replicate Changes](https://docs.couchdb.org/en/stable/replication/protocol.html#replicate-changes), it might become a bigger request.
+### 2. Notification
 
-Unfortunately, there is no way to deal with this automatically by size for every request.
-Therefore, I made it possible to configure this.
+#### Notify when the estimated remote storage size exceeds on start up
 
-Note: If you set these values lower number, the number of requests will increase.  
-Therefore, if you are far from the server, the total throughput will be low, and the traffic will increase.
+Setting key: notifyThresholdOfRemoteStorageSize
 
-### Batch size
-Number of change feed items to process at a time. Defaults to 250.
+MB (0 to disable). We can get a notification when the estimated remote storage size exceeds this value.
 
-### Batch limit
-Number of batches to process at a time. Defaults to 40. This along with batch size controls how many docs are kept in memory at a time.
+### 3. Privacy & Encryption
 
-## Miscellaneous
+#### End-to-End Encryption
 
-### Show status inside editor
-Show information inside the editor pane.
-It would be useful for mobile.
+Setting key: encrypt
 
-### Check integrity on saving
-Check all chunks are correctly saved on saving.
+Enable end-to-end encryption. enabling this is recommend. If you change the passphrase, you need to rebuild databases (You will be informed).
 
-### Presets
-You can set synchronization method at once as these pattern:
-- LiveSync
-  - LiveSync : enabled
-  - Batch database update : disabled
-  - Periodic Sync : disabled
-  - Sync on Save : disabled
-  - Sync on File Open : disabled
-  - Sync on Start : disabled
-- Periodic w/ batch
-  - LiveSync : disabled
-  - Batch database update : enabled
-  - Periodic Sync : enabled
-  - Sync on Save : disabled
-  - Sync on File Open : enabled
-  - Sync on Start : enabled
-- Disable all sync
-  - LiveSync : disabled
-  - Batch database update : disabled
-  - Periodic Sync : disabled
-  - Sync on Save : disabled
-  - Sync on File Open : disabled
-  - Sync on Start : disabled
+#### Passphrase
 
+Setting key: passphrase
 
-## Hatch
-From here, everything is under the hood. Please handle it with care.
+Encrypting passphrase. If you change the passphrase, you need to rebuild databases (You will be informed).
 
-When there are problems with synchronization, the warning message is shown Under this section header.
+#### Path Obfuscation
 
-- Pattern 1  
-![CorruptedData](../images/lock_pattern1.png)  
-This message is shown when the remote database is locked and your device is not marked as "resolved".  
-Almost it is happened by enabling End-to-End encryption or History has been dropped.  
-If you enabled End-to-End encryption, you can unlock the remote database by "Apply and receive" automatically. Or "Drop and receive" when you dropped. If you want to unlock manually, click "mark this device as resolved".
+Setting key: usePathObfuscation
 
-- Pattern 2  
-![CorruptedData](../images/lock_pattern2.png)  
-The remote database indicates that has been unlocked Pattern 1.  
-When you mark all devices as resolved, you can unlock the database.
-But, there's no problem even if you leave it as it is.
+In default, the path of the file is not obfuscated to improve the performance. If you enable this, the path of the file will be obfuscated. This is useful when you want to hide the path of the file.
 
-### Verify and repair all files
-read all files in the vault, and update them into the database if there's diff or could not read from the database.
+#### Use dynamic iteration count (Experimental)
 
-### Suspend file watching
-If enable this option, Self-hosted LiveSync dismisses every file change or deletes the event.
+Setting key: useDynamicIterationCount
 
-From here, these commands are used inside applying encryption passphrases or dropping histories.
+This is an experimental feature and not recommended. If you enable this, the iteration count of the encryption will be dynamically determined. This is useful when you want to improve the performance.
 
-Usually, doesn't use it so much. But sometimes it could be handy.
+---
 
-## Plugins and settings (beta)
+**now writing from here onwards, sorry**
 
-### Enable plugin synchronization
-If you want to use this feature, you have to activate this feature by this switch.
+---
 
-### Sweep plugins automatically
-Plugin sweep will run before replication automatically.
+### 4. Fetch settings
 
-### Sweep plugins periodically
-Plugin sweep will run each 1 minute.
+#### Fetch config from remote server
 
-### Notify updates
-When replication is complete, a message will be notified if a newer version of the plugin applied to this device is configured on another device.
+Fetch necessary settings from already configured remote server.
 
-### Device and Vault name
-To save the plugins, you have to set a unique name every each device.
+### 5. Minio,S3,R2
 
-### Open
-Open the "Plugins and their settings" dialog.
+#### Endpoint URL
 
-### Corrupted or missing data
-![CorruptedData](../images/corrupted_data.png)
+Setting key: endpoint
 
-When Self-hosted LiveSync could not write to the file on the storage, the files are shown here. If you have the old data in your vault, change it once, it will be cured. Or you can use the "File History" plugin.
+#### Access Key
+
+Setting key: accessKey
+
+#### Secret Key
+
+Setting key: secretKey
+
+#### Region
+
+Setting key: region
+
+#### Bucket Name
+
+Setting key: bucket
+
+#### Use Custom HTTP Handler
+
+Setting key: useCustomRequestHandler
+Enable this if your Object Storage doesn't support CORS
+
+#### Test Connection
+
+#### Apply Settings
+
+### 6. CouchDB
+
+#### Server URI
+
+Setting key: couchDB_URI
+
+#### Username
+
+Setting key: couchDB_USER
+username
+
+#### Password
+
+Setting key: couchDB_PASSWORD
+password
+
+#### Database Name
+
+Setting key: couchDB_DBNAME
+
+#### Test Database Connection
+
+Open database connection. If the remote database is not found and you have permission to create a database, the database will be created.
+
+#### Validate Database Configuration
+
+Checks and fixes any potential issues with the database config.
+
+#### Apply Settings
+
+## 4. Sync Settings
+
+### 1. Synchronization Preset
+
+#### Presets
+
+Setting key: preset
+Apply preset configuration
+
+### 2. Synchronization Method
+
+#### Sync Mode
+
+Setting key: syncMode
+
+#### Periodic Sync interval
+
+Setting key: periodicReplicationInterval
+Interval (sec)
+
+#### Sync on Save
+
+Setting key: syncOnSave
+Starts synchronisation when a file is saved.
+
+#### Sync on Editor Save
+
+Setting key: syncOnEditorSave
+When you save a file in the editor, start a sync automatically
+
+#### Sync on File Open
+
+Setting key: syncOnFileOpen
+Forces the file to be synced when opened.
+
+#### Sync on Startup
+
+Setting key: syncOnStart
+Automatically Sync all files when opening Obsidian.
+
+#### Sync after merging file
+
+Setting key: syncAfterMerge
+Sync automatically after merging files
+
+### 3. Update thinning
+
+#### Batch database update
+
+Setting key: batchSave
+Reducing the frequency with which on-disk changes are reflected into the DB
+
+#### Minimum delay for batch database updating
+
+Setting key: batchSaveMinimumDelay
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.
+
+#### Maximum delay for batch database updating
+
+Setting key: batchSaveMaximumDelay
+Saving will be performed forcefully after this number of seconds.
+
+### 4. Deletion Propagation (Advanced)
+
+#### Use the trash bin
+
+Setting key: trashInsteadDelete
+Move remotely deleted files to the trash, instead of deleting.
+
+#### Keep empty folder
+
+Setting key: doNotDeleteFolder
+Should we keep folders that don't have any files inside?
+
+### 5. Conflict resolution (Advanced)
+
+#### (BETA) Always overwrite with a newer file
+
+Setting key: resolveConflictsByNewerFile
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.
+
+#### Delay conflict resolution of inactive files
+
+Setting key: checkConflictOnlyOnOpen
+Should we only check for conflicts when a file is opened?
+
+#### Delay merge conflict prompt for inactive files.
+
+Setting key: showMergeDialogOnlyOnActive
+Should we prompt you about conflicting files when a file is opened?
+
+### 6. Sync settings via markdown (Advanced)
+
+#### Filename
+
+Setting key: settingSyncFile
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.
+
+#### Write credentials in the file
+
+Setting key: writeCredentialsForSettingSync
+(Not recommended) If set, credentials will be stored in the file.
+
+#### Notify all setting files
+
+Setting key: notifyAllSettingSyncFile
+
+### 7. Hidden Files (Advanced)
+
+#### Hidden file synchronization
+
+#### Enable Hidden files sync
+
+#### Scan for hidden files before replication
+
+Setting key: syncInternalFilesBeforeReplication
+
+#### Scan hidden files periodically
+
+Setting key: syncInternalFilesInterval
+Seconds, 0 to disable
+
+## 5. Selector (Advanced)
+
+### 1. Normal Files
+
+#### Synchronising files
+
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.
+
+#### Non-Synchronising files
+
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.
+
+#### Maximum file size
+
+Setting key: syncMaxSizeInMB
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.
+
+#### (Beta) Use ignore files
+
+Setting key: useIgnoreFiles
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.
+
+#### Ignore files
+
+Setting key: ignoreFiles
+Comma separated `.gitignore, .dockerignore`
+
+### 2. Hidden Files (Advanced)
+
+#### Ignore patterns
+
+#### Add default patterns
+
+## 6. Customization sync (Advanced)
+
+### 1. Customization Sync
+
+#### Device name
+
+Setting key: deviceAndVaultName
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.
+
+#### Per-file-saved customization sync
+
+Setting key: usePluginSyncV2
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.
+
+#### Enable customization sync
+
+Setting key: usePluginSync
+
+#### Scan customization automatically
+
+Setting key: autoSweepPlugins
+Scan customization before replicating.
+
+#### Scan customization periodically
+
+Setting key: autoSweepPluginsPeriodic
+Scan customization every 1 minute.
+
+#### Notify customized
+
+Setting key: notifyPluginOrSettingUpdated
+Notify when other device has newly customized.
+
+#### Open
+
+Open the dialog
+
+## 7. Hatch
+
+### 1. Reporting Issue
+
+#### Make report to inform the issue
+
+#### Write logs into the file
+
+Setting key: writeLogToTheFile
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.
+
+### 2. Scram Switches
+
+#### Suspend file watching
+
+Setting key: suspendFileWatching
+Stop watching for file changes.
+
+#### Suspend database reflecting
+
+Setting key: suspendParseReplicationResult
+Stop reflecting database changes to storage files.
+
+### 3. Recovery and Repair
+
+#### Recreate missing chunks for all files
+
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.
+
+#### Resolve All conflicted files by the newer one
+
+Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.
+
+#### Verify and repair all files
+
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.
+
+#### Check and convert non-path-obfuscated files
+
+### 4. Reset
+
+#### Back to non-configured
+
+#### Delete all customization sync data
+
+## 8. Advanced (Advanced)
+
+### 1. Memory cache
+
+#### Memory cache size (by total items)
+
+Setting key: hashCacheMaxCount
+
+#### Memory cache size (by total characters)
+
+Setting key: hashCacheMaxAmount
+(Mega chars)
+
+### 2. Local Database Tweak
+
+#### Enhance chunk size
+
+Setting key: customChunkSize
+
+#### Use splitting-limit-capped chunk splitter
+
+Setting key: enableChunkSplitterV2
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.
+
+#### Use Segmented-splitter
+
+Setting key: useSegmenter
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.
+
+### 3. Transfer Tweak
+
+#### Fetch chunks on demand
+
+Setting key: readChunksOnline
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.
+
+#### Batch size of on-demand fetching
+
+Setting key: concurrencyOfReadChunksOnline
+
+#### The delay for consecutive on-demand fetches
+
+Setting key: minimumIntervalOfReadChunksOnline
+
+## 9. Power users (Power User)
+
+### 1. Remote Database Tweak
+
+#### Incubate Chunks in Document (Beta)
+
+Setting key: useEden
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.
+
+#### Maximum Incubating Chunks
+
+Setting key: maxChunksInEden
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.
+
+#### Maximum Incubating Chunk Size
+
+Setting key: maxTotalLengthInEden
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.
+
+#### Maximum Incubation Period
+
+Setting key: maxAgeInEden
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.
+
+#### Data Compression (Experimental)
+
+Setting key: enableCompression
+
+### 2. CouchDB Connection Tweak
+
+#### Batch size
+
+Setting key: batch_size
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.
+
+#### Batch limit
+
+Setting key: batches_limit
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.
+
+#### Use timeouts instead of heartbeats
+
+Setting key: useTimeouts
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.
+
+### 3. Configuration Encryption
+
+#### Encrypting sensitive configuration items
+
+Setting key: configPassphraseStore
+
+#### Passphrase of sensitive configuration items
+
+Setting key: configPassphrase
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.
+
+### 4. Developer
+
+#### Enable Developers' Debug Tools.
+
+Setting key: enableDebugTools
+Requires restart of Obsidian
+
+## 10. Patches (Edge Case)
+
+### 1. Compatibility (Metadata)
+
+#### Do not keep metadata of deleted files.
+
+Setting key: deleteMetadataOfDeletedFiles
+
+#### Delete old metadata of deleted files on start-up
+
+Setting key: automaticallyDeleteMetadataOfDeletedFiles
+(Days passed, 0 to disable automatic-deletion)
+
+### 2. Compatibility (Conflict Behaviour)
+
+#### Always prompt merge conflicts
+
+Setting key: disableMarkdownAutoMerge
+Should we prompt you for every single merge, even if we can safely merge automatcially?
+
+#### Apply Latest Change if Conflicting
+
+Setting key: writeDocumentsIfConflicted
+Enable this option to automatically apply the most recent change to documents even when it conflicts
+
+### 3. Compatibility (Database structure)
+
+#### (Obsolete) Use an old adapter for compatibility (obsolete)
+
+Setting key: useIndexedDBAdapter
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.
+
+#### Compute revisions for chunks (Previous behaviour)
+
+Setting key: doNotUseFixedRevisionForChunks
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)
+
+#### Handle files as Case-Sensitive
+
+Setting key: handleFilenameCaseSensitive
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).
+
+### 4. Compatibility (Internal API Usage)
+
+#### Scan changes on customization sync
+
+Setting key: watchInternalFileChanges
+Do not use internal API
+
+### 5. Edge case addressing (Database)
+
+#### Database suffix
+
+Setting key: additionalSuffixOfDatabaseName
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.
+
+#### The Hash algorithm for chunk IDs (Experimental)
+
+Setting key: hashAlg
+
+### 6. Edge case addressing (Behaviour)
+
+#### Fetch database with previous behaviour
+
+Setting key: doNotSuspendOnFetching
+
+#### Keep empty folder
+
+Setting key: doNotDeleteFolder
+Should we keep folders that don't have any files inside?
+
+### 7. Edge case addressing (Processing)
+
+#### Do not split chunks in the background
+
+Setting key: disableWorkerForGeneratingChunks
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).
+
+#### Process small files in the foreground
+
+Setting key: processSmallFilesInUIThread
+If enabled, the file under 1kb will be processed in the UI thread.
+
+### 8. Compatibility (Trouble addressed)
+
+#### Do not check configuration mismatch before replication
+
+Setting key: disableCheckingConfigMismatch
+
+## 11. Maintenance
+
+### 1. Scram!
+
+#### Lock Server
+
+Lock the remote server to prevent synchronization with other devices.
+
+#### Emergency restart
+
+Disables all synchronization and restart.
+
+### 2. Syncing
+
+#### Resend
+
+Resend all chunks to the remote.
+
+#### Reset journal received history
+
+Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.
+
+#### Reset journal sent history
+
+Initialise journal sent history. On the next sync, every item except this device received will be sent again.
+
+### 3. Rebuilding Operations (Local)
+
+#### Fetch from remote
+
+Restore or reconstruct local database from remote.
+
+#### Fetch rebuilt DB (Save local documents before)
+
+Restore or reconstruct local database from remote database but use local chunks.
+
+### 4. Total Overhaul
+
+#### Rebuild everything
+
+Rebuild local and remote database with local files.
+
+### 5. Rebuilding Operations (Remote Only)
+
+#### Perform cleanup
+
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.
+
+#### Overwrite remote
+
+Overwrite remote with local DB and passphrase.
+
+#### Reset all journal counter
+
+Initialise all journal history, On the next sync, every item will be received and sent.
+
+#### Purge all journal counter
+
+Purge all download/upload cache.
+
+#### Fresh Start Wipe
+
+Delete all data on the remote server.
+
+### 6. Deprecated
+
+#### Run database cleanup
+
+Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul.
+
+### 7. Reset
+
+#### Delete local database to reset or uninstall Self-hosted LiveSync

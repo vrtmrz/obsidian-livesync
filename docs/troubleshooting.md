@@ -1,6 +1,6 @@
-<!-- 2024-02-15 -->
-# Tips and Troubleshooting
+<!-- 2025-02-18 -->
 
+# Tips and Troubleshooting
 
 - [Tips and Troubleshooting](#tips-and-troubleshooting)
   - [Notable bugs and fixes](#notable-bugs-and-fixes)
@@ -20,18 +20,21 @@
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
   - [Tips](#tips)
+    - [How to resolve `Tweaks Mismatched of Changed`](#how-to-resolve-tweaks-mismatched-of-changed)
     - [Old tips](#old-tips)
 
 <!-- - -->
 
-
 ## Notable bugs and fixes
+
 ### Binary files get bigger on iOS
+
 - Reported at: v0.20.x
 - Fixed at: v0.21.2 (Fixed but not reviewed)
 - Required action: larger files will not be fixed automatically, please perform `Verify and repair all files`. If our local database and storage are not matched, we will be asked to apply which one.
 
 ### Some setting name has been changed
+
 - Fixed at: v0.22.6
 
 | Previous name                | New name                                 |
@@ -57,13 +60,16 @@ Therefore, experienced users (especially those stable enough not to have to rebu
 Please disable it when you have enough time.
 
 ### ZIP (or any extensions) files were not synchronised. Why?
+
 It depends on Obsidian detects. May toggling `Detect all extensions` of `File and links` (setting of Obsidian) will help us.
 
 ### I hope to report the issue, but you said you needs `Report`. How to make it?
+
 We can copy the report to the clipboard, by pressing the `Make report` button on the `Hatch` pane.
 ![Screenshot](../images/hatch.png)
 
 ### Where can I check the log?
+
 We can launch the log pane by `Show log` on the command palette.
 And if you have troubled something, please enable the `Verbose Log` on the `General Setting` pane.
 
@@ -72,16 +78,20 @@ However, the logs would not be kept so long and cleared when restarted. If you w
 ![ScreenShot](../images/write_logs_into_the_file.png)
 
 > [!IMPORTANT]
+>
 > - Writing logs into the file will impact the performance.
 > - Please make sure that you have erased all your confidential information before reporting issue.
 
 ### Why are the logs volatile and ephemeral?
+
 To avoid unexpected exposure to our confidential things.
 
 ### Some network logs are not written into the file.
+
 Especially the CORS error will be reported as a general error to the plug-in for security reasons. So we cannot detect and log it. We are only able to investigate them by [Checking the network log](#checking-the-network-log).
 
 ### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
+
 No, even though if files were deleted, chunks were not deleted.
 Self-hosted LiveSync splits the files into multiple chunks and transfers only newly created. This behaviour enables us to less traffic. And, the chunks will be shared between the files to reduce the total usage of the database.
 
@@ -92,36 +102,74 @@ To shrink the database size, `Rebuild everything` only reliably and effectively.
 ### How can I use the DevTools?
 
 #### Checking the network log
+
 1. Open the network pane.
 2. Find the requests marked in red.  
-![Errored](../images/devtools1.png)
+   ![Errored](../images/devtools1.png)
 3. Capture the `Headers`, `Payload`, and, `Response`. **Please be sure to keep important information confidential**. If the `Response` contains secrets, you can omitted that.
-Note: Headers contains a some credentials. **The path of the request URL, Remote Address, authority, and authorization must be concealed.**  
-![Concealed sample](../images/devtools2.png)
+   Note: Headers contains a some credentials. **The path of the request URL, Remote Address, authority, and authorization must be concealed.**  
+   ![Concealed sample](../images/devtools2.png)
 
 ## Troubleshooting
+
 <!-- Add here -->
 
 ### On the mobile device, cannot synchronise on the local network!
+
 Obsidian mobile is not able to connect to the non-secure end-point, such as starting with `http://`. Make sure your URI of CouchDB. Also not able to use a self-signed certificate.
 
 ### I think that something bad happening on the vault...
+
 Place `redflag.md` on top of the vault, and restart Obsidian. The most simple way is to create a new note and rename it to `redflag`. Of course, we can put it without Obsidian.
 
 If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage processes.
 
+There are some options to use `redflag.md`.
+
+| Filename      | Human-Friendly Name | Description                                                                          |
+| ------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| `redflag.md`  | -                   | Suspends all processes.                                                              |
+| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuild both local and remote databases by local files.  |
+| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discard the local database, and fetch from the remote again. |
+
+When fetching everything remotely or performing a rebuild, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out.
+(The use of normal markdown files is a trick to externally force cancellation in the event of faults in the rebuild or fetch function itself, especially on mobile devices).
+This mechanism is also used for set-up. And just for information, these files are also not subject to synchronisation.
+
+However, occasionally the deletion of files may fail. This should generally work normally after restarting Obsidian. (As far as I can observe).
+
 ## Tips
+
+### How to resolve `Tweaks Mismatched of Changed`
+
+(Since v0.23.17)
+
+If you have changed some configurations or tweaks which should be unified between the devices, you will be asked how to reflect (or not) other devices at the next synchronisation. It also occurs on the device itself, where changes are made, to prevent unexpected configuration changes from unwanted propagation.  
+(We may thank this behaviour if we have synchronised or backed up and restored Self-hosted LiveSync. At least, for me so).
+
+Following dialogue will be shown:
+![Dialogue](tweak_mismatch_dialogue.png)
+
+- If we want to propagate the setting of the device, we should choose `Update with mine`.
+- On other devices, we should choose `Use configured` to accept and use the configured configuration.
+- `Dismiss` can postpone a decision. However, we cannot synchronise until we have decided.
+
+Rest assured that in most cases we can choose `Use configured`. (Unless you are certain that you have not changed the configuration).
+
+If we see it for the first time, it reflects the settings of the device that has been synchronised with the remote for the first time since the upgrade. Probably, we can accept that.
+
 <!-- Add here -->
 
 ### Old tips
--   Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case, you can delete these items from the settings dialog.
--   To stop the boot-up sequence (eg. for fixing problems on databases), you can put a `redflag.md` file (or directory) at the root of your vault.
-    Tip for iOS: a redflag directory can be created at the root of the vault using the File application.
--   Also, with `redflag2.md` placed, we can automatically rebuild both the local and the remote databases during the boot-up sequence. With `redflag3.md`, we can discard only the local database and fetch from the remote again.
--   Q: The database is growing, how can I shrink it down?
-    A: each of the docs is saved with their past 100 revisions for detecting and resolving conflicts. Picturing that one device has been offline for a while, and comes online again. The device has to compare its notes with the remotely saved ones. If there exists a historic revision in which the note used to be identical, it could be updated safely (like git fast-forward). Even if that is not in revision histories, we only have to check the differences after the revision that both devices commonly have. This is like git's conflict-resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
--   And more technical Information is in the [Technical Information](tech_info.md)
--   If you want to synchronize files without obsidian, you can use [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
--   WebClipper is also available on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
+
+- Rarely, a file in the database could be corrupted. The plugin will not write to local storage when a file looks corrupted. If a local version of the file is on your device, the corruption could be fixed by editing the local file and synchronizing it. But if the file does not exist on any of your devices, then it can not be rescued. In this case, you can delete these items from the settings dialog.
+- To stop the boot-up sequence (eg. for fixing problems on databases), you can put a `redflag.md` file (or directory) at the root of your vault.
+  Tip for iOS: a redflag directory can be created at the root of the vault using the File application.
+- Also, with `redflag2.md` placed, we can automatically rebuild both the local and the remote databases during the boot-up sequence. With `redflag3.md`, we can discard only the local database and fetch from the remote again.
+- Q: The database is growing, how can I shrink it down?
+  A: each of the docs is saved with their past 100 revisions for detecting and resolving conflicts. Picturing that one device has been offline for a while, and comes online again. The device has to compare its notes with the remotely saved ones. If there exists a historic revision in which the note used to be identical, it could be updated safely (like git fast-forward). Even if that is not in revision histories, we only have to check the differences after the revision that both devices commonly have. This is like git's conflict-resolving method. So, We have to make the database again like an enlarged git repo if you want to solve the root of the problem.
+- And more technical Information is in the [Technical Information](tech_info.md)
+- If you want to synchronize files without obsidian, you can use [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
+- WebClipper is also available on Chrome Web Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
 
 Repo is here: [obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip). (Docs are a work in progress.)

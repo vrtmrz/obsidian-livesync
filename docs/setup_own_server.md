@@ -54,7 +54,7 @@ Please refer the [official document](https://docs.couchdb.org/en/stable/install/
 
 ## 2. Run couchdb-init.sh for initialise
 ```
-$ curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
+curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
 If it results like following:
@@ -83,7 +83,12 @@ Your CouchDB has been initialised successfully. If you want this manually, pleas
 Whatever solutions we can use. For the simplicity, following sample uses Cloudflare Zero Trust for testing.
 
 ```
-$ cloudflared tunnel --url http://localhost:5984
+cloudflared tunnel --url http://localhost:5984
+```
+
+You will then get the following output:
+
+```
 2024-02-14T10:35:25Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
 2024-02-14T10:35:25Z INF Requesting new quick Tunnel on trycloudflare.com...
 2024-02-14T10:35:26Z INF +--------------------------------------------------------------------------------------------+
@@ -103,18 +108,30 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 
 ### 1. Generate the setup URI on a desktop device or server
 ```bash
-$ export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
-$ export database=obsidiannotes #Please change as you like
-$ export passphrase=dfsapkdjaskdjasdas #Please change as you like
-$ deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
-obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
+export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
+export database=obsidiannotes #Please change as you like
+export passphrase=dfsapkdjaskdjasdas #Please change as you like
+export username=johndoe
+export password=abc123
+deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 ```
+
+You will then get the following output:
+
+```bash
+obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
+
+Your passphrase of Setup-URI is:  patient-haze
+This passphrase is never shown again, so please note it in a safe place.
+```
+
+Please keep your passphrase of Setup-URI.
 
 ### 2. Setup Self-hosted LiveSync to Obsidian
 [This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 1. Install Self-hosted LiveSync
 2. Choose `Use the copied setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
-3. Type `welcome` for setup-uri passphrase.
+3. Type the previously displayed passphrase (`patient-haze`) for setup-uri passphrase.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
 5. `Reload app without save` once.
 

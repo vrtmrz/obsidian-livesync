@@ -1,5 +1,0 @@
-node_modules
-build
-.eslintrc.js.bak
-src/lib/src/patches/pouchdb-utils
-esbuild.config.mjs

@@ -18,6 +18,10 @@ Note: This plugin cannot synchronise with the official "Obsidian Sync".
 - Supporting End-to-end encryption.
 - Synchronisation of settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
 - WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
+- WebRTC peer-to-peer synchronisation without the need any `host` is now possible. (Experimental)
+  - This feature is still in the experimental stage. Please be careful when using it. 
+  - Instead of using public servers, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
+  - There is an [explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync), although it is in Japanese. I will write the English version soon. 
 
 This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
 
@@ -68,6 +72,7 @@ Synchronization status is shown in the status bar with the following icons.
      -   💾 Working write storage processes
      -   ⏳ Working read storage processes
      -   🛫 Pending read storage processes
+     -   📬 Batched read storage processes
      -   ⚙️ Working or pending storage processes of hidden files
      -   🧩 Waiting chunks
      -   🔌 Working Customisation items (Configuration, snippets, and plug-ins)
@@ -78,6 +83,15 @@ To prevent file and database corruption, please wait to stop Obsidian until all 
 
 ## Tips and Troubleshooting
 If you are having problems getting the plugin working see: [Tips and Troubleshooting](docs/troubleshooting.md)
+
+## Acknowledgements
+
+The project has been in continual progress and harmony because of 
+- Many [Contributors](https://github.com/vrtmrz/obsidian-livesync/graphs/contributors)
+- Many [GitHub Sponsors](https://github.com/sponsors/vrtmrz#sponsors)
+- JetBrains Community Programs / Support for Open-Source Projects <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.png" alt="JetBrains logo." height="24">
+
+May those who have contributed be honoured and remembered for their kindness and generosity.
 
 ## License
 
