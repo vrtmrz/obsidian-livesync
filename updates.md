@@ -10,6 +10,11 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.20
+
+### Improved
+- Now we can see the detail of `TypeError` using Obsidian API during remote database access.
+
 ## 0.24.19
 
 ### New Feature
