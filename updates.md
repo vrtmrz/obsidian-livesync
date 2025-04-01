@@ -10,9 +10,30 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.21
+
+### Fixed
+
+- No longer conflicted files are handled in the boot-up process. No more unexpected overwriting.
+    - It ignores `Always overwrite with a newer file`, and always be prevented for the safety. Please pick it manually or open the file.
+- Some log messages on conflict resolution has been corrected.
+- Automatic merge notifications, displayed on the grounds of `same`, have been degraded to logs.
+
+### Improved
+
+- Now we can fetch the remote database with keeping local files completely intact.
+    - In new option, all files are stored into the local database before the fetching, and will be merged automatically or detected as conflicts.
+- The dialogue presenting options when performing `Fetch` are now more informative.
+
+### Refactored
+
+- Some class methods have been fixed its arguments to be more consistent.
+- Types have been defined for some conditional results.
+
 ## 0.24.20
 
 ### Improved
+
 - Now we can see the detail of `TypeError` using Obsidian API during remote database access.
 
 ## 0.24.19
@@ -100,53 +121,5 @@ Confession. I got the default values wrong. So scary and sorry.
 - JSON file conflict resolution dialogue has been rewritten into svelte v5.
 - Upgrade eslint.
 - Remove unnecessary pragma comments for eslint.
-
-## 0.24.13
-
-Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
-
-### Fixed
-
-#### General Replication
-
-- No longer unexpected errors occur when the replication is stopped during for some reason (e.g., network disconnection).
-
-#### Peer-to-Peer Synchronisation
-
-- Set-up process will not receive data from unexpected sources.
-- No longer resource leaks while enabling the `broadcasting changes`
-- Logs are less verbose.
-- Received data is now correctly dispatched to other devices.
-- `Timeout` error now more informative.
-- No longer timeout error occurs for reporting the progress to other devices.
-- Decision dialogues for the same thing are not shown multiply at the same time anymore.
-- Disconnection of the peer-to-peer synchronisation is now more robust and less error-prone.
-
-#### Webpeer
-
-- Now we can toggle Peers' configuration.
-
-### Refactored
-
-- Cross-platform compatibility layer has been improved.
-- Common events are moved to the common library.
-- Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
-- Some file names have been changed to be more consistent.
-
-## 0.24.12
-
-I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
-And, this is just a single web page, without any server-side code. It is a static web page that can be hosted on any static web server, such as GitHub Pages, Netlify, or Vercel. All you have to do is to open the page and enter several items, and leave it open.
-
-### Fixed
-
-- No longer unnecessary acknowledgements are sent when starting peer-to-peer synchronisation.
-
-### Refactored
-
-- Platform impedance-matching-layer has been improved.
-    - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
-- Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
-
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

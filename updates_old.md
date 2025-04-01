@@ -14,6 +14,55 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.13
+
+Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
+
+### Fixed
+
+#### General Replication
+
+- No longer unexpected errors occur when the replication is stopped during for some reason (e.g., network disconnection).
+
+#### Peer-to-Peer Synchronisation
+
+- Set-up process will not receive data from unexpected sources.
+- No longer resource leaks while enabling the `broadcasting changes`
+- Logs are less verbose.
+- Received data is now correctly dispatched to other devices.
+- `Timeout` error now more informative.
+- No longer timeout error occurs for reporting the progress to other devices.
+- Decision dialogues for the same thing are not shown multiply at the same time anymore.
+- Disconnection of the peer-to-peer synchronisation is now more robust and less error-prone.
+
+#### Webpeer
+
+- Now we can toggle Peers' configuration.
+
+### Refactored
+
+- Cross-platform compatibility layer has been improved.
+- Common events are moved to the common library.
+- Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
+- Some file names have been changed to be more consistent.
+
+
+## 0.24.12
+
+I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
+And, this is just a single web page, without any server-side code. It is a static web page that can be hosted on any static web server, such as GitHub Pages, Netlify, or Vercel. All you have to do is to open the page and enter several items, and leave it open.
+
+### Fixed
+
+- No longer unnecessary acknowledgements are sent when starting peer-to-peer synchronisation.
+
+### Refactored
+
+- Platform impedance-matching-layer has been improved.
+    - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
+- Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
+
+
 ## 0.24.11
 
 ### Improved
