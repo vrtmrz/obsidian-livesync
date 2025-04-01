@@ -1306,7 +1306,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         );
                         return;
                     }
-                    const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
+                    const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (docXDoc == false) {
                         throw "Could not load the document";
                     }
@@ -1440,7 +1440,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         // this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
-                    const oldC = await this.localDatabase.getDBEntryFromMeta(old, {}, false, false);
+                    const oldC = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (oldC) {
                         const d = (await deserialize(getDocDataAsArray(oldC.data), {})) as PluginDataEx;
                         if (d.files.length == dt.files.length) {

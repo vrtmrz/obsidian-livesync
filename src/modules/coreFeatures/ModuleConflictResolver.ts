@@ -44,13 +44,16 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             return MISSING_OR_ERROR;
         }
         eventHub.emitEvent("conflict-cancelled", path);
-        this._log(`${title} Conflicted revision deleted ${displayRev(deleteRevision)} ${path}`, LOG_LEVEL_INFO);
+        this._log(
+            `${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`,
+            LOG_LEVEL_INFO
+        );
         if ((await this.core.databaseFileAccess.getConflictedRevs(path)).length != 0) {
             this._log(`${title} some conflicts are left in ${path}`, LOG_LEVEL_INFO);
             return AUTO_MERGED;
         }
-        this._log(`${title} ${path} is a plugin metadata file, no need to write to storage`, LOG_LEVEL_INFO);
         if (isPluginMetadata(path) || isCustomisationSyncMetadata(path)) {
+            this._log(`${title} ${path} is a plugin metadata file, no need to write to storage`, LOG_LEVEL_INFO);
             return AUTO_MERGED;
         }
         // If no conflicts were found, write the resolved content to the storage.
@@ -58,7 +61,8 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             this._log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
-        this._log(`${path} Has been merged automatically`, LOG_LEVEL_NOTICE);
+        const level = subTitle.indexOf("same") !== -1 ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
+        this._log(`${path} has been merged automatically`, level);
         return AUTO_MERGED;
     }
 
@@ -108,7 +112,9 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 `${isSame ? "same" : ""}`,
                 `${isBinary ? "binary" : ""}`,
                 `${alwaysNewer ? "alwaysNewer" : ""}`,
-            ].join(",");
+            ]
+                .filter((e) => e.trim())
+                .join(",");
             return await this.core.$$resolveConflictByDeletingRev(path, loser.rev, subTitle);
         }
         // make diff.

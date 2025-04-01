@@ -338,7 +338,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
 
             // If `Read chunks online` is disabled, chunks should be transferred before here.
             // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
-            const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, {}, false, true, true);
+            const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, false, true);
             if (!doc) {
                 Logger(
                     `Something went wrong while gathering content of ${path} (${dbDoc._id.substring(0, 8)}, ${dbDoc._rev?.substring(0, 10)}) `,

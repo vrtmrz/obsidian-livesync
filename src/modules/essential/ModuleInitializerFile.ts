@@ -180,7 +180,7 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         };
         initProcess.push(
             runAll("UPDATE DATABASE", filesExistOnlyInStorage, async (e) => {
-                // console.warn("UPDATE DATABASE", e);
+                // Exists in storage but not in database.
                 const file = storageFileNameMap[storageFileNameCI2CS[e]];
                 if (!this.core.$$isFileSizeExceeded(file.stat.size)) {
                     const path = file.path;
@@ -195,9 +195,16 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         initProcess.push(
             runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
                 const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
+                // Exists in database but not in storage.
                 const path = getPath(w) ?? e;
                 if (w && !(w.deleted || w._deleted)) {
                     if (!this.core.$$isFileSizeExceeded(w.size)) {
+                        // Prevent applying the conflicted state to the storage.
+                        const conflicted = await this.core.databaseFileAccess.getConflictedRevs(path);
+                        if (conflicted.length > 0) {
+                            this._log(`UPDATE STORAGE: ${path} has conflicts. skipped`, LOG_LEVEL_INFO);
+                            return;
+                        }
                         // await this.pullFile(path, undefined, false, undefined, false);
                         // Memo: No need to force
                         await this.core.fileHandler.dbToStorage(path, null, true);
@@ -229,6 +236,12 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         initProcess.push(
             runAll("SYNC DATABASE AND STORAGE", fileMap, async (e) => {
                 const { file, doc } = e;
+                // Prevent applying the conflicted state to the storage.
+                const conflicted = await this.core.databaseFileAccess.getConflictedRevs(file.path);
+                if (conflicted.length > 0) {
+                    this._log(`SYNC DATABASE AND STORAGE: ${file.path} has conflicts. skipped`, LOG_LEVEL_INFO);
+                    return;
+                }
                 if (!this.core.$$isFileSizeExceeded(file.stat.size) && !this.core.$$isFileSizeExceeded(doc.size)) {
                     await this.syncFileBetweenDBandStorage(file, doc);
                 } else {

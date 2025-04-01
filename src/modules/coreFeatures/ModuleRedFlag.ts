@@ -9,6 +9,7 @@ import {
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
+import { $msg } from "../../lib/src/common/i18n.ts";
 
 export class ModuleRedFlag extends AbstractModule implements ICoreModule {
     async isFlagFileExist(path: string) {
@@ -105,16 +106,35 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         `${FLAGMD_REDFLAG3} or ${FLAGMD_REDFLAG3_HR} has been detected! Self-hosted LiveSync will discard the local database and fetch everything from the remote once again.`,
                         LOG_LEVEL_NOTICE
                     );
-                    const makeLocalChunkBeforeSync =
-                        (await this.core.confirm.askYesNoDialog(
-                            `Do you want to create local chunks before fetching? 
-> [!MORE]-
-> If creating local chunks before fetching, only the difference between the local and remote will be fetched.
+                    const method1 = $msg("RedFlag.Fetch.Method.FetchSafer");
+                    const method2 = $msg("RedFlag.Fetch.Method.FetchSmoother");
+                    const method3 = $msg("RedFlag.Fetch.Method.FetchTraditional");
 
-`,
-                            { defaultOption: "Yes", title: "Trick to transfer efficiently" }
-                        )) == "yes";
-                    await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync);
+                    const methods = [method1, method2, method3] as const;
+                    const chunkMode = await this.core.confirm.askSelectStringDialogue(
+                        $msg("RedFlag.Fetch.Method.Desc"),
+                        methods,
+                        {
+                            defaultAction: method1,
+                            timeout: 0,
+                            title: $msg("RedFlag.Fetch.Method.Title"),
+                        }
+                    );
+                    let makeLocalChunkBeforeSync = false;
+                    let preventMakeLocalFilesBeforeSync = false;
+                    if (chunkMode === method1) {
+                        preventMakeLocalFilesBeforeSync = true;
+                    } else if (chunkMode === method2) {
+                        makeLocalChunkBeforeSync = true;
+                    } else if (chunkMode === method3) {
+                        // Do nothing.
+                    } else {
+                        this._log("Cancelled the fetch operation", LOG_LEVEL_NOTICE);
+                        return false;
+                    }
+
+                    await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, preventMakeLocalFilesBeforeSync);
+
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {
                         if (

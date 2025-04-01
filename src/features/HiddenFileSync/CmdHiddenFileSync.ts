@@ -1490,7 +1490,7 @@ Offline Changed files: ${files.length}`;
                     }
                     return false;
                 } else {
-                    const fileOnDB = await this.localDatabase.getDBEntryFromMeta(metaOnDB, {}, false, true, true);
+                    const fileOnDB = await this.localDatabase.getDBEntryFromMeta(metaOnDB, false, true);
                     if (fileOnDB === false) {
                         throw new Error(`Failed to read file from database:${storageFilePath}`);
                     }

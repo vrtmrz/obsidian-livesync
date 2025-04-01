@@ -4,7 +4,7 @@ export interface Rebuilder {
     ): Promise<void>;
     $rebuildRemote(): Promise<void>;
     $rebuildEverything(): Promise<void>;
-    $fetchLocal(makeLocalChunkBeforeSync?: boolean): Promise<void>;
+    $fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean): Promise<void>;
 
     scheduleRebuild(): Promise<void>;
     scheduleFetch(): Promise<void>;

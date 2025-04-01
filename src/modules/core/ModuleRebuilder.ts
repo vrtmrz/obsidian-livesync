@@ -176,7 +176,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
             }
         }
     }
-    async fetchLocal(makeLocalChunkBeforeSync?: boolean) {
+    async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean) {
         await this.core.$allSuspendExtraSync();
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
@@ -189,6 +189,10 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         this.core.$$markIsReady();
         if (makeLocalChunkBeforeSync) {
             await this.core.fileHandler.createAllChunks(true);
+        } else if (!preventMakeLocalFilesBeforeSync) {
+            await this.core.$$initializeDatabase(true);
+        } else {
+            // Do not create local file entries before sync (Means use remote information)
         }
         await this.core.$$markRemoteResolved();
         await delay(500);

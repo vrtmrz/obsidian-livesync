@@ -313,13 +313,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         if (skipCheck && !(await this.checkIsTargetFile(meta.path))) {
             return false;
         }
-        const doc = await this.localDatabase.getDBEntryFromMeta(
-            meta as LoadedEntry,
-            undefined,
-            false,
-            waitForReady,
-            true
-        );
+        const doc = await this.localDatabase.getDBEntryFromMeta(meta as LoadedEntry, false, waitForReady);
         if (doc === false) {
             return false;
         }
