@@ -31,7 +31,7 @@ export hostname=localhost:5984
 export username=goojdasjdas     #Please change as you like.
 export password=kpkdasdosakpdsa #Please change as you like
 
-# Prepare directories which saving data and configurations.
+# Prepare directories which save data and configurations.
 mkdir couchdb-data
 mkdir couchdb-etc
 ```
@@ -45,19 +45,19 @@ $ docker run --name couchdb-for-ols --rm -it -e COUCHDB_USER=${username} -e COUC
 If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
 Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
 
-2. Enable it in background
+2. Enable it in the background
 ```
 $ docker run --name couchdb-for-ols -d --restart always -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
 ### B. Install CouchDB directly
-Please refer the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just administrator needs to be configured.
+Please refer to the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just the administrator needs to be configured.
 
 ## 2. Run couchdb-init.sh for initialise
 ```
 curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
-If it results like following:
+If it results like the following:
 ```
 -- Configuring CouchDB by REST APIs... -->
 {"ok":true}
@@ -80,7 +80,7 @@ Your CouchDB has been initialised successfully. If you want this manually, pleas
 - You can skip this instruction if you using only in intranet and only with desktop devices.
   - For mobile devices, Obsidian requires a valid SSL certificate. Usually, it needs exposing the internet.
 
-Whatever solutions we can use. For the simplicity, following sample uses Cloudflare Zero Trust for testing.
+Whatever solutions we can use. For simplicity, the following sample uses Cloudflare Zero Trust for testing.
 
 ```
 cloudflared tunnel --url http://localhost:5984
@@ -99,12 +99,12 @@ You will then get the following output:
   :
   :
 ```
-Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our server. Make it into background once please.
+Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our server. Make it into the background once, please.
 
 
 ## 4. Client Setup
 > [!TIP]
-> Now manually configuration is not recommended for some reasons. However, if you want to do so, please use `Setup wizard`. The recommended extra configurations will be also set.
+> Now manual configuration is not recommended for some reasons. However, if you want to do so, please use `Setup wizard`. The recommended extra configurations will be also set.
 
 ### 1. Generate the setup URI on a desktop device or server
 ```bash
@@ -115,6 +115,13 @@ export username=johndoe
 export password=abc123
 deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 ```
+
+> [!TIP]
+> What is the `passphrase`? Is it different from `uri_passphrase`?
+> Yes, the `passphrase` we have exported now is for an End-to-End Encryption passphrase.
+> And, `uri_passphrase` that used in the `generate_setupuri.ts` is a different one; for decrypting Set-up URI at using that.
+> Why: I (vorotamoroz) think that the passphrase of the Setup-URI should be different from the E2EE passphrase to prevent exposure caused by operational errors or the possibility of evil in our environment. On top of that, I believe that it is desirable for the Setup-URI to be random. Setup-URI is inevitably long, so it goes through the clipboard. I think that its passphrase should not go through the same path, so it should essentially be typed manually.
+> Hence, if we keep empty for uri_passphrase, generate_setupuri.ts generates an adjective-noun-randomnumber passphrase so that we can remember it without going through the clipboard.
 
 You will then get the following output:
 
