@@ -10,6 +10,25 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.23
+
+### New Feature
+
+- Now, we can send custom headers to the server.
+    - They can be sent to either CouchDB or Object Storage.
+- Authentication with JWT in CouchDB is now supported.
+    - I will describe steps later, but please refer to the [CouchDB document](https://docs.couchdb.org/en/stable/config/auth.html#authentication-configuration).
+    - A JWT keypair for testing can be generated in the setting dialogue.
+
+### Improved
+
+- The QR Code for set-up can be shown also from the setting dialogue now.
+- Conflict checking for preventing unexpected overwriting on the boot-up process has been quite faster.
+
+### Fixed
+
+- Some bugs on Dev and Testing modules have been fixed.
+
 ## 0.24.22 ~~0.24.21~~
 
 (Really sorry for the confusion. I have got a miss at releasing...).
@@ -74,54 +93,5 @@ Confession. I got the default values wrong. So scary and sorry.
 - **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
     - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
 
-## 0.24.16
-
-### Improved
-
-#### Peer-to-Peer
-
-- Now peer-to-peer synchronisation checks the settings are compatible with each other.
-    - No longer unexpected database broken, phew.
-- Peer-to-peer synchronisation now handles the platform and detects pseudo-clients.
-    - Pseudo clients will not decrypt/encrypt anything, just relay the data. Hence, always settings are not compatible. Therefore, we have to accept the incompatibility for pseudo clients.
-
-#### General
-
-- New migration method has been implemented, that called `Doctor`.
-
-    - `Doctor` checks the difference between the ideal and actual values and encourages corrective action. To facilitate our decision, the reasons for this and the recommendations are also presented.
-    - This can be used not only during migration. We can invoke the doctor from the settings for trouble-shooting.
-
-- The minimum interval for replication to be caused when an event occurs can now be configurable.
-- Some detail note has been added and change nuance about the `Report` in the setting dialogue, which had less informative.
-
-### Behaviour and default changed
-
-- `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
-    - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
-
-### Refactored
-
-- Platform specific codes are more separated. No longer `node` modules were used in the browser and Obsidian.
-
-## 0.24.15
-
-### Fixed
-
-- Now, even without WeakRef, Polyfill is used and the whole thing works without error. However, if you can switch WebView Engine, it is recommended to switch to a WebView Engine that supports WeakRef.
-
-## 0.24.14
-
-### Fixed
-
-- Resolving conflicts of JSON files (and sensibly merging them) is now working fine, again!
-    - And, failure logs are more informative.
-- More robust to release the event listeners on unwatching the local database.
-
-### Refactored
-
-- JSON file conflict resolution dialogue has been rewritten into svelte v5.
-- Upgrade eslint.
-- Remove unnecessary pragma comments for eslint.
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

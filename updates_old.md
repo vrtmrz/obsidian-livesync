@@ -14,6 +14,57 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+
+## 0.24.16
+
+### Improved
+
+#### Peer-to-Peer
+
+- Now peer-to-peer synchronisation checks the settings are compatible with each other.
+    - No longer unexpected database broken, phew.
+- Peer-to-peer synchronisation now handles the platform and detects pseudo-clients.
+    - Pseudo clients will not decrypt/encrypt anything, just relay the data. Hence, always settings are not compatible. Therefore, we have to accept the incompatibility for pseudo clients.
+
+#### General
+
+- New migration method has been implemented, that called `Doctor`.
+
+    - `Doctor` checks the difference between the ideal and actual values and encourages corrective action. To facilitate our decision, the reasons for this and the recommendations are also presented.
+    - This can be used not only during migration. We can invoke the doctor from the settings for trouble-shooting.
+
+- The minimum interval for replication to be caused when an event occurs can now be configurable.
+- Some detail note has been added and change nuance about the `Report` in the setting dialogue, which had less informative.
+
+### Behaviour and default changed
+
+- `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
+    - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
+
+### Refactored
+
+- Platform specific codes are more separated. No longer `node` modules were used in the browser and Obsidian.
+
+## 0.24.15
+
+### Fixed
+
+- Now, even without WeakRef, Polyfill is used and the whole thing works without error. However, if you can switch WebView Engine, it is recommended to switch to a WebView Engine that supports WeakRef.
+
+## 0.24.14
+
+### Fixed
+
+- Resolving conflicts of JSON files (and sensibly merging them) is now working fine, again!
+    - And, failure logs are more informative.
+- More robust to release the event listeners on unwatching the local database.
+
+### Refactored
+
+- JSON file conflict resolution dialogue has been rewritten into svelte v5.
+- Upgrade eslint.
+- Remove unnecessary pragma comments for eslint.
+
 ## 0.24.13
 
 Sorry for the lack of replies. The ones that were not good are popping up, so I am just going to go ahead and get this one... However, they realised that refactoring and restructuring is about clarifying the problem. Your patience and understanding is much appreciated.
