@@ -18,6 +18,7 @@ import {
     type AUTO_MERGED,
     type RemoteDBSettings,
     type TweakValues,
+    type CouchDBCredentials,
 } from "./lib/src/common/types.ts";
 import { type FileEventItem } from "./common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
@@ -283,16 +284,14 @@ export default class ObsidianLiveSyncPlugin
 
     $$connectRemoteCouchDB(
         uri: string,
-        auth: {
-            username: string;
-            password: string;
-        },
+        auth: CouchDBCredentials,
         disableRequestURI: boolean,
         passphrase: string | false,
         useDynamicIterationCount: boolean,
         performSetup: boolean,
         skipInfo: boolean,
-        compression: boolean
+        compression: boolean,
+        customHeaders: Record<string, string>
     ): Promise<
         | string
         | {

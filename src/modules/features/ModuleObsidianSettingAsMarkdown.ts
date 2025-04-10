@@ -191,6 +191,11 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
             delete saveData.couchDB_USER;
             delete saveData.couchDB_PASSWORD;
             delete saveData.passphrase;
+            delete saveData.jwtKey;
+            delete saveData.jwtKid;
+            delete saveData.jwtSub;
+            delete saveData.couchDB_CustomHeaders;
+            delete saveData.bucketCustomHeaders;
         }
         return saveData;
     }

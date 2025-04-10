@@ -35,7 +35,7 @@ import {
     readAsBlob,
     sizeToHumanReadable,
 } from "../../../lib/src/common/utils.ts";
-import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
+import { arrayBufferToBase64Single, versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import {
     balanceChunkPurgedDBs,
@@ -72,6 +72,7 @@ import {
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_REQUEST_RUN_DOCTOR,
+    EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
 } from "../../../common/events.ts";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
@@ -81,6 +82,7 @@ import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSy
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
 import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { mount } from "svelte";
+import { getWebCrypto } from "../../../lib/src/mods.ts";
 
 export type OnUpdateResult = {
     visibility?: boolean;
@@ -814,6 +816,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return false;
         };
         const enableOnlySyncDisabled = enableOnly(() => !isAnySyncEnabled());
+        const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {
+            return () => ({
+                ...func1(),
+                ...func2(),
+            });
+        };
         const onlyOnP2POrCouchDB = () =>
             ({
                 visibility:
@@ -979,7 +987,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
                         });
                     });
+                new Setting(paneEl)
+                    .setName($msg("Setup.ShowQRCode"))
+                    .setDesc($msg("Setup.ShowQRCode.Desc"))
+                    .addButton((text) => {
+                        text.setButtonText($msg("Setup.ShowQRCode")).onClick(() => {
+                            eventHub.emitEvent(EVENT_REQUEST_SHOW_SETUP_QR);
+                        });
+                    });
             });
+
             void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleReset")).then((paneEl) => {
                 new Setting(paneEl)
                     .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
@@ -1444,6 +1461,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         new Setting(paneEl).autoWireText("bucket", { holdValue: true });
 
                         new Setting(paneEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
+                        new Setting(paneEl).autoWireTextArea("bucketCustomHeaders", {
+                            holdValue: true,
+                            placeHolder: "x-custom-header: value\n x-custom-header2: value2",
+                        });
                         new Setting(paneEl)
                             .setName($msg("obsidianLiveSyncSettingTab.nameTestConnection"))
                             .addButton((button) =>
@@ -1465,6 +1486,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                 "secretKey",
                                 "bucket",
                                 "useCustomRequestHandler",
+                                "bucketCustomHeaders",
                             ])
                             .addOnUpdate(onlyOnMinIO);
                     });
@@ -1511,20 +1533,119 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                             holdValue: true,
                             onUpdate: enableOnlySyncDisabled,
                         });
-                        new Setting(paneEl).autoWireText("couchDB_USER", {
+                        new Setting(paneEl).autoWireToggle("useJWT", {
                             holdValue: true,
                             onUpdate: enableOnlySyncDisabled,
+                        });
+                        new Setting(paneEl).autoWireText("couchDB_USER", {
+                            holdValue: true,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => !this.editingSettings.useJWT)
+                            ),
                         });
                         new Setting(paneEl).autoWireText("couchDB_PASSWORD", {
                             holdValue: true,
                             isPassword: true,
-                            onUpdate: enableOnlySyncDisabled,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => !this.editingSettings.useJWT)
+                            ),
+                        });
+                        const algorithms = {
+                            ["HS256"]: "HS256",
+                            ["HS512"]: "HS512",
+                            ["ES256"]: "ES256",
+                            ["ES512"]: "ES512",
+                        } as const;
+                        new Setting(paneEl).autoWireDropDown("jwtAlgorithm", {
+                            options: algorithms,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => this.editingSettings.useJWT)
+                            ),
+                        });
+                        new Setting(paneEl).autoWireTextArea("jwtKey", {
+                            holdValue: true,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => this.editingSettings.useJWT)
+                            ),
+                        });
+                        // eslint-disable-next-line prefer-const
+                        let generatedKeyDivEl: HTMLDivElement;
+                        new Setting(paneEl)
+                            .setDesc("Generate ES256 Keypair for testing")
+                            .addButton((button) =>
+                                button.setButtonText("Generate").onClick(async () => {
+                                    const crypto = await getWebCrypto();
+                                    const keyPair = await crypto.subtle.generateKey(
+                                        { name: "ECDSA", namedCurve: "P-256" },
+                                        true,
+                                        ["sign", "verify"]
+                                    );
+                                    const pubKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+                                    const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+                                    const encodedPublicKey = await arrayBufferToBase64Single(pubKey);
+                                    const encodedPrivateKey = await arrayBufferToBase64Single(privateKey);
+
+                                    const privateKeyPem = `> -----BEGIN PRIVATE KEY-----\n> ${encodedPrivateKey}\n> -----END PRIVATE KEY-----`;
+                                    const publicKeyPem = `> -----BEGIN PUBLIC KEY-----\\n${encodedPublicKey}\\n-----END PUBLIC KEY-----`;
+
+                                    const title = $msg("Setting.GenerateKeyPair.Title");
+                                    const msg = $msg("Setting.GenerateKeyPair.Desc", {
+                                        public_key: publicKeyPem,
+                                        private_key: privateKeyPem,
+                                    });
+                                    await MarkdownRenderer.render(
+                                        this.plugin.app,
+                                        "## " + title + "\n\n" + msg,
+                                        generatedKeyDivEl,
+                                        "/",
+                                        this.plugin
+                                    );
+                                })
+                            )
+                            .addOnUpdate(
+                                combineOnUpdate(
+                                    enableOnlySyncDisabled,
+                                    visibleOnly(() => this.editingSettings.useJWT)
+                                )
+                            );
+                        generatedKeyDivEl = this.createEl(
+                            paneEl,
+                            "div",
+                            { text: "" },
+                            (el) => {},
+                            visibleOnly(() => this.editingSettings.useJWT)
+                        );
+
+                        new Setting(paneEl).autoWireText("jwtKid", {
+                            holdValue: true,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => this.editingSettings.useJWT)
+                            ),
+                        });
+                        new Setting(paneEl).autoWireText("jwtSub", {
+                            holdValue: true,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => this.editingSettings.useJWT)
+                            ),
+                        });
+                        new Setting(paneEl).autoWireNumeric("jwtExpDuration", {
+                            holdValue: true,
+                            onUpdate: combineOnUpdate(
+                                enableOnlySyncDisabled,
+                                visibleOnly(() => this.editingSettings.useJWT)
+                            ),
                         });
                         new Setting(paneEl).autoWireText("couchDB_DBNAME", {
                             holdValue: true,
                             onUpdate: enableOnlySyncDisabled,
                         });
-
+                        new Setting(paneEl).autoWireTextArea("couchDB_CustomHeaders", { holdValue: true });
                         new Setting(paneEl)
                             .setName($msg("obsidianLiveSyncSettingTab.nameTestDatabaseConnection"))
                             .setClass("wizardHidden")
@@ -1562,6 +1683,13 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                 "couchDB_USER",
                                 "couchDB_PASSWORD",
                                 "couchDB_DBNAME",
+                                "jwtAlgorithm",
+                                "jwtExpDuration",
+                                "jwtKey",
+                                "jwtSub",
+                                "jwtKid",
+                                "useJWT",
+                                "couchDB_CustomHeaders",
                             ])
                             .addOnUpdate(onlyOnCouchDB);
                     });
@@ -1985,7 +2113,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     LEVEL_ADVANCED
                 ).then((paneEl) => {
                     paneEl.addClass("wizardHidden");
-
                     new Setting(paneEl)
                         .autoWireText("settingSyncFile", { holdValue: true })
                         .addApplyButton(["settingSyncFile"]);
@@ -2330,6 +2457,11 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                             pluginConfig.P2P_passphrase = redact(pluginConfig.P2P_passphrase);
                             pluginConfig.P2P_roomID = redact(pluginConfig.P2P_roomID);
                             pluginConfig.P2P_relays = redact(pluginConfig.P2P_relays);
+                            pluginConfig.jwtKey = redact(pluginConfig.jwtKey);
+                            pluginConfig.jwtSub = redact(pluginConfig.jwtSub);
+                            pluginConfig.jwtKid = redact(pluginConfig.jwtKid);
+                            pluginConfig.bucketCustomHeaders = redact(pluginConfig.bucketCustomHeaders);
+                            pluginConfig.couchDB_CustomHeaders = redact(pluginConfig.couchDB_CustomHeaders);
                             const endpoint = pluginConfig.endpoint;
                             if (endpoint == "") {
                                 pluginConfig.endpoint = "Not configured or AWS";
@@ -3383,6 +3515,7 @@ ${stringifyYaml(pluginConfig)}`;
         const region = this.plugin.settings.region;
         const endpoint = this.plugin.settings.endpoint;
         const useCustomRequestHandler = this.plugin.settings.useCustomRequestHandler;
+        const customHeaders = this.plugin.settings.bucketCustomHeaders;
         return new JournalSyncMinio(
             id,
             key,
@@ -3391,7 +3524,8 @@ ${stringifyYaml(pluginConfig)}`;
             this.plugin.simpleStore,
             this.plugin,
             useCustomRequestHandler,
-            region
+            region,
+            customHeaders
         );
     }
     async resetRemoteBucket() {

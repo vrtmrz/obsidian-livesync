@@ -81,9 +81,9 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
 
         this._log("Collecting local files on the DB", LOG_LEVEL_VERBOSE);
         const _DBEntries = [] as MetaEntry[];
-        // const _DBEntriesTask = [] as (() => Promise<MetaEntry | false>)[];
         let count = 0;
-        for await (const doc of this.localDatabase.findAllNormalDocs()) {
+        // Fetch all documents from the database (including conflicts to prevent overwriting).
+        for await (const doc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
             count++;
             if (count % 25 == 0)
                 this._log(
@@ -200,9 +200,8 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
                 if (w && !(w.deleted || w._deleted)) {
                     if (!this.core.$$isFileSizeExceeded(w.size)) {
                         // Prevent applying the conflicted state to the storage.
-                        const conflicted = await this.core.databaseFileAccess.getConflictedRevs(path);
-                        if (conflicted.length > 0) {
-                            this._log(`UPDATE STORAGE: ${path} has conflicts. skipped`, LOG_LEVEL_INFO);
+                        if (w._conflicts?.length ?? 0 > 0) {
+                            this._log(`UPDATE STORAGE: ${path} has conflicts. skipped (x)`, LOG_LEVEL_INFO);
                             return;
                         }
                         // await this.pullFile(path, undefined, false, undefined, false);
@@ -237,8 +236,7 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             runAll("SYNC DATABASE AND STORAGE", fileMap, async (e) => {
                 const { file, doc } = e;
                 // Prevent applying the conflicted state to the storage.
-                const conflicted = await this.core.databaseFileAccess.getConflictedRevs(file.path);
-                if (conflicted.length > 0) {
+                if (doc._conflicts?.length ?? 0 > 0) {
                     this._log(`SYNC DATABASE AND STORAGE: ${file.path} has conflicts. skipped`, LOG_LEVEL_INFO);
                     return;
                 }

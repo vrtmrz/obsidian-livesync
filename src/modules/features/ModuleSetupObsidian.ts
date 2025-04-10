@@ -9,7 +9,12 @@ import { configURIBase, configURIBaseQR } from "../../common/types.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.js";
 import { decrypt, encrypt } from "../../lib/src/encryption/e2ee_v2.ts";
 import { fireAndForget } from "../../lib/src/common/utils.ts";
-import { EVENT_REQUEST_COPY_SETUP_URI, EVENT_REQUEST_OPEN_SETUP_URI, eventHub } from "../../common/events.ts";
+import {
+    EVENT_REQUEST_COPY_SETUP_URI,
+    EVENT_REQUEST_OPEN_SETUP_URI,
+    EVENT_REQUEST_SHOW_SETUP_QR,
+    eventHub,
+} from "../../common/events.ts";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { decodeAnyArray, encodeAnyArray } from "../../common/utils.ts";
 import qrcode from "qrcode-generator";
@@ -54,6 +59,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         });
         eventHub.onEvent(EVENT_REQUEST_OPEN_SETUP_URI, () => fireAndForget(() => this.command_openSetupURI()));
         eventHub.onEvent(EVENT_REQUEST_COPY_SETUP_URI, () => fireAndForget(() => this.command_copySetupURI()));
+        eventHub.onEvent(EVENT_REQUEST_SHOW_SETUP_QR, () => fireAndForget(() => this.encodeQR()));
         return Promise.resolve(true);
     }
     async encodeQR() {

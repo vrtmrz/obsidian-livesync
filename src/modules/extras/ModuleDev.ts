@@ -1,4 +1,4 @@
-import { fireAndForget } from "octagonal-wheels/promises";
+import { delay, fireAndForget } from "octagonal-wheels/promises";
 import { __onMissingTranslation } from "../../lib/src/common/i18n";
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
@@ -6,6 +6,7 @@ import { eventHub } from "../../common/events";
 import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
+import type { FilePathWithPrefix } from "../../lib/src/common/types.ts";
 
 export class ModuleDev extends AbstractObsidianModule implements IObsidianModule {
     $everyOnloadStart(): Promise<boolean> {
@@ -98,9 +99,41 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
     }
     async $everyOnLayoutReady(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        if (await this.core.storageAccess.isExistsIncludeHidden("_SHOWDIALOGAUTO.md")) {
-            void this.core.$$showView(VIEW_TYPE_TEST);
-        }
+        // if (await this.core.storageAccess.isExistsIncludeHidden("_SHOWDIALOGAUTO.md")) {
+        //     void this.core.$$showView(VIEW_TYPE_TEST);
+        // }
+
+        this.addCommand({
+            id: "test-create-conflict",
+            name: "Create conflict",
+            callback: async () => {
+                const filename = "test-create-conflict.md";
+                const content = `# Test create conflict\n\n`;
+                const w = await this.core.databaseFileAccess.store({
+                    name: filename as FilePathWithPrefix,
+                    path: filename as FilePathWithPrefix,
+                    body: new Blob([content], { type: "text/markdown" }),
+                    stat: {
+                        ctime: new Date().getTime(),
+                        mtime: new Date().getTime(),
+                        size: content.length,
+                        type: "file",
+                    },
+                });
+                if (w) {
+                    const id = await this.core.$$path2id(filename as FilePathWithPrefix);
+                    const f = await this.core.localDatabase.getRaw(id);
+                    console.log(f);
+                    console.log(f._rev);
+                    const revConflict = f._rev.split("-")[0] + "-" + (parseInt(f._rev.split("-")[1]) + 1).toString();
+                    console.log(await this.core.localDatabase.bulkDocsRaw([f], { new_edits: false }));
+                    console.log(
+                        await this.core.localDatabase.bulkDocsRaw([{ ...f, _rev: revConflict }], { new_edits: false })
+                    );
+                }
+            },
+        });
+        await delay(1);
         return true;
     }
     testResults = writable<[boolean, string, string][]>([]);

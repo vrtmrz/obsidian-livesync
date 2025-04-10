@@ -94,6 +94,14 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     region: settings.region,
                     secretKey: settings.secretKey,
                     useCustomRequestHandler: settings.useCustomRequestHandler,
+                    bucketCustomHeaders: settings.bucketCustomHeaders,
+                    couchDB_CustomHeaders: settings.couchDB_CustomHeaders,
+                    useJWT: settings.useJWT,
+                    jwtKey: settings.jwtKey,
+                    jwtAlgorithm: settings.jwtAlgorithm,
+                    jwtKid: settings.jwtKid,
+                    jwtExpDuration: settings.jwtExpDuration,
+                    jwtSub: settings.jwtSub,
                 };
                 settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(
                     JSON.stringify(connectionSetting),

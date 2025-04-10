@@ -444,3 +444,11 @@ span.ls-mark-cr::after {
     align-items: center;
     max-width: max-content;
 }
+
+.sls-keypair pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+
+}

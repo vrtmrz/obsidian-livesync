@@ -160,6 +160,10 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     }
 
     async _dumpFileList(outFile?: string) {
+        if (!this.core || !this.core.storageAccess) {
+            this._log("No storage access", LOG_LEVEL_INFO);
+            return;
+        }
         const files = this.core.storageAccess.getFiles();
         const out = [] as any[];
         const webcrypto = await getWebCrypto();
