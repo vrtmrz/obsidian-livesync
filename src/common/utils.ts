@@ -15,6 +15,7 @@ import {
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     type AnyEntry,
+    type CouchDBCredentials,
     type DocumentID,
     type EntryHasPath,
     type FilePath,
@@ -31,6 +32,7 @@ import type { KeyValueDatabase } from "./KeyValueDB.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
 import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels/promises";
+import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
 
 export { scheduleTask, cancelTask, cancelAllTasks } from "../lib/src/concurrency/task.ts";
 
@@ -230,17 +232,17 @@ export const _requestToCouchDBFetch = async (
 
 export const _requestToCouchDB = async (
     baseUri: string,
-    username: string,
-    password: string,
+    credentials: CouchDBCredentials,
     origin: string,
     path?: string,
     body?: any,
-    method?: string
+    method?: string,
+    customHeaders?: Record<string, string>
 ) => {
-    const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
-    const encoded = window.btoa(utf8str);
-    const authHeader = "Basic " + encoded;
-    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin };
+    // Create each time to avoid caching.
+    const authHeaderGen = new AuthorizationHeaderGenerator();
+    const authHeader = await authHeaderGen.getAuthorizationHeader(credentials);
+    const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin, ...customHeaders };
     const uri = `${baseUri}/${path}`;
     const requestParam: RequestUrlParam = {
         url: uri,
@@ -251,6 +253,9 @@ export const _requestToCouchDB = async (
     };
     return await requestUrl(requestParam);
 };
+/**
+ * @deprecated Use requestToCouchDBWithCredentials instead.
+ */
 export const requestToCouchDB = async (
     baseUri: string,
     username: string,
@@ -258,11 +263,33 @@ export const requestToCouchDB = async (
     origin: string = "",
     key?: string,
     body?: string,
-    method?: string
+    method?: string,
+    customHeaders?: Record<string, string>
 ) => {
     const uri = `_node/_local/_config${key ? "/" + key : ""}`;
-    return await _requestToCouchDB(baseUri, username, password, origin, uri, body, method);
+    return await _requestToCouchDB(
+        baseUri,
+        { username, password, type: "basic" },
+        origin,
+        uri,
+        body,
+        method,
+        customHeaders
+    );
 };
+
+export function requestToCouchDBWithCredentials(
+    baseUri: string,
+    credentials: CouchDBCredentials,
+    origin: string = "",
+    key?: string,
+    body?: string,
+    method?: string,
+    customHeaders?: Record<string, string>
+) {
+    const uri = `_node/_local/_config${key ? "/" + key : ""}`;
+    return _requestToCouchDB(baseUri, credentials, origin, uri, body, method, customHeaders);
+}
 
 export const BASE_IS_NEW = Symbol("base");
 export const TARGET_IS_NEW = Symbol("target");

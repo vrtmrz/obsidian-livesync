@@ -32,6 +32,7 @@ import {
     delay,
     isDocContentSame,
     isObjectDifferent,
+    parseHeaderValues,
     readAsBlob,
     sizeToHumanReadable,
 } from "../../../lib/src/common/utils.ts";
@@ -45,7 +46,7 @@ import {
 } from "../../../lib/src/pouchdb/utils_couchdb.ts";
 import { testCrypt } from "../../../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
-import { getPath, requestToCouchDB, scheduleTask } from "../../../common/utils.ts";
+import { getPath, requestToCouchDBWithCredentials, scheduleTask } from "../../../common/utils.ts";
 import { request } from "obsidian";
 import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
 import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
@@ -83,6 +84,7 @@ import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
 import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { mount } from "svelte";
 import { getWebCrypto } from "../../../lib/src/mods.ts";
+import { generateCredentialObject } from "../../../lib/src/replication/httplib.ts";
 
 export type OnUpdateResult = {
     visibility?: boolean;
@@ -1184,11 +1186,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     return;
                 }
                 // Tip: Add log for cloudant as Logger($msg("obsidianLiveSyncSettingTab.logServerConfigurationCheck"));
-                const r = await requestToCouchDB(
+                const customHeaders = parseHeaderValues(this.editingSettings.couchDB_CustomHeaders);
+                const credential = generateCredentialObject(this.editingSettings);
+                const r = await requestToCouchDBWithCredentials(
                     this.editingSettings.couchDB_URI,
-                    this.editingSettings.couchDB_USER,
-                    this.editingSettings.couchDB_PASSWORD,
-                    window.origin
+                    credential,
+                    window.origin,
+                    undefined,
+                    undefined,
+                    undefined,
+                    customHeaders
                 );
                 const responseConfig = r.json;
 
@@ -1201,13 +1208,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     x.querySelector("button")?.addEventListener("click", () => {
                         fireAndForget(async () => {
                             Logger($msg("obsidianLiveSyncSettingTab.logCouchDbConfigSet", { title, key, value }));
-                            const res = await requestToCouchDB(
+                            const res = await requestToCouchDBWithCredentials(
                                 this.editingSettings.couchDB_URI,
-                                this.editingSettings.couchDB_USER,
-                                this.editingSettings.couchDB_PASSWORD,
+                                credential,
                                 undefined,
                                 key,
-                                value
+                                value,
+                                undefined,
+                                customHeaders
                             );
                             if (res.status == 200) {
                                 Logger(
@@ -1342,11 +1350,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 // Request header check
                 const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
                 for (const org of origins) {
-                    const rr = await requestToCouchDB(
+                    const rr = await requestToCouchDBWithCredentials(
                         this.editingSettings.couchDB_URI,
-                        this.editingSettings.couchDB_USER,
-                        this.editingSettings.couchDB_PASSWORD,
-                        org
+                        credential,
+                        org,
+                        undefined,
+                        undefined,
+                        undefined,
+                        customHeaders
                     );
                     const responseHeaders = Object.fromEntries(
                         Object.entries(rr.headers).map((e) => {
@@ -2406,11 +2417,16 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                             const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
                             if (this.editingSettings.remoteType == REMOTE_COUCHDB) {
                                 try {
-                                    const r = await requestToCouchDB(
+                                    const credential = generateCredentialObject(this.editingSettings);
+                                    const customHeaders = parseHeaderValues(this.editingSettings.couchDB_CustomHeaders);
+                                    const r = await requestToCouchDBWithCredentials(
                                         this.editingSettings.couchDB_URI,
-                                        this.editingSettings.couchDB_USER,
-                                        this.editingSettings.couchDB_PASSWORD,
-                                        window.origin
+                                        credential,
+                                        window.origin,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        customHeaders
                                     );
 
                                     Logger(JSON.stringify(r.json, null, 2));
