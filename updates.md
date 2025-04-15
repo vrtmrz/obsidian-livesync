@@ -10,6 +10,22 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.24
+
+### Fixed
+
+- No longer broken JSON files including `\n`, during the bucket synchronisation. (#623)
+- Custom headers and JWT tokens are now correctly sent to the server during configuration checking. (#624)
+
+### Improved
+
+- Bucket synchronisation has been enhanced for better performance and reliability.
+    - Now less duplicated chunks are sent to the server.
+      Note: If you have encountered about too less chunks, please let me know. However, you can send it to the server by `Overwrite remote`.
+    - Fetching conflicted files from the server is now more reliable.
+    - Dependent libraries have been updated to the latest version.
+      - Also, let me know if you have encountered any issues with this update. Especially you are using a device that has been in use for a little longer.
+
 ## 0.24.23
 
 ### New Feature
@@ -92,6 +108,5 @@ Confession. I got the default values wrong. So scary and sorry.
 
 - **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into enabled again. it is necessary for garbage collection of chunks.
     - As far as existing users are concerned, this will not automatically change, but the Doctor will inform us.
-
 
 Older notes are in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
