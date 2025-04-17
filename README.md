@@ -49,9 +49,9 @@ This plug-in might be useful for researchers, engineers, and developers with a n
    2. [Setup your CouchDB](docs/setup_own_server.md)
 2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
 
-> [!TIP]
 > Now, fly.io has become not free. Fortunately, even though there are some issues, we are still able to use IBM Cloudant. Here is [Setup IBM Cloudant](docs/setup_cloudant.md). It will be updated soon!
 
+> You can use [HuggingFace](docs/setup_easy_huggingface.md) too, which is free and does not require a credit card, but keep in mind that its storage is ephemeral unless you pay (Shouldn't be a problem anyway, see [#442](issues/442) )
 
 ## Information in StatusBar
 
