@@ -10,6 +10,22 @@ Nevertheless, that being said, to be more honest, I still have not decided what 
 
 Note: Already you have noticed this, but let me mention it again, this is a significantly large update. If you have noticed anything, please let me know. I will try to fix it as soon as possible (Some address is on my [profile](https://github.com/vrtmrz)).
 
+## 0.24.25
+
+### Improved
+
+- Peer-to-peer synchronisation has been got more robust.
+
+### Fixed
+
+- No longer broken falsy values in settings during set-up by the QR code generation.
+
+### Refactored
+
+- Some `window` references now have pointed to `globalThis`.
+- Some sloppy-import has been fixed.
+- A server side implementation `Synchromesh` has been suffixed with `deno` instead of `server` now.
+
 ## 0.24.24
 
 ### Fixed
@@ -24,7 +40,7 @@ Note: Already you have noticed this, but let me mention it again, this is a sign
       Note: If you have encountered about too less chunks, please let me know. However, you can send it to the server by `Overwrite remote`.
     - Fetching conflicted files from the server is now more reliable.
     - Dependent libraries have been updated to the latest version.
-      - Also, let me know if you have encountered any issues with this update. Especially you are using a device that has been in use for a little longer.
+        - Also, let me know if you have encountered any issues with this update. Especially you are using a device that has been in use for a little longer.
 
 ## 0.24.23
 
@@ -72,37 +88,6 @@ Note: Already you have noticed this, but let me mention it again, this is a sign
 ### Improved
 
 - Now we can see the detail of `TypeError` using Obsidian API during remote database access.
-
-## 0.24.19
-
-### New Feature
-
-- Now we can generate a QR Code for transferring the configuration to another device.
-    - This QR Code can be scanned by the camera app or something QR Code Reader of another device, and via Obsidian URL, the configuration will be transferred.
-    - Note: This QR Code is not encrypted. So, please be careful when transferring the configuration.
-
-## 0.24.18
-
-### Fixed
-
-- Now no chunk creation errors will be raised after switching `Compute revisions for chunks`.
-- Some invisible file can be handled correctly (e.g., `writing-goals-history.csv`).
-- Fetching configuration from the server is now saves the configuration immediately (if we are not in the wizard).
-
-### Improved
-
-- Mismatched configuration dialogue is now more informative, and rewritten to more user-friendly.
-- Applying configuration mismatch is now without rebuilding (at our own risks).
-- Now, rebuilding is decided more fine grained.
-
-### Improved internally
-
-- Translations can be nested. i.e., task:`Some procedure`, check: `%{task} checking`, checkfailed: `%{check} failed` produces `Some procedure checking failed`.
-    - Max to 10 levels of nesting
-
-## 0.24.17
-
-Confession. I got the default values wrong. So scary and sorry.
 
 ### Behaviour and default changed
 

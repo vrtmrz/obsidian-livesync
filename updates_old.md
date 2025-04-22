@@ -13,7 +13,36 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+## 0.24.19
 
+### New Feature
+
+- Now we can generate a QR Code for transferring the configuration to another device.
+    - This QR Code can be scanned by the camera app or something QR Code Reader of another device, and via Obsidian URL, the configuration will be transferred.
+    - Note: This QR Code is not encrypted. So, please be careful when transferring the configuration.
+
+## 0.24.18
+
+### Fixed
+
+- Now no chunk creation errors will be raised after switching `Compute revisions for chunks`.
+- Some invisible file can be handled correctly (e.g., `writing-goals-history.csv`).
+- Fetching configuration from the server is now saves the configuration immediately (if we are not in the wizard).
+
+### Improved
+
+- Mismatched configuration dialogue is now more informative, and rewritten to more user-friendly.
+- Applying configuration mismatch is now without rebuilding (at our own risks).
+- Now, rebuilding is decided more fine grained.
+
+### Improved internally
+
+- Translations can be nested. i.e., task:`Some procedure`, check: `%{task} checking`, checkfailed: `%{check} failed` produces `Some procedure checking failed`.
+    - Max to 10 levels of nesting
+
+## 0.24.17
+
+Confession. I got the default values wrong. So scary and sorry.
 
 ## 0.24.16
 
