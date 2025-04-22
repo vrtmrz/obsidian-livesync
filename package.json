@@ -80,7 +80,7 @@
         "octagonal-wheels": "^0.1.25",
         "qrcode-generator": "^1.4.4",
         "svelte-check": "^4.1.4",
-        "trystero": "^0.21.1",
+        "trystero": "^0.21.3",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }
 }

@@ -613,10 +613,10 @@ const decodePrefixMapNumber = Object.fromEntries(
 );
 export function encodeAnyArray(obj: any[]): string {
     const tempArray = obj.map((v) => {
-        if (v == null) return "n";
-        if (v == false) return "f";
-        if (v == true) return "t";
-        if (v == undefined) return "u";
+        if (v === null) return "n";
+        if (v === false) return "f";
+        if (v === true) return "t";
+        if (v === undefined) return "u";
         if (typeof v == "number") {
             const b36 = v.toString(36);
             const strNum = v.toString();

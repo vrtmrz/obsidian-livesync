@@ -67,14 +67,13 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         const fullIndexes = Object.entries(KeyIndexOfSettings) as [keyof ObsidianLiveSyncSettings, number][];
         for (const [settingKey, index] of fullIndexes) {
             const settingValue = this.settings[settingKey];
+            if (index < 0) {
+                // This setting should be ignored.
+                continue;
+            }
             settingArr[index] = settingValue;
         }
         const w = encodeAnyArray(settingArr);
-        // console.warn(w.length)
-        // console.warn(w);
-        // const j = decodeAnyArray(w);
-        // console.warn(j);
-        // console.warn(`is equal: ${isObjectDifferent(settingArr, j)}`);
         const qr = qrcode(0, "L");
         const uri = `${configURIBaseQR}${encodeURIComponent(w)}`;
         qr.addData(uri);
@@ -90,6 +89,10 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         const fullIndexes = Object.entries(KeyIndexOfSettings) as [keyof ObsidianLiveSyncSettings, number][];
         const newSettings = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
         for (const [settingKey, index] of fullIndexes) {
+            if (index < 0) {
+                // This setting should be ignored.
+                continue;
+            }
             if (index >= settingArr.length) {
                 // Possibly a new setting added.
                 continue;
