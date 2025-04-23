@@ -1,35 +1,39 @@
-<!-- For translation: 20240227r0 -->
 # Self-hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
-Self-hosted LiveSync is a community-implemented synchronization plugin, available on every obsidian-compatible platform and using CouchDB or Object Storage (e.g., MinIO, S3, R2, etc.) as the server.
+
+Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.
+
+Additionally, it supports peer-to-peer synchronisation using WebRTC now (experimental), enabling you to synchronise your notes directly between devices without relying on a server.
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
-Note: This plugin cannot synchronise with the official "Obsidian Sync".
+>[!IMPORTANT]
+> This plug-in is not compatible with the official "Obsidian Sync" and cannot synchronise with it.
 
 ## Features
+- Synchronise vaults efficiently with minimal traffic.
+- Handle conflicting modifications effectively.
+  - Automatically merge simple conflicts.
+- Use open-source solutions for the server.
+  - Compatible solutions are supported.
+- Support end-to-end encryption.
+- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync).
+- Enable WebRTC peer-to-peer synchronisation without requiring a `host` (Experimental).
+  - This feature is still in the experimental stage. Please exercise caution when using it.
+  - WebRTC is a peer-to-peer synchronisation method, so **at least one device must be online to synchronise**.
+  - Instead of keeping your device online as a stable peer, you can use two pseudo-peers:
+    - [livesync-serverpeer](https://github.com/vrtmrz/livesync-serverpeer): A pseudo-client running on the server for receiving and sending data between devices.
+    - [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer): A pseudo-client for receiving and sending data between devices.
+    - A pre-built instance is available at [fancy-syncing.vrtmrz.net/webpeer](https://fancy-syncing.vrtmrz.net/webpeer/) (hosted on the vrtmrz blog site). This is also peer-to-peer. Feel free to use it.
+  - For more information, refer to the [English explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync-en.html) or the [Japanese explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync).
 
-- Synchronize vaults very efficiently with less traffic.
-- Good at conflicted modification.
-  - Automatic merging for simple conflicts.
-- Using OSS solution for the server.
-  - Compatible solutions can be used.
-- Supporting End-to-end encryption.
-- Synchronisation of settings, snippets, themes, and plug-ins, via [Customization sync(Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync)
-- WebClip from [obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
-- WebRTC peer-to-peer synchronisation without the need for any `host` is now possible. (Experimental)
-  - This feature is still in the experimental stage. Please be careful when using it. 
-  - Instead of using public servers, you can use [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) the pseudo client for receiving and sending between devices.
-    - A pre-built instance is served at [fancy-syncing.vrtmrz.net/webpeer](https://fancy-syncing.vrtmrz.net/webpeer/) (in the vrtmrz blog site). This is of course also peer-to-peer. Feel free to use it.
-  - There is an [English explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync-en.html), and [Japanese explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync).
-
-This plug-in might be useful for researchers, engineers, and developers with a need to keep their notes fully self-hosted for security reasons. Or just anyone who would like the peace of mind of knowing that their notes are fully private.
+This plug-in may be particularly useful for researchers, engineers, and developers who need to keep their notes fully self-hosted for security reasons. It is also suitable for anyone seeking the peace of mind that comes with knowing their notes remain entirely private.
 
 >[!IMPORTANT]
-> - Before installing or upgrading this plug-in, please back your vault up.
-> - Do not enable this plugin with another synchronization solution at the same time (including iCloud and Obsidian Sync).
-> - This is a synchronization plugin. Not a backup solution. Do not rely on this for backup.
+> - Before installing or upgrading this plug-in, please back up your vault.
+> - Do not enable this plug-in alongside another synchronisation solution at the same time (including iCloud and Obsidian Sync).
+> - For backups, we also provide a plug-in called [Differential ZIP Backup](https://github.com/vrtmrz/diffzip).
 
 ## How to use
 
@@ -48,9 +52,11 @@ This plug-in might be useful for researchers, engineers, and developers with a n
    1. [Setup CouchDB on fly.io](docs/setup_flyio.md)
    2. [Setup your CouchDB](docs/setup_own_server.md)
 2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
-
 > [!TIP]
-> Now, fly.io has become not free. Fortunately, even though there are some issues, we are still able to use IBM Cloudant. Here is [Setup IBM Cloudant](docs/setup_cloudant.md). It will be updated soon!
+> Fly.io is no longer free. Fortunately, despite some issues, we can still use IBM Cloudant. Refer to [Setup IBM Cloudant](docs/setup_cloudant.md).
+> And also, we can use peer-to-peer synchronisation without a server. Or very cheap Object Storage -- Cloudflare R2 can be used for free.
+> HOWEVER, most importantly, we can use the server that we trust. Therefore, please set up your own server.
+> CouchDB can be run on a Raspberry Pi. (But please be careful about the security of your server).
 
 
 ## Information in StatusBar
@@ -80,17 +86,14 @@ Synchronization status is shown in the status bar with the following icons.
 
 To prevent file and database corruption, please wait to stop Obsidian until all progress indicators have disappeared as possible (The plugin will also try to resume, though). Especially in case of if you have deleted or renamed files.
 
-
-
 ## Tips and Troubleshooting
-If you are having problems getting the plugin working see: [Tips and Troubleshooting](docs/troubleshooting.md)
+If you are having problems getting the plugin working see: [Tips and Troubleshooting](docs/troubleshooting.md). 
 
 ## Acknowledgements
-
-The project has been in continual progress and harmony because of 
-- Many [Contributors](https://github.com/vrtmrz/obsidian-livesync/graphs/contributors)
-- Many [GitHub Sponsors](https://github.com/sponsors/vrtmrz#sponsors)
-- JetBrains Community Programs / Support for Open-Source Projects <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.png" alt="JetBrains logo." height="24">
+The project has been in continual progress and harmony thanks to:  
+- Many [Contributors](https://github.com/vrtmrz/obsidian-livesync/graphs/contributors).  
+- Many [GitHub Sponsors](https://github.com/sponsors/vrtmrz#sponsors).  
+- JetBrains Community Programs / Support for Open-Source Projects. <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.png" alt="JetBrains logo" height="24">  
 
 May those who have contributed be honoured and remembered for their kindness and generosity.
 
