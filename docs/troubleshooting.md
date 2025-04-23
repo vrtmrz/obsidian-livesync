@@ -39,6 +39,7 @@
   - Do not process `Option` requests on the reverse proxy!
   - Make sure `host` and `X-Forwarded-For` headers are forwarded to the CouchDB.
   - If you are using a subdirectory, make sure to handle it properly.
+  More detailed information is in the [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
 
 Minimal configurations are as follows:
 
