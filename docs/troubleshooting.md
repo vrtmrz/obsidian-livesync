@@ -24,6 +24,7 @@
     - [How can I use the DevTools?](#how-can-i-use-the-devtools)
       - [Checking the network log](#checking-the-network-log)
   - [Troubleshooting](#troubleshooting)
+    - [While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.](#while-using-cloudflare-tunnels-often-obsidian-api-fallback-and-524-error-occurs)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
     - [Old tips](#old-tips)
@@ -38,8 +39,9 @@
   proxy.
   - Do not process `Option` requests on the reverse proxy!
   - Make sure `host` and `X-Forwarded-For` headers are forwarded to the CouchDB.
-  - If you are using a subdirectory, make sure to handle it properly.
-  More detailed information is in the [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
+  - If you are using a subdirectory, make sure to handle it properly. More
+    detailed information is in the
+    [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
 
 Minimal configurations are as follows:
 
@@ -97,7 +99,8 @@ domain.com {
 #### Apache
 
 Sorry, Apache is not recommended for CouchDB. Omit the configuration from here.
-Please refer to the [Official documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html#reverse-proxying-with-apache-http-server).
+Please refer to the
+[Official documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html#reverse-proxying-with-apache-http-server).
 
 ### Show all setting panes
 
@@ -249,6 +252,24 @@ files. Only it takes a bit of time and traffics.
 ## Troubleshooting
 
 <!-- Add here -->
+
+### While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.
+
+A `524` error occurs when the request to the server is not completed within a
+`specified time`. This is a timeout error from Cloudflare. From the reported
+issue, it seems to be 100 seconds. (#627).
+
+Therefore, this error returns from Cloudflare, not from the server. Hence, the
+result contains no CORS field. It means that this response makes the Obsidian
+API fallback.
+
+However, even if the Obsidian API fallback occurs, the request is still not
+completed within the `specified time`, 100 seconds.
+
+To solve this issue, we need to configure the timeout settings.
+
+Please enable the toggle in `💪 Power users` -> `CouchDB Connection Tweak` ->
+`Use timeouts instead of heartbeats`.
 
 ### On the mobile device, cannot synchronise on the local network!
 
