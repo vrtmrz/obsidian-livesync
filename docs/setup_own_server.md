@@ -49,6 +49,23 @@ Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it
 ```
 $ docker run --name couchdb-for-ols -d --restart always -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
+If you prefer a compose file instead of docker run, here is the equivalent below:
+```
+services:
+  couchdb:
+    image: couchdb:latest
+    container_name: couchdb-for-ols
+    user: 1000:1000
+    environment:
+      - COUCHDB_USER=${username}
+      - COUCHDB_PASSWORD=${password}
+    volumes:
+      - ./couchdb-data:/opt/couchdb/data
+      - ./couchdb-etc:/opt/couchdb/etc/local.d
+    ports:
+      - 5984:5984
+    restart: unless-stopped
+```
 ### B. Install CouchDB directly
 Please refer to the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just the administrator needs to be configured.
 
