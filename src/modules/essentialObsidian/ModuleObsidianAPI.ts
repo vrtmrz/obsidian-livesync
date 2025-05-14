@@ -17,17 +17,8 @@ import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.
 
 setNoticeClass(Notice);
 
-async function fetchByAPI(request: RequestUrlParam): Promise<RequestUrlResponse> {
-    const ret = await requestUrl(request);
-    if (ret.status - (ret.status % 100) !== 200) {
-        const er: Error & { status?: number } = new Error(`Request Error:${ret.status}`);
-        if (ret.json) {
-            er.message = ret.json.reason;
-            er.name = `${ret.json.error ?? ""}:${ret.json.message ?? ""}`;
-        }
-        er.status = ret.status;
-        throw er;
-    }
+async function fetchByAPI(request: RequestUrlParam, errorAsResult = false): Promise<RequestUrlResponse> {
+    const ret = await requestUrl({ ...request, throw: !errorAsResult });
     return ret;
 }
 
@@ -45,13 +36,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         return !this.last_successful_post;
     }
 
-    async fetchByAPI(
-        url: string,
-        localURL: string,
-        method: string,
-        authHeader: string,
-        opts?: RequestInit
-    ): Promise<Response> {
+    async _fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
         const body = opts?.body as string;
 
         const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
@@ -65,25 +50,36 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
             method: opts?.method,
             body: body,
             headers: transformedHeaders,
-            contentType: "application/json",
-            // contentType: opts.headers,
+            contentType:
+                transformedHeaders?.["content-type"] ?? transformedHeaders?.["Content-Type"] ?? "application/json",
         };
+        const r = await fetchByAPI(requestParam, true);
+        return new Response(r.arrayBuffer, {
+            headers: r.headers,
+            status: r.status,
+            statusText: `${r.status}`,
+        });
+    }
+
+    async fetchByAPI(
+        url: string,
+        localURL: string,
+        method: string,
+        authHeader: string,
+        opts?: RequestInit
+    ): Promise<Response> {
+        const body = opts?.body as string;
         const size = body ? ` (${body.length})` : "";
         try {
+            const r = await this._fetchByAPI(url, authHeader, opts);
             this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
-            const r = await fetchByAPI(requestParam);
             if (method == "POST" || method == "PUT") {
                 this.last_successful_post = r.status - (r.status % 100) == 200;
             } else {
                 this.last_successful_post = true;
             }
             this._log(`HTTP:${method}${size} to:${localURL} -> ${r.status}`, LOG_LEVEL_DEBUG);
-
-            return new Response(r.arrayBuffer, {
-                headers: r.headers,
-                status: r.status,
-                statusText: `${r.status}`,
-            });
+            return r;
         } catch (ex) {
             this._log(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
             // limit only in bulk_docs.
@@ -106,7 +102,8 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         performSetup: boolean,
         skipInfo: boolean,
         compression: boolean,
-        customHeaders: Record<string, string>
+        customHeaders: Record<string, string>,
+        useRequestAPI: boolean
     ): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
@@ -147,15 +144,11 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                         headers.append("authorization", authHeader);
                     }
 
-                    if (!disableRequestURI && typeof url == "string" && typeof (opts?.body ?? "") == "string") {
-                        // Deprecated configuration, only for backward compatibility.
-                        return await this.fetchByAPI(url, localURL, method, authHeader, { ...opts, headers });
-                    }
-                    // --> native Fetch API.
-
                     try {
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
-                        const response: Response = await fetch(url, { ...opts, headers });
+                        const response: Response = await (useRequestAPI
+                            ? this._fetchByAPI(url.toString(), authHeader, { ...opts, headers })
+                            : fetch(url, { ...opts, headers }));
                         if (method == "POST" || method == "PUT") {
                             this.last_successful_post = response.ok;
                         } else {
@@ -188,6 +181,10 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                         return response;
                     } catch (ex) {
                         if (ex instanceof TypeError) {
+                            if (useRequestAPI) {
+                                this._log("Failed to request by API.");
+                                throw ex;
+                            }
                             this._log(
                                 "Failed to fetch by native fetch API. Trying to fetch by API to get more information."
                             );

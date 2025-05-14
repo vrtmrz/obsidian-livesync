@@ -291,7 +291,8 @@ export default class ObsidianLiveSyncPlugin
         performSetup: boolean,
         skipInfo: boolean,
         compression: boolean,
-        customHeaders: Record<string, string>
+        customHeaders: Record<string, string>,
+        useRequestAPI: boolean
     ): Promise<
         | string
         | {

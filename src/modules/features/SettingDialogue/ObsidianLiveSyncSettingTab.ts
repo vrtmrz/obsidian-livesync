@@ -26,15 +26,19 @@ import {
     type MetaEntry,
     type FilePath,
     REMOTE_P2P,
+    type CustomRegExpSource,
 } from "../../../lib/src/common/types.ts";
 import {
+    constructCustomRegExpList,
     createBlob,
     delay,
+    getFileRegExp,
     isDocContentSame,
     isObjectDifferent,
     parseHeaderValues,
     readAsBlob,
     sizeToHumanReadable,
+    splitCustomRegExpList,
 } from "../../../lib/src/common/utils.ts";
 import { arrayBufferToBase64Single, versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
@@ -1132,7 +1136,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             (paneEl) => {
                 void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
                     const languages = Object.fromEntries([
-                        ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
+                        // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
                         ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
                     ]) as Record<I18N_LANGS, string>;
                     new Setting(paneEl).autoWireDropDown("displayLanguage", {
@@ -1144,6 +1148,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)),
                     });
                     new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
+                    new Setting(paneEl).autoWireToggle("hideFileWarningNotice");
                 });
                 void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
                     paneEl.addClass("wizardHidden");
@@ -2218,13 +2223,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 mount(MultipleRegExpControl, {
                     target: syncFilesSetting.controlEl,
                     props: {
-                        patterns: this.editingSettings.syncOnlyRegEx.split("|[]|"),
-                        originals: [...this.editingSettings.syncOnlyRegEx.split("|[]|")],
-                        apply: async (newPatterns: string[]) => {
-                            this.editingSettings.syncOnlyRegEx = newPatterns
-                                .map((e: string) => e.trim())
-                                .filter((e) => e != "")
-                                .join("|[]|");
+                        patterns: splitCustomRegExpList(this.editingSettings.syncOnlyRegEx, "|[]|"),
+                        originals: splitCustomRegExpList(this.editingSettings.syncOnlyRegEx, "|[]|"),
+                        apply: async (newPatterns: CustomRegExpSource[]) => {
+                            this.editingSettings.syncOnlyRegEx = constructCustomRegExpList(newPatterns, "|[]|");
                             await this.saveAllDirtySettings();
                             this.display();
                         },
@@ -2241,13 +2243,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 mount(MultipleRegExpControl, {
                     target: nonSyncFilesSetting.controlEl,
                     props: {
-                        patterns: this.editingSettings.syncIgnoreRegEx.split("|[]|"),
-                        originals: [...this.editingSettings.syncIgnoreRegEx.split("|[]|")],
-                        apply: async (newPatterns: string[]) => {
-                            this.editingSettings.syncIgnoreRegEx = newPatterns
-                                .map((e) => e.trim())
-                                .filter((e) => e != "")
-                                .join("|[]|");
+                        patterns: splitCustomRegExpList(this.editingSettings.syncIgnoreRegEx, "|[]|"),
+                        originals: splitCustomRegExpList(this.editingSettings.syncIgnoreRegEx, "|[]|"),
+                        apply: async (newPatterns: CustomRegExpSource[]) => {
+                            this.editingSettings.syncIgnoreRegEx = constructCustomRegExpList(newPatterns, "|[]|");
                             await this.saveAllDirtySettings();
                             this.display();
                         },
@@ -2261,14 +2260,32 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 });
             });
             void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+                const targetPatternSetting = new Setting(paneEl)
+                    .setName("Target patterns")
+                    .setClass("wizardHidden")
+                    .setDesc("Patterns to match files for syncing");
+                const patTarget = splitCustomRegExpList(this.editingSettings.syncInternalFilesTargetPatterns, ",");
+                mount(MultipleRegExpControl, {
+                    target: targetPatternSetting.controlEl,
+                    props: {
+                        patterns: patTarget,
+                        originals: [...patTarget],
+                        apply: async (newPatterns: CustomRegExpSource[]) => {
+                            this.editingSettings.syncInternalFilesTargetPatterns = constructCustomRegExpList(
+                                newPatterns,
+                                ","
+                            );
+                            await this.saveAllDirtySettings();
+                            this.display();
+                        },
+                    },
+                });
+
                 const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, ^\\.git\\/, \\/obsidian-livesync\\/";
                 const defaultSkipPatternXPlat =
                     defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
 
-                const pat = this.editingSettings.syncInternalFilesIgnorePatterns
-                    .split(",")
-                    .map((x) => x.trim())
-                    .filter((x) => x != "");
+                const pat = splitCustomRegExpList(this.editingSettings.syncInternalFilesIgnorePatterns, ",");
                 const patSetting = new Setting(paneEl).setName("Ignore patterns").setClass("wizardHidden").setDesc("");
 
                 mount(MultipleRegExpControl, {
@@ -2276,11 +2293,11 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     props: {
                         patterns: pat,
                         originals: [...pat],
-                        apply: async (newPatterns: string[]) => {
-                            this.editingSettings.syncInternalFilesIgnorePatterns = newPatterns
-                                .map((e) => e.trim())
-                                .filter((e) => e != "")
-                                .join(", ");
+                        apply: async (newPatterns: CustomRegExpSource[]) => {
+                            this.editingSettings.syncInternalFilesIgnorePatterns = constructCustomRegExpList(
+                                newPatterns,
+                                ","
+                            );
                             await this.saveAllDirtySettings();
                             this.display();
                         },
@@ -2288,16 +2305,13 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 });
 
                 const addDefaultPatterns = async (patterns: string) => {
-                    const oldList = this.editingSettings.syncInternalFilesIgnorePatterns
-                        .split(",")
-                        .map((x) => x.trim())
-                        .filter((x) => x != "");
-                    const newList = patterns
-                        .split(",")
-                        .map((x) => x.trim())
-                        .filter((x) => x != "");
-                    const allSet = new Set([...oldList, ...newList]);
-                    this.editingSettings.syncInternalFilesIgnorePatterns = [...allSet].join(", ");
+                    const oldList = splitCustomRegExpList(this.editingSettings.syncInternalFilesIgnorePatterns, ",");
+                    const newList = splitCustomRegExpList(
+                        patterns as unknown as typeof this.editingSettings.syncInternalFilesIgnorePatterns,
+                        ","
+                    );
+                    const allSet = new Set<CustomRegExpSource>([...oldList, ...newList]);
+                    this.editingSettings.syncInternalFilesIgnorePatterns = constructCustomRegExpList([...allSet], ",");
                     await this.saveAllDirtySettings();
                     this.display();
                 };
@@ -2691,17 +2705,20 @@ ${stringifyYaml(pluginConfig)}`;
                             .setCta()
                             .onClick(async () => {
                                 Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                                const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns
-                                    .replace(/\n| /g, "")
-                                    .split(",")
-                                    .filter((e) => e)
-                                    .map((e) => new RegExp(e, "i"));
+                                const ignorePatterns = getFileRegExp(
+                                    this.plugin.settings,
+                                    "syncInternalFilesIgnorePatterns"
+                                );
+                                const targetPatterns = getFileRegExp(
+                                    this.plugin.settings,
+                                    "syncInternalFilesTargetPatterns"
+                                );
                                 this.plugin.localDatabase.hashCaches.clear();
                                 Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                                 const files = this.plugin.settings.syncInternalFiles
                                     ? await this.plugin.storageAccess.getFilesIncludeHidden(
                                           "/",
-                                          undefined,
+                                          targetPatterns,
                                           ignorePatterns
                                       )
                                     : await this.plugin.storageAccess.getFileNames();
@@ -2721,7 +2738,7 @@ ${stringifyYaml(pluginConfig)}`;
                                     i++;
                                     if (i % 25 == 0)
                                         Logger(
-                                            `Checking ${i}/${files.length} files \n`,
+                                            `Checking ${i}/${allPaths.length} files \n`,
                                             LOG_LEVEL_NOTICE,
                                             "verify-processed"
                                         );
@@ -3087,7 +3104,9 @@ ${stringifyYaml(pluginConfig)}`;
                     onUpdate: visibleOnly(() => this.isConfiguredAs("disableWorkerForGeneratingChunks", false)),
                 });
             });
-
+            void addPanel(paneEl, "Edge case addressing (Networking)").then((paneEl) => {
+                new Setting(paneEl).autoWireToggle("useRequestAPI");
+            });
             void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
             });

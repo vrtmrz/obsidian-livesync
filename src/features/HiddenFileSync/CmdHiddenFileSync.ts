@@ -25,6 +25,8 @@ import {
     readContent,
     createBlob,
     fireAndForget,
+    type CustomRegExp,
+    getFileRegExp,
 } from "../../lib/src/common/utils.ts";
 import {
     compareMTime,
@@ -164,12 +166,11 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return Promise.resolve(true);
     }
     updateSettingCache() {
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",")
-            .filter((e) => e)
-            .map((e) => new RegExp(e, "i"));
+        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
         this.ignorePatterns = ignorePatterns;
+        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+        this.targetPatterns = targetFilter;
+
         this.shouldSkipFile = [] as FilePathWithPrefixLC[];
         // Exclude files handled by customization sync
         const configDir = normalizePath(this.app.vault.configDir);
@@ -219,12 +220,10 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",")
-            .filter((e) => e)
-            .map((e) => new RegExp(e, "i"));
+        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
         this.ignorePatterns = ignorePatterns;
+        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+        this.targetPatterns = targetFilter;
         return Promise.resolve(true);
     }
 
@@ -1683,14 +1682,12 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     // <-- Configuration handling
 
     // --> Local Storage SubFunctions
-    ignorePatterns: RegExp[] = [];
+    ignorePatterns: CustomRegExp[] = [];
+    targetPatterns: CustomRegExp[] = [];
     async scanInternalFileNames() {
         const configDir = normalizePath(this.app.vault.configDir);
-        const ignoreFilter = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",")
-            .filter((e) => e)
-            .map((e) => new RegExp(e, "i"));
+        const ignoreFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
+        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
         const synchronisedInConfigSync = !this.settings.usePluginSync
             ? []
             : Object.values(this.settings.pluginSyncExtendedSetting)
@@ -1701,7 +1698,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
 
-        const filenames = (await this.getFiles(findRoot, [], undefined, ignoreFilter))
+        const filenames = (await this.getFiles(findRoot, [], targetFilter, ignoreFilter))
             .filter((e) => e.startsWith("."))
             .filter((e) => !e.startsWith(".trash"));
         const files = filenames.filter((path) =>
@@ -1737,7 +1734,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         return result;
     }
 
-    async getFiles(path: string, ignoreList: string[], filter?: RegExp[], ignoreFilter?: RegExp[]) {
+    async getFiles(path: string, ignoreList: string[], filter?: CustomRegExp[], ignoreFilter?: CustomRegExp[]) {
         let w: ListedFiles;
         try {
             w = await this.app.vault.adapter.list(path);
@@ -1746,26 +1743,32 @@ ${messageFetch}${messageOverwrite}${messageMerge}
             this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
-        const filesSrc = [
-            ...w.files
-                .filter((e) => !ignoreList.some((ee) => e.endsWith(ee)))
-                .filter((e) => !filter || filter.some((ee) => e.match(ee)))
-                .filter((e) => !ignoreFilter || ignoreFilter.every((ee) => !e.match(ee))),
-        ];
         let files = [] as string[];
-        for (const file of filesSrc) {
-            if (!(await this.plugin.$$isIgnoredByIgnoreFiles(file))) {
-                files.push(file);
+        for (const file of w.files) {
+            if (ignoreList && ignoreList.length > 0) {
+                if (ignoreList.some((e) => file.endsWith(e))) continue;
             }
+            if (filter && filter.length > 0) {
+                if (!filter.some((e) => e.test(file))) {
+                    continue;
+                }
+            }
+            if (ignoreFilter && ignoreFilter.some((ee) => ee.test(file))) {
+                continue;
+            }
+            if (await this.plugin.$$isIgnoredByIgnoreFiles(file)) continue;
+            files.push(file);
         }
-
         L1: for (const v of w.folders) {
             for (const ignore of ignoreList) {
                 if (v.endsWith(ignore)) {
                     continue L1;
                 }
             }
-            if (ignoreFilter && ignoreFilter.some((e) => v.match(e))) {
+            if (
+                ignoreFilter &&
+                ignoreFilter.some((e) => (e.pattern.startsWith("/") || e.pattern.startsWith("\\/")) && e.test(v))
+            ) {
                 continue L1;
             }
             if (await this.plugin.$$isIgnoredByIgnoreFiles(v)) {

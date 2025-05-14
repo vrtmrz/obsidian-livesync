@@ -11,9 +11,45 @@ import {
 } from "../../lib/src/common/types";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { encrypt, tryDecrypt } from "octagonal-wheels/encryption";
-import { setLang } from "../../lib/src/common/i18n";
+import { $msg, setLang } from "../../lib/src/common/i18n";
 import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb";
+import { getLanguage } from "obsidian";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
 export class ModuleObsidianSettings extends AbstractObsidianModule implements IObsidianModule {
+    async $everyOnLayoutReady(): Promise<boolean> {
+        let isChanged = false;
+        if (this.settings.displayLanguage == "") {
+            const obsidianLanguage = getLanguage();
+            if (
+                SUPPORTED_I18N_LANGS.indexOf(obsidianLanguage) !== -1 && // Check if the language is supported
+                obsidianLanguage != this.settings.displayLanguage && // Check if the language is different from the current setting
+                this.settings.displayLanguage != ""
+            ) {
+                // Check if the current setting is not empty (Means migrated or installed).
+                this.settings.displayLanguage = obsidianLanguage as I18N_LANGS;
+                isChanged = true;
+                setLang(this.settings.displayLanguage);
+            } else if (this.settings.displayLanguage == "") {
+                this.settings.displayLanguage = "def";
+                setLang(this.settings.displayLanguage);
+                await this.core.$$saveSettingData();
+            }
+        }
+        if (isChanged) {
+            const revert = $msg("dialog.yourLanguageAvailable.btnRevertToDefault");
+            if (
+                (await this.core.confirm.askSelectStringDialogue($msg(`dialog.yourLanguageAvailable`), ["OK", revert], {
+                    defaultAction: "OK",
+                    title: $msg(`dialog.yourLanguageAvailable.Title`),
+                })) == revert
+            ) {
+                this.settings.displayLanguage = "def";
+                setLang(this.settings.displayLanguage);
+            }
+            await this.core.$$saveSettingData();
+        }
+        return true;
+    }
     getPassphrase(settings: ObsidianLiveSyncSettings) {
         const methods: Record<ConfigPassphraseStore, () => Promise<string | false>> = {
             "": () => Promise.resolve("*"),
@@ -199,6 +235,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             }
         }
         this.settings = settings;
+
         setLang(this.settings.displayLanguage);
 
         if ("workingEncrypt" in this.settings) delete this.settings.workingEncrypt;

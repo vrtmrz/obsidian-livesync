@@ -1,31 +1,28 @@
 <script lang="ts">
-    export let patterns = [] as string[];
-    export let originals = [] as string[];
+    import type { CustomRegExpSource } from "../../../lib/src/common/types";
+    import { isInvertedRegExp, isValidRegExp } from "../../../lib/src/common/utils";
 
-    export let apply: (args: string[]) => Promise<void> = (_: string[]) => Promise.resolve();
+    export let patterns = [] as CustomRegExpSource[];
+    export let originals = [] as CustomRegExpSource[];
+
+    export let apply: (args: CustomRegExpSource[]) => Promise<void> = (_: CustomRegExpSource[]) => Promise.resolve();
     function revert() {
         patterns = [...originals];
     }
     const CHECK_OK = "✔";
     const CHECK_NG = "⚠";
     const MARK_MODIFIED = "✏ ";
-    function checkRegExp(pattern: string) {
-        if (pattern.trim() == "") return "";
-        try {
-            new RegExp(pattern);
-            return CHECK_OK;
-        } catch (ex) {
-            return CHECK_NG;
-        }
+    function checkRegExp(pattern: CustomRegExpSource) {
+        return isValidRegExp(pattern) ? CHECK_OK : CHECK_NG;
     }
     $: statusName = patterns.map((e) => checkRegExp(e));
     $: modified = patterns.map((e, i) => (e != (originals?.[i] ?? "") ? MARK_MODIFIED : ""));
-
+    $: isInvertedExp = patterns.map((e) => isInvertedRegExp(e));
     function remove(idx: number) {
-        patterns[idx] = "";
+        patterns[idx] = "" as CustomRegExpSource;
     }
     function add() {
-        patterns = [...patterns, ""];
+        patterns = [...patterns, "" as CustomRegExpSource];
     }
 </script>
 
@@ -33,7 +30,9 @@
     {#each patterns as pattern, idx}
         <!-- svelte-ignore a11y-label-has-associated-control -->
         <li>
-            <label>{modified[idx]}{statusName[idx]}</label><input type="text" bind:value={pattern} class={modified[idx]} />
+            <label>{modified[idx]}{statusName[idx]}</label>
+            <span class="chip">{isInvertedExp[idx] ? "INVERTED" : ""}</span>
+            <input type="text" bind:value={pattern} class={modified[idx]} />
             <button class="iconbutton" on:click={() => remove(idx)}>🗑</button>
         </li>
     {/each}
@@ -43,8 +42,16 @@
         </label>
     </li>
     <li class="buttons">
-        <button on:click={() => apply(patterns)} disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}>Apply </button>
-        <button on:click={() => revert()} disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}>Revert </button>
+        <button
+            on:click={() => apply(patterns)}
+            disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}
+            >Apply
+        </button>
+        <button
+            on:click={() => revert()}
+            disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}
+            >Revert
+        </button>
     </li>
 </ul>
 
@@ -84,5 +91,15 @@
 
     button.iconbutton {
         max-width: 4em;
+    }
+    .chip {
+        background-color: var(--tag-background);
+        color: var(--tag-color);
+        padding: var(--size-2-1) var(--size-4-1);
+        border-radius: 0.5em;
+        font-size: 0.8em;
+    }
+    .chip:empty {
+        display: none;
     }
 </style>

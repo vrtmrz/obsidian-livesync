@@ -12,7 +12,7 @@ import {
     type UXFileInfoStub,
     type UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
-import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
+import { delay, fireAndForget, getFileRegExp } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "../../../lib/src/concurrency/lock.ts";
 import {
@@ -161,12 +161,10 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         if (!this.plugin.settings.syncInternalFiles && !this.plugin.settings.usePluginSync) return;
         if (!this.plugin.settings.watchInternalFileChanges) return;
         if (!path.startsWith(this.plugin.app.vault.configDir)) return;
-        const ignorePatterns = this.plugin.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",")
-            .filter((e) => e)
-            .map((e) => new RegExp(e, "i"));
-        if (ignorePatterns.some((e) => path.match(e))) return;
+        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
+        const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+        if (ignorePatterns.some((e) => e.test(path))) return;
+        if (!targetPatterns.some((e) => e.test(path))) return;
         if (path.endsWith("/")) {
             // Folder
             return;

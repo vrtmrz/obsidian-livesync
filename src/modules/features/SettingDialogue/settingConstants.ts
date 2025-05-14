@@ -377,6 +377,14 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Minimum interval for syncing",
         desc: "The minimum interval for automatic synchronisation on event.",
     },
+    useRequestAPI: {
+        name: "Use Request API to avoid `inevitable` CORS problem",
+        desc: "If enabled, the request API will be used to avoid `inevitable` CORS problems. This is a workaround and may not work in all cases. PLEASE READ THE DOCUMENTATION BEFORE USING THIS OPTION. This is a less-secure option.",
+    },
+    hideFileWarningNotice: {
+        name: "Show status icon instead of file warnings banner",
+        desc: "If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.",
+    },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

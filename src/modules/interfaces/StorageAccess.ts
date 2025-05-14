@@ -7,6 +7,7 @@ import type {
     UXFolderInfo,
     UXStat,
 } from "../../lib/src/common/types";
+import type { CustomRegExp } from "../../lib/src/common/utils";
 
 export interface StorageAccess {
     deleteVaultItem(file: FilePathWithPrefix | UXFileInfoStub | UXFolderInfo): Promise<void>;
@@ -48,8 +49,8 @@ export interface StorageAccess {
 
     getFilesIncludeHidden(
         basePath: string,
-        includeFilter?: RegExp[],
-        excludeFilter?: RegExp[],
+        includeFilter?: CustomRegExp[],
+        excludeFilter?: CustomRegExp[],
         skipFolder?: string[]
     ): Promise<FilePath[]>;
 }

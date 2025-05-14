@@ -14,7 +14,7 @@ import type {
 import { TFileToUXFileInfoStub, TFolderToUXFileInfoStub } from "./storageLib/utilObsidian.ts";
 import { StorageEventManagerObsidian, type StorageEventManager } from "./storageLib/StorageEventManager";
 import type { StorageAccess } from "../interfaces/StorageAccess";
-import { createBlob } from "../../lib/src/common/utils";
+import { createBlob, type CustomRegExp } from "../../lib/src/common/utils";
 
 export class ModuleFileAccessObsidian extends AbstractObsidianModule implements IObsidianModule, StorageAccess {
     vaultAccess!: SerializedFileAccess;
@@ -223,8 +223,8 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
     async getFilesIncludeHidden(
         basePath: string,
-        includeFilter?: RegExp[],
-        excludeFilter?: RegExp[],
+        includeFilter?: CustomRegExp[],
+        excludeFilter?: CustomRegExp[],
         skipFolder: string[] = [".git", ".trash", "node_modules"]
     ): Promise<FilePath[]> {
         let w: ListedFiles;
@@ -239,16 +239,11 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
         let files = [] as string[];
         for (const file of w.files) {
-            if (excludeFilter && excludeFilter.some((ee) => file.match(ee))) {
-                // If excludeFilter and includeFilter are both set, the file will be included in the list.
-                if (includeFilter) {
-                    if (!includeFilter.some((e) => file.match(e))) continue;
-                } else {
-                    continue;
-                }
+            if (includeFilter && includeFilter.length > 0) {
+                if (!includeFilter.some((e) => e.test(file))) continue;
             }
-            if (includeFilter) {
-                if (!includeFilter.some((e) => file.match(e))) continue;
+            if (excludeFilter && excludeFilter.some((ee) => ee.test(file))) {
+                continue;
             }
             if (await this.plugin.$$isIgnoredByIgnoreFiles(file)) continue;
             files.push(file);
@@ -259,16 +254,12 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             if (skipFolder.some((e) => folderName === e)) {
                 continue;
             }
-            if (excludeFilter && excludeFilter.some((e) => v.match(e))) {
-                if (includeFilter) {
-                    if (!includeFilter.some((e) => v.match(e))) {
-                        continue;
-                    }
-                }
-            }
 
-            if (includeFilter) {
-                if (!includeFilter.some((e) => v.match(e))) continue;
+            if (excludeFilter && excludeFilter.some((e) => e.test(v))) {
+                continue;
+            }
+            if (await this.plugin.$$isIgnoredByIgnoreFiles(v)) {
+                continue;
             }
             // OK, deep dive!
             files = files.concat(await this.getFilesIncludeHidden(v, includeFilter, excludeFilter, skipFolder));

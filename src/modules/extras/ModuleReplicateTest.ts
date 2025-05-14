@@ -7,6 +7,7 @@ import { uint8ArrayToHexString } from "octagonal-wheels/binary/hex";
 import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
 import type { FilePath } from "../../lib/src/common/types.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
+import { getFileRegExp } from "../../lib/src/common/utils.ts";
 
 declare global {
     interface LSEvents {
@@ -200,13 +201,10 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     }
 
     async _dumpFileListIncludeHidden(outFile?: string) {
-        const ignorePatterns = this.settings.syncInternalFilesIgnorePatterns
-            .replace(/\n| /g, "")
-            .split(",")
-            .filter((e) => e)
-            .map((e) => new RegExp(e, "i"));
+        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
+        const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
         const out = [] as any[];
-        const files = await this.core.storageAccess.getFilesIncludeHidden("", undefined, ignorePatterns);
+        const files = await this.core.storageAccess.getFilesIncludeHidden("", targetPatterns, ignorePatterns);
         // console.dir(files);
         const webcrypto = await getWebCrypto();
         for (const file of files) {

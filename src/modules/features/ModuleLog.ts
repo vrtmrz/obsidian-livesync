@@ -63,6 +63,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
 
     statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
     statusLog = reactiveSource("");
+    activeFileStatus = reactiveSource("");
     notifies: { [key: string]: { notice: Notice; count: number } } = {};
     p2pLogCollector = new P2PLogCollector();
 
@@ -181,10 +182,11 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
                 : "";
             const { message } = statusLineLabel();
+            const fileStatus = this.activeFileStatus.value;
             const status = scheduleMessage + this.statusLog.value;
-
+            const fileStatusIcon = `${fileStatus && this.settings.hideFileWarningNotice ? " ⛔ SKIP" : ""}`;
             return {
-                message,
+                message: `${message}${fileStatusIcon}`,
                 status,
             };
         });
@@ -229,7 +231,9 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         return "";
     }
     async setFileStatus() {
-        this.messageArea!.innerText = await this.getActiveFileStatus();
+        const fileStatus = await this.getActiveFileStatus();
+        this.activeFileStatus.value = fileStatus;
+        this.messageArea!.innerText = this.settings.hideFileWarningNotice ? "" : fileStatus;
     }
     onActiveLeafChange() {
         fireAndForget(async () => {
