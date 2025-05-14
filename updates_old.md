@@ -13,6 +13,49 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+
+## 0.24.22 ~~0.24.21~~
+
+(Really sorry for the confusion. I have got a miss at releasing...).
+
+### Fixed
+
+- No longer conflicted files are handled in the boot-up process. No more
+  unexpected overwriting.
+  - It ignores `Always overwrite with a newer file`, and always be prevented for
+    the safety. Please pick it manually or open the file.
+- Some log messages on conflict resolution has been corrected.
+- Automatic merge notifications, displayed on the grounds of `same`, have been
+  degraded to logs.
+
+### Improved
+
+- Now we can fetch the remote database with keeping local files completely
+  intact.
+  - In new option, all files are stored into the local database before the
+    fetching, and will be merged automatically or detected as conflicts.
+- The dialogue presenting options when performing `Fetch` are now more
+  informative.
+
+### Refactored
+
+- Some class methods have been fixed its arguments to be more consistent.
+- Types have been defined for some conditional results.
+
+## 0.24.20
+
+### Improved
+
+- Now we can see the detail of `TypeError` using Obsidian API during remote
+  database access.
+
+### Behaviour and default changed
+
+- **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into
+  enabled again. it is necessary for garbage collection of chunks.
+  - As far as existing users are concerned, this will not automatically change,
+    but the Doctor will inform us.
+
 ## 0.24.19
 
 ### New Feature
@@ -144,6 +187,29 @@ And, this is just a single web page, without any server-side code. It is a stati
 
 
 ## 0.24.11
+
+Peer-to-peer synchronisation has been implemented!
+
+Until now, I have not provided a synchronisation server. More people may not
+even know that I have shut down the test server. I confess that this is a bit
+repetitive, but I confess it is a cautionary tale. This is out of a sense of
+self-discipline that someone has occurred who could see your data. Even if the
+'someone' is me. I should not be unaware of its superiority, even though
+well-meaning and am a servant of all. (Half joking, but also serious). However,
+now I can provide you with a signalling server. Because, to the best of my
+knowledge, it is only the network that is connected to your device. Also, this
+signalling server is just a Nostr relay, not my implementation. You can run your
+implementation, which you consider trustworthy, on a trustworthy server. You do
+not even have to trust me. Mate, it is great, isn't it? For your information,
+strfry is running on my signalling server.
+
+Nevertheless, that being said, to be more honest, I still have not decided what
+to do with this signalling server if too much traffic comes in.
+
+Note: Already you have noticed this, but let me mention it again, this is a
+significantly large update. If you have noticed anything, please let me know. I
+will try to fix it as soon as possible (Some address is on my
+[profile](https://github.com/vrtmrz)).
 
 ### Improved
 
