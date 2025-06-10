@@ -1475,6 +1475,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         new Setting(paneEl).autoWireText("region", { holdValue: true });
 
                         new Setting(paneEl).autoWireText("bucket", { holdValue: true });
+                        new Setting(paneEl).autoWireText("bucketPrefix", {
+                            holdValue: true,
+                            placeHolder: "vaultname/",
+                        });
 
                         new Setting(paneEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
                         new Setting(paneEl).autoWireTextArea("bucketCustomHeaders", {
@@ -1503,6 +1507,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                 "bucket",
                                 "useCustomRequestHandler",
                                 "bucketCustomHeaders",
+                                "bucketPrefix",
                             ])
                             .addOnUpdate(onlyOnMinIO);
                     });
@@ -1662,6 +1667,10 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                             onUpdate: enableOnlySyncDisabled,
                         });
                         new Setting(paneEl).autoWireTextArea("couchDB_CustomHeaders", { holdValue: true });
+                        new Setting(paneEl).autoWireToggle("useRequestAPI", {
+                            holdValue: true,
+                            onUpdate: enableOnlySyncDisabled,
+                        });
                         new Setting(paneEl)
                             .setName($msg("obsidianLiveSyncSettingTab.nameTestDatabaseConnection"))
                             .setClass("wizardHidden")
@@ -1706,6 +1715,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                 "jwtKid",
                                 "useJWT",
                                 "couchDB_CustomHeaders",
+                                "useRequestAPI",
                             ])
                             .addOnUpdate(onlyOnCouchDB);
                     });
@@ -3104,9 +3114,9 @@ ${stringifyYaml(pluginConfig)}`;
                     onUpdate: visibleOnly(() => this.isConfiguredAs("disableWorkerForGeneratingChunks", false)),
                 });
             });
-            void addPanel(paneEl, "Edge case addressing (Networking)").then((paneEl) => {
-                new Setting(paneEl).autoWireToggle("useRequestAPI");
-            });
+            // void addPanel(paneEl, "Edge case addressing (Networking)").then((paneEl) => {
+            // new Setting(paneEl).autoWireToggle("useRequestAPI");
+            // });
             void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
                 new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
             });
@@ -3547,6 +3557,7 @@ ${stringifyYaml(pluginConfig)}`;
         const id = this.plugin.settings.accessKey;
         const key = this.plugin.settings.secretKey;
         const bucket = this.plugin.settings.bucket;
+        const prefix = this.plugin.settings.bucketPrefix;
         const region = this.plugin.settings.region;
         const endpoint = this.plugin.settings.endpoint;
         const useCustomRequestHandler = this.plugin.settings.useCustomRequestHandler;
@@ -3556,6 +3567,7 @@ ${stringifyYaml(pluginConfig)}`;
             key,
             endpoint,
             bucket,
+            prefix,
             this.plugin.simpleStore,
             this.plugin,
             useCustomRequestHandler,

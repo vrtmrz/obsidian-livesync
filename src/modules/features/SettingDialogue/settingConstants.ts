@@ -385,6 +385,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "Show status icon instead of file warnings banner",
         desc: "If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.",
     },
+    bucketPrefix: {
+        name: "File prefix on the bucket",
+        desc: "Effectively a directory. Should end with `/`. e.g., `vault-name/`.",
+    },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

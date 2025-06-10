@@ -27,20 +27,28 @@ import {
     updatePreviousExecutionTime,
 } from "../../common/utils";
 import { isAnyNote } from "../../lib/src/common/utils";
-import { EVENT_FILE_SAVED, eventHub } from "../../common/events";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { globalSlipBoard } from "../../lib/src/bureau/bureau";
 import { $msg } from "../../lib/src/common/i18n";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
+
 export class ModuleReplicator extends AbstractModule implements ICoreModule {
+    _replicatorType?: string;
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.$$isSuspended()) {
                 scheduleTask("perform-replicate-after-save", 250, () => this.core.$$replicateByEvent());
             }
         });
+        eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
+            if (this._replicatorType !== setting.remoteType) {
+                void this.setReplicator();
+            }
+        });
+
         return Promise.resolve(true);
     }
 
@@ -50,7 +58,12 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
             this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
             return false;
         }
+        if (this.core.replicator) {
+            await this.core.replicator.closeReplication();
+            this._log("Replicator closed for changing", LOG_LEVEL_VERBOSE);
+        }
         this.core.replicator = replicator;
+        this._replicatorType = this.settings.remoteType;
         await yieldMicrotask();
         return true;
     }
