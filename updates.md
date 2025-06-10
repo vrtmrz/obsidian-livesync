@@ -1,3 +1,19 @@
+## 0.24.27
+
+### Improved
+
+- We can use prefix for path for the Bucket synchronisation.
+    - For example, if you set the `vaultName/` as a prefix for the bucket in the root directory, all data will be transferred to the bucket under the `vaultName/` directory.
+- The "Use Request API to avoid `inevitable` CORS problem" option is now promoted to the normal setting, not a niche patch.
+
+### Fixed
+
+- Now switching replicators applied immediately, without the need to restart Obsidian.
+
+### Tidied up
+
+- Some dependencies have been updated to the latest version.
+
 ## 0.24.26
 
 This update introduces an option to circumvent Cross-Origin Resource Sharing
@@ -30,18 +46,18 @@ However, just to whisper, this is tremendously fast.
 
 - Automatic display-language changing according to the Obsidian language
   setting.
-  - We will be asked on the migration or first startup.
-  - **Note: Please revert to the default language if you report any issues.**
-  - Not all messages are translated yet. We welcome your contribution!
+    - We will be asked on the migration or first startup.
+    - **Note: Please revert to the default language if you report any issues.**
+    - Not all messages are translated yet. We welcome your contribution!
 - Now we can limit files to be synchronised even in the hidden files.
 - "Use Request API to avoid `inevitable` CORS problem" has been implemented.
-  - Less secure, please use it only if you are sure that you are in the trusted
-    environment and be able to ignore the CORS. No `Web viewer` or similar tools
-    are recommended. (To avoid the origin forged attack). If you are able to
-    configure the server setting, always that is recommended.
+    - Less secure, please use it only if you are sure that you are in the trusted
+      environment and be able to ignore the CORS. No `Web viewer` or similar tools
+      are recommended. (To avoid the origin forged attack). If you are able to
+      configure the server setting, always that is recommended.
 - `Show status icon instead of file warnings banner` has been implemented.
-  - If enabled, the ⛔ icon will be shown inside the status instead of the file
-    warnings banner. No details will be shown.
+    - If enabled, the ⛔ icon will be shown inside the status instead of the file
+      warnings banner. No details will be shown.
 
 ### Improved
 
@@ -55,7 +71,7 @@ However, just to whisper, this is tremendously fast.
 - We can purge the remote bucket again if we using MinIO instead of AWS S3 or
   Cloudflare R2.
 - Purging the remote bucket is now more reliable.
-  - 100 files are purged at a time.
+    - 100 files are purged at a time.
 - Some wrong messages have been fixed.
 
 ### Behaviour changed
@@ -63,8 +79,8 @@ However, just to whisper, this is tremendously fast.
 - Entering into the deeper directories to gather the hidden files is now limited
   by `/` or `\/` prefixed ignore filters. (It means that directories are scanned
   deeper than before).
-  - However, inside the these directories, the files are still limited by the
-    ignore filters.
+    - However, inside the these directories, the files are still limited by the
+      ignore filters.
 
 ### Etcetera
 
@@ -104,25 +120,25 @@ However, just to whisper, this is tremendously fast.
 
 - Bucket synchronisation has been enhanced for better performance and
   reliability.
-  - Now less duplicated chunks are sent to the server. Note: If you have
-    encountered about too less chunks, please let me know. However, you can send
-    it to the server by `Overwrite remote`.
-  - Fetching conflicted files from the server is now more reliable.
-  - Dependent libraries have been updated to the latest version.
-    - Also, let me know if you have encountered any issues with this update.
-      Especially you are using a device that has been in use for a little
-      longer.
+    - Now less duplicated chunks are sent to the server. Note: If you have
+      encountered about too less chunks, please let me know. However, you can send
+      it to the server by `Overwrite remote`.
+    - Fetching conflicted files from the server is now more reliable.
+    - Dependent libraries have been updated to the latest version.
+        - Also, let me know if you have encountered any issues with this update.
+          Especially you are using a device that has been in use for a little
+          longer.
 
 ## 0.24.23
 
 ### New Feature
 
 - Now, we can send custom headers to the server.
-  - They can be sent to either CouchDB or Object Storage.
+    - They can be sent to either CouchDB or Object Storage.
 - Authentication with JWT in CouchDB is now supported.
-  - I will describe steps later, but please refer to the
-    [CouchDB document](https://docs.couchdb.org/en/stable/config/auth.html#authentication-configuration).
-  - A JWT keypair for testing can be generated in the setting dialogue.
+    - I will describe steps later, but please refer to the
+      [CouchDB document](https://docs.couchdb.org/en/stable/config/auth.html#authentication-configuration).
+    - A JWT keypair for testing can be generated in the setting dialogue.
 
 ### Improved
 
