@@ -1,3 +1,12 @@
+## 0.24.28
+
+### Fixed
+
+- Batch Update is no longer available in LiveSync mode to avoid unexpected behaviour. (#653)
+- Now compatible with Cloudflare R2 again for bucket synchronisation.
+  - @edo-bari-ikutsu, thank you for [your contribution](https://github.com/vrtmrz/livesync-commonlib/pull/12)!
+- Prevention of broken behaviour due to database connection failures added (#649).
+
 ## 0.24.27
 
 ### Improved
