@@ -244,34 +244,49 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     async loadQueuedFiles() {
         if (this.settings.suspendParseReplicationResult) return;
         if (!this.settings.isConfigured) return;
-        const kvDBKey = "queued-files";
-        // const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
-        const ids = [...new Set((await this.core.kvDB.get<string[]>(kvDBKey)) ?? [])];
-        const batchSize = 100;
-        const chunkedIds = arrayToChunkedArray(ids, batchSize);
+        try {
+            const kvDBKey = "queued-files";
+            // const ids = [...new Set(JSON.parse(localStorage.getItem(lsKey) || "[]"))] as string[];
+            const ids = [...new Set((await this.core.kvDB.get<string[]>(kvDBKey)) ?? [])];
+            const batchSize = 100;
+            const chunkedIds = arrayToChunkedArray(ids, batchSize);
 
-        // suspendParseReplicationResult is true, so we have to resume it if it is suspended.
-        if (this.replicationResultProcessor.isSuspended) {
-            this.replicationResultProcessor.resume();
-        }
-        for await (const idsBatch of chunkedIds) {
-            const ret = await this.localDatabase.allDocsRaw<EntryDoc>({
-                keys: idsBatch,
-                include_docs: true,
-                limit: 100,
-            });
-            const docs = ret.rows.filter((e) => e.doc).map((e) => e.doc) as PouchDB.Core.ExistingDocument<EntryDoc>[];
-            const errors = ret.rows.filter((e) => !e.doc && !e.value.deleted);
-            if (errors.length > 0) {
-                Logger("Some queued processes were not resurrected");
-                Logger(JSON.stringify(errors), LOG_LEVEL_VERBOSE);
+            // suspendParseReplicationResult is true, so we have to resume it if it is suspended.
+            if (this.replicationResultProcessor.isSuspended) {
+                this.replicationResultProcessor.resume();
             }
-            this.replicationResultProcessor.enqueueAll(docs);
+            for await (const idsBatch of chunkedIds) {
+                const ret = await this.localDatabase.allDocsRaw<EntryDoc>({
+                    keys: idsBatch,
+                    include_docs: true,
+                    limit: 100,
+                });
+                const docs = ret.rows
+                    .filter((e) => e.doc)
+                    .map((e) => e.doc) as PouchDB.Core.ExistingDocument<EntryDoc>[];
+                const errors = ret.rows.filter((e) => !e.doc && !e.value.deleted);
+                if (errors.length > 0) {
+                    Logger("Some queued processes were not resurrected");
+                    Logger(JSON.stringify(errors), LOG_LEVEL_VERBOSE);
+                }
+                this.replicationResultProcessor.enqueueAll(docs);
+            }
+        } catch (e) {
+            Logger(`Failed to load queued files.`, LOG_LEVEL_NOTICE);
+            Logger(e, LOG_LEVEL_VERBOSE);
+        } finally {
+            // Check again before awaiting,
+            if (this.replicationResultProcessor.isSuspended) {
+                this.replicationResultProcessor.resume();
+            }
         }
-        if (this.replicationResultProcessor.isSuspended) {
-            this.replicationResultProcessor.resume();
+        // Wait for all queued files to be processed.
+        try {
+            await this.replicationResultProcessor.waitForAllProcessed();
+        } catch (e) {
+            Logger(`Failed to wait for all queued files to be processed.`, LOG_LEVEL_NOTICE);
+            Logger(e, LOG_LEVEL_VERBOSE);
         }
-        await this.replicationResultProcessor.waitForAllProcessed();
     }
 
     replicationResultProcessor = new QueueProcessor(

@@ -2090,7 +2090,12 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                         .autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
                 });
 
-                void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleUpdateThinning")).then((paneEl) => {
+                void addPanel(
+                    paneEl,
+                    $msg("obsidianLiveSyncSettingTab.titleUpdateThinning"),
+                    undefined,
+                    visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"))
+                ).then((paneEl) => {
                     paneEl.addClass("wizardHidden");
                     new Setting(paneEl).setClass("wizardHidden").autoWireToggle("batchSave");
                     new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMinimumDelay", {
