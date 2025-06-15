@@ -80,7 +80,7 @@
         "esbuild-plugin-inline-worker": "^0.1.1",
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
-        "minimatch": "^10.0.1",
+        "minimatch": "^10.0.2",
         "octagonal-wheels": "^0.1.30",
         "qrcode-generator": "^1.4.4",
         "svelte-check": "^4.1.7",
