@@ -2,6 +2,7 @@
 
 - [Tips and Troubleshooting](#tips-and-troubleshooting)
   - [Tips](#tips)
+    - [CORS avoidance](#cors-avoidance)
     - [CORS configuration with reverse proxy](#cors-configuration-with-reverse-proxy)
       - [Nginx](#nginx)
       - [Nginx and subdirectory](#nginx-and-subdirectory)
@@ -21,6 +22,10 @@
     - [Why are the logs volatile and ephemeral?](#why-are-the-logs-volatile-and-ephemeral)
     - [Some network logs are not written into the file.](#some-network-logs-are-not-written-into-the-file)
     - [If a file were deleted or trimmed, the capacity of the database should be reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-should-be-reduced-right)
+    - [How to launch the DevTools](#how-to-launch-the-devtools)
+      - [On Desktop Devices](#on-desktop-devices)
+      - [On Android](#on-android)
+      - [On iOS, iPadOS devices](#on-ios-ipados-devices)
     - [How can I use the DevTools?](#how-can-i-use-the-devtools)
       - [Checking the network log](#checking-the-network-log)
   - [Troubleshooting](#troubleshooting)
@@ -32,6 +37,11 @@
 <!-- - -->
 
 ## Tips
+
+### CORS avoidance
+If we are unable to configure CORS properly for any reason (for example, if we cannot configure non-administered network devices), we may choose to ignore CORS.
+To use the Obsidian API (also known as the Non-Native API) to bypass CORS, we can enable the toggle ``Use Request API to avoid `inevitable` CORS problem``.
+<!-- Add **Long explanation of CORS** here for integrity -->
 
 ### CORS configuration with reverse proxy
 
@@ -234,6 +244,19 @@ unused chunks even though if we are not currently referenced.
 To shrink the database size, `Rebuild everything` only reliably and effectively.
 But do not worry, if we have synchronised well. We have the actual and real
 files. Only it takes a bit of time and traffics.
+
+### How to launch the DevTools
+
+#### On Desktop Devices
+We can launch the DevTools by pressing `ctrl`+`shift`+`i` (`Command`+`shift`+`i` on Mac).
+
+#### On Android
+Please refer to [Remote debug Android devices](https://developer.chrome.com/docs/devtools/remote-debugging/).
+Once the DevTools have been launched, everything operates the same as on a PC.
+
+#### On iOS, iPadOS devices
+If we have a Mac, we can inspect from Safari on the Mac. Please refer to [Inspecting iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios).
+
 
 ### How can I use the DevTools?
 
