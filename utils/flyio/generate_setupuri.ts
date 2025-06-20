@@ -1,4 +1,4 @@
-import { encrypt } from "npm:octagonal-wheels@0.1.11/encryption/encryption.js";
+import { encrypt } from "npm:octagonal-wheels@0.1.30/encryption/encryption";
 
 const noun = [
     "waterfall",

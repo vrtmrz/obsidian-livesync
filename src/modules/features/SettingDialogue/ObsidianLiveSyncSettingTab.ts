@@ -1410,6 +1410,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             (paneEl) => {
                 void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer")).then((paneEl) => {
                     // const containerRemoteDatabaseEl = containerEl.createDiv();
+                    this.createEl(
+                        paneEl,
+                        "div",
+                        {
+                            text: $msg("obsidianLiveSyncSettingTab.msgSettingsUnchangeableDuringSync"),
+                        },
+                        undefined,
+                        visibleOnly(() => isAnySyncEnabled())
+                    ).addClass("op-warn-info");
                     new Setting(paneEl).autoWireDropDown("remoteType", {
                         holdValue: true,
                         options: {
@@ -1539,16 +1548,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                 visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
                             ).addClass("op-warn-info");
                         }
-
-                        this.createEl(
-                            paneEl,
-                            "div",
-                            {
-                                text: $msg("obsidianLiveSyncSettingTab.msgSettingsUnchangeableDuringSync"),
-                            },
-                            undefined,
-                            visibleOnly(() => isAnySyncEnabled())
-                        ).addClass("sls-setting-hidden");
 
                         new Setting(paneEl).autoWireText("couchDB_URI", {
                             holdValue: true,

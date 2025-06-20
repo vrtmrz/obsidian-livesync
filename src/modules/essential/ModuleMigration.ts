@@ -1,4 +1,4 @@
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger.js";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { type ObsidianLiveSyncSettings } from "../../lib/src/common/types.js";
 import {
     EVENT_REQUEST_OPEN_P2P,
