@@ -1,3 +1,14 @@
+## 0.24.29
+
+### Fixed
+
+- Synchronisation with buckets now works correctly, regardless of whether a prefix is set or the bucket has been (re-) initialised (#664).
+- An information message is now displayed again, during any automatic synchronisation is enabled (#662).
+
+### Tidied up
+
+- Importing paths have been tidied up.
+
 ## 0.24.28
 
 ### Fixed
