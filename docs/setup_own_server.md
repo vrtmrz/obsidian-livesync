@@ -21,7 +21,7 @@
 ---
 
 ## 1. Prepare CouchDB
-### A. Using Docker container
+### A. Using Docker
 
 #### 1. Prepare
 ```bash
@@ -37,28 +37,40 @@ mkdir couchdb-etc
 ```
 
 #### 2. Run docker container
-
 1. Boot Check.
 ```
 $ docker run --name couchdb-for-ols --rm -it -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
-If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
-Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
+> [!WARNING]
+> If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
+> Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
 
 2. Enable it in the background
 ```
 $ docker run --name couchdb-for-ols -d --restart always -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
-If you prefer a compose file instead of docker run, here is the equivalent below:
+
+Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
+### B. Using Docker Compose
+
+#### 1. Prepare
+
+```
+# Prepare directories which save data and configurations.
+mkdir couchdb-data
+mkdir couchdb-etc
+```
+
+#### 2. Create a `docker-compose.yml` file with the following added to it
 ```
 services:
   couchdb:
     image: couchdb:latest
     container_name: couchdb-for-ols
-    user: 1000:1000
+    user: 5984:5984
     environment:
-      - COUCHDB_USER=${username}
-      - COUCHDB_PASSWORD=${password}
+      - COUCHDB_USER=<INSERT USERNAME HERE>  #Please change as you like.
+      - COUCHDB_PASSWORD=<INSERT PASSWORD HERE> #Please change as you like.
     volumes:
       - ./couchdb-data:/opt/couchdb/data
       - ./couchdb-etc:/opt/couchdb/etc/local.d
@@ -66,7 +78,30 @@ services:
       - 5984:5984
     restart: unless-stopped
 ```
-### B. Install CouchDB directly
+
+#### 3. Run the Docker Compose file to boot check
+
+```
+docker compose up
+# Or if using the old version
+docker-compose up
+```
+> [!WARNING]
+> If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
+> Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
+
+### 4. Run the Docker Compose file in the background
+If all went well and didn't throw any errors, `CTRL+C` out of it, and then run this command
+```
+docker compose up -d
+# Or if using the old version
+docker-compose up -d
+```
+
+Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
+
+
+### C. Install CouchDB directly
 Please refer to the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just the administrator needs to be configured.
 
 ## 2. Run couchdb-init.sh for initialise
