@@ -90,7 +90,7 @@ docker-compose up
 > If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
 > Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
 
-### 4. Run the Docker Compose file in the background
+#### 4. Run the Docker Compose file in the background
 If all went well and didn't throw any errors, `CTRL+C` out of it, and then run this command
 ```
 docker compose up -d
