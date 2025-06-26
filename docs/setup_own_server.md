@@ -42,8 +42,8 @@ mkdir couchdb-etc
 $ docker run --name couchdb-for-ols --rm -it -e COUCHDB_USER=${username} -e COUCHDB_PASSWORD=${password} -v ${PWD}/couchdb-data:/opt/couchdb/data -v ${PWD}/couchdb-etc:/opt/couchdb/etc/local.d -p 5984:5984 couchdb
 ```
 > [!WARNING]
-> If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
-> Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
+> If your container threw an error or exited unexpectedly, please check the permission of couchdb-data, and couchdb-etc.  
+> Once CouchDB starts, these directories will be owned by uid:`5984`. Please chown it for that uid again.
 
 2. Enable it in the background
 ```
@@ -87,8 +87,8 @@ docker compose up
 docker-compose up
 ```
 > [!WARNING]
-> If your container has been exited, please check the permission of couchdb-data, and couchdb-etc.  
-> Once CouchDB run, these directories will be owned by uid:`5984`. Please chown it for you again.
+> If your container threw an error or exited unexpectedly, please check the permission of couchdb-data, and couchdb-etc.  
+> Once CouchDB starts, these directories will be owned by uid:`5984`. Please chown it for that uid again.
 
 #### 4. Run the Docker Compose file in the background
 If all went well and didn't throw any errors, `CTRL+C` out of it, and then run this command
