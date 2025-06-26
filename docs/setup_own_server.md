@@ -26,12 +26,12 @@
 #### 1. Prepare
 ```bash
 
-# Prepare environment variables.
+# Adding environment variables.
 export hostname=localhost:5984
 export username=goojdasjdas     #Please change as you like.
 export password=kpkdasdosakpdsa #Please change as you like
 
-# Prepare directories which save data and configurations.
+# Creating the save data & configuration directories.
 mkdir couchdb-data
 mkdir couchdb-etc
 ```
@@ -56,7 +56,7 @@ Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
 #### 1. Prepare
 
 ```
-# Prepare directories which save data and configurations.
+# Creating the save data & configuration directories.
 mkdir couchdb-data
 mkdir couchdb-etc
 ```
