@@ -14,6 +14,27 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.23
+
+### New Feature
+
+- Now, we can send custom headers to the server.
+    - They can be sent to either CouchDB or Object Storage.
+- Authentication with JWT in CouchDB is now supported.
+    - I will describe steps later, but please refer to the
+      [CouchDB document](https://docs.couchdb.org/en/stable/config/auth.html#authentication-configuration).
+    - A JWT keypair for testing can be generated in the setting dialogue.
+
+### Improved
+
+- The QR Code for set-up can be shown also from the setting dialogue now.
+- Conflict checking for preventing unexpected overwriting on the boot-up process
+  has been quite faster.
+
+### Fixed
+
+- Some bugs on Dev and Testing modules have been fixed.
+
 ## 0.24.22 ~~0.24.21~~
 
 (Really sorry for the confusion. I have got a miss at releasing...).

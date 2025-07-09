@@ -1,3 +1,35 @@
+## 0.24.30
+
+### New Feature
+
+- New chunking algorithm `V3: Fine deduplication` has been added, and will be recommended after updates.
+    - The Rabin-Karp algorithm is used for efficient chunking.
+    - This will be the default in the new installations.
+    - It is more robust and faster than the previous one.
+    - We can change it in the `Advanced` pane of the settings.
+- New language `ko` (Korean) has been added.
+    - Thank you for your contribution, [@ellixspace](https://x.com/ellixspace)!
+        - Any contributions are welcome, from any route. Please let me know if I seem to be unaware of this. It is often the case that I am not really aware of it.
+- Chinese (Simplified) translation has been updated.
+    - Thank you for your contribution, [@52sanmao](https://github.com/52sanmao)!
+
+### Fixed
+
+- Numeric settings are now never lost the focus during value changing.
+- Doctor now redacts more sensitive information on error reports.
+
+### Improved
+
+- All translations have been rewritten into YAML format, to easier to manage and contribute.
+    - We can write them with comments, newlines, and other YAML features.
+- Doctor recommendations are now shown in a user-friendly notation.
+    - We can now see the recommended as `V3: Fine deduplication` instead of `v3-rabin-karp`.
+
+### Refactored
+
+- Never-ending `ObsidianLiveSyncSettingTab.ts` has finally been separated into each pane's file.
+- Some commented-out code has been removed.
+
 ## 0.24.29
 
 ### Fixed
@@ -15,7 +47,7 @@
 
 - Batch Update is no longer available in LiveSync mode to avoid unexpected behaviour. (#653)
 - Now compatible with Cloudflare R2 again for bucket synchronisation.
-  - @edo-bari-ikutsu, thank you for [your contribution](https://github.com/vrtmrz/livesync-commonlib/pull/12)!
+    - @edo-bari-ikutsu, thank you for [your contribution](https://github.com/vrtmrz/livesync-commonlib/pull/12)!
 - Prevention of broken behaviour due to database connection failures added (#649).
 
 ## 0.24.27
@@ -148,27 +180,6 @@ However, just to whisper, this is tremendously fast.
         - Also, let me know if you have encountered any issues with this update.
           Especially you are using a device that has been in use for a little
           longer.
-
-## 0.24.23
-
-### New Feature
-
-- Now, we can send custom headers to the server.
-    - They can be sent to either CouchDB or Object Storage.
-- Authentication with JWT in CouchDB is now supported.
-    - I will describe steps later, but please refer to the
-      [CouchDB document](https://docs.couchdb.org/en/stable/config/auth.html#authentication-configuration).
-    - A JWT keypair for testing can be generated in the setting dialogue.
-
-### Improved
-
-- The QR Code for set-up can be shown also from the setting dialogue now.
-- Conflict checking for preventing unexpected overwriting on the boot-up process
-  has been quite faster.
-
-### Fixed
-
-- Some bugs on Dev and Testing modules have been fixed.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
