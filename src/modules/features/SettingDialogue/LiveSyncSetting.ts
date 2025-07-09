@@ -14,14 +14,7 @@ import {
     statusDisplay,
     type ConfigurationItem,
 } from "../../../lib/src/common/types.ts";
-import {
-    type ObsidianLiveSyncSettingTab,
-    type AutoWireOption,
-    wrapMemo,
-    type OnUpdateResult,
-    createStub,
-    findAttrFromParent,
-} from "./ObsidianLiveSyncSettingTab.ts";
+import { createStub, type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
     getConfig,
@@ -31,6 +24,7 @@ import {
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
+import { findAttrFromParent, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -184,10 +178,10 @@ export class LiveSyncSetting extends Setting {
         const conf = this.autoWireSetting(key, opt);
         this.addText((text) => {
             this.autoWiredComponent = text;
-            if (opt.clampMin) {
+            if (opt.clampMin !== undefined) {
                 text.inputEl.setAttribute("min", `${opt.clampMin}`);
             }
-            if (opt.clampMax) {
+            if (opt.clampMax !== undefined) {
                 text.inputEl.setAttribute("max", `${opt.clampMax}`);
             }
             let lastError = false;
@@ -203,8 +197,8 @@ export class LiveSyncSetting extends Setting {
                 const value = parsedValue;
                 let hasError = false;
                 if (isNaN(value)) hasError = true;
-                if (opt.clampMax && opt.clampMax < value) hasError = true;
-                if (opt.clampMin && opt.clampMin > value) {
+                if (opt.clampMax !== undefined && opt.clampMax < value) hasError = true;
+                if (opt.clampMin !== undefined && opt.clampMin > value) {
                     if (opt.acceptZero && value == 0) {
                         // This is ok.
                     } else {

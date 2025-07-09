@@ -389,6 +389,10 @@ export const SettingInformation: Partial<Record<keyof AllSettings, Configuration
         name: "File prefix on the bucket",
         desc: "Effectively a directory. Should end with `/`. e.g., `vault-name/`.",
     },
+    chunkSplitterVersion: {
+        name: "Chunk Splitter",
+        desc: "Now we can choose how to split the chunks; V3 is the most efficient. If you have troubled, please make this Default or Legacy.",
+    },
 };
 function translateInfo(infoSrc: ConfigurationItem | undefined | false) {
     if (!infoSrc) return false;

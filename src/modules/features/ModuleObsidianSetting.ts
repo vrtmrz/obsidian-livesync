@@ -3,6 +3,7 @@ import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidia
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import {
     type BucketSyncSetting,
+    ChunkAlgorithmNames,
     type ConfigPassphraseStore,
     type CouchDBConnection,
     DEFAULT_SETTINGS,
@@ -273,6 +274,22 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 this.settings.usePluginSync = false;
             }
         }
+
+        // Splitter configurations have been replaced with chunkSplitterVersion.
+        if (this.settings.chunkSplitterVersion == "") {
+            if (this.settings.enableChunkSplitterV2) {
+                if (this.settings.useSegmenter) {
+                    this.settings.chunkSplitterVersion = "v2-segmenter";
+                } else {
+                    this.settings.chunkSplitterVersion = "v2";
+                }
+            } else {
+                this.settings.chunkSplitterVersion = "";
+            }
+        } else if (!(this.settings.chunkSplitterVersion in ChunkAlgorithmNames)) {
+            this.settings.chunkSplitterVersion = "";
+        }
+
         // this.core.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
     }

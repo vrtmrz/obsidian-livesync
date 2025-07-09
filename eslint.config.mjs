@@ -40,8 +40,7 @@ export default [
             "src/lib/test",
             "src/lib/src/cli",
             "**/main.js",
-            "src/lib/apps/webpeer/dist",
-            "src/lib/apps/webpeer/svelte.config.js",
+            "src/lib/apps/webpeer/*"
         ],
     },
     ...compat.extends(

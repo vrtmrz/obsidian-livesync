@@ -6,7 +6,13 @@
     "type": "module",
     "scripts": {
         "bakei18n": "npx tsx ./src/lib/_tools/bakei18n.ts",
+        "i18n:bakejson": "npx tsx ./src/lib/_tools/bakei18n.ts",
+        "i18n:yaml2json": "npx tsx ./src/lib/_tools/yaml2json.ts",
+        "i18n:json2yaml": "npx tsx ./src/lib/_tools/json2yaml.ts",
+        "prettyjson": "prettier --config ./.prettierrc ./src/lib/src/common/messagesJson/*.json --write --log-level error",
         "postbakei18n": "prettier --config ./.prettierrc ./src/lib/src/common/messages/*.ts --write --log-level error",
+        "posti18n:yaml2json": "npm run prettyjson",
+        "predev": "npm run bakei18n",
         "dev": "node esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
         "build": "node esbuild.config.mjs production",
@@ -47,6 +53,7 @@
         "eslint-plugin-import": "^2.31.0",
         "eslint-plugin-svelte": "^3.0.2",
         "events": "^3.3.0",
+        "glob": "^11.0.3",
         "obsidian": "^1.8.7",
         "postcss": "^8.5.3",
         "postcss-load-config": "^6.0.1",
@@ -67,13 +74,14 @@
         "transform-pouch": "^2.0.0",
         "tslib": "^2.8.1",
         "tsx": "^4.19.4",
-        "typescript": "5.7.3"
+        "typescript": "5.7.3",
+        "yaml": "^2.8.0"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.808.0",
+        "@smithy/fetch-http-handler": "^5.0.2",
         "@smithy/md5-js": "^4.0.2",
         "@smithy/middleware-apply-body-checksum": "^4.1.0",
-        "@smithy/fetch-http-handler": "^5.0.2",
         "@smithy/protocol-http": "^5.1.0",
         "@smithy/querystring-builder": "^4.0.2",
         "diff-match-patch": "^1.0.5",

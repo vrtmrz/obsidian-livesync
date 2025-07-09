@@ -23,5 +23,5 @@
         }
     },
     "include": ["**/*.ts"],
-    "exclude": ["pouchdb-browser-webpack", "utils"]
+    "exclude": ["pouchdb-browser-webpack", "utils", "src/lib/apps"]
 }
