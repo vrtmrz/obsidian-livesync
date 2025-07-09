@@ -25,6 +25,10 @@
 - Doctor recommendations are now shown in a user-friendly notation.
     - We can now see the recommended as `V3: Fine deduplication` instead of `v3-rabin-karp`.
 
+### Acknowledgement 
+
+- Jun Murakami, Shun Ishiguro, and Yoshihiro Oyama. 2012. Implementation and Evaluation of a Cache Deduplication Mechanism with Content-Defined Chunking. In *IPSJ SIG Technical Report*, Vol.2012-ARC-202, No.4. Information Processing Society of Japan, 1-7.
+
 ### Refactored
 
 - Never-ending `ObsidianLiveSyncSettingTab.ts` has finally been separated into each pane's file.
