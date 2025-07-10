@@ -1,4 +1,19 @@
+## 0.24.31
+
+10th July, 2025
+
+### Fixed
+
+- The description of `Enable Developers' Debug Tools.` has been refined.
+    - Now performance impact is more clearly stated.
+- Automatic conflict checking and resolution has been improved.
+    - It now works parallelly for each other file, instead of sequentially. It makes significantly faster on first synchronisation when with local files information.
+- Resolving conflicts dialogue will not be shown for the multiple files at once.
+    - It will be shown for each file, one by one.
+
 ## 0.24.30
+
+9th July, 2025
 
 ### New Feature
 
@@ -30,11 +45,13 @@
 - Never-ending `ObsidianLiveSyncSettingTab.ts` has finally been separated into each pane's file.
 - Some commented-out code has been removed.
 
-### Acknowledgement 
+### Acknowledgement
 
-- Jun Murakami, Shun Ishiguro, and Yoshihiro Oyama. 2012. Implementation and Evaluation of a Cache Deduplication Mechanism with Content-Defined Chunking. In *IPSJ SIG Technical Report*, Vol.2012-ARC-202, No.4. Information Processing Society of Japan, 1-7.
+- Jun Murakami, Shun Ishiguro, and Yoshihiro Oyama. 2012. Implementation and Evaluation of a Cache Deduplication Mechanism with Content-Defined Chunking. In _IPSJ SIG Technical Report_, Vol.2012-ARC-202, No.4. Information Processing Society of Japan, 1-7.
 
 ## 0.24.29
+
+20th June, 2025
 
 ### Fixed
 
@@ -47,6 +64,8 @@
 
 ## 0.24.28
 
+15th June, 2025
+
 ### Fixed
 
 - Batch Update is no longer available in LiveSync mode to avoid unexpected behaviour. (#653)
@@ -55,6 +74,8 @@
 - Prevention of broken behaviour due to database connection failures added (#649).
 
 ## 0.24.27
+
+10th June, 2025
 
 ### Improved
 
@@ -71,6 +92,8 @@
 - Some dependencies have been updated to the latest version.
 
 ## 0.24.26
+
+14th May, 2025
 
 This update introduces an option to circumvent Cross-Origin Resource Sharing
 (CORS) constraints for CouchDB requests, by leveraging Obsidian's native request
@@ -144,46 +167,6 @@ However, just to whisper, this is tremendously fast.
 - Trying less warning-suppressing and be more safer-coding.
 - Dependent libraries have been updated to the latest version.
 - Some build processes have been separated to `pre` and `post` processes.
-
-## 0.24.25
-
-### Improved
-
-- Peer-to-peer synchronisation has been got more robust.
-
-### Fixed
-
-- No longer broken falsy values in settings during set-up by the QR code
-  generation.
-
-### Refactored
-
-- Some `window` references now have pointed to `globalThis`.
-- Some sloppy-import has been fixed.
-- A server side implementation `Synchromesh` has been suffixed with `deno`
-  instead of `server` now.
-
-## 0.24.24
-
-### Fixed
-
-- No longer broken JSON files including `\n`, during the bucket synchronisation.
-  (#623)
-- Custom headers and JWT tokens are now correctly sent to the server during
-  configuration checking. (#624)
-
-### Improved
-
-- Bucket synchronisation has been enhanced for better performance and
-  reliability.
-    - Now less duplicated chunks are sent to the server. Note: If you have
-      encountered about too less chunks, please let me know. However, you can send
-      it to the server by `Overwrite remote`.
-    - Fetching conflicted files from the server is now more reliable.
-    - Dependent libraries have been updated to the latest version.
-        - Also, let me know if you have encountered any issues with this update.
-          Especially you are using a device that has been in use for a little
-          longer.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

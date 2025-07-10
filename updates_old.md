@@ -14,7 +14,53 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.25
+
+22nd April, 2025
+
+### Improved
+
+- Peer-to-peer synchronisation has been got more robust.
+
+### Fixed
+
+- No longer broken falsy values in settings during set-up by the QR code
+  generation.
+
+### Refactored
+
+- Some `window` references now have pointed to `globalThis`.
+- Some sloppy-import has been fixed.
+- A server side implementation `Synchromesh` has been suffixed with `deno`
+  instead of `server` now.
+
+## 0.24.24
+
+15th April, 2025
+
+### Fixed
+
+- No longer broken JSON files including `\n`, during the bucket synchronisation.
+  (#623)
+- Custom headers and JWT tokens are now correctly sent to the server during
+  configuration checking. (#624)
+
+### Improved
+
+- Bucket synchronisation has been enhanced for better performance and
+  reliability.
+    - Now less duplicated chunks are sent to the server. Note: If you have
+      encountered about too less chunks, please let me know. However, you can send
+      it to the server by `Overwrite remote`.
+    - Fetching conflicted files from the server is now more reliable.
+    - Dependent libraries have been updated to the latest version.
+        - Also, let me know if you have encountered any issues with this update.
+          Especially you are using a device that has been in use for a little
+          longer.
+
 ## 0.24.23
+
+10th April, 2025
 
 ### New Feature
 
@@ -36,6 +82,8 @@ Thank you, and I hope your troubles will be resolved!
 - Some bugs on Dev and Testing modules have been fixed.
 
 ## 0.24.22 ~~0.24.21~~
+
+1st April, 2025
 
 (Really sorry for the confusion. I have got a miss at releasing...).
 
@@ -65,6 +113,8 @@ Thank you, and I hope your troubles will be resolved!
 
 ## 0.24.20
 
+24th March, 2025
+
 ### Improved
 
 - Now we can see the detail of `TypeError` using Obsidian API during remote
@@ -79,6 +129,8 @@ Thank you, and I hope your troubles will be resolved!
 
 ## 0.24.19
 
+5th March, 2025
+
 ### New Feature
 
 - Now we can generate a QR Code for transferring the configuration to another device.
@@ -86,6 +138,8 @@ Thank you, and I hope your troubles will be resolved!
     - Note: This QR Code is not encrypted. So, please be careful when transferring the configuration.
 
 ## 0.24.18
+
+28th February, 2025
 
 ### Fixed
 
@@ -106,9 +160,12 @@ Thank you, and I hope your troubles will be resolved!
 
 ## 0.24.17
 
+27th February, 2025
+
 Confession. I got the default values wrong. So scary and sorry.
 
 ## 0.24.16
+
 
 ### Improved
 
