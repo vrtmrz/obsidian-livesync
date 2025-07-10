@@ -37,13 +37,17 @@ export class ModuleConflictChecker extends AbstractModule implements ICoreModule
     // TODO-> Move to ModuleConflictResolver?
     conflictResolveQueue = new QueueProcessor(
         async (filenames: FilePathWithPrefix[]) => {
-            await this.core.$$resolveConflict(filenames[0]);
+            const filename = filenames[0];
+            return await this.core.$$resolveConflict(filename);
         },
         {
             suspended: false,
             batchSize: 1,
-            concurrentLimit: 1,
-            delay: 10,
+            // No need to limit concurrency to `1` here, subsequent process will handle it,
+            // And, some cases, we do not need to synchronised. (e.g., auto-merge available).
+            // Therefore, limiting global concurrency is performed on resolver with the UI.
+            concurrentLimit: 10,
+            delay: 0,
             keepResultUntilDownstreamConnected: false,
         }
     ).replaceEnqueueProcessor((queue, newEntity) => {
@@ -57,19 +61,13 @@ export class ModuleConflictChecker extends AbstractModule implements ICoreModule
         new QueueProcessor(
             (files: FilePathWithPrefix[]) => {
                 const filename = files[0];
-                // const file = await this.core.storageAccess.isExists(filename);
-                // if (!file) return [];
-                // if (!(file instanceof TFile)) return;
-                // if ((file instanceof TFolder)) return [];
-                // Check again?
                 return Promise.resolve([filename]);
-                // this.conflictResolveQueue.enqueueWithKey(filename, { filename, file });
             },
             {
                 suspended: false,
                 batchSize: 1,
-                concurrentLimit: 5,
-                delay: 10,
+                concurrentLimit: 10,
+                delay: 0,
                 keepResultUntilDownstreamConnected: true,
                 pipeTo: this.conflictResolveQueue,
                 totalRemainingReactiveSource: this.core.conflictProcessQueueCount,
