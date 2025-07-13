@@ -121,9 +121,9 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         }
                     );
                     let makeLocalChunkBeforeSync = false;
-                    let preventMakeLocalFilesBeforeSync = false;
+                    let makeLocalFilesBeforeSync = false;
                     if (chunkMode === method1) {
-                        preventMakeLocalFilesBeforeSync = true;
+                        makeLocalFilesBeforeSync = true;
                     } else if (chunkMode === method2) {
                         makeLocalChunkBeforeSync = true;
                     } else if (chunkMode === method3) {
@@ -133,7 +133,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         return false;
                     }
 
-                    await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, preventMakeLocalFilesBeforeSync);
+                    await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, !makeLocalFilesBeforeSync);
 
                     await this.deleteRedFlag3();
                     if (this.settings.suspendFileWatching) {

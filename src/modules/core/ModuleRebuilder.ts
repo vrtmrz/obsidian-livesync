@@ -11,7 +11,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { Rebuilder } from "../interfaces/DatabaseRebuilder.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 import type { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
-import { fetchAllUsedChunks } from "../../lib/src/pouchdb/utils_couchdb.ts";
+import { fetchAllUsedChunks } from "@/lib/src/pouchdb/chunks.ts";
 import { EVENT_DATABASE_REBUILT, eventHub } from "src/common/events.ts";
 
 export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebuilder {
@@ -90,8 +90,8 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         return this.rebuildEverything();
     }
 
-    $fetchLocal(makeLocalChunkBeforeSync?: boolean): Promise<void> {
-        return this.fetchLocal(makeLocalChunkBeforeSync);
+    $fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean): Promise<void> {
+        return this.fetchLocal(makeLocalChunkBeforeSync, preventMakeLocalFilesBeforeSync);
     }
 
     async scheduleRebuild(): Promise<void> {

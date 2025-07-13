@@ -84,8 +84,8 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                     $msg("Doctor.Dialogue.MainFix", {
                         name: getConfName(key as AllSettingItemKey),
                         current: `${this.settings[key]}`,
-                        reason: value.reason ?? " N/A ",
-                        ideal: `${value.valueDisplay ?? value.value}`,
+                        reason: value.reasonFunc?.(this.settings) ?? value.reason ?? " N/A ",
+                        ideal: `${value.valueDisplayFunc ? value.valueDisplayFunc(this.settings) : value.value}`,
                         //@ts-ignore
                         level: `${level}`,
                         note: note,

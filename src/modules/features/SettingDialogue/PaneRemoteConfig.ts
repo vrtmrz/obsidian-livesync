@@ -579,12 +579,6 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
             holdValue: true,
             onUpdate: isEncryptEnabled,
         });
-        new Setting(paneEl)
-            .autoWireToggle("useDynamicIterationCount", {
-                holdValue: true,
-                onUpdate: isEncryptEnabled,
-            })
-            .setClass("wizardHidden");
     });
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleFetchSettings")).then((paneEl) => {

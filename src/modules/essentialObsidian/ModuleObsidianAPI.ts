@@ -3,13 +3,10 @@ import { LOG_LEVEL_DEBUG, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-
 import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
 import { type CouchDBCredentials, type EntryDoc, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
 import { getPathFromTFile } from "../../common/utils.ts";
-import {
-    disableEncryption,
-    enableEncryption,
-    isCloudantURI,
-    isValidRemoteCouchDBURI,
-    replicationFilter,
-} from "../../lib/src/pouchdb/utils_couchdb.ts";
+import { isCloudantURI, isValidRemoteCouchDBURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
+import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
+import { disableEncryption } from "@/lib/src/pouchdb/encryption.ts";
+import { enableEncryption } from "@/lib/src/pouchdb/encryption.ts";
 import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
 import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
@@ -103,7 +100,8 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         skipInfo: boolean,
         compression: boolean,
         customHeaders: Record<string, string>,
-        useRequestAPI: boolean
+        useRequestAPI: boolean,
+        getPBKDF2Salt: () => Promise<Uint8Array>
     ): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
@@ -229,7 +227,14 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         replicationFilter(db, compression);
         disableEncryption();
         if (passphrase !== "false" && typeof passphrase === "string") {
-            enableEncryption(db, passphrase, useDynamicIterationCount, false);
+            enableEncryption(
+                db,
+                passphrase,
+                useDynamicIterationCount,
+                false,
+                getPBKDF2Salt,
+                this.settings.E2EEAlgorithm
+            );
         }
         if (skipInfo) {
             return { db: db, info: { db_name: "", doc_count: 0, update_seq: "" } };

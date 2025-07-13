@@ -2,24 +2,12 @@ import { type ConfigPassphraseStore } from "../../../lib/src/common/types.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
+
 export function panePowerUsers(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
     { addPanel }: PageFunctions
 ): void {
-    void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
-        const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
-        new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-        new Setting(paneEl)
-            .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
-            .setClass("wizardHidden");
-        new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-
-        new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
-    });
-
     void addPanel(paneEl, "CouchDB Connection Tweak", undefined, this.onlyOnCouchDB).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 

@@ -1,4 +1,9 @@
-import { type HashAlgorithm, LOG_LEVEL_NOTICE } from "../../../lib/src/common/types.ts";
+import {
+    E2EEAlgorithmNames,
+    E2EEAlgorithms,
+    type HashAlgorithm,
+    LOG_LEVEL_NOTICE,
+} from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -36,6 +41,19 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
     void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
+    });
+    void addPanel(paneEl, "Compatibility (Remote Database)").then((paneEl) => {
+        new Setting(paneEl).autoWireDropDown("E2EEAlgorithm", {
+            options: E2EEAlgorithmNames,
+        });
+    });
+    new Setting(paneEl).autoWireToggle("useDynamicIterationCount", {
+        holdValue: true,
+        onUpdate: visibleOnly(
+            () =>
+                this.isConfiguredAs("E2EEAlgorithm", E2EEAlgorithms.ForceV1) ||
+                this.isConfiguredAs("E2EEAlgorithm", E2EEAlgorithms.V1)
+        ),
     });
 
     void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
@@ -78,5 +96,17 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     // });
     void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
+    });
+
+    void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
+        new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
+        const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
+        new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+        new Setting(paneEl)
+            .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
+            .setClass("wizardHidden");
+        new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+
+        new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
     });
 }

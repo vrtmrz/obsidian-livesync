@@ -4,7 +4,8 @@ import { AbstractModule } from "../AbstractModule";
 import type { ICoreModule } from "../ModuleTypes";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { purgeUnreferencedChunks, balanceChunkPurgedDBs } from "../../lib/src/pouchdb/utils_couchdb";
+import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
+import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
 import { throttle } from "octagonal-wheels/function";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
@@ -79,8 +80,18 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
     $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.setReplicator();
     }
+    async ensureReplicatorPBKDF2Salt(showMessage: boolean = false): Promise<boolean> {
+        // Checking salt
+        const replicator = this.core.$$getReplicator();
+        return await replicator.ensurePBKDF2Salt(this.settings, showMessage, true);
+    }
 
     async $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
+        // Checking salt
+        if (!(await this.ensureReplicatorPBKDF2Salt(showMessage))) {
+            Logger("Failed to ensure PBKDF2 salt for replication.", LOG_LEVEL_NOTICE);
+            return false;
+        }
         await this.loadQueuedFiles();
         return true;
     }

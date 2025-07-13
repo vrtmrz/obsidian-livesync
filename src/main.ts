@@ -292,7 +292,8 @@ export default class ObsidianLiveSyncPlugin
         skipInfo: boolean,
         compression: boolean,
         customHeaders: Record<string, string>,
-        useRequestAPI: boolean
+        useRequestAPI: boolean,
+        getPBKDF2Salt: () => Promise<Uint8Array>
     ): Promise<
         | string
         | {

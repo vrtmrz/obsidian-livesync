@@ -101,7 +101,6 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             //@ts-ignore
             newSettings[settingKey] = settingValue;
         }
-        console.warn(newSettings);
         await this.applySettingWizard(this.settings, newSettings, "QR Code");
     }
     async command_copySetupURI(stripExtra = true) {

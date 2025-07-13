@@ -16,11 +16,9 @@ import {
 import { delay, isObjectDifferent, sizeToHumanReadable } from "../../../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
-import {
-    balanceChunkPurgedDBs,
-    checkSyncInfo,
-    purgeUnreferencedChunks,
-} from "../../../lib/src/pouchdb/utils_couchdb.ts";
+import { checkSyncInfo } from "@/lib/src/pouchdb/negotiation.ts";
+import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks.ts";
+import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks.ts";
 import { testCrypt } from "../../../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import { scheduleTask } from "../../../common/utils.ts";
