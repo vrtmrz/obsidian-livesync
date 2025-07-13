@@ -1,5 +1,40 @@
-## 0.24.31
+## 0.25.0-beta1
+13th July, 2025
 
+After reading Issue #668, I conducted another self-review of the E2EE-related code. In retrospect, it was clearly written by someone inexperienced, which is understandable, but it is still rather embarrassing. Three years is certainly enough time for growth.
+
+I have now rewritten the E2EE code to be more robust and easier to understand. It is significantly more readable and should be easier to maintain in the future. The performance issue, previously considered a concern, has been addressed by introducing a master key and deriving keys using HKDF. This approach is both fast and robust, and it provides protection against rainbow table attacks. (In addition, this implementation has been [a dedicated package on the npm registry](https://github.com/vrtmrz/octagonal-wheels), and tested in 100% branch-coverage).
+
+As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
+
+As previously reported, beta releases are made when forward compatibility is broken. This version will be released in about a week if no issues arise. I am aware that there are other outstanding issues, but as this is a security matter, please let me prioritise this release. Thank you for your understanding and patience. I hope you enjoy the new version.
+
+### Fixed
+- The encryption algorithm now uses HKDF with a master key.
+    - This is more robust and faster than the previous implementation.
+    - It is now more secure against rainbow table attacks.
+    - The previous implementation can still be used via `Patches` -> `End-to-end encryption algorithm` -> `Force V1`.
+      - Note that `V1: Legacy` can decrypt V2, but produces V1 output.
+- `Fetch everything from the remote` now works correctly.
+    - It no longer creates local database entries before synchronisation.
+- Extra log messages during QR code decoding have been removed.
+
+### Changed
+- The following settings have been moved to the `Patches` pane:
+    - `Remote Database Tweak`
+      - `Incubate Chunks in Document`
+      - `Data Compression`
+
+### Behavioural and API Changes
+- `DirectFileManipulatorV2` now requires new settings (as you may already know, E2EEAlgorithm).
+- The database version has been increased to `12` from `10`.
+    - If an older version is detected, we will be notified and synchronisation will be paused until the update is acknowledged. (It has been a long time since this behaviour was last encountered; we always err on the side of caution, even if it is less convenient.)
+
+### Refactored
+- `couchdb_utils.ts` has been separated into several explicitly named files.
+- Some missing functions in `bgWorker.mock.ts` have been added.
+
+## 0.24.31
 10th July, 2025
 
 ### Fixed
@@ -61,112 +96,6 @@
 ### Tidied up
 
 - Importing paths have been tidied up.
-
-## 0.24.28
-
-15th June, 2025
-
-### Fixed
-
-- Batch Update is no longer available in LiveSync mode to avoid unexpected behaviour. (#653)
-- Now compatible with Cloudflare R2 again for bucket synchronisation.
-    - @edo-bari-ikutsu, thank you for [your contribution](https://github.com/vrtmrz/livesync-commonlib/pull/12)!
-- Prevention of broken behaviour due to database connection failures added (#649).
-
-## 0.24.27
-
-10th June, 2025
-
-### Improved
-
-- We can use prefix for path for the Bucket synchronisation.
-    - For example, if you set the `vaultName/` as a prefix for the bucket in the root directory, all data will be transferred to the bucket under the `vaultName/` directory.
-- The "Use Request API to avoid `inevitable` CORS problem" option is now promoted to the normal setting, not a niche patch.
-
-### Fixed
-
-- Now switching replicators applied immediately, without the need to restart Obsidian.
-
-### Tidied up
-
-- Some dependencies have been updated to the latest version.
-
-## 0.24.26
-
-14th May, 2025
-
-This update introduces an option to circumvent Cross-Origin Resource Sharing
-(CORS) constraints for CouchDB requests, by leveraging Obsidian's native request
-API. The implementation of such a feature had previously been deferred due to
-significant security considerations.
-
-CORS is a vital security mechanism, enabling servers like CouchDB -- which
-functions as a sophisticated REST API -- to control access from different
-origins, thereby ensuring secure communication across trust boundaries. I had
-long hesitated to offer a CORS circumvention method, as it deviates from
-security best practices; My preference was for users to configure CORS correctly
-on the server-side.
-
-However, this policy has shifted due to specific reports of intractable
-CORS-related configuration issues, particularly within enterprise proxy
-environments where proxy servers can unpredictably alter or block
-communications. Given that a primary objective of the "Self-hosted LiveSync"
-plugin is to facilitate secure Obsidian usage within stringent corporate
-settings, addressing these 'unavoidable' user-reported problems became
-essential. Mostly raison d'être of this plugin.
-
-Consequently, the option "Use Request API to avoid `inevitable` CORS problem"
-has been implemented. Users are strongly advised to enable this _only_ when
-operating within a trusted environment. We can enable this option in the `Patch` pane.
-
-However, just to whisper, this is tremendously fast.
-
-### New Features
-
-- Automatic display-language changing according to the Obsidian language
-  setting.
-    - We will be asked on the migration or first startup.
-    - **Note: Please revert to the default language if you report any issues.**
-    - Not all messages are translated yet. We welcome your contribution!
-- Now we can limit files to be synchronised even in the hidden files.
-- "Use Request API to avoid `inevitable` CORS problem" has been implemented.
-    - Less secure, please use it only if you are sure that you are in the trusted
-      environment and be able to ignore the CORS. No `Web viewer` or similar tools
-      are recommended. (To avoid the origin forged attack). If you are able to
-      configure the server setting, always that is recommended.
-- `Show status icon instead of file warnings banner` has been implemented.
-    - If enabled, the ⛔ icon will be shown inside the status instead of the file
-      warnings banner. No details will be shown.
-
-### Improved
-
-- All regular expressions can be inverted by prefixing `!!` now.
-
-### Fixed
-
-- No longer unexpected files will be gathered during hidden file sync.
-- No longer broken `\n` and new-line characters during the bucket
-  synchronisation.
-- We can purge the remote bucket again if we using MinIO instead of AWS S3 or
-  Cloudflare R2.
-- Purging the remote bucket is now more reliable.
-    - 100 files are purged at a time.
-- Some wrong messages have been fixed.
-
-### Behaviour changed
-
-- Entering into the deeper directories to gather the hidden files is now limited
-  by `/` or `\/` prefixed ignore filters. (It means that directories are scanned
-  deeper than before).
-    - However, inside the these directories, the files are still limited by the
-      ignore filters.
-
-### Etcetera
-
-- Some code has been tidied up.
-- Trying less warning-suppressing and be more safer-coding.
-- Dependent libraries have been updated to the latest version.
-- Some build processes have been separated to `pre` and `post` processes.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
