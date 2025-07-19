@@ -1,13 +1,11 @@
-## 0.25.0-beta1
-13th July, 2025
+## 0.25.0
+19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 After reading Issue #668, I conducted another self-review of the E2EE-related code. In retrospect, it was clearly written by someone inexperienced, which is understandable, but it is still rather embarrassing. Three years is certainly enough time for growth.
 
 I have now rewritten the E2EE code to be more robust and easier to understand. It is significantly more readable and should be easier to maintain in the future. The performance issue, previously considered a concern, has been addressed by introducing a master key and deriving keys using HKDF. This approach is both fast and robust, and it provides protection against rainbow table attacks. (In addition, this implementation has been [a dedicated package on the npm registry](https://github.com/vrtmrz/octagonal-wheels), and tested in 100% branch-coverage).
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
-
-As previously reported, beta releases are made when forward compatibility is broken. This version will be released in about a week if no issues arise. I am aware that there are other outstanding issues, but as this is a security matter, please let me prioritise this release. Thank you for your understanding and patience. I hope you enjoy the new version.
 
 ### Fixed
 - The encryption algorithm now uses HKDF with a master key.
