@@ -7,7 +7,6 @@ import {
 } from "../../lib/src/common/types.ts";
 import { configURIBase, configURIBaseQR } from "../../common/types.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.js";
-import { decrypt, encrypt } from "../../lib/src/encryption/e2ee_v2.ts";
 import { fireAndForget } from "../../lib/src/common/utils.ts";
 import {
     EVENT_REQUEST_COPY_SETUP_URI,
@@ -19,6 +18,8 @@ import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidia
 import { decodeAnyArray, encodeAnyArray } from "../../common/utils.ts";
 import qrcode from "qrcode-generator";
 import { $msg } from "../../lib/src/common/i18n.ts";
+import { performDoctorConsultation, RebuildOptions } from "@/lib/src/common/configForDoc.ts";
+import { encryptString, decryptString } from "@/lib/src/encryption/stringEncryption.ts";
 
 export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsidianModule {
     $everyOnload(): Promise<boolean> {
@@ -129,9 +130,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                 delete setting[k];
             }
         }
-        const encryptedSetting = encodeURIComponent(
-            await encrypt(JSON.stringify(setting), encryptingPassphrase, false)
-        );
+        const encryptedSetting = encodeURIComponent(await encryptString(JSON.stringify(setting), encryptingPassphrase));
         const uri = `${configURIBase}${encryptedSetting} `;
         await navigator.clipboard.writeText(uri);
         this._log("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
@@ -150,9 +149,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             encryptedCouchDBConnection: "",
             encryptedPassphrase: "",
         };
-        const encryptedSetting = encodeURIComponent(
-            await encrypt(JSON.stringify(setting), encryptingPassphrase, false)
-        );
+        const encryptedSetting = encodeURIComponent(await encryptString(JSON.stringify(setting), encryptingPassphrase));
         const uri = `${configURIBase}${encryptedSetting} `;
         await navigator.clipboard.writeText(uri);
         this._log("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
@@ -170,6 +167,73 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         const config = decodeURIComponent(setupURI.substring(configURIBase.length));
         await this.setupWizard(config);
     }
+    async askSyncWithRemoteConfig(tryingSettings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+        const buttons = {
+            fetch: $msg("Setup.FetchRemoteConf.Buttons.Fetch"),
+            no: $msg("Setup.FetchRemoteConf.Buttons.Skip"),
+        } as const;
+        const fetchRemoteConf = await this.core.confirm.askSelectStringDialogue(
+            $msg("Setup.FetchRemoteConf.Message"),
+            Object.values(buttons),
+            { defaultAction: buttons.fetch, timeout: 0, title: $msg("Setup.FetchRemoteConf.Title") }
+        );
+        if (fetchRemoteConf == buttons.no) {
+            return tryingSettings;
+        }
+
+        const newSettings = JSON.parse(JSON.stringify(tryingSettings)) as ObsidianLiveSyncSettings;
+        const remoteConfig = await this.core.$$fetchRemotePreferredTweakValues(newSettings);
+        if (remoteConfig) {
+            this._log("Remote configuration found.", LOG_LEVEL_NOTICE);
+            const resultSettings = {
+                ...DEFAULT_SETTINGS,
+                ...tryingSettings,
+                ...remoteConfig,
+            } satisfies ObsidianLiveSyncSettings;
+            return resultSettings;
+        } else {
+            this._log("Remote configuration not applied.", LOG_LEVEL_NOTICE);
+            return {
+                ...DEFAULT_SETTINGS,
+                ...tryingSettings,
+            } satisfies ObsidianLiveSyncSettings;
+        }
+    }
+    async askPerformDoctor(
+        tryingSettings: ObsidianLiveSyncSettings
+    ): Promise<{ settings: ObsidianLiveSyncSettings; shouldRebuild: boolean; isModified: boolean }> {
+        const buttons = {
+            yes: $msg("Setup.Doctor.Buttons.Yes"),
+            no: $msg("Setup.Doctor.Buttons.No"),
+        } as const;
+        const performDoctor = await this.core.confirm.askSelectStringDialogue(
+            $msg("Setup.Doctor.Message"),
+            Object.values(buttons),
+            { defaultAction: buttons.yes, timeout: 0, title: $msg("Setup.Doctor.Title") }
+        );
+        if (performDoctor == buttons.no) {
+            return { settings: tryingSettings, shouldRebuild: false, isModified: false };
+        }
+
+        const newSettings = JSON.parse(JSON.stringify(tryingSettings)) as ObsidianLiveSyncSettings;
+        const { settings, shouldRebuild, isModified } = await performDoctorConsultation(this.core, newSettings, {
+            localRebuild: RebuildOptions.AutomaticAcceptable, // Because we are in the setup wizard, we can skip the confirmation.
+            remoteRebuild: RebuildOptions.SkipEvenIfRequired,
+            activateReason: "New settings from URI",
+        });
+        if (isModified) {
+            this._log("Doctor has fixed some issues!", LOG_LEVEL_NOTICE);
+            return {
+                settings: settings,
+                shouldRebuild,
+                isModified,
+            };
+        } else {
+            this._log("Doctor detected no issues!", LOG_LEVEL_NOTICE);
+            return { settings: tryingSettings, shouldRebuild: false, isModified: false };
+        }
+    }
+
     async applySettingWizard(
         oldConf: ObsidianLiveSyncSettings,
         newConf: ObsidianLiveSyncSettings,
@@ -180,20 +244,24 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             {}
         );
         if (result == "yes") {
-            const newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
+            let newSettingW = Object.assign({}, DEFAULT_SETTINGS, newConf) as ObsidianLiveSyncSettings;
             this.core.replicator.closeReplication();
             this.settings.suspendFileWatching = true;
-            console.dir(newSettingW);
+            newSettingW = await this.askSyncWithRemoteConfig(newSettingW);
+            const { settings, shouldRebuild, isModified } = await this.askPerformDoctor(newSettingW);
+            if (isModified) {
+                newSettingW = settings;
+            }
             // Back into the default method once.
             newSettingW.configPassphraseStore = "";
             newSettingW.encryptedPassphrase = "";
             newSettingW.encryptedCouchDBConnection = "";
             newSettingW.additionalSuffixOfDatabaseName = `${"appId" in this.app ? this.app.appId : ""} `;
-            const setupJustImport = "Don't sync anything, just apply the settings.";
-            const setupAsNew = "This is a new client - sync everything from the remote server.";
-            const setupAsMerge = "This is an existing client - merge existing files with the server.";
-            const setupAgain = "Initialise new server data - ideal for new or broken servers.";
-            const setupManually = "Continue and configure manually.";
+            const setupJustImport = $msg("Setup.Apply.Buttons.OnlyApply");
+            const setupAsNew = $msg("Setup.Apply.Buttons.ApplyAndFetch");
+            const setupAsMerge = $msg("Setup.Apply.Buttons.ApplyAndMerge");
+            const setupAgain = $msg("Setup.Apply.Buttons.ApplyAndRebuild");
+            const setupCancel = $msg("Setup.Apply.Buttons.Cancel");
             newSettingW.syncInternalFiles = false;
             newSettingW.usePluginSync = false;
             newSettingW.isConfigured = true;
@@ -201,11 +269,16 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             if (!newSettingW.useIndexedDBAdapter) {
                 newSettingW.useIndexedDBAdapter = true;
             }
+            const warn = shouldRebuild ? $msg("Setup.Apply.WarningRebuildRecommended") : "";
+            const message = $msg("Setup.Apply.Message", {
+                method,
+                warn,
+            });
 
             const setupType = await this.core.confirm.askSelectStringDialogue(
-                "How would you like to set it up?",
-                [setupAsNew, setupAgain, setupAsMerge, setupJustImport, setupManually],
-                { defaultAction: setupAsNew }
+                message,
+                [setupAsNew, setupAsMerge, setupAgain, setupJustImport, setupCancel],
+                { defaultAction: setupAsNew, title: $msg("Setup.Apply.Title", { method }), timeout: 0 }
             );
             if (setupType == setupJustImport) {
                 this.core.settings = newSettingW;
@@ -237,71 +310,11 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                 await this.core.saveSettings();
                 this.core.$$clearUsedPassphrase();
                 await this.core.rebuilder.$rebuildEverything();
-            } else if (setupType == setupManually) {
-                const keepLocalDB = await this.core.confirm.askYesNoDialog("Keep local DB?", {
-                    defaultOption: "No",
-                });
-                const keepRemoteDB = await this.core.confirm.askYesNoDialog("Keep remote DB?", {
-                    defaultOption: "No",
-                });
-                if (keepLocalDB == "yes" && keepRemoteDB == "yes") {
-                    // nothing to do. so peaceful.
-                    this.core.settings = newSettingW;
-                    this.core.$$clearUsedPassphrase();
-                    await this.core.$allSuspendAllSync();
-                    await this.core.$allSuspendExtraSync();
-                    await this.core.saveSettings();
-                    const replicate = await this.core.confirm.askYesNoDialog("Unlock and replicate?", {
-                        defaultOption: "Yes",
-                    });
-                    if (replicate == "yes") {
-                        await this.core.$$replicate(true);
-                        await this.core.$$markRemoteUnlocked();
-                    }
-                    this._log("Configuration loaded.", LOG_LEVEL_NOTICE);
-                    return;
-                }
-                if (keepLocalDB == "no" && keepRemoteDB == "no") {
-                    const reset = await this.core.confirm.askYesNoDialog("Drop everything?", {
-                        defaultOption: "No",
-                    });
-                    if (reset != "yes") {
-                        this._log("Cancelled", LOG_LEVEL_NOTICE);
-                        this.core.settings = oldConf;
-                        return;
-                    }
-                }
-                let initDB;
-                this.core.settings = newSettingW;
-                this.core.$$clearUsedPassphrase();
-                await this.core.saveSettings();
-                if (keepLocalDB == "no") {
-                    await this.core.$$resetLocalDatabase();
-                    await this.core.localDatabase.initializeDatabase();
-                    const rebuild = await this.core.confirm.askYesNoDialog("Rebuild the database?", {
-                        defaultOption: "Yes",
-                    });
-                    if (rebuild == "yes") {
-                        initDB = this.core.$$initializeDatabase(true);
-                    } else {
-                        await this.core.$$markRemoteResolved();
-                    }
-                }
-                if (keepRemoteDB == "no") {
-                    await this.core.$$tryResetRemoteDatabase();
-                    await this.core.$$markRemoteLocked();
-                }
-                if (keepLocalDB == "no" || keepRemoteDB == "no") {
-                    const replicate = await this.core.confirm.askYesNoDialog("Replicate once?", {
-                        defaultOption: "Yes",
-                    });
-                    if (replicate == "yes") {
-                        if (initDB != null) {
-                            await initDB;
-                        }
-                        await this.core.$$replicate(true);
-                    }
-                }
+            } else {
+                // Explicitly cancel the operation or the dialog was closed.
+                this._log("Cancelled", LOG_LEVEL_NOTICE);
+                this.core.settings = oldConf;
+                return;
             }
             this._log("Configuration loaded.", LOG_LEVEL_NOTICE);
         } else {
@@ -320,7 +333,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                 true
             );
             if (encryptingPassphrase === false) return;
-            const newConf = await JSON.parse(await decrypt(confString, encryptingPassphrase, false));
+            const newConf = await JSON.parse(await decryptString(confString, encryptingPassphrase));
             if (newConf) {
                 await this.applySettingWizard(oldConf, newConf);
                 this._log("Configuration loaded.", LOG_LEVEL_NOTICE);

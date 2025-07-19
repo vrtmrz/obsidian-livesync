@@ -6,6 +6,7 @@ import {
     FLAGMD_REDFLAG2_HR,
     FLAGMD_REDFLAG3,
     FLAGMD_REDFLAG3_HR,
+    type ObsidianLiveSyncSettings,
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
@@ -131,6 +132,34 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                     } else {
                         this._log("Cancelled the fetch operation", LOG_LEVEL_NOTICE);
                         return false;
+                    }
+
+                    const optionFetchRemoteConf = $msg("RedFlag.FetchRemoteConfig.Buttons.Fetch");
+                    const optionCancel = $msg("RedFlag.FetchRemoteConfig.Buttons.Cancel");
+                    const fetchRemote = await this.core.confirm.askSelectStringDialogue(
+                        $msg("RedFlag.FetchRemoteConfig.Message"),
+                        [optionFetchRemoteConf, optionCancel],
+                        {
+                            defaultAction: optionFetchRemoteConf,
+                            timeout: 0,
+                            title: $msg("RedFlag.FetchRemoteConfig.Title"),
+                        }
+                    );
+                    if (fetchRemote === optionFetchRemoteConf) {
+                        this._log("Fetching remote configuration", LOG_LEVEL_NOTICE);
+                        const newSettings = JSON.parse(JSON.stringify(this.core.settings)) as ObsidianLiveSyncSettings;
+                        const remoteConfig = await this.core.$$fetchRemotePreferredTweakValues(newSettings);
+                        if (remoteConfig) {
+                            this._log("Remote configuration found.", LOG_LEVEL_NOTICE);
+                            const mergedSettings = {
+                                ...this.core.settings,
+                                ...remoteConfig,
+                            } satisfies ObsidianLiveSyncSettings;
+                            this._log("Remote configuration applied.", LOG_LEVEL_NOTICE);
+                            this.core.settings = mergedSettings;
+                        } else {
+                            this._log("Remote configuration not applied.", LOG_LEVEL_NOTICE);
+                        }
                     }
 
                     await this.core.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, !makeLocalFilesBeforeSync);

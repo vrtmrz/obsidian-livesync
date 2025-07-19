@@ -472,6 +472,14 @@ export default class ObsidianLiveSyncPlugin
     $$clearUsedPassphrase(): void {
         throwShouldBeOverridden();
     }
+
+    $$decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+        throwShouldBeOverridden();
+    }
+    $$adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+        throwShouldBeOverridden();
+    }
+
     $$loadSettings(): Promise<void> {
         throwShouldBeOverridden();
     }
@@ -545,6 +553,10 @@ export default class ObsidianLiveSyncPlugin
     }
     $everyAfterResumeProcess(): Promise<boolean> {
         return InterceptiveEvery;
+    }
+
+    $$fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
+        throwShouldBeOverridden();
     }
     $$checkAndAskResolvingMismatchedTweaks(preferred: Partial<TweakValues>): Promise<[TweakValues | boolean, boolean]> {
         throwShouldBeOverridden();

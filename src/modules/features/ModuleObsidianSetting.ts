@@ -11,11 +11,11 @@ import {
     SALT_OF_PASSPHRASE,
 } from "../../lib/src/common/types";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
-import { encrypt, tryDecrypt } from "octagonal-wheels/encryption";
 import { $msg, setLang } from "../../lib/src/common/i18n";
 import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb";
 import { getLanguage } from "obsidian";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
+import { decryptString, encryptString } from "@/lib/src/encryption/stringEncryption.ts";
 export class ModuleObsidianSettings extends AbstractObsidianModule implements IObsidianModule {
     async $everyOnLayoutReady(): Promise<boolean> {
         let isChanged = false;
@@ -73,7 +73,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
     }
 
     async decryptConfigurationItem(encrypted: string, passphrase: string) {
-        const dec = await tryDecrypt(encrypted, passphrase + SALT_OF_PASSPHRASE, false);
+        const dec = await decryptString(encrypted, passphrase + SALT_OF_PASSPHRASE);
         if (dec) {
             this.usedPassphrase = passphrase;
             return dec;
@@ -83,7 +83,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
 
     async encryptConfigurationItem(src: string, settings: ObsidianLiveSyncSettings) {
         if (this.usedPassphrase != "") {
-            return await encrypt(src, this.usedPassphrase + SALT_OF_PASSPHRASE, false);
+            return await encryptString(src, this.usedPassphrase + SALT_OF_PASSPHRASE);
         }
 
         const passphrase = await this.getPassphrase(settings);
@@ -94,7 +94,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             );
             return "";
         }
-        const dec = await encrypt(src, passphrase + SALT_OF_PASSPHRASE, false);
+        const dec = await encryptString(src, passphrase + SALT_OF_PASSPHRASE);
         if (dec) {
             this.usedPassphrase = passphrase;
             return dec;
@@ -174,18 +174,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
     }
 
-    async $$loadSettings(): Promise<void> {
-        const settings = Object.assign({}, DEFAULT_SETTINGS, await this.core.loadData()) as ObsidianLiveSyncSettings;
-
-        if (typeof settings.isConfigured == "undefined") {
-            // If migrated, mark true
-            if (JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)) {
-                settings.isConfigured = true;
-            } else {
-                settings.additionalSuffixOfDatabaseName = this.appId;
-                settings.isConfigured = false;
-            }
-        }
+    async $$decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
             this._log("No passphrase found for data.json! Verify configuration before syncing.", LOG_LEVEL_URGENT);
@@ -237,20 +226,62 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 }
             }
         }
-        this.settings = settings;
+        return settings;
+    }
+
+    /**
+     * This method mutates the settings object.
+     * @param settings
+     * @returns
+     */
+    $$adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+        // Adjust settings as needed
+
+        // Delete this feature to avoid problems on mobile.
+        settings.disableRequestURI = true;
+
+        // GC is disabled.
+        settings.gcDelay = 0;
+        // So, use history is always enabled.
+        settings.useHistory = true;
+
+        if ("workingEncrypt" in settings) delete settings.workingEncrypt;
+        if ("workingPassphrase" in settings) delete settings.workingPassphrase;
+        // Splitter configurations have been replaced with chunkSplitterVersion.
+        if (settings.chunkSplitterVersion == "") {
+            if (settings.enableChunkSplitterV2) {
+                if (settings.useSegmenter) {
+                    settings.chunkSplitterVersion = "v2-segmenter";
+                } else {
+                    settings.chunkSplitterVersion = "v2";
+                }
+            } else {
+                settings.chunkSplitterVersion = "";
+            }
+        } else if (!(settings.chunkSplitterVersion in ChunkAlgorithmNames)) {
+            settings.chunkSplitterVersion = "";
+        }
+        return Promise.resolve(settings);
+    }
+
+    async $$loadSettings(): Promise<void> {
+        const settings = Object.assign({}, DEFAULT_SETTINGS, await this.core.loadData()) as ObsidianLiveSyncSettings;
+
+        if (typeof settings.isConfigured == "undefined") {
+            // If migrated, mark true
+            if (JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)) {
+                settings.isConfigured = true;
+            } else {
+                settings.additionalSuffixOfDatabaseName = this.appId;
+                settings.isConfigured = false;
+            }
+        }
+
+        this.settings = await this.core.$$decryptSettings(settings);
 
         setLang(this.settings.displayLanguage);
 
-        if ("workingEncrypt" in this.settings) delete this.settings.workingEncrypt;
-        if ("workingPassphrase" in this.settings) delete this.settings.workingPassphrase;
-
-        // Delete this feature to avoid problems on mobile.
-        this.settings.disableRequestURI = true;
-
-        // GC is disabled.
-        this.settings.gcDelay = 0;
-        // So, use history is always enabled.
-        this.settings.useHistory = true;
+        await this.core.$$adjustSettings(this.settings);
 
         const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.core.$$getVaultName();
         if (this.settings.deviceAndVaultName != "") {
@@ -273,21 +304,6 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 this._log("Device name missing. Disabling plug-in sync.", LOG_LEVEL_NOTICE);
                 this.settings.usePluginSync = false;
             }
-        }
-
-        // Splitter configurations have been replaced with chunkSplitterVersion.
-        if (this.settings.chunkSplitterVersion == "") {
-            if (this.settings.enableChunkSplitterV2) {
-                if (this.settings.useSegmenter) {
-                    this.settings.chunkSplitterVersion = "v2-segmenter";
-                } else {
-                    this.settings.chunkSplitterVersion = "v2";
-                }
-            } else {
-                this.settings.chunkSplitterVersion = "";
-            }
-        } else if (!(this.settings.chunkSplitterVersion in ChunkAlgorithmNames)) {
-            this.settings.chunkSplitterVersion = "";
         }
 
         // this.core.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());

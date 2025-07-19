@@ -164,22 +164,28 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         return "IGNORE";
     }
 
-    async $$checkAndAskUseRemoteConfiguration(
-        trialSetting: RemoteDBSettings
-    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
-        const replicator = await this.core.$anyNewReplicator(trialSetting);
+    async $$fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
+        const replicator = await this.core.$anyNewReplicator();
         if (await replicator.tryConnectRemote(trialSetting)) {
             const preferred = await replicator.getRemotePreferredTweakValues(trialSetting);
             if (preferred) {
-                return await this.$$askUseRemoteConfiguration(trialSetting, preferred);
-            } else {
-                this._log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
+                return preferred;
             }
-            return { result: false, requireFetch: false };
-        } else {
-            this._log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
-            return { result: false, requireFetch: false };
+            this._log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
+            return false;
         }
+        this._log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
+        return false;
+    }
+
+    async $$checkAndAskUseRemoteConfiguration(
+        trialSetting: RemoteDBSettings
+    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        const preferred = await this.core.$$fetchRemotePreferredTweakValues(trialSetting);
+        if (preferred) {
+            return await this.$$askUseRemoteConfiguration(trialSetting, preferred);
+        }
+        return { result: false, requireFetch: false };
     }
 
     async $$askUseRemoteConfiguration(
