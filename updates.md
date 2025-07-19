@@ -1,4 +1,5 @@
-## 0.25.1
+## 0.25.2 ~~0.25.1~~
+(0.25.1 was missed due to a mistake in the versioning process).
 19th July, 2025
 
 ### Refined and New Features
