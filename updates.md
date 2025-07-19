@@ -1,3 +1,22 @@
+## 0.25.1
+19th July, 2025
+
+### Refined and New Features
+- Fetching the remote database on `RedFlag` now also retrieves remote configurations optionally.
+  - This is beneficial if we have already set up another device and wish to use the same configuration. We will see a much less frequent `Unmatched` dialogue.
+- The setup wizard using Set-up URI and QR code has been improved.
+  - The message is now more user-friendly.
+  - The obsolete method (manual setting application) has been removed.
+  - The `Cancel` button has been added to the setup wizard.
+  - We can now fetch the remote configuration from the server if it exists, which is useful for adding new devices.
+    - Mostly same as a `RedFlag` fetching remote configuration.
+  - We can also use the `Doctor` to check and fix the imported (and fetched) configuration before applying it.
+
+### Changes
+- The Set-up URI is now encrypted with a new encryption algorithm (mostly the same as `V2`).
+  - The new Set-up URI is not compatible with version 0.24.x or earlier.
+
+
 ## 0.25.0
 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 

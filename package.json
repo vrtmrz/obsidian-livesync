@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.25.0",
+    "version": "0.25.1",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -89,7 +89,7 @@
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
         "minimatch": "^10.0.1",
-        "octagonal-wheels": "^0.1.35",
+        "octagonal-wheels": "^0.1.37",
         "qrcode-generator": "^1.4.4",
         "svelte-check": "^4.1.7",
         "trystero": "^0.21.5",
