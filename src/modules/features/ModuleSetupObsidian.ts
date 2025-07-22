@@ -224,7 +224,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         if (isModified) {
             this._log("Doctor has fixed some issues!", LOG_LEVEL_NOTICE);
             return {
-                settings: settings,
+                settings,
                 shouldRebuild,
                 isModified,
             };

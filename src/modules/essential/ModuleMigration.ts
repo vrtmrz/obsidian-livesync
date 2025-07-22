@@ -14,7 +14,7 @@ import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
-        const { shouldRebuild, shouldRebuildLocal, isModified } = await performDoctorConsultation(
+        const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
             this.core,
             this.settings,
             {
@@ -24,7 +24,10 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                 forceRescan,
             }
         );
-        if (isModified) await this.core.saveSettings();
+        if (isModified) {
+            this.settings = settings;
+            await this.core.saveSettings();
+        }
         if (!skipRebuild) {
             if (shouldRebuild) {
                 await this.core.rebuilder.scheduleRebuild();
