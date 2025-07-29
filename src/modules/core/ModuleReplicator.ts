@@ -32,6 +32,7 @@ import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/ev
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { globalSlipBoard } from "../../lib/src/bureau/bureau";
 import { $msg } from "../../lib/src/common/i18n";
+import { clearHandlers } from "../../lib/src/replication/SyncParamsHandler";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
@@ -66,6 +67,8 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         this.core.replicator = replicator;
         this._replicatorType = this.settings.remoteType;
         await yieldMicrotask();
+        // Clear any existing sync parameter handlers (means clearing key-deriving salt).
+        clearHandlers();
         return true;
     }
 
@@ -88,8 +91,9 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
 
     async $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         // Checking salt
-        if (!(await this.ensureReplicatorPBKDF2Salt(showMessage))) {
-            Logger("Failed to ensure PBKDF2 salt for replication.", LOG_LEVEL_NOTICE);
+        // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
+        if (!(await this.ensureReplicatorPBKDF2Salt(false))) {
+            Logger("Failed to initialise the encryption key, preventing replication.", LOG_LEVEL_NOTICE);
             return false;
         }
         await this.loadQueuedFiles();
