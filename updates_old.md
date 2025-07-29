@@ -14,6 +14,57 @@ Thank you, and I hope your troubles will be resolved!
 
 ---
 
+## 0.24.30
+
+9th July, 2025
+
+### New Feature
+
+- New chunking algorithm `V3: Fine deduplication` has been added, and will be recommended after updates.
+    - The Rabin-Karp algorithm is used for efficient chunking.
+    - This will be the default in the new installations.
+    - It is more robust and faster than the previous one.
+    - We can change it in the `Advanced` pane of the settings.
+- New language `ko` (Korean) has been added.
+    - Thank you for your contribution, [@ellixspace](https://x.com/ellixspace)!
+        - Any contributions are welcome, from any route. Please let me know if I seem to be unaware of this. It is often the case that I am not really aware of it.
+- Chinese (Simplified) translation has been updated.
+    - Thank you for your contribution, [@52sanmao](https://github.com/52sanmao)!
+
+### Fixed
+
+- Numeric settings are now never lost the focus during value changing.
+- Doctor now redacts more sensitive information on error reports.
+
+### Improved
+
+- All translations have been rewritten into YAML format, to easier to manage and contribute.
+    - We can write them with comments, newlines, and other YAML features.
+- Doctor recommendations are now shown in a user-friendly notation.
+    - We can now see the recommended as `V3: Fine deduplication` instead of `v3-rabin-karp`.
+
+### Refactored
+
+- Never-ending `ObsidianLiveSyncSettingTab.ts` has finally been separated into each pane's file.
+- Some commented-out code has been removed.
+
+### Acknowledgement
+
+- Jun Murakami, Shun Ishiguro, and Yoshihiro Oyama. 2012. Implementation and Evaluation of a Cache Deduplication Mechanism with Content-Defined Chunking. In _IPSJ SIG Technical Report_, Vol.2012-ARC-202, No.4. Information Processing Society of Japan, 1-7.
+
+## 0.24.29
+
+20th June, 2025
+
+### Fixed
+
+- Synchronisation with buckets now works correctly, regardless of whether a prefix is set or the bucket has been (re-) initialised (#664).
+- An information message is now displayed again, during any automatic synchronisation is enabled (#662).
+
+### Tidied up
+
+- Importing paths have been tidied up.
+
 ## 0.24.28
 
 15th June, 2025
