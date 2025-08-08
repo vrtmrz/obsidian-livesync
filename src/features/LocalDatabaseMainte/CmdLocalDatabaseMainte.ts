@@ -28,7 +28,7 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands implements IObsid
         return this.localDatabase.localDatabase;
     }
     clearHash() {
-        this.localDatabase.hashCaches.clear();
+        this.localDatabase.clearCaches();
     }
 
     async confirm(title: string, message: string, affirmative = "Yes", negative = "No") {

@@ -875,7 +875,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             await purgeUnreferencedChunks(remoteDBConn.db, true, this.plugin.settings, false);
             await purgeUnreferencedChunks(this.plugin.localDatabase.localDatabase, true);
-            this.plugin.localDatabase.hashCaches.clear();
+            this.plugin.localDatabase.clearCaches();
         });
     }
 
@@ -895,7 +895,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             await purgeUnreferencedChunks(remoteDBConnection.db, false, this.plugin.settings, true);
             await purgeUnreferencedChunks(this.plugin.localDatabase.localDatabase, false);
-            this.plugin.localDatabase.hashCaches.clear();
+            this.plugin.localDatabase.clearCaches();
             await balanceChunkPurgedDBs(this.plugin.localDatabase.localDatabase, remoteDBConnection.db);
             this.plugin.localDatabase.refreshSettings();
             Logger(

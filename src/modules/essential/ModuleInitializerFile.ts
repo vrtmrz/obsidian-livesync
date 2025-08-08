@@ -20,7 +20,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 import { withConcurrency } from "octagonal-wheels/iterable/map";
 export class ModuleInitializerFile extends AbstractModule implements ICoreModule {
-    async $$performFullScan(showingNotice?: boolean): Promise<void> {
+    async $$performFullScan(showingNotice?: boolean, ignoreSuspending: boolean = false): Promise<void> {
         this._log("Opening the key-value database", LOG_LEVEL_VERBOSE);
         const isInitialized = (await this.core.kvDB.get<boolean>("initialized")) || false;
         // synchronize all files between database and storage.
@@ -28,6 +28,16 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
             if (showingNotice) {
                 this._log(
                     "LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.",
+                    LOG_LEVEL_NOTICE,
+                    "syncAll"
+                );
+            }
+            return;
+        }
+        if (!ignoreSuspending && this.settings.suspendFileWatching) {
+            if (showingNotice) {
+                this._log(
+                    "Now suspending file watching. Synchronising between the storage and the local database is now prevented.",
                     LOG_LEVEL_NOTICE,
                     "syncAll"
                 );
@@ -355,11 +365,15 @@ export class ModuleInitializerFile extends AbstractModule implements ICoreModule
         this._log(`Checking expired file history done`);
     }
 
-    async $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> {
+    async $$initializeDatabase(
+        showingNotice: boolean = false,
+        reopenDatabase = true,
+        ignoreSuspending: boolean = false
+    ): Promise<boolean> {
         this.core.$$resetIsReady();
         if (!reopenDatabase || (await this.core.$$openDatabase())) {
             if (this.localDatabase.isReady) {
-                await this.core.$$performFullScan(showingNotice);
+                await this.core.$$performFullScan(showingNotice, ignoreSuspending);
             }
             if (!(await this.core.$everyOnDatabaseInitialized(showingNotice))) {
                 this._log(`Initializing database has been failed on some module`, LOG_LEVEL_NOTICE);

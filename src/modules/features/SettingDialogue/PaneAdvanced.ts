@@ -6,7 +6,7 @@ import type { PageFunctions } from "./SettingPane.ts";
 export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Memory cache").then((paneEl) => {
         new Setting(paneEl).autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
-        new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
+        // new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
     });
     void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
         paneEl.addClass("wizardHidden");

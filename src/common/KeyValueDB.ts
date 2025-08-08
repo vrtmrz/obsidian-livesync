@@ -1,13 +1,5 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
-export interface KeyValueDatabase {
-    get<T>(key: IDBValidKey): Promise<T>;
-    set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey>;
-    del(key: IDBValidKey): Promise<void>;
-    clear(): Promise<void>;
-    keys(query?: IDBValidKey | IDBKeyRange, count?: number): Promise<IDBValidKey[]>;
-    close(): void;
-    destroy(): Promise<void>;
-}
+import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 const databaseCache: { [key: string]: IDBPDatabase<any> } = {};
 export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
     if (dbKey in databaseCache) {

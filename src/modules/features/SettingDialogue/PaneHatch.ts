@@ -335,7 +335,7 @@ ${stringifyYaml({
                         Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                         const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
                         const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-                        this.plugin.localDatabase.hashCaches.clear();
+                        this.plugin.localDatabase.clearCaches();
                         Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
                         const files = this.plugin.settings.syncInternalFiles
                             ? await this.plugin.storageAccess.getFilesIncludeHidden("/", targetPatterns, ignorePatterns)

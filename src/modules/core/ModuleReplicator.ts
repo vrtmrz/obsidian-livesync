@@ -30,7 +30,7 @@ import {
 import { isAnyNote } from "../../lib/src/common/utils";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
-import { globalSlipBoard } from "../../lib/src/bureau/bureau";
+
 import { $msg } from "../../lib/src/common/i18n";
 import { clearHandlers } from "../../lib/src/replication/SyncParamsHandler";
 
@@ -150,12 +150,12 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                 }
 
                 await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                this.localDatabase.hashCaches.clear();
+                this.localDatabase.clearCaches();
                 // Perform the synchronisation once.
                 if (await this.core.replicator.openReplication(this.settings, false, showMessage, true)) {
                     await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                     await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                    this.localDatabase.hashCaches.clear();
+                    this.localDatabase.clearCaches();
                     await this.core.$$getReplicator().markRemoteResolved(this.settings);
                     Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
                 } else {
@@ -310,7 +310,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             const change = docs[0];
             if (!change) return;
             if (isChunk(change._id)) {
-                globalSlipBoard.submit("read-chunk", change._id, change as EntryLeaf);
+                this.localDatabase.onNewLeaf(change as EntryLeaf);
                 return;
             }
             if (await this.core.$anyModuleParsedReplicationResultItem(change)) return;

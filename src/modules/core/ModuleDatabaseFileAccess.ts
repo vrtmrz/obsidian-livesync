@@ -53,7 +53,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             async () => await this.storeContent("autoTest.md" as FilePathWithPrefix, testString)
         );
         // For test, we need to clear the caches.
-        await this.localDatabase.hashCaches.clear();
+        this.localDatabase.clearCaches();
         await this._test("readContent", async () => {
             const content = await this.fetch("autoTest.md" as FilePathWithPrefix);
             if (!content) return "File not found";

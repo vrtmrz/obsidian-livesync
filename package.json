@@ -23,7 +23,8 @@
         "pretty": "npm run prettyNoWrite -- --write --log-level error",
         "prettyCheck": "npm run prettyNoWrite -- --check",
         "prettyNoWrite": "prettier --config ./.prettierrc \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
-        "check": "npm run lint && npm run svelte-check && npm run tsc-check"
+        "check": "npm run lint && npm run svelte-check && npm run tsc-check",
+        "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/"
     },
     "keywords": [],
     "author": "vorotamoroz",
@@ -60,6 +61,7 @@
         "pouchdb-adapter-http": "^9.0.0",
         "pouchdb-adapter-idb": "^9.0.0",
         "pouchdb-adapter-indexeddb": "^9.0.0",
+        "pouchdb-adapter-memory": "^9.0.0",
         "pouchdb-core": "^9.0.0",
         "pouchdb-errors": "^9.0.0",
         "pouchdb-find": "^9.0.0",
@@ -75,7 +77,8 @@
         "tslib": "^2.8.1",
         "tsx": "^4.19.4",
         "typescript": "5.7.3",
-        "yaml": "^2.8.0"
+        "yaml": "^2.8.0",
+        "@types/deno": "^2.3.0"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.808.0",

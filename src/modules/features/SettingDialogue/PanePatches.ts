@@ -28,9 +28,9 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("useIndexedDBAdapter", { invert: true, holdValue: true });
 
-        new Setting(paneEl)
-            .autoWireToggle("doNotUseFixedRevisionForChunks", { holdValue: true })
-            .setClass("wizardHidden");
+        // new Setting(paneEl)
+        //     .autoWireToggle("doNotUseFixedRevisionForChunks", { holdValue: true })
+        //     .setClass("wizardHidden");
         new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
 
         this.addOnSaved("useIndexedDBAdapter", async () => {
@@ -99,13 +99,13 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     });
 
     void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
-        const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
-        new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-        new Setting(paneEl)
-            .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
-            .setClass("wizardHidden");
-        new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+        // new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
+        // const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
+        // new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
+        // new Setting(paneEl)
+        //     .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
+        //     .setClass("wizardHidden");
+        // new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
 
         new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
     });

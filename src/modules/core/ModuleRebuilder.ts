@@ -73,7 +73,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         await this.core.$$realizeSettingSyncMode();
         await this.resetLocalDatabase();
         await delay(1000);
-        await this.core.$$initializeDatabase(true);
+        await this.core.$$initializeDatabase(true, true, true);
         await this.core.$$markRemoteLocked();
         await this.core.$$tryResetRemoteDatabase();
         await this.core.$$markRemoteLocked();
@@ -190,7 +190,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         if (makeLocalChunkBeforeSync) {
             await this.core.fileHandler.createAllChunks(true);
         } else if (!preventMakeLocalFilesBeforeSync) {
-            await this.core.$$initializeDatabase(true);
+            await this.core.$$initializeDatabase(true, true, true);
         } else {
             // Do not create local file entries before sync (Means use remote information)
         }

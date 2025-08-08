@@ -27,7 +27,7 @@ import {
     LiveSyncAbstractReplicator,
     type LiveSyncReplicatorEnv,
 } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
-import { type KeyValueDatabase } from "./common/KeyValueDB.ts";
+import { type KeyValueDatabase } from "./lib/src/interfaces/KeyValueDatabase.ts";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
@@ -591,7 +591,11 @@ export default class ObsidianLiveSyncPlugin
         throwShouldBeOverridden();
     }
 
-    $$initializeDatabase(showingNotice: boolean = false, reopenDatabase = true): Promise<boolean> {
+    $$initializeDatabase(
+        showingNotice: boolean = false,
+        reopenDatabase = true,
+        ignoreSuspending: boolean = false
+    ): Promise<boolean> {
         throwShouldBeOverridden();
     }
 
@@ -628,7 +632,7 @@ export default class ObsidianLiveSyncPlugin
         throwShouldBeOverridden();
     }
 
-    $$performFullScan(showingNotice?: boolean): Promise<void> {
+    $$performFullScan(showingNotice?: boolean, ignoreSuspending?: boolean): Promise<void> {
         throwShouldBeOverridden();
     }
 

@@ -28,11 +28,12 @@ import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
 import { sameChangePairs } from "./stores.ts";
-import type { KeyValueDatabase } from "./KeyValueDB.ts";
+
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
 import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels/promises";
 import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
+import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 
 export { scheduleTask, cancelTask, cancelAllTasks } from "../lib/src/concurrency/task.ts";
 
