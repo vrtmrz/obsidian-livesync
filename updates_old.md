@@ -1,3 +1,45 @@
+
+## 0.25.0
+
+19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
+
+After reading Issue #668, I conducted another self-review of the E2EE-related code. In retrospect, it was clearly written by someone inexperienced, which is understandable, but it is still rather embarrassing. Three years is certainly enough time for growth.
+
+I have now rewritten the E2EE code to be more robust and easier to understand. It is significantly more readable and should be easier to maintain in the future. The performance issue, previously considered a concern, has been addressed by introducing a master key and deriving keys using HKDF. This approach is both fast and robust, and it provides protection against rainbow table attacks. (In addition, this implementation has been [a dedicated package on the npm registry](https://github.com/vrtmrz/octagonal-wheels), and tested in 100% branch-coverage).
+
+As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
+
+### Fixed
+
+- The encryption algorithm now uses HKDF with a master key.
+    - This is more robust and faster than the previous implementation.
+    - It is now more secure against rainbow table attacks.
+    - The previous implementation can still be used via `Patches` -> `End-to-end encryption algorithm` -> `Force V1`.
+        - Note that `V1: Legacy` can decrypt V2, but produces V1 output.
+- `Fetch everything from the remote` now works correctly.
+    - It no longer creates local database entries before synchronisation.
+- Extra log messages during QR code decoding have been removed.
+
+### Changed
+
+- The following settings have been moved to the `Patches` pane:
+    - `Remote Database Tweak`
+        - `Incubate Chunks in Document`
+        - `Data Compression`
+
+### Behavioural and API Changes
+
+- `DirectFileManipulatorV2` now requires new settings (as you may already know, E2EEAlgorithm).
+- The database version has been increased to `12` from `10`.
+    - If an older version is detected, we will be notified and synchronisation will be paused until the update is acknowledged. (It has been a long time since this behaviour was last encountered; we always err on the side of caution, even if it is less convenient.)
+
+### Refactored
+
+- `couchdb_utils.ts` has been separated into several explicitly named files.
+- Some missing functions in `bgWorker.mock.ts` have been added.
+
+
+
 ## 0.24.0
 
 I know that we have been waiting for a long time. It is finally released!
@@ -13,6 +55,19 @@ Finally, I would like to once again express my respect and gratitude to all of y
 Thank you, and I hope your troubles will be resolved!
 
 ---
+
+## 0.24.31
+
+10th July, 2025
+
+### Fixed
+
+- The description of `Enable Developers' Debug Tools.` has been refined.
+    - Now performance impact is more clearly stated.
+- Automatic conflict checking and resolution has been improved.
+    - It now works parallelly for each other file, instead of sequentially. It makes significantly faster on first synchronisation when with local files information.
+- Resolving conflicts dialogue will not be shown for the multiple files at once.
+    - It will be shown for each file, one by one.
 
 ## 0.24.30
 

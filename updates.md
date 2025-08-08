@@ -1,3 +1,52 @@
+## 0.25.5
+
+9th August, 2025
+
+### Fixed
+
+- Storage scanning no longer occurs when `Suspend file watching` is enabled (including boot-sequence).
+    - This change improves safety when troubleshooting or fetching the remote database.
+
+### Improved
+
+- Saving notes and files now consumes less memory.
+    - Data is no longer fully buffered in memory and written at once; instead, it is now written in each over-2MB increments.
+- Chunk caching is now more efficient.
+    - Chunks are now managed solely by their count (still maintained as LRU). If memory usage becomes excessive, they will be automatically released by the system-runtime.
+    - Reverse-indexing is also no longer used. It is performed as scanning caches and act also as a WeakRef thinning.
+- Both of them (may) are effective for #692, #680, and some more.
+
+### Changed
+
+- `Incubate Chunks in Document` (also known as `Eden`) is now fully sunset.
+    - Existing chunks can still be read, but new ones will no longer be created.
+- The `Compute revisions for chunks` setting has also been removed.
+    - This feature is now always enabled and is no longer configurable (restoring the original behaviour).
+- As mentioned, `Memory cache size (by total characters)` has been removed.
+    - The `Memory cache size (by total items)` setting is now the only option available (but it has 10x ratio compared to the previous version).
+
+### Refactored
+
+- A significant refactoring of the core codebase is underway.
+    - This is part of our ongoing efforts to improve code maintainability, readability, and to unify interfaces.
+        - Previously, complex files posed a risk due to a low bus factor. Fortunately, as our devices have become faster and more capable, we can now write code that is clearer and more maintainable (And not so much costs on performance).
+    - Hashing functions have been refactored into the `HashManager` class and its derived classes.
+    - Chunk splitting functions have been refactored into the `ContentSplitterCore` class and its derived classes.
+    - Change tracking functions have been refactored into the `ChangeManager` class.
+    - Chunk read/write functions have been refactored into the `ChunkManager` class.
+    - Fetching chunks on demand is now handled separately from the `ChunkManager` and chunk reading functions. Chunks are queued by the `ChunkManager` and then processed by the `ChunkFetcher`, simplifying the process and reducing unnecessary complexity.
+    - Then, local database access via `LiveSyncLocalDB` has been refactored to use the new classes.
+- References to external sources from `commonlib` have been corrected.
+- Type definitions in `types.ts` have been refined.
+- Unit tests are being added incrementally.
+    - I am using `Deno` for testing, to simplify testing and coverage reporting.
+    - While this is not identical to the Obsidian environment, `jest` may also have limitations. It is certainly better than having no tests.
+        - In other words, recent manual scenario testing has highlighted some shortcomings.
+    - `pouchdb-test`, used for testing PouchDB with Deno, has been added, utilising the `memory` adapter.
+
+Side note: Although class-oriented programming is sometimes considered an outdated style, However, I have come to re-evaluate it as valuable from the perspectives of maintainability and readability.
+
+
 ## 0.25.4
 
 29th July, 2025
@@ -57,47 +106,6 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
-### Fixed
-
-- The encryption algorithm now uses HKDF with a master key.
-    - This is more robust and faster than the previous implementation.
-    - It is now more secure against rainbow table attacks.
-    - The previous implementation can still be used via `Patches` -> `End-to-end encryption algorithm` -> `Force V1`.
-        - Note that `V1: Legacy` can decrypt V2, but produces V1 output.
-- `Fetch everything from the remote` now works correctly.
-    - It no longer creates local database entries before synchronisation.
-- Extra log messages during QR code decoding have been removed.
-
-### Changed
-
-- The following settings have been moved to the `Patches` pane:
-    - `Remote Database Tweak`
-        - `Incubate Chunks in Document`
-        - `Data Compression`
-
-### Behavioural and API Changes
-
-- `DirectFileManipulatorV2` now requires new settings (as you may already know, E2EEAlgorithm).
-- The database version has been increased to `12` from `10`.
-    - If an older version is detected, we will be notified and synchronisation will be paused until the update is acknowledged. (It has been a long time since this behaviour was last encountered; we always err on the side of caution, even if it is less convenient.)
-
-### Refactored
-
-- `couchdb_utils.ts` has been separated into several explicitly named files.
-- Some missing functions in `bgWorker.mock.ts` have been added.
-
-## 0.24.31
-
-10th July, 2025
-
-### Fixed
-
-- The description of `Enable Developers' Debug Tools.` has been refined.
-    - Now performance impact is more clearly stated.
-- Automatic conflict checking and resolution has been improved.
-    - It now works parallelly for each other file, instead of sequentially. It makes significantly faster on first synchronisation when with local files information.
-- Resolving conflicts dialogue will not be shown for the multiple files at once.
-    - It will be shown for each file, one by one.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
