@@ -1,4 +1,5 @@
-## 0.25.5
+## ~~0.25.5~~ 0.25.6
+(0.25.5 has been withdrawn due to a bug in the `Fetch chunks on demand` feature).
 
 9th August, 2025
 
@@ -6,6 +7,7 @@
 
 - Storage scanning no longer occurs when `Suspend file watching` is enabled (including boot-sequence).
     - This change improves safety when troubleshooting or fetching the remote database.
+- `Fetch chunks on demand` is now working again (if you installed 0.25.5, other versions are not affected).
 
 ### Improved
 
