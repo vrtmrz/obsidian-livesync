@@ -82,6 +82,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
+        new Setting(paneEl).autoWireToggle("processSizeMismatchedFiles");
     });
 
     void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {

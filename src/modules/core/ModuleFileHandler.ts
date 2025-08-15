@@ -18,7 +18,7 @@ import {
     getStoragePathFromUXFileInfo,
     markChangesAreSame,
 } from "../../common/utils";
-import { getDocDataAsArray, isDocContentSame, readContent } from "../../lib/src/common/utils";
+import { getDocDataAsArray, isDocContentSame, readAsBlob, readContent } from "../../lib/src/common/utils";
 import { shouldBeIgnored } from "../../lib/src/string_and_binary/path";
 import type { ICoreModule } from "../ModuleTypes";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
@@ -259,6 +259,16 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         const docData = readContent(docRead);
 
         if (existOnStorage && !force) {
+            // If we want to process size mismatched files -- in case of having files created by some integrations, enable the toggle.
+            if (!this.settings.processSizeMismatchedFiles) {
+                // Check the file is not corrupted
+                // (Zero is a special case, may be created by some APIs and it might be acceptable).
+                if (docRead.size != 0 && docRead.size !== readAsBlob(docRead).size) {
+                    this._log(`File ${path} seems to be corrupted! Writing prevented.`, LOG_LEVEL_NOTICE);
+                    return false;
+                }
+            }
+
             // The file is exist on the storage. Let's check the difference between the file and the entry.
             // But, if force is true, then it should be updated.
             // Ok, we have to compare.

@@ -3,6 +3,7 @@ import { versionNumberString2Number } from "../../../lib/src/string_and_binary/c
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { visibleOnly } from "./SettingPane.ts";
 //@ts-ignore
 const manifestVersion: string = MANIFEST_VERSION || "-";
 //@ts-ignore
@@ -10,8 +11,34 @@ const updateInformation: string = UPDATE_INFO || "";
 
 const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
 export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement): void {
-    const informationDivEl = this.createEl(paneEl, "div", { text: "" });
+    const cx = this.createEl(
+        paneEl,
+        "div",
+        {
+            cls: "op-warn-info",
+        },
+        undefined,
+        visibleOnly(() => !this.isConfiguredAs("versionUpFlash", ""))
+    );
 
+    this.createEl(
+        cx,
+        "div",
+        {
+            text: this.editingSettings.versionUpFlash,
+        },
+        undefined
+    );
+    this.createEl(cx, "button", { text: $msg("obsidianLiveSyncSettingTab.btnGotItAndUpdated") }, (e) => {
+        e.addClass("mod-cta");
+        e.addEventListener("click", () => {
+            fireAndForget(async () => {
+                this.editingSettings.versionUpFlash = "";
+                await this.saveAllDirtySettings();
+            });
+        });
+    });
+    const informationDivEl = this.createEl(paneEl, "div", { text: "" });
     const tmpDiv = createDiv();
     // tmpDiv.addClass("sls-header-button");
     tmpDiv.addClass("op-warn-info");

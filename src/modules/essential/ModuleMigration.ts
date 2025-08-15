@@ -1,16 +1,20 @@
-import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "../../lib/src/common/logger.ts";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
     EVENT_REQUEST_OPEN_SETTINGS,
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_RUN_DOCTOR,
+    EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
 } from "../../common/events.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { ICoreModule } from "../ModuleTypes.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
+import { getPath, isValidPath } from "../../common/utils.ts";
+import { isMetaEntry } from "../../lib/src/common/types.ts";
+import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
@@ -96,12 +100,129 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         return false;
     }
 
+    async checkIncompleteDocs(force: boolean = false): Promise<boolean> {
+        const incompleteDocsChecked = (await this.core.kvDB.get<boolean>("checkIncompleteDocs")) || false;
+        if (incompleteDocsChecked && !force) {
+            this._log("Incomplete docs check already done, skipping.", LOG_LEVEL_VERBOSE);
+            return Promise.resolve(true);
+        }
+
+        this._log("Checking for incomplete documents...", LOG_LEVEL_NOTICE, "check-incomplete");
+        const errorFiles = [];
+        for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
+            const path = getPath(metaDoc);
+
+            if (!isValidPath(path)) {
+                continue;
+            }
+            if (!(await this.core.$$isTargetFile(path, true))) {
+                continue;
+            }
+            if (!isMetaEntry(metaDoc)) {
+                continue;
+            }
+
+            const doc = await this.localDatabase.getDBEntryFromMeta(metaDoc);
+            if (!doc || !isLoadedEntry(doc)) {
+                continue;
+            }
+            if (isDeletedEntry(doc)) {
+                continue;
+            }
+            const storageFileContent = await this.core.storageAccess.readHiddenFileBinary(path);
+            // const storageFileBlob = createBlob(storageFileContent);
+            const sizeOnStorage = storageFileContent.byteLength;
+            const recordedSize = doc.size;
+            const docBlob = readAsBlob(doc);
+            const actualSize = docBlob.size;
+            if (recordedSize !== actualSize || sizeOnStorage !== actualSize || sizeOnStorage !== recordedSize) {
+                const contentMatched = await isDocContentSame(doc.data, storageFileContent);
+                errorFiles.push({ path, recordedSize, actualSize, storageSize: sizeOnStorage, contentMatched });
+                Logger(
+                    `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"}`
+                );
+            }
+        }
+        if (errorFiles.length == 0) {
+            Logger("No size mismatches found", LOG_LEVEL_NOTICE);
+            await this.core.kvDB.set("checkIncompleteDocs", true);
+            return Promise.resolve(true);
+        }
+        Logger(`Found ${errorFiles.length} size mismatches`, LOG_LEVEL_NOTICE);
+        // We have to repair them following rules and situations:
+        // A. DB Recorded != DB Stored
+        //   A.1. DB Recorded == Storage Stored
+        //        Possibly recoverable from storage. Just overwrite the DB content with storage content.
+        //   A.2. Neither
+        //        Probably it cannot be resolved on this device. Even if the storage content is larger than DB Recorded, it possibly corrupted.
+        //        We do not fix it automatically. Leave it as is. Possibly other device can do this.
+        // B. DB Recorded == DB Stored ,  < Storage Stored
+        //   Very fragile, if DB Recorded size is less than Storage Stored size, we possibly repair the content (The issue was `unexpectedly shortened file`).
+        //   We do not fix it automatically, but it will be automatically overwritten in other process.
+        // C. DB Recorded == DB Stored ,  > Storage Stored
+        //   Probably restored by the user by resolving A or B on other device, We should overwrite the storage
+        //   Also do not fix it automatically. It should be overwritten by replication.
+        const recoverable = errorFiles.filter((e) => {
+            return e.recordedSize === e.storageSize;
+        });
+        const unrecoverable = errorFiles.filter((e) => {
+            return e.recordedSize !== e.storageSize;
+        });
+        const messageUnrecoverable =
+            unrecoverable.length > 0
+                ? $msg("moduleMigration.fix0256.messageUnrecoverable", {
+                      filesNotRecoverable: unrecoverable
+                          .map((e) => `- ${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize})`)
+                          .join("\n"),
+                  })
+                : "";
+
+        const message = $msg("moduleMigration.fix0256.message", {
+            files: recoverable
+                .map((e) => `- ${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize})`)
+                .join("\n"),
+            messageUnrecoverable,
+        });
+        const CHECK_IT_LATER = $msg("moduleMigration.fix0256.buttons.checkItLater");
+        const FIX = $msg("moduleMigration.fix0256.buttons.fix");
+        const DISMISS = $msg("moduleMigration.fix0256.buttons.DismissForever");
+        const ret = await this.core.confirm.askSelectStringDialogue(message, [CHECK_IT_LATER, FIX, DISMISS], {
+            title: $msg("moduleMigration.fix0256.title"),
+            defaultAction: CHECK_IT_LATER,
+        });
+        if (ret == FIX) {
+            for (const file of recoverable) {
+                // Overwrite the database with the files on the storage
+                const stubFile = this.core.storageAccess.getFileStub(file.path);
+                if (stubFile == null) {
+                    Logger(`Could not find stub file for ${file.path}`, LOG_LEVEL_NOTICE);
+                    continue;
+                }
+
+                stubFile.stat.mtime = Date.now();
+                const result = await this.core.fileHandler.storeFileToDB(stubFile, true, false);
+                if (result) {
+                    Logger(`Successfully restored ${file.path} from storage`);
+                } else {
+                    Logger(`Failed to restore ${file.path} from storage`, LOG_LEVEL_NOTICE);
+                }
+            }
+        } else if (ret === DISMISS) {
+            // User chose to dismiss the issue
+            await this.core.kvDB.set("checkIncompleteDocs", true);
+        }
+
+        return Promise.resolve(true);
+    }
+
     async $everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
             this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.settings.isConfigured) {
+            // TODO: Probably we have to check for insecure chunks
+            await this.checkIncompleteDocs();
             await this.migrateUsingDoctor(false);
             // await this.migrationCheck();
             await this.migrateDisableBulkSend();
@@ -119,6 +240,9 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     $everyOnLayoutReady(): Promise<boolean> {
         eventHub.onEvent(EVENT_REQUEST_RUN_DOCTOR, async (reason) => {
             await this.migrateUsingDoctor(false, reason, true);
+        });
+        eventHub.onEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE, async () => {
+            await this.checkIncompleteDocs(true);
         });
         return Promise.resolve(true);
     }

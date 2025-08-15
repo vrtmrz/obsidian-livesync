@@ -7,7 +7,6 @@ import {
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { fireAndForget } from "octagonal-wheels/promises";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "../../../common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -17,30 +16,6 @@ export function paneSyncSettings(
     paneEl: HTMLElement,
     { addPanel, addPane }: PageFunctions
 ): void {
-    if (this.editingSettings.versionUpFlash != "") {
-        const c = this.createEl(
-            paneEl,
-            "div",
-            {
-                text: this.editingSettings.versionUpFlash,
-                cls: "op-warn sls-setting-hidden",
-            },
-            (el) => {
-                this.createEl(el, "button", { text: $msg("obsidianLiveSyncSettingTab.btnGotItAndUpdated") }, (e) => {
-                    e.addClass("mod-cta");
-                    e.addEventListener("click", () => {
-                        fireAndForget(async () => {
-                            this.editingSettings.versionUpFlash = "";
-                            await this.saveAllDirtySettings();
-                            c.remove();
-                        });
-                    });
-                });
-            },
-            visibleOnly(() => !this.isConfiguredAs("versionUpFlash", ""))
-        );
-    }
-
     this.createEl(paneEl, "div", {
         text: $msg("obsidianLiveSyncSettingTab.msgSelectAndApplyPreset"),
         cls: "wizardOnly",

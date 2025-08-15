@@ -17,8 +17,6 @@ import { delay, isObjectDifferent, sizeToHumanReadable } from "../../../lib/src/
 import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { checkSyncInfo } from "@/lib/src/pouchdb/negotiation.ts";
-import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks.ts";
-import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks.ts";
 import { testCrypt } from "../../../lib/src/encryption/e2ee_v2.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import { scheduleTask } from "../../../common/utils.ts";
@@ -38,7 +36,6 @@ import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "../../../common/events.ts";
-import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
@@ -858,49 +855,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 changeDisplay(this.selectedScreen);
             }
             this.requestUpdate();
-        });
-    }
-
-    async dryRunGC() {
-        await skipIfDuplicated("cleanup", async () => {
-            const replicator = this.plugin.$$getReplicator();
-            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-            const remoteDBConn = await replicator.connectRemoteCouchDBWithSetting(
-                this.plugin.settings,
-                this.plugin.$$isMobile()
-            );
-            if (typeof remoteDBConn == "string") {
-                Logger(remoteDBConn);
-                return;
-            }
-            await purgeUnreferencedChunks(remoteDBConn.db, true, this.plugin.settings, false);
-            await purgeUnreferencedChunks(this.plugin.localDatabase.localDatabase, true);
-            this.plugin.localDatabase.clearCaches();
-        });
-    }
-
-    async dbGC() {
-        // Lock the remote completely once.
-        await skipIfDuplicated("cleanup", async () => {
-            const replicator = this.plugin.$$getReplicator();
-            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-            await this.plugin.$$getReplicator().markRemoteLocked(this.plugin.settings, true, true);
-            const remoteDBConnection = await replicator.connectRemoteCouchDBWithSetting(
-                this.plugin.settings,
-                this.plugin.$$isMobile()
-            );
-            if (typeof remoteDBConnection == "string") {
-                Logger(remoteDBConnection);
-                return;
-            }
-            await purgeUnreferencedChunks(remoteDBConnection.db, false, this.plugin.settings, true);
-            await purgeUnreferencedChunks(this.plugin.localDatabase.localDatabase, false);
-            this.plugin.localDatabase.clearCaches();
-            await balanceChunkPurgedDBs(this.plugin.localDatabase.localDatabase, remoteDBConnection.db);
-            this.plugin.localDatabase.refreshSettings();
-            Logger(
-                "The remote database has been cleaned up! Other devices will be cleaned up on the next synchronisation."
-            );
         });
     }
 

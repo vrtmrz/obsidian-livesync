@@ -26,7 +26,7 @@ import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/s
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { EVENT_REQUEST_RUN_DOCTOR, eventHub } from "../../../common/events.ts";
+import { EVENT_REQUEST_RUN_DOCTOR, EVENT_REQUEST_RUN_FIX_INCOMPLETE, eventHub } from "../../../common/events.ts";
 import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
@@ -48,6 +48,19 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     .onClick(() => {
                         this.closeSetting();
                         eventHub.emitEvent(EVENT_REQUEST_RUN_DOCTOR, "you wanted(Thank you)!");
+                    })
+            );
+        new Setting(paneEl)
+            .setName($msg("Setting.TroubleShooting.ScanBrokenFiles"))
+            .setDesc($msg("Setting.TroubleShooting.ScanBrokenFiles.Desc"))
+            .addButton((button) =>
+                button
+                    .setButtonText("Scan for Broken files")
+                    .setCta()
+                    .setDisabled(false)
+                    .onClick(() => {
+                        this.closeSetting();
+                        eventHub.emitEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE);
                     })
             );
         new Setting(paneEl).setName("Prepare the 'report' to create an issue").addButton((button) =>
@@ -190,7 +203,7 @@ ${stringifyYaml({
                             );
                             infoGroupEl.appendChild(
                                 this.createEl(infoGroupEl, "div", {
-                                    text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size}`}`,
+                                    text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size} (actual size:${readAsBlob(fileOnDB).size})`}`,
                                 })
                             );
                         })

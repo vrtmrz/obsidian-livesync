@@ -25,8 +25,8 @@ export class ConflictResolveModal extends Modal {
     title: string = "Conflicting changes";
 
     pluginPickMode: boolean = false;
-    localName: string = "Keep A";
-    remoteName: string = "Keep B";
+    localName: string = "Use Base";
+    remoteName: string = "Use Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
 
     constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
