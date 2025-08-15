@@ -5,9 +5,11 @@
 **Since the release of 0.25.6, there are two large problem. Please update immediately.**
 
 - We may have corrupted some documents during the migration process. **Please check your documents on the wizard.**
-- Due to a chunk ID assignment issue, some data has not been encrypted. **Please rebuild the database using Rebuild Everything.**
+- Due to a chunk ID assignment issue, some data has not been encrypted. **Please rebuild the database using Rebuild Everything** if you have enabled E2EE.
 
 **_So, If you have enabled E2EE, please perform `Rebuild everything`. If not, please check your documents on the wizard._**
+
+In next version, insecure chunk detection will be implemented.
 
 ### Fixed
 
