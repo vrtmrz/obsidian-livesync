@@ -1,4 +1,40 @@
+## 0.25.7
+
+15th August, 2025
+
+**Since the release of 0.25.6, there are two large problem. Please update immediately.**
+
+- We may have corrupted some documents during the migration process. **Please check your documents on the wizard.**
+- Due to a chunk ID assignment issue, some data has not been encrypted. **Please rebuild the database using Rebuild Everything.**
+
+**_So, If you have enabled E2EE, please perform `Rebuild everything`. If not, please check your documents on the wizard._**
+
+### Fixed
+
+- Off-loaded chunking have been fixed to ensure proper functionality (#693).
+- Chunk document ID assignment has been fixed.
+- Replication prevention message during version up detection has been improved (#686).
+- `Keep A` and `Keep B` on Conflict resolving dialogue has been renamed to `Use Base` and `Use Conflicted` (#691).
+
+### Improved
+
+- Metadata and content-size unmatched documents are now detected and reported, prevented to be applied to the storage.
+    - This behaviour can be configured in `Patch` -> `Edge case addressing (Behaviour)` -> `Process files even if seems to be corrupted`
+    - Note: this toggle is for the direct-database-manipulation users.
+
+### New Features
+
+- `Scan for Broken files` has been implemented on `Hatch` -> `TroubleShooting`.
+
+### Refactored
+
+- Off-loaded processes have been refactored for the better maintainability.
+    - Files prefixed `bg.worker` are now work on the worker threads.
+    - Files prefixed `bgWorker.` are now also controls these worker threads. (I know what you want to say... I will rename them).
+- Removed unused code.
+
 ## ~~0.25.5~~ 0.25.6
+
 (0.25.5 has been withdrawn due to a bug in the `Fetch chunks on demand` feature).
 
 9th August, 2025
@@ -47,7 +83,6 @@
     - `pouchdb-test`, used for testing PouchDB with Deno, has been added, utilising the `memory` adapter.
 
 Side note: Although class-oriented programming is sometimes considered an outdated style, However, I have come to re-evaluate it as valuable from the perspectives of maintainability and readability.
-
 
 ## 0.25.4
 
@@ -107,7 +142,6 @@ After reading Issue #668, I conducted another self-review of the E2EE-related co
 I have now rewritten the E2EE code to be more robust and easier to understand. It is significantly more readable and should be easier to maintain in the future. The performance issue, previously considered a concern, has been addressed by introducing a master key and deriving keys using HKDF. This approach is both fast and robust, and it provides protection against rainbow table attacks. (In addition, this implementation has been [a dedicated package on the npm registry](https://github.com/vrtmrz/octagonal-wheels), and tested in 100% branch-coverage).
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
-
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
