@@ -256,19 +256,20 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             this._log(`File ${path} is not exist on the database`, LOG_LEVEL_VERBOSE);
             return false;
         }
+
+        // If we want to process size mismatched files -- in case of having files created by some integrations, enable the toggle.
+        if (!this.settings.processSizeMismatchedFiles) {
+            // Check the file is not corrupted
+            // (Zero is a special case, may be created by some APIs and it might be acceptable).
+            if (docRead.size != 0 && docRead.size !== readAsBlob(docRead).size) {
+                this._log(`File ${path} seems to be corrupted! Writing prevented.`, LOG_LEVEL_NOTICE);
+                return false;
+            }
+        }
+
         const docData = readContent(docRead);
 
         if (existOnStorage && !force) {
-            // If we want to process size mismatched files -- in case of having files created by some integrations, enable the toggle.
-            if (!this.settings.processSizeMismatchedFiles) {
-                // Check the file is not corrupted
-                // (Zero is a special case, may be created by some APIs and it might be acceptable).
-                if (docRead.size != 0 && docRead.size !== readAsBlob(docRead).size) {
-                    this._log(`File ${path} seems to be corrupted! Writing prevented.`, LOG_LEVEL_NOTICE);
-                    return false;
-                }
-            }
-
             // The file is exist on the storage. Let's check the difference between the file and the entry.
             // But, if force is true, then it should be updated.
             // Ok, we have to compare.

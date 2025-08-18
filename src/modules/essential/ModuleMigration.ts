@@ -15,6 +15,7 @@ import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/
 import { getPath, isValidPath } from "../../common/utils.ts";
 import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
+import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
 
 export class ModuleMigration extends AbstractModule implements ICoreModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
@@ -36,11 +37,14 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             if (shouldRebuild) {
                 await this.core.rebuilder.scheduleRebuild();
                 await this.core.$$performRestart();
+                return false;
             } else if (shouldRebuildLocal) {
                 await this.core.rebuilder.scheduleFetch();
                 await this.core.$$performRestart();
+                return false;
             }
         }
+        return true;
     }
 
     async migrateDisableBulkSend() {
@@ -215,15 +219,77 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         return Promise.resolve(true);
     }
 
+    async checkCompromisedChunks(): Promise<boolean> {
+        Logger(`Checking for compromised chunks...`, LOG_LEVEL_VERBOSE);
+        if (!this.settings.encrypt) {
+            // If not encrypted, we do not need to check for compromised chunks.
+            return true;
+        }
+        // Check local database for compromised chunks
+        const localCompromised = await countCompromisedChunks(this.localDatabase.localDatabase);
+        const remote = this.core.$$getReplicator();
+        const remoteCompromised = await remote.countCompromisedChunks();
+        if (localCompromised === false) {
+            Logger(`Failed to count compromised chunks in local database`, LOG_LEVEL_NOTICE);
+            return false;
+        }
+        if (remoteCompromised === false) {
+            Logger(`Failed to count compromised chunks in remote database`, LOG_LEVEL_NOTICE);
+            return false;
+        }
+        if (remoteCompromised === 0 && localCompromised === 0) {
+            return true;
+        }
+        Logger(
+            `Found compromised chunks : ${localCompromised} in local, ${remoteCompromised} in remote`,
+            LOG_LEVEL_NOTICE
+        );
+        const title = $msg("moduleMigration.insecureChunkExist.title");
+        const msg = $msg("moduleMigration.insecureChunkExist.message");
+        const REBUILD = $msg("moduleMigration.insecureChunkExist.buttons.rebuild");
+        const FETCH = $msg("moduleMigration.insecureChunkExist.buttons.fetch");
+        const DISMISS = $msg("moduleMigration.insecureChunkExist.buttons.later");
+        const buttons = [REBUILD, FETCH, DISMISS];
+        if (remoteCompromised != 0) {
+            buttons.splice(buttons.indexOf(FETCH), 1);
+        }
+        const result = await this.core.confirm.askSelectStringDialogue(msg, buttons, {
+            title,
+            defaultAction: DISMISS,
+            timeout: 0,
+        });
+        if (result === REBUILD) {
+            // Rebuild the database
+            await this.core.rebuilder.scheduleRebuild();
+            await this.core.$$performRestart();
+            return false;
+        } else if (result === FETCH) {
+            // Fetch the latest data from remote
+            await this.core.rebuilder.scheduleFetch();
+            await this.core.$$performRestart();
+            return false;
+        } else {
+            // User chose to dismiss the issue
+            this._log($msg("moduleMigration.insecureChunkExist.laterMessage"), LOG_LEVEL_NOTICE);
+        }
+        return true;
+    }
+
     async $everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
             this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.settings.isConfigured) {
-            // TODO: Probably we have to check for insecure chunks
-            await this.checkIncompleteDocs();
-            await this.migrateUsingDoctor(false);
+            if (await this.checkCompromisedChunks()) {
+                return false;
+            }
+            if (await this.checkIncompleteDocs()) {
+                return false;
+            }
+            if (await this.migrateUsingDoctor(false)) {
+                return false;
+            }
             // await this.migrationCheck();
             await this.migrateDisableBulkSend();
         }
@@ -233,7 +299,9 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                 this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
                 return false;
             }
-            await this.migrateUsingDoctor(true);
+            if (await this.migrateUsingDoctor(true)) {
+                return false;
+            }
         }
         return true;
     }
