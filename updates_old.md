@@ -9,6 +9,41 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
+---
+
+## 0.25.3
+
+22nd July, 2025
+
+### Fixed
+
+- Now the `Doctor` at migration will save the configuration.
+
+## 0.25.2 ~~0.25.1~~
+
+(0.25.1 was missed due to a mistake in the versioning process).
+19th July, 2025
+
+### Refined and New Features
+
+- Fetching the remote database on `RedFlag` now also retrieves remote configurations optionally.
+    - This is beneficial if we have already set up another device and wish to use the same configuration. We will see a much less frequent `Unmatched` dialogue.
+- The setup wizard using Set-up URI and QR code has been improved.
+    - The message is now more user-friendly.
+    - The obsolete method (manual setting application) has been removed.
+    - The `Cancel` button has been added to the setup wizard.
+    - We can now fetch the remote configuration from the server if it exists, which is useful for adding new devices.
+        - Mostly same as a `RedFlag` fetching remote configuration.
+    - We can also use the `Doctor` to check and fix the imported (and fetched) configuration before applying it.
+
+### Changes
+
+- The Set-up URI is now encrypted with a new encryption algorithm (mostly the same as `V2`).
+    - The new Set-up URI is not compatible with version 0.24.x or earlier.
+
+
+## 0.25.0
+
 ### Fixed
 
 - The encryption algorithm now uses HKDF with a master key.
@@ -37,8 +72,6 @@ As a result, this is the first time in a while that forward compatibility has be
 
 - `couchdb_utils.ts` has been separated into several explicitly named files.
 - Some missing functions in `bgWorker.mock.ts` have been added.
-
-
 
 ## 0.24.0
 

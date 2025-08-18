@@ -1,3 +1,24 @@
+## 0.25.8
+
+18th August, 2025
+
+### New feature
+
+- Insecure chunk detection has been implemented.
+  - A notification dialogue will be shown if any insecure chunks are detected; these may have been created by v0.25.6 due to its issue. If this dialogue appears, please ensure you rebuild the database after backing it up.
+
+### Fixed
+
+- Unexpected `Failed to obtain PBKDF2 salt` or similar errors during bucket-synchronisation no longer occur.
+- Unexpected long delays for chunk-missing documents when using bucket-synchronisation have been resolved.
+- Fetched remote chunks are now properly stored in the local database if `Fetch chunks on demand` is enabled.
+- The 'fetch' dialogue's message has been refined.
+- No longer overwriting any corrupted documents to the storage on boot-sequence.
+
+### Refactored
+
+- Type errors have been corrected.
+
 ## 0.25.7
 
 15th August, 2025
@@ -104,36 +125,6 @@ Side note: Although class-oriented programming is sometimes considered an outdat
 ### Side note
 
 The PBKDF2Salt will be referred to as the `Security Seed`, and it is used to derive the encryption key for replication. Therefore, it should be stored on the server prior to synchronisation. We apologise for the lack of explanation in previous updates!
-
-## 0.25.3
-
-22nd July, 2025
-
-### Fixed
-
-- Now the `Doctor` at migration will save the configuration.
-
-## 0.25.2 ~~0.25.1~~
-
-(0.25.1 was missed due to a mistake in the versioning process).
-19th July, 2025
-
-### Refined and New Features
-
-- Fetching the remote database on `RedFlag` now also retrieves remote configurations optionally.
-    - This is beneficial if we have already set up another device and wish to use the same configuration. We will see a much less frequent `Unmatched` dialogue.
-- The setup wizard using Set-up URI and QR code has been improved.
-    - The message is now more user-friendly.
-    - The obsolete method (manual setting application) has been removed.
-    - The `Cancel` button has been added to the setup wizard.
-    - We can now fetch the remote configuration from the server if it exists, which is useful for adding new devices.
-        - Mostly same as a `RedFlag` fetching remote configuration.
-    - We can also use the `Doctor` to check and fix the imported (and fetched) configuration before applying it.
-
-### Changes
-
-- The Set-up URI is now encrypted with a new encryption algorithm (mostly the same as `V2`).
-    - The new Set-up URI is not compatible with version 0.24.x or earlier.
 
 ## 0.25.0
 
