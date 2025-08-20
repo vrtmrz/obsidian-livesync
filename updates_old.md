@@ -11,6 +11,25 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.4
+
+29th July, 2025
+
+### Fixed
+
+- The PBKDF2Salt is no longer corrupted when attempting replication while the device is offline. (#686)
+    - If this issue has already occurred, please use `Maintenance` -> `Rebuilding Operations (Remote Only)` -> `Overwrite Remote` and `Send` to resolve it.
+    - Please perform this operation on the device that is most reliable.
+    - I am so sorry for the inconvenience; there are no patching workarounds. The rebuilding operation is the only solution.
+        - This issue only affects the encryption of the remote database and does not impact the local databases on any devices.
+        - (Preventing synchronisation is by design and expected behaviour, even if it is sometimes inconvenient. This is also why we should avoid using workarounds; it is, admittedly, an excuse).
+        - In any case, we can unlock the remote from the warning dialogue on receiving devices. We are performing replication, instead of simple synchronisation at the expense of a little complexity (I would love to express thank you again for your every effort to manage and maintain the settings! Your all understanding saves our notes).
+    - This process may require considerable time and bandwidth (as usual), so please wait patiently and ensure a stable network connection.
+
+### Side note
+
+The PBKDF2Salt will be referred to as the `Security Seed`, and it is used to derive the encryption key for replication. Therefore, it should be stored on the server prior to synchronisation. We apologise for the lack of explanation in previous updates!
+
 ## 0.25.3
 
 22nd July, 2025
