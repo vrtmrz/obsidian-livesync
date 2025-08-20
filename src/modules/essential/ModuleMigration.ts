@@ -104,7 +104,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         return false;
     }
 
-    async checkIncompleteDocs(force: boolean = false): Promise<boolean> {
+    async hasIncompleteDocs(force: boolean = false): Promise<boolean> {
         const incompleteDocsChecked = (await this.core.kvDB.get<boolean>("checkIncompleteDocs")) || false;
         if (incompleteDocsChecked && !force) {
             this._log("Incomplete docs check already done, skipping.", LOG_LEVEL_VERBOSE);
@@ -219,7 +219,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         return Promise.resolve(true);
     }
 
-    async checkCompromisedChunks(): Promise<boolean> {
+    async hasCompromisedChunks(): Promise<boolean> {
         Logger(`Checking for compromised chunks...`, LOG_LEVEL_VERBOSE);
         if (!this.settings.encrypt) {
             // If not encrypted, we do not need to check for compromised chunks.
@@ -281,13 +281,13 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             return false;
         }
         if (this.settings.isConfigured) {
-            if (await this.checkCompromisedChunks()) {
+            if (!(await this.hasCompromisedChunks())) {
                 return false;
             }
-            if (await this.checkIncompleteDocs()) {
+            if (!(await this.hasIncompleteDocs())) {
                 return false;
             }
-            if (await this.migrateUsingDoctor(false)) {
+            if (!(await this.migrateUsingDoctor(false))) {
                 return false;
             }
             // await this.migrationCheck();
@@ -299,7 +299,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
                 this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
                 return false;
             }
-            if (await this.migrateUsingDoctor(true)) {
+            if (!(await this.migrateUsingDoctor(true))) {
                 return false;
             }
         }
@@ -310,7 +310,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             await this.migrateUsingDoctor(false, reason, true);
         });
         eventHub.onEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE, async () => {
-            await this.checkIncompleteDocs(true);
+            await this.hasIncompleteDocs(true);
         });
         return Promise.resolve(true);
     }

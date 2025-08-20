@@ -199,12 +199,16 @@ export function paneRemoteConfig(
             ) {
                 addResult($msg("obsidianLiveSyncSettingTab.okCorsOrigins"));
             } else {
+                const fixedValue = [
+                    ...new Set([
+                        ...ConfiguredOrigins.map((e) => e.trim()),
+                        "app://obsidian.md",
+                        "capacitor://localhost",
+                        "http://localhost",
+                    ]),
+                ].join(",");
                 addResult($msg("obsidianLiveSyncSettingTab.errCorsOrigins"));
-                addConfigFixButton(
-                    $msg("obsidianLiveSyncSettingTab.msgSetCorsOrigins"),
-                    "cors/origins",
-                    "app://obsidian.md,capacitor://localhost,http://localhost"
-                );
+                addConfigFixButton($msg("obsidianLiveSyncSettingTab.msgSetCorsOrigins"), "cors/origins", fixedValue);
                 isSuccessful = false;
             }
             addResult($msg("obsidianLiveSyncSettingTab.msgConnectionCheck"), ["ob-btn-config-head"]);

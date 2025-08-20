@@ -385,6 +385,18 @@ span.ls-mark-cr::after {
     font-size: 80%;
 }
 
+div.workspace-leaf-content[data-type=bases]  .livesync-status {
+    top: calc(var(--bases-header-height) + var(--header-height));
+    padding: 5px;
+    padding-right:18px;
+}
+
+.is-mobile div.workspace-leaf-content[data-type=bases]  .livesync-status {
+    top: calc(var(--bases-header-height) + var(--view-header-height));
+    padding: 6px;
+    padding-right:18px;
+}
+
 .livesync-status div {
     opacity: 0.6;
     -webkit-filter: grayscale(100%);
@@ -404,6 +416,7 @@ span.ls-mark-cr::after {
     -webkit-filter: unset;
     filter: unset;
 }
+
 
 .menu-setting-poweruser-disabled .sls-setting-poweruser {
     display: none;
