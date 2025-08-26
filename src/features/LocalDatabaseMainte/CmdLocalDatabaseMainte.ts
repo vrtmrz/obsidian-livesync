@@ -1,9 +1,27 @@
 import { sizeToHumanReadable } from "octagonal-wheels/number";
-import { LOG_LEVEL_NOTICE, type MetaEntry } from "../../lib/src/common/types";
+import {
+    EntryTypes,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type DocumentID,
+    type EntryDoc,
+    type EntryLeaf,
+    type MetaEntry,
+} from "../../lib/src/common/types";
 import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
 import type { IObsidianModule } from "../../modules/AbstractObsidianModule";
 import { LiveSyncCommands } from "../LiveSyncCommands";
+import { serialized } from "octagonal-wheels/concurrency/lock_v2";
+import { arrayToChunkedArray } from "octagonal-wheels/collection";
+const DB_KEY_SEQ = "gc-seq";
+const DB_KEY_CHUNK_SET = "chunk-set";
+const DB_KEY_DOC_USAGE_MAP = "doc-usage-map";
+type ChunkID = DocumentID;
+type NoteDocumentID = DocumentID;
+type Rev = string;
 
+type ChunkUsageMap = Map<NoteDocumentID, Map<Rev, Set<ChunkID>>>;
 export class LocalDatabaseMaintenance extends LiveSyncCommands implements IObsidianModule {
     $everyOnload(): Promise<boolean> {
         return Promise.resolve(true);
@@ -261,5 +279,214 @@ Note: **Make sure to synchronise all devices before deletion.**
             this._notice(`Deleted chunks: ${result.filter((e) => "ok" in e).length} / ${deleteChunks.length}`);
             this.clearHash();
         }
+    }
+
+    async scanUnusedChunks() {
+        const kvDB = this.plugin.kvDB;
+        const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
+        const chunkUsageMap = (await kvDB.get<ChunkUsageMap>(DB_KEY_DOC_USAGE_MAP)) || new Map();
+        const KEEP_MAX_REVS = 10;
+        const unusedSet = new Set<DocumentID>([...chunkSet]);
+        for (const [, revIdMap] of chunkUsageMap) {
+            const sortedRevId = [...revIdMap.entries()].sort((a, b) => getNoFromRev(b[0]) - getNoFromRev(a[0]));
+            if (sortedRevId.length > KEEP_MAX_REVS) {
+                // If we have more revisions than we want to keep, we need to delete the extras
+            }
+            const keepRevID = sortedRevId.slice(0, KEEP_MAX_REVS);
+            keepRevID.forEach((e) => e[1].forEach((ee) => unusedSet.delete(ee)));
+        }
+        return {
+            chunkSet,
+            chunkUsageMap,
+            unusedSet,
+        };
+    }
+    /**
+     * Track changes in the database and update the chunk usage map for garbage collection.
+     * Note that this only able to perform without Fetch chunks on demand.
+     */
+    async trackChanges(fromStart: boolean = false, showNotice: boolean = false) {
+        if (!this.isAvailable()) return;
+        const logLevel = showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+        const kvDB = this.plugin.kvDB;
+
+        const previousSeq = fromStart ? "" : await kvDB.get<string>(DB_KEY_SEQ);
+        const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
+
+        const chunkUsageMap = (await kvDB.get<ChunkUsageMap>(DB_KEY_DOC_USAGE_MAP)) || new Map();
+
+        const db = this.localDatabase.localDatabase;
+        const verbose = (msg: string) => this._verbose(msg);
+
+        const processDoc = async (doc: EntryDoc, isDeleted: boolean) => {
+            if (!("children" in doc)) {
+                return;
+            }
+            const id = doc._id;
+            const rev = doc._rev!;
+            const deleted = doc._deleted || isDeleted;
+            const softDeleted = doc.deleted;
+            const children = (doc.children || []) as DocumentID[];
+            if (!chunkUsageMap.has(id)) {
+                chunkUsageMap.set(id, new Map<Rev, Set<ChunkID>>());
+            }
+            for (const chunkId of children) {
+                if (deleted) {
+                    chunkUsageMap.get(id)!.delete(rev);
+                    // chunkSet.add(chunkId as DocumentID);
+                } else {
+                    if (softDeleted) {
+                        //TODO: Soft delete
+                        chunkUsageMap.get(id)!.set(rev, (chunkUsageMap.get(id)!.get(rev) || new Set()).add(chunkId));
+                    } else {
+                        chunkUsageMap.get(id)!.set(rev, (chunkUsageMap.get(id)!.get(rev) || new Set()).add(chunkId));
+                    }
+                }
+            }
+            verbose(
+                `Tracking chunk: ${id}/${rev} (${doc?.path}), deleted: ${deleted ? "yes" : "no"} Soft-Deleted:${softDeleted ? "yes" : "no"}`
+            );
+            return await Promise.resolve();
+        };
+        // let saveQueue = 0;
+        const saveState = async (seq: string | number) => {
+            await kvDB.set(DB_KEY_SEQ, seq);
+            await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
+            await kvDB.set(DB_KEY_DOC_USAGE_MAP, chunkUsageMap);
+        };
+
+        const processDocRevisions = async (doc: EntryDoc) => {
+            try {
+                const oldRevisions = await db.get(doc._id, { revs: true, revs_info: true, conflicts: true });
+                const allRevs = oldRevisions._revs_info?.length || 0;
+                const info = (oldRevisions._revs_info || [])
+                    .filter((e) => e.status == "available" && e.rev != doc._rev)
+                    .filter((info) => !chunkUsageMap.get(doc._id)?.has(info.rev));
+                const infoLength = info.length;
+                this._log(`Found ${allRevs} old revisions for ${doc._id} . ${infoLength} items to check `);
+                if (info.length > 0) {
+                    const oldDocs = await Promise.all(
+                        info
+                            .filter((revInfo) => revInfo.status == "available")
+                            .map((revInfo) => db.get(doc._id, { rev: revInfo.rev }))
+                    ).then((docs) => docs.filter((doc) => doc));
+                    for (const oldDoc of oldDocs) {
+                        await processDoc(oldDoc as EntryDoc, false);
+                    }
+                }
+            } catch (ex) {
+                if ((ex as any)?.status == 404) {
+                    this._log(`No revisions found for ${doc._id}`, LOG_LEVEL_VERBOSE);
+                } else {
+                    this._log(`Error finding revisions for ${doc._id}`);
+                    this._verbose(ex);
+                }
+            }
+        };
+        const processChange = async (doc: EntryDoc, isDeleted: boolean, seq: string | number) => {
+            if (doc.type === EntryTypes.CHUNK) {
+                if (isDeleted) return;
+                chunkSet.add(doc._id);
+            } else if ("children" in doc) {
+                await processDoc(doc, isDeleted);
+                await serialized("x-process-doc", async () => await processDocRevisions(doc));
+            }
+        };
+        // Track changes
+        let i = 0;
+        await db
+            .changes({
+                since: previousSeq || "",
+                live: false,
+                conflicts: true,
+                include_docs: true,
+                style: "all_docs",
+                return_docs: false,
+            })
+            .on("change", async (change) => {
+                // handle change
+                await processChange(change.doc!, change.deleted ?? false, change.seq);
+                if (i++ % 100 == 0) {
+                    await saveState(change.seq);
+                }
+            })
+            .on("complete", async (info) => {
+                await saveState(info.last_seq);
+            });
+
+        // Track all changed docs and new-leafs;
+
+        const result = await this.scanUnusedChunks();
+
+        const message = `Total chunks: ${result.chunkSet.size}\nUnused chunks: ${result.unusedSet.size}`;
+        this._log(message, logLevel);
+    }
+    async performGC(showingNotice = false) {
+        if (!this.isAvailable()) return;
+        await this.trackChanges(false, showingNotice);
+        const title = "Are all devices synchronised?";
+        const confirmMessage = `This function deletes unused chunks from the device. If there are differences between devices, some chunks may be missing when resolving conflicts.
+Be sure to synchronise before executing.
+
+However, if you have deleted them, you may be able to recover them by performing Hatch -> Recreate missing chunks for all files.
+
+Are you ready to delete unused chunks?`;
+
+        const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+
+        const BUTTON_OK = `Yes, delete chunks`;
+        const BUTTON_CANCEL = "Cancel";
+
+        const result = await this.plugin.confirm.askSelectStringDialogue(
+            confirmMessage,
+            [BUTTON_OK, BUTTON_CANCEL] as const,
+            {
+                title,
+                defaultAction: BUTTON_CANCEL,
+            }
+        );
+        if (result !== BUTTON_OK) {
+            this._log("User cancelled chunk deletion", logLevel);
+            return;
+        }
+        const { unusedSet, chunkSet } = await this.scanUnusedChunks();
+        const deleteChunks = await this.database.allDocs({
+            keys: [...unusedSet],
+            include_docs: true,
+        });
+        for (const chunk of deleteChunks.rows) {
+            if ((chunk as any)?.value?.deleted) {
+                chunkSet.delete(chunk.key as DocumentID);
+            }
+        }
+        const deleteDocs = deleteChunks.rows
+            .filter((e) => "doc" in e)
+            .map((e) => ({
+                ...(e as any).doc!,
+                _deleted: true,
+            }));
+
+        this._log(`Deleting chunks: ${deleteDocs.length}`, logLevel);
+        const deleteChunkBatch = arrayToChunkedArray(deleteDocs, 100);
+        let successCount = 0;
+        let errored = 0;
+        for (const batch of deleteChunkBatch) {
+            const results = await this.database.bulkDocs(batch as EntryLeaf[]);
+            for (const result of results) {
+                if ("ok" in result) {
+                    chunkSet.delete(result.id as DocumentID);
+                    successCount++;
+                } else {
+                    this._log(`Failed to delete doc: ${result.id}`, LOG_LEVEL_VERBOSE);
+                    errored++;
+                }
+            }
+            this._log(`Deleting chunks: ${successCount} `, logLevel, "gc-preforming");
+        }
+        const message = `Garbage Collection completed.
+Success: ${successCount}, Errored: ${errored}`;
+        this._log(message, logLevel);
+        const kvDB = this.plugin.kvDB;
+        await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
     }
 }

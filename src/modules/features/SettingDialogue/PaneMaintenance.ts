@@ -158,36 +158,40 @@ export function paneMaintenance(
             )
             .addOnUpdate(this.onlyOnMinIO);
     });
-    void addPanel(paneEl, "Garbage Collection (Beta)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
+    void addPanel(paneEl, "Garbage Collection (Beta2)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Remove all orphaned chunks")
-            .setDesc("Remove all orphaned chunks from the local database.")
+            .setName("Scan garbage")
+            .setDesc("Scan for garbage chunks in the database.")
             .addButton((button) =>
                 button
-                    .setButtonText("Remove")
-                    .setWarning()
+                    .setButtonText("Scan")
+                    // .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin
                             .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                            ?.removeUnusedChunks();
+                            ?.trackChanges(false, true);
                     })
-            );
-
-        new Setting(paneEl)
-            .setName("Resurrect deleted chunks")
-            .setDesc(
-                "If you have deleted chunks before fully synchronised and missed some chunks, you possibly can resurrect them."
             )
             .addButton((button) =>
+                button.setButtonText("Rescan").onClick(async () => {
+                    await this.plugin
+                        .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                        ?.trackChanges(true, true);
+                })
+            );
+        new Setting(paneEl)
+            .setName("Collect garbage")
+            .setDesc("Remove all unused chunks from the local database.")
+            .addButton((button) =>
                 button
-                    .setButtonText("Try resurrect")
+                    .setButtonText("Collect")
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin
                             .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                            ?.resurrectChunks();
+                            ?.performGC(true);
                     })
             );
         new Setting(paneEl)
@@ -205,6 +209,41 @@ export function paneMaintenance(
                     })
             );
     });
+    void addPanel(paneEl, "Garbage Collection (Old and Experimental)", (e) => e, this.onlyOnP2POrCouchDB).then(
+        (paneEl) => {
+            new Setting(paneEl)
+                .setName("Remove all orphaned chunks")
+                .setDesc("Remove all orphaned chunks from the local database.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Remove")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin
+                                .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                                ?.removeUnusedChunks();
+                        })
+                );
+
+            new Setting(paneEl)
+                .setName("Resurrect deleted chunks")
+                .setDesc(
+                    "If you have deleted chunks before fully synchronised and missed some chunks, you possibly can resurrect them."
+                )
+                .addButton((button) =>
+                    button
+                        .setButtonText("Try resurrect")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.plugin
+                                .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+                                ?.resurrectChunks();
+                        })
+                );
+        }
+    );
     void addPanel(paneEl, "Rebuilding Operations (Local)").then((paneEl) => {
         new Setting(paneEl)
             .setName("Fetch from remote")

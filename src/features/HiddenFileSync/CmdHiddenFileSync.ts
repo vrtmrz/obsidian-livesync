@@ -86,7 +86,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return this.plugin.kvDB;
     }
     getConflictedDoc(path: FilePathWithPrefix, rev: string) {
-        return this.plugin.localDatabase.getConflictedDoc(path, rev);
+        return this.plugin.managers.conflictManager.getConflictedDoc(path, rev);
     }
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
@@ -699,7 +699,7 @@ Offline Changed files: ${processFiles.length}`;
                         revFrom._revs_info
                             ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
                             .first()?.rev ?? "";
-                    const result = await this.plugin.localDatabase.mergeObject(
+                    const result = await this.plugin.managers.conflictManager.mergeObject(
                         doc.path,
                         commonBase,
                         doc._rev,
