@@ -11,6 +11,57 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## ~~0.25.5~~ 0.25.6
+
+(0.25.5 has been withdrawn due to a bug in the `Fetch chunks on demand` feature).
+
+9th August, 2025
+
+### Fixed
+
+- Storage scanning no longer occurs when `Suspend file watching` is enabled (including boot-sequence).
+    - This change improves safety when troubleshooting or fetching the remote database.
+- `Fetch chunks on demand` is now working again (if you installed 0.25.5, other versions are not affected).
+
+### Improved
+
+- Saving notes and files now consumes less memory.
+    - Data is no longer fully buffered in memory and written at once; instead, it is now written in each over-2MB increments.
+- Chunk caching is now more efficient.
+    - Chunks are now managed solely by their count (still maintained as LRU). If memory usage becomes excessive, they will be automatically released by the system-runtime.
+    - Reverse-indexing is also no longer used. It is performed as scanning caches and act also as a WeakRef thinning.
+- Both of them (may) are effective for #692, #680, and some more.
+
+### Changed
+
+- `Incubate Chunks in Document` (also known as `Eden`) is now fully sunset.
+    - Existing chunks can still be read, but new ones will no longer be created.
+- The `Compute revisions for chunks` setting has also been removed.
+    - This feature is now always enabled and is no longer configurable (restoring the original behaviour).
+- As mentioned, `Memory cache size (by total characters)` has been removed.
+    - The `Memory cache size (by total items)` setting is now the only option available (but it has 10x ratio compared to the previous version).
+
+### Refactored
+
+- A significant refactoring of the core codebase is underway.
+    - This is part of our ongoing efforts to improve code maintainability, readability, and to unify interfaces.
+        - Previously, complex files posed a risk due to a low bus factor. Fortunately, as our devices have become faster and more capable, we can now write code that is clearer and more maintainable (And not so much costs on performance).
+    - Hashing functions have been refactored into the `HashManager` class and its derived classes.
+    - Chunk splitting functions have been refactored into the `ContentSplitterCore` class and its derived classes.
+    - Change tracking functions have been refactored into the `ChangeManager` class.
+    - Chunk read/write functions have been refactored into the `ChunkManager` class.
+    - Fetching chunks on demand is now handled separately from the `ChunkManager` and chunk reading functions. Chunks are queued by the `ChunkManager` and then processed by the `ChunkFetcher`, simplifying the process and reducing unnecessary complexity.
+    - Then, local database access via `LiveSyncLocalDB` has been refactored to use the new classes.
+- References to external sources from `commonlib` have been corrected.
+- Type definitions in `types.ts` have been refined.
+- Unit tests are being added incrementally.
+    - I am using `Deno` for testing, to simplify testing and coverage reporting.
+    - While this is not identical to the Obsidian environment, `jest` may also have limitations. It is certainly better than having no tests.
+        - In other words, recent manual scenario testing has highlighted some shortcomings.
+    - `pouchdb-test`, used for testing PouchDB with Deno, has been added, utilising the `memory` adapter.
+
+Side note: Although class-oriented programming is sometimes considered an outdated style, However, I have come to re-evaluate it as valuable from the perspectives of maintainability and readability.
+
 ## 0.25.4
 
 29th July, 2025
