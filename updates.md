@@ -1,3 +1,13 @@
+## 0.25.11
+
+28th August, 2025
+
+### Fixed
+
+- Automatic translation detection on the first launch now works correctly (#630).
+- No errors are shown during synchronisations in offline (if not explicitly requested) (#699).
+- Missing some checking during automatic-synchronisation now works correctly.
+
 ## 0.25.10
 
 26th August, 2025
