@@ -11,7 +11,7 @@ import { type UXFileInfo } from "../../../lib/src/common/types.ts";
 function getFileLockKey(file: TFile | TFolder | string | UXFileInfo) {
     return `fl:${typeof file == "string" ? file : file.path}`;
 }
-function toArrayBuffer(arr: Uint8Array | ArrayBuffer | DataView): ArrayBufferLike {
+function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<ArrayBuffer>): ArrayBuffer {
     if (arr instanceof Uint8Array) {
         return arr.buffer;
     }
@@ -77,7 +77,11 @@ export class SerializedFileAccess {
         return await processReadFile(file, () => this.app.vault.adapter.readBinary(path));
     }
 
-    async adapterWrite(file: TFile | string, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
+    async adapterWrite(
+        file: TFile | string,
+        data: string | ArrayBuffer | Uint8Array<ArrayBuffer>,
+        options?: DataWriteOptions
+    ) {
         const path = file instanceof TFile ? file.path : file;
         if (typeof data === "string") {
             return await processWriteFile(file, () => this.app.vault.adapter.write(path, data, options));
@@ -106,7 +110,7 @@ export class SerializedFileAccess {
         return await processReadFile(file, () => this.app.vault.readBinary(file));
     }
 
-    async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array, options?: DataWriteOptions) {
+    async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: DataWriteOptions) {
         if (typeof data === "string") {
             return await processWriteFile(file, async () => {
                 const oldData = await this.app.vault.read(file);
@@ -131,7 +135,7 @@ export class SerializedFileAccess {
     }
     async vaultCreate(
         path: string,
-        data: string | ArrayBuffer | Uint8Array,
+        data: string | ArrayBuffer | Uint8Array<ArrayBuffer>,
         options?: DataWriteOptions
     ): Promise<TFile> {
         if (typeof data === "string") {

@@ -6,6 +6,10 @@ import { $msg } from "src/lib/src/common/i18n.ts";
 
 export class ModuleCheckRemoteSize extends AbstractModule implements ICoreModule {
     async $allScanStat(): Promise<boolean> {
+        if (this.core.managers.networkManager.isOnline === false) {
+            this._log("Network is offline, skipping remote size check.", LOG_LEVEL_INFO);
+            return true;
+        }
         this._log($msg("moduleCheckRemoteSize.logCheckingStorageSizes"), LOG_LEVEL_VERBOSE);
         if (this.settings.notifyThresholdOfRemoteStorageSize < 0) {
             const message = $msg("moduleCheckRemoteSize.msgSetDBCapacity");

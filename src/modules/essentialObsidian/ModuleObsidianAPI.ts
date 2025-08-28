@@ -106,6 +106,9 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";
         if (uri.indexOf(" ") !== -1) return "Remote URI and database name could not contain spaces.";
+        if (!this.core.managers.networkManager.isOnline) {
+            return "Network is offline";
+        }
         // let authHeader = await this._authHeader.getAuthorizationHeader(auth);
 
         const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {

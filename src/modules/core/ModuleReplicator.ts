@@ -17,6 +17,7 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
+    type RemoteType,
 } from "../../lib/src/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import {
@@ -38,7 +39,8 @@ const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
 
 export class ModuleReplicator extends AbstractModule implements ICoreModule {
-    _replicatorType?: string;
+    _replicatorType?: RemoteType;
+
     $everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.$$isSuspended()) {
@@ -91,6 +93,10 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
 
     async $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         // Checking salt
+        if (!this.core.managers.networkManager.isOnline) {
+            this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+            return false;
+        }
         // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
         if (!(await this.ensureReplicatorPBKDF2Salt(false))) {
             Logger("Failed to initialise the encryption key, preventing replication.", LOG_LEVEL_NOTICE);
@@ -180,6 +186,11 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         }
         if (!(await this.core.$everyCommitPendingFileEvent())) {
             Logger($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
+            return false;
+        }
+
+        if (!this.core.managers.networkManager.isOnline) {
+            this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
             return false;
         }
         if (!(await this.core.$everyBeforeReplicate(showMessage))) {

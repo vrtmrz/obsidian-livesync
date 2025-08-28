@@ -1,6 +1,6 @@
 import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
+import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
 import {
     type BucketSyncSetting,
     ChunkAlgorithmNames,
@@ -11,8 +11,8 @@ import {
     SALT_OF_PASSPHRASE,
 } from "../../lib/src/common/types";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
-import { $msg, setLang } from "../../lib/src/common/i18n";
-import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb";
+import { $msg, setLang } from "../../lib/src/common/i18n.ts";
+import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
 import { getLanguage } from "obsidian";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
 import { decryptString, encryptString } from "@/lib/src/encryption/stringEncryption.ts";
@@ -23,8 +23,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             const obsidianLanguage = getLanguage();
             if (
                 SUPPORTED_I18N_LANGS.indexOf(obsidianLanguage) !== -1 && // Check if the language is supported
-                obsidianLanguage != this.settings.displayLanguage && // Check if the language is different from the current setting
-                this.settings.displayLanguage != ""
+                obsidianLanguage != this.settings.displayLanguage // Check if the language is different from the current setting
             ) {
                 // Check if the current setting is not empty (Means migrated or installed).
                 this.settings.displayLanguage = obsidianLanguage as I18N_LANGS;

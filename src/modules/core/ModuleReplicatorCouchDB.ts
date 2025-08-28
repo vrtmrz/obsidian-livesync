@@ -18,12 +18,12 @@ export class ModuleReplicatorCouchDB extends AbstractModule implements ICoreModu
         if (this.settings.remoteType != REMOTE_MINIO && this.settings.remoteType != REMOTE_P2P) {
             // If LiveSync enabled, open replication
             if (this.settings.liveSync) {
-                fireAndForget(() => this.core.replicator.openReplication(this.settings, true, false, false));
+                fireAndForget(() => this.core.$$replicate(false));
             }
             // If sync on start enabled, open replication
             if (!this.settings.liveSync && this.settings.syncOnStart) {
                 // Possibly ok as if only share the result
-                fireAndForget(() => this.core.replicator.openReplication(this.settings, false, false, false));
+                fireAndForget(() => this.core.$$replicate(false));
             }
         }
 
