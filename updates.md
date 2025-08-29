@@ -1,3 +1,11 @@
+## 0.25.12
+
+29th August, 2025
+
+### Fixed
+
+- Fixed an issue with automatic synchronisation starting (#702).
+
 ## 0.25.11
 
 28th August, 2025
@@ -58,43 +66,6 @@
 ### Refactored
 
 - Type errors have been corrected.
-
-## 0.25.7
-
-15th August, 2025
-
-**Since the release of 0.25.6, there are two large problem. Please update immediately.**
-
-- We may have corrupted some documents during the migration process. **Please check your documents on the wizard.**
-- Due to a chunk ID assignment issue, some data has not been encrypted. **Please rebuild the database using Rebuild Everything** if you have enabled E2EE.
-
-**_So, If you have enabled E2EE, please perform `Rebuild everything`. If not, please check your documents on the wizard._**
-
-In next version, insecure chunk detection will be implemented.
-
-### Fixed
-
-- Off-loaded chunking have been fixed to ensure proper functionality (#693).
-- Chunk document ID assignment has been fixed.
-- Replication prevention message during version up detection has been improved (#686).
-- `Keep A` and `Keep B` on Conflict resolving dialogue has been renamed to `Use Base` and `Use Conflicted` (#691).
-
-### Improved
-
-- Metadata and content-size unmatched documents are now detected and reported, prevented to be applied to the storage.
-    - This behaviour can be configured in `Patch` -> `Edge case addressing (Behaviour)` -> `Process files even if seems to be corrupted`
-    - Note: this toggle is for the direct-database-manipulation users.
-
-### New Features
-
-- `Scan for Broken files` has been implemented on `Hatch` -> `TroubleShooting`.
-
-### Refactored
-
-- Off-loaded processes have been refactored for the better maintainability.
-    - Files prefixed `bg.worker` are now work on the worker threads.
-    - Files prefixed `bgWorker.` are now also controls these worker threads. (I know what you want to say... I will rename them).
-- Removed unused code.
 
 ## 0.25.0
 
