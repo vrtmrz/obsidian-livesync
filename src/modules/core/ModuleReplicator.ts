@@ -173,17 +173,23 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             }
         });
     }
-    async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
-        //--?
-        if (!this.core.$$isReady()) return;
+
+    async $$canReplicate(showMessage: boolean = false): Promise<boolean> {
+        if (!this.core.$$isReady()) {
+            Logger(`Not ready`);
+            return false;
+        }
+
         if (isLockAcquired("cleanup")) {
             Logger($msg("Replicator.Message.Cleaned"), LOG_LEVEL_NOTICE);
-            return;
+            return false;
         }
+
         if (this.settings.versionUpFlash != "") {
             Logger($msg("Replicator.Message.VersionUpFlash"), LOG_LEVEL_NOTICE);
-            return;
+            return false;
         }
+
         if (!(await this.core.$everyCommitPendingFileEvent())) {
             Logger($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
             return false;
@@ -197,6 +203,12 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
+        return true;
+    }
+
+    async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
+        const checkBeforeReplicate = await this.$$canReplicate(showMessage);
+        if (!checkBeforeReplicate) return false;
 
         //<-- Here could be an module.
         const ret = await this.core.replicator.openReplication(this.settings, false, showMessage, false);

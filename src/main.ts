@@ -582,6 +582,11 @@ export default class ObsidianLiveSyncPlugin
     $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         return InterceptiveEvery;
     }
+
+    $$canReplicate(showMessage: boolean = false): Promise<boolean> {
+        throwShouldBeOverridden();
+    }
+
     $$replicate(showMessage: boolean = false): Promise<boolean | void> {
         throwShouldBeOverridden();
     }
