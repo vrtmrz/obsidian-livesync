@@ -1,3 +1,10 @@
+## 0.25.13
+
+1st September, 2025
+
+### Fixed
+- Conflict resolving dialogue now properly displays the changeset name instead of A or B (#691).
+
 ## 0.25.12
 
 29th August, 2025
