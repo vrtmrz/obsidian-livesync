@@ -12,6 +12,11 @@
     background-color: var(--text-muted);
 }
 
+.conflict-dev-name {
+    display: inline-block;
+    min-width: 5em;
+}
+
 .op-scrollable {
     overflow-y: scroll;
     /* min-height: 280px; */
