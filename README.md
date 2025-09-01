@@ -18,7 +18,7 @@ Additionally, it supports peer-to-peer synchronisation using WebRTC now (experim
 - Use open-source solutions for the server.
   - Compatible solutions are supported.
 - Support end-to-end encryption.
-- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](#customization-sync) or [Hidden File Sync](#hiddenfilesync).
+- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](docs/settings.md#6-customization-sync-advanced) or [Hidden File Sync](docs/settings.md#7-hidden-files-advanced).
 - Enable WebRTC peer-to-peer synchronisation without requiring a `host` (Experimental).
   - This feature is still in the experimental stage. Please exercise caution when using it.
   - WebRTC is a peer-to-peer synchronisation method, so **at least one device must be online to synchronise**.
