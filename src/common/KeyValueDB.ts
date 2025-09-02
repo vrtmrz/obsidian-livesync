@@ -8,8 +8,8 @@ export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatab
     }
     const storeKey = dbKey;
     const dbPromise = openDB(dbKey, 1, {
-        upgrade(db) {
-            db.createObjectStore(storeKey);
+        upgrade(db, _oldVersion, _newVersion, _transaction, _event) {
+            return db.createObjectStore(storeKey);
         },
     });
     const db = await dbPromise;

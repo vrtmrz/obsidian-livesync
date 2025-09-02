@@ -17,6 +17,15 @@ import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
 
+type ErrorInfo = {
+    path: string;
+    recordedSize: number;
+    actualSize: number;
+    storageSize: number;
+    contentMatched: boolean;
+    isConflicted?: boolean;
+};
+
 export class ModuleMigration extends AbstractModule implements ICoreModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
@@ -112,7 +121,8 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         }
 
         this._log("Checking for incomplete documents...", LOG_LEVEL_NOTICE, "check-incomplete");
-        const errorFiles = [];
+
+        const errorFiles = [] as ErrorInfo[];
         for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
             const path = getPath(metaDoc);
 
@@ -133,17 +143,38 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             if (isDeletedEntry(doc)) {
                 continue;
             }
-            const storageFileContent = await this.core.storageAccess.readHiddenFileBinary(path);
+            const isConflicted = metaDoc?._conflicts && metaDoc._conflicts.length > 0;
+
+            let storageFileContent;
+            try {
+                storageFileContent = await this.core.storageAccess.readHiddenFileBinary(path);
+            } catch (e) {
+                Logger(`Failed to read file ${path}: Possibly unprocessed or missing`);
+                Logger(e, LOG_LEVEL_VERBOSE);
+                continue;
+            }
             // const storageFileBlob = createBlob(storageFileContent);
             const sizeOnStorage = storageFileContent.byteLength;
             const recordedSize = doc.size;
             const docBlob = readAsBlob(doc);
             const actualSize = docBlob.size;
-            if (recordedSize !== actualSize || sizeOnStorage !== actualSize || sizeOnStorage !== recordedSize) {
+            if (
+                recordedSize !== actualSize ||
+                sizeOnStorage !== actualSize ||
+                sizeOnStorage !== recordedSize ||
+                isConflicted
+            ) {
                 const contentMatched = await isDocContentSame(doc.data, storageFileContent);
-                errorFiles.push({ path, recordedSize, actualSize, storageSize: sizeOnStorage, contentMatched });
+                errorFiles.push({
+                    path,
+                    recordedSize,
+                    actualSize,
+                    storageSize: sizeOnStorage,
+                    contentMatched,
+                    isConflicted,
+                });
                 Logger(
-                    `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"}`
+                    `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"} ${isConflicted ? "Conflicted" : "Not Conflicted"}`
                 );
             }
         }
@@ -167,24 +198,23 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         //   Probably restored by the user by resolving A or B on other device, We should overwrite the storage
         //   Also do not fix it automatically. It should be overwritten by replication.
         const recoverable = errorFiles.filter((e) => {
-            return e.recordedSize === e.storageSize;
+            return e.recordedSize === e.storageSize && !e.isConflicted;
         });
         const unrecoverable = errorFiles.filter((e) => {
-            return e.recordedSize !== e.storageSize;
+            return e.recordedSize !== e.storageSize || e.isConflicted;
         });
+        const fileInfo = (e: (typeof errorFiles)[0]) => {
+            return `${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize}) ${e.isConflicted ? "(Conflicted)" : ""}`;
+        };
         const messageUnrecoverable =
             unrecoverable.length > 0
                 ? $msg("moduleMigration.fix0256.messageUnrecoverable", {
-                      filesNotRecoverable: unrecoverable
-                          .map((e) => `- ${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize})`)
-                          .join("\n"),
-                  })
+                    filesNotRecoverable: unrecoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
+                })
                 : "";
 
         const message = $msg("moduleMigration.fix0256.message", {
-            files: recoverable
-                .map((e) => `- ${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize})`)
-                .join("\n"),
+            files: recoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
             messageUnrecoverable,
         });
         const CHECK_IT_LATER = $msg("moduleMigration.fix0256.buttons.checkItLater");

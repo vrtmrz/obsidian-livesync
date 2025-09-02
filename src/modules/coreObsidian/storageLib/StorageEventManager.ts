@@ -207,6 +207,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 }
             }
             if (file instanceof TFolder) continue;
+            // TODO: Confirm why only the TFolder skipping
+            // Possibly following line is needed...
+            // if (file?.isFolder) continue;
             if (!(await this.core.$$isTargetFile(file.path))) continue;
 
             // Stop cache using to prevent the corruption;
