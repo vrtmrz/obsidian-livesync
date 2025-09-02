@@ -1,8 +1,20 @@
+## 0.25.14
+
+2nd September, 2025
+
+### Fixed
+
+- Opening IndexedDB handling has been ensured.
+- Migration check of corrupted files detection has been fixed.
+    - Now informs us about conflicted files as non-recoverable, but noted so.
+    - No longer errors on not-found files.
+
 ## 0.25.13
 
 1st September, 2025
 
 ### Fixed
+
 - Conflict resolving dialogue now properly displays the changeset name instead of A or B (#691).
 
 ## 0.25.12
