@@ -859,26 +859,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     getMinioJournalSyncClient() {
-        const id = this.plugin.settings.accessKey;
-        const key = this.plugin.settings.secretKey;
-        const bucket = this.plugin.settings.bucket;
-        const prefix = this.plugin.settings.bucketPrefix;
-        const region = this.plugin.settings.region;
-        const endpoint = this.plugin.settings.endpoint;
-        const useCustomRequestHandler = this.plugin.settings.useCustomRequestHandler;
-        const customHeaders = this.plugin.settings.bucketCustomHeaders;
-        return new JournalSyncMinio(
-            id,
-            key,
-            endpoint,
-            bucket,
-            prefix,
-            this.plugin.simpleStore,
-            this.plugin,
-            useCustomRequestHandler,
-            region,
-            customHeaders
-        );
+        return new JournalSyncMinio(this.plugin.settings, this.plugin.simpleStore, this.plugin);
     }
     async resetRemoteBucket() {
         const minioJournal = this.getMinioJournalSyncClient();

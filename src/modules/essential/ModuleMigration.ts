@@ -209,8 +209,8 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         const messageUnrecoverable =
             unrecoverable.length > 0
                 ? $msg("moduleMigration.fix0256.messageUnrecoverable", {
-                    filesNotRecoverable: unrecoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
-                })
+                      filesNotRecoverable: unrecoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
+                  })
                 : "";
 
         const message = $msg("moduleMigration.fix0256.message", {

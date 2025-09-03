@@ -320,6 +320,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                 syncWarnMinio.addClass("op-warn-info");
 
                 new Setting(paneEl).autoWireText("endpoint", { holdValue: true });
+                new Setting(paneEl).autoWireToggle("forcePathStyle", { holdValue: true });
                 new Setting(paneEl).autoWireText("accessKey", { holdValue: true });
 
                 new Setting(paneEl).autoWireText("secretKey", {

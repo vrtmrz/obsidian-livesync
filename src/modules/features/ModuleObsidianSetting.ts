@@ -140,6 +140,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                     jwtSub: settings.jwtSub,
                     useRequestAPI: settings.useRequestAPI,
                     bucketPrefix: settings.bucketPrefix,
+                    forcePathStyle: settings.forcePathStyle,
                 };
                 settings.encryptedCouchDBConnection = await this.encryptConfigurationItem(
                     JSON.stringify(connectionSetting),
