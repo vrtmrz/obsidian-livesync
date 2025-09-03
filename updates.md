@@ -1,3 +1,12 @@
+## 0.25.15
+
+3rd September, 2025
+
+### Improved
+
+- Now we can configure `forcePathStyle` for bucket synchronisation (#707).
+
+
 ## 0.25.14
 
 2nd September, 2025
@@ -53,26 +62,6 @@
 
 - Some files have been moved to better reflect their purpose and improve maintainability.
 - The extensive LiveSyncLocalDB has been split into separate files for each role.
-
-## 0.25.9
-
-20th August, 2025
-
-### Fixed
-
-- CORS Checking messages now use replacements.
-- Configuring CORS setting via the UI now respects the existing rules.
-- Now startup-checking works correctly again, performs migration check serially and then it will also fix starting LiveSync or start-up sync. (#696)
-- Statusline in editor now supported 'Bases'.
-
-## 0.25.8
-
-18th August, 2025
-
-### New feature
-
-- Insecure chunk detection has been implemented.
-    - A notification dialogue will be shown if any insecure chunks are detected; these may have been created by v0.25.6 due to its issue. If this dialogue appears, please ensure you rebuild the database after backing it up.
 
 ### Fixed
 

@@ -11,6 +11,25 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.9
+
+20th August, 2025
+
+### Fixed
+
+- CORS Checking messages now use replacements.
+- Configuring CORS setting via the UI now respects the existing rules.
+- Now startup-checking works correctly again, performs migration check serially and then it will also fix starting LiveSync or start-up sync. (#696)
+- Statusline in editor now supported 'Bases'.
+
+## 0.25.8
+
+18th August, 2025
+
+### New feature
+
+- Insecure chunk detection has been implemented.
+    - A notification dialogue will be shown if any insecure chunks are detected; these may have been created by v0.25.6 due to its issue. If this dialogue appears, please ensure you rebuild the database after backing it up.
 
 ## 0.25.7
 
