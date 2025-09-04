@@ -132,6 +132,11 @@ If it results like the following:
 
 Your CouchDB has been initialised successfully. If you want this manually, please read the script.
 
+If you are using Docker Compose and the above command does not work or displays `ERROR: Hostname missing`, you can try running the following command, replacing the placeholders with your own values:
+```
+curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT USERNAME HERE> password=<INSERT PASSWORD HERE> bash
+```
+
 ## 3. Expose CouchDB to the Internet
 
 - You can skip this instruction if you using only in intranet and only with desktop devices.
