@@ -1,3 +1,13 @@
+## 0.25.16
+
+4th September, 2025
+
+### Improved
+- Improved connectivity for P2P connections
+- The connection to the signalling server can now be disconnected while in the background or when explicitly disconnected.
+  - These features use a patch that has not been incorporated upstream.
+  - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
+
 ## 0.25.15
 
 3rd September, 2025
