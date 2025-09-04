@@ -174,6 +174,13 @@ export class P2PReplicator
         if (this.settings.P2P_Enabled && this.settings.P2P_AutoStart) {
             setTimeout(() => void this.open(), 100);
         }
+        const rep = this._replicatorInstance;
+        rep?.allowReconnection();
+        return Promise.resolve(true);
+    }
+    $everyBeforeSuspendProcess(): Promise<boolean> {
+        const rep = this._replicatorInstance;
+        rep?.disconnectFromServer();
         return Promise.resolve(true);
     }
 }
