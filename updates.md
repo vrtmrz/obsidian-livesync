@@ -1,12 +1,26 @@
+## 0.25.17
+
+16th September, 2025
+
+### Fixed
+
+- No longer information-level logs have produced during toggling `Show only notifications` in the settings (#708).
+- Ignoring filters for Hidden file sync now works correctly (#709).
+
+### Refactored
+
+- Removed some unnecessary intermediate files.
+
 ## 0.25.16
 
 4th September, 2025
 
 ### Improved
+
 - Improved connectivity for P2P connections
 - The connection to the signalling server can now be disconnected while in the background or when explicitly disconnected.
-  - These features use a patch that has not been incorporated upstream.
-  - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
+    - These features use a patch that has not been incorporated upstream.
+    - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
 
 ## 0.25.15
 
@@ -15,7 +29,6 @@
 ### Improved
 
 - Now we can configure `forcePathStyle` for bucket synchronisation (#707).
-
 
 ## 0.25.14
 
@@ -53,37 +66,6 @@
 - Automatic translation detection on the first launch now works correctly (#630).
 - No errors are shown during synchronisations in offline (if not explicitly requested) (#699).
 - Missing some checking during automatic-synchronisation now works correctly.
-
-## 0.25.10
-
-26th August, 2025
-
-### New experimental feature
-
-- We can perform Garbage Collection (Beta2) without rebuilding the entire database, and also fetch the database.
-    - Note that this feature is very experimental and should be used with caution.
-    - This feature requires disabling `Fetch chunks on demand`.
-
-### Fixed
-
-- Resetting the bucket now properly clears all uploaded files.
-
-### Refactored
-
-- Some files have been moved to better reflect their purpose and improve maintainability.
-- The extensive LiveSyncLocalDB has been split into separate files for each role.
-
-### Fixed
-
-- Unexpected `Failed to obtain PBKDF2 salt` or similar errors during bucket-synchronisation no longer occur.
-- Unexpected long delays for chunk-missing documents when using bucket-synchronisation have been resolved.
-- Fetched remote chunks are now properly stored in the local database if `Fetch chunks on demand` is enabled.
-- The 'fetch' dialogue's message has been refined.
-- No longer overwriting any corrupted documents to the storage on boot-sequence.
-
-### Refactored
-
-- Type errors have been corrected.
 
 ## 0.25.0
 

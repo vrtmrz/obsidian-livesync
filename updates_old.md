@@ -11,6 +11,37 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.10
+
+26th August, 2025
+
+### New experimental feature
+
+- We can perform Garbage Collection (Beta2) without rebuilding the entire database, and also fetch the database.
+    - Note that this feature is very experimental and should be used with caution.
+    - This feature requires disabling `Fetch chunks on demand`.
+
+### Fixed
+
+- Resetting the bucket now properly clears all uploaded files.
+
+### Refactored
+
+- Some files have been moved to better reflect their purpose and improve maintainability.
+- The extensive LiveSyncLocalDB has been split into separate files for each role.
+
+### Fixed
+
+- Unexpected `Failed to obtain PBKDF2 salt` or similar errors during bucket-synchronisation no longer occur.
+- Unexpected long delays for chunk-missing documents when using bucket-synchronisation have been resolved.
+- Fetched remote chunks are now properly stored in the local database if `Fetch chunks on demand` is enabled.
+- The 'fetch' dialogue's message has been refined.
+- No longer overwriting any corrupted documents to the storage on boot-sequence.
+
+### Refactored
+
+- Type errors have been corrected.
+
 ## 0.25.9
 
 20th August, 2025
