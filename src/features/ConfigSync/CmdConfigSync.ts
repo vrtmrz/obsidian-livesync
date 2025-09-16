@@ -45,7 +45,7 @@ import {
 } from "../../lib/src/common/utils.ts";
 import { digestHash } from "../../lib/src/string_and_binary/hash.ts";
 import { arrayBufferToBase64, decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
-import { serialized, shareRunningResult } from "../../lib/src/concurrency/lock.ts";
+import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "../LiveSyncCommands.ts";
 import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
 import {
@@ -62,7 +62,7 @@ import {
     scheduleTask,
 } from "../../common/utils.ts";
 import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
-import { QueueProcessor } from "../../lib/src/concurrency/processor.ts";
+import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "../../lib/src/mock_and_interop/stores.ts";
 import type ObsidianLiveSyncPlugin from "../../main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";

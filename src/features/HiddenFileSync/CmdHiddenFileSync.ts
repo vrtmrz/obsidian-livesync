@@ -45,11 +45,11 @@ import {
     BASE_IS_NEW,
     EVEN,
 } from "../../common/utils.ts";
-import { serialized, skipIfDuplicated } from "../../lib/src/concurrency/lock.ts";
+import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "../LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
-import { QueueProcessor } from "../../lib/src/concurrency/processor.ts";
+import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src/mock_and_interop/stores.ts";
 import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
 import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
@@ -1765,10 +1765,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
                     continue L1;
                 }
             }
-            if (
-                ignoreFilter &&
-                ignoreFilter.some((e) => (e.pattern.startsWith("/") || e.pattern.startsWith("\\/")) && e.test(v))
-            ) {
+            if (ignoreFilter && ignoreFilter.some((e) => e.test(v))) {
                 continue L1;
             }
             if (await this.plugin.$$isIgnoredByIgnoreFiles(v)) {

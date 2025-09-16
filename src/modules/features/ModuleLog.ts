@@ -370,7 +370,7 @@ export class ModuleLog extends AbstractObsidianModule implements IObsidianModule
         if (level == LOG_LEVEL_DEBUG && !showDebugLog) {
             return;
         }
-        if (level < LOG_LEVEL_INFO && this.settings && this.settings.lessInformationInLog) {
+        if (level <= LOG_LEVEL_INFO && this.settings && this.settings.lessInformationInLog) {
             return;
         }
         if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL_VERBOSE) {
