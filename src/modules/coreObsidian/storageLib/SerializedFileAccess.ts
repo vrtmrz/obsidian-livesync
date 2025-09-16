@@ -1,5 +1,5 @@
 import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "../../../deps.ts";
-import { serialized } from "../../../lib/src/concurrency/lock.ts";
+import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { isPlainText } from "../../../lib/src/string_and_binary/path.ts";
 import type { FilePath, HasSettings, UXFileInfoStub } from "../../../lib/src/common/types.ts";

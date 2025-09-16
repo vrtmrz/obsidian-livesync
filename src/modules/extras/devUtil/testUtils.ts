@@ -1,5 +1,5 @@
 import { fireAndForget } from "../../../lib/src/common/utils.ts";
-import { serialized } from "../../../lib/src/concurrency/lock.ts";
+import { serialized } from "octagonal-wheels/concurrency/lock";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 
 let plugin: ObsidianLiveSyncPlugin;

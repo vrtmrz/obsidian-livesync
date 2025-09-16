@@ -14,14 +14,14 @@ import {
 } from "../../../lib/src/common/types.ts";
 import { delay, fireAndForget, getFileRegExp } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
-import { serialized, skipIfDuplicated } from "../../../lib/src/concurrency/lock.ts";
+import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import {
     finishAllWaitingForTimeout,
     finishWaitingForTimeout,
     isWaitingForTimeout,
     waitForTimeout,
-} from "../../../lib/src/concurrency/task.ts";
-import { Semaphore } from "../../../lib/src/concurrency/semaphore.ts";
+} from "octagonal-wheels/concurrency/task";
+import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";

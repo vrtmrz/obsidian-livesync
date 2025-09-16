@@ -35,7 +35,7 @@ import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels
 import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
 import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 
-export { scheduleTask, cancelTask, cancelAllTasks } from "../lib/src/concurrency/task.ts";
+export { scheduleTask, cancelTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 
 // For backward compatibility, using the path for determining id.
 // Only CouchDB unacceptable ID (that starts with an underscore) has been prefixed with "/".

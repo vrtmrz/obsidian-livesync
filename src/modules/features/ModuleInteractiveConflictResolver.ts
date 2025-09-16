@@ -13,7 +13,7 @@ import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictRes
 import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { serialized } from "../../lib/src/concurrency/lock.ts";
+import { serialized } from "octagonal-wheels/concurrency/lock";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule implements IObsidianModule {
     $everyOnloadStart(): Promise<boolean> {
