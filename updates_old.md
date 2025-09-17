@@ -1,7 +1,6 @@
+# 0.25
 
-## 0.25.0
-
-19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
+Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 After reading Issue #668, I conducted another self-review of the E2EE-related code. In retrospect, it was clearly written by someone inexperienced, which is understandable, but it is still rather embarrassing. Three years is certainly enough time for growth.
 
@@ -10,6 +9,17 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
 ---
+
+## 0.25.11
+
+28th August, 2025
+
+### Fixed
+
+- Automatic translation detection on the first launch now works correctly (#630).
+- No errors are shown during synchronisations in offline (if not explicitly requested) (#699).
+- Missing some checking during automatic-synchronisation now works correctly.
+
 
 ## 0.25.10
 
