@@ -1,4 +1,4 @@
-import { Trench } from "../../../lib/src/memory/memutil.ts";
+import { Trench } from "octagonal-wheels/memory/memutil";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 type MeasureResult = [times: number, spent: number];
 type NamedMeasureResult = [name: string, result: MeasureResult];

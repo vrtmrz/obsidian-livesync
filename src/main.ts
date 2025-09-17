@@ -31,7 +31,7 @@ import { type KeyValueDatabase } from "./lib/src/interfaces/KeyValueDatabase.ts"
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { reactiveSource, type ReactiveValue } from "./lib/src/dataobject/reactive.js";
+import { reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
 import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
 import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";

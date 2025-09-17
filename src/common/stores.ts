@@ -1,4 +1,4 @@
-import { PersistentMap } from "../lib/src/dataobject/PersistentMap.ts";
+import { PersistentMap } from "octagonal-wheels/dataobject/PersistentMap";
 
 export let sameChangePairs: PersistentMap<number[]>;
 

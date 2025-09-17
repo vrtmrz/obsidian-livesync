@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { logMessages } from "../../../lib/src/mock_and_interop/stores";
-  import { reactive, type ReactiveInstance } from "../../../lib/src/dataobject/reactive";
+  import { reactive, type ReactiveInstance } from "octagonal-wheels/dataobject/reactive";
   import { Logger } from "../../../lib/src/common/logger";
   import { $msg as msg, currentLang as lang } from "../../../lib/src/common/i18n.ts";
 
