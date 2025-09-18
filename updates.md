@@ -8,6 +8,18 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
+## 0.25.19
+
+18th September, 2025
+
+### Improved
+
+- Now encoding/decoding for chunk data and encryption/decryption are performed in native functions (if they were available).
+    - This uses Uint8Array.fromBase64 and Uint8Array.toBase64, which are natively available in iOS 18.2+ and Android with Chrome 140+.
+        - In Android, WebView is by default updated with Chrome, so it should be available in most cases.
+    - Note that this is not available in Desktop yet (due to being based on Electron). We are staying tuned for future updates.
+    - This realised by an external(?) package [octagonal-wheels](https://github.com/vrtmrz/octagonal-wheels). Therefore, this update only updates the dependency.
+
 ## 0.25.18
 
 17th September, 2025
@@ -81,7 +93,6 @@ As a result, this is the first time in a while that forward compatibility has be
 ### Fixed
 
 - Fixed an issue with automatic synchronisation starting (#702).
-
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
