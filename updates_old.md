@@ -10,6 +10,22 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.13
+
+1st September, 2025
+
+### Fixed
+
+- Conflict resolving dialogue now properly displays the changeset name instead of A or B (#691).
+
+## 0.25.12
+
+29th August, 2025
+
+### Fixed
+
+- Fixed an issue with automatic synchronisation starting (#702).
+
 ## 0.25.11
 
 28th August, 2025
@@ -19,7 +35,6 @@ As a result, this is the first time in a while that forward compatibility has be
 - Automatic translation detection on the first launch now works correctly (#630).
 - No errors are shown during synchronisations in offline (if not explicitly requested) (#699).
 - Missing some checking during automatic-synchronisation now works correctly.
-
 
 ## 0.25.10
 
@@ -108,7 +123,6 @@ In next version, insecure chunk detection will be implemented.
     - Files prefixed `bg.worker` are now work on the worker threads.
     - Files prefixed `bgWorker.` are now also controls these worker threads. (I know what you want to say... I will rename them).
 - Removed unused code.
-
 
 ## ~~0.25.5~~ 0.25.6
 
@@ -209,7 +223,6 @@ The PBKDF2Salt will be referred to as the `Security Seed`, and it is used to der
 
 - The Set-up URI is now encrypted with a new encryption algorithm (mostly the same as `V2`).
     - The new Set-up URI is not compatible with version 0.24.x or earlier.
-
 
 ## 0.25.0
 
@@ -428,7 +441,6 @@ However, just to whisper, this is tremendously fast.
 - Dependent libraries have been updated to the latest version.
 - Some build processes have been separated to `pre` and `post` processes.
 
-
 ## 0.24.25
 
 22nd April, 2025
@@ -506,8 +518,8 @@ However, just to whisper, this is tremendously fast.
 
 - No longer conflicted files are handled in the boot-up process. No more
   unexpected overwriting.
-  - It ignores `Always overwrite with a newer file`, and always be prevented for
-    the safety. Please pick it manually or open the file.
+    - It ignores `Always overwrite with a newer file`, and always be prevented for
+      the safety. Please pick it manually or open the file.
 - Some log messages on conflict resolution has been corrected.
 - Automatic merge notifications, displayed on the grounds of `same`, have been
   degraded to logs.
@@ -516,8 +528,8 @@ However, just to whisper, this is tremendously fast.
 
 - Now we can fetch the remote database with keeping local files completely
   intact.
-  - In new option, all files are stored into the local database before the
-    fetching, and will be merged automatically or detected as conflicts.
+    - In new option, all files are stored into the local database before the
+      fetching, and will be merged automatically or detected as conflicts.
 - The dialogue presenting options when performing `Fetch` are now more
   informative.
 
@@ -539,8 +551,8 @@ However, just to whisper, this is tremendously fast.
 
 - **NOW INDEED AND ACTUALLY** `Compute revisions for chunks` are backed into
   enabled again. it is necessary for garbage collection of chunks.
-  - As far as existing users are concerned, this will not automatically change,
-    but the Doctor will inform us.
+    - As far as existing users are concerned, this will not automatically change,
+      but the Doctor will inform us.
 
 ## 0.24.19
 
@@ -580,7 +592,6 @@ However, just to whisper, this is tremendously fast.
 Confession. I got the default values wrong. So scary and sorry.
 
 ## 0.24.16
-
 
 ### Improved
 
@@ -662,7 +673,6 @@ Sorry for the lack of replies. The ones that were not good are popping up, so I 
 - Displaying replication status of the peer-to-peer synchronisation is separated from the main-log-logic.
 - Some file names have been changed to be more consistent.
 
-
 ## 0.24.12
 
 I created a SPA called [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) (well, right... I will think of a name again), which replaces the server when using Peer-to-Peer synchronisation. This is a pseudo-client that appears to other devices as if it were one of the clients. . As with the client, it receives and sends data without storing it as a file.
@@ -677,7 +687,6 @@ And, this is just a single web page, without any server-side code. It is a stati
 - Platform impedance-matching-layer has been improved.
     - And you can see the actual usage of this on [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer) that a pseudo client for peer-to-peer synchronisation.
 - Some UIs have been got isomorphic among Obsidian and web applications (for `webpeer`).
-
 
 ## 0.24.11
 

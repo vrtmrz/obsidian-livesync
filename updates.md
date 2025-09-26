@@ -8,6 +8,22 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
+## 0.25.20
+
+26th September, 2025
+
+### Fixed
+
+- Chunk fetching no longer reports errors when the fetched chunk could not be saved (#710).
+    - Just using the fetched chunk temporarily.
+- Chunk fetching reports errors when the fetched chunk is surely corrupted (#710, #712).
+- It no longer detects files that the plug-in has modified.
+    - It may reduce unnecessary file comparisons and unexpected file states.
+
+### Improved
+
+- Now checking the remote database configuration respecting the CouchDB version (#714).
+
 ## 0.25.19
 
 18th September, 2025
@@ -77,22 +93,6 @@ As a result, this is the first time in a while that forward compatibility has be
 - Migration check of corrupted files detection has been fixed.
     - Now informs us about conflicted files as non-recoverable, but noted so.
     - No longer errors on not-found files.
-
-## 0.25.13
-
-1st September, 2025
-
-### Fixed
-
-- Conflict resolving dialogue now properly displays the changeset name instead of A or B (#691).
-
-## 0.25.12
-
-29th August, 2025
-
-### Fixed
-
-- Fixed an issue with automatic synchronisation starting (#702).
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
