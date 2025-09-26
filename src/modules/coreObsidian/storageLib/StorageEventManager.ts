@@ -25,6 +25,7 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
+import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
 // import { InternalFileToUXFileInfo } from "../platforms/obsidian.ts";
 
 export type FileEvent = {
@@ -46,6 +47,7 @@ export abstract class StorageEventManager {
 export class StorageEventManagerObsidian extends StorageEventManager {
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
+    storageAccess: StorageAccess;
 
     get shouldBatchSave() {
         return this.core.settings?.batchSave && this.core.settings?.liveSync != true;
@@ -56,8 +58,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     get batchSaveMaximumDelay(): number {
         return this.core.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay;
     }
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, storageAccess: StorageAccess) {
         super();
+        this.storageAccess = storageAccess;
         this.plugin = plugin;
         this.core = core;
     }
@@ -88,6 +91,10 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         }
         const file = info?.file as TFile;
         if (!file) return;
+        if (this.storageAccess.isFileProcessing(file.path as FilePath)) {
+            // Logger(`Editor change skipped because the file is being processed: ${file.path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         if (!this.isWaiting(file.path as FilePath)) {
             return;
         }
@@ -102,22 +109,35 @@ export class StorageEventManagerObsidian extends StorageEventManager {
 
     watchVaultCreate(file: TAbstractFile, ctx?: any) {
         if (file instanceof TFolder) return;
+        if (this.storageAccess.isFileProcessing(file.path as FilePath)) {
+            // Logger(`File create skipped because the file is being processed: ${file.path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const fileInfo = TFileToUXFileInfoStub(file);
         void this.appendQueue([{ type: "CREATE", file: fileInfo }], ctx);
     }
 
     watchVaultChange(file: TAbstractFile, ctx?: any) {
         if (file instanceof TFolder) return;
+        if (this.storageAccess.isFileProcessing(file.path as FilePath)) {
+            // Logger(`File change skipped because the file is being processed: ${file.path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const fileInfo = TFileToUXFileInfoStub(file);
         void this.appendQueue([{ type: "CHANGED", file: fileInfo }], ctx);
     }
 
     watchVaultDelete(file: TAbstractFile, ctx?: any) {
         if (file instanceof TFolder) return;
+        if (this.storageAccess.isFileProcessing(file.path as FilePath)) {
+            // Logger(`File delete skipped because the file is being processed: ${file.path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         const fileInfo = TFileToUXFileInfoStub(file, true);
         void this.appendQueue([{ type: "DELETE", file: fileInfo }], ctx);
     }
     watchVaultRename(file: TAbstractFile, oldFile: string, ctx?: any) {
+        // vault Rename will not be raised for self-events (Self-hosted LiveSync will not handle 'rename').
         if (file instanceof TFile) {
             const fileInfo = TFileToUXFileInfoStub(file);
             void this.appendQueue(
@@ -145,6 +165,10 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     }
     // Watch raw events (Internal API)
     watchVaultRawEvents(path: FilePath) {
+        if (this.storageAccess.isFileProcessing(path)) {
+            // Logger(`Raw file event skipped because the file is being processed: ${path}`, LOG_LEVEL_VERBOSE);
+            return;
+        }
         // Only for internal files.
         if (!this.plugin.settings) return;
         // if (this.plugin.settings.useIgnoreFiles && this.plugin.ignoreFiles.some(e => path.endsWith(e.trim()))) {

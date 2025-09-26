@@ -101,6 +101,23 @@ export function paneRemoteConfig(
             addResult($msg("obsidianLiveSyncSettingTab.msgIfConfigNotPersistent"), ["ob-btn-config-info"]);
             addResult($msg("obsidianLiveSyncSettingTab.msgConfigCheck"), ["ob-btn-config-head"]);
 
+            const serverBanner = r.headers["server"] ?? r.headers["Server"] ?? "unknown";
+            addResult($msg("obsidianLiveSyncSettingTab.serverVersion", { info: serverBanner }));
+            const versionMatch = serverBanner.match(/CouchDB(\/([0-9.]+))?/);
+            const versionStr = versionMatch ? versionMatch[2] : "0.0.0";
+            const versionParts = `${versionStr}.0.0.0`.split(".");
+            // Compare version string with the target version.
+            // version must be a string like "3.2.1" or "3.10.2", and must be two or three parts.
+            function isGreaterThanOrEqual(version: string) {
+                const targetParts = version.split(".");
+                for (let i = 0; i < targetParts.length; i++) {
+                    // compare as number if possible (so 3.10 > 3.2, 3.10.1b > 3.10.1a)
+                    const result = versionParts[i].localeCompare(targetParts[i], undefined, { numeric: true });
+                    if (result > 0) return true;
+                    if (result < 0) return false;
+                }
+                return true;
+            }
             // Admin check
             //  for database creation and deletion
             if (!(this.editingSettings.couchDB_USER in responseConfig.admins)) {
@@ -108,28 +125,31 @@ export function paneRemoteConfig(
             } else {
                 addResult($msg("obsidianLiveSyncSettingTab.okAdminPrivileges"));
             }
-            // HTTP user-authorization check
-            if (responseConfig?.chttpd?.require_valid_user != "true") {
-                isSuccessful = false;
-                addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUser"));
-                addConfigFixButton(
-                    $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUser"),
-                    "chttpd/require_valid_user",
-                    "true"
-                );
+            if (isGreaterThanOrEqual("3.2.0")) {
+                // HTTP user-authorization check
+                if (responseConfig?.chttpd?.require_valid_user != "true") {
+                    isSuccessful = false;
+                    addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUser"));
+                    addConfigFixButton(
+                        $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUser"),
+                        "chttpd/require_valid_user",
+                        "true"
+                    );
+                } else {
+                    addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUser"));
+                }
             } else {
-                addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUser"));
-            }
-            if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
-                isSuccessful = false;
-                addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUserAuth"));
-                addConfigFixButton(
-                    $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUserAuth"),
-                    "chttpd_auth/require_valid_user",
-                    "true"
-                );
-            } else {
-                addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUserAuth"));
+                if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
+                    isSuccessful = false;
+                    addResult($msg("obsidianLiveSyncSettingTab.errRequireValidUserAuth"));
+                    addConfigFixButton(
+                        $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUserAuth"),
+                        "chttpd_auth/require_valid_user",
+                        "true"
+                    );
+                } else {
+                    addResult($msg("obsidianLiveSyncSettingTab.okRequireValidUserAuth"));
+                }
             }
             // HTTPD check
             //  Check Authentication header
@@ -144,12 +164,26 @@ export function paneRemoteConfig(
             } else {
                 addResult($msg("obsidianLiveSyncSettingTab.okWwwAuth"));
             }
-            if (responseConfig?.httpd?.enable_cors != "true") {
-                isSuccessful = false;
-                addResult($msg("obsidianLiveSyncSettingTab.errEnableCors"));
-                addConfigFixButton($msg("obsidianLiveSyncSettingTab.msgEnableCors"), "httpd/enable_cors", "true");
+            if (isGreaterThanOrEqual("3.2.0")) {
+                if (responseConfig?.chttpd?.enable_cors != "true") {
+                    isSuccessful = false;
+                    addResult($msg("obsidianLiveSyncSettingTab.errEnableCorsChttpd"));
+                    addConfigFixButton(
+                        $msg("obsidianLiveSyncSettingTab.msgEnableCorsChttpd"),
+                        "chttpd/enable_cors",
+                        "true"
+                    );
+                } else {
+                    addResult($msg("obsidianLiveSyncSettingTab.okEnableCorsChttpd"));
+                }
             } else {
-                addResult($msg("obsidianLiveSyncSettingTab.okEnableCors"));
+                if (responseConfig?.httpd?.enable_cors != "true") {
+                    isSuccessful = false;
+                    addResult($msg("obsidianLiveSyncSettingTab.errEnableCors"));
+                    addConfigFixButton($msg("obsidianLiveSyncSettingTab.msgEnableCors"), "httpd/enable_cors", "true");
+                } else {
+                    addResult($msg("obsidianLiveSyncSettingTab.okEnableCors"));
+                }
             }
             // If the server is not cloudant, configure request size
             if (!isCloudantURI(this.editingSettings.couchDB_URI)) {

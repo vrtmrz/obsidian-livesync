@@ -15,10 +15,40 @@ import { TFileToUXFileInfoStub, TFolderToUXFileInfoStub } from "./storageLib/uti
 import { StorageEventManagerObsidian, type StorageEventManager } from "./storageLib/StorageEventManager";
 import type { StorageAccess } from "../interfaces/StorageAccess";
 import { createBlob, type CustomRegExp } from "../../lib/src/common/utils";
+import { serialized } from "octagonal-wheels/concurrency/lock_v2";
+
+const fileLockPrefix = "file-lock:";
 
 export class ModuleFileAccessObsidian extends AbstractObsidianModule implements IObsidianModule, StorageAccess {
+    processingFiles: Set<FilePathWithPrefix> = new Set();
+    processWriteFile<T>(file: UXFileInfoStub | FilePathWithPrefix, proc: () => Promise<T>): Promise<T> {
+        const path = typeof file === "string" ? file : file.path;
+        return serialized(`${fileLockPrefix}${path}`, async () => {
+            try {
+                this.processingFiles.add(path);
+                return await proc();
+            } finally {
+                this.processingFiles.delete(path);
+            }
+        });
+    }
+    processReadFile<T>(file: UXFileInfoStub | FilePathWithPrefix, proc: () => Promise<T>): Promise<T> {
+        const path = typeof file === "string" ? file : file.path;
+        return serialized(`${fileLockPrefix}${path}`, async () => {
+            try {
+                this.processingFiles.add(path);
+                return await proc();
+            } finally {
+                this.processingFiles.delete(path);
+            }
+        });
+    }
+    isFileProcessing(file: UXFileInfoStub | FilePathWithPrefix): boolean {
+        const path = typeof file === "string" ? file : file.path;
+        return this.processingFiles.has(path);
+    }
     vaultAccess!: SerializedFileAccess;
-    vaultManager: StorageEventManager = new StorageEventManagerObsidian(this.plugin, this.core);
+    vaultManager: StorageEventManager = new StorageEventManagerObsidian(this.plugin, this.core, this);
     $everyOnload(): Promise<boolean> {
         this.core.storageAccess = this;
         return Promise.resolve(true);
@@ -42,7 +72,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
 
     $everyOnloadStart(): Promise<boolean> {
-        this.vaultAccess = new SerializedFileAccess(this.app, this.plugin);
+        this.vaultAccess = new SerializedFileAccess(this.app, this.plugin, this);
         return Promise.resolve(true);
     }
 
