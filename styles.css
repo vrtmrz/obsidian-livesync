@@ -110,10 +110,10 @@
 div.sls-setting-menu-btn {
     color: var(--text-normal);
     background-color: var(--background-secondary-alt);
-    border-radius: 4px 4px 0 0;
+    border-radius: 8px;
     padding: 6px 10px;
     cursor: pointer;
-    margin-right: 12px;
+    margin-right: 2px;
     font-family: "Inter", sans-serif;
     outline: none;
     user-select: none;
@@ -140,9 +140,9 @@ div.sls-setting-menu-btn {
     flex-grow: 1;
     position: sticky;
     top: 0;
-    background-color: rgba(var(--background-primary), 0.3);
-    backdrop-filter: blur(4px);
-    border-radius: 4px;
+    backdrop-filter: blur(15px);
+    padding: 4px;
+    border-radius: 10px;
     z-index: 10;
 }
 
@@ -437,13 +437,11 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
 
 .sls-setting-panel-title {
     position: sticky;
-}
-
-.sls-setting-panel-title {
-    top: 2em;
-    background-color: rgba(var(--background-primary), 0.3);
-    backdrop-filter: blur(4px);
-    border-radius: 30%;
+    font-size: medium;
+    top: 2.5em;
+    background-color: var(--background-secondary-alt);
+    border-radius: 10px;
+    padding: 0.5em 1.0em;
 }
 
 .sls-dialogue-note-wrapper {

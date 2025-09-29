@@ -98,7 +98,7 @@ export function paneMaintenance(
             );
     });
 
-    void addPanel(paneEl, "Syncing", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, "Syncing", () => { }, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
             .setName("Resend")
             .setDesc("Resend all chunks to the remote.")
@@ -283,7 +283,7 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnCouchDB);
     });
 
-    void addPanel(paneEl, "Total Overhaul", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, "Total Overhaul", () => { }, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
             .setName("Rebuild everything")
             .setDesc("Rebuild local and remote database with local files.")
@@ -307,7 +307,7 @@ export function paneMaintenance(
                     })
             );
     });
-    void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => { }, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
             .setName("Perform cleanup")
             .setDesc(

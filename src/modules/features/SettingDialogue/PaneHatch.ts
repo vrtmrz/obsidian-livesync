@@ -119,8 +119,8 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     const scheme = pluginConfig.couchDB_URI.startsWith("http:")
                         ? "(HTTP)"
                         : pluginConfig.couchDB_URI.startsWith("https:")
-                          ? "(HTTPS)"
-                          : "";
+                            ? "(HTTPS)"
+                            : "";
                     pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
                         ? "cloudant"
                         : `self-hosted${scheme}`;
@@ -150,8 +150,8 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         const endpointScheme = pluginConfig.endpoint.startsWith("http:")
                             ? "(HTTP)"
                             : pluginConfig.endpoint.startsWith("https:")
-                              ? "(HTTPS)"
-                              : "";
+                                ? "(HTTPS)"
+                                : "";
                         pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                     }
                     const obsidianInfo = {
@@ -166,9 +166,9 @@ ${stringifyYaml(responseConfig)}
 ---
 # ---- Plug-in config ----
 ${stringifyYaml({
-    version: this.manifestVersion,
-    ...pluginConfig,
-})}`;
+                        version: this.manifestVersion,
+                        ...pluginConfig,
+                    })}`;
                     console.log(msgConfig);
                     await navigator.clipboard.writeText(msgConfig);
                     Logger(
