@@ -61,7 +61,7 @@ import { ModuleObsidianAPI } from "./modules/essentialObsidian/ModuleObsidianAPI
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
 import { injectModules, type AbstractModule } from "./modules/AbstractModule.ts";
 import type { ICoreModule } from "./modules/ModuleTypes.ts";
-import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
+import { ModuleObsidianSettingsDialog } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
@@ -154,7 +154,7 @@ export default class ObsidianLiveSyncPlugin
         new ModuleObsidianSettings(this, this),
         new ModuleResolvingMismatchedTweaks(this),
         new ModuleObsidianSettingsAsMarkdown(this, this),
-        new ModuleObsidianSettingDialogue(this, this),
+        new ModuleObsidianSettingsDialog(this, this),
         new ModuleLog(this, this),
         new ModuleInputUIObsidian(this, this),
         new ModuleObsidianMenu(this, this),
