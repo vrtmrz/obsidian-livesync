@@ -32,7 +32,7 @@
 .op-warn {
     border: 1px solid salmon;
     padding: 2px;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
 }
 
 .op-warn::before {
@@ -46,7 +46,7 @@
 .op-warn-info {
     border: 1px solid rgb(255, 209, 81);
     padding: 2px;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
 }
 
 .op-warn-info::before {
@@ -110,10 +110,9 @@
 div.sls-setting-menu-btn {
     color: var(--text-normal);
     background-color: var(--background-secondary-alt);
-    border-radius: 8px;
+    border-radius: var(--radius-m);
     padding: 6px 10px;
     cursor: pointer;
-    margin-right: 2px;
     font-family: "Inter", sans-serif;
     outline: none;
     user-select: none;
@@ -128,7 +127,17 @@ div.sls-setting-menu-btn {
     /* width: 100%; */
 }
 
-.sls-setting-tab:hover~div.sls-setting-menu-btn,
+
+/* Setting Tab hover state */
+
+.sls-setting-tab:hover~div.sls-setting-menu-btn {
+    background-color: rgb(from var(--interactive-accent-hover) r g b / 0.5);
+    color: var(--text-on-accent);
+}
+
+
+/* Setting Tab selected state */
+
 .sls-setting-label.selected .sls-setting-tab:checked~div.sls-setting-menu-btn {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
@@ -142,7 +151,7 @@ div.sls-setting-menu-btn {
     top: 0;
     backdrop-filter: blur(15px);
     padding: 4px;
-    border-radius: 10px;
+    border-radius: var(--radius-l);
     z-index: 10;
 }
 
@@ -150,6 +159,7 @@ div.sls-setting-menu-btn {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
+    gap: 3px;
 }
 
 body {
@@ -163,10 +173,8 @@ body {
     border: 1px solid var(--sls-col-warn);
     padding: 2px;
     margin: 1px;
-    border-radius: 4px;
-    background-image: linear-gradient(-45deg,
-            var(--sls-col-warn-stripe1) 25%, var(--sls-col-warn-stripe2) 25%, var(--sls-col-warn-stripe2) 50%,
-            var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2));
+    border-radius: var(--radius-s);
+    background-image: linear-gradient(-45deg, var(--sls-col-warn-stripe1) 25%, var(--sls-col-warn-stripe2) 25%, var(--sls-col-warn-stripe2) 50%, var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2));
     background-size: 30px 30px;
     display: flex;
     flex-direction: row;
@@ -182,11 +190,9 @@ body {
     0% {
         background-position: 0 0;
     }
-
     100% {
         background-position: 30px 0;
     }
-
 }
 
 .sls-setting-menu-buttons label {
@@ -261,13 +267,13 @@ body {
     border: 1px solid salmon;
     padding: 2px;
     margin: 1px;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
 }
 
 .ob-btn-config-head {
     padding: 2px;
     margin: 1px;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
 }
 
 .isWizard .wizardHidden {
@@ -295,21 +301,15 @@ body {
 .sls-setting-disabled input[type=password] {
     filter: brightness(80%);
     color: var(--text-muted);
-
 }
 
 .sls-setting-hidden {
     display: none;
 }
 
-
-
 .sls-setting-obsolete {
-    background-image: linear-gradient(-45deg,
-            var(--sls-col-warn-stripe1) 25%, var(--sls-col-warn-stripe2) 25%, var(--sls-col-warn-stripe2) 50%,
-            var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2));
-    background-image: linear-gradient(-45deg,
-            transparent 25%, rgba(var(--background-secondary), 0.1) 25%, rgba(var(--background-secondary), 0.1) 50%, transparent 50%, transparent 75%, rgba(var(--background-secondary), 0.1) 75%, rgba(var(--background-secondary), 0.1));
+    background-image: linear-gradient(-45deg, var(--sls-col-warn-stripe1) 25%, var(--sls-col-warn-stripe2) 25%, var(--sls-col-warn-stripe2) 50%, var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2));
+    background-image: linear-gradient(-45deg, transparent 25%, rgba(var(--background-secondary), 0.1) 25%, rgba(var(--background-secondary), 0.1) 50%, transparent 50%, transparent 75%, rgba(var(--background-secondary), 0.1) 75%, rgba(var(--background-secondary), 0.1));
     background-size: 60px 60px;
 }
 
@@ -357,16 +357,13 @@ span.ls-mark-cr::after {
     0% {
         opacity: 0;
     }
-
     50% {
         opacity: 0;
     }
-
     100% {
         opacity: 1;
     }
 }
-
 
 .livesync-status {
     user-select: none;
@@ -380,7 +377,6 @@ span.ls-mark-cr::after {
     padding-right: 16px;
     top: var(--header-height);
     z-index: calc(var(--layer-cover) + 1);
-
     font-variant-numeric: tabular-nums;
     tab-size: 4;
     text-align: right;
@@ -390,16 +386,16 @@ span.ls-mark-cr::after {
     font-size: 80%;
 }
 
-div.workspace-leaf-content[data-type=bases]  .livesync-status {
+div.workspace-leaf-content[data-type=bases] .livesync-status {
     top: calc(var(--bases-header-height) + var(--header-height));
     padding: 5px;
-    padding-right:18px;
+    padding-right: 18px;
 }
 
-.is-mobile div.workspace-leaf-content[data-type=bases]  .livesync-status {
+.is-mobile div.workspace-leaf-content[data-type=bases] .livesync-status {
     top: calc(var(--bases-header-height) + var(--view-header-height));
     padding: 6px;
-    padding-right:18px;
+    padding-right: 18px;
 }
 
 .livesync-status div {
@@ -411,7 +407,6 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
 .livesync-status .livesync-status-loghistory {
     text-align: left;
     opacity: 0.4;
-
 }
 
 .livesync-status div.livesync-status-messagearea {
@@ -421,7 +416,6 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     -webkit-filter: unset;
     filter: unset;
 }
-
 
 .menu-setting-poweruser-disabled .sls-setting-poweruser {
     display: none;
@@ -440,7 +434,7 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     font-size: medium;
     top: 2.5em;
     background-color: var(--background-secondary-alt);
-    border-radius: 10px;
+    border-radius: var(--radius-l);
     padding: 0.5em 1.0em;
 }
 
@@ -466,5 +460,4 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-all;
-
 }
