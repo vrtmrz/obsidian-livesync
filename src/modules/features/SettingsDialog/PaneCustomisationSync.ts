@@ -3,6 +3,7 @@ import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../../common
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { enableOnly, visibleOnly } from "./SettingPane.ts";
+import { $msg } from "@/lib/src/common/i18n.ts";
 export function paneCustomisationSync(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -60,7 +61,7 @@ export function paneCustomisationSync(
         });
 
         new Setting(paneEl)
-            .setName("Open")
+            .setName($msg("sync.customSync.openCustomizationManager.title"))
             .setDesc("Open the dialog")
             .addButton((button) => {
                 button
