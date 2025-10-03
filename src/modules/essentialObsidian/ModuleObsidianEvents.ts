@@ -1,4 +1,4 @@
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
@@ -12,9 +12,10 @@ import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
 } from "../../lib/src/mock_and_interop/stores.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleObsidianEvents extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleObsidianEvents extends AbstractObsidianModule {
+    _everyOnloadStart(): Promise<boolean> {
         // this.registerEvent(this.app.workspace.on("editor-change", ));
         this.plugin.registerEvent(
             this.app.vault.on("rename", (file, oldPath) => {
@@ -30,7 +31,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         return Promise.resolve(true);
     }
 
-    $$performRestart(): void {
+    private _performRestart(): void {
         this._performAppReload();
     }
 
@@ -49,14 +50,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
-                    if (this.core.$$isUnloaded()) {
+                    if (this.services.appLifecycle.hasUnloaded()) {
                         this._log("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
                         saveCommandDefinition.callback = this.initialCallback;
                         this.initialCallback = undefined;
                     } else {
                         if (this.settings.syncOnEditorSave) {
                             this._log("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
-                            fireAndForget(() => this.core.$$replicateByEvent());
+                            fireAndForget(() => this.services.replication.replicateByEvent());
                         }
                     }
                 });
@@ -106,14 +107,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         // TODO:FIXME AT V0.17.31, this logic has been disabled.
         if (navigator.onLine && this.localDatabase.needScanning) {
             this.localDatabase.needScanning = false;
-            await this.core.$$performFullScan();
+            await this.services.vault.scanVault();
         }
     }
 
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.core.$$isReady()) return;
+        if (!this.services.appLifecycle.isReady()) return;
 
         if (this.isLastHidden && !this.hasFocus) {
             // NO OP while non-focused after made hidden;
@@ -126,22 +127,22 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
         }
         this.isLastHidden = isHidden;
 
-        await this.core.$everyCommitPendingFileEvent();
+        await this.services.fileProcessing.commitPendingFileEvents();
 
         if (isHidden) {
-            await this.core.$everyBeforeSuspendProcess();
+            await this.services.appLifecycle.onSuspending();
         } else {
             // suspend all temporary.
-            if (this.core.$$isSuspended()) return;
+            if (this.services.appLifecycle.isSuspended()) return;
             if (!this.hasFocus) return;
-            await this.core.$everyOnResumeProcess();
-            await this.core.$everyAfterResumeProcess();
+            await this.services.appLifecycle.onResuming();
+            await this.services.appLifecycle.onResumed();
         }
     }
     watchWorkspaceOpen(file: TFile | null) {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.core.$$isReady()) return;
+        if (!this.services.appLifecycle.isReady()) return;
         if (!file) return;
         scheduleTask("watch-workspace-open", 500, () => fireAndForget(() => this.watchWorkspaceOpenAsync(file)));
     }
@@ -149,25 +150,25 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
     async watchWorkspaceOpenAsync(file: TFile) {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
-        if (!this.core.$$isReady()) return;
-        await this.core.$everyCommitPendingFileEvent();
+        if (!this.services.appLifecycle.isReady()) return;
+        await this.services.fileProcessing.commitPendingFileEvents();
         if (file == null) {
             return;
         }
-        if (this.settings.syncOnFileOpen && !this.core.$$isSuspended()) {
-            await this.core.$$replicateByEvent();
+        if (this.settings.syncOnFileOpen && !this.services.appLifecycle.isSuspended()) {
+            await this.services.replication.replicateByEvent();
         }
-        await this.core.$$queueConflictCheckIfOpen(file.path as FilePathWithPrefix);
+        await this.services.conflict.queueCheckForIfOpen(file.path as FilePathWithPrefix);
     }
 
-    $everyOnLayoutReady(): Promise<boolean> {
+    _everyOnLayoutReady(): Promise<boolean> {
         this.swapSaveCommand();
         this.registerWatchEvents();
         return Promise.resolve(true);
     }
 
-    $$askReload(message?: string) {
-        if (this.core.$$isReloadingScheduled()) {
+    private _askReload(message?: string) {
+        if (this.services.appLifecycle.isReloadingScheduled()) {
             this._log(`Reloading is already scheduled`, LOG_LEVEL_VERBOSE);
             return;
         }
@@ -183,11 +184,11 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
             if (ret == RESTART_NOW) {
                 this._performAppReload();
             } else if (ret == RESTART_AFTER_STABLE) {
-                this.core.$$scheduleAppReload();
+                this.services.appLifecycle.scheduleRestart();
             }
         });
     }
-    $$scheduleAppReload() {
+    private _scheduleAppReload() {
         if (!this.core._totalProcessingCount) {
             const __tick = reactiveSource(0);
             this.core._totalProcessingCount = reactive(() => {
@@ -236,5 +237,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule implements IObs
                 }
             });
         }
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.handlePerformRestart(this._performRestart.bind(this));
+        services.appLifecycle.handleAskRestart(this._askReload.bind(this));
+        services.appLifecycle.handleScheduleRestart(this._scheduleAppReload.bind(this));
     }
 }

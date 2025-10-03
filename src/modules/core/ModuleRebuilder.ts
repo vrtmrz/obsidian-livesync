@@ -9,13 +9,13 @@ import {
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { Rebuilder } from "../interfaces/DatabaseRebuilder.ts";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import type { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 import { fetchAllUsedChunks } from "@/lib/src/pouchdb/chunks.ts";
 import { EVENT_DATABASE_REBUILT, eventHub } from "src/common/events.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebuilder {
-    $everyOnload(): Promise<boolean> {
+export class ModuleRebuilder extends AbstractModule implements Rebuilder {
+    private _everyOnload(): Promise<boolean> {
         this.core.rebuilder = this;
         return Promise.resolve(true);
     }
@@ -43,47 +43,47 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
                 { title: "Enable extra features", defaultOption: "No", timeout: 15 }
             )) == "yes"
         ) {
-            await this.core.$allAskUsingOptionalSyncFeature(opt);
+            await this.services.setting.suggestOptionalFeatures(opt);
         }
     }
 
     async rebuildRemote() {
-        await this.core.$allSuspendExtraSync();
+        await this.services.setting.suspendExtraSync();
         this.core.settings.isConfigured = true;
 
-        await this.core.$$realizeSettingSyncMode();
-        await this.core.$$markRemoteLocked();
-        await this.core.$$tryResetRemoteDatabase();
-        await this.core.$$markRemoteLocked();
+        await this.services.setting.onRealiseSetting();
+        await this.services.remote.markLocked();
+        await this.services.remote.tryResetDatabase();
+        await this.services.remote.markLocked();
         await delay(500);
         await this.askUsingOptionalFeature({ enableOverwrite: true });
         await delay(1000);
-        await this.core.$$replicateAllToServer(true);
+        await this.services.remote.replicateAllToRemote(true);
         await delay(1000);
-        await this.core.$$replicateAllToServer(true, true);
+        await this.services.remote.replicateAllToRemote(true, true);
     }
     $rebuildRemote(): Promise<void> {
         return this.rebuildRemote();
     }
 
     async rebuildEverything() {
-        await this.core.$allSuspendExtraSync();
+        await this.services.setting.suspendExtraSync();
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
-        await this.core.$$realizeSettingSyncMode();
+        await this.services.setting.onRealiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
-        await this.core.$$initializeDatabase(true, true, true);
-        await this.core.$$markRemoteLocked();
-        await this.core.$$tryResetRemoteDatabase();
-        await this.core.$$markRemoteLocked();
+        await this.services.databaseEvents.initialiseDatabase(true, true, true);
+        await this.services.remote.markLocked();
+        await this.services.remote.tryResetDatabase();
+        await this.services.remote.markLocked();
         await delay(500);
         // We do not have any other devices' data, so we do not need to ask for overwriting.
         await this.askUsingOptionalFeature({ enableOverwrite: false });
         await delay(1000);
-        await this.core.$$replicateAllToServer(true);
+        await this.services.remote.replicateAllToRemote(true);
         await delay(1000);
-        await this.core.$$replicateAllToServer(true, true);
+        await this.services.remote.replicateAllToRemote(true, true);
     }
 
     $rebuildEverything(): Promise<void> {
@@ -101,7 +101,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
             this._log("Could not create red_flag_rebuild.md", LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
-        this.core.$$performRestart();
+        this.services.appLifecycle.performRestart();
     }
     async scheduleFetch(): Promise<void> {
         try {
@@ -110,20 +110,20 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
             this._log("Could not create red_flag_fetch.md", LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
-        this.core.$$performRestart();
+        this.services.appLifecycle.performRestart();
     }
 
-    async $$tryResetRemoteDatabase(): Promise<void> {
+    private async _tryResetRemoteDatabase(): Promise<void> {
         await this.core.replicator.tryResetRemoteDatabase(this.settings);
     }
 
-    async $$tryCreateRemoteDatabase(): Promise<void> {
+    private async _tryCreateRemoteDatabase(): Promise<void> {
         await this.core.replicator.tryCreateRemoteDatabase(this.settings);
     }
 
-    async $$resetLocalDatabase(): Promise<void> {
+    private async _resetLocalDatabase(): Promise<boolean> {
         this.core.storageAccess.clearTouched();
-        await this.localDatabase.resetDatabase();
+        return await this.localDatabase.resetDatabase();
     }
 
     async suspendAllSync() {
@@ -134,7 +134,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         this.core.settings.syncOnStart = false;
         this.core.settings.syncOnFileOpen = false;
         this.core.settings.syncAfterMerge = false;
-        await this.core.$allSuspendExtraSync();
+        await this.services.setting.suspendExtraSync();
     }
     async suspendReflectingDatabase() {
         if (this.core.settings.doNotSuspendOnFetching) return;
@@ -153,8 +153,8 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         this._log(`Database and storage reflection has been resumed!`, LOG_LEVEL_NOTICE);
         this.core.settings.suspendParseReplicationResult = false;
         this.core.settings.suspendFileWatching = false;
-        await this.core.$$performFullScan(true);
-        await this.core.$everyBeforeReplicate(false); //TODO: Check actual need of this.
+        await this.services.vault.scanVault(true);
+        await this.services.replication.onBeforeReplicate(false); //TODO: Check actual need of this.
         await this.core.saveSettings();
     }
     async askUseNewAdapter() {
@@ -177,28 +177,28 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         }
     }
     async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean) {
-        await this.core.$allSuspendExtraSync();
+        await this.services.setting.suspendExtraSync();
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
-        await this.core.$$realizeSettingSyncMode();
+        await this.services.setting.onRealiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
-        await this.core.$$openDatabase();
+        await this.services.database.openDatabase();
         // this.core.isReady = true;
-        this.core.$$markIsReady();
+        this.services.appLifecycle.markIsReady();
         if (makeLocalChunkBeforeSync) {
             await this.core.fileHandler.createAllChunks(true);
         } else if (!preventMakeLocalFilesBeforeSync) {
-            await this.core.$$initializeDatabase(true, true, true);
+            await this.services.databaseEvents.initialiseDatabase(true, true, true);
         } else {
             // Do not create local file entries before sync (Means use remote information)
         }
-        await this.core.$$markRemoteResolved();
+        await this.services.remote.markResolved();
         await delay(500);
-        await this.core.$$replicateAllFromServer(true);
+        await this.services.remote.replicateAllFromRemote(true);
         await delay(1000);
-        await this.core.$$replicateAllFromServer(true);
+        await this.services.remote.replicateAllFromRemote(true);
         await this.resumeReflectingDatabase();
         await this.askUsingOptionalFeature({ enableFetch: true });
     }
@@ -206,7 +206,7 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
         return await this.fetchLocal(true);
     }
 
-    async $allSuspendAllSync(): Promise<boolean> {
+    private async _allSuspendAllSync(): Promise<boolean> {
         await this.suspendAllSync();
         return true;
     }
@@ -214,11 +214,11 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
     async resetLocalDatabase() {
         if (this.core.settings.isConfigured && this.core.settings.additionalSuffixOfDatabaseName == "") {
             // Discard the non-suffixed database
-            await this.core.$$resetLocalDatabase();
+            await this.services.database.resetDatabase();
         }
-        const suffix = (await this.core.$anyGetAppId()) || "";
+        const suffix = this.services.API.getAppID() || "";
         this.core.settings.additionalSuffixOfDatabaseName = suffix;
-        await this.core.$$resetLocalDatabase();
+        await this.services.database.resetDatabase();
         eventHub.emitEvent(EVENT_DATABASE_REBUILT);
     }
     async fetchRemoteChunks() {
@@ -228,10 +228,10 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
             this.core.settings.remoteType == REMOTE_COUCHDB
         ) {
             this._log(`Fetching chunks`, LOG_LEVEL_NOTICE);
-            const replicator = this.core.$$getReplicator() as LiveSyncCouchDBReplicator;
+            const replicator = this.services.replicator.getActiveReplicator() as LiveSyncCouchDBReplicator;
             const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
                 this.settings,
-                this.core.$$isMobile(),
+                this.services.API.isMobile(),
                 true
             );
             if (typeof remoteDB == "string") {
@@ -254,8 +254,15 @@ export class ModuleRebuilder extends AbstractModule implements ICoreModule, Rebu
                     LOG_LEVEL_NOTICE,
                     "resolveAllConflictedFilesByNewerOnes"
                 );
-            await this.core.$anyResolveConflictByNewest(file);
+            await this.services.conflict.resolveByNewest(file);
         }
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.database.handleResetDatabase(this._resetLocalDatabase.bind(this));
+        services.remote.handleTryResetDatabase(this._tryResetRemoteDatabase.bind(this));
+        services.remote.handleTryCreateDatabase(this._tryCreateRemoteDatabase.bind(this));
+        services.setting.handleSuspendAllSync(this._allSuspendAllSync.bind(this));
     }
 }

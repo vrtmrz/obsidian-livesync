@@ -1,9 +1,9 @@
 import { AbstractModule } from "../AbstractModule";
-import type { ICoreModule } from "../ModuleTypes";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
+import type { LiveSyncCore } from "../../main";
 
-export class ModulePouchDB extends AbstractModule implements ICoreModule {
-    $$createPouchDBInstance<T extends object>(
+export class ModulePouchDB extends AbstractModule {
+    _createPouchDBInstance<T extends object>(
         name?: string,
         options?: PouchDB.Configuration.DatabaseConfiguration
     ): PouchDB.Database<T> {
@@ -15,5 +15,8 @@ export class ModulePouchDB extends AbstractModule implements ICoreModule {
             return new PouchDB(name + "-indexeddb", optionPass);
         }
         return new PouchDB(name, optionPass);
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.database.handleCreatePouchDBInstance(this._createPouchDBInstance.bind(this));
     }
 }

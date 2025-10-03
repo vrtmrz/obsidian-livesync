@@ -1,6 +1,6 @@
 import { TFile, TFolder, type ListedFiles } from "obsidian";
 import { SerializedFileAccess } from "./storageLib/SerializedFileAccess";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import type {
     FilePath,
@@ -16,10 +16,13 @@ import { StorageEventManagerObsidian, type StorageEventManager } from "./storage
 import type { StorageAccess } from "../interfaces/StorageAccess";
 import { createBlob, type CustomRegExp } from "../../lib/src/common/utils";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
+import type { LiveSyncCore } from "../../main.ts";
+import type ObsidianLiveSyncPlugin from "../../main.ts";
+import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 
 const fileLockPrefix = "file-lock:";
 
-export class ModuleFileAccessObsidian extends AbstractObsidianModule implements IObsidianModule, StorageAccess {
+export class ModuleFileAccessObsidian extends AbstractObsidianModule implements StorageAccess {
     processingFiles: Set<FilePathWithPrefix> = new Set();
     processWriteFile<T>(file: UXFileInfoStub | FilePathWithPrefix, proc: () => Promise<T>): Promise<T> {
         const path = typeof file === "string" ? file : file.path;
@@ -49,16 +52,12 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
     vaultAccess!: SerializedFileAccess;
     vaultManager: StorageEventManager = new StorageEventManagerObsidian(this.plugin, this.core, this);
-    $everyOnload(): Promise<boolean> {
+    private _everyOnload(): Promise<boolean> {
         this.core.storageAccess = this;
         return Promise.resolve(true);
     }
-    $everyOnFirstInitialize(): Promise<boolean> {
+    _everyOnFirstInitialize(): Promise<boolean> {
         this.vaultManager.beginWatch();
-        return Promise.resolve(true);
-    }
-    $allOnUnload(): Promise<boolean> {
-        // this.vaultManager.
         return Promise.resolve(true);
     }
 
@@ -66,22 +65,22 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     //     this.vaultManager.flushQueue();
     // }
 
-    $everyCommitPendingFileEvent(): Promise<boolean> {
+    _everyCommitPendingFileEvent(): Promise<boolean> {
         this.vaultManager.flushQueue();
         return Promise.resolve(true);
     }
 
-    $everyOnloadStart(): Promise<boolean> {
+    _everyOnloadStart(): Promise<boolean> {
         this.vaultAccess = new SerializedFileAccess(this.app, this.plugin, this);
         return Promise.resolve(true);
     }
 
-    $$isStorageInsensitive(): boolean {
+    _isStorageInsensitive(): boolean {
         return this.vaultAccess.isStorageInsensitive();
     }
 
-    $$shouldCheckCaseInsensitive(): boolean {
-        if (this.$$isStorageInsensitive()) return false;
+    _shouldCheckCaseInsensitive(): boolean {
+        if (this.services.vault.isStorageInsensitive()) return false;
         return !this.settings.handleFilenameCaseSensitive;
     }
 
@@ -275,7 +274,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             if (excludeFilter && excludeFilter.some((ee) => ee.test(file))) {
                 continue;
             }
-            if (await this.plugin.$$isIgnoredByIgnoreFiles(file)) continue;
+            if (await this.services.vault.isIgnoredByIgnoreFile(file)) continue;
             files.push(file);
         }
 
@@ -288,7 +287,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             if (excludeFilter && excludeFilter.some((e) => e.test(v))) {
                 continue;
             }
-            if (await this.plugin.$$isIgnoredByIgnoreFiles(v)) {
+            if (await this.services.vault.isIgnoredByIgnoreFile(v)) {
                 continue;
             }
             // OK, deep dive!
@@ -346,7 +345,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
     async _deleteVaultItem(file: TFile | TFolder) {
         if (file instanceof TFile) {
-            if (!(await this.core.$$isTargetFile(file.path))) return;
+            if (!(await this.services.vault.isTargetFile(file.path))) return;
         }
         const dir = file.parent;
         if (this.settings.trashInsteadDelete) {
@@ -375,5 +374,17 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         if (file instanceof TFile || file instanceof TFolder) {
             return await this._deleteVaultItem(file);
         }
+    }
+
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
+        super(plugin, core);
+    }
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.vault.handleIsStorageInsensitive(this._isStorageInsensitive.bind(this));
+        services.setting.handleShouldCheckCaseInsensitively(this._shouldCheckCaseInsensitive.bind(this));
+        services.appLifecycle.handleFirstInitialise(this._everyOnFirstInitialize.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.fileProcessing.handleCommitPendingFileEvents(this._everyCommitPendingFileEvent.bind(this));
     }
 }

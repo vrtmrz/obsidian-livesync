@@ -1,8 +1,8 @@
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { VIEW_TYPE_GLOBAL_HISTORY, GlobalHistoryView } from "./GlobalHistory/GlobalHistoryView.ts";
 
-export class ModuleObsidianGlobalHistory extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleObsidianGlobalHistory extends AbstractObsidianModule {
+    _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-global-history",
             name: "Show vault history",
@@ -17,6 +17,9 @@ export class ModuleObsidianGlobalHistory extends AbstractObsidianModule implemen
     }
 
     showGlobalHistory() {
-        void this.core.$$showView(VIEW_TYPE_GLOBAL_HISTORY);
+        void this.services.API.showWindow(VIEW_TYPE_GLOBAL_HISTORY);
+    }
+    onBindFunction(core: typeof this.core, services: typeof core.services): void {
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
     }
 }

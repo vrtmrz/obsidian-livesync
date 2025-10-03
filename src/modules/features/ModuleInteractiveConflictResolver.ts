@@ -10,13 +10,14 @@ import {
     type diff_result,
 } from "../../lib/src/common/types.ts";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleInteractiveConflictResolver extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
+    _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-conflictcheck",
             name: "Pick a file to resolve conflict",
@@ -34,7 +35,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
         return Promise.resolve(true);
     }
 
-    async $anyResolveConflictByUI(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
+    async _anyResolveConflictByUI(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
         // UI for resolving conflicts should one-by-one.
         return await serialized(`conflict-resolve-ui`, async () => {
             this._log("Merge:open conflict dialog", LOG_LEVEL_VERBOSE);
@@ -68,7 +69,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
                 }
                 // 2. As usual, delete the conflicted revision and if there are no conflicts, write the resolved content to the storage.
                 if (
-                    (await this.core.$$resolveConflictByDeletingRev(filename, delRev, "UI Concatenated")) ==
+                    (await this.services.conflict.resolveByDeletingRevision(filename, delRev, "UI Concatenated")) ==
                     MISSING_OR_ERROR
                 ) {
                     this._log(
@@ -80,7 +81,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
             } else if (typeof toDelete === "string") {
                 // Select one of the conflicted revision to delete.
                 if (
-                    (await this.core.$$resolveConflictByDeletingRev(filename, toDelete, "UI Selected")) ==
+                    (await this.services.conflict.resolveByDeletingRevision(filename, toDelete, "UI Selected")) ==
                     MISSING_OR_ERROR
                 ) {
                     this._log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
@@ -93,11 +94,11 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
             // In here, some merge has been processed.
             // So we have to run replication if configured.
             // TODO: Make this is as a event request
-            if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
-                await this.core.$$replicateByEvent();
+            if (this.settings.syncAfterMerge && !this.services.appLifecycle.isSuspended()) {
+                await this.services.replication.replicateByEvent();
             }
             // And, check it again.
-            await this.core.$$queueConflictCheck(filename);
+            await this.services.conflict.queueCheckFor(filename);
             return false;
         });
     }
@@ -120,14 +121,14 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
         const target = await this.core.confirm.askSelectString("File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find((e) => e.dispPath == target)!;
-            await this.core.$$queueConflictCheck(targetItem.path);
-            await this.core.$$waitForAllConflictProcessed();
+            await this.services.conflict.queueCheckFor(targetItem.path);
+            await this.services.conflict.ensureAllProcessed();
             return true;
         }
         return false;
     }
 
-    async $allScanStat(): Promise<boolean> {
+    async _allScanStat(): Promise<boolean> {
         const notes: { path: string; mtime: number }[] = [];
         this._log(`Checking conflicted files`, LOG_LEVEL_VERBOSE);
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
@@ -156,5 +157,10 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule im
             this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
         }
         return true;
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnScanningStartupIssues(this._allScanStat.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.conflict.handleResolveByUserInteraction(this._anyResolveConflictByUI.bind(this));
     }
 }

@@ -7,13 +7,14 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
+    type FileEventType,
     type FilePath,
     type FilePathWithPrefix,
     type UXFileInfoStub,
     type UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
 import { delay, fireAndForget, getFileRegExp } from "../../../lib/src/common/utils.ts";
-import { type FileEventItem, type FileEventType } from "../../../common/types.ts";
+import { type FileEventItem } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import {
     finishAllWaitingForTimeout,
@@ -48,6 +49,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
     storageAccess: StorageAccess;
+    get services() {
+        return this.core.services;
+    }
 
     get shouldBatchSave() {
         return this.core.settings?.batchSave && this.core.settings?.liveSync != true;
@@ -175,7 +179,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         if (this.plugin.settings.useIgnoreFiles) {
             // If it is one of ignore files, refresh the cached one.
             // (Calling$$isTargetFile will refresh the cache)
-            void this.plugin.$$isTargetFile(path).then(() => this._watchVaultRawEvents(path));
+            void this.services.vault.isTargetFile(path).then(() => this._watchVaultRawEvents(path));
         } else {
             this._watchVaultRawEvents(path);
         }
@@ -209,7 +213,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     async appendQueue(params: FileEvent[], ctx?: any) {
         if (!this.core.settings.isConfigured) return;
         if (this.core.settings.suspendFileWatching) return;
-        this.core.$$markFileListPossiblyChanged();
+        this.core.services.vault.markFileListPossiblyChanged();
         // Flag up to be reload
         const processFiles = new Set<FilePath>();
         for (const param of params) {
@@ -222,7 +226,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             const oldPath = param.oldPath;
             if (type !== "INTERNAL") {
                 const size = (file as UXFileInfoStub).stat.size;
-                if (this.core.$$isFileSizeExceeded(size) && (type == "CREATE" || type == "CHANGED")) {
+                if (this.services.vault.isFileSizeTooLarge(size) && (type == "CREATE" || type == "CHANGED")) {
                     Logger(
                         `The storage file has been changed but exceeds the maximum size. Skipping: ${param.file.path}`,
                         LOG_LEVEL_NOTICE
@@ -234,7 +238,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             // TODO: Confirm why only the TFolder skipping
             // Possibly following line is needed...
             // if (file?.isFolder) continue;
-            if (!(await this.core.$$isTargetFile(file.path))) continue;
+            if (!(await this.services.vault.isTargetFile(file.path))) continue;
 
             // Stop cache using to prevent the corruption;
             // let cache: null | string | ArrayBuffer;
@@ -411,12 +415,12 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         const lockKey = `handleFile:${file.path}`;
         return await serialized(lockKey, async () => {
             if (queue.type == "INTERNAL" || file.isInternal) {
-                await this.core.$anyProcessOptionalFileEvent(file.path as unknown as FilePath);
+                await this.core.services.fileProcessing.processOptionalFileEvent(file.path as unknown as FilePath);
             } else {
                 const key = `file-last-proc-${queue.type}-${file.path}`;
                 const last = Number((await this.core.kvDB.get(key)) || 0);
                 if (queue.type == "DELETE") {
-                    await this.core.$anyHandlerProcessesFileEvent(queue);
+                    await this.core.services.fileProcessing.processFileEvent(queue);
                 } else {
                     if (file.stat.mtime == last) {
                         Logger(`File has been already scanned on ${queue.type}, skip: ${file.path}`, LOG_LEVEL_VERBOSE);
@@ -424,7 +428,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                         // this.cancelRelativeEvent(queue);
                         return;
                     }
-                    if (!(await this.core.$anyHandlerProcessesFileEvent(queue))) {
+                    if (!(await this.core.services.fileProcessing.processFileEvent(queue))) {
                         Logger(
                             `STORAGE -> DB: Handler failed, cancel the relative operations: ${file.path}`,
                             LOG_LEVEL_INFO

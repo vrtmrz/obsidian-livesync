@@ -1,4 +1,4 @@
-import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "../../common/events";
@@ -8,8 +8,8 @@ import { parseYaml, stringifyYaml } from "../../deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
-export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule {
+    _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-export-config",
             name: "Write setting markdown manually",
@@ -18,7 +18,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                     return this.settings.settingSyncFile != "";
                 }
                 fireAndForget(async () => {
-                    await this.core.$$saveSettingData();
+                    await this.services.setting.saveSettingData();
                 });
             },
         });
@@ -160,7 +160,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                             result == APPLY_AND_FETCH
                         ) {
                             this.core.settings = settingToApply;
-                            await this.core.$$saveSettingData();
+                            await this.services.setting.saveSettingData();
                             if (result == APPLY_ONLY) {
                                 this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
                                 return;
@@ -171,7 +171,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule imp
                             if (result == APPLY_AND_FETCH) {
                                 await this.core.rebuilder.scheduleFetch();
                             }
-                            this.core.$$performRestart();
+                            this.services.appLifecycle.performRestart();
                         }
                     });
                 });
@@ -241,5 +241,8 @@ We can perform a command in this file.
             );
             this._log(`Markdown setting: ${filename} has been updated!`, LOG_LEVEL_VERBOSE);
         }
+    }
+    onBindFunction(core: typeof this.plugin, services: typeof core.services): void {
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
     }
 }

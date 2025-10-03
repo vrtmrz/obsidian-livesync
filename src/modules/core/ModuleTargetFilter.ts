@@ -18,14 +18,14 @@ import {
 } from "../../lib/src/common/types";
 import { addPrefix, isAcceptedAll } from "../../lib/src/string_and_binary/path";
 import { AbstractModule } from "../AbstractModule";
-import type { ICoreModule } from "../ModuleTypes";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import { isDirty } from "../../lib/src/common/utils";
-export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
+import type { LiveSyncCore } from "../../main";
+export class ModuleTargetFilter extends AbstractModule {
     reloadIgnoreFiles() {
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map((e) => e.trim());
     }
-    $everyOnload(): Promise<boolean> {
+    private _everyOnload(): Promise<boolean> {
         eventHub.onEvent(EVENT_SETTING_SAVED, (evt: ObsidianLiveSyncSettings) => {
             this.reloadIgnoreFiles();
         });
@@ -35,7 +35,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         return Promise.resolve(true);
     }
 
-    $$id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
+    _id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
         const tempId = id2path(id, entry);
         if (stripPrefix && isInternalMetadata(tempId)) {
             const out = stripInternalMetadataPrefix(tempId);
@@ -43,7 +43,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         }
         return tempId;
     }
-    async $$path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
+    async _path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
         const destPath = addPrefix(filename, prefix ?? "");
         return await path2id(
             destPath,
@@ -52,7 +52,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         );
     }
 
-    $$isFileSizeExceeded(size: number) {
+    private _isFileSizeExceeded(size: number) {
         if (this.settings.syncMaxSizeInMB > 0 && size > 0) {
             if (this.settings.syncMaxSizeInMB * 1024 * 1024 < size) {
                 return true;
@@ -61,7 +61,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         return false;
     }
 
-    $$markFileListPossiblyChanged(): void {
+    _markFileListPossiblyChanged(): void {
         this.totalFileEventCount++;
     }
     totalFileEventCount = 0;
@@ -72,7 +72,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
         return false;
     }
 
-    async $$isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false) {
+    private async _isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false) {
         const fileCount = useMemo<Record<string, number>>(
             {
                 key: "fileCount", // forceUpdate: !keepFileCheckList,
@@ -109,7 +109,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
 
         const filepath = getStoragePathFromUXFileInfo(file);
         const lc = filepath.toLowerCase();
-        if (this.core.$$shouldCheckCaseInsensitive()) {
+        if (this.services.setting.shouldCheckCaseInsensitively()) {
             if (lc in fileCount && fileCount[lc] > 1) {
                 return false;
             }
@@ -120,7 +120,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
                 // We must reload ignore files due to the its change.
                 await this.readIgnoreFile(filepath);
             }
-            if (await this.core.$$isIgnoredByIgnoreFiles(file)) {
+            if (await this.services.vault.isIgnoredByIgnoreFile(file)) {
                 return false;
             }
         }
@@ -150,7 +150,7 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
             return await this.readIgnoreFile(path);
         }
     }
-    async $$isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
+    private async _isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
         if (!this.settings.useIgnoreFiles) {
             return false;
         }
@@ -163,5 +163,15 @@ export class ModuleTargetFilter extends AbstractModule implements ICoreModule {
             return true;
         }
         return false;
+    }
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.vault.handleMarkFileListPossiblyChanged(this._markFileListPossiblyChanged.bind(this));
+        services.path.handleId2Path(this._id2path.bind(this));
+        services.path.handlePath2Id(this._path2id.bind(this));
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.vault.handleIsFileSizeTooLarge(this._isFileSizeExceeded.bind(this));
+        services.vault.handleIsIgnoredByIgnoreFile(this._isIgnoredByIgnoreFiles.bind(this));
+        services.vault.handleIsTargetFile(this._isTargetFile.bind(this));
     }
 }

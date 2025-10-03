@@ -105,7 +105,7 @@ export function paneSyncSettings(
                 if (!this.editingSettings.isConfigured) {
                     this.editingSettings.isConfigured = true;
                     await this.saveAllDirtySettings();
-                    await this.plugin.$$realizeSettingSyncMode();
+                    await this.services.setting.onRealiseSetting();
                     await this.rebuildDB("localOnly");
                     // this.resetEditingSettings();
                     if (
@@ -124,13 +124,13 @@ export function paneSyncSettings(
                         await this.confirmRebuild();
                     } else {
                         await this.saveAllDirtySettings();
-                        await this.plugin.$$realizeSettingSyncMode();
-                        this.plugin.$$askReload();
+                        await this.services.setting.onRealiseSetting();
+                        this.services.appLifecycle.askRestart();
                     }
                 }
             } else {
                 await this.saveAllDirtySettings();
-                await this.plugin.$$realizeSettingSyncMode();
+                await this.services.setting.onRealiseSetting();
             }
         });
     });
@@ -169,7 +169,7 @@ export function paneSyncSettings(
             }
             await this.saveSettings(["liveSync", "periodicReplication"]);
 
-            await this.plugin.$$realizeSettingSyncMode();
+            await this.services.setting.onRealiseSetting();
         });
 
         new Setting(paneEl)
@@ -289,21 +289,21 @@ export function paneSyncSettings(
                     button.setButtonText("Merge").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("MERGE");
+                        await this.services.setting.enableOptionalFeature("MERGE");
                     });
                 })
                 .addButton((button) => {
                     button.setButtonText("Fetch").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("FETCH");
+                        await this.services.setting.enableOptionalFeature("FETCH");
                     });
                 })
                 .addButton((button) => {
                     button.setButtonText("Overwrite").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("OVERWRITE");
+                        await this.services.setting.enableOptionalFeature("OVERWRITE");
                     });
                 });
         }

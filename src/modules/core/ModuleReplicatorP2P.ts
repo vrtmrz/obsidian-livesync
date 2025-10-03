@@ -1,18 +1,18 @@
 import { REMOTE_P2P, type RemoteDBSettings } from "../../lib/src/common/types";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "../AbstractModule";
-import type { ICoreModule } from "../ModuleTypes";
 import { LiveSyncTrysteroReplicator } from "../../lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+import type { LiveSyncCore } from "../../main";
 
-export class ModuleReplicatorP2P extends AbstractModule implements ICoreModule {
-    $anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
+export class ModuleReplicatorP2P extends AbstractModule {
+    _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {
         const settings = { ...this.settings, ...settingOverride };
         if (settings.remoteType == REMOTE_P2P) {
             return Promise.resolve(new LiveSyncTrysteroReplicator(this.core));
         }
-        return undefined!;
+        return Promise.resolve(false);
     }
-    $everyAfterResumeProcess(): Promise<boolean> {
+    _everyAfterResumeProcess(): Promise<boolean> {
         if (this.settings.remoteType == REMOTE_P2P) {
             // // If LiveSync enabled, open replication
             // if (this.settings.liveSync) {
@@ -26,5 +26,9 @@ export class ModuleReplicatorP2P extends AbstractModule implements ICoreModule {
         }
 
         return Promise.resolve(true);
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.replicator.handleGetNewReplicator(this._anyNewReplicator.bind(this));
+        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
     }
 }

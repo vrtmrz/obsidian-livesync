@@ -32,10 +32,10 @@
     const initialSettings = { ...plugin.settings };
 
     let settings = $state<P2PSyncSetting>(initialSettings);
-    // const vaultName = plugin.$$getVaultName();
+    // const vaultName = service.vault.getVaultName();
     // const dbKey = `${vaultName}-p2p-device-name`;
 
-    const initialDeviceName = cmdSync.getConfig("p2p_device_name") ?? plugin.$$getVaultName();
+    const initialDeviceName = cmdSync.getConfig("p2p_device_name") ?? plugin.services.vault.getVaultName();
     let deviceName = $state<string>(initialDeviceName);
 
     let eP2PEnabled = $state<boolean>(initialSettings.P2P_Enabled);

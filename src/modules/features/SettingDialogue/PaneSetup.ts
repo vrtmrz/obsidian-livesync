@@ -46,7 +46,7 @@ export function paneSetup(
                 text.setButtonText($msg("obsidianLiveSyncSettingTab.btnEnable")).onClick(async () => {
                     this.editingSettings.isConfigured = true;
                     await this.saveAllDirtySettings();
-                    this.plugin.$$askReload();
+                    this.services.appLifecycle.askRestart();
                 });
             });
     });
@@ -91,10 +91,10 @@ export function paneSetup(
                             this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
                             await this.saveAllDirtySettings();
                             this.plugin.settings = { ...DEFAULT_SETTINGS };
-                            await this.plugin.$$saveSettingData();
-                            await this.plugin.$$resetLocalDatabase();
+                            await this.services.setting.saveSettingData();
+                            await this.services.database.resetDatabase();
                             // await this.plugin.initializeDatabase();
-                            this.plugin.$$askReload();
+                            this.services.appLifecycle.askRestart();
                         }
                     })
                     .setWarning();

@@ -1,5 +1,5 @@
 import { delay } from "octagonal-wheels/promises";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { eventHub } from "../../common/events";
 import { getWebCrypto } from "../../lib/src/mods.ts";
@@ -8,6 +8,7 @@ import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
 import type { FilePath } from "../../lib/src/common/types.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { getFileRegExp } from "../../lib/src/common/utils.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 declare global {
     interface LSEvents {
@@ -15,12 +16,15 @@ declare global {
     }
 }
 
-export class ModuleReplicateTest extends AbstractObsidianModule implements IObsidianModule {
+export class ModuleReplicateTest extends AbstractObsidianModule {
     testRootPath = "_test/";
     testInfoPath = "_testinfo/";
 
     get isLeader() {
-        return this.core.$$getVaultName().indexOf("dev") >= 0 && this.core.$$vaultName().indexOf("recv") < 0;
+        return (
+            this.services.vault.getVaultName().indexOf("dev") >= 0 &&
+            this.services.vault.vaultName().indexOf("recv") < 0
+        );
     }
 
     get nameByKind() {
@@ -58,12 +62,12 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
             await this._dumpFileList("files.md");
         }
     }
-    async $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
+    async _everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         await this.dumpList();
         return true;
     }
-    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+    private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         this.addCommand({
             id: "dump-file-structure-normal",
@@ -169,7 +173,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
         const out = [] as any[];
         const webcrypto = await getWebCrypto();
         for (const file of files) {
-            if (!(await this.core.$$isTargetFile(file.path))) {
+            if (!(await this.services.vault.isTargetFile(file.path))) {
                 continue;
             }
             if (file.path.startsWith(this.testInfoPath)) continue;
@@ -316,7 +320,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
     }
 
     async testConflictedManually1() {
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
 
         const commonFile = `Resolve! 
 *****, the amazing chocolatier!!`;
@@ -325,8 +329,8 @@ export class ModuleReplicateTest extends AbstractObsidianModule implements IObsi
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "wonka.md", commonFile);
         }
 
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
         if (
             (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 1?", {
                 timeout: 30,
@@ -356,12 +360,12 @@ Charlie Bucket, Charlie Bucket, the amazing chocolatier!!`;
         ) {
             return;
         }
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
 
         if (
             !(await this.waitFor(async () => {
-                await this.core.$$replicate();
+                await this.services.replication.replicate();
                 return (
                     (await this.__assertStorageContent(
                         (this.testRootPath + "wonka.md") as FilePath,
@@ -379,7 +383,7 @@ Charlie Bucket, Charlie Bucket, the amazing chocolatier!!`;
     }
 
     async testConflictedManually2() {
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
 
         const commonFile = `Resolve To concatenate
 ABCDEFG`;
@@ -388,8 +392,8 @@ ABCDEFG`;
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "concat.md", commonFile);
         }
 
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
         if (
             (await this.core.confirm.askYesNoDialog("Ready to begin the test conflict Manually 2?", {
                 timeout: 30,
@@ -420,12 +424,12 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         ) {
             return;
         }
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
 
         if (
             !(await this.waitFor(async () => {
-                await this.core.$$replicate();
+                await this.services.replication.replicate();
                 return (
                     (await this.__assertStorageContent(
                         (this.testRootPath + "concat.md") as FilePath,
@@ -457,8 +461,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "task.md", baseDoc);
         }
         await delay(100);
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
 
         if (
             (await this.core.confirm.askYesNoDialog("Ready to test conflict?", {
@@ -487,8 +491,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
             await this.core.storageAccess.writeHiddenFileAuto(this.testRootPath + "task.md", mod2Doc);
         }
 
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
         await delay(1000);
         if (
             (await this.core.confirm.askYesNoDialog("Ready to check result?", { timeout: 30, defaultOption: "Yes" })) ==
@@ -496,8 +500,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         ) {
             return;
         }
-        await this.core.$$replicate();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
+        await this.services.replication.replicate();
         const mergedDoc = `Tasks!
 - [ ] Task 1
 - [v] Task 2
@@ -511,7 +515,7 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         this._log("Before testing conflicted files, resolve all once", LOG_LEVEL_NOTICE);
         await this.core.rebuilder.resolveAllConflictedFilesByNewerOnes();
         await this.core.rebuilder.resolveAllConflictedFilesByNewerOnes();
-        await this.core.$$replicate();
+        await this.services.replication.replicate();
         await delay(1000);
         if (!(await this.testConflictAutomatic())) {
             this._log("Conflict resolution (Auto) failed", LOG_LEVEL_NOTICE);
@@ -569,11 +573,16 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
     //         return results;
     //     });
     // }
-    async $everyModuleTestMultiDevice(): Promise<boolean> {
+    private async _everyModuleTestMultiDevice(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         // this.core.$$addTestResult("DevModule", "Test", true);
         // return Promise.resolve(true);
         await this._test("Conflict resolution", async () => await this.checkConflictResolution());
         return this.testDone();
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
+        services.test.handleTestMultiDevice(this._everyModuleTestMultiDevice.bind(this));
     }
 }

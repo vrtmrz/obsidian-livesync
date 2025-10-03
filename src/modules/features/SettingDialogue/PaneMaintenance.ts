@@ -32,7 +32,7 @@ export function paneMaintenance(
                 (e) => {
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
-                            await this.plugin.$$markRemoteResolved();
+                            await this.services.remote.markResolved();
                             this.display();
                         });
                     });
@@ -59,7 +59,7 @@ export function paneMaintenance(
                 (e) => {
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
-                            await this.plugin.$$markRemoteUnlocked();
+                            await this.services.remote.markUnlocked();
                             this.display();
                         });
                     });
@@ -78,7 +78,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        await this.plugin.$$markRemoteLocked();
+                        await this.services.remote.markLocked();
                     })
             )
             .addOnUpdate(this.onlyOnCouchDBOrMinIO);
@@ -93,7 +93,7 @@ export function paneMaintenance(
                     .setWarning()
                     .onClick(async () => {
                         await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
-                        this.plugin.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                     })
             );
     });
@@ -255,7 +255,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
-                        this.plugin.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                     })
             )
             .addButton((button) =>
@@ -294,7 +294,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
-                        this.plugin.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                     })
             )
             .addButton((button) =>
@@ -405,8 +405,8 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.plugin.$$resetLocalDatabase();
-                        await this.plugin.$$initializeDatabase();
+                        await this.services.database.resetDatabase();
+                        await this.services.databaseEvents.initialiseDatabase();
                     })
             );
     });

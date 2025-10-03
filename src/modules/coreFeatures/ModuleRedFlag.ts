@@ -9,10 +9,10 @@ import {
     type ObsidianLiveSyncSettings,
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { $msg } from "../../lib/src/common/i18n.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleRedFlag extends AbstractModule implements ICoreModule {
+export class ModuleRedFlag extends AbstractModule {
     async isFlagFileExist(path: string) {
         const redflag = await this.core.storageAccess.isExists(normalizePath(path));
         if (redflag) {
@@ -48,7 +48,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
         await this.deleteFlagFile(FLAGMD_REDFLAG3);
         await this.deleteFlagFile(FLAGMD_REDFLAG3_HR);
     }
-    async $everyOnLayoutReady(): Promise<boolean> {
+    async _everyOnLayoutReady(): Promise<boolean> {
         try {
             const isRedFlagRaised = await this.isRedFlagRaised();
             const isRedFlag2Raised = await this.isRedFlag2Raised();
@@ -63,7 +63,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         )) !== "yes"
                     ) {
                         await this.deleteRedFlag2();
-                        await this.core.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                         return false;
                     }
                 }
@@ -75,13 +75,13 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         })) !== "yes"
                     ) {
                         await this.deleteRedFlag3();
-                        await this.core.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                         return false;
                     }
                 }
                 this.settings.batchSave = false;
-                await this.core.$allSuspendAllSync();
-                await this.core.$allSuspendExtraSync();
+                await this.services.setting.suspendAllSync();
+                await this.services.setting.suspendExtraSync();
                 this.settings.suspendFileWatching = true;
                 await this.saveSettings();
                 if (isRedFlag2Raised) {
@@ -99,7 +99,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                     ) {
                         this.settings.suspendFileWatching = false;
                         await this.saveSettings();
-                        this.core.$$performRestart();
+                        this.services.appLifecycle.performRestart();
                         return false;
                     }
                 } else if (isRedFlag3Raised) {
@@ -148,7 +148,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                     if (fetchRemote === optionFetchRemoteConf) {
                         this._log("Fetching remote configuration", LOG_LEVEL_NOTICE);
                         const newSettings = JSON.parse(JSON.stringify(this.core.settings)) as ObsidianLiveSyncSettings;
-                        const remoteConfig = await this.core.$$fetchRemotePreferredTweakValues(newSettings);
+                        const remoteConfig = await this.services.tweakValue.fetchRemotePreferred(newSettings);
                         if (remoteConfig) {
                             this._log("Remote configuration found.", LOG_LEVEL_NOTICE);
                             const mergedSettings = {
@@ -174,7 +174,7 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
                         ) {
                             this.settings.suspendFileWatching = false;
                             await this.saveSettings();
-                            this.core.$$performRestart();
+                            this.services.appLifecycle.performRestart();
                             return false;
                         }
                     } else {
@@ -197,5 +197,9 @@ export class ModuleRedFlag extends AbstractModule implements ICoreModule {
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
         return true;
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        super.onBindFunction(core, services);
+        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
     }
 }

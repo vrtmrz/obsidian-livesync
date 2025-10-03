@@ -1,4 +1,4 @@
-import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
 import {
@@ -16,8 +16,9 @@ import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
 import { getLanguage } from "obsidian";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
 import { decryptString, encryptString } from "@/lib/src/encryption/stringEncryption.ts";
-export class ModuleObsidianSettings extends AbstractObsidianModule implements IObsidianModule {
-    async $everyOnLayoutReady(): Promise<boolean> {
+import type { LiveSyncCore } from "../../main.ts";
+export class ModuleObsidianSettings extends AbstractObsidianModule {
+    async _everyOnLayoutReady(): Promise<boolean> {
         let isChanged = false;
         if (this.settings.displayLanguage == "") {
             const obsidianLanguage = getLanguage();
@@ -32,7 +33,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             } else if (this.settings.displayLanguage == "") {
                 this.settings.displayLanguage = "def";
                 setLang(this.settings.displayLanguage);
-                await this.core.$$saveSettingData();
+                await this.services.setting.saveSettingData();
             }
         }
         if (isChanged) {
@@ -46,7 +47,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
                 this.settings.displayLanguage = "def";
                 setLang(this.settings.displayLanguage);
             }
-            await this.core.$$saveSettingData();
+            await this.services.setting.saveSettingData();
         }
         return true;
     }
@@ -61,13 +62,13 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         return methodFunc();
     }
 
-    $$saveDeviceAndVaultName(): void {
-        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.core.$$getVaultName();
-        localStorage.setItem(lsKey, this.core.$$getDeviceAndVaultName() || "");
+    _saveDeviceAndVaultName(): void {
+        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.services.vault.getVaultName();
+        localStorage.setItem(lsKey, this.services.setting.getDeviceAndVaultName() || "");
     }
 
     usedPassphrase = "";
-    $$clearUsedPassphrase(): void {
+    private _clearUsedPassphrase(): void {
         this.usedPassphrase = "";
     }
 
@@ -106,8 +107,8 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
 
-    async $$saveSettingData() {
-        this.core.$$saveDeviceAndVaultName();
+    async _saveSettingData() {
+        this.services.setting.saveDeviceAndVaultName();
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
         if (this.usedPassphrase == "" && !(await this.getPassphrase(settings))) {
@@ -174,7 +175,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         }
     }
 
-    async $$decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+    async _decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
         const passphrase = await this.getPassphrase(settings);
         if (passphrase === false) {
             this._log("No passphrase found for data.json! Verify configuration before syncing.", LOG_LEVEL_URGENT);
@@ -234,7 +235,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
      * @param settings
      * @returns
      */
-    $$adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+    _adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
         // Adjust settings as needed
 
         // Delete this feature to avoid problems on mobile.
@@ -264,7 +265,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
         return Promise.resolve(settings);
     }
 
-    async $$loadSettings(): Promise<void> {
+    async _loadSettings(): Promise<void> {
         const settings = Object.assign({}, DEFAULT_SETTINGS, await this.core.loadData()) as ObsidianLiveSyncSettings;
 
         if (typeof settings.isConfigured == "undefined") {
@@ -277,17 +278,17 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             }
         }
 
-        this.settings = await this.core.$$decryptSettings(settings);
+        this.settings = await this.services.setting.decryptSettings(settings);
 
         setLang(this.settings.displayLanguage);
 
-        await this.core.$$adjustSettings(this.settings);
+        await this.services.setting.adjustSettings(this.settings);
 
-        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.core.$$getVaultName();
+        const lsKey = "obsidian-live-sync-vaultanddevicename-" + this.services.vault.getVaultName();
         if (this.settings.deviceAndVaultName != "") {
             if (!localStorage.getItem(lsKey)) {
-                this.core.$$setDeviceAndVaultName(this.settings.deviceAndVaultName);
-                this.$$saveDeviceAndVaultName();
+                this.services.setting.setDeviceAndVaultName(this.settings.deviceAndVaultName);
+                this.services.setting.saveDeviceAndVaultName();
                 this.settings.deviceAndVaultName = "";
             }
         }
@@ -298,8 +299,8 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
             );
             this.settings.customChunkSize = 0;
         }
-        this.core.$$setDeviceAndVaultName(localStorage.getItem(lsKey) || "");
-        if (this.core.$$getDeviceAndVaultName() == "") {
+        this.services.setting.setDeviceAndVaultName(localStorage.getItem(lsKey) || "");
+        if (this.services.setting.getDeviceAndVaultName() == "") {
             if (this.settings.usePluginSync) {
                 this._log("Device name missing. Disabling plug-in sync.", LOG_LEVEL_NOTICE);
                 this.settings.usePluginSync = false;
@@ -308,5 +309,15 @@ export class ModuleObsidianSettings extends AbstractObsidianModule implements IO
 
         // this.core.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        super.onBindFunction(core, services);
+        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
+        services.setting.handleClearUsedPassphrase(this._clearUsedPassphrase.bind(this));
+        services.setting.handleDecryptSettings(this._decryptSettings.bind(this));
+        services.setting.handleAdjustSettings(this._adjustSettings.bind(this));
+        services.setting.handleLoadSettings(this._loadSettings.bind(this));
+        services.setting.handleSaveDeviceAndVaultName(this._saveDeviceAndVaultName.bind(this));
+        services.setting.handleSaveSettingData(this._saveSettingData.bind(this));
     }
 }

@@ -403,7 +403,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
 
         void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleCouchDB"), undefined, this.onlyOnCouchDB).then(
             (paneEl) => {
-                if (this.plugin.$$isMobile()) {
+                if (this.services.API.isMobile()) {
                     this.createEl(
                         paneEl,
                         "div",
@@ -630,7 +630,8 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     .setDisabled(false)
                     .onClick(async () => {
                         const trialSetting = { ...this.initialSettings, ...this.editingSettings };
-                        const newTweaks = await this.plugin.$$checkAndAskUseRemoteConfiguration(trialSetting);
+                        const newTweaks =
+                            await this.services.tweakValue.checkAndAskUseRemoteConfiguration(trialSetting);
                         if (newTweaks.result !== false) {
                             if (this.inWizard) {
                                 this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
@@ -648,15 +649,15 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                                             }
                                         )) == "no"
                                     ) {
-                                        await this.plugin.$$saveSettingData();
+                                        await this.services.setting.saveSettingData();
                                         return;
                                     }
-                                    await this.plugin.$$saveSettingData();
+                                    await this.services.setting.saveSettingData();
                                     await this.plugin.rebuilder.scheduleFetch();
-                                    await this.plugin.$$scheduleAppReload();
+                                    this.services.appLifecycle.scheduleRestart();
                                     return;
                                 } else {
-                                    await this.plugin.$$saveSettingData();
+                                    await this.services.setting.saveSettingData();
                                 }
                             }
                         }
@@ -727,7 +728,7 @@ The pane also can be launched by \`P2P Replicator\` command from the Command Pal
                     )) == "yes"
                 ) {
                     const trialSetting = { ...this.initialSettings, ...this.editingSettings };
-                    const newTweaks = await this.plugin.$$checkAndAskUseRemoteConfiguration(trialSetting);
+                    const newTweaks = await this.services.tweakValue.checkAndAskUseRemoteConfiguration(trialSetting);
                     if (newTweaks.result !== false) {
                         this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
                         this.requestUpdate();

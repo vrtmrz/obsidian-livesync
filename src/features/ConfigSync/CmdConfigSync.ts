@@ -68,13 +68,22 @@ import type ObsidianLiveSyncPlugin from "../../main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "../../modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
+import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 const d = "\u200b";
 const d2 = "\n";
+
+declare global {
+    interface OPTIONAL_SYNC_FEATURES {
+        DISABLE: "DISABLE";
+        CUSTOMIZE: "CUSTOMIZE";
+        DISABLE_CUSTOM: "DISABLE_CUSTOM";
+    }
+}
 
 function serialize(data: PluginDataEx): string {
     // For higher performance, create custom plug-in data strings.
@@ -384,7 +393,7 @@ export type PluginDataEx = {
     mtime: number;
 };
 
-export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
+export class ConfigSync extends LiveSyncCommands {
     constructor(plugin: ObsidianLiveSyncPlugin) {
         super(plugin);
         pluginScanningCount.onChanged((e) => {
@@ -482,7 +491,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         // Idea non-filter option?
         return this.getFileCategory(filePath) != "";
     }
-    async $everyOnDatabaseInitialized(showNotice: boolean) {
+    private async _everyOnDatabaseInitialized(showNotice: boolean) {
         if (!this._isThisModuleEnabled()) return true;
         try {
             this._log("Scanning customizations...");
@@ -494,7 +503,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         return true;
     }
-    async $everyBeforeReplicate(showNotice: boolean) {
+    async _everyBeforeReplicate(showNotice: boolean) {
         if (!this._isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(showNotice);
@@ -502,7 +511,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         return true;
     }
-    async $everyOnResumeProcess(): Promise<boolean> {
+    async _everyOnResumeProcess(): Promise<boolean> {
         if (!this._isThisModuleEnabled()) return true;
         if (this._isMainSuspended()) {
             return true;
@@ -517,7 +526,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         );
         return true;
     }
-    $everyAfterResumeProcess(): Promise<boolean> {
+    _everyAfterResumeProcess(): Promise<boolean> {
         const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
         q?.toggleClass("sls-hidden", !this._isThisModuleEnabled());
         return Promise.resolve(true);
@@ -633,7 +642,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     ).startPipeline();
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
+        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         const category = this.getFileCategory(path);
         const name =
             category == "CONFIG" || category == "SNIPPET"
@@ -645,7 +654,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     filenameWithUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
+        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         const category = this.getFileCategory(path);
         const name =
             category == "CONFIG" || category == "SNIPPET" ? path.split("/").slice(-1)[0] : path.split("/").slice(-2)[0];
@@ -654,7 +663,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
     }
 
     unifiedKeyPrefixOfTerminal(termOverRide?: string) {
-        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
+        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         return `${ICXHeader}${term}/` as FilePathWithPrefix;
     }
 
@@ -831,7 +840,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             const v2Path = (prefixPath + relativeFilename) as FilePathWithPrefix;
             // console.warn(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`);
             this._log(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
-            const newId = await this.plugin.$$path2id(v2Path);
+            const newId = await this.services.path.path2id(v2Path);
             // const buf =
 
             const data = createBlob([DUMMY_HEAD, DUMMY_END, ...getDocDataAsArray(f.data)]);
@@ -999,7 +1008,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                 await this.plugin.storageAccess.ensureDir(path);
                 // If the content has applied, modified time will be updated to the current time.
                 await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
-                await this.storeCustomisationFileV2(path, this.plugin.$$getDeviceAndVaultName());
+                await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
             } else {
                 const files = data.files;
                 for (const f of files) {
@@ -1042,7 +1051,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                         await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
-                    await this.storeCustomisationFileV2(path, this.plugin.$$getDeviceAndVaultName());
+                    await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
                 }
             }
         } catch (ex) {
@@ -1114,7 +1123,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     );
                 }
             } else if (data.category == "CONFIG") {
-                this.plugin.$$askReload();
+                this.services.appLifecycle.askRestart();
             }
             return true;
         } catch (ex) {
@@ -1157,8 +1166,8 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             return false;
         }
     }
-    async $anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
-        if (!docs._id.startsWith(ICXHeader)) return undefined;
+    async _anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
+        if (!docs._id.startsWith(ICXHeader)) return false;
         if (this._isThisModuleEnabled()) {
             await this.updatePluginList(
                 false,
@@ -1205,7 +1214,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
         return true;
     }
-    async $everyRealizeSettingSyncMode(): Promise<boolean> {
+    async _everyRealizeSettingSyncMode(): Promise<boolean> {
         this.periodicPluginSweepProcessor?.disable();
         if (!this._isMainReady) return true;
         if (!this._isMainSuspended()) return true;
@@ -1345,7 +1354,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         });
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
-        const term = termOverRide || this.plugin.$$getDeviceAndVaultName();
+        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         if (term == "") {
             this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
             return;
@@ -1488,7 +1497,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             }
         });
     }
-    async $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
+    async _anyProcessOptionalFileEvent(path: FilePath): Promise<boolean> {
         return await this.watchVaultRawEventsAsync(path);
     }
 
@@ -1535,7 +1544,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         await shareRunningResult("scanAllConfigFiles", async () => {
             const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             this._log("Scanning customizing files.", logLevel, "scan-all-config");
-            const term = this.plugin.$$getDeviceAndVaultName();
+            const term = this.services.setting.getDeviceAndVaultName();
             if (term == "") {
                 this._log("We have to configure the device name", LOG_LEVEL_NOTICE);
                 return;
@@ -1673,7 +1682,10 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return filenames as FilePath[];
     }
 
-    async $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }): Promise<boolean> {
+    private async _allAskUsingOptionalSyncFeature(opt: {
+        enableFetch?: boolean;
+        enableOverwrite?: boolean;
+    }): Promise<boolean> {
         await this._askHiddenFileConfiguration(opt);
         return true;
     }
@@ -1707,7 +1719,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
     }
 
-    $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
+    _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isPluginMetadata(path)) {
             return Promise.resolve("newer");
         }
@@ -1717,7 +1729,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return Promise.resolve(false);
     }
 
-    $allSuspendExtraSync(): Promise<boolean> {
+    private _allSuspendExtraSync(): Promise<boolean> {
         if (this.plugin.settings.usePluginSync || this.plugin.settings.autoSweepPlugins) {
             this._log(
                 "Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.",
@@ -1729,10 +1741,11 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         return Promise.resolve(true);
     }
 
-    async $anyConfigureOptionalSyncFeature(mode: "CUSTOMIZE" | "DISABLE" | "DISABLE_CUSTOM") {
+    private async _anyConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
         await this.configureHiddenFileSync(mode);
+        return true;
     }
-    async configureHiddenFileSync(mode: "CUSTOMIZE" | "DISABLE" | "DISABLE_CUSTOM") {
+    async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
         if (mode == "DISABLE") {
             this.plugin.settings.usePluginSync = false;
             await this.plugin.saveSettings();
@@ -1740,7 +1753,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
         }
 
         if (mode == "CUSTOMIZE") {
-            if (!this.plugin.$$getDeviceAndVaultName()) {
+            if (!this.services.setting.getDeviceAndVaultName()) {
                 let name = await this.plugin.confirm.askString("Device name", "Please set this device name", `desktop`);
                 if (!name) {
                     if (Platform.isAndroidApp) {
@@ -1764,7 +1777,7 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
                     }
                     name = name + Math.random().toString(36).slice(-4);
                 }
-                this.plugin.$$setDeviceAndVaultName(name);
+                this.services.setting.setDeviceAndVaultName(name);
             }
             this.plugin.settings.usePluginSync = true;
             this.plugin.settings.useAdvancedMode = true;
@@ -1788,5 +1801,18 @@ export class ConfigSync extends LiveSyncCommands implements IObsidianModule {
             files = files.concat(await this.getFiles(v, lastDepth - 1));
         }
         return files;
+    }
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.fileProcessing.handleOptionalFileEvent(this._anyProcessOptionalFileEvent.bind(this));
+        services.conflict.handleGetOptionalConflictCheckMethod(this._anyGetOptionalConflictCheckMethod.bind(this));
+        services.replication.handleProcessVirtualDocuments(this._anyModuleParsedReplicationResultItem.bind(this));
+        services.setting.handleOnRealiseSetting(this._everyRealizeSettingSyncMode.bind(this));
+        services.appLifecycle.handleOnResuming(this._everyOnResumeProcess.bind(this));
+        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
+        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
+        services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
+        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
+        services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
+        services.setting.handleEnableOptionalFeature(this._anyConfigureOptionalSyncFeature.bind(this));
     }
 }

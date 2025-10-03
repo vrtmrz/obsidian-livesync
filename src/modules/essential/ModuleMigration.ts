@@ -9,13 +9,13 @@ import {
     eventHub,
 } from "../../common/events.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
 import { getPath, isValidPath } from "../../common/utils.ts";
 import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 type ErrorInfo = {
     path: string;
@@ -26,7 +26,7 @@ type ErrorInfo = {
     isConflicted?: boolean;
 };
 
-export class ModuleMigration extends AbstractModule implements ICoreModule {
+export class ModuleMigration extends AbstractModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
             this.core,
@@ -45,11 +45,11 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         if (!skipRebuild) {
             if (shouldRebuild) {
                 await this.core.rebuilder.scheduleRebuild();
-                await this.core.$$performRestart();
+                this.services.appLifecycle.performRestart();
                 return false;
             } else if (shouldRebuildLocal) {
                 await this.core.rebuilder.scheduleFetch();
-                await this.core.$$performRestart();
+                this.services.appLifecycle.performRestart();
                 return false;
             }
         }
@@ -129,7 +129,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             if (!isValidPath(path)) {
                 continue;
             }
-            if (!(await this.core.$$isTargetFile(path, true))) {
+            if (!(await this.services.vault.isTargetFile(path, true))) {
                 continue;
             }
             if (!isMetaEntry(metaDoc)) {
@@ -257,9 +257,9 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         }
         // Check local database for compromised chunks
         const localCompromised = await countCompromisedChunks(this.localDatabase.localDatabase);
-        const remote = this.core.$$getReplicator();
+        const remote = this.services.replicator.getActiveReplicator();
         const remoteCompromised = this.core.managers.networkManager.isOnline
-            ? await remote.countCompromisedChunks()
+            ? await remote?.countCompromisedChunks()
             : 0;
         if (localCompromised === false) {
             Logger(`Failed to count compromised chunks in local database`, LOG_LEVEL_NOTICE);
@@ -293,12 +293,12 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         if (result === REBUILD) {
             // Rebuild the database
             await this.core.rebuilder.scheduleRebuild();
-            await this.core.$$performRestart();
+            this.services.appLifecycle.performRestart();
             return false;
         } else if (result === FETCH) {
             // Fetch the latest data from remote
             await this.core.rebuilder.scheduleFetch();
-            await this.core.$$performRestart();
+            this.services.appLifecycle.performRestart();
             return false;
         } else {
             // User chose to dismiss the issue
@@ -307,7 +307,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         return true;
     }
 
-    async $everyOnFirstInitialize(): Promise<boolean> {
+    async _everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
             this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
             return false;
@@ -337,7 +337,7 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
         }
         return true;
     }
-    $everyOnLayoutReady(): Promise<boolean> {
+    _everyOnLayoutReady(): Promise<boolean> {
         eventHub.onEvent(EVENT_REQUEST_RUN_DOCTOR, async (reason) => {
             await this.migrateUsingDoctor(false, reason, true);
         });
@@ -345,5 +345,10 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
             await this.hasIncompleteDocs(true);
         });
         return Promise.resolve(true);
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        super.onBindFunction(core, services);
+        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.handleFirstInitialise(this._everyOnFirstInitialize.bind(this));
     }
 }

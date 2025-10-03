@@ -1,15 +1,16 @@
 import { delay, fireAndForget } from "octagonal-wheels/promises";
 import { __onMissingTranslation } from "../../lib/src/common/i18n";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { eventHub } from "../../common/events";
 import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
 import type { FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleDev extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleDev extends AbstractObsidianModule {
+    _everyOnloadStart(): Promise<boolean> {
         __onMissingTranslation(() => {});
         return Promise.resolve(true);
     }
@@ -35,7 +36,7 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
         }
     }
 
-    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+    private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         this.onMissingTranslation = this.onMissingTranslation.bind(this);
         __onMissingTranslation((key) => {
@@ -92,12 +93,12 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
             id: "view-test",
             name: "Open Test dialogue",
             callback: () => {
-                void this.core.$$showView(VIEW_TYPE_TEST);
+                void this.services.API.showWindow(VIEW_TYPE_TEST);
             },
         });
         return Promise.resolve(true);
     }
-    async $everyOnLayoutReady(): Promise<boolean> {
+    async _everyOnLayoutReady(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         // if (await this.core.storageAccess.isExistsIncludeHidden("_SHOWDIALOGAUTO.md")) {
         //     void this.core.$$showView(VIEW_TYPE_TEST);
@@ -121,7 +122,7 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
                     },
                 });
                 if (w) {
-                    const id = await this.core.$$path2id(filename as FilePathWithPrefix);
+                    const id = await this.services.path.path2id(filename as FilePathWithPrefix);
                     const f = await this.core.localDatabase.getRaw(id);
                     console.log(f);
                     console.log(f._rev);
@@ -139,14 +140,14 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
     testResults = writable<[boolean, string, string][]>([]);
     // testResults: string[] = [];
 
-    $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void {
+    private _addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void {
         const logLine = `${name}: ${key} ${summary ?? ""}`;
         this.testResults.update((results) => {
             results.push([result, logLine, message ?? ""]);
             return results;
         });
     }
-    $everyModuleTest(): Promise<boolean> {
+    private _everyModuleTest(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         // this.core.$$addTestResult("DevModule", "Test", true);
         // return Promise.resolve(true);
@@ -154,5 +155,12 @@ export class ModuleDev extends AbstractObsidianModule implements IObsidianModule
         // this.addTestResult("Test of test2", true, "Just OK?");
         // this.addTestResult("Test of test3", true);
         return this.testDone();
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+        services.test.handleTest(this._everyModuleTest.bind(this));
+        services.test.handleAddTestResult(this._addTestResult.bind(this));
     }
 }

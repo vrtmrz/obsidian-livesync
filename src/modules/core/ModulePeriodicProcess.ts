@@ -1,9 +1,9 @@
 import { PeriodicProcessor } from "../../common/utils";
+import type { LiveSyncCore } from "../../main";
 import { AbstractModule } from "../AbstractModule";
-import type { ICoreModule } from "../ModuleTypes";
 
-export class ModulePeriodicProcess extends AbstractModule implements ICoreModule {
-    periodicSyncProcessor = new PeriodicProcessor(this.core, async () => await this.core.$$replicate());
+export class ModulePeriodicProcess extends AbstractModule {
+    periodicSyncProcessor = new PeriodicProcessor(this.core, async () => await this.services.replication.replicate());
 
     _disablePeriodic() {
         this.periodicSyncProcessor?.disable();
@@ -15,19 +15,27 @@ export class ModulePeriodicProcess extends AbstractModule implements ICoreModule
         );
         return Promise.resolve(true);
     }
-    $allOnUnload() {
+    private _allOnUnload() {
         return this._disablePeriodic();
     }
-    $everyBeforeRealizeSetting(): Promise<boolean> {
+    _everyBeforeRealizeSetting(): Promise<boolean> {
         return this._disablePeriodic();
     }
-    $everyBeforeSuspendProcess(): Promise<boolean> {
+    _everyBeforeSuspendProcess(): Promise<boolean> {
         return this._disablePeriodic();
     }
-    $everyAfterResumeProcess(): Promise<boolean> {
+    _everyAfterResumeProcess(): Promise<boolean> {
         return this._resumePeriodic();
     }
-    $everyAfterRealizeSetting(): Promise<boolean> {
+    _everyAfterRealizeSetting(): Promise<boolean> {
         return this._resumePeriodic();
+    }
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnUnload(this._allOnUnload.bind(this));
+        services.setting.handleBeforeRealiseSetting(this._everyBeforeRealizeSetting.bind(this));
+        services.setting.handleSettingRealised(this._everyAfterRealizeSetting.bind(this));
+        services.appLifecycle.handleOnSuspending(this._everyBeforeSuspendProcess.bind(this));
+        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
     }
 }
