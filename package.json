@@ -13,7 +13,7 @@
         "postbakei18n": "prettier --config ./.prettierrc ./src/lib/src/common/messages/*.ts --write --log-level error",
         "posti18n:yaml2json": "npm run prettyjson",
         "predev": "npm run bakei18n",
-        "dev": "node esbuild.config.mjs",
+        "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
         "build": "node esbuild.config.mjs production",
         "buildDev": "node esbuild.config.mjs dev",

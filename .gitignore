@@ -17,3 +17,6 @@ meta-*.json
 # obsidian
 data.json
 .vscode
+
+# environment variables
+.env
