@@ -19,6 +19,18 @@ const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
 const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
 const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
 
+const PATHS_TEST_INSTALL = process.env?.PATHS_TEST_INSTALL || "";
+const PATH_TEST_INSTALL = PATHS_TEST_INSTALL.split(path.delimiter).map(p => p.trim()).filter(p => p.length);
+if (!prod) {
+    if (PATH_TEST_INSTALL) {
+        console.log(`Built files will be copied to ${PATH_TEST_INSTALL}`);
+    } else {
+        console.log("Development build: You can install the plug-in to Obsidian for testing by exporting the PATHS_TEST_INSTALL environment variable with the paths to your vault plugins directories separated by your system path delimiter (':' on Unix, ';' on Windows).");
+    }
+} else {
+    console.log("Production build");
+}
+
 const moduleAliasPlugin = {
     name: "module-alias",
     setup(build) {
@@ -94,6 +106,21 @@ const plugins = [
                     console.log("Finished terser");
                 } else {
                     fs.copyFileSync("./main_org.js", "./main.js");
+                }
+                if (PATH_TEST_INSTALL) {
+                    for (const installPath of PATH_TEST_INSTALL) {
+                        const realPath = path.resolve(installPath);
+                        console.log(`Copying built files to ${realPath}`);
+                        if (!fs.existsSync(realPath)) {
+                            console.warn(`Test install path ${installPath} does not exist`);
+                            continue;
+                        }
+                        const manifestX = JSON.parse(fs.readFileSync("./manifest.json") + "");
+                        manifestX.version = manifestJson.version + "." + Date.now();
+                        fs.writeFileSync(path.join(installPath, "manifest.json"), JSON.stringify(manifestX, null, 2));
+                        fs.copyFileSync("./main.js", path.join(installPath, "main.js"));
+                        fs.copyFileSync("./styles.css", path.join(installPath, "styles.css"));
+                    }
                 }
             });
         },

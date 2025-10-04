@@ -321,281 +321,281 @@ export function paneRemoteConfig(
             },
             onUpdate: this.enableOnlySyncDisabled,
         });
-        void addPanel(paneEl, "Peer-to-Peer", undefined, this.onlyOnOnlyP2P).then((paneEl) => {
-            const syncWarnP2P = this.createEl(paneEl, "div", {
-                text: "",
-            });
-            const p2pMessage = `This feature is a Work In Progress, and configurable on \`P2P Replicator\` Pane.
+    });
+
+    void addPanel(paneEl, "Peer-to-Peer", undefined, this.onlyOnOnlyP2P).then((paneEl) => {
+        const syncWarnP2P = this.createEl(paneEl, "div", {
+            text: "",
+        });
+        const p2pMessage = `This feature is a Work In Progress, and configurable on \`P2P Replicator\` Pane.
 The pane also can be launched by \`P2P Replicator\` command from the Command Palette.
 `;
 
-            void MarkdownRenderer.render(this.plugin.app, p2pMessage, syncWarnP2P, "/", this.plugin);
-            syncWarnP2P.addClass("op-warn-info");
-            new Setting(paneEl).setName("Apply Settings").setClass("wizardHidden").addApplyButton(["remoteType"]);
-            // .addOnUpdate(onlyOnMinIO);
-            // new Setting(paneEl).addButton((button) =>
-            //     button
-            //         .setButtonText("Open P2P Replicator")
-            //         .onClick(() => {
-            //             const addOn = this.plugin.getAddOn<P2PReplicator>(P2PReplicator.name);
-            //             void addOn?.openPane();
-            //             this.closeSetting();
-            //         })
-            // );
-        });
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleMinioS3R2"), undefined, this.onlyOnMinIO).then(
-            (paneEl) => {
-                const syncWarnMinio = this.createEl(paneEl, "div", {
-                    text: "",
-                });
-                const ObjectStorageMessage = $msg("obsidianLiveSyncSettingTab.msgObjectStorageWarning");
+        void MarkdownRenderer.render(this.plugin.app, p2pMessage, syncWarnP2P, "/", this.plugin);
+        syncWarnP2P.addClass("op-warn-info");
+        new Setting(paneEl).setName("Apply Settings").setClass("wizardHidden").addApplyButton(["remoteType"]);
+        // .addOnUpdate(onlyOnMinIO);
+        // new Setting(paneEl).addButton((button) =>
+        //     button
+        //         .setButtonText("Open P2P Replicator")
+        //         .onClick(() => {
+        //             const addOn = this.plugin.getAddOn<P2PReplicator>(P2PReplicator.name);
+        //             void addOn?.openPane();
+        //             this.closeSetting();
+        //         })
+        // );
+    });
+    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleMinioS3R2"), undefined, this.onlyOnMinIO).then(
+        (paneEl) => {
+            const syncWarnMinio = this.createEl(paneEl, "div", {
+                text: "",
+            });
+            const ObjectStorageMessage = $msg("obsidianLiveSyncSettingTab.msgObjectStorageWarning");
 
-                void MarkdownRenderer.render(this.plugin.app, ObjectStorageMessage, syncWarnMinio, "/", this.plugin);
-                syncWarnMinio.addClass("op-warn-info");
+            void MarkdownRenderer.render(this.plugin.app, ObjectStorageMessage, syncWarnMinio, "/", this.plugin);
+            syncWarnMinio.addClass("op-warn-info");
 
-                new Setting(paneEl).autoWireText("endpoint", { holdValue: true });
-                new Setting(paneEl).autoWireToggle("forcePathStyle", { holdValue: true });
-                new Setting(paneEl).autoWireText("accessKey", { holdValue: true });
+            new Setting(paneEl).autoWireText("endpoint", { holdValue: true });
+            new Setting(paneEl).autoWireToggle("forcePathStyle", { holdValue: true });
+            new Setting(paneEl).autoWireText("accessKey", { holdValue: true });
 
-                new Setting(paneEl).autoWireText("secretKey", {
-                    holdValue: true,
-                    isPassword: true,
-                });
+            new Setting(paneEl).autoWireText("secretKey", {
+                holdValue: true,
+                isPassword: true,
+            });
 
-                new Setting(paneEl).autoWireText("region", { holdValue: true });
+            new Setting(paneEl).autoWireText("region", { holdValue: true });
 
-                new Setting(paneEl).autoWireText("bucket", { holdValue: true });
-                new Setting(paneEl).autoWireText("bucketPrefix", {
-                    holdValue: true,
-                    placeHolder: "vaultname/",
-                });
+            new Setting(paneEl).autoWireText("bucket", { holdValue: true });
+            new Setting(paneEl).autoWireText("bucketPrefix", {
+                holdValue: true,
+                placeHolder: "vaultname/",
+            });
 
-                new Setting(paneEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
-                new Setting(paneEl).autoWireTextArea("bucketCustomHeaders", {
-                    holdValue: true,
-                    placeHolder: "x-custom-header: value\n x-custom-header2: value2",
-                });
-                new Setting(paneEl).setName($msg("obsidianLiveSyncSettingTab.nameTestConnection")).addButton((button) =>
+            new Setting(paneEl).autoWireToggle("useCustomRequestHandler", { holdValue: true });
+            new Setting(paneEl).autoWireTextArea("bucketCustomHeaders", {
+                holdValue: true,
+                placeHolder: "x-custom-header: value\n x-custom-header2: value2",
+            });
+            new Setting(paneEl).setName($msg("obsidianLiveSyncSettingTab.nameTestConnection")).addButton((button) =>
+                button
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.btnTest"))
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.testConnection(this.editingSettings);
+                    })
+            );
+            new Setting(paneEl)
+                .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
+                .setClass("wizardHidden")
+                .addApplyButton([
+                    "remoteType",
+                    "endpoint",
+                    "region",
+                    "accessKey",
+                    "secretKey",
+                    "bucket",
+                    "useCustomRequestHandler",
+                    "bucketCustomHeaders",
+                    "bucketPrefix",
+                ])
+                .addOnUpdate(this.onlyOnMinIO);
+        }
+    );
+
+    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleCouchDB"), undefined, this.onlyOnCouchDB).then(
+        (paneEl) => {
+            if (this.services.API.isMobile()) {
+                this.createEl(
+                    paneEl,
+                    "div",
+                    {
+                        text: $msg("obsidianLiveSyncSettingTab.msgNonHTTPSWarning"),
+                    },
+                    undefined,
+                    visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
+                ).addClass("op-warn");
+            } else {
+                this.createEl(
+                    paneEl,
+                    "div",
+                    {
+                        text: $msg("obsidianLiveSyncSettingTab.msgNonHTTPSInfo"),
+                    },
+                    undefined,
+                    visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
+                ).addClass("op-warn-info");
+            }
+
+            new Setting(paneEl).autoWireText("couchDB_URI", {
+                holdValue: true,
+                onUpdate: this.enableOnlySyncDisabled,
+            });
+            new Setting(paneEl).autoWireToggle("useJWT", {
+                holdValue: true,
+                onUpdate: this.enableOnlySyncDisabled,
+            });
+            new Setting(paneEl).autoWireText("couchDB_USER", {
+                holdValue: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => !this.editingSettings.useJWT)
+                ),
+            });
+            new Setting(paneEl).autoWireText("couchDB_PASSWORD", {
+                holdValue: true,
+                isPassword: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => !this.editingSettings.useJWT)
+                ),
+            });
+            const algorithms = {
+                ["HS256"]: "HS256",
+                ["HS512"]: "HS512",
+                ["ES256"]: "ES256",
+                ["ES512"]: "ES512",
+            } as const;
+            new Setting(paneEl).autoWireDropDown("jwtAlgorithm", {
+                options: algorithms,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => this.editingSettings.useJWT)
+                ),
+            });
+            new Setting(paneEl).autoWireTextArea("jwtKey", {
+                holdValue: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => this.editingSettings.useJWT)
+                ),
+            });
+            // eslint-disable-next-line prefer-const
+            let generatedKeyDivEl: HTMLDivElement;
+            new Setting(paneEl)
+                .setDesc("Generate ES256 Keypair for testing")
+                .addButton((button) =>
+                    button.setButtonText("Generate").onClick(async () => {
+                        const crypto = await getWebCrypto();
+                        const keyPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+                            "sign",
+                            "verify",
+                        ]);
+                        const pubKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+                        const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+                        const encodedPublicKey = await arrayBufferToBase64Single(pubKey);
+                        const encodedPrivateKey = await arrayBufferToBase64Single(privateKey);
+
+                        const privateKeyPem = `> -----BEGIN PRIVATE KEY-----\n> ${encodedPrivateKey}\n> -----END PRIVATE KEY-----`;
+                        const publicKeyPem = `> -----BEGIN PUBLIC KEY-----\\n${encodedPublicKey}\\n-----END PUBLIC KEY-----`;
+
+                        const title = $msg("Setting.GenerateKeyPair.Title");
+                        const msg = $msg("Setting.GenerateKeyPair.Desc", {
+                            public_key: publicKeyPem,
+                            private_key: privateKeyPem,
+                        });
+                        await MarkdownRenderer.render(
+                            this.plugin.app,
+                            "## " + title + "\n\n" + msg,
+                            generatedKeyDivEl,
+                            "/",
+                            this.plugin
+                        );
+                    })
+                )
+                .addOnUpdate(
+                    combineOnUpdate(
+                        this.enableOnlySyncDisabled,
+                        visibleOnly(() => this.editingSettings.useJWT)
+                    )
+                );
+            generatedKeyDivEl = this.createEl(
+                paneEl,
+                "div",
+                { text: "" },
+                (el) => {},
+                visibleOnly(() => this.editingSettings.useJWT)
+            );
+
+            new Setting(paneEl).autoWireText("jwtKid", {
+                holdValue: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => this.editingSettings.useJWT)
+                ),
+            });
+            new Setting(paneEl).autoWireText("jwtSub", {
+                holdValue: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => this.editingSettings.useJWT)
+                ),
+            });
+            new Setting(paneEl).autoWireNumeric("jwtExpDuration", {
+                holdValue: true,
+                onUpdate: combineOnUpdate(
+                    this.enableOnlySyncDisabled,
+                    visibleOnly(() => this.editingSettings.useJWT)
+                ),
+            });
+            new Setting(paneEl).autoWireText("couchDB_DBNAME", {
+                holdValue: true,
+                onUpdate: this.enableOnlySyncDisabled,
+            });
+            new Setting(paneEl).autoWireTextArea("couchDB_CustomHeaders", { holdValue: true });
+            new Setting(paneEl).autoWireToggle("useRequestAPI", {
+                holdValue: true,
+                onUpdate: this.enableOnlySyncDisabled,
+            });
+            new Setting(paneEl)
+                .setName($msg("obsidianLiveSyncSettingTab.nameTestDatabaseConnection"))
+                .setClass("wizardHidden")
+                .setDesc($msg("obsidianLiveSyncSettingTab.descTestDatabaseConnection"))
+                .addButton((button) =>
                     button
                         .setButtonText($msg("obsidianLiveSyncSettingTab.btnTest"))
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.testConnection(this.editingSettings);
+                            await this.testConnection();
                         })
                 );
-                new Setting(paneEl)
-                    .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
-                    .setClass("wizardHidden")
-                    .addApplyButton([
-                        "remoteType",
-                        "endpoint",
-                        "region",
-                        "accessKey",
-                        "secretKey",
-                        "bucket",
-                        "useCustomRequestHandler",
-                        "bucketCustomHeaders",
-                        "bucketPrefix",
-                    ])
-                    .addOnUpdate(this.onlyOnMinIO);
-            }
-        );
 
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleCouchDB"), undefined, this.onlyOnCouchDB).then(
-            (paneEl) => {
-                if (this.services.API.isMobile()) {
-                    this.createEl(
-                        paneEl,
-                        "div",
-                        {
-                            text: $msg("obsidianLiveSyncSettingTab.msgNonHTTPSWarning"),
-                        },
-                        undefined,
-                        visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
-                    ).addClass("op-warn");
-                } else {
-                    this.createEl(
-                        paneEl,
-                        "div",
-                        {
-                            text: $msg("obsidianLiveSyncSettingTab.msgNonHTTPSInfo"),
-                        },
-                        undefined,
-                        visibleOnly(() => !this.editingSettings.couchDB_URI.startsWith("https://"))
-                    ).addClass("op-warn-info");
-                }
-
-                new Setting(paneEl).autoWireText("couchDB_URI", {
-                    holdValue: true,
-                    onUpdate: this.enableOnlySyncDisabled,
-                });
-                new Setting(paneEl).autoWireToggle("useJWT", {
-                    holdValue: true,
-                    onUpdate: this.enableOnlySyncDisabled,
-                });
-                new Setting(paneEl).autoWireText("couchDB_USER", {
-                    holdValue: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => !this.editingSettings.useJWT)
-                    ),
-                });
-                new Setting(paneEl).autoWireText("couchDB_PASSWORD", {
-                    holdValue: true,
-                    isPassword: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => !this.editingSettings.useJWT)
-                    ),
-                });
-                const algorithms = {
-                    ["HS256"]: "HS256",
-                    ["HS512"]: "HS512",
-                    ["ES256"]: "ES256",
-                    ["ES512"]: "ES512",
-                } as const;
-                new Setting(paneEl).autoWireDropDown("jwtAlgorithm", {
-                    options: algorithms,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => this.editingSettings.useJWT)
-                    ),
-                });
-                new Setting(paneEl).autoWireTextArea("jwtKey", {
-                    holdValue: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => this.editingSettings.useJWT)
-                    ),
-                });
-                // eslint-disable-next-line prefer-const
-                let generatedKeyDivEl: HTMLDivElement;
-                new Setting(paneEl)
-                    .setDesc("Generate ES256 Keypair for testing")
-                    .addButton((button) =>
-                        button.setButtonText("Generate").onClick(async () => {
-                            const crypto = await getWebCrypto();
-                            const keyPair = await crypto.subtle.generateKey(
-                                { name: "ECDSA", namedCurve: "P-256" },
-                                true,
-                                ["sign", "verify"]
-                            );
-                            const pubKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-                            const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-                            const encodedPublicKey = await arrayBufferToBase64Single(pubKey);
-                            const encodedPrivateKey = await arrayBufferToBase64Single(privateKey);
-
-                            const privateKeyPem = `> -----BEGIN PRIVATE KEY-----\n> ${encodedPrivateKey}\n> -----END PRIVATE KEY-----`;
-                            const publicKeyPem = `> -----BEGIN PUBLIC KEY-----\\n${encodedPublicKey}\\n-----END PUBLIC KEY-----`;
-
-                            const title = $msg("Setting.GenerateKeyPair.Title");
-                            const msg = $msg("Setting.GenerateKeyPair.Desc", {
-                                public_key: publicKeyPem,
-                                private_key: privateKeyPem,
-                            });
-                            await MarkdownRenderer.render(
-                                this.plugin.app,
-                                "## " + title + "\n\n" + msg,
-                                generatedKeyDivEl,
-                                "/",
-                                this.plugin
-                            );
+            new Setting(paneEl)
+                .setName($msg("obsidianLiveSyncSettingTab.nameValidateDatabaseConfig"))
+                .setDesc($msg("obsidianLiveSyncSettingTab.descValidateDatabaseConfig"))
+                .addButton((button) =>
+                    button
+                        .setButtonText($msg("obsidianLiveSyncSettingTab.btnCheck"))
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await checkConfig(checkResultDiv);
                         })
-                    )
-                    .addOnUpdate(
-                        combineOnUpdate(
-                            this.enableOnlySyncDisabled,
-                            visibleOnly(() => this.editingSettings.useJWT)
-                        )
-                    );
-                generatedKeyDivEl = this.createEl(
-                    paneEl,
-                    "div",
-                    { text: "" },
-                    (el) => {},
-                    visibleOnly(() => this.editingSettings.useJWT)
                 );
+            checkResultDiv = this.createEl(paneEl, "div", {
+                text: "",
+            });
 
-                new Setting(paneEl).autoWireText("jwtKid", {
-                    holdValue: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => this.editingSettings.useJWT)
-                    ),
-                });
-                new Setting(paneEl).autoWireText("jwtSub", {
-                    holdValue: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => this.editingSettings.useJWT)
-                    ),
-                });
-                new Setting(paneEl).autoWireNumeric("jwtExpDuration", {
-                    holdValue: true,
-                    onUpdate: combineOnUpdate(
-                        this.enableOnlySyncDisabled,
-                        visibleOnly(() => this.editingSettings.useJWT)
-                    ),
-                });
-                new Setting(paneEl).autoWireText("couchDB_DBNAME", {
-                    holdValue: true,
-                    onUpdate: this.enableOnlySyncDisabled,
-                });
-                new Setting(paneEl).autoWireTextArea("couchDB_CustomHeaders", { holdValue: true });
-                new Setting(paneEl).autoWireToggle("useRequestAPI", {
-                    holdValue: true,
-                    onUpdate: this.enableOnlySyncDisabled,
-                });
-                new Setting(paneEl)
-                    .setName($msg("obsidianLiveSyncSettingTab.nameTestDatabaseConnection"))
-                    .setClass("wizardHidden")
-                    .setDesc($msg("obsidianLiveSyncSettingTab.descTestDatabaseConnection"))
-                    .addButton((button) =>
-                        button
-                            .setButtonText($msg("obsidianLiveSyncSettingTab.btnTest"))
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await this.testConnection();
-                            })
-                    );
-
-                new Setting(paneEl)
-                    .setName($msg("obsidianLiveSyncSettingTab.nameValidateDatabaseConfig"))
-                    .setDesc($msg("obsidianLiveSyncSettingTab.descValidateDatabaseConfig"))
-                    .addButton((button) =>
-                        button
-                            .setButtonText($msg("obsidianLiveSyncSettingTab.btnCheck"))
-                            .setDisabled(false)
-                            .onClick(async () => {
-                                await checkConfig(checkResultDiv);
-                            })
-                    );
-                checkResultDiv = this.createEl(paneEl, "div", {
-                    text: "",
-                });
-
-                new Setting(paneEl)
-                    .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
-                    .setClass("wizardHidden")
-                    .addApplyButton([
-                        "remoteType",
-                        "couchDB_URI",
-                        "couchDB_USER",
-                        "couchDB_PASSWORD",
-                        "couchDB_DBNAME",
-                        "jwtAlgorithm",
-                        "jwtExpDuration",
-                        "jwtKey",
-                        "jwtSub",
-                        "jwtKid",
-                        "useJWT",
-                        "couchDB_CustomHeaders",
-                        "useRequestAPI",
-                    ])
-                    .addOnUpdate(this.onlyOnCouchDB);
-            }
-        );
-    });
+            new Setting(paneEl)
+                .setName($msg("obsidianLiveSyncSettingTab.nameApplySettings"))
+                .setClass("wizardHidden")
+                .addApplyButton([
+                    "remoteType",
+                    "couchDB_URI",
+                    "couchDB_USER",
+                    "couchDB_PASSWORD",
+                    "couchDB_DBNAME",
+                    "jwtAlgorithm",
+                    "jwtExpDuration",
+                    "jwtKey",
+                    "jwtSub",
+                    "jwtKid",
+                    "useJWT",
+                    "couchDB_CustomHeaders",
+                    "useRequestAPI",
+                ])
+                .addOnUpdate(this.onlyOnCouchDB);
+        }
+    );
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification"), () => {}, this.onlyOnCouchDB).then(
         (paneEl) => {
             paneEl.addClass("wizardHidden");
