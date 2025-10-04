@@ -9,6 +9,7 @@ package-lock.json
 # build
 main.js
 main_org.js
+main_org_*.js
 *.js.map
 meta.json
 meta-*.json
