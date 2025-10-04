@@ -21,7 +21,7 @@ export function paneCustomisationSync(
                 text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
                 cls: "op-warn",
             },
-            (c) => {},
+            (c) => { },
             visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", ""))
         );
         this.createEl(
@@ -31,7 +31,7 @@ export function paneCustomisationSync(
                 text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
                 cls: "op-warn-info",
             },
-            (c) => {},
+            (c) => { },
             visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
         );
 

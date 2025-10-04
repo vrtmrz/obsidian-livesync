@@ -25,16 +25,16 @@ export function paneSyncSettings(
         const options: Record<string, string> =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
-                      NONE: "",
-                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
-                  }
+                    NONE: "",
+                    LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                    DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                }
                 : {
-                      NONE: "",
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
-                  };
+                    NONE: "",
+                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                    DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                };
 
         new Setting(paneEl)
             .autoWireDropDown("preset", {
@@ -144,14 +144,14 @@ export function paneSyncSettings(
         const optionsSyncMode =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
-                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
-                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
-                  }
+                    ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                    LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                }
                 : {
-                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
-                  };
+                    ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                };
 
         new Setting(paneEl)
             .autoWireDropDown("syncMode", {
