@@ -66,14 +66,14 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     }
 
     async initialMessage() {
-        const message = $msg("moduleMigration.msgInitialSetup", {
+        const message = $msg("dialog.setup.welcome.desc", {
             URI_DOC: $msg("moduleMigration.docUri"),
         });
-        const USE_SETUP = $msg("moduleMigration.optionHaveSetupUri");
-        const NEXT = $msg("moduleMigration.optionNoSetupUri");
+        const USE_SETUP = $msg("dialog.setup.welcome.action.primary");
+        const NEXT = $msg("dialog.setup.welcome.action.secondary");
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_SETUP, NEXT], {
-            title: $msg("moduleMigration.titleWelcome"),
+            title: $msg("dialog.setup.welcome.title"),
             defaultAction: USE_SETUP,
         });
         if (ret === USE_SETUP) {
@@ -86,14 +86,14 @@ export class ModuleMigration extends AbstractModule implements ICoreModule {
     }
 
     async askAgainForSetupURI() {
-        const message = $msg("moduleMigration.msgRecommendSetupUri", { URI_DOC: $msg("moduleMigration.docUri") });
-        const USE_MINIMAL = $msg("moduleMigration.optionSetupWizard");
-        const USE_P2P = $msg("moduleMigration.optionSetupViaP2P");
-        const USE_SETUP = $msg("moduleMigration.optionManualSetup");
-        const NEXT = $msg("moduleMigration.optionRemindNextLaunch");
+        const message = $msg("dialog.setup.method.desc", { URI_DOC: $msg("moduleMigration.docUri") });
+        const USE_MINIMAL = $msg("dialog.setup.method.action.wizard");
+        const USE_P2P = $msg("dialog.setup.method.action.p2p");
+        const USE_SETUP = $msg("dialog.setup.method.action.manually");
+        const NEXT = $msg("action.button.cancel");
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, USE_P2P, NEXT], {
-            title: $msg("moduleMigration.titleRecommendSetupUri"),
+            title: $msg("dialog.setup.method.title"),
             defaultAction: USE_MINIMAL,
         });
         if (ret === USE_MINIMAL) {

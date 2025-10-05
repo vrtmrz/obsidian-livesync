@@ -53,7 +53,6 @@ import {
 } from "./SettingPane.ts";
 import { pageGettingStarted } from "./PageGettingStarted.ts";
 import { paneSetup } from "./PaneSetup.ts";
-import { paneGeneral } from "./PaneGeneral.ts";
 import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
 import { paneSelector } from "./PaneSelector.ts";
 import { paneSyncSettings } from "./PaneSyncSettings.ts";
@@ -840,9 +839,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then(
             bindPane(paneSetup)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20, false).then(
-            bindPane(paneGeneral)
         );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0, false).then(
             bindPane(paneRemoteConfig)

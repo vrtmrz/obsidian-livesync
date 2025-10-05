@@ -1,6 +1,7 @@
 import { $msg, $t } from "@/lib/src/common/i18n";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { PageFunctions, visibleOnly } from "./SettingPane";
+import type { PageFunctions } from "./SettingPane";
+import { visibleOnly } from "./SettingPane";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/lib/src/common/rosetta";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting";
 
@@ -54,10 +55,14 @@ export function pageGeneral(
     void addPanel(
         pageEl,
         $msg("general.logging.title")).then((pageEl) => {
+            pageEl.addClass("wizardHidden");
+
+            // Only Display Notifications
             new Setting(pageEl).autoWireToggle("lessInformationInLog")
                 .setName($msg("general.logging.onlyNotifications.title"))
                 .setDesc($msg("general.logging.onlyNotifications.desc"));
 
+            // Enable Verbose Logging
             new Setting(pageEl).autoWireToggle("showVerboseLog", {
                 onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)),
             })
@@ -70,6 +75,7 @@ export function pageGeneral(
     void addPanel(
         pageEl,
         $msg("general.reset.title")).then((pageEl) => {
+            // Reset Self-hosted LiveSync Configuration
             new Setting(pageEl)
                 .setName($msg("general.reset.resetClient.title"))
                 .setDesc($msg("general.reset.resetClient.desc"))
@@ -85,5 +91,15 @@ export function pageGeneral(
                         })
                 );
         }
+    );
+
+    // Wizard Next Button
+    new Setting(pageEl).setClass("wizardOnly").addButton((button) =>
+        button
+            .setButtonText($msg("obsidianLiveSyncSettingTab.btnNext"))
+            .setCta()
+            .onClick(() => {
+                this.changeDisplay("0");
+            })
     );
 };
