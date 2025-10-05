@@ -1,7 +1,6 @@
 import { $msg, $t } from "@/lib/src/common/i18n";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import type { PageFunctions } from "./SettingPane";
-import { visibleOnly } from "./SettingPane";
+import { type PageFunctions, visibleOnly } from "./SettingPane";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/lib/src/common/rosetta";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting";
 
