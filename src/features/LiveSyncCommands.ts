@@ -12,6 +12,7 @@ import {
 import type ObsidianLiveSyncPlugin from "../main.ts";
 import { MARK_DONE } from "../modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "../main.ts";
+import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
@@ -42,6 +43,7 @@ export abstract class LiveSyncCommands {
     constructor(plugin: ObsidianLiveSyncPlugin) {
         this.plugin = plugin;
         this.onBindFunction(plugin, plugin.services);
+        __$checkInstanceBinding(this);
     }
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;

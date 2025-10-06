@@ -32,10 +32,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     }
 
     private _performRestart(): void {
-        this._performAppReload();
+        this.__performAppReload();
     }
 
-    _performAppReload() {
+    __performAppReload() {
         //@ts-ignore
         this.app.commands.executeCommandById("app:reload");
     }
@@ -182,7 +182,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 { defaultAction: RETRY_LATER }
             );
             if (ret == RESTART_NOW) {
-                this._performAppReload();
+                this.__performAppReload();
             } else if (ret == RESTART_AFTER_STABLE) {
                 this.services.appLifecycle.scheduleRestart();
             }
@@ -225,7 +225,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             this.core._totalProcessingCount.onChanged((e) => {
                 if (e.value == 0) {
                     if (stableCheck-- <= 0) {
-                        this._performAppReload();
+                        this.__performAppReload();
                     }
                     this._log(
                         `Obsidian will be restarted soon! (Within ${stableCheck} seconds)`,

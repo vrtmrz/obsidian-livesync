@@ -105,11 +105,11 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
         });
         return Promise.resolve(true);
     }
-    _onWorkspaceReady() {
+    private __onWorkspaceReady() {
         void this.services.appLifecycle.onReady();
     }
     private _everyOnload(): Promise<boolean> {
-        this.app.workspace.onLayoutReady(this._onWorkspaceReady.bind(this));
+        this.app.workspace.onLayoutReady(this.__onWorkspaceReady.bind(this));
         return Promise.resolve(true);
     }
 

@@ -320,7 +320,7 @@ export class ModuleLog extends AbstractObsidianModule {
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         logStore
             .pipeTo(
-                new QueueProcessor((logs) => logs.forEach((e) => this._addLog(e.message, e.level, e.key)), {
+                new QueueProcessor((logs) => logs.forEach((e) => this.__addLog(e.message, e.level, e.key)), {
                     suspended: false,
                     batchSize: 20,
                     concurrentLimit: 1,
@@ -367,7 +367,7 @@ export class ModuleLog extends AbstractObsidianModule {
             })
         );
     }
-    _addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
+    __addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
         if (level == LOG_LEVEL_DEBUG && !showDebugLog) {
             return;
         }

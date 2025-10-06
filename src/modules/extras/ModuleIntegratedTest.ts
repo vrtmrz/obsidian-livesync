@@ -45,7 +45,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule {
         }
         return true;
     }
-    async _orDie(key: string, proc: () => Promise<boolean>): Promise<true> | never {
+    async __orDie(key: string, proc: () => Promise<boolean>): Promise<true> | never {
         if (!(await this._test(key, proc))) {
             throw new Error(`${key}`);
         }
@@ -64,13 +64,13 @@ export class ModuleIntegratedTest extends AbstractObsidianModule {
         }
         return await this.core.storageAccess.readHiddenFileText(file);
     }
-    async _proceed(no: number, title: string): Promise<boolean> {
+    async __proceed(no: number, title: string): Promise<boolean> {
         const stepFile = "_STEP.md" as FilePathWithPrefix;
         const stepAckFile = "_STEP_ACK.md" as FilePathWithPrefix;
         const stepContent = `Step ${no}`;
         await this.services.conflict.resolveByNewest(stepFile);
         await this.core.storageAccess.writeFileAuto(stepFile, stepContent);
-        await this._orDie(`Wait for acknowledge ${no}`, async () => {
+        await this.__orDie(`Wait for acknowledge ${no}`, async () => {
             if (
                 !(await this.waitWithReplicating(async () => {
                     return await this.storageContentIsEqual(stepAckFile, stepContent);
@@ -81,13 +81,13 @@ export class ModuleIntegratedTest extends AbstractObsidianModule {
         });
         return true;
     }
-    async _join(no: number, title: string): Promise<boolean> {
+    async __join(no: number, title: string): Promise<boolean> {
         const stepFile = "_STEP.md" as FilePathWithPrefix;
         const stepAckFile = "_STEP_ACK.md" as FilePathWithPrefix;
         // const otherStepFile = `_STEP_${isLeader ? "R" : "L"}.md` as FilePathWithPrefix;
         const stepContent = `Step ${no}`;
 
-        await this._orDie(`Wait for step ${no} (${title})`, async () => {
+        await this.__orDie(`Wait for step ${no} (${title})`, async () => {
             if (
                 !(await this.waitWithReplicating(async () => {
                     return await this.storageContentIsEqual(stepFile, stepContent);
@@ -116,16 +116,16 @@ export class ModuleIntegratedTest extends AbstractObsidianModule {
         check: () => Promise<boolean>;
     }): Promise<boolean> {
         if (isGameChanger) {
-            await this._proceed(step, title);
+            await this.__proceed(step, title);
             try {
                 await proc();
             } catch (e) {
                 this._log(`Error: ${e}`);
                 return false;
             }
-            return await this._orDie(`Step ${step} - ${title}`, async () => await this.waitWithReplicating(check));
+            return await this.__orDie(`Step ${step} - ${title}`, async () => await this.waitWithReplicating(check));
         } else {
-            return await this._join(step, title);
+            return await this.__join(step, title);
         }
     }
     // // see scenario.md
@@ -151,7 +151,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule {
             `Test as ${isLeader ? "Leader" : "Receiver"} command file ${testCommandFile}`
         );
         if (isLeader) {
-            await this._proceed(0, "start");
+            await this.__proceed(0, "start");
         }
         await this.tryReplicate();
 

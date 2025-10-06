@@ -411,7 +411,7 @@ export class ConfigSync extends LiveSyncCommands {
     get useSyncPluginEtc() {
         return this.plugin.settings.usePluginEtc;
     }
-    _isThisModuleEnabled() {
+    isThisModuleEnabled() {
         return this.plugin.settings.usePluginSync;
     }
 
@@ -420,7 +420,7 @@ export class ConfigSync extends LiveSyncCommands {
 
     pluginList: IPluginDataExDisplay[] = [];
     showPluginSyncModal() {
-        if (!this._isThisModuleEnabled()) {
+        if (!this.isThisModuleEnabled()) {
             return;
         }
         if (this.pluginDialog) {
@@ -492,7 +492,7 @@ export class ConfigSync extends LiveSyncCommands {
         return this.getFileCategory(filePath) != "";
     }
     private async _everyOnDatabaseInitialized(showNotice: boolean) {
-        if (!this._isThisModuleEnabled()) return true;
+        if (!this.isThisModuleEnabled()) return true;
         try {
             this._log("Scanning customizations...");
             await this.scanAllConfigFiles(showNotice);
@@ -504,7 +504,7 @@ export class ConfigSync extends LiveSyncCommands {
         return true;
     }
     async _everyBeforeReplicate(showNotice: boolean) {
-        if (!this._isThisModuleEnabled()) return true;
+        if (!this.isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(showNotice);
             return true;
@@ -512,7 +512,7 @@ export class ConfigSync extends LiveSyncCommands {
         return true;
     }
     async _everyOnResumeProcess(): Promise<boolean> {
-        if (!this._isThisModuleEnabled()) return true;
+        if (!this.isThisModuleEnabled()) return true;
         if (this._isMainSuspended()) {
             return true;
         }
@@ -528,7 +528,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
     _everyAfterResumeProcess(): Promise<boolean> {
         const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
-        q?.toggleClass("sls-hidden", !this._isThisModuleEnabled());
+        q?.toggleClass("sls-hidden", !this.isThisModuleEnabled());
         return Promise.resolve(true);
     }
     async reloadPluginList(showMessage: boolean) {
@@ -870,7 +870,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
-        if (!this._isThisModuleEnabled()) {
+        if (!this.isThisModuleEnabled()) {
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
             pluginList.set(this.pluginList);
@@ -1168,13 +1168,13 @@ export class ConfigSync extends LiveSyncCommands {
     }
     async _anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (!docs._id.startsWith(ICXHeader)) return false;
-        if (this._isThisModuleEnabled()) {
+        if (this.isThisModuleEnabled()) {
             await this.updatePluginList(
                 false,
                 (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath(docs as AnyEntry)
             );
         }
-        if (this._isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
+        if (this.isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
             if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                 const fragment = createFragment((doc) => {
                     doc.createEl("span", undefined, (a) => {
@@ -1218,7 +1218,7 @@ export class ConfigSync extends LiveSyncCommands {
         this.periodicPluginSweepProcessor?.disable();
         if (!this._isMainReady) return true;
         if (!this._isMainSuspended()) return true;
-        if (!this._isThisModuleEnabled()) return true;
+        if (!this.isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(false);
         }
@@ -1504,7 +1504,7 @@ export class ConfigSync extends LiveSyncCommands {
     async watchVaultRawEventsAsync(path: FilePath) {
         if (!this._isMainReady) return false;
         if (this._isMainSuspended()) return false;
-        if (!this._isThisModuleEnabled()) return false;
+        if (!this.isThisModuleEnabled()) return false;
         // if (!this.isTargetPath(path)) return false;
         const stat = await this.plugin.storageAccess.statHidden(path);
         // Make sure that target is a file.
@@ -1686,10 +1686,10 @@ export class ConfigSync extends LiveSyncCommands {
         enableFetch?: boolean;
         enableOverwrite?: boolean;
     }): Promise<boolean> {
-        await this._askHiddenFileConfiguration(opt);
+        await this.__askHiddenFileConfiguration(opt);
         return true;
     }
-    async _askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
+    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         const message = `Would you like to enable **Customization sync**?
 
 > [!DETAILS]-

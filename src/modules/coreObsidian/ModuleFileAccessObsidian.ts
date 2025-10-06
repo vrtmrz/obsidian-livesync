@@ -343,7 +343,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     //     }
     // }
 
-    async _deleteVaultItem(file: TFile | TFolder) {
+    async __deleteVaultItem(file: TFile | TFolder) {
         if (file instanceof TFile) {
             if (!(await this.services.vault.isTargetFile(file.path))) return;
         }
@@ -361,7 +361,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
                     this._log(
                         `All files under the parent directory (${dir.path}) have been deleted, so delete this one.`
                     );
-                    await this._deleteVaultItem(dir);
+                    await this.__deleteVaultItem(dir);
                 }
             }
         }
@@ -372,7 +372,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         const file = this.vaultAccess.getAbstractFileByPath(path);
         if (file === null) return;
         if (file instanceof TFile || file instanceof TFolder) {
-            return await this._deleteVaultItem(file);
+            return await this.__deleteVaultItem(file);
         }
     }
 

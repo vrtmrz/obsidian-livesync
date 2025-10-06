@@ -5,30 +5,30 @@ import { AbstractModule } from "../AbstractModule";
 export class ModulePeriodicProcess extends AbstractModule {
     periodicSyncProcessor = new PeriodicProcessor(this.core, async () => await this.services.replication.replicate());
 
-    _disablePeriodic() {
+    disablePeriodic() {
         this.periodicSyncProcessor?.disable();
         return Promise.resolve(true);
     }
-    _resumePeriodic() {
+    resumePeriodic() {
         this.periodicSyncProcessor.enable(
             this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0
         );
         return Promise.resolve(true);
     }
     private _allOnUnload() {
-        return this._disablePeriodic();
+        return this.disablePeriodic();
     }
-    _everyBeforeRealizeSetting(): Promise<boolean> {
-        return this._disablePeriodic();
+    private _everyBeforeRealizeSetting(): Promise<boolean> {
+        return this.disablePeriodic();
     }
-    _everyBeforeSuspendProcess(): Promise<boolean> {
-        return this._disablePeriodic();
+    private _everyBeforeSuspendProcess(): Promise<boolean> {
+        return this.disablePeriodic();
     }
-    _everyAfterResumeProcess(): Promise<boolean> {
-        return this._resumePeriodic();
+    private _everyAfterResumeProcess(): Promise<boolean> {
+        return this.resumePeriodic();
     }
-    _everyAfterRealizeSetting(): Promise<boolean> {
-        return this._resumePeriodic();
+    private _everyAfterRealizeSetting(): Promise<boolean> {
+        return this.resumePeriodic();
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {

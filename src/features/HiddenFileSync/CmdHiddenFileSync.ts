@@ -81,13 +81,13 @@ function getComparingMTime(
 }
 
 export class HiddenFileSync extends LiveSyncCommands {
-    _isThisModuleEnabled() {
+    isThisModuleEnabled() {
         return this.plugin.settings.syncInternalFiles;
     }
 
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(
         this.plugin,
-        async () => this._isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
+        async () => this.isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
     );
 
     get kvDB() {
@@ -151,7 +151,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
         this._databaseInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed-database");
         this._fileInfoLastKnown = await autosaveCache(this.kvDB, "hidden-file-lastKnown");
-        if (this._isThisModuleEnabled()) {
+        if (this.isThisModuleEnabled()) {
             if (this._fileInfoLastProcessed.size == 0 && this._fileInfoLastProcessed.size == 0) {
                 this._log(`No cache found. Performing startup scan.`, LOG_LEVEL_VERBOSE);
                 await this.performStartupScan(true);
@@ -163,7 +163,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
     async _everyBeforeReplicate(showNotice: boolean) {
         if (
-            this._isThisModuleEnabled() &&
+            this.isThisModuleEnabled() &&
             this._isDatabaseReady() &&
             this.settings.syncInternalFilesBeforeReplication &&
             !this.settings.watchInternalFileChanges
@@ -200,7 +200,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     isReady() {
         if (!this._isMainReady) return false;
         if (this._isMainSuspended()) return false;
-        if (!this._isThisModuleEnabled()) return false;
+        if (!this.isThisModuleEnabled()) return false;
         return true;
     }
     shouldSkipFile = [] as FilePathWithPrefixLC[];
@@ -212,11 +212,11 @@ export class HiddenFileSync extends LiveSyncCommands {
     async _everyOnResumeProcess(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended()) return true;
-        if (this._isThisModuleEnabled()) {
+        if (this.isThisModuleEnabled()) {
             await this.performStartupScan(false);
         }
         this.periodicInternalFileScanProcessor.enable(
-            this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval
+            this.isThisModuleEnabled() && this.settings.syncInternalFilesInterval
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
@@ -228,7 +228,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (this._isMainSuspended()) return Promise.resolve(true);
         if (!this.services.appLifecycle.isReady()) return Promise.resolve(true);
         this.periodicInternalFileScanProcessor.enable(
-            this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval
+            this.isThisModuleEnabled() && this.settings.syncInternalFilesInterval
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
@@ -256,7 +256,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     async _anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean> {
         if (isInternalMetadata(doc._id)) {
-            if (this._isThisModuleEnabled()) {
+            if (this.isThisModuleEnabled()) {
                 //system file
                 const filename = getPath(doc);
                 if (await this.services.vault.isTargetFile(filename)) {
@@ -1492,7 +1492,7 @@ Offline Changed files: ${files.length}`;
                 }
                 const deleted = metaOnDB.deleted || metaOnDB._deleted || false;
                 if (deleted) {
-                    const result = await this._deleteFile(storageFilePath);
+                    const result = await this.__deleteFile(storageFilePath);
                     if (result == "OK") {
                         this.updateLastProcessedDeletion(storageFilePath, metaOnDB);
                         return true;
@@ -1506,7 +1506,7 @@ Offline Changed files: ${files.length}`;
                     if (fileOnDB === false) {
                         throw new Error(`Failed to read file from database:${storageFilePath}`);
                     }
-                    const resultStat = await this._writeFile(storageFilePath, fileOnDB, force);
+                    const resultStat = await this.__writeFile(storageFilePath, fileOnDB, force);
                     if (resultStat) {
                         this.updateLastProcessed(storageFilePath, metaOnDB, resultStat);
                         this.queueNotification(storageFilePath);
@@ -1539,7 +1539,7 @@ Offline Changed files: ${files.length}`;
         }
     }
 
-    async _writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
+    async __writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
         try {
             const statBefore = await this.plugin.storageAccess.statHidden(storageFilePath);
             const isExist = statBefore != null;
@@ -1578,7 +1578,7 @@ Offline Changed files: ${files.length}`;
         }
     }
 
-    async _deleteFile(storageFilePath: FilePath): Promise<false | "OK" | "ALREADY"> {
+    async __deleteFile(storageFilePath: FilePath): Promise<false | "OK" | "ALREADY"> {
         const result = await this.__removeFile(storageFilePath);
         if (result === false) {
             this._log(`STORAGE <x- DB: ${storageFilePath}: deleting (hidden) Failed`);
@@ -1596,10 +1596,10 @@ Offline Changed files: ${files.length}`;
     // <-- Database To Storage Functions
 
     private async _allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        await this._askHiddenFileConfiguration(opt);
+        await this.__askHiddenFileConfiguration(opt);
         return true;
     }
-    async _askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
+    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         const messageFetch = `${opt.enableFetch ? `> - Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
         const messageOverwrite = `${opt.enableOverwrite ? `> - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
         const messageMerge = `> - Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.

@@ -34,7 +34,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return !this.last_successful_post;
     }
 
-    async _fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
+    async __fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
         const body = opts?.body as string;
 
         const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
@@ -69,7 +69,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         const body = opts?.body as string;
         const size = body ? ` (${body.length})` : "";
         try {
-            const r = await this._fetchByAPI(url, authHeader, opts);
+            const r = await this.__fetchByAPI(url, authHeader, opts);
             this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
             if (method == "POST" || method == "PUT") {
                 this.last_successful_post = r.status - (r.status % 100) == 200;
@@ -149,7 +149,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                     try {
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                         const response: Response = await (useRequestAPI
-                            ? this._fetchByAPI(url.toString(), authHeader, { ...opts, headers })
+                            ? this.__fetchByAPI(url.toString(), authHeader, { ...opts, headers })
                             : fetch(url, { ...opts, headers }));
                         if (method == "POST" || method == "PUT") {
                             this.last_successful_post = response.ok;

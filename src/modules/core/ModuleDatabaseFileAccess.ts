@@ -102,11 +102,11 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements Database
     }
 
     async createChunks(file: UXFileInfo, force: boolean = false, skipCheck?: boolean): Promise<boolean> {
-        return await this._store(file, force, skipCheck, true);
+        return await this.__store(file, force, skipCheck, true);
     }
 
     async store(file: UXFileInfo, force: boolean = false, skipCheck?: boolean): Promise<boolean> {
-        return await this._store(file, force, skipCheck, false);
+        return await this.__store(file, force, skipCheck, false);
     }
     async storeContent(path: FilePathWithPrefix, content: string): Promise<boolean> {
         const blob = createTextBlob(content);
@@ -124,10 +124,10 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements Database
             body: blob,
             isInternal,
         };
-        return await this._store(dummyUXFileInfo, true, false, false);
+        return await this.__store(dummyUXFileInfo, true, false, false);
     }
 
-    async _store(
+    private async __store(
         file: UXFileInfo,
         force: boolean = false,
         skipCheck?: boolean,

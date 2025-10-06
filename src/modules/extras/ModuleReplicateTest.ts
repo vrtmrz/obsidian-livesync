@@ -56,10 +56,10 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
     async dumpList() {
         if (this.settings.syncInternalFiles) {
             this._log("Write file list (Include Hidden)");
-            await this._dumpFileListIncludeHidden("files.md");
+            await this.__dumpFileListIncludeHidden("files.md");
         } else {
             this._log("Write file list");
-            await this._dumpFileList("files.md");
+            await this.__dumpFileList("files.md");
         }
     }
     async _everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
@@ -73,7 +73,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
             id: "dump-file-structure-normal",
             name: `Dump Structure (Normal)`,
             callback: () => {
-                void this._dumpFileList("files.md").finally(() => {
+                void this.__dumpFileList("files.md").finally(() => {
                     void this.refreshSyncStatus();
                 });
             },
@@ -83,7 +83,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
             name: "Dump Structure (Include Hidden)",
             callback: () => {
                 const d = "files.md";
-                void this._dumpFileListIncludeHidden(d);
+                void this.__dumpFileListIncludeHidden(d);
             },
         });
         this.addCommand({
@@ -164,7 +164,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
         }
     }
 
-    async _dumpFileList(outFile?: string) {
+    async __dumpFileList(outFile?: string) {
         if (!this.core || !this.core.storageAccess) {
             this._log("No storage access", LOG_LEVEL_INFO);
             return;
@@ -204,7 +204,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
         this._log(`Dumped ${out.length} files`, LOG_LEVEL_INFO);
     }
 
-    async _dumpFileListIncludeHidden(outFile?: string) {
+    async __dumpFileListIncludeHidden(outFile?: string) {
         const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
         const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
         const out = [] as any[];

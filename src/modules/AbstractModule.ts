@@ -1,6 +1,7 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import type { LOG_LEVEL } from "../lib/src/common/types";
 import type { LiveSyncCore } from "../main";
+import { __$checkInstanceBinding } from "../lib/src/dev/checks";
 // import { unique } from "octagonal-wheels/collection";
 // import type { IObsidianModule } from "./AbstractObsidianModule.ts";
 // import type {
@@ -159,6 +160,7 @@ export abstract class AbstractModule {
     constructor(public core: LiveSyncCore) {
         this.onBindFunction(core, core.services);
         Logger(`[${this.constructor.name}] Loaded`, LOG_LEVEL_VERBOSE);
+        __$checkInstanceBinding(this);
     }
     saveSettings = this.core.saveSettings.bind(this.core);
 
