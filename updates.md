@@ -8,6 +8,25 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
+## 0.25.21.beta2
+
+8th October, 2025
+
+### Fixed
+
+- Fixed wrong event type bindings (which caused some events not to be handled correctly).
+- Fixed detected a timing issue in StorageEventManager
+    - When multiple events for the same file are fired in quick succession, metadata has been kept older information. This induces unexpected wrong notifications and write prevention.
+
+## 0.25.21.beta1
+
+6th October, 2025
+
+### Refactored
+
+- Event handling now does not rely on 'convention over configuration'.
+    - Services.ts now have a proper event handler registration system.
+
 ## 0.25.20
 
 26th September, 2025
