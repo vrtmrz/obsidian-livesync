@@ -222,6 +222,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
             return null;
         }
     }
+
     async readStubContent(stub: UXFileInfoStub): Promise<UXFileInfo | false> {
         const file = this.vaultAccess.getAbstractFileByPath(stub.path);
         if (!(file instanceof TFile)) {
@@ -231,6 +232,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         const data = await this.vaultAccess.vaultReadAuto(file);
         return {
             ...stub,
+            ...TFileToUXFileInfoStub(file),
             body: createBlob(data),
         };
     }

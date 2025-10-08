@@ -295,7 +295,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     concurrentProcessing = Semaphore(5);
     waitedSince = new Map<FilePath | FilePathWithPrefix, number>();
     async startStandingBy(filename: FilePath) {
-        // If waited, cancel previous waiting.
+        // If waited, no need to start again (looping inside the function)
         await skipIfDuplicated(`storage-event-manager-${filename}`, async () => {
             Logger(`Processing ${filename}: Starting`, LOG_LEVEL_DEBUG);
             const release = await this.concurrentProcessing.acquire();
@@ -315,6 +315,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                     //     continue;
                     // }
                     const type = target.type;
+                    // If already cancelled by other operation, skip this.
                     if (target.cancelled) {
                         Logger(`Processing ${filename}: Cancelled (scheduled): ${operationType}`, LOG_LEVEL_DEBUG);
                         this.cancelStandingBy(target);

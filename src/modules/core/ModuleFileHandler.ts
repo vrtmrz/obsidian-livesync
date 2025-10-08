@@ -94,10 +94,14 @@ export class ModuleFileHandler extends AbstractModule {
             let readFile: UXFileInfo | undefined = undefined;
             if (!shouldApplied) {
                 readFile = await this.readFileFromStub(file);
+                if (!readFile) {
+                    this._log(`File ${file.path} is not exist on the storage`, LOG_LEVEL_NOTICE);
+                    return false;
+                }
                 if (await isDocContentSame(getDocDataAsArray(entry.data), readFile.body)) {
                     // Timestamp is different but the content is same. therefore, two timestamps should be handled as same.
                     // So, mark the changes are same.
-                    markChangesAreSame(file, file.stat.mtime, entry.mtime);
+                    markChangesAreSame(readFile, readFile.stat.mtime, entry.mtime);
                 } else {
                     shouldApplied = true;
                 }
