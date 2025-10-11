@@ -51,8 +51,8 @@ import {
     type PageFunctions,
     type UpdateFunction,
 } from "./SettingPane.ts";
+import { pageGettingStarted } from "./PageGettingStarted.ts";
 import { paneSetup } from "./PaneSetup.ts";
-import { paneGeneral } from "./PaneGeneral.ts";
 import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
 import { paneSelector } from "./PaneSelector.ts";
 import { paneSyncSettings } from "./PaneSyncSettings.ts";
@@ -62,6 +62,11 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
+import { pageGeneral } from "./PageGeneral.ts";
+import { pageRemote } from "./PageRemote.ts";
+import { pageSync } from "./PageSync.ts";
+import { pageMaintenance } from "./PageMaintenance.ts";
+import { pageInfo } from "./PageInfo.ts";
 
 // For creating a document
 const toc = new Set<string>();
@@ -808,14 +813,32 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return callback;
         };
 
+        // New
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🚀", 1, false).then(
+            bindPane(pageGettingStarted)
+        );
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 2, false).then(
+            bindPane(pageGeneral)
+        );
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "📡", 3, false).then(
+            bindPane(pageRemote)
+        );
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 4, false).then(
+            bindPane(pageSync)
+        );
+        void addPane(containerEl, 'Maintenance & Recovery', "🧰", 5, false).then(
+            bindPane(pageMaintenance)
+        );
+        void addPane(containerEl, 'About', "ℹ️", 6, false).then(
+            bindPane(pageInfo)
+        );
+
+        // Old
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then(
             bindPane(paneChangeLog)
         );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then(
             bindPane(paneSetup)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20, false).then(
-            bindPane(paneGeneral)
         );
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0, false).then(
             bindPane(paneRemoteConfig)
@@ -835,20 +858,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         void addPane(containerEl, "Patches", "🩹", 51, false, LEVEL_EDGE_CASE).then(bindPane(panePatches));
 
         void addPane(containerEl, "Maintenance", "🎛️", 70, true).then(bindPane(paneMaintenance));
-
+ 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {
                 if (this.lastVersion != this.editingSettings.lastReadUpdates) {
                     if (this.editingSettings.isConfigured) {
-                        changeDisplay("100");
+                        changeDisplay("1");
                     } else {
-                        changeDisplay("110");
+                        changeDisplay("1");
                     }
                 } else {
                     if (this.isAnySyncEnabled()) {
-                        changeDisplay("20");
+                        changeDisplay("2");
                     } else {
-                        changeDisplay("110");
+                        changeDisplay("1");
                     }
                 }
             } else {

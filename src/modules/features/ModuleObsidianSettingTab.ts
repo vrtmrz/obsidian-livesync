@@ -1,9 +1,9 @@
-import { ObsidianLiveSyncSettingTab } from "./SettingDialogue/ObsidianLiveSyncSettingTab.ts";
+import { ObsidianLiveSyncSettingTab } from "./SettingsDialog/ObsidianLiveSyncSettingTab.ts";
 import { type IObsidianModule, AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "../../common/events.ts";
 
-export class ModuleObsidianSettingDialogue extends AbstractObsidianModule implements IObsidianModule {
+export class ModuleObsidianSettingsDialog extends AbstractObsidianModule implements IObsidianModule {
     settingTab!: ObsidianLiveSyncSettingTab;
 
     $everyOnloadStart(): Promise<boolean> {
