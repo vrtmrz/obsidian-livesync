@@ -9,6 +9,7 @@ package-lock.json
 # build
 main.js
 main_org.js
+main_org_*.js
 *.js.map
 meta.json
 meta-*.json
@@ -17,3 +18,6 @@ meta-*.json
 # obsidian
 data.json
 .vscode
+
+# environment variables
+.env
