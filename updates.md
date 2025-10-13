@@ -4,6 +4,14 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+<!--
+## 0.25.22 (Upcoming)
+
+### Notes
+- The checking algorithm implemented in 0.25.20 is also raised as PR (#237). And completely I merged it manually.
+  - Sorry for lacking merging this PR, and let me say thanks to the great contribution, @bioluks !
+
+-->
 ## 0.25.21
 
 13th October, 2025
