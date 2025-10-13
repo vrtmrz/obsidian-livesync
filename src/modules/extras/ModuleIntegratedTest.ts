@@ -1,9 +1,9 @@
 import { delay } from "octagonal-wheels/promises";
 import { LOG_LEVEL_NOTICE, REMOTE_MINIO, type FilePathWithPrefix } from "src/lib/src/common/types";
 import { shareRunningResult } from "octagonal-wheels/concurrency/lock";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule";
+import { AbstractObsidianModule } from "../AbstractObsidianModule";
 
-export class ModuleIntegratedTest extends AbstractObsidianModule implements IObsidianModule {
+export class ModuleIntegratedTest extends AbstractObsidianModule {
     async waitFor(proc: () => Promise<boolean>, timeout = 10000): Promise<boolean> {
         await delay(100);
         const start = Date.now();
@@ -45,7 +45,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
         }
         return true;
     }
-    async _orDie(key: string, proc: () => Promise<boolean>): Promise<true> | never {
+    async __orDie(key: string, proc: () => Promise<boolean>): Promise<true> | never {
         if (!(await this._test(key, proc))) {
             throw new Error(`${key}`);
         }
@@ -54,7 +54,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
     tryReplicate() {
         if (!this.settings.liveSync) {
             return shareRunningResult("replicate-test", async () => {
-                await this.core.$$replicate();
+                await this.services.replication.replicate();
             });
         }
     }
@@ -64,13 +64,13 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
         }
         return await this.core.storageAccess.readHiddenFileText(file);
     }
-    async _proceed(no: number, title: string): Promise<boolean> {
+    async __proceed(no: number, title: string): Promise<boolean> {
         const stepFile = "_STEP.md" as FilePathWithPrefix;
         const stepAckFile = "_STEP_ACK.md" as FilePathWithPrefix;
         const stepContent = `Step ${no}`;
-        await this.core.$anyResolveConflictByNewest(stepFile);
+        await this.services.conflict.resolveByNewest(stepFile);
         await this.core.storageAccess.writeFileAuto(stepFile, stepContent);
-        await this._orDie(`Wait for acknowledge ${no}`, async () => {
+        await this.__orDie(`Wait for acknowledge ${no}`, async () => {
             if (
                 !(await this.waitWithReplicating(async () => {
                     return await this.storageContentIsEqual(stepAckFile, stepContent);
@@ -81,13 +81,13 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
         });
         return true;
     }
-    async _join(no: number, title: string): Promise<boolean> {
+    async __join(no: number, title: string): Promise<boolean> {
         const stepFile = "_STEP.md" as FilePathWithPrefix;
         const stepAckFile = "_STEP_ACK.md" as FilePathWithPrefix;
         // const otherStepFile = `_STEP_${isLeader ? "R" : "L"}.md` as FilePathWithPrefix;
         const stepContent = `Step ${no}`;
 
-        await this._orDie(`Wait for step ${no} (${title})`, async () => {
+        await this.__orDie(`Wait for step ${no} (${title})`, async () => {
             if (
                 !(await this.waitWithReplicating(async () => {
                     return await this.storageContentIsEqual(stepFile, stepContent);
@@ -96,7 +96,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
                 return false;
             return true;
         });
-        await this.core.$anyResolveConflictByNewest(stepAckFile);
+        await this.services.conflict.resolveByNewest(stepAckFile);
         await this.core.storageAccess.writeFileAuto(stepAckFile, stepContent);
         await this.tryReplicate();
         return true;
@@ -116,16 +116,16 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
         check: () => Promise<boolean>;
     }): Promise<boolean> {
         if (isGameChanger) {
-            await this._proceed(step, title);
+            await this.__proceed(step, title);
             try {
                 await proc();
             } catch (e) {
                 this._log(`Error: ${e}`);
                 return false;
             }
-            return await this._orDie(`Step ${step} - ${title}`, async () => await this.waitWithReplicating(check));
+            return await this.__orDie(`Step ${step} - ${title}`, async () => await this.waitWithReplicating(check));
         } else {
-            return await this._join(step, title);
+            return await this.__join(step, title);
         }
     }
     // // see scenario.md
@@ -151,7 +151,7 @@ export class ModuleIntegratedTest extends AbstractObsidianModule implements IObs
             `Test as ${isLeader ? "Leader" : "Receiver"} command file ${testCommandFile}`
         );
         if (isLeader) {
-            await this._proceed(0, "start");
+            await this.__proceed(0, "start");
         }
         await this.tryReplicate();
 
@@ -424,9 +424,9 @@ Line4:D`;
         await this._test("basic", async () => await this.nonLiveTestRunner(isLeader, (t, l) => this.testBasic(t, l)));
     }
 
-    async $everyModuleTestMultiDevice(): Promise<boolean> {
+    async _everyModuleTestMultiDevice(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        const isLeader = this.core.$$vaultName().indexOf("recv") === -1;
+        const isLeader = this.core.services.vault.vaultName().indexOf("recv") === -1;
         this.addTestResult("-------", true, `Test as ${isLeader ? "Leader" : "Receiver"}`);
         try {
             this._log(`Starting Test`);
@@ -439,5 +439,8 @@ Line4:D`;
         }
 
         return Promise.resolve(true);
+    }
+    onBindFunction(core: typeof this.core, services: typeof core.services): void {
+        services.test.handleTestMultiDevice(this._everyModuleTestMultiDevice.bind(this));
     }
 }

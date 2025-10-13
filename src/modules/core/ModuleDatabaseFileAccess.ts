@@ -17,7 +17,6 @@ import type {
     DocumentID,
 } from "../../lib/src/common/types";
 import type { DatabaseFileAccess } from "../interfaces/DatabaseFileAccess";
-import { type IObsidianModule } from "../AbstractObsidianModule.ts";
 import { isPlainText, shouldBeIgnored, stripAllPrefixes } from "../../lib/src/string_and_binary/path";
 import {
     createBlob,
@@ -30,14 +29,15 @@ import {
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { AbstractModule } from "../AbstractModule.ts";
 import { ICHeader } from "../../common/types.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidianModule, DatabaseFileAccess {
-    $everyOnload(): Promise<boolean> {
+export class ModuleDatabaseFileAccess extends AbstractModule implements DatabaseFileAccess {
+    private _everyOnload(): Promise<boolean> {
         this.core.databaseFileAccess = this;
         return Promise.resolve(true);
     }
 
-    async $everyModuleTest(): Promise<boolean> {
+    private async _everyModuleTest(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         const testString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec nunc";
         // Before test, we need to delete completely.
@@ -75,7 +75,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
 
     async checkIsTargetFile(file: UXFileInfoStub | FilePathWithPrefix): Promise<boolean> {
         const path = getStoragePathFromUXFileInfo(file);
-        if (!(await this.core.$$isTargetFile(path))) {
+        if (!(await this.services.vault.isTargetFile(path))) {
             this._log(`File is not target`, LOG_LEVEL_VERBOSE);
             return false;
         }
@@ -102,11 +102,11 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
     }
 
     async createChunks(file: UXFileInfo, force: boolean = false, skipCheck?: boolean): Promise<boolean> {
-        return await this._store(file, force, skipCheck, true);
+        return await this.__store(file, force, skipCheck, true);
     }
 
     async store(file: UXFileInfo, force: boolean = false, skipCheck?: boolean): Promise<boolean> {
-        return await this._store(file, force, skipCheck, false);
+        return await this.__store(file, force, skipCheck, false);
     }
     async storeContent(path: FilePathWithPrefix, content: string): Promise<boolean> {
         const blob = createTextBlob(content);
@@ -124,10 +124,10 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             body: blob,
             isInternal,
         };
-        return await this._store(dummyUXFileInfo, true, false, false);
+        return await this.__store(dummyUXFileInfo, true, false, false);
     }
 
-    async _store(
+    private async __store(
         file: UXFileInfo,
         force: boolean = false,
         skipCheck?: boolean,
@@ -177,7 +177,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
             }
         }
 
-        const idMain = await this.core.$$path2id(fullPath);
+        const idMain = await this.services.path.path2id(fullPath);
 
         const id = (idPrefix + idMain) as DocumentID;
         const d: SavingEntry = {
@@ -344,5 +344,9 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements IObsidia
         const ret = await this.localDatabase.deleteDBEntry(fullPath, opt);
         eventHub.emitEvent(EVENT_FILE_SAVED);
         return ret;
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.test.handleTest(this._everyModuleTest.bind(this));
     }
 }

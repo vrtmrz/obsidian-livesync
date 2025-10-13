@@ -20,8 +20,9 @@ import {
 } from "../../common/utils";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "../../lib/src/string_and_binary/path";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { eventHub } from "../../common/events.ts";
+import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 declare global {
     interface LSEvents {
@@ -29,8 +30,8 @@ declare global {
     }
 }
 
-export class ModuleConflictResolver extends AbstractModule implements ICoreModule {
-    async $$resolveConflictByDeletingRev(
+export class ModuleConflictResolver extends AbstractModule {
+    private async _resolveConflictByDeletingRev(
         path: FilePathWithPrefix,
         deleteRevision: string,
         subTitle = ""
@@ -82,7 +83,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
                 return MISSING_OR_ERROR;
             }
             // 2. As usual, delete the conflicted revision and if there are no conflicts, write the resolved content to the storage.
-            return await this.core.$$resolveConflictByDeletingRev(path, ret.conflictedRev, "Sensible");
+            return await this.services.conflict.resolveByDeletingRevision(path, ret.conflictedRev, "Sensible");
         }
 
         const { rightRev, leftLeaf, rightLeaf } = ret;
@@ -95,7 +96,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
         }
         if (rightLeaf == false) {
             // Conflicted item could not load, delete this.
-            return await this.core.$$resolveConflictByDeletingRev(path, rightRev, "MISSING OLD REV");
+            return await this.services.conflict.resolveByDeletingRevision(path, rightRev, "MISSING OLD REV");
         }
 
         const isSame = leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted;
@@ -115,7 +116,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             ]
                 .filter((e) => e.trim())
                 .join(",");
-            return await this.core.$$resolveConflictByDeletingRev(path, loser.rev, subTitle);
+            return await this.services.conflict.resolveByDeletingRevision(path, loser.rev, subTitle);
         }
         // make diff.
         const dmp = new diff_match_patch();
@@ -129,7 +130,7 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
         };
     }
 
-    async $$resolveConflict(filename: FilePathWithPrefix): Promise<void> {
+    private async _resolveConflict(filename: FilePathWithPrefix): Promise<void> {
         // const filename = filenames[0];
         return await serialized(`conflict-resolve:${filename}`, async () => {
             const conflictCheckResult = await this.checkConflictAndPerformAutoMerge(filename);
@@ -144,16 +145,16 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             }
             if (conflictCheckResult === AUTO_MERGED) {
                 //auto resolved, but need check again;
-                if (this.settings.syncAfterMerge && !this.core.$$isSuspended()) {
+                if (this.settings.syncAfterMerge && !this.services.appLifecycle.isSuspended()) {
                     //Wait for the running replication, if not running replication, run it once.
-                    await this.core.$$replicateByEvent();
+                    await this.services.replication.replicateByEvent();
                 }
                 this._log("[conflict] Automatically merged, but we have to check it again");
-                await this.core.$$queueConflictCheck(filename);
+                await this.services.conflict.queueCheckFor(filename);
                 return;
             }
             if (this.settings.showMergeDialogOnlyOnActive) {
-                const af = this.core.$$getActiveFilePath();
+                const af = this.services.vault.getActiveFilePath();
                 if (af && af != filename) {
                     this._log(
                         `[conflict] ${filename} is conflicted. Merging process has been postponed to the file have got opened.`,
@@ -164,11 +165,11 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             }
             this._log("[conflict] Manual merge required!");
             eventHub.emitEvent("conflict-cancelled", filename);
-            await this.core.$anyResolveConflictByUI(filename, conflictCheckResult);
+            await this.services.conflict.resolveByUserInteraction(filename, conflictCheckResult);
         });
     }
 
-    async $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+    private async _anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
         const currentRev = await this.core.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
         if (currentRev == false) {
             this._log(`Could not get current revision of ${filename}`);
@@ -206,8 +207,14 @@ export class ModuleConflictResolver extends AbstractModule implements ICoreModul
             this._log(
                 `conflict: Deleting the older revision ${mTimeAndRev[i][1]} (${new Date(mTimeAndRev[i][0]).toLocaleString()}) of ${filename}`
             );
-            await this.core.$$resolveConflictByDeletingRev(filename, mTimeAndRev[i][1], "NEWEST");
+            await this.services.conflict.resolveByDeletingRevision(filename, mTimeAndRev[i][1], "NEWEST");
         }
         return true;
+    }
+
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.conflict.handleResolveByDeletingRevision(this._resolveConflictByDeletingRev.bind(this));
+        services.conflict.handleResolve(this._resolveConflict.bind(this));
+        services.conflict.handleResolveByNewest(this._anyResolveConflictByNewest.bind(this));
     }
 }

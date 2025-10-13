@@ -1,7 +1,7 @@
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
-import { type CouchDBCredentials, type EntryDoc, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import { type CouchDBCredentials, type EntryDoc, type FilePath } from "../../lib/src/common/types.ts";
 import { getPathFromTFile } from "../../common/utils.ts";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
 import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
@@ -11,6 +11,7 @@ import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
 import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 setNoticeClass(Notice);
 
@@ -19,21 +20,21 @@ async function fetchByAPI(request: RequestUrlParam, errorAsResult = false): Prom
     return ret;
 }
 
-export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidianModule {
+export class ModuleObsidianAPI extends AbstractObsidianModule {
     _customHandler!: ObsHttpHandler;
 
     _authHeader = new AuthorizationHeaderGenerator();
 
     last_successful_post = false;
-    $$customFetchHandler(): ObsHttpHandler {
+    _customFetchHandler(): ObsHttpHandler {
         if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
         return this._customHandler;
     }
-    $$getLastPostFailedBySize(): boolean {
+    _getLastPostFailedBySize(): boolean {
         return !this.last_successful_post;
     }
 
-    async _fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
+    async __fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
         const body = opts?.body as string;
 
         const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
@@ -68,7 +69,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         const body = opts?.body as string;
         const size = body ? ` (${body.length})` : "";
         try {
-            const r = await this._fetchByAPI(url, authHeader, opts);
+            const r = await this.__fetchByAPI(url, authHeader, opts);
             this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
             if (method == "POST" || method == "PUT") {
                 this.last_successful_post = r.status - (r.status % 100) == 200;
@@ -90,7 +91,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         }
     }
 
-    async $$connectRemoteCouchDB(
+    async _connectRemoteCouchDB(
         uri: string,
         auth: CouchDBCredentials,
         disableRequestURI: boolean,
@@ -148,7 +149,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
                     try {
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                         const response: Response = await (useRequestAPI
-                            ? this._fetchByAPI(url.toString(), authHeader, { ...opts, headers })
+                            ? this.__fetchByAPI(url.toString(), authHeader, { ...opts, headers })
                             : fetch(url, { ...opts, headers }));
                         if (method == "POST" || method == "PUT") {
                             this.last_successful_post = response.ok;
@@ -252,21 +253,21 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         }
     }
 
-    $$isMobile(): boolean {
+    _isMobile(): boolean {
         //@ts-ignore : internal API
         return this.app.isMobile;
     }
 
-    $$vaultName(): string {
+    _vaultName(): string {
         return this.app.vault.getName();
     }
-    $$getVaultName(): string {
+    _getVaultName(): string {
         return (
-            this.core.$$vaultName() +
+            this.services.vault.vaultName() +
             (this.settings?.additionalSuffixOfDatabaseName ? "-" + this.settings.additionalSuffixOfDatabaseName : "")
         );
     }
-    $$getActiveFilePath(): FilePathWithPrefix | undefined {
+    _getActiveFilePath(): FilePath | undefined {
         const file = this.app.workspace.getActiveFile();
         if (file) {
             return getPathFromTFile(file);
@@ -274,7 +275,18 @@ export class ModuleObsidianAPI extends AbstractObsidianModule implements IObsidi
         return undefined;
     }
 
-    $anyGetAppId(): Promise<string | undefined> {
-        return Promise.resolve(`${"appId" in this.app ? this.app.appId : ""}`);
+    _anyGetAppId(): string {
+        return `${"appId" in this.app ? this.app.appId : ""}`;
+    }
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+        services.API.handleGetCustomFetchHandler(this._customFetchHandler.bind(this));
+        services.API.handleIsLastPostFailedDueToPayloadSize(this._getLastPostFailedBySize.bind(this));
+        services.remote.handleConnect(this._connectRemoteCouchDB.bind(this));
+        services.API.handleIsMobile(this._isMobile.bind(this));
+        services.vault.handleGetVaultName(this._getVaultName.bind(this));
+        services.vault.handleVaultName(this._vaultName.bind(this));
+        services.vault.handleGetActiveFilePath(this._getActiveFilePath.bind(this));
+        services.API.handleGetAppID(this._anyGetAppId.bind(this));
     }
 }

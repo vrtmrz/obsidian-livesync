@@ -119,8 +119,8 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     const scheme = pluginConfig.couchDB_URI.startsWith("http:")
                         ? "(HTTP)"
                         : pluginConfig.couchDB_URI.startsWith("https:")
-                            ? "(HTTPS)"
-                            : "";
+                          ? "(HTTPS)"
+                          : "";
                     pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
                         ? "cloudant"
                         : `self-hosted${scheme}`;
@@ -150,13 +150,13 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         const endpointScheme = pluginConfig.endpoint.startsWith("http:")
                             ? "(HTTP)"
                             : pluginConfig.endpoint.startsWith("https:")
-                                ? "(HTTPS)"
-                                : "";
+                              ? "(HTTPS)"
+                              : "";
                         pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
                     }
                     const obsidianInfo = {
                         navigator: navigator.userAgent,
-                        fileSystem: this.plugin.$$isStorageInsensitive() ? "insensitive" : "sensitive",
+                        fileSystem: this.plugin.services.vault.isStorageInsensitive() ? "insensitive" : "sensitive",
                     };
                     const msgConfig = `# ---- Obsidian info ----
 ${stringifyYaml(obsidianInfo)}
@@ -166,9 +166,9 @@ ${stringifyYaml(responseConfig)}
 ---
 # ---- Plug-in config ----
 ${stringifyYaml({
-                        version: this.manifestVersion,
-                        ...pluginConfig,
-                    })}`;
+    version: this.manifestVersion,
+    ...pluginConfig,
+})}`;
                     console.log(msgConfig);
                     await navigator.clipboard.writeText(msgConfig);
                     Logger(
@@ -182,10 +182,10 @@ ${stringifyYaml({
 
     void addPanel(paneEl, "Scram Switches").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("suspendFileWatching");
-        this.addOnSaved("suspendFileWatching", () => this.plugin.$$askReload());
+        this.addOnSaved("suspendFileWatching", () => this.services.appLifecycle.askRestart());
 
         new Setting(paneEl).autoWireToggle("suspendParseReplicationResult");
-        this.addOnSaved("suspendParseReplicationResult", () => this.plugin.$$askReload());
+        this.addOnSaved("suspendParseReplicationResult", () => this.services.appLifecycle.askRestart());
     });
 
     void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
@@ -384,15 +384,16 @@ ${stringifyYaml({
                                     ? await this.plugin.storageAccess.statHidden(path)
                                     : false;
                                 const fileOnStorage = stat != null ? stat : false;
-                                if (!(await this.plugin.$$isTargetFile(path))) return incProc();
+                                if (!(await this.services.vault.isTargetFile(path))) return incProc();
                                 const releaser = await semaphore.acquire(1);
-                                if (fileOnStorage && this.plugin.$$isFileSizeExceeded(fileOnStorage.size))
+                                if (fileOnStorage && this.services.vault.isFileSizeTooLarge(fileOnStorage.size))
                                     return incProc();
                                 try {
                                     const isHiddenFile = path.startsWith(".");
                                     const dbPath = isHiddenFile ? addPrefix(path, ICHeader) : path;
                                     const fileOnDB = await this.plugin.localDatabase.getDBEntry(dbPath);
-                                    if (fileOnDB && this.plugin.$$isFileSizeExceeded(fileOnDB.size)) return incProc();
+                                    if (fileOnDB && this.services.vault.isFileSizeTooLarge(fileOnDB.size))
+                                        return incProc();
 
                                     if (!fileOnDB && fileOnStorage) {
                                         Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
@@ -436,7 +437,7 @@ ${stringifyYaml({
                     .onClick(async () => {
                         for await (const docName of this.plugin.localDatabase.findAllDocNames()) {
                             if (!docName.startsWith("f:")) {
-                                const idEncoded = await this.plugin.$$path2id(docName as FilePathWithPrefix);
+                                const idEncoded = await this.services.path.path2id(docName as FilePathWithPrefix);
                                 const doc = await this.plugin.localDatabase.getRaw(docName as DocumentID);
                                 if (!doc) continue;
                                 if (doc.type != "newnote" && doc.type != "plain") {
@@ -477,7 +478,7 @@ ${stringifyYaml({
                                         if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
                                             Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                         }
-                                        await this.plugin.$$queueConflictCheckIfOpen(docName as FilePathWithPrefix);
+                                        await this.services.conflict.queueCheckForIfOpen(docName as FilePathWithPrefix);
                                     } else {
                                         Logger(`Converting ${docName} Failed!`, LOG_LEVEL_NOTICE);
                                         Logger(ret, LOG_LEVEL_VERBOSE);
@@ -512,7 +513,7 @@ ${stringifyYaml({
                 .onClick(async () => {
                     this.editingSettings.isConfigured = false;
                     await this.saveAllDirtySettings();
-                    this.plugin.$$askReload();
+                    this.services.appLifecycle.askRestart();
                 })
         );
 

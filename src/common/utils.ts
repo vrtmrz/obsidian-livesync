@@ -189,7 +189,7 @@ export class PeriodicProcessor {
             () =>
                 fireAndForget(async () => {
                     await this.process();
-                    if (this._plugin.$$isUnloaded()) {
+                    if (this._plugin.services?.appLifecycle?.hasUnloaded()) {
                         this.disable();
                     }
                 }),

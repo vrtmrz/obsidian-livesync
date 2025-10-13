@@ -1,5 +1,5 @@
 // ModuleInputUIObsidian.ts
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject } from "../../common/utils.ts";
 import {
@@ -13,12 +13,13 @@ import { Notice } from "../../deps.ts";
 import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
 import { setConfirmInstance } from "../../lib/src/PlatformAPIs/obsidian/Confirm.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
 // This module cannot be a common module because it depends on Obsidian's API.
 // However, we have to make compatible one for other platform.
 
-export class ModuleInputUIObsidian extends AbstractObsidianModule implements IObsidianModule, Confirm {
-    $everyOnload(): Promise<boolean> {
+export class ModuleInputUIObsidian extends AbstractObsidianModule implements Confirm {
+    private _everyOnload(): Promise<boolean> {
         this.core.confirm = this;
         setConfirmInstance(this);
         return Promise.resolve(true);
@@ -109,5 +110,9 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements IOb
         timeout?: number
     ): Promise<(typeof buttons)[number] | false> {
         return confirmWithMessage(this.plugin, title, contentMd, buttons, defaultAction, timeout);
+    }
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
     }
 }

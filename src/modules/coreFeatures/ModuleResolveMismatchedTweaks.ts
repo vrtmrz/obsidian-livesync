@@ -11,21 +11,22 @@ import {
 } from "../../lib/src/common/types.ts";
 import { escapeMarkdownValue } from "../../lib/src/common/utils.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { $msg } from "../../lib/src/common/i18n.ts";
+import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleResolvingMismatchedTweaks extends AbstractModule implements ICoreModule {
-    async $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
+export class ModuleResolvingMismatchedTweaks extends AbstractModule {
+    async _anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
         if (!this.core.replicator.tweakSettingsMismatched && !this.core.replicator.preferredTweakValue) return false;
         const preferred = this.core.replicator.preferredTweakValue;
         if (!preferred) return false;
-        const ret = await this.core.$$askResolvingMismatchedTweaks(preferred);
+        const ret = await this.services.tweakValue.askResolvingMismatched(preferred);
         if (ret == "OK") return false;
         if (ret == "CHECKAGAIN") return "CHECKAGAIN";
         if (ret == "IGNORE") return true;
     }
 
-    async $$checkAndAskResolvingMismatchedTweaks(
+    async _checkAndAskResolvingMismatchedTweaks(
         preferred: Partial<TweakValues>
     ): Promise<[TweakValues | boolean, boolean]> {
         const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
@@ -127,7 +128,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         return CHOICES[retKey];
     }
 
-    async $$askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+    async _askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
         if (!this.core.replicator.tweakSettingsMismatched) {
             return "OK";
         }
@@ -137,7 +138,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         }
         const preferred = extractObject(TweakValuesShouldMatchedTemplate, tweaks);
 
-        const [conf, rebuildRequired] = await this.core.$$checkAndAskResolvingMismatchedTweaks(preferred);
+        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(preferred);
         if (!conf) return "IGNORE";
 
         if (conf === true) {
@@ -154,7 +155,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         if (conf) {
             this.settings = { ...this.settings, ...conf };
             await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
-            await this.core.$$saveSettingData();
+            await this.services.setting.saveSettingData();
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }
@@ -164,8 +165,12 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         return "IGNORE";
     }
 
-    async $$fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
-        const replicator = await this.core.$anyNewReplicator();
+    async _fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
+        const replicator = await this.services.replicator.getNewReplicator(trialSetting);
+        if (!replicator) {
+            this._log("The remote type is not supported for fetching preferred tweak values.", LOG_LEVEL_NOTICE);
+            return false;
+        }
         if (await replicator.tryConnectRemote(trialSetting)) {
             const preferred = await replicator.getRemotePreferredTweakValues(trialSetting);
             if (preferred) {
@@ -178,17 +183,17 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
         return false;
     }
 
-    async $$checkAndAskUseRemoteConfiguration(
+    async _checkAndAskUseRemoteConfiguration(
         trialSetting: RemoteDBSettings
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
-        const preferred = await this.core.$$fetchRemotePreferredTweakValues(trialSetting);
+        const preferred = await this.services.tweakValue.fetchRemotePreferred(trialSetting);
         if (preferred) {
-            return await this.$$askUseRemoteConfiguration(trialSetting, preferred);
+            return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred);
         }
         return { result: false, requireFetch: false };
     }
 
-    async $$askUseRemoteConfiguration(
+    async _askUseRemoteConfiguration(
         trialSetting: RemoteDBSettings,
         preferred: TweakValues
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
@@ -277,5 +282,14 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule implements I
             return { result: { ...trialSetting, ...preferred }, requireFetch: rebuildRequired };
         }
         return { result: false, requireFetch: false };
+    }
+
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.tweakValue.handleFetchRemotePreferred(this._fetchRemotePreferredTweakValues.bind(this));
+        services.tweakValue.handleCheckAndAskResolvingMismatched(this._checkAndAskResolvingMismatchedTweaks.bind(this));
+        services.tweakValue.handleAskResolvingMismatched(this._askResolvingMismatchedTweaks.bind(this));
+        services.tweakValue.handleCheckAndAskUseRemoteConfiguration(this._checkAndAskUseRemoteConfiguration.bind(this));
+        services.tweakValue.handleAskUseRemoteConfiguration(this._askUseRemoteConfiguration.bind(this));
+        services.replication.handleCheckConnectionFailure(this._anyAfterConnectCheckFailed.bind(this));
     }
 }

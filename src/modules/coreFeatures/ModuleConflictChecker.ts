@@ -2,35 +2,36 @@ import { AbstractModule } from "../AbstractModule.ts";
 import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
-import type { ICoreModule } from "../ModuleTypes.ts";
+import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleConflictChecker extends AbstractModule implements ICoreModule {
-    async $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
+export class ModuleConflictChecker extends AbstractModule {
+    async _queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
         const path = file;
         if (this.settings.checkConflictOnlyOnOpen) {
-            const af = this.core.$$getActiveFilePath();
+            const af = this.services.vault.getActiveFilePath();
             if (af && af != path) {
                 this._log(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
                 return;
             }
         }
-        await this.core.$$queueConflictCheck(path);
+        await this.services.conflict.queueCheckFor(path);
     }
 
-    async $$queueConflictCheck(file: FilePathWithPrefix): Promise<void> {
-        const optionalConflictResult = await this.core.$anyGetOptionalConflictCheckMethod(file);
+    async _queueConflictCheck(file: FilePathWithPrefix): Promise<void> {
+        const optionalConflictResult = await this.services.conflict.getOptionalConflictCheckMethod(file);
         if (optionalConflictResult == true) {
             // The conflict has been resolved by another process.
             return;
         } else if (optionalConflictResult === "newer") {
             // The conflict should be resolved by the newer entry.
-            await this.core.$anyResolveConflictByNewest(file);
+            await this.services.conflict.resolveByNewest(file);
         } else {
             this.conflictCheckQueue.enqueue(file);
         }
     }
 
-    $$waitForAllConflictProcessed(): Promise<boolean> {
+    _waitForAllConflictProcessed(): Promise<boolean> {
         return this.conflictResolveQueue.waitForAllProcessed();
     }
 
@@ -38,7 +39,7 @@ export class ModuleConflictChecker extends AbstractModule implements ICoreModule
     conflictResolveQueue = new QueueProcessor(
         async (filenames: FilePathWithPrefix[]) => {
             const filename = filenames[0];
-            return await this.core.$$resolveConflict(filename);
+            return await this.services.conflict.resolve(filename);
         },
         {
             suspended: false,
@@ -73,4 +74,9 @@ export class ModuleConflictChecker extends AbstractModule implements ICoreModule
                 totalRemainingReactiveSource: this.core.conflictProcessQueueCount,
             }
         );
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.conflict.handleQueueCheckForIfOpen(this._queueConflictCheckIfOpen.bind(this));
+        services.conflict.handleQueueCheckFor(this._queueConflictCheck.bind(this));
+        services.conflict.handleEnsureAllProcessed(this._waitForAllConflictProcessed.bind(this));
+    }
 }

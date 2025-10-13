@@ -1,12 +1,43 @@
-## 0.25
+# 0.25
 
 Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
-After reading Issue #668, I conducted another self-review of the E2EE-related code. In retrospect, it was clearly written by someone inexperienced, which is understandable, but it is still rather embarrassing. Three years is certainly enough time for growth.
+The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-I have now rewritten the E2EE code to be more robust and easier to understand. It is significantly more readable and should be easier to maintain in the future. The performance issue, previously considered a concern, has been addressed by introducing a master key and deriving keys using HKDF. This approach is both fast and robust, and it provides protection against rainbow table attacks. (In addition, this implementation has been [a dedicated package on the npm registry](https://github.com/vrtmrz/octagonal-wheels), and tested in 100% branch-coverage).
+## 0.25.21
 
-As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
+13th October, 2025
+
+This release including 0.25.21.beta1 and 0.25.21.beta2.
+
+Apologies for taking a little time. I was seriously tackling this.
+(Of course, being caught up in an unfamiliar structure due to personnel changes on my workplace played a part, but fortunately I have returned to a place where I can do research and development rather than production. Completely beside the point, though).
+Now then, this time, moving away from 'convention over configuration', I have changed to a mechanism for manually binding events. This makes it much easier to leverage IDE assistance.
+And, also, we are ready to separate `Features` and `APIs` from `Module`. Features are still in the module, but APIs will be moved to a Service layer. This will make it easier to maintain and extend the codebase in the future.
+
+If you have found any issues, please let me know. I am now on the following:
+- GitHub [Issues](https://github.com/vrtmrz/obsidian-livesync/issues) Excellent! May the other contributors will help you too.
+- Twitter [@vorotamoroz](https://twitter.com/vorotamoroz) Quickest!
+- Matrix [@vrtmrz:matrix.org](https://matrix.to/#/@vrtmrz:matrix.org) Also quick, and if you need to keep it private!
+    I am creating rooms too, but I'm struggling to figure out how to use them effectively because I cannot tell the difference of use-case between them and discussions. However, if you want to use Discord, this is a answer; We should on E2E encrypted platform.
+## 0.25.21.beta2
+
+8th October, 2025
+
+### Fixed
+
+- Fixed wrong event type bindings (which caused some events not to be handled correctly).
+- Fixed detected a timing issue in StorageEventManager
+    - When multiple events for the same file are fired in quick succession, metadata has been kept older information. This induces unexpected wrong notifications and write prevention.
+
+## 0.25.21.beta1
+
+6th October, 2025
+
+### Refactored
+
+- Event handling now does not rely on 'convention over configuration'.
+    - Services.ts now have a proper event handler registration system.
 
 ## 0.25.20
 

@@ -86,6 +86,9 @@ export function createStub(name: string, key: string, value: string, panel: stri
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
+    get services() {
+        return this.plugin.services;
+    }
     selectedScreen = "";
 
     _editingSettings?: AllSettings;
@@ -139,8 +142,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return await Promise.resolve();
         }
         if (key == "deviceAndVaultName") {
-            this.plugin.$$setDeviceAndVaultName(this.editingSettings?.[key] ?? "");
-            this.plugin.$$saveDeviceAndVaultName();
+            this.services.setting.setDeviceAndVaultName(this.editingSettings?.[key] ?? "");
+            this.services.setting.saveDeviceAndVaultName();
             return await Promise.resolve();
         }
     }
@@ -210,7 +213,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const ret = { ...OnDialogSettingsDefault };
         ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = "";
-        ret.deviceAndVaultName = this.plugin.$$getDeviceAndVaultName();
+        ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
         return ret;
     }
     computeAllLocalSettings(): Partial<OnDialogSettings> {
@@ -295,7 +298,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
         const trialSetting = { ...this.editingSettings, ...settingOverride };
-        const replicator = await this.plugin.$anyNewReplicator(trialSetting);
+        const replicator = await this.services.replicator.getNewReplicator(trialSetting);
+        if (!replicator) {
+            Logger("No replicator available for the current settings.", LOG_LEVEL_NOTICE);
+            return;
+        }
         await replicator.tryConnectRemote(trialSetting);
         const status = await replicator.getRemoteStatus(trialSetting);
         if (status) {
@@ -546,10 +553,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const settingForCheck: RemoteDBSettings = {
             ...this.editingSettings,
         };
-        const replicator = this.plugin.$anyNewReplicator(settingForCheck);
+        const replicator = this.services.replicator.getNewReplicator(settingForCheck);
         if (!(replicator instanceof LiveSyncCouchDBReplicator)) return true;
 
-        const db = await replicator.connectRemoteCouchDBWithSetting(settingForCheck, this.plugin.$$isMobile(), true);
+        const db = await replicator.connectRemoteCouchDBWithSetting(
+            settingForCheck,
+            this.services.API.isMobile(),
+            true
+        );
         if (typeof db === "string") {
             Logger($msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", { db }), LOG_LEVEL_NOTICE);
             return false;
@@ -588,8 +599,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.editingSettings.passphrase = "";
         }
         this.applyAllSettings();
-        await this.plugin.$allSuspendAllSync();
-        await this.plugin.$allSuspendExtraSync();
+        await this.services.setting.suspendAllSync();
+        await this.services.setting.suspendExtraSync();
         this.reloadAllSettings();
         this.editingSettings.isConfigured = true;
         Logger($msg("obsidianLiveSyncSettingTab.logRebuildNote"), LOG_LEVEL_NOTICE);
@@ -638,12 +649,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.applyAllSettings();
         if (result == OPTION_FETCH) {
             await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
-            this.plugin.$$scheduleAppReload();
+            this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
             // await rebuildDB("localOnly");
         } else if (result == OPTION_REBUILD_BOTH) {
             await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
-            this.plugin.$$scheduleAppReload();
+            this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
         } else if (result == OPTION_ONLY_SETTING) {
             await this.plugin.saveSettings();

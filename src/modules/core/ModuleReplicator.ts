@@ -1,7 +1,6 @@
 import { fireAndForget, yieldMicrotask } from "octagonal-wheels/promises";
 import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB";
 import { AbstractModule } from "../AbstractModule";
-import type { ICoreModule } from "../ModuleTypes";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
@@ -34,17 +33,18 @@ import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveS
 
 import { $msg } from "../../lib/src/common/i18n";
 import { clearHandlers } from "../../lib/src/replication/SyncParamsHandler";
+import type { LiveSyncCore } from "../../main";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
 
-export class ModuleReplicator extends AbstractModule implements ICoreModule {
+export class ModuleReplicator extends AbstractModule {
     _replicatorType?: RemoteType;
 
-    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+    private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
-            if (this.settings.syncOnSave && !this.core.$$isSuspended()) {
-                scheduleTask("perform-replicate-after-save", 250, () => this.core.$$replicateByEvent());
+            if (this.settings.syncOnSave && !this.core.services.appLifecycle.isSuspended()) {
+                scheduleTask("perform-replicate-after-save", 250, () => this.services.replication.replicateByEvent());
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
@@ -57,7 +57,7 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
     }
 
     async setReplicator() {
-        const replicator = await this.core.$anyNewReplicator();
+        const replicator = await this.services.replicator.getNewReplicator();
         if (!replicator) {
             this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
             return false;
@@ -74,24 +74,28 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         return true;
     }
 
-    $$getReplicator(): LiveSyncAbstractReplicator {
+    _getReplicator(): LiveSyncAbstractReplicator {
         return this.core.replicator;
     }
 
-    $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+    _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.setReplicator();
     }
 
-    $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+    _everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.setReplicator();
     }
     async ensureReplicatorPBKDF2Salt(showMessage: boolean = false): Promise<boolean> {
         // Checking salt
-        const replicator = this.core.$$getReplicator();
+        const replicator = this.services.replicator.getActiveReplicator();
+        if (!replicator) {
+            this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
+            return false;
+        }
         return await replicator.ensurePBKDF2Salt(this.settings, showMessage, true);
     }
 
-    async $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
+    async _everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         // Checking salt
         if (!this.core.managers.networkManager.isOnline) {
             this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
@@ -106,7 +110,7 @@ export class ModuleReplicator extends AbstractModule implements ICoreModule {
         return true;
     }
 
-    async $$replicate(showMessage: boolean = false): Promise<boolean | void> {
+    private async _replicate(showMessage: boolean = false): Promise<boolean | void> {
         try {
             updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT, REPLICATION_ON_EVENT_FORECASTED_TIME);
             return await this.$$_replicate(showMessage);
@@ -143,11 +147,11 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                 await this.core.rebuilder.$performRebuildDB("localOnly");
             }
             if (ret == CHOICE_CLEAN) {
-                const replicator = this.core.$$getReplicator();
+                const replicator = this.services.replicator.getActiveReplicator();
                 if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
                 const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
                     this.settings,
-                    this.core.$$isMobile(),
+                    this.services.API.isMobile(),
                     true
                 );
                 if (typeof remoteDB == "string") {
@@ -162,7 +166,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                     await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                     await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                     this.localDatabase.clearCaches();
-                    await this.core.$$getReplicator().markRemoteResolved(this.settings);
+                    await this.services.replicator.getActiveReplicator()?.markRemoteResolved(this.settings);
                     Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
                 } else {
                     Logger(
@@ -174,8 +178,8 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         });
     }
 
-    async $$canReplicate(showMessage: boolean = false): Promise<boolean> {
-        if (!this.core.$$isReady()) {
+    async _canReplicate(showMessage: boolean = false): Promise<boolean> {
+        if (!this.services.appLifecycle.isReady()) {
             Logger(`Not ready`);
             return false;
         }
@@ -190,7 +194,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             return false;
         }
 
-        if (!(await this.core.$everyCommitPendingFileEvent())) {
+        if (!(await this.services.fileProcessing.commitPendingFileEvents())) {
             Logger($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
             return false;
         }
@@ -199,7 +203,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
             return false;
         }
-        if (!(await this.core.$everyBeforeReplicate(showMessage))) {
+        if (!(await this.services.replication.onBeforeReplicate(showMessage))) {
             Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
@@ -207,14 +211,14 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     }
 
     async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
-        const checkBeforeReplicate = await this.$$canReplicate(showMessage);
+        const checkBeforeReplicate = await this.services.replication.isReplicationReady(showMessage);
         if (!checkBeforeReplicate) return false;
 
         //<-- Here could be an module.
         const ret = await this.core.replicator.openReplication(this.settings, false, showMessage, false);
         if (!ret) {
             if (this.core.replicator.tweakSettingsMismatched && this.core.replicator.preferredTweakValue) {
-                await this.core.$$askResolvingMismatchedTweaks(this.core.replicator.preferredTweakValue);
+                await this.services.tweakValue.askResolvingMismatched(this.core.replicator.preferredTweakValue);
             } else {
                 if (this.core.replicator?.remoteLockedAndDeviceNotAccepted) {
                     if (this.core.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
@@ -236,7 +240,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         if (ret == CHOICE_FETCH) {
                             this._log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
                             await this.core.rebuilder.scheduleFetch();
-                            this.core.$$scheduleAppReload();
+                            this.services.appLifecycle.scheduleRestart();
                             return;
                         } else if (ret == CHOICE_UNLOCK) {
                             await this.core.replicator.markRemoteResolved(this.settings);
@@ -250,16 +254,16 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         return ret;
     }
 
-    async $$replicateByEvent(): Promise<boolean | void> {
+    private async _replicateByEvent(): Promise<boolean | void> {
         const least = this.settings.syncMinimumInterval;
         if (least > 0) {
             return rateLimitedSharedExecution(KEY_REPLICATION_ON_EVENT, least, async () => {
-                return await this.$$replicate();
+                return await this.services.replication.replicate();
             });
         }
-        return await shareRunningResult(`replication`, () => this.core.$$replicate());
+        return await shareRunningResult(`replication`, () => this.services.replication.replicate());
     }
-    $$parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
+    _parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
         if (this.settings.suspendParseReplicationResult && !this.replicationResultProcessor.isSuspended) {
             this.replicationResultProcessor.suspend();
         }
@@ -336,7 +340,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                 this.localDatabase.onNewLeaf(change as EntryLeaf);
                 return;
             }
-            if (await this.core.$anyModuleParsedReplicationResultItem(change)) return;
+            if (await this.services.replication.processVirtualDocument(change)) return;
             // any addon needs this item?
             // for (const proc of this.core.addOns) {
             //     if (await proc.parseReplicationResultItem(change)) {
@@ -361,7 +365,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             }
             if (isAnyNote(change)) {
                 const docPath = getPath(change);
-                if (!(await this.core.$$isTargetFile(docPath))) {
+                if (!(await this.services.vault.isTargetFile(docPath))) {
                     Logger(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
                     return;
                 }
@@ -369,7 +373,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                     Logger(`Processing scheduled: ${docPath}`, LOG_LEVEL_INFO);
                 }
                 const size = change.size;
-                if (this.core.$$isFileSizeExceeded(size)) {
+                if (this.services.vault.isFileSizeTooLarge(size)) {
                     Logger(
                         `Processing ${docPath} has been skipped due to file size exceeding the limit`,
                         LOG_LEVEL_NOTICE
@@ -413,7 +417,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                 return;
             }
 
-            if (await this.core.$anyProcessOptionalSyncFiles(dbDoc)) {
+            if (await this.services.replication.processOptionalSynchroniseResult(dbDoc)) {
                 // Already processed
             } else if (isValidPath(getPath(doc))) {
                 this.storageApplyingProcessor.enqueue(doc as MetaEntry);
@@ -440,7 +444,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     storageApplyingProcessor = new QueueProcessor(
         async (docs: MetaEntry[]) => {
             const entry = docs[0];
-            await this.core.$anyProcessReplicatedDoc(entry);
+            await this.services.replication.processSynchroniseResult(entry);
             return;
         },
         {
@@ -458,17 +462,17 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         })
         .startPipeline();
 
-    $everyBeforeSuspendProcess(): Promise<boolean> {
-        this.core.replicator.closeReplication();
+    _everyBeforeSuspendProcess(): Promise<boolean> {
+        this.core.replicator?.closeReplication();
         return Promise.resolve(true);
     }
 
-    async $$replicateAllToServer(
+    private async _replicateAllToServer(
         showingNotice: boolean = false,
         sendChunksInBulkDisabled: boolean = false
     ): Promise<boolean> {
-        if (!this.core.$$isReady()) return false;
-        if (!(await this.core.$everyBeforeReplicate(showingNotice))) {
+        if (!this.services.appLifecycle.isReady()) return false;
+        if (!(await this.services.replication.onBeforeReplicate(showingNotice))) {
             Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
@@ -486,16 +490,31 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         }
         const ret = await this.core.replicator.replicateAllToServer(this.settings, showingNotice);
         if (ret) return true;
-        const checkResult = await this.core.$anyAfterConnectCheckFailed();
-        if (checkResult == "CHECKAGAIN") return await this.core.$$replicateAllToServer(showingNotice);
+        const checkResult = await this.services.replication.checkConnectionFailure();
+        if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllToRemote(showingNotice);
         return !checkResult;
     }
-    async $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
-        if (!this.core.$$isReady()) return false;
+    async _replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
+        if (!this.services.appLifecycle.isReady()) return false;
         const ret = await this.core.replicator.replicateAllFromServer(this.settings, showingNotice);
         if (ret) return true;
-        const checkResult = await this.core.$anyAfterConnectCheckFailed();
-        if (checkResult == "CHECKAGAIN") return await this.core.$$replicateAllFromServer(showingNotice);
+        const checkResult = await this.services.replication.checkConnectionFailure();
+        if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllFromRemote(showingNotice);
         return !checkResult;
+    }
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.replicator.handleGetActiveReplicator(this._getReplicator.bind(this));
+        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
+        services.databaseEvents.handleOnResetDatabase(this._everyOnResetDatabase.bind(this));
+        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+        services.replication.handleParseSynchroniseResult(this._parseReplicationResult.bind(this));
+        services.appLifecycle.handleOnSuspending(this._everyBeforeSuspendProcess.bind(this));
+        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
+        services.replication.handleIsReplicationReady(this._canReplicate.bind(this));
+        services.replication.handleReplicate(this._replicate.bind(this));
+        services.replication.handleReplicateByEvent(this._replicateByEvent.bind(this));
+        services.remote.handleReplicateAllToRemote(this._replicateAllToServer.bind(this));
+        services.remote.handleReplicateAllFromRemote(this._replicateAllFromServer.bind(this));
     }
 }

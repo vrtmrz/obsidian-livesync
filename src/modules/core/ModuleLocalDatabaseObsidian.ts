@@ -2,18 +2,18 @@ import { $msg } from "../../lib/src/common/i18n";
 import { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { initializeStores } from "../../common/stores.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { LiveSyncManagers } from "../../lib/src/managers/LiveSyncManagers.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICoreModule {
-    $everyOnloadStart(): Promise<boolean> {
+export class ModuleLocalDatabaseObsidian extends AbstractModule {
+    _everyOnloadStart(): Promise<boolean> {
         return Promise.resolve(true);
     }
-    async $$openDatabase(): Promise<boolean> {
+    private async _openDatabase(): Promise<boolean> {
         if (this.localDatabase != null) {
             await this.localDatabase.close();
         }
-        const vaultName = this.core.$$getVaultName();
+        const vaultName = this.services.vault.getVaultName();
         this._log($msg("moduleLocalDatabase.logWaitingForReady"));
         const getDB = () => this.core.localDatabase.localDatabase;
         const getSettings = () => this.core.settings;
@@ -22,8 +22,9 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICore
                 return getDB();
             },
             getActiveReplicator: () => this.core.replicator,
-            id2path: this.core.$$id2path.bind(this.core),
-            path2id: this.core.$$path2id.bind(this.core),
+            id2path: this.services.path.id2path,
+            // path2id: this.core.$$path2id.bind(this.core),
+            path2id: this.services.path.path2id,
             get settings() {
                 return getSettings();
             },
@@ -34,7 +35,12 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule implements ICore
         return await this.localDatabase.initializeDatabase();
     }
 
-    $$isDatabaseReady(): boolean {
+    _isDatabaseReady(): boolean {
         return this.localDatabase != null && this.localDatabase.isReady;
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.database.handleIsDatabaseReady(this._isDatabaseReady.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.database.handleOpenDatabase(this._openDatabase.bind(this));
     }
 }

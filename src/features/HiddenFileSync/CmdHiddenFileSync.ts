@@ -51,12 +51,20 @@ import { LiveSyncCommands } from "../LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src/mock_and_interop/stores.ts";
-import type { IObsidianModule } from "../../modules/AbstractObsidianModule.ts";
 import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
-import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import type { LiveSyncCore } from "../../main.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
+declare global {
+    interface OPTIONAL_SYNC_FEATURES {
+        FETCH: "FETCH";
+        OVERWRITE: "OVERWRITE";
+        MERGE: "MERGE";
+        DISABLE: "DISABLE";
+        DISABLE_HIDDEN: "DISABLE_HIDDEN";
+    }
+}
 function getComparingMTime(
     doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
     includeDeleted = false
@@ -72,14 +80,14 @@ function getComparingMTime(
     return doc.mtime ?? 0;
 }
 
-export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule {
-    _isThisModuleEnabled() {
+export class HiddenFileSync extends LiveSyncCommands {
+    isThisModuleEnabled() {
         return this.plugin.settings.syncInternalFiles;
     }
 
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(
         this.plugin,
-        async () => this._isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
+        async () => this.isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
     );
 
     get kvDB() {
@@ -132,14 +140,18 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
             this.updateSettingCache();
         });
     }
-    async $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+    // We cannot initialise autosaveCache because kvDB is not ready yet
+    // async _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
+    //     this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
+    //     this._databaseInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed-database");
+    //     this._fileInfoLastKnown = await autosaveCache(this.kvDB, "hidden-file-lastKnown");
+    //     return true;
+    // }
+    private async _everyOnDatabaseInitialized(showNotice: boolean) {
         this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
         this._databaseInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed-database");
         this._fileInfoLastKnown = await autosaveCache(this.kvDB, "hidden-file-lastKnown");
-        return true;
-    }
-    async $everyOnDatabaseInitialized(showNotice: boolean) {
-        if (this._isThisModuleEnabled()) {
+        if (this.isThisModuleEnabled()) {
             if (this._fileInfoLastProcessed.size == 0 && this._fileInfoLastProcessed.size == 0) {
                 this._log(`No cache found. Performing startup scan.`, LOG_LEVEL_VERBOSE);
                 await this.performStartupScan(true);
@@ -149,9 +161,9 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         }
         return true;
     }
-    async $everyBeforeReplicate(showNotice: boolean) {
+    async _everyBeforeReplicate(showNotice: boolean) {
         if (
-            this._isThisModuleEnabled() &&
+            this.isThisModuleEnabled() &&
             this._isDatabaseReady() &&
             this.settings.syncInternalFilesBeforeReplication &&
             !this.settings.watchInternalFileChanges
@@ -161,7 +173,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return true;
     }
 
-    $everyOnloadAfterLoadSettings(): Promise<boolean> {
+    private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         this.updateSettingCache();
         return Promise.resolve(true);
     }
@@ -188,7 +200,7 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
     isReady() {
         if (!this._isMainReady) return false;
         if (this._isMainSuspended()) return false;
-        if (!this._isThisModuleEnabled()) return false;
+        if (!this.isThisModuleEnabled()) return false;
         return true;
     }
     shouldSkipFile = [] as FilePathWithPrefixLC[];
@@ -197,26 +209,26 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         await this.applyOfflineChanges(showNotice);
     }
 
-    async $everyOnResumeProcess(): Promise<boolean> {
+    async _everyOnResumeProcess(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended()) return true;
-        if (this._isThisModuleEnabled()) {
+        if (this.isThisModuleEnabled()) {
             await this.performStartupScan(false);
         }
         this.periodicInternalFileScanProcessor.enable(
-            this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval
+            this.isThisModuleEnabled() && this.settings.syncInternalFilesInterval
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
         return true;
     }
 
-    $everyRealizeSettingSyncMode(): Promise<boolean> {
+    _everyRealizeSettingSyncMode(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended()) return Promise.resolve(true);
-        if (!this.plugin.$$isReady()) return Promise.resolve(true);
+        if (!this.services.appLifecycle.isReady()) return Promise.resolve(true);
         this.periodicInternalFileScanProcessor.enable(
-            this._isThisModuleEnabled() && this.settings.syncInternalFilesInterval
+            this.isThisModuleEnabled() && this.settings.syncInternalFilesInterval
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
@@ -227,13 +239,14 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return Promise.resolve(true);
     }
 
-    async $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
+    async _anyProcessOptionalFileEvent(path: FilePath): Promise<boolean> {
         if (this.isReady()) {
-            return await this.trackStorageFileModification(path);
+            return (await this.trackStorageFileModification(path)) || false;
         }
+        return false;
     }
 
-    $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
+    _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isInternalMetadata(path)) {
             this.queueConflictCheck(path);
             return Promise.resolve(true);
@@ -241,12 +254,12 @@ export class HiddenFileSync extends LiveSyncCommands implements IObsidianModule 
         return Promise.resolve(false);
     }
 
-    async $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> {
+    async _anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean> {
         if (isInternalMetadata(doc._id)) {
-            if (this._isThisModuleEnabled()) {
+            if (this.isThisModuleEnabled()) {
                 //system file
                 const filename = getPath(doc);
-                if (await this.plugin.$$isTargetFile(filename)) {
+                if (await this.services.vault.isTargetFile(filename)) {
                     // this.procInternalFile(filename);
                     await this.processReplicationResult(doc);
                     return true;
@@ -1091,14 +1104,14 @@ Offline Changed files: ${files.length}`;
 
         // If something changes left, notify for reloading Obsidian.
         if (updatedFolders.indexOf(this.plugin.app.vault.configDir) >= 0) {
-            if (!this.plugin.$$isReloadingScheduled()) {
+            if (!this.services.appLifecycle.isReloadingScheduled()) {
                 this.plugin.confirm.askInPopup(
                     `updated-any-hidden`,
                     `Some setting files have been modified\nPress {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`,
                     (anchor) => {
                         anchor.text = "HERE";
                         anchor.addEventListener("click", () => {
-                            this.plugin.$$scheduleAppReload();
+                            this.services.appLifecycle.scheduleRestart();
                         });
                     }
                 );
@@ -1318,7 +1331,7 @@ Offline Changed files: ${files.length}`;
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
         const storeFilePath = stripAllPrefixes(file.path as FilePath);
         const storageFilePath = file.path;
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+        if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
         }
         const prefixedFileName = addPrefix(storeFilePath, ICHeader);
@@ -1372,7 +1385,7 @@ Offline Changed files: ${files.length}`;
         const displayFileName = filenameSrc;
         const prefixedFileName = addPrefix(storeFilePath, ICHeader);
         const mtime = new Date().getTime();
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+        if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
         }
         return await serialized("file-" + prefixedFileName, async () => {
@@ -1432,7 +1445,7 @@ Offline Changed files: ${files.length}`;
         includeDeletion = true
     ) {
         const prefixedFileName = addPrefix(storageFilePath, ICHeader);
-        if (await this.plugin.$$isIgnoredByIgnoreFiles(storageFilePath)) {
+        if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
         }
         return await serialized("file-" + prefixedFileName, async () => {
@@ -1479,7 +1492,7 @@ Offline Changed files: ${files.length}`;
                 }
                 const deleted = metaOnDB.deleted || metaOnDB._deleted || false;
                 if (deleted) {
-                    const result = await this._deleteFile(storageFilePath);
+                    const result = await this.__deleteFile(storageFilePath);
                     if (result == "OK") {
                         this.updateLastProcessedDeletion(storageFilePath, metaOnDB);
                         return true;
@@ -1493,7 +1506,7 @@ Offline Changed files: ${files.length}`;
                     if (fileOnDB === false) {
                         throw new Error(`Failed to read file from database:${storageFilePath}`);
                     }
-                    const resultStat = await this._writeFile(storageFilePath, fileOnDB, force);
+                    const resultStat = await this.__writeFile(storageFilePath, fileOnDB, force);
                     if (resultStat) {
                         this.updateLastProcessed(storageFilePath, metaOnDB, resultStat);
                         this.queueNotification(storageFilePath);
@@ -1526,7 +1539,7 @@ Offline Changed files: ${files.length}`;
         }
     }
 
-    async _writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
+    async __writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
         try {
             const statBefore = await this.plugin.storageAccess.statHidden(storageFilePath);
             const isExist = statBefore != null;
@@ -1565,7 +1578,7 @@ Offline Changed files: ${files.length}`;
         }
     }
 
-    async _deleteFile(storageFilePath: FilePath): Promise<false | "OK" | "ALREADY"> {
+    async __deleteFile(storageFilePath: FilePath): Promise<false | "OK" | "ALREADY"> {
         const result = await this.__removeFile(storageFilePath);
         if (result === false) {
             this._log(`STORAGE <x- DB: ${storageFilePath}: deleting (hidden) Failed`);
@@ -1582,11 +1595,11 @@ Offline Changed files: ${files.length}`;
 
     // <-- Database To Storage Functions
 
-    async $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        await this._askHiddenFileConfiguration(opt);
+    private async _allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
+        await this.__askHiddenFileConfiguration(opt);
         return true;
     }
-    async _askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
+    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         const messageFetch = `${opt.enableFetch ? `> - Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
         const messageOverwrite = `${opt.enableOverwrite ? `> - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
         const messageMerge = `> - Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.
@@ -1632,7 +1645,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         }
     }
 
-    $allSuspendExtraSync(): Promise<boolean> {
+    private _allSuspendExtraSync(): Promise<boolean> {
         if (this.plugin.settings.syncInternalFiles) {
             this._log(
                 "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.",
@@ -1644,11 +1657,12 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     // --> Configuration handling
-    async $anyConfigureOptionalSyncFeature(mode: "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE" | "DISABLE_HIDDEN") {
+    private async _anyConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
         await this.configureHiddenFileSync(mode);
+        return true;
     }
 
-    async configureHiddenFileSync(mode: "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE" | "DISABLE_HIDDEN") {
+    async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
         if (
             mode != "FETCH" &&
             mode != "OVERWRITE" &&
@@ -1718,7 +1732,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         const result: InternalFileInfo[] = [];
         for (const f of files) {
             const w = await f;
-            if (await this.plugin.$$isIgnoredByIgnoreFiles(w.path)) {
+            if (await this.services.vault.isIgnoredByIgnoreFile(w.path)) {
                 continue;
             }
             const mtime = w.stat?.mtime ?? 0;
@@ -1756,7 +1770,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
             if (ignoreFilter && ignoreFilter.some((ee) => ee.test(file))) {
                 continue;
             }
-            if (await this.plugin.$$isIgnoredByIgnoreFiles(file)) continue;
+            if (await this.services.vault.isIgnoredByIgnoreFile(file)) continue;
             files.push(file);
         }
         L1: for (const v of w.folders) {
@@ -1768,7 +1782,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
             if (ignoreFilter && ignoreFilter.some((e) => e.test(v))) {
                 continue L1;
             }
-            if (await this.plugin.$$isIgnoredByIgnoreFiles(v)) {
+            if (await this.services.vault.isIgnoredByIgnoreFile(v)) {
                 continue L1;
             }
             files = files.concat(await this.getFiles(v, ignoreList, filter, ignoreFilter));
@@ -1777,4 +1791,20 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     // <-- Local Storage SubFunctions
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+        // No longer needed on initialisation
+        // services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
+        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+        services.fileProcessing.handleOptionalFileEvent(this._anyProcessOptionalFileEvent.bind(this));
+        services.conflict.handleGetOptionalConflictCheckMethod(this._anyGetOptionalConflictCheckMethod.bind(this));
+        services.replication.handleProcessOptionalSynchroniseResult(this._anyProcessOptionalSyncFiles.bind(this));
+        services.setting.handleOnRealiseSetting(this._everyRealizeSettingSyncMode.bind(this));
+        services.appLifecycle.handleOnResuming(this._everyOnResumeProcess.bind(this));
+        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
+        services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
+        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
+        services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
+        services.setting.handleEnableOptionalFeature(this._anyConfigureOptionalSyncFeature.bind(this));
+    }
 }

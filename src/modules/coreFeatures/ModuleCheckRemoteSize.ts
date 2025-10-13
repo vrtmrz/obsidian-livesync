@@ -1,11 +1,11 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "../AbstractModule.ts";
 import { sizeToHumanReadable } from "octagonal-wheels/number";
-import type { ICoreModule } from "../ModuleTypes.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleCheckRemoteSize extends AbstractModule implements ICoreModule {
-    async $allScanStat(): Promise<boolean> {
+export class ModuleCheckRemoteSize extends AbstractModule {
+    async _allScanStat(): Promise<boolean> {
         if (this.core.managers.networkManager.isOnline === false) {
             this._log("Network is offline, skipping remote size check.", LOG_LEVEL_INFO);
             return true;
@@ -108,5 +108,8 @@ export class ModuleCheckRemoteSize extends AbstractModule implements ICoreModule
             }
         }
         return true;
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnScanningStartupIssues(this._allScanStat.bind(this));
     }
 }

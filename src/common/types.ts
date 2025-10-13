@@ -1,11 +1,6 @@
 import { type PluginManifest, TFile } from "../deps.ts";
-import {
-    type DatabaseEntry,
-    type EntryBody,
-    type FilePath,
-    type UXFileInfoStub,
-    type UXInternalFileInfoStub,
-} from "../lib/src/common/types.ts";
+import { type DatabaseEntry, type EntryBody, type FilePath } from "../lib/src/common/types.ts";
+export type { CacheData, FileEventItem } from "../lib/src/common/types.ts";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;
@@ -52,23 +47,6 @@ export type queueItem = {
     timeout?: number;
     done?: boolean;
     warned?: boolean;
-};
-
-export type CacheData = string | ArrayBuffer;
-export type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "INTERNAL";
-export type FileEventArgs = {
-    file: UXFileInfoStub | UXInternalFileInfoStub;
-    cache?: CacheData;
-    oldPath?: string;
-    ctx?: any;
-};
-export type FileEventItem = {
-    type: FileEventType;
-    args: FileEventArgs;
-    key: string;
-    skipBatchWait?: boolean;
-    cancelled?: boolean;
-    batched?: boolean;
 };
 
 // Hidden items (Now means `chunk`)

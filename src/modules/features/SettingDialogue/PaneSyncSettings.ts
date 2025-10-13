@@ -25,16 +25,16 @@ export function paneSyncSettings(
         const options: Record<string, string> =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
-                    NONE: "",
-                    LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
-                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                    DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
-                }
+                      NONE: "",
+                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                  }
                 : {
-                    NONE: "",
-                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                    DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
-                };
+                      NONE: "",
+                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
+                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                  };
 
         new Setting(paneEl)
             .autoWireDropDown("preset", {
@@ -105,7 +105,7 @@ export function paneSyncSettings(
                 if (!this.editingSettings.isConfigured) {
                     this.editingSettings.isConfigured = true;
                     await this.saveAllDirtySettings();
-                    await this.plugin.$$realizeSettingSyncMode();
+                    await this.services.setting.onRealiseSetting();
                     await this.rebuildDB("localOnly");
                     // this.resetEditingSettings();
                     if (
@@ -124,13 +124,13 @@ export function paneSyncSettings(
                         await this.confirmRebuild();
                     } else {
                         await this.saveAllDirtySettings();
-                        await this.plugin.$$realizeSettingSyncMode();
-                        this.plugin.$$askReload();
+                        await this.services.setting.onRealiseSetting();
+                        this.services.appLifecycle.askRestart();
                     }
                 }
             } else {
                 await this.saveAllDirtySettings();
-                await this.plugin.$$realizeSettingSyncMode();
+                await this.services.setting.onRealiseSetting();
             }
         });
     });
@@ -144,14 +144,14 @@ export function paneSyncSettings(
         const optionsSyncMode =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
-                    ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
-                    LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
-                }
+                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                  }
                 : {
-                    ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                    PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
-                };
+                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
+                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                  };
 
         new Setting(paneEl)
             .autoWireDropDown("syncMode", {
@@ -169,7 +169,7 @@ export function paneSyncSettings(
             }
             await this.saveSettings(["liveSync", "periodicReplication"]);
 
-            await this.plugin.$$realizeSettingSyncMode();
+            await this.services.setting.onRealiseSetting();
         });
 
         new Setting(paneEl)
@@ -289,21 +289,21 @@ export function paneSyncSettings(
                     button.setButtonText("Merge").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("MERGE");
+                        await this.services.setting.enableOptionalFeature("MERGE");
                     });
                 })
                 .addButton((button) => {
                     button.setButtonText("Fetch").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("FETCH");
+                        await this.services.setting.enableOptionalFeature("FETCH");
                     });
                 })
                 .addButton((button) => {
                     button.setButtonText("Overwrite").onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
-                        await this.plugin.$anyConfigureOptionalSyncFeature("OVERWRITE");
+                        await this.services.setting.enableOptionalFeature("OVERWRITE");
                     });
                 });
         }

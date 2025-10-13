@@ -1,26 +1,10 @@
 import { Plugin } from "./deps";
 import {
     type EntryDoc,
-    type LoadedEntry,
     type ObsidianLiveSyncSettings,
-    type LOG_LEVEL,
-    type diff_result,
     type DatabaseConnectingStatus,
-    type EntryHasPath,
-    type DocumentID,
-    type FilePathWithPrefix,
-    type FilePath,
-    LOG_LEVEL_INFO,
     type HasSettings,
-    type MetaEntry,
-    type UXFileInfoStub,
-    type MISSING_OR_ERROR,
-    type AUTO_MERGED,
-    type RemoteDBSettings,
-    type TweakValues,
-    type CouchDBCredentials,
 } from "./lib/src/common/types.ts";
-import { type FileEventItem } from "./common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
 import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
 import {
@@ -35,7 +19,6 @@ import { reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/
 import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
 import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
-import { ObsHttpHandler } from "./modules/essentialObsidian/APILib/ObsHttpHandler.js";
 import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
 
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
@@ -59,8 +42,7 @@ import { ModuleDatabaseFileAccess } from "./modules/core/ModuleDatabaseFileAcces
 import { ModuleFileHandler } from "./modules/core/ModuleFileHandler.ts";
 import { ModuleObsidianAPI } from "./modules/essentialObsidian/ModuleObsidianAPI.ts";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
-import { injectModules, type AbstractModule } from "./modules/AbstractModule.ts";
-import type { ICoreModule } from "./modules/ModuleTypes.ts";
+import { type AbstractModule } from "./modules/AbstractModule.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
@@ -85,13 +67,16 @@ import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleE
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 import type { LiveSyncManagers } from "./lib/src/managers/LiveSyncManagers.ts";
+import { ObsidianServiceHub } from "./modules/services/ObsidianServices.ts";
+import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
 
-function throwShouldBeOverridden(): never {
-    throw new Error("This function should be overridden by the module.");
-}
-const InterceptiveAll = Promise.resolve(true);
-const InterceptiveEvery = Promise.resolve(true);
-const InterceptiveAny = Promise.resolve(undefined);
+// function throwShouldBeOverridden(): never {
+//     throw new Error("This function should be overridden by the module.");
+// }
+// const InterceptiveAll = Promise.resolve(true);
+// const InterceptiveEvery = Promise.resolve(true);
+// const InterceptiveAny = Promise.resolve(undefined);
+
 /**
  * All $prefixed functions are hooked by the modules. Be careful to call them directly.
  * Please refer to the module's source code to understand the function.
@@ -101,6 +86,13 @@ const InterceptiveAny = Promise.resolve(undefined);
  * $any   : Process all modules until the first success.
  * $      : Other interceptive points. You should manually assign the module
  * All of above performed on injectModules function.
+ *
+ * No longer used! See AppLifecycleService in Services.ts.
+ * For a while, just commented out some previously used code. (sorry, some are deleted...)
+ * 'Convention over configuration' was a lie for me. At least, very lack of refactor-ability.
+ *
+ * Still some modules are separated, and connected by `ThroughHole` class.
+ * However, it is not a good design. I am going to manage the modules in a more explicit way.
  */
 
 export default class ObsidianLiveSyncPlugin
@@ -112,6 +104,18 @@ export default class ObsidianLiveSyncPlugin
         LiveSyncCouchDBReplicatorEnv,
         HasSettings<ObsidianLiveSyncSettings>
 {
+    /**
+     * The service hub for managing all services.
+     */
+    _services: InjectableServiceHub = new ObsidianServiceHub();
+    get services() {
+        return this._services;
+    }
+    /**
+     * Bind functions to the service hub (for migration purpose).
+     */
+    // bindFunctions = (this.serviceHub as ObsidianServiceHub).bindFunctions.bind(this.serviceHub);
+
     // --> Module System
     getAddOn<T extends LiveSyncCommands>(cls: string) {
         for (const addon of this.addOns) {
@@ -173,40 +177,8 @@ export default class ObsidianLiveSyncPlugin
         new ModuleReplicateTest(this, this),
         new ModuleIntegratedTest(this, this),
     ] as (IObsidianModule | AbstractModule)[];
-    injected = injectModules(this, [...this.modules, ...this.addOns] as ICoreModule[]);
+    // injected = injectModules(this, [...this.modules, ...this.addOns] as ICoreModule[]);
     // <-- Module System
-
-    $$isSuspended(): boolean {
-        throwShouldBeOverridden();
-    }
-
-    $$setSuspended(value: boolean): void {
-        throwShouldBeOverridden();
-    }
-
-    $$isDatabaseReady(): boolean {
-        throwShouldBeOverridden();
-    }
-
-    $$getDeviceAndVaultName(): string {
-        throwShouldBeOverridden();
-    }
-    $$setDeviceAndVaultName(name: string): void {
-        throwShouldBeOverridden();
-    }
-
-    $$addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
-        throwShouldBeOverridden();
-    }
-    $$isReady(): boolean {
-        throwShouldBeOverridden();
-    }
-    $$markIsReady(): void {
-        throwShouldBeOverridden();
-    }
-    $$resetIsReady(): void {
-        throwShouldBeOverridden();
-    }
 
     // Following are plugged by the modules.
 
@@ -227,30 +199,6 @@ export default class ObsidianLiveSyncPlugin
     }
     getSettings(): ObsidianLiveSyncSettings {
         return this.settings;
-    }
-
-    $$markFileListPossiblyChanged(): void {
-        throwShouldBeOverridden();
-    }
-
-    $$customFetchHandler(): ObsHttpHandler {
-        throwShouldBeOverridden();
-    }
-
-    $$getLastPostFailedBySize(): boolean {
-        throwShouldBeOverridden();
-    }
-
-    $$isStorageInsensitive(): boolean {
-        throwShouldBeOverridden();
-    }
-
-    $$shouldCheckCaseInsensitive(): boolean {
-        throwShouldBeOverridden();
-    }
-
-    $$isUnloaded(): boolean {
-        throwShouldBeOverridden();
     }
 
     requestCount = reactiveSource(0);
@@ -276,101 +224,6 @@ export default class ObsidianLiveSyncPlugin
         lastSyncPushSeq: 0,
         syncStatus: "CLOSED" as DatabaseConnectingStatus,
     });
-
-    $$isReloadingScheduled(): boolean {
-        throwShouldBeOverridden();
-    }
-    $$getReplicator(): LiveSyncAbstractReplicator {
-        throwShouldBeOverridden();
-    }
-
-    $$connectRemoteCouchDB(
-        uri: string,
-        auth: CouchDBCredentials,
-        disableRequestURI: boolean,
-        passphrase: string | false,
-        useDynamicIterationCount: boolean,
-        performSetup: boolean,
-        skipInfo: boolean,
-        compression: boolean,
-        customHeaders: Record<string, string>,
-        useRequestAPI: boolean,
-        getPBKDF2Salt: () => Promise<Uint8Array>
-    ): Promise<
-        | string
-        | {
-              db: PouchDB.Database<EntryDoc>;
-              info: PouchDB.Core.DatabaseInfo;
-          }
-    > {
-        throwShouldBeOverridden();
-    }
-
-    $$isMobile(): boolean {
-        throwShouldBeOverridden();
-    }
-    $$vaultName(): string {
-        throwShouldBeOverridden();
-    }
-
-    // --> Path
-
-    $$getActiveFilePath(): FilePathWithPrefix | undefined {
-        throwShouldBeOverridden();
-    }
-
-    // <-- Path
-
-    // --> Path conversion
-    $$id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
-        throwShouldBeOverridden();
-    }
-
-    $$path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        throwShouldBeOverridden();
-    }
-
-    // <!-- Path conversion
-
-    // --> Database
-    $$createPouchDBInstance<T extends object>(
-        name?: string,
-        options?: PouchDB.Configuration.DatabaseConfiguration
-    ): PouchDB.Database<T> {
-        throwShouldBeOverridden();
-    }
-
-    $allOnDBUnload(db: LiveSyncLocalDB): void {
-        return;
-    }
-    $allOnDBClose(db: LiveSyncLocalDB): void {
-        return;
-    }
-
-    // <!-- Database
-
-    $anyNewReplicator(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<LiveSyncAbstractReplicator> {
-        throwShouldBeOverridden();
-    }
-
-    $everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-
-    $everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-
-    // end interfaces
-
-    $$getVaultName(): string {
-        throwShouldBeOverridden();
-    }
-
-    $$getSimpleStore<T>(kind: string): SimpleStore<T> {
-        throwShouldBeOverridden();
-    }
-    // trench!: Trench;
 
     // --> Events
 
@@ -412,331 +265,404 @@ export default class ObsidianLiveSyncPlugin
 
     */
 
-    $everyOnLayoutReady(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyOnFirstInitialize(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $everyOnLayoutReady(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onLayoutReady
+    //     return InterceptiveEvery;
+    // }
+    // $everyOnFirstInitialize(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onFirstInitialize
+    //     return InterceptiveEvery;
+    // }
 
     // Some Module should call this function to start the plugin.
-    $$onLiveSyncReady(): Promise<false | undefined> {
-        throwShouldBeOverridden();
-    }
-    $$wireUpEvents(): void {
-        throwShouldBeOverridden();
-    }
-    $$onLiveSyncLoad(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$onLiveSyncReady(): Promise<false | undefined> {
+    //     //TODO: AppLifecycleService.onLiveSyncReady
+    //     throwShouldBeOverridden();
+    // }
+    // $$wireUpEvents(): void {
+    //     //TODO: AppLifecycleService.wireUpEvents
+    //     throwShouldBeOverridden();
+    // }
+    // $$onLiveSyncLoad(): Promise<void> {
+    //     //TODO: AppLifecycleService.onLoad
+    //     throwShouldBeOverridden();
+    // }
 
-    $$onLiveSyncUnload(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$onLiveSyncUnload(): Promise<void> {
+    //     //TODO: AppLifecycleService.onAppUnload
+    //     throwShouldBeOverridden();
+    // }
 
-    $allScanStat(): Promise<boolean> {
-        return InterceptiveAll;
-    }
-    $everyOnloadStart(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $allScanStat(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.scanStartupIssues
+    //     return InterceptiveAll;
+    // }
+    // $everyOnloadStart(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onInitialise
+    //     return InterceptiveEvery;
+    // }
 
-    $everyOnloadAfterLoadSettings(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $everyOnloadAfterLoadSettings(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onApplyStartupLoaded
+    //     return InterceptiveEvery;
+    // }
 
-    $everyOnload(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $everyOnload(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onLoaded
+    //     return InterceptiveEvery;
+    // }
 
-    $anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean | undefined> {
+    //     //TODO: FileProcessingService.processFileEvent
+    //     return InterceptiveAny;
+    // }
 
-    $allStartOnUnload(): Promise<boolean> {
-        return InterceptiveAll;
-    }
-    $allOnUnload(): Promise<boolean> {
-        return InterceptiveAll;
-    }
+    // $allStartOnUnload(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onBeforeUnload
+    //     return InterceptiveAll;
+    // }
+    // $allOnUnload(): Promise<boolean> {
+    //     //TODO: AppLifecycleService.onUnload
+    //     return InterceptiveAll;
+    // }
 
-    $$openDatabase(): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$openDatabase(): Promise<boolean> {
+    //     // DatabaseService.openDatabase
+    //     throwShouldBeOverridden();
+    // }
 
-    $$realizeSettingSyncMode(): Promise<void> {
-        throwShouldBeOverridden();
-    }
-    $$performRestart() {
-        throwShouldBeOverridden();
-    }
+    // $$realizeSettingSyncMode(): Promise<void> {
+    //     // SettingService.realiseSetting
+    //     throwShouldBeOverridden();
+    // }
+    // $$performRestart() {
+    //     // AppLifecycleService.performRestart
+    //     throwShouldBeOverridden();
+    // }
 
-    $$clearUsedPassphrase(): void {
-        throwShouldBeOverridden();
-    }
+    // $$clearUsedPassphrase(): void {
+    //     // SettingService.clearUsedPassphrase
+    //     throwShouldBeOverridden();
+    // }
 
-    $$decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
-        throwShouldBeOverridden();
-    }
-    $$adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
-        throwShouldBeOverridden();
-    }
+    // $$decryptSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+    //     // SettingService.decryptSettings
+    //     throwShouldBeOverridden();
+    // }
+    // $$adjustSettings(settings: ObsidianLiveSyncSettings): Promise<ObsidianLiveSyncSettings> {
+    //     // SettingService.adjustSettings
+    //     throwShouldBeOverridden();
+    // }
 
-    $$loadSettings(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$loadSettings(): Promise<void> {
+    //     // SettingService.loadSettings
+    //     throwShouldBeOverridden();
+    // }
 
-    $$saveDeviceAndVaultName(): void {
-        throwShouldBeOverridden();
-    }
+    // $$saveDeviceAndVaultName(): void {
+    //     // SettingService.saveDeviceAndVaultName
+    //     throwShouldBeOverridden();
+    // }
 
-    $$saveSettingData(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$saveSettingData(): Promise<void> {
+    //     // SettingService.saveSettingData
+    //     throwShouldBeOverridden();
+    // }
 
-    $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyProcessOptionalFileEvent(path: FilePath): Promise<boolean | undefined> {
+    //     // FileProcessingService.processOptionalFileEvent
+    //     return InterceptiveAny;
+    // }
 
-    $everyCommitPendingFileEvent(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $everyCommitPendingFileEvent(): Promise<boolean> {
+    //     // FileProcessingService.commitPendingFileEvent
+    //     return InterceptiveEvery;
+    // }
 
     // ->
-    $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | undefined | "newer"> {
-        return InterceptiveAny;
-    }
+    // $anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | undefined | "newer"> {
+    //     return InterceptiveAny;
+    // }
 
-    $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
+    //     // ConflictEventManager.queueCheckForConflictIfOpen
+    //     throwShouldBeOverridden();
+    // }
 
-    $$queueConflictCheck(file: FilePathWithPrefix): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$queueConflictCheck(file: FilePathWithPrefix): Promise<void> {
+    //     // ConflictEventManager.queueCheckForConflict
+    //     throwShouldBeOverridden();
+    // }
 
-    $$waitForAllConflictProcessed(): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$waitForAllConflictProcessed(): Promise<boolean> {
+    //     // ConflictEventManager.ensureAllConflictProcessed
+    //     throwShouldBeOverridden();
+    // }
 
     //<-- Conflict Check
 
-    $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean | undefined> {
+    //     // ReplicationService.processOptionalSyncFile
+    //     return InterceptiveAny;
+    // }
 
-    $anyProcessReplicatedDoc(doc: MetaEntry): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyProcessReplicatedDoc(doc: MetaEntry): Promise<boolean | undefined> {
+    //     // ReplicationService.processReplicatedDocument
+    //     return InterceptiveAny;
+    // }
 
     //---> Sync
-    $$parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
-        throwShouldBeOverridden();
-    }
+    // $$parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
+    //     // ReplicationService.parseSynchroniseResult
+    //     throwShouldBeOverridden();
+    // }
 
-    $anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
-    $everyBeforeRealizeSetting(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyAfterRealizeSetting(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyRealizeSettingSyncMode(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>): Promise<boolean | undefined> {
+    //     // ReplicationService.processVirtualDocument
+    //     return InterceptiveAny;
+    // }
+    // $everyBeforeRealizeSetting(): Promise<boolean> {
+    //     // SettingEventManager.beforeRealiseSetting
+    //     return InterceptiveEvery;
+    // }
+    // $everyAfterRealizeSetting(): Promise<boolean> {
+    //     // SettingEventManager.onSettingRealised
+    //     return InterceptiveEvery;
+    // }
+    // $everyRealizeSettingSyncMode(): Promise<boolean> {
+    //     // SettingEventManager.onRealiseSetting
+    //     return InterceptiveEvery;
+    // }
 
-    $everyBeforeSuspendProcess(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyOnResumeProcess(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyAfterResumeProcess(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $everyBeforeSuspendProcess(): Promise<boolean> {
+    //     // AppLifecycleService.onSuspending
+    //     return InterceptiveEvery;
+    // }
+    // $everyOnResumeProcess(): Promise<boolean> {
+    //     // AppLifecycleService.onResuming
+    //     return InterceptiveEvery;
+    // }
+    // $everyAfterResumeProcess(): Promise<boolean> {
+    //     // AppLifecycleService.onResumed
+    //     return InterceptiveEvery;
+    // }
 
-    $$fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
-        throwShouldBeOverridden();
-    }
-    $$checkAndAskResolvingMismatchedTweaks(preferred: Partial<TweakValues>): Promise<[TweakValues | boolean, boolean]> {
-        throwShouldBeOverridden();
-    }
-    $$askResolvingMismatchedTweaks(preferredSource: TweakValues): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
-        throwShouldBeOverridden();
-    }
+    // $$fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
+    //     //TODO:TweakValueService.fetchRemotePreferred
+    //     throwShouldBeOverridden();
+    // }
+    // $$checkAndAskResolvingMismatchedTweaks(preferred: Partial<TweakValues>): Promise<[TweakValues | boolean, boolean]> {
+    //     //TODO:TweakValueService.checkAndAskResolvingMismatched
+    //     throwShouldBeOverridden();
+    // }
+    // $$askResolvingMismatchedTweaks(preferredSource: TweakValues): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+    //     //TODO:TweakValueService.askResolvingMismatched
+    //     throwShouldBeOverridden();
+    // }
 
-    $$checkAndAskUseRemoteConfiguration(
-        settings: RemoteDBSettings
-    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
-        throwShouldBeOverridden();
-    }
+    // $$checkAndAskUseRemoteConfiguration(
+    //     settings: RemoteDBSettings
+    // ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+    //     // TweakValueService.checkAndAskUseRemoteConfiguration
+    //     throwShouldBeOverridden();
+    // }
 
-    $$askUseRemoteConfiguration(
-        trialSetting: RemoteDBSettings,
-        preferred: TweakValues
-    ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
-        throwShouldBeOverridden();
-    }
-    $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
-        return InterceptiveEvery;
-    }
+    // $$askUseRemoteConfiguration(
+    //     trialSetting: RemoteDBSettings,
+    //     preferred: TweakValues
+    // ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+    //     // TweakValueService.askUseRemoteConfiguration
+    //     throwShouldBeOverridden();
+    // }
+    // $everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
+    //     // ReplicationService.beforeReplicate
+    //     return InterceptiveEvery;
+    // }
 
-    $$canReplicate(showMessage: boolean = false): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$canReplicate(showMessage: boolean = false): Promise<boolean> {
+    //     // ReplicationService.isReplicationReady
+    //     throwShouldBeOverridden();
+    // }
 
-    $$replicate(showMessage: boolean = false): Promise<boolean | void> {
-        throwShouldBeOverridden();
-    }
-    $$replicateByEvent(showMessage: boolean = false): Promise<boolean | void> {
-        throwShouldBeOverridden();
-    }
+    // $$replicate(showMessage: boolean = false): Promise<boolean | void> {
+    //     // ReplicationService.replicate
+    //     throwShouldBeOverridden();
+    // }
+    // $$replicateByEvent(showMessage: boolean = false): Promise<boolean | void> {
+    //     // ReplicationService.replicateByEvent
+    //     throwShouldBeOverridden();
+    // }
 
-    $everyOnDatabaseInitialized(showingNotice: boolean): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $everyOnDatabaseInitialized(showingNotice: boolean): Promise<boolean> {
+    //   // DatabaseEventService.onDatabaseInitialised
+    //     throwShouldBeOverridden();
+    // }
 
-    $$initializeDatabase(
-        showingNotice: boolean = false,
-        reopenDatabase = true,
-        ignoreSuspending: boolean = false
-    ): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$initializeDatabase(
+    //     showingNotice: boolean = false,
+    //     reopenDatabase = true,
+    //     ignoreSuspending: boolean = false
+    // ): Promise<boolean> {
+    //     // DatabaseEventService.initializeDatabase
+    //     throwShouldBeOverridden();
+    // }
 
-    $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
+    //     // ReplicationService.checkConnectionFailure
+    //     return InterceptiveAny;
+    // }
 
-    $$replicateAllToServer(
-        showingNotice: boolean = false,
-        sendChunksInBulkDisabled: boolean = false
-    ): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
-    $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$replicateAllToServer(
+    //     showingNotice: boolean = false,
+    //     sendChunksInBulkDisabled: boolean = false
+    // ): Promise<boolean> {
+    //     // RemoteService.replicateAllToRemote
+    //     throwShouldBeOverridden();
+    // }
+    // $$replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
+    //     // RemoteService.replicateAllFromRemote
+    //     throwShouldBeOverridden();
+    // }
 
     // Remote Governing
-    $$markRemoteLocked(lockByClean: boolean = false): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$markRemoteLocked(lockByClean: boolean = false): Promise<void> {
+    //     // RemoteService.markLocked;
+    //     throwShouldBeOverridden();
+    // }
 
-    $$markRemoteUnlocked(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$markRemoteUnlocked(): Promise<void> {
+    //     // RemoteService.markUnlocked;
+    //     throwShouldBeOverridden();
+    // }
 
-    $$markRemoteResolved(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$markRemoteResolved(): Promise<void> {
+    //     // RemoteService.markResolved;
+    //     throwShouldBeOverridden();
+    // }
 
     // <-- Remote Governing
 
-    $$isFileSizeExceeded(size: number): boolean {
-        throwShouldBeOverridden();
-    }
+    // $$isFileSizeExceeded(size: number): boolean {
+    //     // VaultService.isFileSizeTooLarge
+    //     throwShouldBeOverridden();
+    // }
 
-    $$performFullScan(showingNotice?: boolean, ignoreSuspending?: boolean): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$performFullScan(showingNotice?: boolean, ignoreSuspending?: boolean): Promise<void> {
+    //     // VaultService.scanVault
+    //     throwShouldBeOverridden();
+    // }
 
-    $anyResolveConflictByUI(
-        filename: FilePathWithPrefix,
-        conflictCheckResult: diff_result
-    ): Promise<boolean | undefined> {
-        return InterceptiveAny;
-    }
-    $$resolveConflictByDeletingRev(
-        path: FilePathWithPrefix,
-        deleteRevision: string,
-        subTitle = ""
-    ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> {
-        throwShouldBeOverridden();
-    }
-    $$resolveConflict(filename: FilePathWithPrefix): Promise<void> {
-        throwShouldBeOverridden();
-    }
-    $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $anyResolveConflictByUI(
+    //     filename: FilePathWithPrefix,
+    //     conflictCheckResult: diff_result
+    // ): Promise<boolean | undefined> {
+    //     // ConflictService.resolveConflictByUserInteraction
+    //     return InterceptiveAny;
+    // }
+    // $$resolveConflictByDeletingRev(
+    //     path: FilePathWithPrefix,
+    //     deleteRevision: string,
+    //     subTitle = ""
+    // ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> {
+    //     // ConflictService.resolveByDeletingRevision
+    //     throwShouldBeOverridden();
+    // }
+    // $$resolveConflict(filename: FilePathWithPrefix): Promise<void> {
+    //     // ConflictService.resolveConflict
+    //     throwShouldBeOverridden();
+    // }
+    // $anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+    //     // ConflictService.resolveByNewest
+    //     throwShouldBeOverridden();
+    // }
 
-    $$resetLocalDatabase(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$resetLocalDatabase(): Promise<void> {
+    //     // DatabaseService.resetDatabase;
+    //     throwShouldBeOverridden();
+    // }
 
-    $$tryResetRemoteDatabase(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$tryResetRemoteDatabase(): Promise<void> {
+    //     // RemoteService.tryResetDatabase;
+    //     throwShouldBeOverridden();
+    // }
 
-    $$tryCreateRemoteDatabase(): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$tryCreateRemoteDatabase(): Promise<void> {
+    //     // RemoteService.tryCreateDatabase;
+    //     throwShouldBeOverridden();
+    // }
 
-    $$isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
+    //     // VaultService.isIgnoredByIgnoreFiles
+    //     throwShouldBeOverridden();
+    // }
 
-    $$isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
+    // $$isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false): Promise<boolean> {
+    //     // VaultService.isTargetFile
+    //     throwShouldBeOverridden();
+    // }
 
-    $$askReload(message?: string) {
-        throwShouldBeOverridden();
-    }
-    $$scheduleAppReload() {
-        throwShouldBeOverridden();
-    }
+    // $$askReload(message?: string) {
+    //     // AppLifecycleService.askRestart
+    //     throwShouldBeOverridden();
+    // }
+    // $$scheduleAppReload() {
+    //     // AppLifecycleService.scheduleRestart
+    //     throwShouldBeOverridden();
+    // }
 
     //--- Setup
-    $allSuspendAllSync(): Promise<boolean> {
-        return InterceptiveAll;
-    }
-    $allSuspendExtraSync(): Promise<boolean> {
-        return InterceptiveAll;
-    }
+    // $allSuspendAllSync(): Promise<boolean> {
+    //     // SettingEventManager.suspendAllSync
+    //     return InterceptiveAll;
+    // }
+    // $allSuspendExtraSync(): Promise<boolean> {
+    //     // SettingEventManager.suspendExtraSync
+    //     return InterceptiveAll;
+    // }
 
-    $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }): Promise<boolean> {
-        throwShouldBeOverridden();
-    }
-    $anyConfigureOptionalSyncFeature(mode: string): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }): Promise<boolean> {
+    //     // SettingEventManager.suggestOptionalFeatures
+    //     throwShouldBeOverridden();
+    // }
+    // $anyConfigureOptionalSyncFeature(mode: string): Promise<void> {
+    //     // SettingEventManager.enableOptionalFeature
+    //     throwShouldBeOverridden();
+    // }
 
-    $$showView(viewType: string): Promise<void> {
-        throwShouldBeOverridden();
-    }
+    // $$showView(viewType: string): Promise<void> {
+    //     // UIManager.showWindow //
+    //     throwShouldBeOverridden();
+    // }
 
     // For Development: Ensure reliability MORE AND MORE. May the this plug-in helps all of us.
-    $everyModuleTest(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $everyModuleTestMultiDevice(): Promise<boolean> {
-        return InterceptiveEvery;
-    }
-    $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void {
-        throwShouldBeOverridden();
-    }
+    // $everyModuleTest(): Promise<boolean> {
+    //     return InterceptiveEvery;
+    // }
+    // $everyModuleTestMultiDevice(): Promise<boolean> {
+    //     return InterceptiveEvery;
+    // }
+    // $$addTestResult(name: string, key: string, result: boolean, summary?: string, message?: string): void {
+    //     throwShouldBeOverridden();
+    // }
 
-    _isThisModuleEnabled(): boolean {
-        return true;
-    }
+    // _isThisModuleEnabled(): boolean {
+    //     return true;
+    // }
 
-    $anyGetAppId(): Promise<string | undefined> {
-        return InterceptiveAny;
-    }
+    // $anyGetAppId(): Promise<string | undefined> {
+    //     //  APIService.getAppId
+    //     return InterceptiveAny;
+    // }
 
     // Plug-in's overrideable functions
     onload() {
-        void this.$$onLiveSyncLoad();
+        void this.services.appLifecycle.onLoad();
     }
     async saveSettings() {
-        await this.$$saveSettingData();
+        await this.services.setting.saveSettingData();
     }
     onunload() {
-        return void this.$$onLiveSyncUnload();
+        return void this.services.appLifecycle.onAppUnload();
     }
     // <-- Plug-in's overrideable functions
 }

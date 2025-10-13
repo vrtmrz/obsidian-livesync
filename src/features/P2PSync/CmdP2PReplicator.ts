@@ -1,21 +1,27 @@
-import type { IObsidianModule } from "../../modules/AbstractObsidianModule";
 import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "./P2PReplicator/P2PReplicatorPaneView.ts";
 import {
     AutoAccepting,
     LOG_LEVEL_NOTICE,
+    P2P_DEFAULT_SETTINGS,
     REMOTE_P2P,
     type EntryDoc,
     type P2PSyncSetting,
     type RemoteDBSettings,
 } from "../../lib/src/common/types.ts";
 import { LiveSyncCommands } from "../LiveSyncCommands.ts";
-import { LiveSyncTrysteroReplicator } from "../../lib/src/replication/trystero/LiveSyncTrysteroReplicator.ts";
+import {
+    LiveSyncTrysteroReplicator,
+    setReplicatorFunc,
+} from "../../lib/src/replication/trystero/LiveSyncTrysteroReplicator.ts";
 import { EVENT_REQUEST_OPEN_P2P, eventHub } from "../../common/events.ts";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator.ts";
-import { Logger } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import type { CommandShim } from "../../lib/src/replication/trystero/P2PReplicatorPaneCommon.ts";
 import {
-    P2PReplicatorMixIn,
+    addP2PEventHandlers,
+    closeP2PReplicator,
+    openP2PReplicator,
+    P2PLogCollector,
     removeP2PReplicatorInstance,
     type P2PReplicatorBase,
 } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
@@ -24,8 +30,10 @@ import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
 import type ObsidianLiveSyncPlugin from "../../main.ts";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { getPlatformName } from "../../lib/src/PlatformAPIs/obsidian/Environment.ts";
+import type { LiveSyncCore } from "../../main.ts";
+import { TrysteroReplicator } from "../../lib/src/replication/trystero/TrysteroReplicator.ts";
 
-class P2PReplicatorCommandBase extends LiveSyncCommands implements P2PReplicatorBase {
+export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase, CommandShim {
     storeP2PStatusLine = reactiveSource("");
 
     getSettings(): P2PSyncSetting {
@@ -49,47 +57,127 @@ class P2PReplicatorCommandBase extends LiveSyncCommands implements P2PReplicator
 
     constructor(plugin: ObsidianLiveSyncPlugin) {
         super(plugin);
+        setReplicatorFunc(() => this._replicatorInstance);
+        addP2PEventHandlers(this);
+        this.afterConstructor();
+        // onBindFunction is called in super class
+        // this.onBindFunction(plugin, plugin.services);
     }
 
     async handleReplicatedDocuments(docs: EntryDoc[]): Promise<void> {
         // console.log("Processing Replicated Docs", docs);
-        return await this.plugin.$$parseReplicationResult(docs as PouchDB.Core.ExistingDocument<EntryDoc>[]);
-    }
-    onunload(): void {
-        throw new Error("Method not implemented.");
-    }
-    onload(): void | Promise<void> {
-        throw new Error("Method not implemented.");
+        return await this.services.replication.parseSynchroniseResult(
+            docs as PouchDB.Core.ExistingDocument<EntryDoc>[]
+        );
     }
 
-    init() {
-        this._simpleStore = this.plugin.$$getSimpleStore("p2p-sync");
-        return Promise.resolve(this);
-    }
-}
-
-export class P2PReplicator
-    extends P2PReplicatorMixIn(P2PReplicatorCommandBase)
-    implements IObsidianModule, CommandShim
-{
-    storeP2PStatusLine = reactiveSource("");
-    $anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
+    _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
         const settings = { ...this.settings, ...settingOverride };
         if (settings.remoteType == REMOTE_P2P) {
             return Promise.resolve(new LiveSyncTrysteroReplicator(this.plugin));
         }
         return undefined!;
     }
-    override getPlatform(): string {
+    _replicatorInstance?: TrysteroReplicator;
+    p2pLogCollector = new P2PLogCollector();
+
+    afterConstructor() {
+        return;
+    }
+
+    async open() {
+        await openP2PReplicator(this);
+    }
+    async close() {
+        await closeP2PReplicator(this);
+    }
+
+    getConfig(key: string) {
+        const vaultName = this.services.vault.getVaultName();
+        const dbKey = `${vaultName}-${key}`;
+        return localStorage.getItem(dbKey);
+    }
+    setConfig(key: string, value: string) {
+        const vaultName = this.services.vault.getVaultName();
+        const dbKey = `${vaultName}-${key}`;
+        localStorage.setItem(dbKey, value);
+    }
+    enableBroadcastCastings() {
+        return this?._replicatorInstance?.enableBroadcastChanges();
+    }
+    disableBroadcastCastings() {
+        return this?._replicatorInstance?.disableBroadcastChanges();
+    }
+
+    init() {
+        this._simpleStore = this.services.database.openSimpleStore("p2p-sync");
+        return Promise.resolve(this);
+    }
+
+    async initialiseP2PReplicator(): Promise<TrysteroReplicator> {
+        await this.init();
+        try {
+            if (this._replicatorInstance) {
+                await this._replicatorInstance.close();
+                this._replicatorInstance = undefined;
+            }
+
+            if (!this.settings.P2P_AppID) {
+                this.settings.P2P_AppID = P2P_DEFAULT_SETTINGS.P2P_AppID;
+            }
+            const getInitialDeviceName = () => this.getConfig("p2p_device_name") || this.services.vault.getVaultName();
+
+            const getSettings = () => this.settings;
+            const store = () => this.simpleStore();
+            const getDB = () => this.getDB();
+
+            const getConfirm = () => this.confirm;
+            const getPlatform = () => this.getPlatform();
+            const env = {
+                get db() {
+                    return getDB();
+                },
+                get confirm() {
+                    return getConfirm();
+                },
+                get deviceName() {
+                    return getInitialDeviceName();
+                },
+                get platform() {
+                    return getPlatform();
+                },
+                get settings() {
+                    return getSettings();
+                },
+                processReplicatedDocs: async (docs: EntryDoc[]): Promise<void> => {
+                    await this.handleReplicatedDocuments(docs);
+                    // No op. This is a client and does not need to process the docs
+                },
+                get simpleStore() {
+                    return store();
+                },
+            };
+            this._replicatorInstance = new TrysteroReplicator(env);
+            return this._replicatorInstance;
+        } catch (e) {
+            this._log(
+                e instanceof Error ? e.message : "Something occurred on Initialising P2P Replicator",
+                LOG_LEVEL_INFO
+            );
+            this._log(e, LOG_LEVEL_VERBOSE);
+            throw e;
+        }
+    }
+    getPlatform(): string {
         return getPlatformName();
     }
 
-    override onunload(): void {
+    onunload(): void {
         removeP2PReplicatorInstance();
         void this.close();
     }
 
-    override onload(): void | Promise<void> {
+    onload(): void | Promise<void> {
         eventHub.onEvent(EVENT_REQUEST_OPEN_P2P, () => {
             void this.openPane();
         });
@@ -97,12 +185,12 @@ export class P2PReplicator
             this.storeP2PStatusLine.value = line.value;
         });
     }
-    async $everyOnInitializeDatabase(): Promise<boolean> {
+    async _everyOnInitializeDatabase(): Promise<boolean> {
         await this.initialiseP2PReplicator();
         return Promise.resolve(true);
     }
 
-    async $allSuspendExtraSync() {
+    private async _allSuspendExtraSync() {
         this.plugin.settings.P2P_Enabled = false;
         this.plugin.settings.P2P_AutoAccepting = AutoAccepting.NONE;
         this.plugin.settings.P2P_AutoBroadcast = false;
@@ -112,15 +200,15 @@ export class P2PReplicator
         return await Promise.resolve(true);
     }
 
-    async $everyOnLoadStart() {
-        return await Promise.resolve();
-    }
+    // async $everyOnLoadStart() {
+    //     return await Promise.resolve();
+    // }
 
     async openPane() {
-        await this.plugin.$$showView(VIEW_TYPE_P2P);
+        await this.services.API.showWindow(VIEW_TYPE_P2P);
     }
 
-    async $everyOnloadStart(): Promise<boolean> {
+    async _everyOnloadStart(): Promise<boolean> {
         this.plugin.registerView(VIEW_TYPE_P2P, (leaf) => new P2PReplicatorPaneView(leaf, this.plugin));
         this.plugin.addCommand({
             id: "open-p2p-replicator",
@@ -170,7 +258,7 @@ export class P2PReplicator
 
         return await Promise.resolve(true);
     }
-    $everyAfterResumeProcess(): Promise<boolean> {
+    _everyAfterResumeProcess(): Promise<boolean> {
         if (this.settings.P2P_Enabled && this.settings.P2P_AutoStart) {
             setTimeout(() => void this.open(), 100);
         }
@@ -178,9 +266,18 @@ export class P2PReplicator
         rep?.allowReconnection();
         return Promise.resolve(true);
     }
-    $everyBeforeSuspendProcess(): Promise<boolean> {
+    _everyBeforeSuspendProcess(): Promise<boolean> {
         const rep = this._replicatorInstance;
         rep?.disconnectFromServer();
         return Promise.resolve(true);
+    }
+
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.replicator.handleGetNewReplicator(this._anyNewReplicator.bind(this));
+        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.handleOnSuspending(this._everyBeforeSuspendProcess.bind(this));
+        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
+        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
     }
 }

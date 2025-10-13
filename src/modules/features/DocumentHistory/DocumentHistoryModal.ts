@@ -46,6 +46,9 @@ function readDocument(w: LoadedEntry) {
 }
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
+    get services() {
+        return this.plugin.services;
+    }
     range!: HTMLInputElement;
     contentView!: HTMLDivElement;
     info!: HTMLDivElement;
@@ -74,7 +77,7 @@ export class DocumentHistoryModal extends Modal {
         this.id = id;
         this.initialRev = revision;
         if (!file && id) {
-            this.file = this.plugin.$$id2path(id);
+            this.file = this.services.path.id2path(id);
         }
         if (localStorage.getItem("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
@@ -83,7 +86,7 @@ export class DocumentHistoryModal extends Modal {
 
     async loadFile(initialRev?: string) {
         if (!this.id) {
-            this.id = await this.plugin.$$path2id(this.file);
+            this.id = await this.services.path.path2id(this.file);
         }
         const db = this.plugin.localDatabase;
         try {
@@ -126,7 +129,7 @@ export class DocumentHistoryModal extends Modal {
         }
         this.BlobURLs.delete(key);
     }
-    generateBlobURL(key: string, data: Uint8Array) {
+    generateBlobURL(key: string, data: Uint8Array<ArrayBuffer>) {
         this.revokeURL(key);
         const v = URL.createObjectURL(new Blob([data], { endings: "transparent", type: "application/octet-stream" }));
         this.BlobURLs.set(key, v);
@@ -175,7 +178,10 @@ export class DocumentHistoryModal extends Modal {
                             result = result.replace(/\n/g, "<br>");
                         } else if (isImage(this.file)) {
                             const src = this.generateBlobURL("base", w1data);
-                            const overlay = this.generateBlobURL("overlay", readDocument(w2) as Uint8Array);
+                            const overlay = this.generateBlobURL(
+                                "overlay",
+                                readDocument(w2) as Uint8Array<ArrayBuffer>
+                            );
                             result = `<div class='ls-imgdiff-wrap'>
     <div class='overlay'>
         <img class='img-base' src="${src}">

@@ -95,7 +95,7 @@ And you can also drop the local database to rebuild from the remote device.`,
                 if (yn === DROP) {
                     await this.plugin.rebuilder.scheduleFetch();
                 } else {
-                    await this.plugin.$$scheduleAppReload();
+                    this.plugin.services.appLifecycle.scheduleRestart();
                 }
             } else {
                 Logger(`Cancelled\nRemote config for ${peer.name} is not applied`, LOG_LEVEL_NOTICE);

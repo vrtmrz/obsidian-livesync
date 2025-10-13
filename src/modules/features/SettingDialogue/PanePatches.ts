@@ -63,7 +63,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
         this.addOnSaved("additionalSuffixOfDatabaseName", async (key) => {
             Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
-            await this.plugin.$$initializeDatabase();
+            await this.services.databaseEvents.initialiseDatabase();
         });
 
         new Setting(paneEl).autoWireDropDown("hashAlg", {

@@ -5,13 +5,14 @@ import {
     LOG_LEVEL_NOTICE,
     type AnyEntry,
     type DocumentID,
-    type EntryHasPath,
     type FilePath,
     type FilePathWithPrefix,
     type LOG_LEVEL,
 } from "../lib/src/common/types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 import { MARK_DONE } from "../modules/features/ModuleLog.ts";
+import type { LiveSyncCore } from "../main.ts";
+import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
@@ -25,12 +26,15 @@ export abstract class LiveSyncCommands {
     get localDatabase() {
         return this.plugin.localDatabase;
     }
-
-    id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
-        return this.plugin.$$id2path(id, entry, stripPrefix);
+    get services() {
+        return this.plugin.services;
     }
+
+    // id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
+    //     return this.plugin.$$id2path(id, entry, stripPrefix);
+    // }
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        return await this.plugin.$$path2id(filename, prefix);
+        return await this.services.path.path2id(filename, prefix);
     }
     getPath(entry: AnyEntry): FilePathWithPrefix {
         return getPath(entry);
@@ -38,18 +42,20 @@ export abstract class LiveSyncCommands {
 
     constructor(plugin: ObsidianLiveSyncPlugin) {
         this.plugin = plugin;
+        this.onBindFunction(plugin, plugin.services);
+        __$checkInstanceBinding(this);
     }
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;
 
     _isMainReady() {
-        return this.plugin.$$isReady();
+        return this.plugin.services.appLifecycle.isReady();
     }
     _isMainSuspended() {
-        return this.plugin.$$isSuspended();
+        return this.services.appLifecycle.isSuspended();
     }
     _isDatabaseReady() {
-        return this.plugin.$$isDatabaseReady();
+        return this.services.database.isDatabaseReady();
     }
 
     _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
@@ -89,4 +95,8 @@ export abstract class LiveSyncCommands {
     _debug = (msg: any, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);
     };
+
+    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+        // Override if needed.
+    }
 }

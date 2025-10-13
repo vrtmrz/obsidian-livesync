@@ -37,18 +37,18 @@ export abstract class AbstractObsidianModule extends AbstractModule {
 
     saveSettings = this.plugin.saveSettings.bind(this.plugin);
 
-    _isMainReady() {
-        return this.core.$$isReady();
+    isMainReady() {
+        return this.services.appLifecycle.isReady();
     }
-    _isMainSuspended() {
-        return this.core.$$isSuspended();
+    isMainSuspended() {
+        return this.services.appLifecycle.isSuspended();
     }
-    _isDatabaseReady() {
-        return this.core.$$isDatabaseReady();
+    isDatabaseReady() {
+        return this.services.database.isDatabaseReady();
     }
 
     //should be overridden
-    _isThisModuleEnabled() {
+    isThisModuleEnabled() {
         return true;
     }
 }

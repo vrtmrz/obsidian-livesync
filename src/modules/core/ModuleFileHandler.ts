@@ -20,11 +20,11 @@ import {
 } from "../../common/utils";
 import { getDocDataAsArray, isDocContentSame, readAsBlob, readContent } from "../../lib/src/common/utils";
 import { shouldBeIgnored } from "../../lib/src/string_and_binary/path";
-import type { ICoreModule } from "../ModuleTypes";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { eventHub } from "../../common/events.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleFileHandler extends AbstractModule implements ICoreModule {
+export class ModuleFileHandler extends AbstractModule {
     get db() {
         return this.core.databaseFileAccess;
     }
@@ -32,7 +32,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         return this.core.storageAccess;
     }
 
-    $everyOnloadStart(): Promise<boolean> {
+    _everyOnloadStart(): Promise<boolean> {
         this.core.fileHandler = this;
         return Promise.resolve(true);
     }
@@ -52,7 +52,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         info: UXFileInfoStub | UXFileInfo | UXInternalFileInfoStub | FilePathWithPrefix,
         force: boolean = false,
         onlyChunks: boolean = false
-    ): Promise<boolean | undefined> {
+    ): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         if (file == null) {
             this._log(`File ${info} is not exist on the storage`, LOG_LEVEL_VERBOSE);
@@ -94,10 +94,14 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             let readFile: UXFileInfo | undefined = undefined;
             if (!shouldApplied) {
                 readFile = await this.readFileFromStub(file);
+                if (!readFile) {
+                    this._log(`File ${file.path} is not exist on the storage`, LOG_LEVEL_NOTICE);
+                    return false;
+                }
                 if (await isDocContentSame(getDocDataAsArray(entry.data), readFile.body)) {
                     // Timestamp is different but the content is same. therefore, two timestamps should be handled as same.
                     // So, mark the changes are same.
-                    markChangesAreSame(file, file.stat.mtime, entry.mtime);
+                    markChangesAreSame(readFile, readFile.stat.mtime, entry.mtime);
                 } else {
                     shouldApplied = true;
                 }
@@ -125,7 +129,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         }
     }
 
-    async deleteFileFromDB(info: UXFileInfoStub | UXInternalFileInfoStub | FilePath): Promise<boolean | undefined> {
+    async deleteFileFromDB(info: UXFileInfoStub | UXInternalFileInfoStub | FilePath): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         if (file == null) {
             this._log(`File ${info} is not exist on the storage`, LOG_LEVEL_VERBOSE);
@@ -222,7 +226,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                 // NO OP
             } else {
                 // If not, then it should be checked. and will be processed later (i.e., after the conflict is resolved).
-                await this.core.$$queueConflictCheckIfOpen(path);
+                await this.services.conflict.queueCheckForIfOpen(path);
                 return true;
             }
         }
@@ -313,11 +317,11 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         return ret;
     }
 
-    async $anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean | undefined> {
+    private async _anyHandlerProcessesFileEvent(item: FileEventItem): Promise<boolean> {
         const eventItem = item.args;
         const type = item.type;
         const path = eventItem.file.path;
-        if (!(await this.core.$$isTargetFile(path))) {
+        if (!(await this.services.vault.isTargetFile(path))) {
             this._log(`File ${path} is not the target file`, LOG_LEVEL_VERBOSE);
             return false;
         }
@@ -343,9 +347,9 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         });
     }
 
-    async $anyProcessReplicatedDoc(entry: MetaEntry): Promise<boolean | undefined> {
+    async _anyProcessReplicatedDoc(entry: MetaEntry): Promise<boolean> {
         return await serialized(entry.path, async () => {
-            if (!(await this.core.$$isTargetFile(entry.path))) {
+            if (!(await this.services.vault.isTargetFile(entry.path))) {
                 this._log(`File ${entry.path} is not the target file`, LOG_LEVEL_VERBOSE);
                 return false;
             }
@@ -362,7 +366,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
                 return true;
             } else {
                 this._log(
-                    `Processing ${path} (${entry._id.substring(0, 8)}: ${entry._rev?.substring(0, 5)}) :Started...`,
+                    `Processing ${path} (${entry._id.substring(0, 8)} :${entry._rev?.substring(0, 5)}) : Started...`,
                     LOG_LEVEL_VERBOSE
                 );
                 // Before writing (or skipped ), merging dialogue should be cancelled.
@@ -391,7 +395,7 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
         };
         const total = filesStorageSrc.length;
         const procAllChunks = filesStorageSrc.map(async (file) => {
-            if (!(await this.core.$$isTargetFile(file))) {
+            if (!(await this.services.vault.isTargetFile(file))) {
                 incProcessed();
                 return true;
             }
@@ -415,5 +419,10 @@ export class ModuleFileHandler extends AbstractModule implements ICoreModule {
             showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO,
             "chunkCreation"
         );
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.fileProcessing.handleProcessFileEvent(this._anyHandlerProcessesFileEvent.bind(this));
+        services.replication.handleProcessSynchroniseResult(this._anyProcessReplicatedDoc.bind(this));
     }
 }

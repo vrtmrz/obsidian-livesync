@@ -10,7 +10,6 @@ import {
     type MetaEntry,
 } from "../../lib/src/common/types";
 import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
-import type { IObsidianModule } from "../../modules/AbstractObsidianModule";
 import { LiveSyncCommands } from "../LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
@@ -22,10 +21,7 @@ type NoteDocumentID = DocumentID;
 type Rev = string;
 
 type ChunkUsageMap = Map<NoteDocumentID, Map<Rev, Set<ChunkID>>>;
-export class LocalDatabaseMaintenance extends LiveSyncCommands implements IObsidianModule {
-    $everyOnload(): Promise<boolean> {
-        return Promise.resolve(true);
-    }
+export class LocalDatabaseMaintenance extends LiveSyncCommands {
     onunload(): void {
         // NO OP.
     }

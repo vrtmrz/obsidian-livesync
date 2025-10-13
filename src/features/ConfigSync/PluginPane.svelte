@@ -25,7 +25,7 @@
     export let plugin: ObsidianLiveSyncPlugin;
 
     $: hideNotApplicable = false;
-    $: thisTerm = plugin.$$getDeviceAndVaultName();
+    $: thisTerm = plugin.services.setting.getDeviceAndVaultName();
 
     const addOn = plugin.getAddOn(ConfigSync.name) as ConfigSync;
     if (!addOn) {
@@ -98,7 +98,7 @@
         await requestUpdate();
     }
     async function replicate() {
-        await plugin.$$replicate(true);
+        await plugin.services.replication.replicate(true);
     }
     function selectAllNewest(selectMode: boolean) {
         selectNewestPulse++;
@@ -237,7 +237,7 @@
             plugin.settings.pluginSyncExtendedSetting[key].files = files;
             plugin.settings.pluginSyncExtendedSetting[key].mode = mode;
         }
-        plugin.$$saveSettingData();
+        plugin.services.setting.saveSettingData();
     }
     function getIcon(mode: SYNC_MODE) {
         if (mode in ICONS) {

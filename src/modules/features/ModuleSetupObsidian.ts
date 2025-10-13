@@ -14,15 +14,16 @@ import {
     EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
 } from "../../common/events.ts";
-import { AbstractObsidianModule, type IObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { decodeAnyArray, encodeAnyArray } from "../../common/utils.ts";
 import qrcode from "qrcode-generator";
 import { $msg } from "../../lib/src/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "@/lib/src/common/configForDoc.ts";
 import { encryptString, decryptString } from "@/lib/src/encryption/stringEncryption.ts";
+import type { LiveSyncCore } from "../../main.ts";
 
-export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsidianModule {
-    $everyOnload(): Promise<boolean> {
+export class ModuleSetupObsidian extends AbstractObsidianModule {
+    private _everyOnload(): Promise<boolean> {
         this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
             if (conf.settings) {
                 await this.setupWizard(conf.settings);
@@ -182,7 +183,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
         }
 
         const newSettings = JSON.parse(JSON.stringify(tryingSettings)) as ObsidianLiveSyncSettings;
-        const remoteConfig = await this.core.$$fetchRemotePreferredTweakValues(newSettings);
+        const remoteConfig = await this.services.tweakValue.fetchRemotePreferred(newSettings);
         if (remoteConfig) {
             this._log("Remote configuration found.", LOG_LEVEL_NOTICE);
             const resultSettings = {
@@ -282,16 +283,16 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             );
             if (setupType == setupJustImport) {
                 this.core.settings = newSettingW;
-                this.core.$$clearUsedPassphrase();
+                this.services.setting.clearUsedPassphrase();
                 await this.core.saveSettings();
             } else if (setupType == setupAsNew) {
                 this.core.settings = newSettingW;
-                this.core.$$clearUsedPassphrase();
+                this.services.setting.clearUsedPassphrase();
                 await this.core.saveSettings();
                 await this.core.rebuilder.$fetchLocal();
             } else if (setupType == setupAsMerge) {
                 this.core.settings = newSettingW;
-                this.core.$$clearUsedPassphrase();
+                this.services.setting.clearUsedPassphrase();
                 await this.core.saveSettings();
                 await this.core.rebuilder.$fetchLocal(true);
             } else if (setupType == setupAgain) {
@@ -308,7 +309,7 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
                 }
                 this.core.settings = newSettingW;
                 await this.core.saveSettings();
-                this.core.$$clearUsedPassphrase();
+                this.services.setting.clearUsedPassphrase();
                 await this.core.rebuilder.$rebuildEverything();
             } else {
                 // Explicitly cancel the operation or the dialog was closed.
@@ -344,5 +345,8 @@ export class ModuleSetupObsidian extends AbstractObsidianModule implements IObsi
             this._log("Couldn't parse or decrypt configuration uri.", LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
+    }
+    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
     }
 }

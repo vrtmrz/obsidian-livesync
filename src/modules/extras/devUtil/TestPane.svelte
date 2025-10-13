@@ -57,14 +57,14 @@
     function moduleMultiDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.$everyModuleTestMultiDevice().finally(() => {
+        plugin.services.test.testMultiDevice().finally(() => {
             moduleTesting = false;
         });
     }
     function moduleSingleDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.$everyModuleTest().finally(() => {
+        plugin.services.test.test().finally(() => {
             moduleTesting = false;
         });
     }
@@ -72,8 +72,8 @@
         if (moduleTesting) return;
         moduleTesting = true;
         try {
-            await plugin.$everyModuleTest();
-            await plugin.$everyModuleTestMultiDevice();
+            await plugin.services.test.test();
+            await plugin.services.test.testMultiDevice();
         } finally {
             moduleTesting = false;
         }
