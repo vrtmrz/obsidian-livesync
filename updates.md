@@ -4,14 +4,27 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-<!--
-## 0.25.22 (Upcoming)
+## 0.25.22
+
+15th October, 2025
+
+### Fixed
+
+- Fixed a bug that caused wrong event bindings and flag inversion (#727)
+  - This caused following issues:
+    - In some cases, settings changes were not applied or saved correctly.
+    - Automatic synchronisation did not begin correctly.
+
+### Improved
+- Too large diffs are not shown in the file comparison view, due to performance reasons.
 
 ### Notes
 - The checking algorithm implemented in 0.25.20 is also raised as PR (#237). And completely I merged it manually.
   - Sorry for lacking merging this PR, and let me say thanks to the great contribution, @bioluks !
+- Known issues:
+  - Sync on Editor save seems not to work correctly in some cases.
+    - I am investigating this issue. If you have any information, please let me know.
 
--->
 ## 0.25.21
 
 13th October, 2025
@@ -113,25 +126,6 @@ If you have found any issues, please let me know. I am now on the following:
 - The connection to the signalling server can now be disconnected while in the background or when explicitly disconnected.
     - These features use a patch that has not been incorporated upstream.
     - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
-
-## 0.25.15
-
-3rd September, 2025
-
-### Improved
-
-- Now we can configure `forcePathStyle` for bucket synchronisation (#707).
-
-## 0.25.14
-
-2nd September, 2025
-
-### Fixed
-
-- Opening IndexedDB handling has been ensured.
-- Migration check of corrupted files detection has been fixed.
-    - Now informs us about conflicted files as non-recoverable, but noted so.
-    - No longer errors on not-found files.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

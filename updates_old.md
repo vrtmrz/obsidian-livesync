@@ -10,6 +10,25 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.15
+
+3rd September, 2025
+
+### Improved
+
+- Now we can configure `forcePathStyle` for bucket synchronisation (#707).
+
+## 0.25.14
+
+2nd September, 2025
+
+### Fixed
+
+- Opening IndexedDB handling has been ensured.
+- Migration check of corrupted files detection has been fixed.
+    - Now informs us about conflicted files as non-recoverable, but noted so.
+    - No longer errors on not-found files.
+
 ## 0.25.13
 
 1st September, 2025
