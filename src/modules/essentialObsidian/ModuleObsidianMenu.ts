@@ -59,7 +59,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
                     this.settings.liveSync = true;
                     this._log("LiveSync Enabled.", LOG_LEVEL_NOTICE);
                 }
-                await this.services.setting.onRealiseSetting();
+                await this.services.setting.realiseSetting();
                 await this.services.setting.saveSettingData();
             },
         });
@@ -74,7 +74,7 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
                     this.services.appLifecycle.setSuspended(true);
                     this._log("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
                 }
-                await this.services.setting.onRealiseSetting();
+                await this.services.setting.realiseSetting();
                 await this.services.setting.saveSettingData();
             },
         });

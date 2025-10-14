@@ -48,7 +48,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         }
         if (!(await this.core.services.appLifecycle.onFirstInitialise())) return false;
         // await this.core.$$realizeSettingSyncMode();
-        await this.services.setting.onRealiseSetting();
+        await this.services.setting.realiseSetting();
         fireAndForget(async () => {
             this._log($msg("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
             if (!(await this.services.appLifecycle.onScanningStartupIssues())) {
@@ -67,7 +67,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
-            fireAndForget(() => this.core.services.setting.onRealiseSetting());
+            fireAndForget(() => this.core.services.setting.realiseSetting());
         });
         return Promise.resolve(true);
     }

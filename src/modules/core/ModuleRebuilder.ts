@@ -51,7 +51,7 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await this.services.setting.suspendExtraSync();
         this.core.settings.isConfigured = true;
 
-        await this.services.setting.onRealiseSetting();
+        await this.services.setting.realiseSetting();
         await this.services.remote.markLocked();
         await this.services.remote.tryResetDatabase();
         await this.services.remote.markLocked();
@@ -70,7 +70,7 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await this.services.setting.suspendExtraSync();
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
-        await this.services.setting.onRealiseSetting();
+        await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
         await this.services.databaseEvents.initialiseDatabase(true, true, true);
@@ -181,7 +181,7 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
-        await this.services.setting.onRealiseSetting();
+        await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
         await this.services.database.openDatabase();

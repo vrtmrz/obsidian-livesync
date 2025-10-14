@@ -105,7 +105,7 @@ export function paneSyncSettings(
                 if (!this.editingSettings.isConfigured) {
                     this.editingSettings.isConfigured = true;
                     await this.saveAllDirtySettings();
-                    await this.services.setting.onRealiseSetting();
+                    await this.services.setting.realiseSetting();
                     await this.rebuildDB("localOnly");
                     // this.resetEditingSettings();
                     if (
@@ -124,13 +124,13 @@ export function paneSyncSettings(
                         await this.confirmRebuild();
                     } else {
                         await this.saveAllDirtySettings();
-                        await this.services.setting.onRealiseSetting();
+                        await this.services.setting.realiseSetting();
                         this.services.appLifecycle.askRestart();
                     }
                 }
             } else {
                 await this.saveAllDirtySettings();
-                await this.services.setting.onRealiseSetting();
+                await this.services.setting.realiseSetting();
             }
         });
     });
@@ -169,7 +169,7 @@ export function paneSyncSettings(
             }
             await this.saveSettings(["liveSync", "periodicReplication"]);
 
-            await this.services.setting.onRealiseSetting();
+            await this.services.setting.realiseSetting();
         });
 
         new Setting(paneEl)
