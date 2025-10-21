@@ -814,22 +814,22 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         };
 
         // New
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🚀", 1, false).then(
+        void addPane(containerEl, $msg("gettingStarted.title"), "🚀", 1, false).then(
             bindPane(pageGettingStarted)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 2, false).then(
+        void addPane(containerEl, $msg("general.title"), "⚙️", 2, false).then(
             bindPane(pageGeneral)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "📡", 3, false).then(
+        void addPane(containerEl, $msg("remote.title"), "📡", 3, false).then(
             bindPane(pageRemote)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 4, false).then(
+        void addPane(containerEl, $msg("sync.title"), "🔄", 4, false).then(
             bindPane(pageSync)
         );
-        void addPane(containerEl, 'Maintenance & Recovery', "🧰", 5, false).then(
+        void addPane(containerEl, $msg("maintenanceAndRecovery.title"), "🧰", 5, false).then(
             bindPane(pageMaintenance)
         );
-        void addPane(containerEl, 'About', "ℹ️", 6, false).then(
+        void addPane(containerEl, $msg("info.title"), "ℹ️", 6, false).then(
             bindPane(pageInfo)
         );
 

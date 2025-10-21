@@ -436,6 +436,7 @@ div.workspace-leaf-content[data-type=bases] .livesync-status {
     background-color: var(--background-secondary-alt);
     border-radius: var(--radius-l);
     padding: 0.5em 1.0em;
+    z-index: 1;
 }
 
 .sls-dialogue-note-wrapper {
