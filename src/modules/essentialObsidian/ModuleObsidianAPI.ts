@@ -102,7 +102,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         compression: boolean,
         customHeaders: Record<string, string>,
         useRequestAPI: boolean,
-        getPBKDF2Salt: () => Promise<Uint8Array>
+        getPBKDF2Salt: () => Promise<Uint8Array<ArrayBuffer>>
     ): Promise<string | { db: PouchDB.Database<EntryDoc>; info: PouchDB.Core.DatabaseInfo }> {
         if (!isValidRemoteCouchDBURI(uri)) return "Remote URI is not valid";
         if (uri.toLowerCase() != uri) return "Remote URI and database name could not contain capital letters.";

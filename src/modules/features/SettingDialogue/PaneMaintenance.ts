@@ -1,6 +1,6 @@
 import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "../../../lib/src/common/logger.ts";
-import { FLAGMD_REDFLAG, FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR } from "../../../lib/src/common/types.ts";
+import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "../../../lib/src/common/types.ts";
 import { fireAndForget } from "../../../lib/src/common/utils.ts";
 import { LiveSyncCouchDBReplicator } from "../../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -93,6 +93,35 @@ export function paneMaintenance(
                     .setWarning()
                     .onClick(async () => {
                         await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
+                        this.services.appLifecycle.performRestart();
+                    })
+            );
+    });
+
+    void addPanel(paneEl, "Reset Synchronisation information").then((paneEl) => {
+        new Setting(paneEl)
+            .setName("Reset Synchronisation on This Device")
+            .setDesc("Restore or reconstruct local database from remote.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Schedule and Restart")
+                    .setCta()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.storageAccess.writeFileAuto(FlagFilesHumanReadable.FETCH_ALL, "");
+                        this.services.appLifecycle.performRestart();
+                    })
+            );
+        new Setting(paneEl)
+            .setName("Overwrite Server Data with This Device's Files")
+            .setDesc("Rebuild local and remote database with local files.")
+            .addButton((button) =>
+                button
+                    .setButtonText("Schedule and Restart")
+                    .setCta()
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        await this.plugin.storageAccess.writeFileAuto(FlagFilesHumanReadable.REBUILD_ALL, "");
                         this.services.appLifecycle.performRestart();
                     })
             );
@@ -244,69 +273,7 @@ export function paneMaintenance(
                 );
         }
     );
-    void addPanel(paneEl, "Rebuilding Operations (Local)").then((paneEl) => {
-        new Setting(paneEl)
-            .setName("Fetch from remote")
-            .setDesc("Restore or reconstruct local database from remote.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Fetch")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
-                        this.services.appLifecycle.performRestart();
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Fetch w/o restarting")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.rebuildDB("localOnly");
-                    })
-            );
 
-        new Setting(paneEl)
-            .setName("Fetch rebuilt DB (Save local documents before)")
-            .setDesc("Restore or reconstruct local database from remote database but use local chunks.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Save and Fetch")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.rebuildDB("localOnlyWithChunks");
-                    })
-            )
-            .addOnUpdate(this.onlyOnCouchDB);
-    });
-
-    void addPanel(paneEl, "Total Overhaul", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
-        new Setting(paneEl)
-            .setName("Rebuild everything")
-            .setDesc("Rebuild local and remote database with local files.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Rebuild")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
-                        this.services.appLifecycle.performRestart();
-                    })
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Rebuild w/o restarting")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.rebuildDB("rebuildBothByThisDevice");
-                    })
-            );
-    });
     void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
             .setName("Perform cleanup")

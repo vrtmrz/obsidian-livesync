@@ -14,6 +14,9 @@ import {
     InjectableVaultService,
 } from "../../lib/src/services/InjectableServices.ts";
 import { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import { ConfigServiceBrowserCompat } from "../../lib/src/services/Services.ts";
+import type ObsidianLiveSyncPlugin from "../../main.ts";
+import { ObsidianUIService } from "./ObsidianUIService.ts";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
@@ -41,6 +44,8 @@ export class ObsidianTweakValueService extends InjectableTweakValueService {}
 export class ObsidianVaultService extends InjectableVaultService {}
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService {}
+
+export class ObsidianConfigService extends ConfigServiceBrowserCompat {}
 
 // InjectableServiceHub
 
@@ -73,4 +78,14 @@ export class ObsidianServiceHub extends InjectableServiceHub {
     );
     protected _vault: ObsidianVaultService = new ObsidianVaultService(this._serviceBackend, this._throughHole);
     protected _test: ObsidianTestService = new ObsidianTestService(this._serviceBackend, this._throughHole);
+
+    private _plugin: ObsidianLiveSyncPlugin;
+    constructor(plugin: ObsidianLiveSyncPlugin) {
+        const config = new ObsidianConfigService();
+        super({
+            ui: new ObsidianUIService(plugin),
+            config: config,
+        });
+        this._plugin = plugin;
+    }
 }

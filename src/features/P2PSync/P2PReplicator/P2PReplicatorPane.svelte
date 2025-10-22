@@ -19,6 +19,7 @@
     } from "../../../lib/src/replication/trystero/TrysteroReplicatorP2PServer";
     import { type P2PReplicatorStatus } from "../../../lib/src/replication/trystero/TrysteroReplicator";
     import { $msg as _msg } from "../../../lib/src/common/i18n";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../lib/src/common/types";
 
     interface Props {
         plugin: PluginShim;
@@ -35,7 +36,7 @@
     // const vaultName = service.vault.getVaultName();
     // const dbKey = `${vaultName}-p2p-device-name`;
 
-    const initialDeviceName = cmdSync.getConfig("p2p_device_name") ?? plugin.services.vault.getVaultName();
+    const initialDeviceName = cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? plugin.services.vault.getVaultName();
     let deviceName = $state<string>(initialDeviceName);
 
     let eP2PEnabled = $state<boolean>(initialSettings.P2P_Enabled);
@@ -84,7 +85,7 @@
             P2P_AutoBroadcast: eAutoBroadcast,
         };
         plugin.settings = newSettings;
-        cmdSync.setConfig("p2p_device_name", eDeviceName);
+        cmdSync.setConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
         await plugin.saveSettings();
     }

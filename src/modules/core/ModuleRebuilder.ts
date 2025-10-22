@@ -36,6 +36,14 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         }
     }
 
+    async informOptionalFeatures() {
+        await this.core.services.UI.showMarkdownDialog(
+            "All optional features are disabled",
+            `Customisation Sync and Hidden File Sync will all be disabled.
+Please enable them from the settings screen after setup is complete.`,
+            ["OK"]
+        );
+    }
     async askUsingOptionalFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
         if (
             (await this.core.confirm.askYesNoDialog(
@@ -56,11 +64,12 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await this.services.remote.tryResetDatabase();
         await this.services.remote.markLocked();
         await delay(500);
-        await this.askUsingOptionalFeature({ enableOverwrite: true });
+        // await this.askUsingOptionalFeature({ enableOverwrite: true });
         await delay(1000);
         await this.services.remote.replicateAllToRemote(true);
         await delay(1000);
         await this.services.remote.replicateAllToRemote(true, true);
+        await this.informOptionalFeatures();
     }
     $rebuildRemote(): Promise<void> {
         return this.rebuildRemote();
@@ -79,11 +88,12 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await this.services.remote.markLocked();
         await delay(500);
         // We do not have any other devices' data, so we do not need to ask for overwriting.
-        await this.askUsingOptionalFeature({ enableOverwrite: false });
+        // await this.askUsingOptionalFeature({ enableOverwrite: false });
         await delay(1000);
         await this.services.remote.replicateAllToRemote(true);
         await delay(1000);
         await this.services.remote.replicateAllToRemote(true, true);
+        await this.informOptionalFeatures();
     }
 
     $rebuildEverything(): Promise<void> {
@@ -200,7 +210,9 @@ export class ModuleRebuilder extends AbstractModule implements Rebuilder {
         await delay(1000);
         await this.services.remote.replicateAllFromRemote(true);
         await this.resumeReflectingDatabase();
-        await this.askUsingOptionalFeature({ enableFetch: true });
+        await this.informOptionalFeatures();
+        // No longer enable
+        // await this.askUsingOptionalFeature({ enableFetch: true });
     }
     async fetchLocalWithRebuild() {
         return await this.fetchLocal(true);

@@ -32,6 +32,7 @@ import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { getPlatformName } from "../../lib/src/PlatformAPIs/obsidian/Environment.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { TrysteroReplicator } from "../../lib/src/replication/trystero/TrysteroReplicator.ts";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "../../lib/src/common/types.ts";
 
 export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase, CommandShim {
     storeP2PStatusLine = reactiveSource("");
@@ -93,14 +94,10 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     }
 
     getConfig(key: string) {
-        const vaultName = this.services.vault.getVaultName();
-        const dbKey = `${vaultName}-${key}`;
-        return localStorage.getItem(dbKey);
+        return this.services.config.getSmallConfig(key);
     }
     setConfig(key: string, value: string) {
-        const vaultName = this.services.vault.getVaultName();
-        const dbKey = `${vaultName}-${key}`;
-        localStorage.setItem(dbKey, value);
+        return this.services.config.setSmallConfig(key, value);
     }
     enableBroadcastCastings() {
         return this?._replicatorInstance?.enableBroadcastChanges();
@@ -125,7 +122,8 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
             if (!this.settings.P2P_AppID) {
                 this.settings.P2P_AppID = P2P_DEFAULT_SETTINGS.P2P_AppID;
             }
-            const getInitialDeviceName = () => this.getConfig("p2p_device_name") || this.services.vault.getVaultName();
+            const getInitialDeviceName = () =>
+                this.getConfig(SETTING_KEY_P2P_DEVICE_NAME) || this.services.vault.getVaultName();
 
             const getSettings = () => this.settings;
             const store = () => this.simpleStore();

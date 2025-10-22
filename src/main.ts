@@ -33,7 +33,7 @@ import { ModuleLog } from "./modules/features/ModuleLog.ts";
 import { ModuleObsidianSettings } from "./modules/features/ModuleObsidianSetting.ts";
 import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
-import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
+import { ModuleSetupObsidian, SetupManager } from "./modules/features/ModuleSetupObsidian.ts";
 import type { StorageAccess } from "./modules/interfaces/StorageAccess.ts";
 import type { Confirm } from "./lib/src/interfaces/Confirm.ts";
 import type { Rebuilder } from "./modules/interfaces/DatabaseRebuilder.ts";
@@ -107,7 +107,7 @@ export default class ObsidianLiveSyncPlugin
     /**
      * The service hub for managing all services.
      */
-    _services: InjectableServiceHub = new ObsidianServiceHub();
+    _services: InjectableServiceHub = new ObsidianServiceHub(this);
     get services() {
         return this._services;
     }
@@ -176,7 +176,15 @@ export default class ObsidianLiveSyncPlugin
         new ModuleDev(this, this),
         new ModuleReplicateTest(this, this),
         new ModuleIntegratedTest(this, this),
+        new SetupManager(this, this),
     ] as (IObsidianModule | AbstractModule)[];
+
+    getModule<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T {
+        for (const module of this.modules) {
+            if (module.constructor === constructor) return module as T;
+        }
+        throw new Error(`Module ${constructor} not found or not loaded.`);
+    }
     // injected = injectModules(this, [...this.modules, ...this.addOns] as ICoreModule[]);
     // <-- Module System
 

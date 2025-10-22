@@ -170,11 +170,13 @@ ${stringifyYaml({
     ...pluginConfig,
 })}`;
                     console.log(msgConfig);
-                    await navigator.clipboard.writeText(msgConfig);
-                    Logger(
-                        `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
-                        LOG_LEVEL_NOTICE
-                    );
+                    if ((await this.services.UI.promptCopyToClipboard("Generated report", msgConfig)) == true) {
+                        // await navigator.clipboard.writeText(msgConfig);
+                        // Logger(
+                        //     `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
+                        //     LOG_LEVEL_NOTICE
+                        // );
+                    }
                 })
         );
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");

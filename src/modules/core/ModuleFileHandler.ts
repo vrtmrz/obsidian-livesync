@@ -399,6 +399,10 @@ export class ModuleFileHandler extends AbstractModule {
                 incProcessed();
                 return true;
             }
+            if (this.services.vault.isFileSizeTooLarge(file.stat.size)) {
+                incProcessed();
+                return true;
+            }
             if (shouldBeIgnored(file.path)) {
                 incProcessed();
                 return true;
