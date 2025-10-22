@@ -39,6 +39,42 @@ While I would like to accelerate documentation and i18n adoption, I do not want 
     - This is the hardest part of this update. I read most of the changes in the dependencies. If you find any extra information, please let me know.
 - As upgrading TypeScript, Fixed many UInt8Array<ArrayBuffer> and Uint8Array type mismatches.
 
+## 0.25.23.beta1
+
+22nd October, 2025
+
+Since several issues pointed, our set-up procedure had been quite `system-oriented`. This is not good for users. Therefore, I have changed the procedure to be more `goal-oriented`. I have made extensive use of Svelte, resulting in a very straightforward setup.
+While I would like to accelerate documentation and i18n adoption, I do not want to confuse everyone who's already working on it. Therefore, I have decided to release a Beta version at this stage. Significant changes are not expected from this point onward, so I will proceed to stabilise the codebase. (However, this is the significant).
+
+### Fixed (This should be backported to 0.25.22 if the beta phase is prolonged)
+
+- No longer larger files will not create a chunks during preparing `Reset Synchronisation on This Device`.
+
+### Behaviour changes
+
+- Setup wizard is now more `goal-oriented`. Brand-new screens are introduced.
+- `Fetch everything` and `Rebuild everything` is now `Reset Synchronisation on This Device` and `Overwrite Server Data with This Device's Files`.
+- Remote configuration and E2EE settings are now separated to each modal dialogue.
+    - Remote configuration is now more straightforward. And if we need the rebuild (No... `Overwrite Server Data with This Device's Files`), it is now clearly indicated.
+- Peer-to-Peer settings is also separated into its own modal dialogue (still in progress, and we need to open a P2P pane, still).
+- Setup-URI, and Report for the Issue are now not copied to clipboard automatically. Instead, there are copy dialogue and buttons to copy them explicitly.
+    - This is to avoid confusion for users who do not want to use these features.
+- No longer optional features are introduced during the setup or `Reset Synchronisation on This Device`, `Overwrite Server Data with This Device's Files`.
+    - This is to avoid confusion for users who do not want to use these features. Instead, we will noticed that optional features are available after the setup is completed.
+- We cannot preform `Fetch everything` and `Rebuild everything` (Removed, so the old name) without restarting Obsidian now.
+
+### Miscellaneous
+
+- Setup QR Code generation is separated into a src/lib/src/API/processSetting.ts file. Please use it as a subrepository if you want to generate QR codes in your own application.
+- Setup-URI is also separated into a src/lib/src/API/processSetting.ts
+- Some direct access to web-APIs are now wrapped into the services layer.
+
+### Dependency updates
+
+- Many dependencies are updated. Please see `package.json`.
+    - This is the hardest part of this update. I read mostly all changes in the dependencies. If you find any extra information, please let me know.
+- As upgrading TypeScript, Fixed many UInt8Array<ArrayBuffer> and Uint8Array type mismatches.
+
 ## 0.25.22
 
 15th October, 2025
