@@ -1741,7 +1741,7 @@ export class ConfigSync extends LiveSyncCommands {
         return Promise.resolve(true);
     }
 
-    private async _anyConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    private async _allConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
@@ -1813,6 +1813,6 @@ export class ConfigSync extends LiveSyncCommands {
         services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
         services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
         services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
-        services.setting.handleEnableOptionalFeature(this._anyConfigureOptionalSyncFeature.bind(this));
+        services.setting.handleEnableOptionalFeature(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }

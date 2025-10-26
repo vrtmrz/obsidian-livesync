@@ -353,6 +353,10 @@ export class ModuleFileHandler extends AbstractModule {
                 this._log(`File ${entry.path} is not the target file`, LOG_LEVEL_VERBOSE);
                 return false;
             }
+            if (this.services.vault.isFileSizeTooLarge(entry.size)) {
+                this._log(`File ${entry.path} is too large (on database) to be processed`, LOG_LEVEL_VERBOSE);
+                return false;
+            }
             if (shouldBeIgnored(entry.path)) {
                 this._log(`File ${entry.path} should be ignored`, LOG_LEVEL_VERBOSE);
                 return false;
@@ -365,6 +369,10 @@ export class ModuleFileHandler extends AbstractModule {
                 // Nothing to do and other modules should also nothing to do.
                 return true;
             } else {
+                if (targetFile && this.services.vault.isFileSizeTooLarge(targetFile.stat.size)) {
+                    this._log(`File ${targetFile.path} is too large (on storage) to be processed`, LOG_LEVEL_VERBOSE);
+                    return false;
+                }
                 this._log(
                     `Processing ${path} (${entry._id.substring(0, 8)} :${entry._rev?.substring(0, 5)}) : Started...`,
                     LOG_LEVEL_VERBOSE
@@ -396,6 +404,10 @@ export class ModuleFileHandler extends AbstractModule {
         const total = filesStorageSrc.length;
         const procAllChunks = filesStorageSrc.map(async (file) => {
             if (!(await this.services.vault.isTargetFile(file))) {
+                incProcessed();
+                return true;
+            }
+            if (this.services.vault.isFileSizeTooLarge(file.stat.size)) {
                 incProcessed();
                 return true;
             }
