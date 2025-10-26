@@ -4,6 +4,22 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.23
+
+26th October, 2025
+
+The next version we are preparing (you know that as 0.25.23.beta1) is now still on beta, resulting in this rather unfortunate versioning situation. Apologies for the confusion. The next v0.25.23.beta2 will be v0.25.24.beta1. In other words, this is a v0.25.22.patch-1 actually, but possibly not allowed by Obsidian's rule.
+(Perhaps we ought to declare 1.0.0 with a little more confidence. The current minor part has been effectively a major one for a long time. If it were 1.22.1 and 1.23.0.beta1, no confusion ).
+
+### Fixed
+- We are now able to enable optional features correctly again (#732).
+- No longer oversized files have been processed, furthermore.
+  - Before creating a chunk, the file is verified as the target.
+  - The behaviour upon receiving replication has been changed as follows:
+    - If the remote file is oversized, it is ignored.
+    - If not, but while the local file is oversized, it is also ignored.
+
+
 ## 0.25.22
 
 15th October, 2025
