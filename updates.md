@@ -4,6 +4,43 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.24.beta1
+
+30th October, 2025
+
+### Fixed
+
+- P2P Replication got more robust and stable.
+    - Update [Trystero](https://github.com/dmotz/trystero) to the official v0.22.0!
+    - Fixed a bug that caused P2P connections to drop or (unwanted reconnection to the relay server) unexpectedly in some environments.
+    - Now, connection status is more accurately reported.
+    - While in the background, the connection to the signalling server is now disconnected to save resources.
+        - When returning to the foreground, it will not reconnect automatically for safety. Please reconnect manually.
+- All connection configurations should be edited on the each dedicated dialogue now.
+
+### Breaking changes
+
+- Send configuration via Peer-to-Peer connection is not compatible with older versions.
+    - Please upgrade all devices to v0.25.24.beta1 or later to use this feature again.
+    - This is due to security improvements in the encryption scheme.
+
+
+## 0.25.23
+
+26th October, 2025
+
+The next version we are preparing (you know that as 0.25.23.beta1) is now still on beta, resulting in this rather unfortunate versioning situation. Apologies for the confusion. The next v0.25.23.beta2 will be v0.25.24.beta1. In other words, this is a v0.25.22.patch-1 actually, but possibly not allowed by Obsidian's rule.
+(Perhaps we ought to declare 1.0.0 with a little more confidence. The current minor part has been effectively a major one for a long time. If it were 1.22.1 and 1.23.0.beta1, no confusion ).
+
+### Fixed
+
+- We are now able to enable optional features correctly again (#732).
+- No longer oversized files have been processed, furthermore.
+    - Before creating a chunk, the file is verified as the target.
+    - The behaviour upon receiving replication has been changed as follows:
+        - If the remote file is oversized, it is ignored.
+        - If not, but while the local file is oversized, it is also ignored.
+
 ## 0.25.23.beta1
 
 22nd October, 2025
@@ -136,72 +173,6 @@ If you have found any issues, please let me know. I am now on the following:
 - Event handling now does not rely on 'convention over configuration'.
     - Services.ts now have a proper event handler registration system.
 
-## 0.25.20
-
-26th September, 2025
-
-### Fixed
-
-- Chunk fetching no longer reports errors when the fetched chunk could not be saved (#710).
-    - Just using the fetched chunk temporarily.
-- Chunk fetching reports errors when the fetched chunk is surely corrupted (#710, #712).
-- It no longer detects files that the plug-in has modified.
-    - It may reduce unnecessary file comparisons and unexpected file states.
-
-### Improved
-
-- Now checking the remote database configuration respecting the CouchDB version (#714).
-
-## 0.25.19
-
-18th September, 2025
-
-### Improved
-
-- Now encoding/decoding for chunk data and encryption/decryption are performed in native functions (if they were available).
-    - This uses Uint8Array.fromBase64 and Uint8Array.toBase64, which are natively available in iOS 18.2+ and Android with Chrome 140+.
-        - In Android, WebView is by default updated with Chrome, so it should be available in most cases.
-    - Note that this is not available in Desktop yet (due to being based on Electron). We are staying tuned for future updates.
-    - This realised by an external(?) package [octagonal-wheels](https://github.com/vrtmrz/octagonal-wheels). Therefore, this update only updates the dependency.
-
-## 0.25.18
-
-17th September, 2025
-
-### Fixed
-
-- Property encryption detection now works correctly (On Self-hosted LiveSync, it was not broken, but as a library, it was not working correctly).
-- Initialising the chunk splitter is now surely performed.
-- DirectFileManipulator now works fine (as a library)
-    - Old `DirectFileManipulatorV1` is now removed.
-
-### Refactored
-
-- Removed some unnecessary intermediate files.
-
-## 0.25.17
-
-16th September, 2025
-
-### Fixed
-
-- No longer information-level logs have produced during toggling `Show only notifications` in the settings (#708).
-- Ignoring filters for Hidden file sync now works correctly (#709).
-
-### Refactored
-
-- Removed some unnecessary intermediate files.
-
-## 0.25.16
-
-4th September, 2025
-
-### Improved
-
-- Improved connectivity for P2P connections
-- The connection to the signalling server can now be disconnected while in the background or when explicitly disconnected.
-    - These features use a patch that has not been incorporated upstream.
-    - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

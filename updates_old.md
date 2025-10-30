@@ -10,6 +10,73 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.20
+
+26th September, 2025
+
+### Fixed
+
+- Chunk fetching no longer reports errors when the fetched chunk could not be saved (#710).
+    - Just using the fetched chunk temporarily.
+- Chunk fetching reports errors when the fetched chunk is surely corrupted (#710, #712).
+- It no longer detects files that the plug-in has modified.
+    - It may reduce unnecessary file comparisons and unexpected file states.
+
+### Improved
+
+- Now checking the remote database configuration respecting the CouchDB version (#714).
+
+## 0.25.19
+
+18th September, 2025
+
+### Improved
+
+- Now encoding/decoding for chunk data and encryption/decryption are performed in native functions (if they were available).
+    - This uses Uint8Array.fromBase64 and Uint8Array.toBase64, which are natively available in iOS 18.2+ and Android with Chrome 140+.
+        - In Android, WebView is by default updated with Chrome, so it should be available in most cases.
+    - Note that this is not available in Desktop yet (due to being based on Electron). We are staying tuned for future updates.
+    - This realised by an external(?) package [octagonal-wheels](https://github.com/vrtmrz/octagonal-wheels). Therefore, this update only updates the dependency.
+
+## 0.25.18
+
+17th September, 2025
+
+### Fixed
+
+- Property encryption detection now works correctly (On Self-hosted LiveSync, it was not broken, but as a library, it was not working correctly).
+- Initialising the chunk splitter is now surely performed.
+- DirectFileManipulator now works fine (as a library)
+    - Old `DirectFileManipulatorV1` is now removed.
+
+### Refactored
+
+- Removed some unnecessary intermediate files.
+
+## 0.25.17
+
+16th September, 2025
+
+### Fixed
+
+- No longer information-level logs have produced during toggling `Show only notifications` in the settings (#708).
+- Ignoring filters for Hidden file sync now works correctly (#709).
+
+### Refactored
+
+- Removed some unnecessary intermediate files.
+
+## 0.25.16
+
+4th September, 2025
+
+### Improved
+
+- Improved connectivity for P2P connections
+- The connection to the signalling server can now be disconnected while in the background or when explicitly disconnected.
+    - These features use a patch that has not been incorporated upstream.
+    - This patch is available at [vrtmrz/trystero](https://github.com/vrtmrz/trystero).
+
 ## 0.25.15
 
 3rd September, 2025
