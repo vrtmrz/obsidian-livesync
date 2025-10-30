@@ -251,6 +251,9 @@
         };
         cmdSync.setConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
+    let isObsidian = $derived.by(() => {
+        return plugin.services.API.getPlatform() === "obsidian";
+    });
 </script>
 
 <article>
@@ -266,95 +269,105 @@
         {/each}
     </details>
     <h2>Connection Settings</h2>
-    <details bind:open={isSettingOpened}>
-        <summary>{eRelay}</summary>
-        <table class="settings">
-            <tbody>
-                <tr>
-                    <th> Enable P2P Replicator </th>
-                    <td>
-                        <label class={{ "is-dirty": isP2PEnabledModified }}>
-                            <input type="checkbox" bind:checked={eP2PEnabled} />
-                        </label>
-                    </td>
-                </tr><tr>
-                    <th> Relay settings </th>
-                    <td>
-                        <label class={{ "is-dirty": isRelayModified }}>
-                            <input
-                                type="text"
-                                placeholder="wss://exp-relay.vrtmrz.net, wss://xxxxx"
-                                bind:value={eRelay}
-                                autocomplete="off"
-                            />
-                            <button onclick={() => useDefaultRelay()}> Use vrtmrz's relay </button>
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <th> Room ID </th>
-                    <td>
-                        <label class={{ "is-dirty": isRoomIdModified }}>
-                            <input
-                                type="text"
-                                placeholder="anything-you-like"
-                                bind:value={eRoomId}
-                                autocomplete="off"
-                                spellcheck="false"
-                                autocorrect="off"
-                            />
-                            <button onclick={() => chooseRandom()}> Use Random Number </button>
-                        </label>
-                        <span>
-                            <small>
-                                This can isolate your connections between devices. Use the same Room ID for the same
-                                devices.</small
-                            >
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <th> Password </th>
-                    <td>
-                        <label class={{ "is-dirty": isPasswordModified }}>
-                            <input type="password" placeholder="password" bind:value={ePassword} />
-                        </label>
-                        <span>
-                            <small> This password is used to encrypt the connection. Use something long enough. </small>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <th> This device name </th>
-                    <td>
-                        <label class={{ "is-dirty": isDeviceNameModified }}>
-                            <input type="text" placeholder="iphone-16" bind:value={eDeviceName} autocomplete="off" />
-                        </label>
-                        <span>
-                            <small>
-                                Device name to identify the device. Please use shorter one for the stable peer
-                                detection, i.e., "iphone-16" or "macbook-2021".
-                            </small>
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <th> Auto Connect </th>
-                    <td>
-                        <label class={{ "is-dirty": isAutoStartModified }}>
-                            <input type="checkbox" bind:checked={eAutoStart} />
-                        </label>
-                    </td>
-                </tr>
-                <tr>
-                    <th> Start change-broadcasting on Connect </th>
-                    <td>
-                        <label class={{ "is-dirty": isAutoBroadcastModified }}>
-                            <input type="checkbox" bind:checked={eAutoBroadcast} />
-                        </label>
-                    </td>
-                </tr>
-                <!-- <tr>
+    {#if isObsidian}
+        You can configure in the Obsidian Plugin Settings.
+    {:else}
+        <details bind:open={isSettingOpened}>
+            <summary>{eRelay}</summary>
+            <table class="settings">
+                <tbody>
+                    <tr>
+                        <th> Enable P2P Replicator </th>
+                        <td>
+                            <label class={{ "is-dirty": isP2PEnabledModified }}>
+                                <input type="checkbox" bind:checked={eP2PEnabled} />
+                            </label>
+                        </td>
+                    </tr><tr>
+                        <th> Relay settings </th>
+                        <td>
+                            <label class={{ "is-dirty": isRelayModified }}>
+                                <input
+                                    type="text"
+                                    placeholder="wss://exp-relay.vrtmrz.net, wss://xxxxx"
+                                    bind:value={eRelay}
+                                    autocomplete="off"
+                                />
+                                <button onclick={() => useDefaultRelay()}> Use vrtmrz's relay </button>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th> Room ID </th>
+                        <td>
+                            <label class={{ "is-dirty": isRoomIdModified }}>
+                                <input
+                                    type="text"
+                                    placeholder="anything-you-like"
+                                    bind:value={eRoomId}
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    autocorrect="off"
+                                />
+                                <button onclick={() => chooseRandom()}> Use Random Number </button>
+                            </label>
+                            <span>
+                                <small>
+                                    This can isolate your connections between devices. Use the same Room ID for the same
+                                    devices.</small
+                                >
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th> Password </th>
+                        <td>
+                            <label class={{ "is-dirty": isPasswordModified }}>
+                                <input type="password" placeholder="password" bind:value={ePassword} />
+                            </label>
+                            <span>
+                                <small>
+                                    This password is used to encrypt the connection. Use something long enough.
+                                </small>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th> This device name </th>
+                        <td>
+                            <label class={{ "is-dirty": isDeviceNameModified }}>
+                                <input
+                                    type="text"
+                                    placeholder="iphone-16"
+                                    bind:value={eDeviceName}
+                                    autocomplete="off"
+                                />
+                            </label>
+                            <span>
+                                <small>
+                                    Device name to identify the device. Please use shorter one for the stable peer
+                                    detection, i.e., "iphone-16" or "macbook-2021".
+                                </small>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th> Auto Connect </th>
+                        <td>
+                            <label class={{ "is-dirty": isAutoStartModified }}>
+                                <input type="checkbox" bind:checked={eAutoStart} />
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th> Start change-broadcasting on Connect </th>
+                        <td>
+                            <label class={{ "is-dirty": isAutoBroadcastModified }}>
+                                <input type="checkbox" bind:checked={eAutoBroadcast} />
+                            </label>
+                        </td>
+                    </tr>
+                    <!-- <tr>
                 <th> Auto Accepting </th>
                 <td>
                     <label class={{ "is-dirty": isAutoAcceptModified }}>
@@ -362,11 +375,12 @@
                     </label>
                 </td>
             </tr> -->
-            </tbody>
-        </table>
-        <button disabled={!isAnyModified} class="button mod-cta" onclick={saveAndApply}>Save and Apply</button>
-        <button disabled={!isAnyModified} class="button" onclick={revert}>Revert changes</button>
-    </details>
+                </tbody>
+            </table>
+            <button disabled={!isAnyModified} class="button mod-cta" onclick={saveAndApply}>Save and Apply</button>
+            <button disabled={!isAnyModified} class="button" onclick={revert}>Revert changes</button>
+        </details>
+    {/if}
 
     <div>
         <h2>Signaling Server Connection</h2>

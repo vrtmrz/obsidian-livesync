@@ -20,7 +20,11 @@ import { ObsidianUIService } from "./ObsidianUIService.ts";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
-export class ObsidianAPIService extends InjectableAPIService {}
+export class ObsidianAPIService extends InjectableAPIService {
+    getPlatform(): string {
+        return "obsidian";
+    }
+}
 export class ObsidianPathService extends InjectablePathService {}
 export class ObsidianDatabaseService extends InjectableDatabaseService {}
 

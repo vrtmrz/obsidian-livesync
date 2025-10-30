@@ -15,7 +15,7 @@ import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { SetupManager } from "../features/ModuleSetupObsidian.ts";
+import { SetupManager } from "../features/SetupManager.ts";
 
 type ErrorInfo = {
     path: string;

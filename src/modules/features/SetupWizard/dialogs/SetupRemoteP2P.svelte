@@ -32,12 +32,8 @@
 
     const context = getObsidianDialogContext();
     let error = $state("");
-    let devicePeerId = $state("");
     const TYPE_CANCELLED = "cancelled";
-    type SettingInfo = {
-        info: P2PConnectionInfo;
-        devicePeerId: string;
-    };
+    type SettingInfo = P2PConnectionInfo;
     type ResultType = typeof TYPE_CANCELLED | SettingInfo;
     type Props = GuestDialogProps<ResultType, P2PSyncSetting>;
 
@@ -49,7 +45,11 @@
                 copyTo(initialData, syncSetting);
             }
             if (context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME)) {
-                devicePeerId = context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) as string;
+                syncSetting.P2P_DevicePeerName = context.services.config.getSmallConfig(
+                    SETTING_KEY_P2P_DEVICE_NAME
+                ) as string;
+            } else {
+                syncSetting.P2P_DevicePeerName = "";
             }
         }
     });
@@ -103,7 +103,7 @@
                 confirm: context.plugin.confirm,
                 db: dummyPouch,
                 simpleStore: store,
-                deviceName: devicePeerId || "unnamed-device",
+                deviceName: syncSetting.P2P_DevicePeerName || "unnamed-device",
                 platform: "setup-wizard",
             };
             const replicator = new TrysteroReplicator(env);
@@ -164,10 +164,7 @@
             error = (await checkConnection()) || "";
             if (!error) {
                 const setting = generateSetting();
-                setResult({
-                    info: pickP2PSyncSettings(setting),
-                    devicePeerId: devicePeerId,
-                });
+                setResult(pickP2PSyncSettings(setting));
                 return;
             }
         } catch (e) {
@@ -177,10 +174,7 @@
     }
     function commit() {
         const setting = pickP2PSyncSettings(generateSetting());
-        setResult({
-            info: setting,
-            devicePeerId: devicePeerId,
-        });
+        setResult(setting);
     }
     function cancel() {
         setResult(TYPE_CANCELLED);
@@ -190,13 +184,16 @@
             syncSetting.P2P_relays.trim() !== "" &&
             syncSetting.P2P_roomID.trim() !== "" &&
             syncSetting.P2P_passphrase.trim() !== "" &&
-            devicePeerId.trim() !== ""
+            (syncSetting.P2P_DevicePeerName ?? "").trim() !== ""
         );
     });
 </script>
 
 <DialogHeader title="P2P Configuration" />
 <Guidance>Please enter the Peer-to-Peer Synchronisation information below.</Guidance>
+<InputRow label="Enabled">
+    <input type="checkbox" name="p2p-enabled" bind:checked={syncSetting.P2P_Enabled} />
+</InputRow>
 <InputRow label="Relay URL">
     <input
         type="text"
@@ -237,10 +234,23 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
-        bind:value={devicePeerId}
+        bind:value={syncSetting.P2P_DevicePeerName}
     />
 </InputRow>
-
+<InputRow label="Auto Start P2P Connection">
+    <input type="checkbox" name="p2p-auto-start" bind:checked={syncSetting.P2P_AutoStart} />
+</InputRow>
+<InfoNote>
+    If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in
+    launches.
+</InfoNote>
+<InputRow label="Auto Broadcast Changes">
+    <input type="checkbox" name="p2p-auto-broadcast" bind:checked={syncSetting.P2P_AutoBroadcast} />
+</InputRow>
+<InfoNote>
+    If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without
+    requiring manual intervention. This requests peers to fetch this device's changes.
+</InfoNote>
 <InfoNote error visible={error !== ""}>
     {error}
 </InfoNote>

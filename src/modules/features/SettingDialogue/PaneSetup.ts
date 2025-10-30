@@ -13,7 +13,7 @@ import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { DEFAULT_SETTINGS } from "../../../lib/src/common/types.ts";
 import { request } from "obsidian";
-import { SetupManager, UserMode } from "../ModuleSetupObsidian.ts";
+import { SetupManager, UserMode } from "../SetupManager.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -36,7 +36,7 @@ export function paneSetup(
             .addButton((text) => {
                 text.setButtonText("Rerun Wizard").onClick(async () => {
                     const setupManager = this.plugin.getModule(SetupManager);
-                    await setupManager.onBoard(UserMode.ExistingUser);
+                    await setupManager.onOnboard(UserMode.ExistingUser);
                     // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
                 });
             });
