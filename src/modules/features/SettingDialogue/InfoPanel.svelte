@@ -4,7 +4,7 @@
      * Mostly used in the Setting Dialogue
      */
     import { type SveltePanelProps } from "./SveltePanel";
-    import InfoTable from "@lib/ui/components/InfoTable.svelte";
+    import InfoTable from "@lib/UI/components/InfoTable.svelte";
     type Props = SveltePanelProps<{
         info: Record<string, any>;
     }>;
