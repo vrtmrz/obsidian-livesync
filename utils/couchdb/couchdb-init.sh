@@ -13,8 +13,23 @@ if [[ -z "$password" ]]; then
     exit 1
 fi
 if [[ -z "$node" ]]; then
-    echo "ERROR: Node missing (default should be located in /opt/couchdb/etc/vm.args under -name)"
-    exit 1
+    echo "INFO: Node missing, trying to detect..."
+    node=$(curl -X GET "${hostname}/_membership" --user "${username}:${password}"  | jq -r '.cluster_nodes[0] // .all_nodes[0]')
+    if [[ -n "$node" ]]; then
+        echo "INFO: Detected node: $node"
+        # confirm
+        while true; do
+            read -p "May we use this node? (defaultly, it may be 'node@nohost') " yn
+            case $yn in
+                [Yy]* ) break;;
+                [Nn]* ) exit 1;;
+                * ) echo "Please answer yes or no.";;
+            esac
+        done
+    else
+        echo "ERROR: Node missing (default should be located in /opt/couchdb/etc/vm.args under -name)"
+        exit 1
+    fi
 fi
 
 echo "-- Configuring CouchDB by REST APIs... -->"
