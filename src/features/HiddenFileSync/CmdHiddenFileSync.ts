@@ -1657,7 +1657,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     // --> Configuration handling
-    private async _anyConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    private async _allConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
@@ -1805,6 +1805,6 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
         services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
         services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
-        services.setting.handleEnableOptionalFeature(this._anyConfigureOptionalSyncFeature.bind(this));
+        services.setting.handleEnableOptionalFeature(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }
