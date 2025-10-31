@@ -26,6 +26,7 @@
     import { onMount } from "svelte";
     import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../../lib/src/common/types";
+    import ExtraItems from "../../../../lib/src/UI/components/ExtraItems.svelte";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -251,6 +252,46 @@
     If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without
     requiring manual intervention. This requests peers to fetch this device's changes.
 </InfoNote>
+<ExtraItems title="Advanced Settings">
+    <InfoNote>
+        TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P
+        connections. In most cases, you can leave these fields blank.
+    </InfoNote>
+    <InfoNote warning>
+        Using public TURN servers may have privacy implications, as your data will be relayed through third-party
+        servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN
+        server provider before using their services. Also your `network administrator` too. You should consider setting
+        up your own TURN server for your FQDN, if possible.
+    </InfoNote>
+    <InputRow label="TURN Server URLs (comma-separated)">
+        <textarea
+            name="p2p-turn-servers"
+            placeholder="turn:turn.example.com:3478,turn:turn.example.com:443"
+            autocapitalize="off"
+            spellcheck="false"
+            bind:value={syncSetting.P2P_turnServers}
+            rows="5"
+        ></textarea>
+    </InputRow>
+    <InputRow label="TURN Username">
+        <input
+            type="text"
+            name="p2p-turn-username"
+            placeholder="Enter TURN username"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            bind:value={syncSetting.P2P_turnUsername}
+        />
+    </InputRow>
+    <InputRow label="TURN Credential">
+        <Password
+            name="p2p-turn-credential"
+            placeholder="Enter TURN credential"
+            bind:value={syncSetting.P2P_turnCredential}
+        />
+    </InputRow>
+</ExtraItems>
 <InfoNote error visible={error !== ""}>
     {error}
 </InfoNote>
