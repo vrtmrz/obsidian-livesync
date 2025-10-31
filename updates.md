@@ -4,6 +4,29 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.24.beta3
+
+31st October, 2025
+
+### TURN server support and important notice
+
+TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P
+connections. In most cases, you do not need to set up a TURN server.
+
+Using public TURN servers may have privacy implications, as your data will be relayed through third-party
+servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN
+server provider before using their services. Also your `network administrator` too. You should consider setting
+up your own TURN server for your FQDN, if possible.
+
+### Fixed
+
+- We can enter the fields in some dialogues correctly on mobile devices now.
+    - The bottom padding is adjusted dynamically according to the keyboard height.
+
+### New features
+
+- We can use the TURN server for P2P connections now.
+
 ## ~~0.25.24.beta1~~ 0.25.24.beta2 (For release mistake)
 
 30th October, 2025
@@ -13,17 +36,16 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - P2P Replication got more robust and stable.
     - Update [Trystero](https://github.com/dmotz/trystero) to the official v0.22.0!
     - Fixed a bug that caused P2P connections to drop or (unwanted reconnection to the relay server) unexpectedly in some environments.
-    - Now, connection status is more accurately reported.
+    - Now, the connection status is more accurately reported.
     - While in the background, the connection to the signalling server is now disconnected to save resources.
         - When returning to the foreground, it will not reconnect automatically for safety. Please reconnect manually.
-- All connection configurations should be edited on the each dedicated dialogue now.
+- All connection configurations should be edited in each dedicated dialogue now.
 
 ### Breaking changes
 
-- Send configuration via Peer-to-Peer connection is not compatible with older versions.
+- Sending configuration via Peer-to-Peer connection is not compatible with older versions.
     - Please upgrade all devices to v0.25.24.beta1 or later to use this feature again.
     - This is due to security improvements in the encryption scheme.
-
 
 ## 0.25.23
 
@@ -172,7 +194,6 @@ If you have found any issues, please let me know. I am now on the following:
 
 - Event handling now does not rely on 'convention over configuration'.
     - Services.ts now have a proper event handler registration system.
-
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
