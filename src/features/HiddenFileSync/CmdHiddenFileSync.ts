@@ -1,4 +1,4 @@
-import { normalizePath, type PluginManifest, type ListedFiles } from "../../deps.ts";
+import { type PluginManifest, type ListedFiles } from "../../deps.ts";
 import {
     type LoadedEntry,
     type FilePathWithPrefix,
@@ -10,7 +10,6 @@ import {
     MODE_PAUSED,
     type SavingEntry,
     type DocumentID,
-    type FilePathWithPrefixLC,
     type UXFileInfo,
     type UXStat,
     LOG_LEVEL_DEBUG,
@@ -177,24 +176,10 @@ export class HiddenFileSync extends LiveSyncCommands {
         this.updateSettingCache();
         return Promise.resolve(true);
     }
-    updateSettingCache() {
-        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-        this.ignorePatterns = ignorePatterns;
-        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-        this.targetPatterns = targetFilter;
 
-        this.shouldSkipFile = [] as FilePathWithPrefixLC[];
-        // Exclude files handled by customization sync
-        const configDir = normalizePath(this.app.vault.configDir);
-        const shouldSKip = !this.settings.usePluginSync
-            ? []
-            : Object.values(this.settings.pluginSyncExtendedSetting)
-                  .filter((e) => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED)
-                  .map((e) => e.files)
-                  .flat()
-                  .map((e) => `${configDir}/${e}`.toLowerCase());
-        this.shouldSkipFile = shouldSKip as FilePathWithPrefixLC[];
-        this._log(`Hidden file will skip ${this.shouldSkipFile.length} files`, LOG_LEVEL_INFO);
+    updateSettingCache() {
+        this.cacheCustomisationSyncIgnoredFiles.clear();
+        this.cacheFileRegExps.clear();
     }
 
     isReady() {
@@ -203,7 +188,6 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (!this.isThisModuleEnabled()) return false;
         return true;
     }
-    shouldSkipFile = [] as FilePathWithPrefixLC[];
 
     async performStartupScan(showNotice: boolean) {
         await this.applyOfflineChanges(showNotice);
@@ -232,10 +216,11 @@ export class HiddenFileSync extends LiveSyncCommands {
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
-        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-        this.ignorePatterns = ignorePatterns;
-        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-        this.targetPatterns = targetFilter;
+        this.cacheFileRegExps.clear();
+        // const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
+        // this.ignorePatterns = ignorePatterns;
+        // const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+        // this.targetPatterns = targetFilter;
         return Promise.resolve(true);
     }
 
@@ -558,8 +543,11 @@ Offline Changed files: ${processFiles.length}`;
         forceWrite = false,
         includeDeleted = true
     ): Promise<boolean | undefined> {
-        if (this.shouldSkipFile.some((e) => e.startsWith(path.toLowerCase()))) {
-            this._log(`Hidden file skipped: ${path} is synchronized in customization sync.`, LOG_LEVEL_VERBOSE);
+        if (!(await this.isTargetFile(path))) {
+            this._log(
+                `Storage file tracking: Hidden file skipped: ${path} is filtered out by the defined patterns.`,
+                LOG_LEVEL_VERBOSE
+            );
             return false;
         }
         try {
@@ -862,6 +850,108 @@ Offline Changed files: ${processFiles.length}`;
 
     // --> Database Event Functions
 
+    cacheFileRegExps = new Map<string, CustomRegExp[][]>();
+    /**
+     * Parses the regular expression settings for hidden file synchronization.
+     * @returns An object containing the ignore and target filters.
+     */
+    parseRegExpSettings() {
+        const regExpKey = `${this.plugin.settings.syncInternalFilesTargetPatterns}||${this.plugin.settings.syncInternalFilesIgnorePatterns}`;
+        let ignoreFilter: CustomRegExp[];
+        let targetFilter: CustomRegExp[];
+        if (this.cacheFileRegExps.has(regExpKey)) {
+            const cached = this.cacheFileRegExps.get(regExpKey)!;
+            ignoreFilter = cached[1];
+            targetFilter = cached[0];
+        } else {
+            ignoreFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
+            targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+            this.cacheFileRegExps.clear();
+            this.cacheFileRegExps.set(regExpKey, [targetFilter, ignoreFilter]);
+        }
+        return { ignoreFilter, targetFilter };
+    }
+
+    /**
+     * Checks if the target file path matches the defined patterns.
+     */
+    isTargetFileInPatterns(path: string): boolean {
+        const { ignoreFilter, targetFilter } = this.parseRegExpSettings();
+
+        if (ignoreFilter && ignoreFilter.length > 0) {
+            for (const pattern of ignoreFilter) {
+                if (pattern.test(path)) {
+                    return false;
+                }
+            }
+        }
+        if (targetFilter && targetFilter.length > 0) {
+            for (const pattern of targetFilter) {
+                if (pattern.test(path)) {
+                    return true;
+                }
+            }
+            // While having target patterns, it effects as an allow-list.
+            return false;
+        }
+        return true;
+    }
+
+    cacheCustomisationSyncIgnoredFiles = new Map<string, string[]>();
+    /**
+     * Gets the list of files ignored for customization synchronization.
+     * @returns An array of ignored file paths (lowercase).
+     */
+    getCustomisationSynchronizationIgnoredFiles(): string[] {
+        const configDir = this.plugin.app.vault.configDir;
+        const key =
+            JSON.stringify(this.settings.pluginSyncExtendedSetting) + `||${this.settings.usePluginSync}||${configDir}`;
+        if (this.cacheCustomisationSyncIgnoredFiles.has(key)) {
+            return this.cacheCustomisationSyncIgnoredFiles.get(key)!;
+        }
+        this.cacheCustomisationSyncIgnoredFiles.clear();
+        const synchronisedInConfigSync = !this.settings.usePluginSync
+            ? []
+            : Object.values(this.settings.pluginSyncExtendedSetting)
+                  .filter((e) => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED)
+                  .map((e) => e.files)
+                  .flat()
+                  .map((e) => `${configDir}/${e}`.toLowerCase());
+        this.cacheCustomisationSyncIgnoredFiles.set(key, synchronisedInConfigSync);
+        return synchronisedInConfigSync;
+    }
+    /**
+     * Checks if the given path is not ignored by customization synchronization.
+     * @param path The file path to check.
+     * @returns True if the path is not ignored; otherwise, false.
+     */
+    isNotIgnoredByCustomisationSync(path: string): boolean {
+        const ignoredFiles = this.getCustomisationSynchronizationIgnoredFiles();
+        const result = !ignoredFiles.some((e) => path.startsWith(e));
+        // console.warn(`Assertion: isNotIgnoredByCustomisationSync(${path}) = ${result}`);
+        return result;
+    }
+
+    isHiddenFileSyncHandlingPath(path: FilePath): boolean {
+        const result = path.startsWith(".") && !path.startsWith(".trash");
+        // console.warn(`Assertion: isHiddenFileSyncHandlingPath(${path}) = ${result}`);
+        return result;
+    }
+
+    async isTargetFile(path: FilePath): Promise<boolean> {
+        const result =
+            this.isTargetFileInPatterns(path) &&
+            this.isNotIgnoredByCustomisationSync(path) &&
+            this.isHiddenFileSyncHandlingPath(path);
+        // console.warn(`Assertion: isTargetFile(${path}) : ${result ? "✔️" : "❌"}`);
+        if (!result) {
+            return false;
+        }
+        const resultByFile = await this.services.vault.isIgnoredByIgnoreFile(path);
+        // console.warn(`${path}  -> isIgnoredByIgnoreFile: ${resultByFile ? "❌" : "✔️"}`);
+        return !resultByFile;
+    }
+
     async trackScannedDatabaseChange(
         processFiles: MetaEntry[],
         showNotice: boolean = false,
@@ -875,14 +965,21 @@ Offline Changed files: ${processFiles.length}`;
         const processes = processFiles.map(async (file) => {
             try {
                 const path = stripAllPrefixes(this.getPath(file));
-                await this.trackDatabaseFileModification(
-                    path,
-                    "[Hidden file scan]",
-                    !forceWriteAll,
-                    onlyNew,
-                    file,
-                    includeDeletion
-                );
+                if (!(await this.isTargetFile(path))) {
+                    this._log(
+                        `Database file tracking: Hidden file skipped: ${path} is filtered out by the defined patterns.`,
+                        LOG_LEVEL_VERBOSE
+                    );
+                } else {
+                    await this.trackDatabaseFileModification(
+                        path,
+                        "[Hidden file scan]",
+                        !forceWriteAll,
+                        onlyNew,
+                        file,
+                        includeDeletion
+                    );
+                }
                 notifyProgress();
             } catch (ex) {
                 this._log(`Failed to process storage change file:${file}`, logLevel);
@@ -1215,7 +1312,13 @@ Offline Changed files: ${files.length}`;
         ).rows
             .filter((e) => isInternalMetadata(e.id as DocumentID))
             .map((e) => e.doc) as MetaEntry[];
-        return allFiles;
+        const files = [] as MetaEntry[];
+        for (const file of allFiles) {
+            if (await this.isTargetFile(stripAllPrefixes(this.getPath(file)))) {
+                files.push(file);
+            }
+        }
+        return files;
     }
 
     async rebuildFromDatabase(showNotice: boolean, targetFiles: FilePath[] | false = false, onlyNew = false) {
@@ -1696,29 +1799,13 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     // <-- Configuration handling
 
     // --> Local Storage SubFunctions
-    ignorePatterns: CustomRegExp[] = [];
-    targetPatterns: CustomRegExp[] = [];
     async scanInternalFileNames() {
-        const configDir = normalizePath(this.app.vault.configDir);
-        const ignoreFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-        const targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-        const synchronisedInConfigSync = !this.settings.usePluginSync
-            ? []
-            : Object.values(this.settings.pluginSyncExtendedSetting)
-                  .filter((e) => e.mode == MODE_SELECTIVE || e.mode == MODE_PAUSED)
-                  .map((e) => e.files)
-                  .flat()
-                  .map((e) => `${configDir}/${e}`.toLowerCase());
         const root = this.app.vault.getRoot();
         const findRoot = root.path;
 
-        const filenames = (await this.getFiles(findRoot, [], targetFilter, ignoreFilter))
-            .filter((e) => e.startsWith("."))
-            .filter((e) => !e.startsWith(".trash"));
-        const files = filenames.filter((path) =>
-            synchronisedInConfigSync.every((filterFile) => !path.toLowerCase().startsWith(filterFile))
-        );
-        return files as FilePath[];
+        const filenames = await this.getFiles(findRoot, (path) => this.isTargetFile(path));
+
+        return filenames as FilePath[];
     }
 
     async scanInternalFiles(): Promise<InternalFileInfo[]> {
@@ -1748,7 +1835,32 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         return result;
     }
 
-    async getFiles(path: string, ignoreList: string[], filter?: CustomRegExp[], ignoreFilter?: CustomRegExp[]) {
+    async getFiles(path: string, checkFunction: (path: FilePath) => Promise<boolean> | boolean) {
+        let w: ListedFiles;
+        try {
+            w = await this.app.vault.adapter.list(path);
+        } catch (ex) {
+            this._log(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
+            this._log(ex, LOG_LEVEL_VERBOSE);
+            return [];
+        }
+        let files = [] as string[];
+        for (const file of w.files) {
+            if (!(await checkFunction(file as FilePath))) {
+                continue;
+            }
+            files.push(file);
+        }
+        for (const v of w.folders) {
+            if (!(await checkFunction(v as FilePath))) {
+                continue;
+            }
+            files = files.concat(await this.getFiles(v, checkFunction));
+        }
+        return files;
+    }
+    /*
+    async getFiles_(path: string, ignoreList: string[], filter?: CustomRegExp[], ignoreFilter?: CustomRegExp[]) {
         let w: ListedFiles;
         try {
             w = await this.app.vault.adapter.list(path);
@@ -1785,11 +1897,11 @@ ${messageFetch}${messageOverwrite}${messageMerge}
             if (await this.services.vault.isIgnoredByIgnoreFile(v)) {
                 continue L1;
             }
-            files = files.concat(await this.getFiles(v, ignoreList, filter, ignoreFilter));
+            files = files.concat(await this.getFiles_(v, ignoreList, filter, ignoreFilter));
         }
         return files;
     }
-
+    */
     // <-- Local Storage SubFunctions
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {

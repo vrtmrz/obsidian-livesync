@@ -13,7 +13,7 @@ import {
     type UXFileInfoStub,
     type UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
-import { delay, fireAndForget, getFileRegExp } from "../../../lib/src/common/utils.ts";
+import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import {
@@ -27,6 +27,7 @@ import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
+import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 // import { InternalFileToUXFileInfo } from "../platforms/obsidian.ts";
 
 export type FileEvent = {
@@ -62,11 +63,15 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     get batchSaveMaximumDelay(): number {
         return this.core.settings?.batchSaveMaximumDelay ?? DEFAULT_SETTINGS.batchSaveMaximumDelay;
     }
+    // Necessary evil.
+    cmdHiddenFileSync: HiddenFileSync;
+
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, storageAccess: StorageAccess) {
         super();
         this.storageAccess = storageAccess;
         this.plugin = plugin;
         this.core = core;
+        this.cmdHiddenFileSync = this.plugin.getAddOn(HiddenFileSync.name) as HiddenFileSync;
     }
     beginWatch() {
         const plugin = this.plugin;
@@ -181,22 +186,20 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             // (Calling$$isTargetFile will refresh the cache)
             void this.services.vault.isTargetFile(path).then(() => this._watchVaultRawEvents(path));
         } else {
-            this._watchVaultRawEvents(path);
+            void this._watchVaultRawEvents(path);
         }
     }
 
-    _watchVaultRawEvents(path: FilePath) {
+    async _watchVaultRawEvents(path: FilePath) {
         if (!this.plugin.settings.syncInternalFiles && !this.plugin.settings.usePluginSync) return;
         if (!this.plugin.settings.watchInternalFileChanges) return;
         if (!path.startsWith(this.plugin.app.vault.configDir)) return;
-        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-        const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-        if (ignorePatterns.some((e) => e.test(path))) return;
-        if (!targetPatterns.some((e) => e.test(path))) return;
         if (path.endsWith("/")) {
             // Folder
             return;
         }
+        const isTargetFile = await this.cmdHiddenFileSync.isTargetFile(path);
+        if (!isTargetFile) return;
 
         void this.appendQueue(
             [

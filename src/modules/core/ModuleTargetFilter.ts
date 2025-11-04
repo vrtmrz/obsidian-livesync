@@ -26,6 +26,7 @@ export class ModuleTargetFilter extends AbstractModule {
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map((e) => e.trim());
     }
     private _everyOnload(): Promise<boolean> {
+        this.reloadIgnoreFiles();
         eventHub.onEvent(EVENT_SETTING_SAVED, (evt: ObsidianLiveSyncSettings) => {
             this.reloadIgnoreFiles();
         });
@@ -132,12 +133,19 @@ export class ModuleTargetFilter extends AbstractModule {
     ignoreFiles = [] as string[];
     async readIgnoreFile(path: string) {
         try {
-            const file = await this.core.storageAccess.readFileText(path);
+            // this._log(`[ignore]Reading ignore file: ${path}`, LOG_LEVEL_VERBOSE);
+            if (!(await this.core.storageAccess.isExistsIncludeHidden(path))) {
+                this.ignoreFileCache.set(path, false);
+                // this._log(`[ignore]Ignore file not found: ${path}`, LOG_LEVEL_VERBOSE);
+                return false;
+            }
+            const file = await this.core.storageAccess.readHiddenFileText(path);
             const gitignore = file.split(/\r?\n/g);
             this.ignoreFileCache.set(path, gitignore);
+            this._log(`[ignore]Ignore file loaded: ${path}`, LOG_LEVEL_VERBOSE);
             return gitignore;
         } catch (ex) {
-            this._log(`Failed to read ignore file ${path}`);
+            this._log(`[ignore]Failed to read ignore file ${path}`);
             this._log(ex, LOG_LEVEL_VERBOSE);
             this.ignoreFileCache.set(path, false);
             return false;
