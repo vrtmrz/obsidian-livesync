@@ -10,6 +10,43 @@ As a result, this is the first time in a while that forward compatibility has be
 
 ---
 
+## 0.25.21
+
+13th October, 2025
+
+This release including 0.25.21.beta1 and 0.25.21.beta2.
+
+Apologies for taking a little time. I was seriously tackling this.
+(Of course, being caught up in an unfamiliar structure due to personnel changes on my workplace played a part, but fortunately I have returned to a place where I can do research and development rather than production. Completely beside the point, though).
+Now then, this time, moving away from 'convention over configuration', I have changed to a mechanism for manually binding events. This makes it much easier to leverage IDE assistance.
+And, also, we are ready to separate `Features` and `APIs` from `Module`. Features are still in the module, but APIs will be moved to a Service layer. This will make it easier to maintain and extend the codebase in the future.
+
+If you have found any issues, please let me know. I am now on the following:
+
+- GitHub [Issues](https://github.com/vrtmrz/obsidian-livesync/issues) Excellent! May the other contributors will help you too.
+- Twitter [@vorotamoroz](https://twitter.com/vorotamoroz) Quickest!
+- Matrix [@vrtmrz:matrix.org](https://matrix.to/#/@vrtmrz:matrix.org) Also quick, and if you need to keep it private!
+  I am creating rooms too, but I'm struggling to figure out how to use them effectively because I cannot tell the difference of use-case between them and discussions. However, if you want to use Discord, this is a answer; We should on E2E encrypted platform.
+
+## 0.25.21.beta2
+
+8th October, 2025
+
+### Fixed
+
+- Fixed wrong event type bindings (which caused some events not to be handled correctly).
+- Fixed detected a timing issue in StorageEventManager
+    - When multiple events for the same file are fired in quick succession, metadata has been kept older information. This induces unexpected wrong notifications and write prevention.
+
+## 0.25.21.beta1
+
+6th October, 2025
+
+### Refactored
+
+- Event handling now does not rely on 'convention over configuration'.
+    - Services.ts now have a proper event handler registration system.
+
 ## 0.25.20
 
 26th September, 2025
