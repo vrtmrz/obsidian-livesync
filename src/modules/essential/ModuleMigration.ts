@@ -3,7 +3,6 @@ import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
     EVENT_REQUEST_OPEN_SETTINGS,
-    EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_RUN_DOCTOR,
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
@@ -16,6 +15,7 @@ import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { SetupManager } from "../features/SetupManager.ts";
 
 type ErrorInfo = {
     path: string;
@@ -66,6 +66,9 @@ export class ModuleMigration extends AbstractModule {
     }
 
     async initialMessage() {
+        const manager = this.core.getModule(SetupManager);
+        return await manager.startOnBoarding();
+        /*
         const message = $msg("moduleMigration.msgInitialSetup", {
             URI_DOC: $msg("moduleMigration.docUri"),
         });
@@ -83,6 +86,7 @@ export class ModuleMigration extends AbstractModule {
             return true;
         }
         return false;
+        */
     }
 
     async askAgainForSetupURI() {
@@ -326,8 +330,11 @@ export class ModuleMigration extends AbstractModule {
             await this.migrateDisableBulkSend();
         }
         if (!this.settings.isConfigured) {
-            // Case sensitivity
-            if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
+            // if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
+            //     this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
+            //     return false;
+            // }
+            if (!(await this.initialMessage())) {
                 this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
                 return false;
             }

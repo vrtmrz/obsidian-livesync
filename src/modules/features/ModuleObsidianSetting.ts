@@ -9,6 +9,7 @@ import {
     DEFAULT_SETTINGS,
     type ObsidianLiveSyncSettings,
     SALT_OF_PASSPHRASE,
+    SETTING_KEY_P2P_DEVICE_NAME,
 } from "../../lib/src/common/types";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { $msg, setLang } from "../../lib/src/common/i18n.ts";
@@ -111,6 +112,11 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
         this.services.setting.saveDeviceAndVaultName();
         const settings = { ...this.settings };
         settings.deviceAndVaultName = "";
+        if (settings.P2P_DevicePeerName && settings.P2P_DevicePeerName.trim() !== "") {
+            console.log("Saving device peer name to small config");
+            this.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, settings.P2P_DevicePeerName.trim());
+            settings.P2P_DevicePeerName = "";
+        }
         if (this.usedPassphrase == "" && !(await this.getPassphrase(settings))) {
             this._log("Failed to retrieve passphrase. data.json contains unencrypted items!", LOG_LEVEL_NOTICE);
         } else {

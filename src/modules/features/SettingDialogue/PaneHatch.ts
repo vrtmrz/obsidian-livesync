@@ -143,6 +143,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     pluginConfig.jwtKid = redact(pluginConfig.jwtKid);
                     pluginConfig.bucketCustomHeaders = redact(pluginConfig.bucketCustomHeaders);
                     pluginConfig.couchDB_CustomHeaders = redact(pluginConfig.couchDB_CustomHeaders);
+                    pluginConfig.P2P_turnCredential = redact(pluginConfig.P2P_turnCredential);
+                    pluginConfig.P2P_turnUsername = redact(pluginConfig.P2P_turnUsername);
+                    pluginConfig.P2P_turnServers = `(${pluginConfig.P2P_turnServers.split(",").length} servers configured)`;
                     const endpoint = pluginConfig.endpoint;
                     if (endpoint == "") {
                         pluginConfig.endpoint = "Not configured or AWS";
@@ -170,11 +173,13 @@ ${stringifyYaml({
     ...pluginConfig,
 })}`;
                     console.log(msgConfig);
-                    await navigator.clipboard.writeText(msgConfig);
-                    Logger(
-                        `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
-                        LOG_LEVEL_NOTICE
-                    );
+                    if ((await this.services.UI.promptCopyToClipboard("Generated report", msgConfig)) == true) {
+                        // await navigator.clipboard.writeText(msgConfig);
+                        // Logger(
+                        //     `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
+                        //     LOG_LEVEL_NOTICE
+                        // );
+                    }
                 })
         );
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");

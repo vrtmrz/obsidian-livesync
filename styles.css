@@ -393,13 +393,13 @@ span.ls-mark-cr::after {
 div.workspace-leaf-content[data-type=bases]  .livesync-status {
     top: calc(var(--bases-header-height) + var(--header-height));
     padding: 5px;
-    padding-right:18px;
+    padding-right: 18px;
 }
 
 .is-mobile div.workspace-leaf-content[data-type=bases]  .livesync-status {
     top: calc(var(--bases-header-height) + var(--view-header-height));
     padding: 6px;
-    padding-right:18px;
+    padding-right: 18px;
 }
 
 .livesync-status div {
@@ -442,6 +442,10 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     background-color: var(--background-secondary-alt);
     border-radius: 10px;
     padding: 0.5em 1.0em;
+}
+
+.active-pane .sls-setting-panel-title {
+    border: 1px solid var(--interactive-accent);
 }
 
 .sls-dialogue-note-wrapper {
