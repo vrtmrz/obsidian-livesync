@@ -85,7 +85,7 @@
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.808.0",
-        "@smithy/fetch-http-handler": "^5.0.2",
+        "@smithy/fetch-http-handler": "^5.3.3",
         "@smithy/md5-js": "^4.0.2",
         "@smithy/middleware-apply-body-checksum": "^4.1.0",
         "@smithy/protocol-http": "^5.1.0",
