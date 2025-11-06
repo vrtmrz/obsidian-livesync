@@ -41,7 +41,7 @@ export function getBucketConfigSummary(setting: ObsidianLiveSyncSettings, showAd
  */
 export function getCouchDBConfigSummary(setting: ObsidianLiveSyncSettings, showAdvanced = false) {
     const settingTable: Partial<ObsidianLiveSyncSettings> = pickCouchDBSyncSettings(setting);
-    return getSummaryFromPartialSettings(settingTable, showAdvanced);
+    return getSummaryFromPartialSettings(settingTable, showAdvanced || setting.useJWT);
 }
 
 /**

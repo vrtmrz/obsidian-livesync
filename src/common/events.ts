@@ -21,6 +21,7 @@ export const EVENT_REQUEST_CLOSE_P2P = "request-close-p2p";
 
 export const EVENT_REQUEST_RUN_DOCTOR = "request-run-doctor";
 export const EVENT_REQUEST_RUN_FIX_INCOMPLETE = "request-run-fix-incomplete";
+export const EVENT_ON_UNRESOLVED_ERROR = "on-unresolved-error";
 
 // export const EVENT_FILE_CHANGED = "file-changed";
 
@@ -40,6 +41,7 @@ declare global {
         [EVENT_REQUEST_SHOW_SETUP_QR]: undefined;
         [EVENT_REQUEST_RUN_DOCTOR]: string;
         [EVENT_REQUEST_RUN_FIX_INCOMPLETE]: undefined;
+        [EVENT_ON_UNRESOLVED_ERROR]: undefined;
     }
 }
 

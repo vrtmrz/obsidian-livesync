@@ -223,7 +223,7 @@
             <option value="ES512">ES512</option>
         </select>
     </InputRow>
-    <InputRow label="JWT Expiration Duration (seconds)">
+    <InputRow label="JWT Expiration Duration (minutes)">
         <input
             type="text"
             name="couchdb-jwt-exp-duration"
@@ -233,19 +233,21 @@
         />
     </InputRow>
     <InputRow label="JWT Key">
-        <input
-            type="text"
+        <textarea
             name="couchdb-jwt-key"
+            rows="5"
+            autocapitalize="off"
+            spellcheck="false"
             placeholder="Enter your JWT secret or private key"
             bind:value={syncSetting.jwtKey}
             disabled={!isUseJWT}
-        />
+        ></textarea>
     </InputRow>
     <InputRow label="JWT Key ID (kid)">
         <input
             type="text"
             name="couchdb-jwt-kid"
-            placeholder="Enter your JWT Key ID (optional)"
+            placeholder="Enter your JWT Key ID"
             bind:value={syncSetting.jwtKid}
             disabled={!isUseJWT}
         />
@@ -254,7 +256,7 @@
         <input
             type="text"
             name="couchdb-jwt-sub"
-            placeholder="Enter your JWT Subject (optional)"
+            placeholder="Enter your JWT Subject (CouchDB Username)"
             bind:value={syncSetting.jwtSub}
             disabled={!isUseJWT}
         />

@@ -19,7 +19,12 @@ import {
     logMessages,
 } from "../../lib/src/mock_and_interop/stores.ts";
 import { eventHub } from "../../lib/src/hub/hub.ts";
-import { EVENT_FILE_RENAMED, EVENT_LAYOUT_READY, EVENT_LEAF_ACTIVE_CHANGED } from "../../common/events.ts";
+import {
+    EVENT_FILE_RENAMED,
+    EVENT_LAYOUT_READY,
+    EVENT_LEAF_ACTIVE_CHANGED,
+    EVENT_ON_UNRESOLVED_ERROR,
+} from "../../common/events.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { addIcon, normalizePath, Notice } from "../../deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
@@ -198,11 +203,13 @@ export class ModuleLog extends AbstractObsidianModule {
             this.applyStatusBarText();
         }, 20);
         statusBarLabels.onChanged((label) => applyToDisplay(label.value));
+        this.activeFileStatus.onChanged(() => this.updateMessageArea());
     }
 
     private _everyOnload(): Promise<boolean> {
         eventHub.onEvent(EVENT_LEAF_ACTIVE_CHANGED, () => this.onActiveLeafChange());
         eventHub.onceEvent(EVENT_LAYOUT_READY, () => this.onActiveLeafChange());
+        eventHub.onEvent(EVENT_ON_UNRESOLVED_ERROR, () => this.updateMessageArea());
 
         return Promise.resolve(true);
     }
@@ -234,8 +241,19 @@ export class ModuleLog extends AbstractObsidianModule {
     async setFileStatus() {
         const fileStatus = await this.getActiveFileStatus();
         this.activeFileStatus.value = fileStatus;
-        this.messageArea!.innerText = this.settings.hideFileWarningNotice ? "" : fileStatus;
     }
+
+    async updateMessageArea() {
+        if (this.messageArea) {
+            const messageLines = [];
+            const fileStatus = this.activeFileStatus.value;
+            if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
+            const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
+            messageLines.push(...messages);
+            this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
+        }
+    }
+
     onActiveLeafChange() {
         fireAndForget(async () => {
             this.adjustStatusDivPosition();

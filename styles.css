@@ -414,12 +414,19 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
 
 }
 
-.livesync-status div.livesync-status-messagearea {
+.livesync-status div.livesync-status-messagearea:empty {
+    display: none;
+}
+
+.livesync-status div.livesync-status-messagearea:not(:empty) {
     opacity: 0.6;
     color: var(--text-on-accent);
-    background: var(--background-modifier-error);
+    border: 1px solid var(--background-modifier-error);
+    background-color: rgba(var(--background-modifier-error-rgb), 0.2);
     -webkit-filter: unset;
     filter: unset;
+    width: fit-content;
+    margin-left: auto;
 }
 
 

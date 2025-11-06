@@ -1,7 +1,15 @@
 import { fireAndForget, yieldMicrotask } from "octagonal-wheels/promises";
 import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB";
 import { AbstractModule } from "../AbstractModule";
-import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import {
+    Logger,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_VERBOSE,
+    LEVEL_NOTICE,
+    LEVEL_INFO,
+    type LOG_LEVEL,
+} from "octagonal-wheels/common/logger";
 import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks";
@@ -28,7 +36,7 @@ import {
     updatePreviousExecutionTime,
 } from "../../common/utils";
 import { isAnyNote } from "../../lib/src/common/utils";
-import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
+import { EVENT_FILE_SAVED, EVENT_ON_UNRESOLVED_ERROR, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
 
 import { $msg } from "../../lib/src/common/i18n";
@@ -40,6 +48,20 @@ const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
 
 export class ModuleReplicator extends AbstractModule {
     _replicatorType?: RemoteType;
+    _previousErrors = new Set<string>();
+
+    showError(msg: string, max_log_level: LOG_LEVEL = LEVEL_NOTICE) {
+        const level = this._previousErrors.has(msg) ? LEVEL_INFO : max_log_level;
+        this._log(msg, level);
+        if (!this._previousErrors.has(msg)) {
+            this._previousErrors.add(msg);
+            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        }
+    }
+    clearErrors() {
+        this._previousErrors.clear();
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+    }
 
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
@@ -59,7 +81,7 @@ export class ModuleReplicator extends AbstractModule {
     async setReplicator() {
         const replicator = await this.services.replicator.getNewReplicator();
         if (!replicator) {
-            this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
+            this.showError($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.core.replicator) {
@@ -89,7 +111,7 @@ export class ModuleReplicator extends AbstractModule {
         // Checking salt
         const replicator = this.services.replicator.getActiveReplicator();
         if (!replicator) {
-            this._log($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
+            this.showError($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
             return false;
         }
         return await replicator.ensurePBKDF2Salt(this.settings, showMessage, true);
@@ -98,15 +120,16 @@ export class ModuleReplicator extends AbstractModule {
     async _everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
         // Checking salt
         if (!this.core.managers.networkManager.isOnline) {
-            this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+            this.showError("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
             return false;
         }
         // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
         if (!(await this.ensureReplicatorPBKDF2Salt(false))) {
-            Logger("Failed to initialise the encryption key, preventing replication.", LOG_LEVEL_NOTICE);
+            this.showError("Failed to initialise the encryption key, preventing replication.");
             return false;
         }
         await this.loadQueuedFiles();
+        this.clearErrors();
         return true;
     }
 
@@ -195,18 +218,19 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         }
 
         if (!(await this.services.fileProcessing.commitPendingFileEvents())) {
-            Logger($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
+            this.showError($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
             return false;
         }
 
         if (!this.core.managers.networkManager.isOnline) {
-            this._log("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+            this.showError("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
             return false;
         }
         if (!(await this.services.replication.onBeforeReplicate(showMessage))) {
-            Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
+            this.showError($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
             return false;
         }
+        this.clearErrors();
         return true;
     }
 
@@ -401,11 +425,56 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             this.saveQueuedFiles();
         });
 
+    async checkIsChangeRequiredForDatabaseProcessing(dbDoc: LoadedEntry): Promise<boolean> {
+        const path = getPath(dbDoc);
+        try {
+            const savedDoc = await this.localDatabase.getRaw<LoadedEntry>(dbDoc._id, {
+                conflicts: true,
+                revs_info: true,
+            });
+            const newRev = dbDoc._rev ?? "";
+            const latestRev = savedDoc._rev ?? "";
+            const revisions = savedDoc._revs_info?.map((e) => e.rev) ?? [];
+            if (savedDoc._conflicts && savedDoc._conflicts.length > 0) {
+                // There are conflicts, so we have to process it.
+                return true;
+            }
+            if (newRev == latestRev) {
+                // The latest revision. We need to process it.
+                return true;
+            }
+            const index = revisions.indexOf(newRev);
+            if (index >= 0) {
+                // the revision has been inserted before.
+                return false; // Already processed.
+            }
+            return true; // This mostly should not happen, but we have to process it just in case.
+        } catch (e: any) {
+            if ("status" in e && e.status == 404) {
+                return true;
+                // Not existing, so we have to process it.
+            } else {
+                Logger(
+                    `Failed to get existing document for ${path} (${dbDoc._id.substring(0, 8)}, ${dbDoc._rev?.substring(0, 10)}) `,
+                    LOG_LEVEL_NOTICE
+                );
+                Logger(e, LOG_LEVEL_VERBOSE);
+                return true;
+            }
+        }
+        return true;
+    }
+
     databaseQueuedProcessor = new QueueProcessor(
         async (docs: EntryBody[]) => {
             const dbDoc = docs[0] as LoadedEntry; // It has no `data`
             const path = getPath(dbDoc);
-
+            // If the document is existing with any revision, confirm that we have to process it.
+            const isRequired = await this.checkIsChangeRequiredForDatabaseProcessing(dbDoc);
+            if (!isRequired) {
+                Logger(`Skipped (Not latest): ${path} (${dbDoc._id.substring(0, 8)})`, LOG_LEVEL_VERBOSE);
+                return;
+            }
             // If `Read chunks online` is disabled, chunks should be transferred before here.
             // However, in some cases, chunks are after that. So, if missing chunks exist, we have to wait for them.
             const doc = await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, false, true);
@@ -503,6 +572,10 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         return !checkResult;
     }
 
+    private _reportUnresolvedMessages(): Promise<string[]> {
+        return Promise.resolve([...this._previousErrors]);
+    }
+
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.replicator.handleGetActiveReplicator(this._getReplicator.bind(this));
         services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
@@ -516,5 +589,6 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         services.replication.handleReplicateByEvent(this._replicateByEvent.bind(this));
         services.remote.handleReplicateAllToRemote(this._replicateAllToServer.bind(this));
         services.remote.handleReplicateAllFromRemote(this._replicateAllFromServer.bind(this));
+        services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
     }
 }

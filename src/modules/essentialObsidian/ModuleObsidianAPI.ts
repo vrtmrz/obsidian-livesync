@@ -1,5 +1,12 @@
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { LOG_LEVEL_DEBUG, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import {
+    LEVEL_INFO,
+    LEVEL_NOTICE,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type LOG_LEVEL,
+} from "octagonal-wheels/common/logger";
 import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
 import { type CouchDBCredentials, type EntryDoc, type FilePath } from "../../lib/src/common/types.ts";
 import { getPathFromTFile } from "../../common/utils.ts";
@@ -12,6 +19,7 @@ import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "../../common/events.ts";
 
 setNoticeClass(Notice);
 
@@ -24,7 +32,20 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
     _customHandler!: ObsHttpHandler;
 
     _authHeader = new AuthorizationHeaderGenerator();
+    _previousErrors = new Set<string>();
 
+    showError(msg: string, max_log_level: LOG_LEVEL = LEVEL_NOTICE) {
+        const level = this._previousErrors.has(msg) ? LEVEL_INFO : max_log_level;
+        this._log(msg, level);
+        if (!this._previousErrors.has(msg)) {
+            this._previousErrors.add(msg);
+            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        }
+    }
+    clearErrors() {
+        this._previousErrors.clear();
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+    }
     last_successful_post = false;
     _customFetchHandler(): ObsHttpHandler {
         if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
@@ -180,6 +201,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                                 }
                             }
                         }
+                        this.clearErrors();
                         return response;
                     } catch (ex) {
                         if (ex instanceof TypeError) {
@@ -195,7 +217,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                                 headers,
                             });
                             if (resp2.status / 100 == 2) {
-                                this._log(
+                                this.showError(
                                     "The request was successful by API. But the native fetch API failed! Please check CORS settings on the remote database!. While this condition, you cannot enable LiveSync",
                                     LOG_LEVEL_NOTICE
                                 );
@@ -203,7 +225,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                             }
                             const r2 = resp2.clone();
                             const msg = await r2.text();
-                            this._log(`Failed to fetch by API. ${resp2.status}: ${msg}`, LOG_LEVEL_NOTICE);
+                            this.showError(`Failed to fetch by API. ${resp2.status}: ${msg}`, LOG_LEVEL_NOTICE);
                             return resp2;
                         }
                         throw ex;
@@ -211,7 +233,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                 } catch (ex: any) {
                     this._log(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                     const msg = ex instanceof Error ? `${ex?.name}:${ex?.message}` : ex?.toString();
-                    this._log(`Failed to fetch: ${msg}`, LOG_LEVEL_NOTICE);
+                    this.showError(`Failed to fetch: ${msg}`); // Do not show notice, due to throwing below
                     this._log(ex, LOG_LEVEL_VERBOSE);
                     // limit only in bulk_docs.
                     if (url.toString().indexOf("_bulk_docs") !== -1) {
@@ -279,6 +301,10 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
 
+    private _reportUnresolvedMessages(): Promise<string[]> {
+        return Promise.resolve([...this._previousErrors]);
+    }
+
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         services.API.handleGetCustomFetchHandler(this._customFetchHandler.bind(this));
         services.API.handleIsLastPostFailedDueToPayloadSize(this._getLastPostFailedBySize.bind(this));
@@ -288,5 +314,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         services.vault.handleVaultName(this._vaultName.bind(this));
         services.vault.handleGetActiveFilePath(this._getActiveFilePath.bind(this));
         services.API.handleGetAppID(this._anyGetAppId.bind(this));
+        services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
     }
 }
