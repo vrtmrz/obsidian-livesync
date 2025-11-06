@@ -4,6 +4,36 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.25
+
+06th November, 2025
+
+### Fixed
+
+#### JWT Authentication
+
+- Now we can use JWT Authentication ES512 correctly (#742).
+- Several misdirections in the Setting dialogues have been fixed (i.e., seconds and minutes confusion...).
+- The key area in the Setting dialogue has been enlarged and accepts newlines correctly.
+- Caching of JWT tokens now works correctly
+    - Tokens are now cached and reused until they expire.
+    - They will be kept until 10% of the expiration duration is remaining or 10 seconds, whichever is longer (but at a maximum of 1 minute).
+- JWT settings are now correctly displayed on the Setting dialogue.
+
+And, tips about JWT Authentication on CouchDB have been added to the documentation (docs/tips/jwt-on-couchdb.md).
+
+#### Other fixes
+
+- Receiving non-latest revisions no longer causes unexpected overwrites.
+    - On receiving revisions that made conflicting changes, we are still able to handle them.
+
+### Improved
+
+- No longer duplicated message notifications are shown when a connection to the remote server fails.
+    - Instead, a single notification is shown, and it will be kept on the notification area inside the editor until the situation is resolved.
+- The notification area is no longer imposing, distracting, and overwhelming.
+    - With a pale background, but bordered and with icons.
+
 ## 0.25.24
 
 04th November, 2025
