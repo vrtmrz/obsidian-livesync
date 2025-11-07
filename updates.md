@@ -4,6 +4,28 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.26
+
+07th November, 2025
+
+### Improved
+
+- Some JWT notes have been added to the setting dialogue (#742).
+
+### Fixed
+
+- No longer wrong values encoded into the QR code.
+- We can acknowledge why the QR codes have not been generated.
+    - Probably too large a dataset to encode. When this happens, please consider using Setup-URI via text instead of QR code, or reduce the settings temporarily.
+
+### Refactored
+
+- Some dependencies have been updated.
+- Internal functions have been modularised into `octagonal-wheels` packages and are well tested.
+    - `dataobject/Computed` for caching computed values.
+    - `encodeAnyArray/decodeAnyArray` for encoding and decoding any array-like data into compact strings (#729).
+- Fixed importing from the parent project in library codes. (#729).
+
 ## 0.25.25
 
 06th November, 2025
@@ -103,53 +125,6 @@ up your own TURN server for your FQDN, if possible.
 - Sending configuration via Peer-to-Peer connection is not compatible with older versions.
     - Please upgrade all devices to v0.25.24.beta1 or later to use this feature again.
     - This is due to security improvements in the encryption scheme.
-
-## 0.25.23
-
-26th October, 2025
-
-The next version we are preparing (you know that as 0.25.23.beta1) is now still on beta, resulting in this rather unfortunate versioning situation. Apologies for the confusion. The next v0.25.23.beta2 will be v0.25.24.beta1. In other words, this is a v0.25.22.patch-1 actually, but possibly not allowed by Obsidian's rule.
-(Perhaps we ought to declare 1.0.0 with a little more confidence. The current minor part has been effectively a major one for a long time. If it were 1.22.1 and 1.23.0.beta1, no confusion ).
-
-### Fixed
-
-- We are now able to enable optional features correctly again (#732).
-- No longer oversized files have been processed, furthermore.
-
-    - Before creating a chunk, the file is verified as the target.
-    - The behaviour upon receiving replication has been changed as follows:
-        - If the remote file is oversized, it is ignored.
-        - If not, but while the local file is oversized, it is also ignored.
-
-- We are now able to enable optional features correctly again (#732).
-- No longer oversized files have been processed, furthermore.
-    - Before creating a chunk, the file is verified as the target.
-    - The behaviour upon receiving replication has been changed as follows:
-        - If the remote file is oversized, it is ignored.
-        - If not, but while the local file is oversized, it is also ignored.
-
-## 0.25.22
-
-15th October, 2025
-
-### Fixed
-
-- Fixed a bug that caused wrong event bindings and flag inversion (#727)
-    - This caused following issues:
-        - In some cases, settings changes were not applied or saved correctly.
-        - Automatic synchronisation did not begin correctly.
-
-### Improved
-
-- Too large diffs are not shown in the file comparison view, due to performance reasons.
-
-### Notes
-
-- The checking algorithm implemented in 0.25.20 is also raised as PR (#237). And completely I merged it manually.
-    - Sorry for lacking merging this PR, and let me say thanks to the great contribution, @bioluks !
-- Known issues:
-    - Sync on Editor save seems not to work correctly in some cases.
-        - I am investigating this issue. If you have any information, please let me know.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
