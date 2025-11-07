@@ -65,5 +65,5 @@ export const ICHeaderLength = ICHeader.length;
 export const ICXHeader = "ix:";
 
 export const FileWatchEventQueueMax = 10;
-export const configURIBase = "obsidian://setuplivesync?settings=";
-export const configURIBaseQR = "obsidian://setuplivesync?settingsQR=";
+
+export { configURIBase, configURIBaseQR } from "../lib/src/common/types.ts";

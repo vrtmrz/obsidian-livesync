@@ -77,6 +77,9 @@ export class ModuleSetupObsidian extends AbstractObsidianModule {
     async encodeQR() {
         const settingString = encodeSettingsToQRCodeData(this.settings);
         const codeSVG = encodeQR(settingString, OutputFormat.SVG);
+        if (codeSVG == "") {
+            return "";
+        }
         const msg = $msg("Setup.QRCode", { qr_image: codeSVG });
         await this.core.confirm.confirmWithMessage("Settings QR Code", msg, ["OK"], "OK");
         return await Promise.resolve(codeSVG);

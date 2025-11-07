@@ -243,6 +243,10 @@
             disabled={!isUseJWT}
         ></textarea>
     </InputRow>
+    <InfoNote>
+        For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8
+        PEM-formatted private key.
+    </InfoNote>
     <InputRow label="JWT Key ID (kid)">
         <input
             type="text"
