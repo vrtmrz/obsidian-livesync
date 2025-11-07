@@ -28,7 +28,7 @@ openssl ecparam -name secp521r1 -genkey -noout | openssl pkcs8 -topk8 -inform PE
 openssl ec -in private_key.pem -pubout -outform PEM -out public_key.pem
 ```
 
-> [!More tip]
+> [!TIP]
 > A key generator will be provided again in a future version of the user interface.
 
 ### 2. Configure CouchDB to accept JWT tokens
