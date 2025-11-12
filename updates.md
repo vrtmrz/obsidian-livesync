@@ -4,6 +4,25 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.27
+
+12th November, 2025
+
+### Improved
+
+- Now we can switch the database adapter between IndexedDB and IDB without rebuilding (#747).
+    - Just a local migration will be required, but faster than a full rebuild.
+- No longer checking for the adapter by `Doctor`.
+
+### Changes
+
+- The default adapter is reverted to IDB to avoid memory leaks (#747).
+
+### Fixed (?)
+
+- Reverted QR code library to v1.4.4 (To make sure #752).
+
+
 ## 0.25.26
 
 07th November, 2025
