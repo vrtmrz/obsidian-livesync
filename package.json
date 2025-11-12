@@ -95,7 +95,7 @@
         "idb": "^8.0.3",
         "minimatch": "^10.0.2",
         "octagonal-wheels": "^0.1.44",
-        "qrcode-generator": "^2.0.4",
+        "qrcode-generator": "^1.4.4",
         "trystero": "^0.22.0",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }

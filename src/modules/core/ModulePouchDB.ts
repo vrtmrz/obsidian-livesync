@@ -1,6 +1,7 @@
 import { AbstractModule } from "../AbstractModule";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import type { LiveSyncCore } from "../../main";
+import { ExtraSuffixIndexedDB } from "../../lib/src/common/types";
 
 export class ModulePouchDB extends AbstractModule {
     _createPouchDBInstance<T extends object>(
@@ -12,7 +13,7 @@ export class ModulePouchDB extends AbstractModule {
             optionPass.adapter = "indexeddb";
             //@ts-ignore :missing def
             optionPass.purged_infos_limit = 1;
-            return new PouchDB(name + "-indexeddb", optionPass);
+            return new PouchDB(name + ExtraSuffixIndexedDB, optionPass);
         }
         return new PouchDB(name, optionPass);
     }

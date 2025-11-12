@@ -3,12 +3,16 @@ import {
     E2EEAlgorithms,
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
+    SuffixDatabaseName,
 } from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
+import { PouchDB } from "../../../lib/src/pouchdb/pouchdb-browser";
+import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
+import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
@@ -26,17 +30,88 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     });
 
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("useIndexedDBAdapter", { invert: true, holdValue: true });
-
-        // new Setting(paneEl)
-        //     .autoWireToggle("doNotUseFixedRevisionForChunks", { holdValue: true })
-        //     .setClass("wizardHidden");
+        const migrateAllToIndexedDB = async () => {
+            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
+            const options = {
+                adapter: "indexeddb",
+                //@ts-ignore :missing def
+                purged_infos_limit: 1,
+                auto_compaction: false,
+                deterministic_revs: true,
+            };
+            const openTo = () => {
+                return new PouchDB(dbToName, options);
+            };
+            if (await migrateDatabases("to IndexedDB", this.plugin.localDatabase.localDatabase, openTo)) {
+                Logger(
+                    "Migration to IndexedDB completed. Obsidian will be restarted with new configuration immediately.",
+                    LOG_LEVEL_NOTICE
+                );
+                this.plugin.settings.useIndexedDBAdapter = true;
+                await this.services.setting.saveSettingData();
+                this.services.appLifecycle.performRestart();
+            }
+        };
+        const migrateAllToIDB = async () => {
+            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName;
+            const options = {
+                adapter: "idb",
+                auto_compaction: false,
+                deterministic_revs: true,
+            };
+            const openTo = () => {
+                return new PouchDB(dbToName, options);
+            };
+            if (await migrateDatabases("to IDB", this.plugin.localDatabase.localDatabase, openTo)) {
+                Logger(
+                    "Migration to IDB completed. Obsidian will be restarted with new configuration immediately.",
+                    LOG_LEVEL_NOTICE
+                );
+                this.plugin.settings.useIndexedDBAdapter = false;
+                await this.services.setting.saveSettingData();
+                this.services.appLifecycle.performRestart();
+            }
+        };
+        {
+            const infoClass = this.editingSettings.useIndexedDBAdapter ? "op-warn" : "op-warn-info";
+            paneEl.createDiv({
+                text: "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.",
+                cls: infoClass,
+            });
+            paneEl.createDiv({
+                text: "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.",
+                cls: "op-warn-info",
+            });
+            const setting = new Setting(paneEl)
+                .setName("Database Adapter")
+                .setDesc("Select the database adapter to use. ");
+            const el = setting.controlEl.createDiv({});
+            el.setText(`Current adapter: ${this.editingSettings.useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
+            if (!this.editingSettings.useIndexedDBAdapter) {
+                setting.addButton((button) => {
+                    button.setButtonText("Switch to IndexedDB").onClick(async () => {
+                        Logger("Migrating all data to IndexedDB...", LOG_LEVEL_NOTICE);
+                        await migrateAllToIndexedDB();
+                        Logger(
+                            "Migration to IndexedDB completed. Please switch the adapter and restart Obsidian.",
+                            LOG_LEVEL_NOTICE
+                        );
+                    });
+                });
+            } else {
+                setting.addButton((button) => {
+                    button.setButtonText("Switch to IDB").onClick(async () => {
+                        Logger("Migrating all data to IDB...", LOG_LEVEL_NOTICE);
+                        await migrateAllToIDB();
+                        Logger(
+                            "Migration to IDB completed. Please switch the adapter and restart Obsidian.",
+                            LOG_LEVEL_NOTICE
+                        );
+                    });
+                });
+            }
+        }
         new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
-
-        this.addOnSaved("useIndexedDBAdapter", async () => {
-            await this.saveAllDirtySettings();
-            await this.rebuildDB("localOnly");
-        });
     });
 
     void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
