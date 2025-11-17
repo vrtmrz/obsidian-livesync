@@ -30,11 +30,19 @@ jobs:
         npm ci
         npm run build --if-present
     # Package the required files into a zip
+  - name: Determine Asset Suffix
+      id: vars
+      run: |
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          echo "asset_suffix=" >> $GITHUB_OUTPUT
+        else
+          echo "asset_suffix=-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        fi
     - name: Package
       run: |
         mkdir ${{ github.event.repository.name }}
         cp main.js manifest.json styles.css README.md ${{ github.event.repository.name }}
-        zip -r ${{ github.event.repository.name }}.zip ${{ github.event.repository.name }}
+        zip -r ${{ github.event.repository.name }}${{ steps.vars.outputs.asset_suffix }}.zip ${{ github.event.repository.name }}
     # Create the release on github
     # - name: Create Release
     #   id: create_release
@@ -91,14 +99,6 @@ jobs:
     #     asset_path: ./styles.css
     #     asset_name: styles.css
     #     asset_content_type: text/css
-    - name: Determine Asset Suffix
-      id: vars
-      run: |
-        if [ "${{ github.ref_name }}" = "main" ]; then
-          echo "asset_suffix=" >> $GITHUB_OUTPUT
-        else
-          echo "asset_suffix=-${{ github.ref_name }}" >> $GITHUB_OUTPUT
-        fi
     - name: Create Release and Upload Assets
       uses: softprops/action-gh-release@v2
       with:
@@ -108,5 +108,5 @@ jobs:
           manifest.json
           styles.css
         name: ${{ steps.version.outputs.tag }}${{ steps.vars.outputs.asset_suffix }}
-        tag_name: ${{ steps.version.outputs.tag }}
+        tag_name: ${{ steps.version.outputs.tag }}${{ steps.vars.outputs.asset_suffix }}
         draft: true
