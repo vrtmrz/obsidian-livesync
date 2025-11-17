@@ -34,12 +34,17 @@ import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { P2PLogCollector } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { LiveSyncError } from "@/lib/src/common/LSError.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
 // DI the log again.
 setGlobalLogFunction((message: any, level?: number, key?: string) => {
-    const entry = { message, level, key } as LogEntry;
+    const messageX =
+        message instanceof Error
+            ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
+            : message;
+    const entry = { message: messageX, level, key } as LogEntry;
     logStore.enqueue(entry);
 });
 let recentLogs = [] as string[];
@@ -398,19 +403,29 @@ export class ModuleLog extends AbstractObsidianModule {
         const vaultName = this.services.vault.getVaultName();
         const now = new Date();
         const timestamp = now.toLocaleString();
+        let errorInfo = "";
+        if (message instanceof Error) {
+            if (message instanceof LiveSyncError) {
+                errorInfo = `${message.cause?.name}:${message.cause?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${message.cause?.stack}`;
+            } else {
+                const thisStack = new Error().stack;
+                errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}\n[LogCallStack]: ${thisStack}`;
+            }
+        }
         const messageContent =
             typeof message == "string"
                 ? message
                 : message instanceof Error
-                  ? `${message.name}:${message.message}`
+                  ? `${errorInfo}`
                   : JSON.stringify(message, null, 2);
-        if (message instanceof Error) {
-            // debugger;
-            console.dir(message.stack);
-        }
         const newMessage = timestamp + "->" + messageContent;
-
-        console.log(vaultName + ":" + newMessage);
+        if (message instanceof Error) {
+            console.error(vaultName + ":" + newMessage);
+        } else if (level >= LOG_LEVEL_INFO) {
+            console.log(vaultName + ":" + newMessage);
+        } else {
+            console.debug(vaultName + ":" + newMessage);
+        }
         if (!this.settings?.showOnlyIconsOnEditor) {
             this.statusLog.value = messageContent;
         }

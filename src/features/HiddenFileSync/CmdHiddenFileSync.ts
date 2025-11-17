@@ -722,6 +722,13 @@ Offline Changed files: ${processFiles.length}`;
                     } else {
                         this._log(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
                     }
+                    // const pat = this.settings.syncInternalFileOverwritePatterns;
+                    const regExp = getFileRegExp(this.settings, "syncInternalFileOverwritePatterns");
+                    if (regExp.some((r) => r.test(stripAllPrefixes(path)))) {
+                        this._log(`Overwrite rule applied for conflicted hidden file: ${path}`, LOG_LEVEL_INFO);
+                        await this.resolveByNewerEntry(id, path, doc, revA, revB);
+                        return [];
+                    }
                     return [{ path, revA, revB, id, doc }];
                 }
                 // When not JSON file, resolve conflicts by choosing a newer one.
