@@ -31,13 +31,13 @@ jobs:
         npm run build --if-present
     # Package the required files into a zip
     - name: Determine Asset Suffix
-        id: vars
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "asset_suffix=" >> $GITHUB_OUTPUT
-          else
-            echo "asset_suffix=-${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
+      id: vars
+      run: |
+        if [ "${{ github.ref_name }}" = "main" ]; then
+          echo "asset_suffix=" >> $GITHUB_OUTPUT
+        else
+          echo "asset_suffix=-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        fi
     - name: Package
       run: |
         mkdir ${{ github.event.repository.name }}
