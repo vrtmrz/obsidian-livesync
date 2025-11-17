@@ -10,19 +10,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
         submodules: recursive
     - name: Use Node.js
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v4
       with:
-        node-version: '22.x' # You might need to adjust this value to your own version
+        node-version: '24.x' # You might need to adjust this value to your own version
     # Get the version number and put it in a variable
     - name: Get Version
       id: version
       run: |
-        echo "::set-output name=tag::$(git describe --abbrev=0 --tags)"
+        echo "tag=$(git describe --abbrev=0 --tags)" >> $GITHUB_OUTPUT
     # Build the plugin
     - name: Build
       id: build
@@ -41,10 +41,10 @@ jobs:
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ github.ref }}
+        VERSION: ${{ steps.version.outputs.tag }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.ref }}
+        tag_name: ${{ steps.version.outputs.tag }}
+        release_name: ${{ steps.version.outputs.tag }}
         draft: true
         prerelease: false
     # Upload the packaged release file
