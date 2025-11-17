@@ -107,6 +107,6 @@ jobs:
           main.js
           manifest.json
           styles.css
-      name: ${{ steps.version.outputs.tag }}${{ steps.vars.outputs.asset_suffix }}
-      tag_name: ${{ steps.version.outputs.tag }}
-      draft: true
+        name: ${{ steps.version.outputs.tag }}${{ steps.vars.outputs.asset_suffix }}
+        tag_name: ${{ steps.version.outputs.tag }}
+        draft: true
