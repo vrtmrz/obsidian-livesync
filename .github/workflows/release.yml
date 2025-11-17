@@ -36,59 +36,77 @@ jobs:
         cp main.js manifest.json styles.css README.md ${{ github.event.repository.name }}
         zip -r ${{ github.event.repository.name }}.zip ${{ github.event.repository.name }}
     # Create the release on github
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ steps.version.outputs.tag }}
+    # - name: Create Release
+    #   id: create_release
+    #   uses: actions/create-release@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     VERSION: ${{ steps.version.outputs.tag }}
+    #   with:
+    #     tag_name: ${{ steps.version.outputs.tag }}
+    #     release_name: ${{ steps.version.outputs.tag }}
+    #     draft: true
+    #     prerelease: false
+    # # Upload the packaged release file
+    # - name: Upload zip file
+    #   id: upload-zip
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_path: ./${{ github.event.repository.name }}.zip
+    #     asset_name: ${{ github.event.repository.name }}-${{ steps.version.outputs.tag }}.zip
+    #     asset_content_type: application/zip
+    # # Upload the main.js
+    # - name: Upload main.js
+    #   id: upload-main
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }} 
+    #     asset_path: ./main.js
+    #     asset_name: main.js
+    #     asset_content_type: text/javascript
+    # # Upload the manifest.json
+    # - name: Upload manifest.json
+    #   id: upload-manifest
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }} 
+    #     asset_path: ./manifest.json
+    #     asset_name: manifest.json
+    #     asset_content_type: application/json
+    # # Upload the style.css
+    # - name: Upload styles.css
+    #   id: upload-css
+    #   uses: actions/upload-release-asset@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }} 
+    #     asset_path: ./styles.css
+    #     asset_name: styles.css
+    #     asset_content_type: text/css
+    - name: Determine Asset Suffix
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "asset_suffix=" >> $GITHUB_OUTPUT
+          else
+            echo "asset_suffix=-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+    - name: Create Release and Upload Assets
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ steps.version.outputs.tag }}
-        release_name: ${{ steps.version.outputs.tag }}
-        draft: true
-        prerelease: false
-    # Upload the packaged release file
-    - name: Upload zip file
-      id: upload-zip
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ github.event.repository.name }}.zip
-        asset_name: ${{ github.event.repository.name }}-${{ steps.version.outputs.tag }}.zip
-        asset_content_type: application/zip
-    # Upload the main.js
-    - name: Upload main.js
-      id: upload-main
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} 
-        asset_path: ./main.js
-        asset_name: main.js
-        asset_content_type: text/javascript
-    # Upload the manifest.json
-    - name: Upload manifest.json
-      id: upload-manifest
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} 
-        asset_path: ./manifest.json
-        asset_name: manifest.json
-        asset_content_type: application/json
-    # Upload the style.css
-    - name: Upload styles.css
-      id: upload-css
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} 
-        asset_path: ./styles.css
-        asset_name: styles.css
-        asset_content_type: text/css
-    # TODO: release notes???
+        files: |
+          ${{ github.event.repository.name }}${{ steps.vars.outputs.asset_suffix }}.zip
+          main.js
+          manifest.json
+          styles.css
+      name: ${{ steps.version.outputs.tag }}${{ steps.vars.outputs.asset_suffix }}
+      tag_name: ${{ steps.version.outputs.tag }}
+      draft: true
