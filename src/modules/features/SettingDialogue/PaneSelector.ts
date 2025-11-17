@@ -117,5 +117,26 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                     await addDefaultPatterns(defaultSkipPatternXPlat);
                 });
             });
+
+        const overwritePatterns = new Setting(paneEl)
+            .setName("Overwrite patterns")
+            .setClass("wizardHidden")
+            .setDesc("Patterns to match files for overwriting instead of merging");
+        const patTarget2 = splitCustomRegExpList(this.editingSettings.syncInternalFileOverwritePatterns, ",");
+        mount(MultipleRegExpControl, {
+            target: overwritePatterns.controlEl,
+            props: {
+                patterns: patTarget2,
+                originals: [...patTarget2],
+                apply: async (newPatterns: CustomRegExpSource[]) => {
+                    this.editingSettings.syncInternalFileOverwritePatterns = constructCustomRegExpList(
+                        newPatterns,
+                        ","
+                    );
+                    await this.saveAllDirtySettings();
+                    this.display();
+                },
+            },
+        });
     });
 }

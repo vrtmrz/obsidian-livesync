@@ -62,12 +62,19 @@ export class ModuleLiveSyncMain extends AbstractModule {
 
     _wireUpEvents() {
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
-            this.localDatabase.settings = settings;
-            setLang(settings.displayLanguage);
-            eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
-        });
-        eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
-            fireAndForget(() => this.core.services.setting.realiseSetting());
+            fireAndForget(async () => {
+                try {
+                    await this.core.services.setting.realiseSetting();
+                    const lang = this.core.services.setting.currentSettings()?.displayLanguage ?? undefined;
+                    if (lang !== undefined) {
+                        setLang(this.core.services.setting.currentSettings()?.displayLanguage);
+                    }
+                    eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
+                } catch (e) {
+                    this._log(`Error in Setting Save Event`, LOG_LEVEL_NOTICE);
+                    this._log(e, LOG_LEVEL_VERBOSE);
+                }
+            });
         });
         return Promise.resolve(true);
     }

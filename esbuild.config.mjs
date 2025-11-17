@@ -12,7 +12,7 @@ import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
 import { terserOption } from "./terser.config.mjs";
 import path from "node:path";
 
-const prod = process.argv[2] === "production";
+const prod = process.argv[2] === "production" || process.env?.BUILD_MODE === "production";
 const keepTest = true; //!prod;
 
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
