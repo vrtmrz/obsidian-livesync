@@ -316,6 +316,11 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
         // this.core.ignoreFiles = this.settings.ignoreFiles.split(",").map(e => e.trim());
         eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
     }
+
+    private _currentSettings(): ObsidianLiveSyncSettings {
+        return this.settings;
+    }
+
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
         services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
@@ -323,6 +328,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
         services.setting.handleDecryptSettings(this._decryptSettings.bind(this));
         services.setting.handleAdjustSettings(this._adjustSettings.bind(this));
         services.setting.handleLoadSettings(this._loadSettings.bind(this));
+        services.setting.handleCurrentSettings(this._currentSettings.bind(this));
         services.setting.handleSaveDeviceAndVaultName(this._saveDeviceAndVaultName.bind(this));
         services.setting.handleSaveSettingData(this._saveSettingData.bind(this));
     }

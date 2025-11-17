@@ -4,6 +4,17 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.30
+
+17th November, 2025
+
+So sorry for the quick follow-up release, due to a humble mistake in a quick causing a matter.
+
+### Fixed
+
+- Now we can save settings correctly again (#756).
+
+
 ## ~~0.25.28~~ 0.25.29
 (0.25.28 was skipped due to a packaging issue.)
 
