@@ -77,7 +77,7 @@ Please enable them from the settings screen after setup is complete.`,
 
     async rebuildEverything() {
         await this.services.setting.suspendExtraSync();
-        await this.askUseNewAdapter();
+        // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
@@ -167,28 +167,29 @@ Please enable them from the settings screen after setup is complete.`,
         await this.services.replication.onBeforeReplicate(false); //TODO: Check actual need of this.
         await this.core.saveSettings();
     }
-    async askUseNewAdapter() {
-        if (!this.core.settings.useIndexedDBAdapter) {
-            const message = `Now this core has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
-            const CHOICE_YES = "Yes, disable and use latest";
-            const CHOICE_NO = "No, keep compatibility";
-            const choices = [CHOICE_YES, CHOICE_NO];
-
-            const ret = await this.core.confirm.confirmWithMessage(
-                "Database adapter",
-                message,
-                choices,
-                CHOICE_YES,
-                10
-            );
-            if (ret == CHOICE_YES) {
-                this.core.settings.useIndexedDBAdapter = true;
-            }
-        }
-    }
+    // No longer needed, both adapters have each advantages and disadvantages.
+    // async askUseNewAdapter() {
+    //     if (!this.core.settings.useIndexedDBAdapter) {
+    //         const message = `Now this core has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
+    //         const CHOICE_YES = "Yes, disable and use latest";
+    //         const CHOICE_NO = "No, keep compatibility";
+    //         const choices = [CHOICE_YES, CHOICE_NO];
+    //
+    //         const ret = await this.core.confirm.confirmWithMessage(
+    //             "Database adapter",
+    //             message,
+    //             choices,
+    //             CHOICE_YES,
+    //             10
+    //         );
+    //         if (ret == CHOICE_YES) {
+    //             this.core.settings.useIndexedDBAdapter = true;
+    //         }
+    //     }
+    // }
     async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean) {
         await this.services.setting.suspendExtraSync();
-        await this.askUseNewAdapter();
+        // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         await this.suspendReflectingDatabase();
         await this.services.setting.realiseSetting();
