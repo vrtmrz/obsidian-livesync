@@ -3,6 +3,14 @@
 Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
+## 0.25.31
+
+18th November, 2025
+
+### Fixed
+
+- Now fetching configuration from the server can handle the empty remote correctly (reported on #756).
+- No longer asking to switch adapters during rebuilding.
 
 ## 0.25.30
 
@@ -14,19 +22,22 @@ So sorry for the quick follow-up release, due to a humble mistake in a quick cau
 
 - Now we can save settings correctly again (#756).
 
-
 ## ~~0.25.28~~ 0.25.29
+
 (0.25.28 was skipped due to a packaging issue.)
 
 17th November, 2025
 
 ### New feature
+
 - We can now configure hidden file synchronisation to always overwrite with the latest version (#579).
 
 ### Fixed
+
 - Timing dependency issues during initialisation have been mitigated (#714)
 
 ### Improved
+
 - Error logs now contain stack-traces for better inspection.
 
 ## 0.25.27
@@ -46,7 +57,6 @@ So sorry for the quick follow-up release, due to a humble mistake in a quick cau
 ### Fixed (?)
 
 - Reverted QR code library to v1.4.4 (To make sure #752).
-
 
 ## 0.25.26
 
