@@ -9,14 +9,14 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 02nd December, 2025
 
 Now I am back from a short (?) break! Thank you all for your patience. (It is nothing major, but the first half of the year has finally come to an end).
-Anyway, I will release the things a bit a bit. I think that we need a rehabilitation or getting gears in again.
+Anyway, I will release the things a bit by bit. I think that we need a rehabilitation or getting gears in again.
 
 ### Improved
 
-- Now the plugin warns when we are on the several file-related situations that may cause unexpected behaviour (#300).
+- Now the plugin warns when we are in several file-related situations that may cause unexpected behaviour (#300).
     - These errors are displayed alongside issues such as file size exceeding limits.
     - Such situations include:
-        - When the document has the name which is not supported by some file systems.
+        - When the document has a name which is not supported by some file systems.
         - When the vault has the same file names with different letter cases.
 
 ## 0.25.31
