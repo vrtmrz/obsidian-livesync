@@ -3,6 +3,22 @@
 Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
+
+## 0.25.32
+
+02nd December, 2025
+
+Now I am back from a short (?) break! Thank you all for your patience. (It is nothing major, but the first half of the year has finally come to an end).
+Anyway, I will release the things a bit a bit. I think that we need a rehabilitation or getting gears in again.
+
+### Improved
+
+- Now the plugin warns when we are on the several file-related situations that may cause unexpected behaviour (#300).
+    - These errors are displayed alongside issues such as file size exceeding limits.
+    - Such situations include:
+        - When the document has the name which is not supported by some file systems.
+        - When the vault has the same file names with different letter cases.
+
 ## 0.25.31
 
 18th November, 2025
