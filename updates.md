@@ -4,6 +4,26 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.33
+
+05th December, 2025
+
+### New feature
+
+- We can analyse the local database with the `Analyse database usage` command.
+    - This command makes a TSV-style report of the database usage, which can be pasted into spreadsheet applications.
+        - The report contains the number of unique chunks and shared chunks for each document revision.
+            - Unique chunks indicate the actual consumption.
+            - Shared chunks indicate the reference counts from other chunks with no consumption.
+        - We can find which notes or files are using large amounts of storage in the database. Or which notes cannot share chunks effectively.
+        - This command is useful when optimising the database size or investigating an unexpectedly large database size.
+- We can reset the notification threshold and check the remote usage at once with the `Reset notification threshold and check the remote database usage` command.
+- Commands are available from the Command Palette, or `Hatch` pane in the settings dialogue.
+
+### Fixed
+
+- Now the plug-in resets the remote size notification threshold after rebuild.
+
 ## 0.25.32
 
 02nd December, 2025
