@@ -23,6 +23,8 @@ export const EVENT_REQUEST_RUN_DOCTOR = "request-run-doctor";
 export const EVENT_REQUEST_RUN_FIX_INCOMPLETE = "request-run-fix-incomplete";
 export const EVENT_ON_UNRESOLVED_ERROR = "on-unresolved-error";
 
+export const EVENT_ANALYSE_DB_USAGE = "analyse-db-usage";
+export const EVENT_REQUEST_CHECK_REMOTE_SIZE = "request-check-remote-size";
 // export const EVENT_FILE_CHANGED = "file-changed";
 
 declare global {
@@ -42,6 +44,8 @@ declare global {
         [EVENT_REQUEST_RUN_DOCTOR]: string;
         [EVENT_REQUEST_RUN_FIX_INCOMPLETE]: undefined;
         [EVENT_ON_UNRESOLVED_ERROR]: undefined;
+        [EVENT_ANALYSE_DB_USAGE]: undefined;
+        [EVENT_REQUEST_CHECK_REMOTE_SIZE]: undefined;
     }
 }
 

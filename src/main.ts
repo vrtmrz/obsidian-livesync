@@ -26,7 +26,7 @@ import { ModuleFileAccessObsidian } from "./modules/coreObsidian/ModuleFileAcces
 import { ModuleInputUIObsidian } from "./modules/coreObsidian/ModuleInputUIObsidian.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 
-import { ModuleCheckRemoteSize } from "./modules/coreFeatures/ModuleCheckRemoteSize.ts";
+import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.ts";
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
@@ -170,9 +170,7 @@ export default class ObsidianLiveSyncPlugin
         new ModuleRedFlag(this),
         new ModuleInteractiveConflictResolver(this, this),
         new ModuleObsidianGlobalHistory(this, this),
-        // Common modules
-        // Note: Platform-dependent functions are not entirely dependent on the core only, as they are from platform-dependent modules. Stubbing is sometimes required.
-        new ModuleCheckRemoteSize(this),
+        new ModuleCheckRemoteSize(this, this),
         // Test and Dev Modules
         new ModuleDev(this, this),
         new ModuleReplicateTest(this, this),

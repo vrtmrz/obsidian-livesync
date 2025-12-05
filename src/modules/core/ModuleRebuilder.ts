@@ -1,5 +1,6 @@
 import { delay } from "octagonal-wheels/promises";
 import {
+    DEFAULT_SETTINGS,
     FLAGMD_REDFLAG2_HR,
     FLAGMD_REDFLAG3_HR,
     LOG_LEVEL_NOTICE,
@@ -58,7 +59,7 @@ Please enable them from the settings screen after setup is complete.`,
     async rebuildRemote() {
         await this.services.setting.suspendExtraSync();
         this.core.settings.isConfigured = true;
-
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
         await this.services.setting.realiseSetting();
         await this.services.remote.markLocked();
         await this.services.remote.tryResetDatabase();
@@ -79,6 +80,7 @@ Please enable them from the settings screen after setup is complete.`,
         await this.services.setting.suspendExtraSync();
         // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
@@ -191,6 +193,7 @@ Please enable them from the settings screen after setup is complete.`,
         await this.services.setting.suspendExtraSync();
         // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
         await this.suspendReflectingDatabase();
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
