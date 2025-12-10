@@ -1,8 +1,33 @@
 # 0.25
-
 Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
+
+## 0.25.34
+
+10th December, 2025
+
+### Behaviour change
+
+- The plug-in automatically fetches the missing chunks even if `Fetch chunks on demand` is disabled.
+    - This change is to avoid loss of data when receiving a bulk of revisions.
+    - This can be prevented by enabling `Use Only Local Chunks` in the settings.
+- Storage application now saved during each event and restored on startup.
+- Synchronisation result application is also now saved during each event and restored on startup.
+    - These may avoid some unexpected loss of data when the editor crashes.
+
+### Fixed
+
+- Now the plug-in waits for the application of pended batch changes before the synchronisation starts.
+    - This may avoid some unexpected loss or unexpected conflicts.
+      Plug-in sends custom headers correctly when RequestAPI is used.
+- No longer causing unexpected chunk creation during `Reset synchronisation on This Device` with bucket sync.
+
+### Refactored
+
+- Synchronisation result application process has been refactored.
+- Storage application process has been refactored.
+    - Please report if you find any unexpected behaviour after this update. A bit of large refactoring.
 
 ## 0.25.33
 
