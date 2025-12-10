@@ -49,6 +49,10 @@ export class ModuleInitializerFile extends AbstractModule {
         if (showingNotice) {
             this._log("Initializing", LOG_LEVEL_NOTICE, "syncAll");
         }
+        if (isInitialized) {
+            this._log("Restoring storage state", LOG_LEVEL_VERBOSE);
+            await this.core.storageAccess.restoreState();
+        }
 
         this._log("Initialize and checking database files");
         this._log("Checking deleted files");

@@ -240,7 +240,7 @@ Please enable them from the settings screen after setup is complete.`,
     async fetchRemoteChunks() {
         if (
             !this.core.settings.doNotSuspendOnFetching &&
-            this.core.settings.readChunksOnline &&
+            !this.core.settings.useOnlyLocalChunk &&
             this.core.settings.remoteType == REMOTE_COUCHDB
         ) {
             this._log(`Fetching chunks`, LOG_LEVEL_NOTICE);

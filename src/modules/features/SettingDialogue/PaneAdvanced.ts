@@ -22,6 +22,9 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         new Setting(paneEl)
             .setClass("wizardHidden")
             .autoWireToggle("readChunksOnline", { onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("useOnlyLocalChunk", { onUpdate: this.onlyOnCouchDB });
 
         new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("concurrencyOfReadChunksOnline", {
             clampMin: 10,

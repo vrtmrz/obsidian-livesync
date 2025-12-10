@@ -10,6 +10,7 @@ import type {
 import type { CustomRegExp } from "../../lib/src/common/utils";
 
 export interface StorageAccess {
+    restoreState(): Promise<void>;
     processWriteFile<T>(file: UXFileInfoStub | FilePathWithPrefix, proc: () => Promise<T>): Promise<T>;
     processReadFile<T>(file: UXFileInfoStub | FilePathWithPrefix, proc: () => Promise<T>): Promise<T>;
     isFileProcessing(file: UXFileInfoStub | FilePathWithPrefix): boolean;

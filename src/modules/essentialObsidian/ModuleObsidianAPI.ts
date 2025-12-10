@@ -58,7 +58,20 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
     async __fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
         const body = opts?.body as string;
 
-        const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
+        const optHeaders = {} as Record<string, string>;
+        if (opts && "headers" in opts) {
+            if (opts.headers instanceof Headers) {
+                // For Compatibility, mostly headers.entries() is supported, but not all environments.
+                opts.headers.forEach((value, key) => {
+                    optHeaders[key] = value;
+                });
+            } else {
+                for (const [key, value] of Object.entries(opts.headers as Record<string, string>)) {
+                    optHeaders[key] = value;
+                }
+            }
+        }
+        const transformedHeaders = { ...optHeaders };
         if (authHeader != "") transformedHeaders["authorization"] = authHeader;
         delete transformedHeaders["host"];
         delete transformedHeaders["Host"];
@@ -132,7 +145,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
             return "Network is offline";
         }
         // let authHeader = await this._authHeader.getAuthorizationHeader(auth);
-
         const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
             adapter: "http",
             auth: "username" in auth ? auth : undefined,
@@ -166,7 +178,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                     if (!("username" in auth)) {
                         headers.append("authorization", authHeader);
                     }
-
                     try {
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                         const response: Response = await (useRequestAPI

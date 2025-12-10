@@ -76,11 +76,11 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements Database
     async checkIsTargetFile(file: UXFileInfoStub | FilePathWithPrefix): Promise<boolean> {
         const path = getStoragePathFromUXFileInfo(file);
         if (!(await this.services.vault.isTargetFile(path))) {
-            this._log(`File is not target`, LOG_LEVEL_VERBOSE);
+            this._log(`File is not target: ${path}`, LOG_LEVEL_VERBOSE);
             return false;
         }
         if (shouldBeIgnored(path)) {
-            this._log(`File should be ignored`, LOG_LEVEL_VERBOSE);
+            this._log(`File should be ignored: ${path}`, LOG_LEVEL_VERBOSE);
             return false;
         }
         return true;

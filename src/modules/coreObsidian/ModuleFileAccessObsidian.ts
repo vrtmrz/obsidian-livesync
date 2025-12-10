@@ -52,12 +52,16 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
     vaultAccess!: SerializedFileAccess;
     vaultManager: StorageEventManager = new StorageEventManagerObsidian(this.plugin, this.core, this);
+
+    restoreState() {
+        return this.vaultManager.restoreState();
+    }
     private _everyOnload(): Promise<boolean> {
         this.core.storageAccess = this;
         return Promise.resolve(true);
     }
-    _everyOnFirstInitialize(): Promise<boolean> {
-        this.vaultManager.beginWatch();
+    async _everyOnFirstInitialize(): Promise<boolean> {
+        await this.vaultManager.beginWatch();
         return Promise.resolve(true);
     }
 
@@ -65,8 +69,8 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     //     this.vaultManager.flushQueue();
     // }
 
-    _everyCommitPendingFileEvent(): Promise<boolean> {
-        this.vaultManager.flushQueue();
+    async _everyCommitPendingFileEvent(): Promise<boolean> {
+        await this.vaultManager.waitForIdle();
         return Promise.resolve(true);
     }
 

@@ -9,25 +9,20 @@ import {
     LOG_LEVEL_VERBOSE,
     type FileEventType,
     type FilePath,
-    type FilePathWithPrefix,
     type UXFileInfoStub,
     type UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
-import { delay, fireAndForget } from "../../../lib/src/common/utils.ts";
+import { delay, fireAndForget, throttle } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem } from "../../../common/types.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import {
-    finishAllWaitingForTimeout,
-    finishWaitingForTimeout,
-    isWaitingForTimeout,
-    waitForTimeout,
-} from "octagonal-wheels/concurrency/task";
+import { isWaitingForTimeout } from "octagonal-wheels/concurrency/task";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
+import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 // import { InternalFileToUXFileInfo } from "../platforms/obsidian.ts";
 
 export type FileEvent = {
@@ -36,14 +31,29 @@ export type FileEvent = {
     oldPath?: string;
     cachedData?: string;
     skipBatchWait?: boolean;
+    cancelled?: boolean;
 };
+type WaitInfo = {
+    since: number;
+    type: FileEventType;
+    canProceed: PromiseWithResolvers<boolean>;
+    timerHandler: ReturnType<typeof setTimeout>;
+    event: FileEventItem;
+};
+const TYPE_SENTINEL_FLUSH = "SENTINEL_FLUSH";
+type FileEventItemSentinelFlush = {
+    type: typeof TYPE_SENTINEL_FLUSH;
+};
+type FileEventItemSentinel = FileEventItemSentinelFlush;
 
 export abstract class StorageEventManager {
-    abstract beginWatch(): void;
-    abstract flushQueue(): void;
+    abstract beginWatch(): Promise<void>;
+
     abstract appendQueue(items: FileEvent[], ctx?: any): Promise<void>;
-    abstract cancelQueue(key: string): void;
+
     abstract isWaiting(filename: FilePath): boolean;
+    abstract waitForIdle(): Promise<void>;
+    abstract restoreState(): Promise<void>;
 }
 
 export class StorageEventManagerObsidian extends StorageEventManager {
@@ -66,6 +76,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     // Necessary evil.
     cmdHiddenFileSync: HiddenFileSync;
 
+    /**
+     * Snapshot restoration promise.
+     * Snapshot will be restored before starting to watch vault changes.
+     * In designed time, this has been called from Initialisation process, which has been implemented on `ModuleInitializerFile.ts`.
+     */
+    snapShotRestored: Promise<void> | null = null;
+
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, storageAccess: StorageAccess) {
         super();
         this.storageAccess = storageAccess;
@@ -73,7 +90,18 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         this.core = core;
         this.cmdHiddenFileSync = this.plugin.getAddOn(HiddenFileSync.name) as HiddenFileSync;
     }
-    beginWatch() {
+
+    /**
+     * Restore the previous snapshot if exists.
+     * @returns
+     */
+    restoreState(): Promise<void> {
+        this.snapShotRestored = this._restoreFromSnapshot();
+        return this.snapShotRestored;
+    }
+
+    async beginWatch() {
+        await this.snapShotRestored;
         const plugin = this.plugin;
         this.watchVaultChange = this.watchVaultChange.bind(this);
         this.watchVaultCreate = this.watchVaultCreate.bind(this);
@@ -88,8 +116,6 @@ export class StorageEventManagerObsidian extends StorageEventManager {
         //@ts-ignore : Internal API
         plugin.registerEvent(plugin.app.vault.on("raw", this.watchVaultRawEvents));
         plugin.registerEvent(plugin.app.workspace.on("editor-change", this.watchEditorChange));
-
-        // plugin.fileEventQueue.startPipeline();
     }
     watchEditorChange(editor: any, info: any) {
         if (!("path" in info)) {
@@ -212,13 +238,13 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             null
         );
     }
+
     // Cache file and waiting to can be proceed.
     async appendQueue(params: FileEvent[], ctx?: any) {
         if (!this.core.settings.isConfigured) return;
         if (this.core.settings.suspendFileWatching) return;
         this.core.services.vault.markFileListPossiblyChanged();
         // Flag up to be reload
-        const processFiles = new Set<FilePath>();
         for (const param of params) {
             if (shouldBeIgnored(param.file.path)) {
                 continue;
@@ -261,7 +287,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             if (param.cachedData) {
                 cache = param.cachedData;
             }
-            this.enqueue({
+            void this.enqueue({
                 type,
                 args: {
                     file: file,
@@ -272,123 +298,291 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 skipBatchWait: param.skipBatchWait,
                 key: atomicKey,
             });
-            processFiles.add(file.path as FilePath);
-            if (oldPath) {
-                processFiles.add(oldPath as FilePath);
-            }
-        }
-        for (const path of processFiles) {
-            fireAndForget(() => this.startStandingBy(path));
         }
     }
-    bufferedQueuedItems = [] as FileEventItem[];
+    private bufferedQueuedItems = [] as (FileEventItem | FileEventItemSentinel)[];
+
+    /**
+     * Immediately take snapshot.
+     */
+    private _triggerTakeSnapshot() {
+        void this._takeSnapshot();
+    }
+    /**
+     * Trigger taking snapshot after throttled period.
+     */
+    triggerTakeSnapshot = throttle(() => this._triggerTakeSnapshot(), 100);
 
     enqueue(newItem: FileEventItem) {
-        const filename = newItem.args.file.path;
-        if (this.shouldBatchSave) {
-            Logger(`Request cancel for waiting of previous ${filename}`, LOG_LEVEL_DEBUG);
-            finishWaitingForTimeout(`storage-event-manager-batchsave-${filename}`);
-        }
-        this.bufferedQueuedItems.push(newItem);
-        // When deleting or renaming, the queue must be flushed once before processing subsequent processes to prevent unexpected race condition.
         if (newItem.type == "DELETE") {
-            return this.flushQueue();
+            // If the sentinel pushed, the runQueuedEvents will wait for idle before processing delete.
+            this.bufferedQueuedItems.push({
+                type: TYPE_SENTINEL_FLUSH,
+            });
+        }
+        this.updateStatus();
+        this.bufferedQueuedItems.push(newItem);
+
+        fireAndForget(() => this._takeSnapshot().then(() => this.runQueuedEvents()));
+    }
+
+    // Limit concurrent processing to reduce the IO load. file-processing + scheduler (1), so file events can be processed in 4 slots.
+    concurrentProcessing = Semaphore(5);
+
+    private _waitingMap = new Map<string, WaitInfo>();
+    private _waitForIdle: Promise<void> | null = null;
+
+    /**
+     * Wait until all queued events are processed.
+     * Subsequent new events will not be waited, but new events will not be added.
+     * @returns
+     */
+    waitForIdle(): Promise<void> {
+        if (this._waitingMap.size === 0) {
+            return Promise.resolve();
+        }
+        if (this._waitForIdle) {
+            return this._waitForIdle;
+        }
+        const promises = [...this._waitingMap.entries()].map(([key, waitInfo]) => {
+            return new Promise<void>((resolve) => {
+                waitInfo.canProceed.promise
+                    .then(() => {
+                        Logger(`Processing ${key}: Wait for idle completed`, LOG_LEVEL_DEBUG);
+                        // No op
+                    })
+                    .catch((e) => {
+                        Logger(`Processing ${key}: Wait for idle error`, LOG_LEVEL_INFO);
+                        Logger(e, LOG_LEVEL_VERBOSE);
+                        //no op
+                    })
+                    .finally(() => {
+                        resolve();
+                    });
+                this._proceedWaiting(key);
+            });
+        });
+        const waitPromise = Promise.all(promises).then(() => {
+            this._waitForIdle = null;
+            Logger(`All wait for idle completed`, LOG_LEVEL_VERBOSE);
+        });
+        this._waitForIdle = waitPromise;
+        return waitPromise;
+    }
+
+    /**
+     * Proceed waiting for the given key immediately.
+     */
+    private _proceedWaiting(key: string) {
+        const waitInfo = this._waitingMap.get(key);
+        if (waitInfo) {
+            waitInfo.canProceed.resolve(true);
+            clearTimeout(waitInfo.timerHandler);
+            this._waitingMap.delete(key);
+        }
+        this.triggerTakeSnapshot();
+    }
+    /**
+     * Cancel waiting for the given key.
+     */
+    private _cancelWaiting(key: string) {
+        const waitInfo = this._waitingMap.get(key);
+        if (waitInfo) {
+            waitInfo.canProceed.resolve(false);
+            clearTimeout(waitInfo.timerHandler);
+            this._waitingMap.delete(key);
+        }
+        this.triggerTakeSnapshot();
+    }
+    /**
+     * Add waiting for the given key.
+     * @param key
+     * @param event
+     * @param waitedSince Optional waited since timestamp to calculate the remaining delay.
+     */
+    private _addWaiting(key: string, event: FileEventItem, waitedSince?: number): WaitInfo {
+        if (this._waitingMap.has(key)) {
+            // Already waiting
+            throw new Error(`Already waiting for key: ${key}`);
+        }
+        const resolver = promiseWithResolvers<boolean>();
+        const now = Date.now();
+        const since = waitedSince ?? now;
+        const elapsed = now - since;
+        const maxDelay = this.batchSaveMaximumDelay * 1000;
+        const remainingDelay = Math.max(0, maxDelay - elapsed);
+        const nextDelay = Math.min(remainingDelay, this.batchSaveMinimumDelay * 1000);
+        // x*<------- maxDelay --------->*
+        // x*<-- minDelay -->*
+        // x*       x<-- nextDelay -->*
+        // x*              x<-- Capped-->*
+        // x*                    x.......*
+        // x: event
+        // *: save
+        // When at event (x) At least, save (*) within maxDelay, but maintain minimum delay between saves.
+
+        if (elapsed >= maxDelay) {
+            // Already exceeded maximum delay, do not wait.
+            Logger(`Processing ${key}: Batch save maximum delay already exceeded: ${event.type}`, LOG_LEVEL_DEBUG);
+        } else {
+            Logger(`Processing ${key}: Adding waiting for batch save: ${event.type} (${nextDelay}ms)`, LOG_LEVEL_DEBUG);
+        }
+        const waitInfo: WaitInfo = {
+            since: since,
+            type: event.type,
+            event: event,
+            canProceed: resolver,
+            timerHandler: setTimeout(() => {
+                Logger(`Processing ${key}: Batch save timeout reached: ${event.type}`, LOG_LEVEL_DEBUG);
+                this._proceedWaiting(key);
+            }, nextDelay),
+        };
+        this._waitingMap.set(key, waitInfo);
+        this.triggerTakeSnapshot();
+        return waitInfo;
+    }
+
+    /**
+     * Process the given file event.
+     */
+    async processFileEvent(fei: FileEventItem) {
+        const releaser = await this.concurrentProcessing.acquire();
+        try {
+            this.updateStatus();
+            const filename = fei.args.file.path;
+            const waitingKey = `${filename}`;
+            const previous = this._waitingMap.get(waitingKey);
+            let isShouldBeCancelled = fei.skipBatchWait || false;
+            let previousPromise: Promise<boolean> = Promise.resolve(true);
+            let waitPromise: Promise<boolean> = Promise.resolve(true);
+            // 1. Check if there is previous waiting for the same file
+            if (previous) {
+                previousPromise = previous.canProceed.promise;
+                if (isShouldBeCancelled) {
+                    Logger(
+                        `Processing ${filename}: Requested to perform immediately, cancelling previous waiting: ${fei.type}`,
+                        LOG_LEVEL_DEBUG
+                    );
+                }
+                if (!isShouldBeCancelled && fei.type === "DELETE") {
+                    // For DELETE, cancel any previous waiting and proceed immediately
+                    // That because when deleting, we cannot read the file anymore.
+                    Logger(
+                        `Processing ${filename}: DELETE requested, cancelling previous waiting: ${fei.type}`,
+                        LOG_LEVEL_DEBUG
+                    );
+                    isShouldBeCancelled = true;
+                }
+                if (!isShouldBeCancelled && previous.type === fei.type) {
+                    // For the same type, we can cancel the previous waiting and proceed immediately.
+                    Logger(`Processing ${filename}: Cancelling previous waiting: ${fei.type}`, LOG_LEVEL_DEBUG);
+                    isShouldBeCancelled = true;
+                }
+                // 2. wait for the previous to complete
+                if (isShouldBeCancelled) {
+                    this._cancelWaiting(waitingKey);
+                    Logger(`Processing ${filename}: Previous cancelled: ${fei.type}`, LOG_LEVEL_DEBUG);
+                    isShouldBeCancelled = true;
+                }
+                if (!isShouldBeCancelled) {
+                    Logger(`Processing ${filename}: Waiting for previous to complete: ${fei.type}`, LOG_LEVEL_DEBUG);
+                    this._proceedWaiting(waitingKey);
+                    Logger(`Processing ${filename}: Previous completed: ${fei.type}`, LOG_LEVEL_DEBUG);
+                }
+            }
+            await previousPromise;
+            // 3. Check if shouldBatchSave is true
+            if (this.shouldBatchSave && !fei.skipBatchWait) {
+                // if type is CREATE or CHANGED, set waiting
+                if (fei.type == "CREATE" || fei.type == "CHANGED") {
+                    // 3.2. If true, set the queue, and wait for the waiting, or until timeout
+                    // (since is copied from previous waiting if exists to limit the maximum wait time)
+                    console.warn(`Since:`, previous?.since);
+                    const info = this._addWaiting(waitingKey, fei, previous?.since);
+                    waitPromise = info.canProceed.promise;
+                } else if (fei.type == "DELETE") {
+                    // For DELETE, cancel any previous waiting and proceed immediately
+                }
+                Logger(`Processing ${filename}: Waiting for batch save: ${fei.type}`, LOG_LEVEL_DEBUG);
+                const canProceed = await waitPromise;
+                if (!canProceed) {
+                    // 3.2.1. If cancelled by new queue, cancel subsequent process.
+                    Logger(`Processing ${filename}: Cancelled by new queue: ${fei.type}`, LOG_LEVEL_DEBUG);
+                    return;
+                }
+            }
+            // await this.handleFileEvent(fei);
+            await this.requestProcessQueue(fei);
+        } finally {
+            await this._takeSnapshot();
+            releaser();
         }
     }
-    concurrentProcessing = Semaphore(5);
-    waitedSince = new Map<FilePath | FilePathWithPrefix, number>();
-    async startStandingBy(filename: FilePath) {
-        // If waited, no need to start again (looping inside the function)
-        await skipIfDuplicated(`storage-event-manager-${filename}`, async () => {
-            Logger(`Processing ${filename}: Starting`, LOG_LEVEL_DEBUG);
-            const release = await this.concurrentProcessing.acquire();
-            try {
-                Logger(`Processing ${filename}: Started`, LOG_LEVEL_DEBUG);
-                let noMoreFiles = false;
-                do {
-                    const target = this.bufferedQueuedItems.find((e) => e.args.file.path == filename);
-                    if (target === undefined) {
-                        noMoreFiles = true;
-                        break;
-                    }
-                    const operationType = target.type;
+    async _takeSnapshot() {
+        const processingEvents = [...this._waitingMap.values()].map((e) => e.event);
+        const waitingEvents = this.bufferedQueuedItems;
+        const snapShot = [...processingEvents, ...waitingEvents];
+        await this.core.kvDB.set("storage-event-manager-snapshot", snapShot);
+        Logger(`Storage operation snapshot taken: ${snapShot.length} items`, LOG_LEVEL_DEBUG);
+        this.updateStatus();
+    }
+    async _restoreFromSnapshot() {
+        const snapShot = await this.core.kvDB.get<(FileEventItem | FileEventItemSentinel)[]>(
+            "storage-event-manager-snapshot"
+        );
+        if (snapShot && Array.isArray(snapShot) && snapShot.length > 0) {
+            console.warn(`Restoring snapshot: ${snapShot.length} items`);
+            Logger(`Restoring storage operation snapshot: ${snapShot.length} items`, LOG_LEVEL_VERBOSE);
+            // Restore the snapshot
+            // Note: Mark all items as skipBatchWait to prevent apply the off-line batch saving.
+            this.bufferedQueuedItems = snapShot.map((e) => ({ ...e, skipBatchWait: true }));
+            this.updateStatus();
+            await this.runQueuedEvents();
+        } else {
+            Logger(`No snapshot to restore`, LOG_LEVEL_VERBOSE);
+            // console.warn(`No snapshot to restore`);
+        }
+    }
+    runQueuedEvents() {
+        return skipIfDuplicated("storage-event-manager-run-queued-events", async () => {
+            do {
+                if (this.bufferedQueuedItems.length === 0) {
+                    break;
+                }
+                // 1. Get the first queued item
 
-                    // if (target.waitedFrom + this.batchSaveMaximumDelay > now) {
-                    //     this.requestProcessQueue(target);
-                    //     continue;
-                    // }
-                    const type = target.type;
-                    // If already cancelled by other operation, skip this.
-                    if (target.cancelled) {
-                        Logger(`Processing ${filename}: Cancelled (scheduled): ${operationType}`, LOG_LEVEL_DEBUG);
-                        this.cancelStandingBy(target);
-                        continue;
-                    }
-                    if (!target.skipBatchWait) {
-                        if (this.shouldBatchSave && (type == "CREATE" || type == "CHANGED")) {
-                            const waitedSince = this.waitedSince.get(filename);
-                            let canWait = true;
-                            const now = Date.now();
-                            if (waitedSince !== undefined) {
-                                if (waitedSince + this.batchSaveMaximumDelay * 1000 < now) {
-                                    Logger(
-                                        `Processing ${filename}: Could not wait no more: ${operationType}`,
-                                        LOG_LEVEL_INFO
-                                    );
-                                    canWait = false;
-                                }
-                            }
-                            if (canWait) {
-                                if (waitedSince === undefined) this.waitedSince.set(filename, now);
-                                target.batched = true;
-                                Logger(
-                                    `Processing ${filename}: Waiting for batch save delay: ${operationType}`,
-                                    LOG_LEVEL_DEBUG
-                                );
-                                this.updateStatus();
-                                const result = await waitForTimeout(
-                                    `storage-event-manager-batchsave-${filename}`,
-                                    this.batchSaveMinimumDelay * 1000
-                                );
-                                if (!result) {
-                                    Logger(
-                                        `Processing ${filename}: Cancelled by new queue: ${operationType}`,
-                                        LOG_LEVEL_DEBUG
-                                    );
-                                    // If could not wait for the timeout, possibly we got a new queue. therefore, currently processing one should be cancelled
-                                    this.cancelStandingBy(target);
-                                    continue;
-                                }
-                            }
-                        }
-                    } else {
-                        Logger(
-                            `Processing ${filename}:Requested to perform immediately ${filename}: ${operationType}`,
-                            LOG_LEVEL_DEBUG
-                        );
-                    }
-                    Logger(`Processing ${filename}: Request main to process: ${operationType}`, LOG_LEVEL_DEBUG);
-                    await this.requestProcessQueue(target);
-                } while (!noMoreFiles);
-            } finally {
-                release();
-            }
-            Logger(`Processing ${filename}: Finished`, LOG_LEVEL_DEBUG);
+                const fei = this.bufferedQueuedItems.shift()!;
+                await this._takeSnapshot();
+                this.updateStatus();
+                // 2. Consume 1 semaphore slot to enqueue processing. Then release immediately.
+                // (Just to limit the total concurrent processing count, because skipping batch handles at processFileEvent).
+                const releaser = await this.concurrentProcessing.acquire();
+                releaser();
+                this.updateStatus();
+                // 3. Check if sentinel flush
+                //    If sentinel, wait for idle and continue.
+                if (fei.type === TYPE_SENTINEL_FLUSH) {
+                    Logger(`Waiting for idle`, LOG_LEVEL_VERBOSE);
+                    // Flush all waiting batch queues
+                    await this.waitForIdle();
+                    this.updateStatus();
+                    continue;
+                }
+                // 4. Process the event, this should be fire-and-forget to not block the queue processing in each file.
+                fireAndForget(() => this.processFileEvent(fei));
+            } while (this.bufferedQueuedItems.length > 0);
         });
     }
 
-    cancelStandingBy(fei: FileEventItem) {
-        this.bufferedQueuedItems.remove(fei);
-        this.updateStatus();
-    }
     processingCount = 0;
     async requestProcessQueue(fei: FileEventItem) {
         try {
             this.processingCount++;
-            this.bufferedQueuedItems.remove(fei);
+            // this.bufferedQueuedItems.remove(fei);
             this.updateStatus();
-            this.waitedSince.delete(fei.args.file.path);
+            // this.waitedSince.delete(fei.args.file.path);
             await this.handleFileEvent(fei);
+            await this._takeSnapshot();
         } finally {
             this.processingCount--;
             this.updateStatus();
@@ -397,27 +591,26 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     isWaiting(filename: FilePath) {
         return isWaitingForTimeout(`storage-event-manager-batchsave-${filename}`);
     }
-    flushQueue() {
-        this.bufferedQueuedItems.forEach((e) => (e.skipBatchWait = true));
-        finishAllWaitingForTimeout("storage-event-manager-batchsave-", true);
-    }
-    cancelQueue(key: string) {
-        this.bufferedQueuedItems.forEach((e) => {
-            if (e.key === key) e.skipBatchWait = true;
-        });
-    }
+
     updateStatus() {
-        const allItems = this.bufferedQueuedItems.filter((e) => !e.cancelled);
-        const batchedCount = allItems.filter((e) => e.batched && !e.skipBatchWait).length;
+        const allFileEventItems = this.bufferedQueuedItems.filter((e): e is FileEventItem => "args" in e);
+        const allItems = allFileEventItems.filter((e) => !e.cancelled);
+        const totalItems = allItems.length + this.concurrentProcessing.waiting;
+        const processing = this.processingCount;
+        const batchedCount = this._waitingMap.size;
         this.core.batched.value = batchedCount;
-        this.core.processing.value = this.processingCount;
-        this.core.totalQueued.value = allItems.length - batchedCount;
+        this.core.processing.value = processing;
+        this.core.totalQueued.value = totalItems + batchedCount + processing;
     }
 
     async handleFileEvent(queue: FileEventItem): Promise<any> {
         const file = queue.args.file;
         const lockKey = `handleFile:${file.path}`;
-        return await serialized(lockKey, async () => {
+        const ret = await serialized(lockKey, async () => {
+            if (queue.cancelled) {
+                Logger(`File event cancelled before processing: ${file.path}`, LOG_LEVEL_INFO);
+                return;
+            }
             if (queue.type == "INTERNAL" || file.isInternal) {
                 await this.core.services.fileProcessing.processOptionalFileEvent(file.path as unknown as FilePath);
             } else {
@@ -444,9 +637,11 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 }
             }
         });
+        this.updateStatus();
+        return ret;
     }
 
     cancelRelativeEvent(item: FileEventItem): void {
-        this.cancelQueue(item.key);
+        this._cancelWaiting(item.args.file.path);
     }
 }
