@@ -90,10 +90,8 @@ export class ConflictResolveModal extends Modal {
             new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
         const date2 =
             new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
-        div2.setHTMLUnsafe(`
-<span class='deleted'><span class='conflict-dev-name'>${this.localName}</span>: ${date1}</span><br>
-<span class='added'><span class='conflict-dev-name'>${this.remoteName}</span>: ${date2}</span><br>
-        `);
+        div2.innerHTML = `<span class='deleted'><span class='conflict-dev-name'>${this.localName}</span>: ${date1}</span><br>
+<span class='added'><span class='conflict-dev-name'>${this.remoteName}</span>: ${date2}</span><br>`;
         contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) =>
             e.addEventListener("click", () => this.sendResponse(this.result.right.rev))
         ).style.marginRight = "4px";
@@ -109,11 +107,10 @@ export class ConflictResolveModal extends Modal {
             e.addEventListener("click", () => this.sendResponse(CANCELLED))
         ).style.marginRight = "4px";
         diff = diff.replace(/\n/g, "<br>");
-        // div.innerHTML = diff;
         if (diff.length > 100 * 1024) {
-            div.setText("(Too large diff to display)");
+            div.innerText = "(Too large diff to display)";
         } else {
-            div.setHTMLUnsafe(diff);
+            div.innerHTML = diff;
         }
     }
 
