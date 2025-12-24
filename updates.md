@@ -3,6 +3,16 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.35
+
+24th December, 2025
+
+Sorry for a small release! I would like to keep things moving along like this if possible. After all, the holidays seem to be starting soon. I will be doubled by my business until the 27th though, indeed.
+
+### Fixed
+
+- Now the conflict resolution dialogue shows correctly which device only has older APIs (#764).
+
 ## 0.25.34
 
 10th December, 2025
