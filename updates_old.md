@@ -9,6 +9,58 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
 ---
+## 0.25.26
+
+07th November, 2025
+
+### Improved
+
+- Some JWT notes have been added to the setting dialogue (#742).
+
+### Fixed
+
+- No longer wrong values encoded into the QR code.
+- We can acknowledge why the QR codes have not been generated.
+    - Probably too large a dataset to encode. When this happens, please consider using Setup-URI via text instead of QR code, or reduce the settings temporarily.
+
+### Refactored
+
+- Some dependencies have been updated.
+- Internal functions have been modularised into `octagonal-wheels` packages and are well tested.
+    - `dataobject/Computed` for caching computed values.
+    - `encodeAnyArray/decodeAnyArray` for encoding and decoding any array-like data into compact strings (#729).
+- Fixed importing from the parent project in library codes. (#729).
+
+## 0.25.25
+
+06th November, 2025
+
+### Fixed
+
+#### JWT Authentication
+
+- Now we can use JWT Authentication ES512 correctly (#742).
+- Several misdirections in the Setting dialogues have been fixed (i.e., seconds and minutes confusion...).
+- The key area in the Setting dialogue has been enlarged and accepts newlines correctly.
+- Caching of JWT tokens now works correctly
+    - Tokens are now cached and reused until they expire.
+    - They will be kept until 10% of the expiration duration is remaining or 10 seconds, whichever is longer (but at a maximum of 1 minute).
+- JWT settings are now correctly displayed on the Setting dialogue.
+
+And, tips about JWT Authentication on CouchDB have been added to the documentation (docs/tips/jwt-on-couchdb.md).
+
+#### Other fixes
+
+- Receiving non-latest revisions no longer causes unexpected overwrites.
+    - On receiving revisions that made conflicting changes, we are still able to handle them.
+
+### Improved
+
+- No longer duplicated message notifications are shown when a connection to the remote server fails.
+    - Instead, a single notification is shown, and it will be kept on the notification area inside the editor until the situation is resolved.
+- The notification area is no longer imposing, distracting, and overwhelming.
+    - With a pale background, but bordered and with icons.
+
 ## 0.25.24
 
 04th November, 2025

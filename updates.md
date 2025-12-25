@@ -3,6 +3,23 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.36
+
+25th December, 2025
+
+### Improved
+
+- Now the garbage collector (V3) has been implemented. (Beta)
+    - This garbage collector ensures that all devices are synchronised to the latest progress to prevent inconsistencies.
+    - In other words, it makes sure that no new conflicts would have arisen.
+        - This feature requires additional information (via node information), but it should be more reliable.
+        - This feature requires all devices have v0.25.36 or later.
+    - After the garbage collector runs, the database size may be reduced (Compaction will be run automatically after GC).
+        - We should have an administrative privilege on the remote database to run this garbage collector.
+- Now the plug-in and device information is stored in the remote database.
+    - This information is used for the garbage collector (V3).
+    - Some additional features may be added in the future using this information.
+
 ## 0.25.35
 
 24th December, 2025
@@ -128,58 +145,6 @@ So sorry for the quick follow-up release, due to a humble mistake in a quick cau
 ### Fixed (?)
 
 - Reverted QR code library to v1.4.4 (To make sure #752).
-
-## 0.25.26
-
-07th November, 2025
-
-### Improved
-
-- Some JWT notes have been added to the setting dialogue (#742).
-
-### Fixed
-
-- No longer wrong values encoded into the QR code.
-- We can acknowledge why the QR codes have not been generated.
-    - Probably too large a dataset to encode. When this happens, please consider using Setup-URI via text instead of QR code, or reduce the settings temporarily.
-
-### Refactored
-
-- Some dependencies have been updated.
-- Internal functions have been modularised into `octagonal-wheels` packages and are well tested.
-    - `dataobject/Computed` for caching computed values.
-    - `encodeAnyArray/decodeAnyArray` for encoding and decoding any array-like data into compact strings (#729).
-- Fixed importing from the parent project in library codes. (#729).
-
-## 0.25.25
-
-06th November, 2025
-
-### Fixed
-
-#### JWT Authentication
-
-- Now we can use JWT Authentication ES512 correctly (#742).
-- Several misdirections in the Setting dialogues have been fixed (i.e., seconds and minutes confusion...).
-- The key area in the Setting dialogue has been enlarged and accepts newlines correctly.
-- Caching of JWT tokens now works correctly
-    - Tokens are now cached and reused until they expire.
-    - They will be kept until 10% of the expiration duration is remaining or 10 seconds, whichever is longer (but at a maximum of 1 minute).
-- JWT settings are now correctly displayed on the Setting dialogue.
-
-And, tips about JWT Authentication on CouchDB have been added to the documentation (docs/tips/jwt-on-couchdb.md).
-
-#### Other fixes
-
-- Receiving non-latest revisions no longer causes unexpected overwrites.
-    - On receiving revisions that made conflicting changes, we are still able to handle them.
-
-### Improved
-
-- No longer duplicated message notifications are shown when a connection to the remote server fails.
-    - Instead, a single notification is shown, and it will be kept on the notification area inside the editor until the situation is resolved.
-- The notification area is no longer imposing, distracting, and overwhelming.
-    - With a pale background, but bordered and with icons.
 
 Older notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
