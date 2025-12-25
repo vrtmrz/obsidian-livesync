@@ -316,6 +316,19 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return Promise.resolve([...this._previousErrors]);
     }
 
+    private _getAppVersion(): string {
+        const navigatorString = globalThis.navigator?.userAgent ?? "";
+        const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
+        if (match && match.length >= 2) {
+            return match[1];
+        }
+        return "0.0.0";
+    }
+
+    private _getPluginVersion(): string {
+        return this.plugin.manifest.version;
+    }
+
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         services.API.handleGetCustomFetchHandler(this._customFetchHandler.bind(this));
         services.API.handleIsLastPostFailedDueToPayloadSize(this._getLastPostFailedBySize.bind(this));
@@ -325,6 +338,8 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         services.vault.handleVaultName(this._vaultName.bind(this));
         services.vault.handleGetActiveFilePath(this._getActiveFilePath.bind(this));
         services.API.handleGetAppID(this._anyGetAppId.bind(this));
+        services.API.handleGetAppVersion(this._getAppVersion.bind(this));
+        services.API.handleGetPluginVersion(this._getPluginVersion.bind(this));
         services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
     }
 }

@@ -14,7 +14,11 @@ import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "../LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
-import { EVENT_ANALYSE_DB_USAGE, eventHub } from "@/common/events";
+import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
+import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/LiveSyncReplicator";
+import { delay, parseHeaderValues } from "@/lib/src/common/utils";
+import { generateCredentialObject } from "@/lib/src/replication/httplib";
+import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
 const DB_KEY_DOC_USAGE_MAP = "doc-usage-map";
@@ -37,7 +41,16 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
                 await this.analyseDatabase();
             },
         });
+        this.plugin.addCommand({
+            id: "gc-v3",
+            name: "Garbage Collection V3 (advanced, beta)",
+            icon: "trash-2",
+            callback: async () => {
+                await this.gcv3();
+            },
+        });
         eventHub.onEvent(EVENT_ANALYSE_DB_USAGE, () => this.analyseDatabase());
+        eventHub.onEvent(EVENT_REQUEST_PERFORM_GC_V3, () => this.gcv3());
     }
     async allChunks(includeDeleted: boolean = false) {
         const p = this._progress("", LOG_LEVEL_NOTICE);
@@ -707,5 +720,247 @@ Success: ${successCount}, Errored: ${errored}`;
 
         // Prompt to copy to clipboard
         await this.services.UI.promptCopyToClipboard("Database Analysis data (TSV):", csv);
+    }
+
+    async compactDatabase() {
+        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
+        if (!remote) {
+            this._notice("Failed to connect to remote for compaction.", "gc-compact");
+            return;
+        }
+        if (typeof remote == "string") {
+            this._notice(`Failed to connect to remote for compaction. ${remote}`, "gc-compact");
+            return;
+        }
+        const compactResult = await remote.db.compact({
+            interval: 1000,
+        });
+        // Probably no need to wait, but just in case.
+        let timeout = 2 * 60 * 1000; // 2 minutes
+        do {
+            const status = await remote.db.info();
+            if ("compact_running" in status && status?.compact_running) {
+                this._notice("Compaction in progress on remote database...", "gc-compact");
+                await delay(2000);
+                timeout -= 2000;
+                if (timeout <= 0) {
+                    this._notice("Compaction on remote database timed out.", "gc-compact");
+                    break;
+                }
+            } else {
+                break;
+            }
+        } while (true);
+        if (compactResult && "ok" in compactResult) {
+            this._notice("Compaction on remote database completed successfully.", "gc-compact");
+        } else {
+            this._notice("Compaction on remote database failed.", "gc-compact");
+        }
+    }
+
+    /**
+     * Compact the database by temporarily setting the revision limit to 1.
+     * @returns
+     */
+    async compactDatabaseWithRevLimit() {
+        // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
+        // Very dangerous operation, so now suppressed.
+        return false;
+        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
+        if (!remote) {
+            this._notice("Failed to connect to remote for compaction.");
+            return;
+        }
+        if (typeof remote == "string") {
+            this._notice(`Failed to connect to remote for compaction. ${remote}`);
+            return;
+        }
+        const customHeaders = parseHeaderValues(this.settings.couchDB_CustomHeaders);
+        const credential = generateCredentialObject(this.settings);
+        const request = async (path: string, method: string = "GET", body: any = undefined) => {
+            const req = await _requestToCouchDB(
+                this.settings.couchDB_URI + (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
+                credential,
+                window.origin,
+                path,
+                body,
+                method,
+                customHeaders
+            );
+            return req;
+        };
+        let revsLimit = "";
+        const req = await request(`_revs_limit`, "GET");
+        if (req.status == 200) {
+            revsLimit = req.text.trim();
+            this._info(`Remote database _revs_limit: ${revsLimit}`);
+        } else {
+            this._notice(`Failed to get remote database _revs_limit. Status: ${req.status}`);
+            return;
+        }
+        const req2 = await request(`_revs_limit`, "PUT", 1);
+        if (req2.status == 200) {
+            this._info(`Set remote database _revs_limit to 1 for compaction.`);
+        }
+        try {
+            await this.compactDatabase();
+        } finally {
+            // Restore revs_limit
+            if (revsLimit) {
+                const req3 = await request(`_revs_limit`, "PUT", parseInt(revsLimit));
+                if (req3.status == 200) {
+                    this._info(`Restored remote database _revs_limit to ${revsLimit}.`);
+                } else {
+                    this._notice(
+                        `Failed to restore remote database _revs_limit. Status: ${req3.status} / ${req3.text}`
+                    );
+                }
+            }
+        }
+    }
+    async gcv3() {
+        if (!this.isAvailable()) return;
+        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        // Start one-shot replication to ensure all changes are synced before GC.
+        const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
+        if (!r0) {
+            this._notice(
+                "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled."
+            );
+            return;
+        }
+
+        // Delete the chunk, but first verify the following:
+        // Fetch the list of accepted nodes from the replicator.
+        const OPTION_CANCEL = "Cancel Garbage Collection";
+        const info = await this.plugin.replicator.getConnectedDeviceList();
+        if (!info) {
+            this._notice("No connected device information found. Cancelling Garbage Collection.");
+            return;
+        }
+        const { accepted_nodes, node_info } = info;
+        //1. Compare accepted_nodes and node_info, and confirm whether it is acceptable to delete nodes not present in node_info.
+        const infoMissingNodes = [] as string[];
+        for (const node of accepted_nodes) {
+            if (!(node in node_info)) {
+                infoMissingNodes.push(node);
+            }
+        }
+        if (infoMissingNodes.length > 0) {
+            const message = `The following accepted nodes are missing its node information:\n- ${infoMissingNodes.join("\n- ")}\n\nThis indicates that they have not been connected for some time or have been left on an older version.
+It is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.`;
+
+            const OPTION_IGNORE = "Ignore and Proceed";
+            // const OPTION_DELETE = "Delete them and proceed";
+            const buttons = [OPTION_CANCEL, OPTION_IGNORE] as const;
+            const result = await this.plugin.confirm.askSelectStringDialogue(message, buttons, {
+                title: "Node Information Missing",
+                defaultAction: OPTION_CANCEL,
+            });
+            if (result === OPTION_CANCEL) {
+                this._notice("Garbage Collection cancelled by user.");
+                return;
+            } else if (result === OPTION_IGNORE) {
+                this._notice("Proceeding with Garbage Collection, ignoring missing nodes.");
+            }
+        }
+
+        //2. Check whether the progress values in NodeData are roughly the same (only the numerical part is needed).
+        const progressValues = Object.values(node_info)
+            .map((e) => e.progress.split("-")[0])
+            .map((e) => parseInt(e));
+        const maxProgress = Math.max(...progressValues);
+        const minProgress = Math.min(...progressValues);
+        const progressDifference = maxProgress - minProgress;
+        const OPTION_PROCEED = "Proceed Garbage Collection";
+        //   - If they differ significantly, the node may not have completed synchronisation, potentially causing conflicts. Display a confirmation dialog as a precaution.
+        // - If they are not significantly different, display the standard confirmation dialogue message.
+
+        const detail = `> [!INFO]- The connected devices have been detected as follows:
+${Object.entries(node_info)
+    .map(
+        ([nodeId, nodeData]) =>
+            `> - Device: ${nodeData.device_name} (Node ID: ${nodeId})
+>   - Obsidian version: ${nodeData.app_version}
+>   - Plug-in version: ${nodeData.plugin_version}
+>   - Progress: ${nodeData.progress.split("-")[0]}`
+    )
+    .join("\n")}
+`;
+        const message =
+            progressDifference != 0
+                ? `Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).
+This may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.`
+                : `All devices have the same progress value (${maxProgress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.`;
+        const buttons = [OPTION_PROCEED, OPTION_CANCEL] as const;
+        const defaultAction = progressDifference != 0 ? OPTION_CANCEL : OPTION_PROCEED;
+        const result = await this.plugin.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
+            title: "Garbage Collection Confirmation",
+            defaultAction,
+        });
+        if (result !== OPTION_PROCEED) {
+            this._notice("Garbage Collection cancelled by user.");
+            return;
+        }
+        this._notice("Proceeding with Garbage Collection.");
+        //-  3. Once OK is confirmed in the dialogue, execute the chunk deletion. This is performed on the local database and immediately reflected on the remote. After reflecting on the remote, perform compaction.
+        const gcStartTime = Date.now();
+        // Perform Garbage Collection (new implementation).
+        const localDatabase = this.localDatabase.localDatabase;
+        const usedChunks = new Set<DocumentID>();
+        const allChunks = new Map<DocumentID, string>();
+
+        const IDs = this.localDatabase.findEntryNames("", "", {});
+        let i = 0;
+        const doc_count = (await localDatabase.info()).doc_count;
+        for await (const id of IDs) {
+            const doc = await this.localDatabase.getRaw(id as DocumentID);
+            i++;
+            if (i % 100 == 0) {
+                this._notice(`Garbage Collection: Scanned ${i} / ~${doc_count} `, "gc-scanning");
+            }
+            if (!doc) continue;
+            if ("children" in doc) {
+                const children = (doc.children || []) as DocumentID[];
+                for (const chunkId of children) {
+                    usedChunks.add(chunkId);
+                }
+            } else if (doc.type === EntryTypes.CHUNK) {
+                allChunks.set(doc._id as DocumentID, doc._rev);
+            }
+        }
+        this._notice(
+            `Garbage Collection: Scanning completed. Total chunks: ${allChunks.size}, Used chunks: ${usedChunks.size}`,
+            "gc-scanning"
+        );
+
+        const unusedChunks = [...allChunks.keys()].filter((e) => !usedChunks.has(e));
+        this._notice(`Garbage Collection: Found ${unusedChunks.length} unused chunks to delete.`, "gc-scanning");
+        const deleteChunkDocs = unusedChunks.map(
+            (chunkId) =>
+                ({
+                    _id: chunkId,
+                    _deleted: true,
+                    _rev: allChunks.get(chunkId),
+                }) as EntryLeaf
+        );
+        const response = await localDatabase.bulkDocs(deleteChunkDocs);
+        const deletedCount = response.filter((e) => "ok" in e).length;
+        const gcEndTime = Date.now();
+        this._notice(
+            `Garbage Collection completed. Deleted chunks: ${deletedCount} / ${unusedChunks.length}. Time taken: ${(gcEndTime - gcStartTime) / 1000} seconds.`
+        );
+        // Send changes to remote
+        const r = await replicator.openOneShotReplication(this.settings, false, false, "pushOnly");
+        // Wait for replication to complete
+        if (!r) {
+            this._notice("Failed to start replication after Garbage Collection.");
+            return;
+        }
+        // Perform compaction
+        await this.compactDatabase();
+        this.clearHash();
     }
 }
