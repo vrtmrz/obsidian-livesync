@@ -1,0 +1,60 @@
+# Run tests with optional coverage reporting (Harnessed CI)
+name: harness-ci
+
+on:
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: 'Run with coverage'
+        type: boolean
+        default: true
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install test dependencies (Playwright Chromium)
+        run: npm run test:install-dependencies
+
+      - name: Start test services (CouchDB + MinIO)
+        run: npm run test:docker-all:start
+
+      - name: Run tests (no coverage)
+        if: ${{ inputs.coverage == false }}
+        env:
+          CI: true
+        run: npm run test
+
+      - name: Run tests with coverage
+        if: ${{ inputs.coverage == true }}
+        env:
+          CI: true
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: ${{ inputs.coverage && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+      - name: Stop test services
+        if: always()
+        run: npm run test:docker-all:stop
