@@ -266,7 +266,10 @@ export class ModuleFileHandler extends AbstractModule {
             // Check the file is not corrupted
             // (Zero is a special case, may be created by some APIs and it might be acceptable).
             if (docRead.size != 0 && docRead.size !== readAsBlob(docRead).size) {
-                this._log(`File ${path} seems to be corrupted! Writing prevented.`, LOG_LEVEL_NOTICE);
+                this._log(
+                    `File ${path} seems to be corrupted! Writing prevented. (${docRead.size} != ${readAsBlob(docRead).size})`,
+                    LOG_LEVEL_NOTICE
+                );
                 return false;
             }
         }

@@ -342,7 +342,7 @@ export class ReplicateResultProcessor {
             return;
         } finally {
             // Remove from processing queue
-            this._processingChanges.remove(change);
+            this._processingChanges = this._processingChanges.filter((e) => e === change);
             this.triggerTakeSnapshot();
         }
     }

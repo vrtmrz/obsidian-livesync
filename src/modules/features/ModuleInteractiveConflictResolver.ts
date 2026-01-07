@@ -131,30 +131,36 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     async _allScanStat(): Promise<boolean> {
         const notes: { path: string; mtime: number }[] = [];
         this._log(`Checking conflicted files`, LOG_LEVEL_VERBOSE);
-        for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
-            if (!("_conflicts" in doc)) continue;
-            notes.push({ path: getPath(doc), mtime: doc.mtime });
-        }
-        if (notes.length > 0) {
-            this.core.confirm.askInPopup(
-                `conflicting-detected-on-safety`,
-                `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`,
-                (anchor) => {
-                    anchor.text = "HERE";
-                    anchor.addEventListener("click", () => {
-                        fireAndForget(() => this.allConflictCheck());
-                    });
-                }
-            );
-            this._log(
-                `Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`,
-                LOG_LEVEL_VERBOSE
-            );
-            for (const note of notes) {
-                this._log(`Conflicted: ${note.path}`);
+        try {
+            for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
+                if (!("_conflicts" in doc)) continue;
+                notes.push({ path: getPath(doc), mtime: doc.mtime });
             }
-        } else {
-            this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
+            if (notes.length > 0) {
+                this.core.confirm.askInPopup(
+                    `conflicting-detected-on-safety`,
+                    `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`,
+                    (anchor) => {
+                        anchor.text = "HERE";
+                        anchor.addEventListener("click", () => {
+                            fireAndForget(() => this.allConflictCheck());
+                        });
+                    }
+                );
+                this._log(
+                    `Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`,
+                    LOG_LEVEL_VERBOSE
+                );
+                for (const note of notes) {
+                    this._log(`Conflicted: ${note.path}`);
+                }
+            } else {
+                this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
+            }
+        } catch (e) {
+            this._log(`Error while scanning conflicted files: ${e}`, LOG_LEVEL_NOTICE);
+            this._log(e, LOG_LEVEL_VERBOSE);
+            return false;
         }
         return true;
     }

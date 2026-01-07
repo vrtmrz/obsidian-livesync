@@ -15,7 +15,6 @@ import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
     type LogEntry,
-    logStore,
     logMessages,
 } from "../../lib/src/mock_and_interop/stores.ts";
 import { eventHub } from "../../lib/src/hub/hub.ts";
@@ -28,7 +27,6 @@ import {
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { addIcon, normalizePath, Notice } from "../../deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "src/lib/src/common/i18n.ts";
@@ -45,24 +43,21 @@ import {
 // This module cannot be a core module because it depends on the Obsidian UI.
 
 // DI the log again.
+const recentLogEntries = reactiveSource<LogEntry[]>([]);
 setGlobalLogFunction((message: any, level?: number, key?: string) => {
     const messageX =
         message instanceof Error
             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
             : message;
     const entry = { message: messageX, level, key } as LogEntry;
-    logStore.enqueue(entry);
+    recentLogEntries.value = [...recentLogEntries.value, entry];
 });
 let recentLogs = [] as string[];
 
-// Recent log splicer
-const recentLogProcessor = new QueueProcessor(
-    (logs: string[]) => {
-        recentLogs = [...recentLogs, ...logs].splice(-200);
-        logMessages.value = recentLogs;
-    },
-    { batchSize: 25, delay: 10, suspended: false, concurrentLimit: 1 }
-).resumePipeLine();
+function addLog(log: string) {
+    recentLogs = [...recentLogs, log].splice(-200);
+    logMessages.value = recentLogs;
+}
 // logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
 const showDebugLog = false;
@@ -373,16 +368,12 @@ export class ModuleLog extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
-        logStore
-            .pipeTo(
-                new QueueProcessor((logs) => logs.forEach((e) => this.__addLog(e.message, e.level, e.key)), {
-                    suspended: false,
-                    batchSize: 20,
-                    concurrentLimit: 1,
-                    delay: 0,
-                })
-            )
-            .startPipeline();
+        recentLogEntries.onChanged((entries) => {
+            if (entries.value.length === 0) return;
+            const newEntries = [...entries.value];
+            recentLogEntries.value = [];
+            newEntries.forEach((e) => this.__addLog(e.message, e.level, e.key));
+        });
         eventHub.onEvent(EVENT_FILE_RENAMED, (data) => {
             void this.setFileStatus();
         });
@@ -464,7 +455,7 @@ export class ModuleLog extends AbstractObsidianModule {
         if (this.settings?.writeLogToTheFile) {
             this.writeLogToTheFile(now, vaultName, newMessage);
         }
-        recentLogProcessor.enqueue(newMessage);
+        addLog(newMessage);
         this.logLines.push({ ttl: now.getTime() + 3000, message: newMessage });
 
         if (level >= LOG_LEVEL_NOTICE) {

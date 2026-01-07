@@ -67,6 +67,11 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _this = this;
         //@ts-ignore
+        if (!window.CodeMirrorAdapter) {
+            this._log("CodeMirrorAdapter is not available");
+            return;
+        }
+        //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
             _this.app.commands.executeCommandById("editor:save-file");
