@@ -133,7 +133,7 @@ export default defineConfig({
             provider: playwright({
                 launchOptions: {
                     args: ["--js-flags=--expose-gc"],
-                    chromiumSandbox: true,
+                    // chromiumSandbox: true,
                 },
             }),
             enabled: true,
