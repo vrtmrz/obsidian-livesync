@@ -1,0 +1,2 @@
+#!/bin/bash
+docker run -d --name minio-test -p 9000:9000 -p 9001:9001 -e MINIO_ROOT_USER=$accessKey -e MINIO_ROOT_PASSWORD=$secretKey -e MINIO_SERVER_URL=$minioEndpoint minio/minio server /data --console-address ':9001'

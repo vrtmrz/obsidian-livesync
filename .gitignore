@@ -24,3 +24,7 @@ data.json
 
 # local config files
 *.local
+
+cov_profile/**
+
+coverage
