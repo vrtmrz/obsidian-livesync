@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf } from "@/deps.ts";
 import TestPaneComponent from "./TestPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import type { ModuleDev } from "../ModuleDev.ts";

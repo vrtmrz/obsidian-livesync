@@ -1,4 +1,4 @@
-import { type TFile } from "obsidian";
+import { type TFile } from "@/deps.ts";
 import { eventHub } from "../../common/events.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../common/obsidianEvents.ts";
 import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "../../lib/src/common/types.ts";

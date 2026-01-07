@@ -1,4 +1,4 @@
-import { Menu, WorkspaceLeaf } from "obsidian";
+import { Menu, WorkspaceLeaf } from "@/deps.ts";
 import ReplicatorPaneComponent from "./P2PReplicatorPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import { mount } from "svelte";

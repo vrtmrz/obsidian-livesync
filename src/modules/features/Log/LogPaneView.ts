@@ -1,4 +1,4 @@
-import { WorkspaceLeaf } from "obsidian";
+import { WorkspaceLeaf } from "@/deps.ts";
 import LogPaneComponent from "./LogPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import { SvelteItemView } from "../../../common/SvelteItemView.ts";

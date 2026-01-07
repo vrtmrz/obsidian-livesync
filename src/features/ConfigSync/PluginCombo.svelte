@@ -10,7 +10,7 @@
     import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
     import type ObsidianLiveSyncPlugin from "../../main";
     // import { askString } from "../../common/utils";
-    import { Menu } from "obsidian";
+    import { Menu } from "@/deps.ts";
 
     export let list: IPluginDataExDisplay[] = [];
     export let thisTerm = "";

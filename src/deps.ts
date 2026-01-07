@@ -24,6 +24,10 @@ export {
     parseYaml,
     ItemView,
     WorkspaceLeaf,
+    Menu,
+    request,
+    getLanguage,
+    ButtonComponent,
 } from "obsidian";
 export type {
     DataWriteOptions,

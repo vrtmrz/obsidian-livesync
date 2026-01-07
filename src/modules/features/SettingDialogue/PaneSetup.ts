@@ -12,7 +12,7 @@ import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { DEFAULT_SETTINGS } from "../../../lib/src/common/types.ts";
-import { request } from "obsidian";
+import { request } from "@/deps.ts";
 import { SetupManager, UserMode } from "../SetupManager.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,

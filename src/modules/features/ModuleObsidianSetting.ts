@@ -14,7 +14,7 @@ import {
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { $msg, setLang } from "../../lib/src/common/i18n.ts";
 import { isCloudantURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
-import { getLanguage } from "obsidian";
+import { getLanguage } from "@/deps.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
 import { decryptString, encryptString } from "@/lib/src/encryption/stringEncryption.ts";
 import type { LiveSyncCore } from "../../main.ts";

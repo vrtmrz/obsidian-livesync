@@ -1,4 +1,4 @@
-import { ItemView } from "obsidian";
+import { ItemView } from "@/deps.ts";
 import { type mount, unmount } from "svelte";
 
 export abstract class SvelteItemView extends ItemView {
