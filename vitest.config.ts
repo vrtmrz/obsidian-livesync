@@ -122,10 +122,9 @@ export default defineConfig({
 
         // environment: "browser",
         include: ["test/**/*.test.ts"],
-        exclude: ["src/lib/**/*.test.ts", "src/lib/_**/*.ts"],
         coverage: {
-            include: ["src/**/*.ts", "src/**/*.svelte"],
-            exclude: ["**/*.test.ts", "src/lib/**/*.test.ts", "src/lib/_**/*.ts"],
+            include: ["src/**/*.ts", "src/lib/src/**/*.ts", "src/**/*.svelte"],
+            exclude: ["**/*.test.ts", "src/lib/**"],
             provider: "v8",
             reporter: ["text", "json", "html"],
             // ignoreEmptyLines: true,
