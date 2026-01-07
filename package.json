@@ -27,6 +27,7 @@
         "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/",
         "test": "vitest run",
         "test:install-playwright": "npx playwright install chromium",
+        "test:install-dependencies": "npm run test:install-playwright",
         "test:coverage": "vitest run --coverage",
         "test:docker-couchdb:up": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/couchdb-start.sh",
         "test:docker-couchdb:init": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/couchdb-init.sh",
