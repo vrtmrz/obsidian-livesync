@@ -86,3 +86,9 @@ docker build -t obsidian-livesync .
 ```
 
 Then use either the `docker-compose.yml` file or a `docker run` command.
+
+## Check Status of Server
+
+You should now be able to go to [http://localhost:5984/_utils/#_config] and see
+the CouchDB Fauxton interface with configuration set as defined in the
+[`local.ini`](./local.ini) file or via the environment variables you set.
