@@ -33,6 +33,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  TEST_TAG: ${{ github.repository }}:test-${{ github.run_id }} # Unique per workflow run
 
 jobs:
   build-and-push:
@@ -92,6 +93,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # TODO: also/only(?) push to:
+          # docker.io/${{ secrets.DOCKERHUB_USERNAME }}/your-image-name
+          # see: https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-docker-hub-and-github-packages
+          # see also: https://docs.docker.com/build/ci/github-actions/push-multi-registries/
           tags: |
             type=schedule
             type=ref,event=branch
@@ -105,9 +110,40 @@ jobs:
         run: echo "SHORT_SHA=sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------------
+      # Test Building the Image
+      # ------------------------------------------------------------------------
+      # Cribbed from: https://docs.docker.com/build/ci/github-actions/test-before-push/
+      - name: "Test: Build and export to Docker"
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/
+          file: ./docker/Dockerfile
+          push: false
+          tags: ${{ env.TEST_TAG }}
+          # `load: true` loads the built image into the local Docker
+          #   daemon on the runner, so we can run tests against it.
+          #   This is not enabled right now as we don't run any further tests.
+          #load: true
+
+      ## use https://github.com/marketplace/actions/github-action-for-generating-random-and-unique-names ?
+      ## docker run -e COUCHDB_USER=testUserName -e COUCHDB_PASSWORD=testPassword -v /opt/couchdb/data -v /opt/couchdb/etc --entrypoint "/bin/bash" --rm obsidian-live-sync-test-ghactions:latest /opt/couchdb/bin/couchdb --version
+      ## returns: `No Admin Account Found, aborting startup.`
+      #- name: "Test: Check that couchdb runs in container"
+      #  run: |
+      #    docker run -e COUCHDB_USER=testUserName \
+      #    -e COUCHDB_PASSWORD=testPassword \
+      #    -v /opt/couchdb/data \
+      #    -v /opt/couchdb/etc \
+      #    --entrypoint "/bin/bash" \
+      #    --rm \
+      #     ${{ env.TEST_TAG }}
+      #    /opt/couchdb/bin/couchdb --version
+
+      # ------------------------------------------------------------------------
       # Build and Push
       # ------------------------------------------------------------------------
       - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
           context: ./docker/
