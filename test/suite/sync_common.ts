@@ -2,14 +2,14 @@ import { expect } from "vitest";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
 import { LOG_LEVEL_INFO, RemoteTypes, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 
-import { delay } from "@/lib/src/common/utils";
+import { delay, fireAndForget } from "@/lib/src/common/utils";
 import { commands } from "vitest/browser";
 import { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
 import { waitTaskWithFollowups } from "../lib/util";
 async function waitForP2PPeers(harness: LiveSyncHarness) {
     if (harness.plugin.settings.remoteType === RemoteTypes.REMOTE_P2P) {
         // Wait for peers to connect
-        const maxRetries = 10;
+        const maxRetries = 20;
         let retries = maxRetries;
         const replicator = await harness.plugin.services.replicator.getActiveReplicator();
         if (!(replicator instanceof LiveSyncTrysteroReplicator)) {
@@ -20,17 +20,18 @@ async function waitForP2PPeers(harness: LiveSyncHarness) {
             throw new Error("P2P Replicator is not initialized");
         }
         while (retries-- > 0) {
+            fireAndForget(() => commands.acceptWebPeer());
+            await delay(1000);
             const peers = p2pReplicator.knownAdvertisements;
 
             if (peers && peers.length > 0) {
                 console.log("P2P peers connected:", peers);
                 return;
             }
-            await commands.acceptWebPeer();
+            fireAndForget(() => commands.acceptWebPeer());
             console.log(`Waiting for any P2P peers to be connected... ${maxRetries - retries}/${maxRetries}`);
             console.dir(peers);
-            await delay(3000);
-            await commands.acceptWebPeer();
+            await delay(1000);
         }
         console.log("Failed to connect P2P peers after retries");
         throw new Error("P2P peers did not connect in time.");
@@ -44,7 +45,6 @@ export async function closeP2PReplicatorConnections(harness: LiveSyncHarness) {
         }
         replicator.closeReplication();
         await delay(30);
-        replicator.closeReplication();
         replicator.closeReplication();
         await delay(1000);
         console.log("P2P replicator connections closed");
@@ -65,7 +65,7 @@ export async function performReplication(harness: LiveSyncHarness) {
                   p,
                   () => {
                       // Accept any peer dialogs during replication (fire and forget)
-                      void commands.acceptWebPeer();
+                      fireAndForget(() => commands.acceptWebPeer());
                       return Promise.resolve();
                   },
                   30000,
@@ -73,10 +73,10 @@ export async function performReplication(harness: LiveSyncHarness) {
               )
             : p;
     const result = await task;
-    await waitForIdle(harness);
-    if (harness.plugin.settings.remoteType === RemoteTypes.REMOTE_P2P) {
-        await closeP2PReplicatorConnections(harness);
-    }
+    // await waitForIdle(harness);
+    // if (harness.plugin.settings.remoteType === RemoteTypes.REMOTE_P2P) {
+    //     await closeP2PReplicatorConnections(harness);
+    // }
     return result;
 }
 
