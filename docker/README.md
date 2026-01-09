@@ -6,6 +6,10 @@ to GitHub's Container Registry for the Live Sync Server.
 You can use the created image, or you can use the same files to build and run
 the Docker image yourself.
 
+> [!IMPORTANT]
+> You may only use alphanumeric characters, hyphens, and underscores in the
+> username you choose for CouchDB.
+
 ## Use the Container Registry Image
 
 You can use the included [`docker-compose.yml`](./docker-compose.yml) file or
