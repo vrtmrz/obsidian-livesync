@@ -16,6 +16,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/base/APIBase.ts";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { initialiseWorkerModule } from "@/lib/src/worker/bgWorker.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -80,6 +81,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
     }
 
     async _onLiveSyncLoad(): Promise<boolean> {
+        initialiseWorkerModule();
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);

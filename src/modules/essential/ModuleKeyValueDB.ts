@@ -50,27 +50,28 @@ export class ModuleKeyValueDB extends AbstractModule {
         return Promise.resolve(true);
     }
     _getSimpleStore<T>(kind: string) {
+        const getDB = () => this.core.kvDB;
         const prefix = `${kind}-`;
         return {
             get: async (key: string): Promise<T> => {
-                return await this.core.kvDB.get(`${prefix}${key}`);
+                return await getDB().get(`${prefix}${key}`);
             },
             set: async (key: string, value: any): Promise<void> => {
-                await this.core.kvDB.set(`${prefix}${key}`, value);
+                await getDB().set(`${prefix}${key}`, value);
             },
             delete: async (key: string): Promise<void> => {
-                await this.core.kvDB.del(`${prefix}${key}`);
+                await getDB().del(`${prefix}${key}`);
             },
             keys: async (
                 from: string | undefined,
                 to: string | undefined,
                 count?: number | undefined
             ): Promise<string[]> => {
-                const ret = this.core.kvDB.keys(
+                const ret = await getDB().keys(
                     IDBKeyRange.bound(`${prefix}${from || ""}`, `${prefix}${to || ""}`),
                     count
                 );
-                return (await ret)
+                return ret
                     .map((e) => e.toString())
                     .filter((e) => e.startsWith(prefix))
                     .map((e) => e.substring(prefix.length));
