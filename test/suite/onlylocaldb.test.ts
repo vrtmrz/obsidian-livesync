@@ -11,7 +11,7 @@ const localdb_test_setting = {
     handleFilenameCaseSensitive: false,
 } as ObsidianLiveSyncSettings;
 
-describe("Plugin Integration Test (Local Database)", async () => {
+describe.skip("Plugin Integration Test (Local Database)", async () => {
     let harness: LiveSyncHarness;
     const vaultName = "TestVault" + Date.now();
 

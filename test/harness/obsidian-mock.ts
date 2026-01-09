@@ -115,9 +115,9 @@ export class Vault {
     constructor(vaultName?: string) {
         if (vaultName) {
             this.vaultName = vaultName;
-            this.files = new Map();
-            this.contents = new Map();
         }
+        this.files = new Map();
+        this.contents = new Map();
         this.adapter = new DataAdapter(this);
         this.root = new TFolder(this, "", "", null);
         this.files.set("", this.root);
@@ -220,6 +220,7 @@ export class Vault {
         file.stat.mtime = options?.mtime ?? Date.now();
         file.stat.ctime = options?.ctime ?? file.stat.ctime ?? Date.now();
         file.stat.size = typeof data === "string" ? data.length : data.byteLength;
+        console.warn(`[Obsidian Mock ${this.vaultName}] Modified file at path: '${file.path}'`);
         this.files.set(file.path, file);
         this.trigger("modify", file);
     }
@@ -284,7 +285,7 @@ export class Vault {
     }
 
     getName(): string {
-        return SettingCache.get(this) || "MockVault";
+        return this.vaultName;
     }
 }
 
@@ -489,22 +490,40 @@ export class Modal {
     app: App;
     contentEl: HTMLElement;
     titleEl: HTMLElement;
+    modalEl: HTMLElement;
+    isOpen: boolean = false;
 
     constructor(app: App) {
         this.app = app;
         this.contentEl = document.createElement("div");
+        this.contentEl.className = "modal-content";
         this.titleEl = document.createElement("div");
+        this.titleEl.className = "modal-title";
+        this.modalEl = document.createElement("div");
+        this.modalEl.className = "modal";
+        this.modalEl.style.display = "none";
+        this.modalEl.appendChild(this.titleEl);
+        this.modalEl.appendChild(this.contentEl);
     }
     open() {
+        this.isOpen = true;
+        this.modalEl.style.display = "block";
+        if (!this.modalEl.parentElement) {
+            document.body.appendChild(this.modalEl);
+        }
         this.onOpen();
     }
     close() {
+        this.isOpen = false;
+        this.modalEl.style.display = "none";
         this.onClose();
     }
     onOpen() {}
     onClose() {}
     setPlaceholder(p: string) {}
-    setTitle(t: string) {}
+    setTitle(t: string) {
+        this.titleEl.textContent = t;
+    }
 }
 
 export class PluginSettingTab {
@@ -555,59 +574,210 @@ export class Component {
 
 export class ButtonComponent extends Component {
     buttonEl: HTMLButtonElement = document.createElement("button");
+    private clickHandler: ((evt: MouseEvent) => any) | null = null;
+
+    constructor() {
+        super();
+        this.buttonEl = document.createElement("button");
+        this.buttonEl.type = "button";
+    }
+
     setButtonText(text: string) {
+        this.buttonEl.textContent = text;
         return this;
     }
+
     setCta() {
+        this.buttonEl.classList.add("mod-cta");
         return this;
     }
-    onClick(cb: any) {
+
+    onClick(cb: (evt: MouseEvent) => any) {
+        this.clickHandler = cb;
+        this.buttonEl.removeEventListener("click", this.clickHandler);
+        this.buttonEl.addEventListener("click", (evt) => cb(evt as MouseEvent));
         return this;
     }
+
     setClass(c: string) {
+        this.buttonEl.classList.add(c);
+        return this;
+    }
+
+    setTooltip(tooltip: string) {
+        this.buttonEl.title = tooltip;
+        return this;
+    }
+
+    setDisabled(disabled: boolean) {
+        this.buttonEl.disabled = disabled;
         return this;
     }
 }
 
 export class TextComponent extends Component {
     inputEl: HTMLInputElement = document.createElement("input");
-    onChange(cb: any) {
+    private changeHandler: ((value: string) => any) | null = null;
+
+    constructor() {
+        super();
+        this.inputEl = document.createElement("input");
+        this.inputEl.type = "text";
+    }
+
+    onChange(cb: (value: string) => any) {
+        this.changeHandler = cb;
+        this.inputEl.removeEventListener("change", this.handleChange);
+        this.inputEl.addEventListener("change", this.handleChange);
+        this.inputEl.addEventListener("input", (evt) => {
+            const target = evt.target as HTMLInputElement;
+            cb(target.value);
+        });
         return this;
     }
+
+    private handleChange = (evt: Event) => {
+        if (this.changeHandler) {
+            const target = evt.target as HTMLInputElement;
+            this.changeHandler(target.value);
+        }
+    };
+
     setValue(v: string) {
+        this.inputEl.value = v;
+        return this;
+    }
+
+    setPlaceholder(p: string) {
+        this.inputEl.placeholder = p;
+        return this;
+    }
+
+    setDisabled(disabled: boolean) {
+        this.inputEl.disabled = disabled;
         return this;
     }
 }
 
 export class ToggleComponent extends Component {
-    onChange(cb: any) {
+    inputEl: HTMLInputElement = document.createElement("input");
+    private changeHandler: ((value: boolean) => any) | null = null;
+
+    constructor() {
+        super();
+        this.inputEl = document.createElement("input");
+        this.inputEl.type = "checkbox";
+    }
+
+    onChange(cb: (value: boolean) => any) {
+        this.changeHandler = cb;
+        this.inputEl.addEventListener("change", (evt) => {
+            const target = evt.target as HTMLInputElement;
+            cb(target.checked);
+        });
         return this;
     }
+
     setValue(v: boolean) {
+        this.inputEl.checked = v;
+        return this;
+    }
+
+    setDisabled(disabled: boolean) {
+        this.inputEl.disabled = disabled;
         return this;
     }
 }
 
 export class DropdownComponent extends Component {
+    selectEl: HTMLSelectElement = document.createElement("select");
+    private changeHandler: ((value: string) => any) | null = null;
+
+    constructor() {
+        super();
+        this.selectEl = document.createElement("select");
+    }
+
     addOption(v: string, d: string) {
+        const option = document.createElement("option");
+        option.value = v;
+        option.textContent = d;
+        this.selectEl.appendChild(option);
         return this;
     }
-    addOptions(o: any) {
+
+    addOptions(o: Record<string, string>) {
+        for (const [value, display] of Object.entries(o)) {
+            this.addOption(value, display);
+        }
         return this;
     }
-    onChange(cb: any) {
+
+    onChange(cb: (value: string) => any) {
+        this.changeHandler = cb;
+        this.selectEl.addEventListener("change", (evt) => {
+            const target = evt.target as HTMLSelectElement;
+            cb(target.value);
+        });
         return this;
     }
+
     setValue(v: string) {
+        this.selectEl.value = v;
+        return this;
+    }
+
+    setDisabled(disabled: boolean) {
+        this.selectEl.disabled = disabled;
         return this;
     }
 }
 
 export class SliderComponent extends Component {
-    onChange(cb: any) {
+    inputEl: HTMLInputElement = document.createElement("input");
+    private changeHandler: ((value: number) => any) | null = null;
+
+    constructor() {
+        super();
+        this.inputEl = document.createElement("input");
+        this.inputEl.type = "range";
+    }
+
+    onChange(cb: (value: number) => any) {
+        this.changeHandler = cb;
+        this.inputEl.addEventListener("change", (evt) => {
+            const target = evt.target as HTMLInputElement;
+            cb(parseFloat(target.value));
+        });
+        this.inputEl.addEventListener("input", (evt) => {
+            const target = evt.target as HTMLInputElement;
+            cb(parseFloat(target.value));
+        });
         return this;
     }
+
     setValue(v: number) {
+        this.inputEl.value = String(v);
+        return this;
+    }
+
+    setMin(min: number) {
+        this.inputEl.min = String(min);
+        return this;
+    }
+
+    setMax(max: number) {
+        this.inputEl.max = String(max);
+        return this;
+    }
+
+    setStep(step: number) {
+        this.inputEl.step = String(step);
+        return this;
+    }
+
+    setDisabled(disabled: boolean) {
+        this.inputEl.disabled = disabled;
         return this;
     }
 }
@@ -625,32 +795,42 @@ export class Setting {
         this.infoEl = containerEl.createDiv();
     }
     setName(name: string) {
+        this.nameEl.setText(name);
         return this;
     }
     setDesc(desc: string) {
+        this.descEl.setText(desc);
         return this;
     }
     setClass(c: string) {
+        this.controlEl.addClass(c);
         return this;
     }
     addText(cb: (text: TextComponent) => any) {
-        cb(new TextComponent());
+        const component = new TextComponent();
+        this.controlEl.appendChild(component.inputEl);
+        cb(component);
         return this;
     }
     addToggle(cb: (toggle: ToggleComponent) => any) {
-        cb(new ToggleComponent());
+        const component = new ToggleComponent();
+        cb(component);
         return this;
     }
     addButton(cb: (btn: ButtonComponent) => any) {
-        cb(new ButtonComponent());
+        const btn = new ButtonComponent();
+        this.controlEl.appendChild(btn.buttonEl);
+        cb(btn);
         return this;
     }
     addDropdown(cb: (dropdown: DropdownComponent) => any) {
-        cb(new DropdownComponent());
+        const component = new DropdownComponent();
+        cb(component);
         return this;
     }
     addSlider(cb: (slider: SliderComponent) => any) {
-        cb(new SliderComponent());
+        const component = new SliderComponent();
+        cb(component);
         return this;
     }
 }

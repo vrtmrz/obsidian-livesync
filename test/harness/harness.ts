@@ -1,12 +1,12 @@
 import { App } from "obsidian";
 import ObsidianLiveSyncPlugin from "@/main";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
-import { LOG_LEVEL_VERBOSE, Logger, setGlobalLogFunction } from "@lib/common/logger";
+import { LOG_LEVEL_VERBOSE, setGlobalLogFunction } from "@lib/common/logger";
 import { SettingCache } from "./obsidian-mock";
 import { delay, promiseWithResolvers } from "octagonal-wheels/promises";
 import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
 import { EVENT_PLATFORM_UNLOADED } from "@/lib/src/PlatformAPIs/base/APIBase";
-import { serialized } from "octagonal-wheels/concurrency/lock_v2";
+import { env } from "../suite/variables";
 
 export type LiveSyncHarness = {
     app: App;
@@ -15,8 +15,12 @@ export type LiveSyncHarness = {
     disposalPromise: Promise<void>;
     isDisposed: () => boolean;
 };
+const isLiveSyncLogEnabled = env?.PRINT_LIVESYNC_LOGS === "true";
 function overrideLogFunction(vaultName: string) {
     setGlobalLogFunction((msg, level, key) => {
+        if (!isLiveSyncLogEnabled) {
+            return;
+        }
         if (level && level < LOG_LEVEL_VERBOSE) {
             return;
         }
@@ -71,11 +75,14 @@ export async function generateHarness(
     const plugin = new ObsidianLiveSyncPlugin(app, manifest);
     overrideLogFunction(vaultName);
     // Initial load
+    await delay(100);
     await plugin.onload();
     let isDisposed = false;
     const waitPromise = promiseWithResolvers<void>();
     eventHub.once(EVENT_PLATFORM_UNLOADED, async () => {
+        console.log(`Harness for vault '${vaultName}' disposed.`);
         await delay(100);
+        eventHub.offAll();
         isDisposed = true;
         waitPromise.resolve();
     });
@@ -121,7 +128,9 @@ export async function waitForIdle(harness: LiveSyncHarness): Promise<void> {
             harness.plugin.storageApplyingCount.value;
 
         if (processing === 0) {
-            console.log(`Idle after ${i} loops`);
+            if (i > 0) {
+                console.log(`Idle after ${i} loops`);
+            }
             return;
         }
     }

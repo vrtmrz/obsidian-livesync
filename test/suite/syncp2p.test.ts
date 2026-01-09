@@ -9,22 +9,23 @@ import {
     type ObsidianLiveSyncSettings,
 } from "@/lib/src/common/types";
 
+import { settingBase } from "./variables.ts";
 import { defaultFileOption } from "./db_common";
 import { syncBasicCase } from "./sync.senario.basic.ts";
-import { settingBase } from "./variables.ts";
-const sync_test_setting_base = settingBase;
+
 export const env = (import.meta as any).env;
 function* generateCase() {
+    const sync_test_setting_base = settingBase;
     const passpharse = "thetest-Passphrase3+9-for-e2ee!";
     const REMOTE_RECOMMENDED = {
         [RemoteTypes.REMOTE_COUCHDB]: PREFERRED_SETTING_SELF_HOSTED,
         [RemoteTypes.REMOTE_MINIO]: PREFERRED_JOURNAL_SYNC,
         [RemoteTypes.REMOTE_P2P]: PREFERRED_SETTING_SELF_HOSTED,
     };
-    const remoteTypes = [RemoteTypes.REMOTE_COUCHDB, RemoteTypes.REMOTE_MINIO];
-    // const remoteTypes = [RemoteTypes.REMOTE_P2P];
-    const e2eeOptions = [false, true];
-    // const e2eeOptions = [true];
+    // const remoteTypes = [RemoteTypes.REMOTE_COUCHDB, RemoteTypes.REMOTE_MINIO, RemoteTypes.REMOTE_P2P];
+    const remoteTypes = [RemoteTypes.REMOTE_P2P];
+    // const e2eeOptions = [false, true];
+    const e2eeOptions = [true];
     for (const remoteType of remoteTypes) {
         for (const useE2EE of e2eeOptions) {
             yield {
@@ -41,7 +42,7 @@ function* generateCase() {
     }
 }
 
-describe("Replication Suite Tests (Normal)", async () => {
+describe("Replication Suite Tests (P2P)", async () => {
     const cases = Array.from(generateCase());
     const fileOptions = defaultFileOption;
     describe.each(cases)("Replication Tests - Remote: $setting.remoteType, E2EE: $setting.encrypt", ({ setting }) => {

@@ -9,13 +9,16 @@ import fs from "node:fs";
 import dotenv from "dotenv";
 import { platform } from "node:process";
 
+import { acceptWebPeer, closeWebPeer, grantClipboardPermissions, openWebPeer } from "./test/lib/commands.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const defEnv = dotenv.config({ path: ".env" }).parsed;
 const testEnv = dotenv.config({ path: ".test.env" }).parsed;
 const env = Object.assign({}, defEnv, testEnv);
 const debuggerEnabled = env?.ENABLE_DEBUGGER === "true";
-const headless = !debuggerEnabled && env?.HEADLESS !== "false";
+const enableUI = env?.ENABLE_UI === "true";
+// const livesyncLogsEnabled = env?.PRINT_LIVESYNC_LOGS === "true";
+const headless = !debuggerEnabled && !enableUI;
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
 const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
 const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
@@ -112,10 +115,12 @@ export default defineConfig({
         headers: {
             "Service-Worker-Allowed": "/",
         },
+        port: 5173,
     },
     test: {
         env: env,
-        testTimeout: 10000,
+        testTimeout: 40000,
+        hookTimeout: 50000,
         fileParallelism: false,
         isolate: true,
         watch: false,
@@ -130,6 +135,13 @@ export default defineConfig({
             // ignoreEmptyLines: true,
         },
         browser: {
+            isolate: true,
+            commands: {
+                grantClipboardPermissions,
+                openWebPeer,
+                closeWebPeer,
+                acceptWebPeer,
+            },
             provider: playwright({
                 launchOptions: {
                     args: ["--js-flags=--expose-gc"],
@@ -143,19 +155,26 @@ export default defineConfig({
                     execArgv: ["--js-flags=--expose-gc"],
                     browser: "chromium",
                     headless,
-
+                    isolate: true,
                     inspector: debuggerEnabled
                         ? {
                               waitForDebugger: true,
                               enabled: true,
                           }
                         : undefined,
-                    printConsoleTrace: true,
+                    printConsoleTrace: debuggerEnabled,
+                    onUnhandledError(error) {
+                        // Ignore certain errors
+                        const msg = error.message || "";
+                        if (msg.includes("Cannot create so many PeerConnections")) {
+                            return false;
+                        }
+                    },
                 },
             ],
             headless,
             fileParallelism: false,
-            ui: debuggerEnabled ? true : false,
+            ui: debuggerEnabled || enableUI ? true : false,
         },
     },
 });

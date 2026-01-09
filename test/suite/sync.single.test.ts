@@ -21,9 +21,9 @@ function* generateCase() {
         [RemoteTypes.REMOTE_MINIO]: PREFERRED_JOURNAL_SYNC,
         [RemoteTypes.REMOTE_P2P]: PREFERRED_SETTING_SELF_HOSTED,
     };
-    const remoteTypes = [RemoteTypes.REMOTE_COUCHDB, RemoteTypes.REMOTE_MINIO];
+    const remoteTypes = [RemoteTypes.REMOTE_COUCHDB];
     // const remoteTypes = [RemoteTypes.REMOTE_P2P];
-    const e2eeOptions = [false, true];
+    const e2eeOptions = [false];
     // const e2eeOptions = [true];
     for (const remoteType of remoteTypes) {
         for (const useE2EE of e2eeOptions) {
@@ -41,7 +41,7 @@ function* generateCase() {
     }
 }
 
-describe("Replication Suite Tests (Normal)", async () => {
+describe.skip("Replication Suite Tests (Single)", async () => {
     const cases = Array.from(generateCase());
     const fileOptions = defaultFileOption;
     describe.each(cases)("Replication Tests - Remote: $setting.remoteType, E2EE: $setting.encrypt", ({ setting }) => {

@@ -21,7 +21,7 @@ export function interceptFetchForLogging() {
             },
         });
         try {
-            const res = await originalFetch(...params);
+            const res = await originalFetch.apply(globalThis, params as any);
             console.log(`[Obsidian Mock] Fetch response: ${res.status} ${res.statusText} for ${method} ${url}`);
             const resClone = res.clone();
             const contentType = resClone.headers.get("content-type") || "";

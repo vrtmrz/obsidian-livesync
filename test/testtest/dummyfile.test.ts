@@ -13,6 +13,7 @@ describe("Test File Teet", async () => {
         const blob = new Blob([...generator], { type: "application/octet-stream" });
         const buf = await blob.arrayBuffer();
         const hexDump = new Uint8Array(buf)
+            //@ts-ignore
             .toHex()
             .match(/.{1,32}/g)
             ?.join("\n");
@@ -20,6 +21,7 @@ describe("Test File Teet", async () => {
         const secondBlob = new Blob([...secondDummy], { type: "application/octet-stream" });
         const secondBuf = await secondBlob.arrayBuffer();
         const secondHexDump = new Uint8Array(secondBuf)
+            //@ts-ignore
             .toHex()
             .match(/.{1,32}/g)
             ?.join("\n");
