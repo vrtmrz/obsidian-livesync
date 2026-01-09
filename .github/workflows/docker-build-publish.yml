@@ -62,7 +62,7 @@ jobs:
             # ------------------------------------------------------------------------
             # Registry Authentication
             # ------------------------------------------------------------------------
-            - name: Log in to the Container registry
+            - name: Login to the GitHub Container registry
               # Don't log in for pull requests from forks
               if: github.event_name != 'pull_request'
               uses: docker/login-action@v3
@@ -70,6 +70,14 @@ jobs:
                   registry: ${{ env.REGISTRY }}
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
+
+            #- name: Login to Docker Hub
+            #  # Don't log in for pull requests from forks
+            #  if: github.event_name != 'pull_request'
+            #  uses: docker/login-action@v3
+            #  with:
+            #    username: ${{ vars.DOCKERHUB_USERNAME }}
+            #    password: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # ------------------------------------------------------------------------
             # Metadata Extraction
@@ -88,6 +96,8 @@ jobs:
                       type=semver,pattern={{version}}
                       type=semver,pattern={{major}}.{{minor}}
                       type=sha
+                      # set `latest` tag if on the default branch
+                      type=raw,value=latest,enable={{is_default_branch}}
 
             - name: Add SHORT_SHA Environment Variable
               id: short-sha
@@ -100,7 +110,7 @@ jobs:
             - name: Build and push Docker image
               uses: docker/build-push-action@v5
               with:
-                  context: .
+                  context: ./docker/
                   file: ./Dockerfile
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
