@@ -1,19 +1,19 @@
 services:
-    couchdb:
-        #!! TODO: Replace my GitHub username with original repo !!
-        image: ghcr.io/julowe/obsidian-livesync:latest
-        container_name: couchdb-for-ols
-        environment:
-            - COUCHDB_USER=${COUCHDB_USER}
-            - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
-        volumes:
-            - couchdb-data:/opt/couchdb/data
-            - couchdb-etc:/opt/couchdb/etc
-        ports:
-            - "${COUCHDB_PORT:-5984}:5984"
-        restart: unless-stopped
+  couchdb:
+    #!! TODO: Replace my GitHub username with original repo !!
+    image: ghcr.io/julowe/obsidian-livesync:latest
+    container_name: couchdb-for-ols
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    volumes:
+      - couchdb-data:/opt/couchdb/data
+      - couchdb-etc:/opt/couchdb/etc
+    ports:
+      - "${COUCHDB_PORT:-5984}:5984"
+    restart: unless-stopped
 volumes:
-    couchdb-data:
-        name: ${VOL_NAME_COUCHDB_DATA:-couchdb-for-ols-data}
-    couchdb-etc:
-        name: ${VOL_NAME_COUCHDB_ETC:-couchdb-for-ols-etc}
+  couchdb-data:
+    name: ${VOL_NAME_COUCHDB_DATA:-couchdb-for-ols-data}
+  couchdb-etc:
+    name: ${VOL_NAME_COUCHDB_ETC:-couchdb-for-ols-etc}
