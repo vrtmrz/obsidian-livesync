@@ -55,8 +55,8 @@ To set the environment variables in your shell:
 
 ```bash
 # Adding environment variables.
-export USERNAME="CHANGE_TO_USERNAME"   #Please change this value.
-export PASSWORD="CHANGE_TO_PASSWORD"   #Please change this value.
+export couchdb_username="CHANGE_TO_USERNAME"   #Please change this value.
+export couchdb_password="CHANGE_TO_PASSWORD"   #Please change this value.
 ```
 
 Then run the below `docker run` command:
@@ -67,8 +67,8 @@ Then run the below `docker run` command:
 docker run --name couchdb-for-ols \
 -d \
 --restart unless-stopped \
--e COUCHDB_USER="${USERNAME}" \
--e COUCHDB_PASSWORD="${PASSWORD}" \
+-e COUCHDB_USER="${couchdb_username}" \
+-e COUCHDB_PASSWORD="${couchdb_password}" \
 -v couchdb-for-ols-data:/opt/couchdb/data \
 -v couchdb-for-ols-etc:/opt/couchdb/etc \
 -p 5984:5984 \
