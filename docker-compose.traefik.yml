@@ -12,7 +12,7 @@ services:
     # TODO: update to use variables
     environment:
       - COUCHDB_USER=username
-      - COUCHDB_PASSWORD=passwod
+      - COUCHDB_PASSWORD=password
     # TODO: update to use vols names below
     volumes:
       - ./data:/opt/couchdb/data
