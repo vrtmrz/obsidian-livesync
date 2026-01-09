@@ -9,9 +9,9 @@ import {
     type ObsidianLiveSyncSettings,
 } from "@/lib/src/common/types";
 
-import { settingBase } from "./variables.ts";
-import { defaultFileOption } from "./db_common";
-import { syncBasicCase } from "./sync.senario.basic.ts";
+import { settingBase } from "../suite/variables.ts";
+import { defaultFileOption } from "../suite/db_common";
+import { syncBasicCase } from "../suite/sync.senario.basic.ts";
 
 export const env = (import.meta as any).env;
 function* generateCase() {
