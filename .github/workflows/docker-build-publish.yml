@@ -97,9 +97,7 @@ jobs:
                       type=raw,value=latest,enable={{is_default_branch}}
 
             - name: Add SHORT_SHA Environment Variable
-              id: short-sha
-              shell: bash
-              run: echo "SHORT_SHA=sha-`git rev-parse --short HEAD`" >> $GITHUB_ENV
+              run: echo "SHORT_SHA=sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
 
             # ------------------------------------------------------------------------
             # Build and Push
