@@ -47,13 +47,13 @@ jobs:
         if: ${{ inputs.coverage == false }}
         env:
           CI: true
-        run: npm run test ${ inputs.testDir }
+        run: npm run test ${{ inputs.testDir }}
 
       - name: Run tests with coverage
         if: ${{ inputs.coverage == true }}
         env:
           CI: true
-        run: npm run test:coverage ${ inputs.testDir }
+        run: npm run test:coverage ${{ inputs.testDir }}
 
       - name: Upload coverage artifact
         if: ${{ inputs.coverage && always() }}
