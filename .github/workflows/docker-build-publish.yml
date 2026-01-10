@@ -45,6 +45,9 @@ jobs:
       security-events: write # Required to upload SARIF files to Security tab
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       # ------------------------------------------------------------------------
       # Multi-Architecture Support
       # ------------------------------------------------------------------------
