@@ -112,7 +112,7 @@ jobs:
       # ------------------------------------------------------------------------
       # Cribbed from: https://docs.docker.com/build/ci/github-actions/test-before-push/
       - name: "Test: Build and export to Docker"
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: ./docker/
           file: ./docker/Dockerfile
