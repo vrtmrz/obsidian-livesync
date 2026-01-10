@@ -7,12 +7,7 @@ on:
       coverage:
         description: 'Run with coverage'
         type: boolean
-        default: true
-        required: false
-      testDir:
-        description: 'Run a specific test directory (path relative to test root)'
-        type: string
-        default: 'suite/'
+        default: false
         required: false
 
 permissions:
@@ -40,21 +35,30 @@ jobs:
       - name: Install test dependencies (Playwright Chromium)
         run: npm run test:install-dependencies
 
-      - name: Start test services (CouchDB + MinIO)
+      - name: Start test services (CouchDB + MinIO + Nostr Relay + WebPeer)
         run: npm run test:docker-all:start
 
-      - name: Run tests (no coverage)
+      - name: Run tests suite (no coverage)
         if: ${{ inputs.coverage == false }}
         env:
           CI: true
-        run: npm run test ${{ inputs.testDir }}
+        run: npm run test suite/
 
+      - name: Run P2P tests suite (no coverage)
+        if: ${{ inputs.coverage == false }}
+        env:
+          CI: true
+        run: npm run test suitep2p/
       - name: Run tests with coverage
         if: ${{ inputs.coverage == true }}
         env:
           CI: true
-        run: npm run test:coverage ${{ inputs.testDir }}
-
+        run: npm run test:coverage suite/
+      - name: Run P2P tests with coverage
+        if: ${{ inputs.coverage == true }}
+        env:
+          CI: true
+        run: npm run test:coverage suitep2p
       - name: Upload coverage artifact
         if: ${{ inputs.coverage && always() }}
         uses: actions/upload-artifact@v4
