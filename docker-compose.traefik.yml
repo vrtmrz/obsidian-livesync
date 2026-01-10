@@ -4,12 +4,16 @@
 version: "2.1"
 services:
   couchdb:
+    # TODO: update to use ghcr.io (or dockerhub?) image
     image: couchdb:latest
     container_name: obsidian-livesync
+    # TODO: should this be set as 1000? or set at all? I haven't used traefik in years, so not sure if this is somehow needed. or if it is for ease of mounted local files.
     user: 1000:1000
+    # TODO: update to use variables
     environment:
       - COUCHDB_USER=username
       - COUCHDB_PASSWORD=password
+    # TODO: update to use vols names below
     volumes:
       - ./data:/opt/couchdb/data
       - ./local.ini:/opt/couchdb/etc/local.ini
@@ -41,6 +45,7 @@ services:
       - "traefik.http.middlewares.obsidiancors.headers.addvaryheader=true"
       - "traefik.http.middlewares.obsidiancors.headers.accessControlAllowCredentials=true"
 
+# TODO: set up variable-named volumes and use above
 networks:
   proxy:
     external: true
