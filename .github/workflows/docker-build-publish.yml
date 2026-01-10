@@ -45,11 +45,6 @@ jobs:
       security-events: write # Required to upload SARIF files to Security tab
 
     steps:
-      # TODO: delete this checkout of dev branch after testing !!
-      - uses: actions/checkout@v6
-        with:
-          ref: "docker-automation"
-
       # ------------------------------------------------------------------------
       # Multi-Architecture Support
       # ------------------------------------------------------------------------
