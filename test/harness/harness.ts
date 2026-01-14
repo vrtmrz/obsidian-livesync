@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App } from "@/deps.ts";
 import ObsidianLiveSyncPlugin from "@/main";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 import { LOG_LEVEL_VERBOSE, setGlobalLogFunction } from "@lib/common/logger";

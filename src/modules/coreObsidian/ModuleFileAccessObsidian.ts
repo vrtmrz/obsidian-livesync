@@ -1,4 +1,4 @@
-import { TFile, TFolder, type ListedFiles } from "obsidian";
+import { TFile, TFolder, type ListedFiles } from "@/deps.ts";
 import { SerializedFileAccess } from "./storageLib/SerializedFileAccess";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";

@@ -28,6 +28,10 @@ export {
     request,
     getLanguage,
     ButtonComponent,
+    TextComponent,
+    ToggleComponent,
+    DropdownComponent,
+    ValueComponent,
 } from "obsidian";
 export type {
     DataWriteOptions,

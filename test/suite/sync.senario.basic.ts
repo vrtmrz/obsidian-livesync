@@ -16,7 +16,7 @@ import { checkStoredFileInDB, testFileRead, testFileWrite } from "./db_common";
 import { delay } from "@/lib/src/common/utils";
 import { commands } from "vitest/browser";
 import { closeReplication, performReplication, prepareRemote } from "./sync_common";
-import type { DataWriteOptions } from "obsidian";
+import type { DataWriteOptions } from "@/deps.ts";
 
 type MTimedDataWriteOptions = DataWriteOptions & { mtime: number };
 export type TestOptions = {

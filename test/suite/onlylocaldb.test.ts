@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, test } from "vitest";
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import { TFile } from "obsidian";
+import { TFile } from "@/deps.ts";
 import { DEFAULT_SETTINGS, type FilePath, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 import { isDocContentSame, readContent } from "@/lib/src/common/utils";
 import { DummyFileSourceInisialised, generateBinaryFile, generateFile, init } from "../utils/dummyfile";

@@ -4,7 +4,7 @@ import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-w
 import { eventHub } from "../../common/events";
 import { getWebCrypto } from "../../lib/src/mods.ts";
 import { uint8ArrayToHexString } from "octagonal-wheels/binary/hex";
-import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
+import { parseYaml, requestUrl, stringifyYaml } from "@/deps.ts";
 import type { FilePath } from "../../lib/src/common/types.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { getFileRegExp } from "../../lib/src/common/utils.ts";

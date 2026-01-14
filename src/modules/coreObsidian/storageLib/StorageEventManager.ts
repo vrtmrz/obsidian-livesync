@@ -497,7 +497,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
                 if (fei.type == "CREATE" || fei.type == "CHANGED") {
                     // 3.2. If true, set the queue, and wait for the waiting, or until timeout
                     // (since is copied from previous waiting if exists to limit the maximum wait time)
-                    console.warn(`Since:`, previous?.since);
+                    // console.warn(`Since:`, previous?.since);
                     const info = this._addWaiting(waitingKey, fei, previous?.since);
                     waitPromise = info.canProceed.promise;
                 } else if (fei.type == "DELETE") {
@@ -531,7 +531,7 @@ export class StorageEventManagerObsidian extends StorageEventManager {
             "storage-event-manager-snapshot"
         );
         if (snapShot && Array.isArray(snapShot) && snapShot.length > 0) {
-            console.warn(`Restoring snapshot: ${snapShot.length} items`);
+            // console.warn(`Restoring snapshot: ${snapShot.length} items`);
             Logger(`Restoring storage operation snapshot: ${snapShot.length} items`, LOG_LEVEL_VERBOSE);
             // Restore the snapshot
             // Note: Mark all items as skipBatchWait to prevent apply the off-line batch saving.
