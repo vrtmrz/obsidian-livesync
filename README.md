@@ -97,6 +97,9 @@ The project has been in continual progress and harmony thanks to:
 
 May those who have contributed be honoured and remembered for their kindness and generosity.
 
+## Development Guide
+Please refer to [Development Guide](devs.md) for development setup, testing infrastructure, code conventions, and more.
+
 ## License
 
 Licensed under the MIT License.
