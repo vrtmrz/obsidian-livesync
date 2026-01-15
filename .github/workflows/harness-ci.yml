@@ -1,14 +1,17 @@
-# Run tests with optional coverage reporting (Harnessed CI)
+# Run tests by Harnessed CI
 name: harness-ci
 
 on:
   workflow_dispatch:
     inputs:
-      coverage:
-        description: 'Run with coverage'
-        type: boolean
-        default: false
-        required: false
+      testsuite:
+        description: 'Run specific test suite (leave empty to run all)'
+        type: choice
+        options:
+          - ''
+          - 'suite/'
+          - 'suitep2p/'
+        default: ''
 
 permissions:
   contents: read
@@ -38,34 +41,16 @@ jobs:
       - name: Start test services (CouchDB + MinIO + Nostr Relay + WebPeer)
         run: npm run test:docker-all:start
 
-      - name: Run tests suite (no coverage)
-        if: ${{ inputs.coverage == false }}
+      - name: Run tests suite
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
         env:
           CI: true
         run: npm run test suite/
-
-      - name: Run P2P tests suite (no coverage)
-        if: ${{ inputs.coverage == false }}
+      - name: Run P2P tests suite
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suitep2p/' }}
         env:
           CI: true
         run: npm run test suitep2p/
-      - name: Run tests with coverage
-        if: ${{ inputs.coverage == true }}
-        env:
-          CI: true
-        run: npm run test:coverage suite/
-      - name: Run P2P tests with coverage
-        if: ${{ inputs.coverage == true }}
-        env:
-          CI: true
-        run: npm run test:coverage suitep2p
-      - name: Upload coverage artifact
-        if: ${{ inputs.coverage && always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-
       - name: Stop test services
         if: always()
         run: npm run test:docker-all:stop
