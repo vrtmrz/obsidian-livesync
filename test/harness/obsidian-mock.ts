@@ -991,3 +991,5 @@ export type ListedFiles = {
     files: string[];
     folders: string[];
 };
+
+export type ValueComponent = any;
