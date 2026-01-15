@@ -6,7 +6,7 @@ on:
     inputs:
       testsuite:
         description: 'Run specific test suite (leave empty to run all)'
-        type: select
+        type: choice
         options:
           - ''
           - 'suite/'
