@@ -3,7 +3,9 @@ import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
 const databaseCache: { [key: string]: IDBPDatabase<any> } = {};
-export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
+export { OpenKeyValueDatabase } from "./KeyValueDBv2.ts";
+
+export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
     if (dbKey in databaseCache) {
         databaseCache[dbKey].close();
         delete databaseCache[dbKey];
@@ -82,7 +84,7 @@ export const OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatab
         },
         close() {
             delete databaseCache[dbKey];
-            return closeDB();
+            return Promise.resolve(closeDB());
         },
         async destroy() {
             delete databaseCache[dbKey];

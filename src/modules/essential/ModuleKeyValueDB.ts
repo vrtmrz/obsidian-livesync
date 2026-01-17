@@ -6,9 +6,9 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { LiveSyncCore } from "../../main.ts";
 
 export class ModuleKeyValueDB extends AbstractModule {
-    tryCloseKvDB() {
+    async tryCloseKvDB() {
         try {
-            this.core.kvDB?.close();
+            await this.core.kvDB?.close();
             return true;
         } catch (e) {
             this._log("Failed to close KeyValueDB", LOG_LEVEL_VERBOSE);
@@ -19,7 +19,7 @@ export class ModuleKeyValueDB extends AbstractModule {
     async openKeyValueDB(): Promise<boolean> {
         await delay(10);
         try {
-            this.tryCloseKvDB();
+            await this.tryCloseKvDB();
             await delay(10);
             await yieldMicrotask();
             this.core.kvDB = await OpenKeyValueDatabase(this.services.vault.getVaultName() + "-livesync-kv");
@@ -33,12 +33,12 @@ export class ModuleKeyValueDB extends AbstractModule {
         }
         return true;
     }
-    _onDBUnload(db: LiveSyncLocalDB) {
-        if (this.core.kvDB) this.core.kvDB.close();
+    async _onDBUnload(db: LiveSyncLocalDB) {
+        if (this.core.kvDB) await this.core.kvDB.close();
         return Promise.resolve(true);
     }
-    _onDBClose(db: LiveSyncLocalDB) {
-        if (this.core.kvDB) this.core.kvDB.close();
+    async _onDBClose(db: LiveSyncLocalDB) {
+        if (this.core.kvDB) await this.core.kvDB.close();
         return Promise.resolve(true);
     }
 
