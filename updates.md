@@ -3,6 +3,14 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.38
+
+17th January, 2026
+
+### Fixed
+
+- Fixed an issue where indexedDB would not close correctly on some environments, causing unexpected errors during database operations.
+
 ## 0.25.37
 
 15th January, 2026
