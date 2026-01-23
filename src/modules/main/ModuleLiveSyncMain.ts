@@ -208,17 +208,17 @@ export class ModuleLiveSyncMain extends AbstractModule {
 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.handleIsSuspended(this._isSuspended.bind(this));
-        services.appLifecycle.handleSetSuspended(this._setSuspended.bind(this));
-        services.appLifecycle.handleIsReady(this._isReady.bind(this));
-        services.appLifecycle.handleMarkIsReady(this._markIsReady.bind(this));
-        services.appLifecycle.handleResetIsReady(this._resetIsReady.bind(this));
-        services.appLifecycle.handleHasUnloaded(this._isUnloaded.bind(this));
-        services.appLifecycle.handleIsReloadingScheduled(this._isReloadingScheduled.bind(this));
-        services.appLifecycle.handleOnReady(this._onLiveSyncReady.bind(this));
-        services.appLifecycle.handleOnWireUpEvents(this._wireUpEvents.bind(this));
-        services.appLifecycle.handleOnLoad(this._onLiveSyncLoad.bind(this));
-        services.appLifecycle.handleOnAppUnload(this._onLiveSyncUnload.bind(this));
-        services.setting.handleRealiseSetting(this._realizeSettingSyncMode.bind(this));
+        services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
+        services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
+        services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
+        services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
+        services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
+        services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
+        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
+        services.appLifecycle.onReady.addHandler(this._onLiveSyncReady.bind(this));
+        services.appLifecycle.onWireUpEvents.addHandler(this._wireUpEvents.bind(this));
+        services.appLifecycle.onLoad.addHandler(this._onLiveSyncLoad.bind(this));
+        services.appLifecycle.onAppUnload.addHandler(this._onLiveSyncUnload.bind(this));
+        services.setting.realiseSetting.setHandler(this._realizeSettingSyncMode.bind(this));
     }
 }

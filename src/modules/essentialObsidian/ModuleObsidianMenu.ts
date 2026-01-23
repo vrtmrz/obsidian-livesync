@@ -131,8 +131,8 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.API.handleShowWindow(this._showView.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.API.showWindow.setHandler(this._showView.bind(this));
     }
 }

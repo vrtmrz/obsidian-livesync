@@ -174,12 +174,12 @@ export class ModuleTargetFilter extends AbstractModule {
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.vault.handleMarkFileListPossiblyChanged(this._markFileListPossiblyChanged.bind(this));
-        services.path.handleId2Path(this._id2path.bind(this));
-        services.path.handlePath2Id(this._path2id.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.vault.handleIsFileSizeTooLarge(this._isFileSizeExceeded.bind(this));
-        services.vault.handleIsIgnoredByIgnoreFile(this._isIgnoredByIgnoreFiles.bind(this));
-        services.vault.handleIsTargetFile(this._isTargetFile.bind(this));
+        services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
+        services.path.id2path.setHandler(this._id2path.bind(this));
+        services.path.path2id.setHandler(this._path2id.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.vault.isFileSizeTooLarge.setHandler(this._isFileSizeExceeded.bind(this));
+        services.vault.isIgnoredByIgnoreFile.setHandler(this._isIgnoredByIgnoreFiles.bind(this));
+        services.vault.isTargetFile.setHandler(this._isTargetFile.bind(this));
     }
 }

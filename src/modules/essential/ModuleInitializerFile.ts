@@ -397,7 +397,7 @@ export class ModuleInitializerFile extends AbstractModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.databaseEvents.handleInitialiseDatabase(this._initializeDatabase.bind(this));
-        services.vault.handleScanVault(this._performFullScan.bind(this));
+        services.databaseEvents.initialiseDatabase.setHandler(this._initializeDatabase.bind(this));
+        services.vault.scanVault.setHandler(this._performFullScan.bind(this));
     }
 }

@@ -243,6 +243,6 @@ We can perform a command in this file.
         }
     }
     onBindFunction(core: typeof this.plugin, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

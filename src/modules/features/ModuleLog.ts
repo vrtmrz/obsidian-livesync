@@ -495,9 +495,9 @@ export class ModuleLog extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.appLifecycle.handleOnBeforeUnload(this._allStartOnUnload.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.appLifecycle.onBeforeUnload.addHandler(this._allStartOnUnload.bind(this));
     }
 }

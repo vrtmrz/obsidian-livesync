@@ -128,7 +128,7 @@ export class ModuleCheckRemoteSize extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnScanningStartupIssues(this._allScanStat.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

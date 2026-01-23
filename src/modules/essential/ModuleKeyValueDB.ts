@@ -4,6 +4,7 @@ import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 
 export class ModuleKeyValueDB extends AbstractModule {
     async tryCloseKvDB() {
@@ -76,7 +77,7 @@ export class ModuleKeyValueDB extends AbstractModule {
                     .filter((e) => e.startsWith(prefix))
                     .map((e) => e.substring(prefix.length));
             },
-        };
+        } satisfies SimpleStore<T>;
     }
     _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.openKeyValueDB();
@@ -100,11 +101,11 @@ export class ModuleKeyValueDB extends AbstractModule {
         return true;
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.databaseEvents.handleOnUnloadDatabase(this._onDBUnload.bind(this));
-        services.databaseEvents.handleOnCloseDatabase(this._onDBClose.bind(this));
-        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
-        services.databaseEvents.handleOnResetDatabase(this._everyOnResetDatabase.bind(this));
-        services.database.handleOpenSimpleStore(this._getSimpleStore.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+        services.databaseEvents.onUnloadDatabase.addHandler(this._onDBUnload.bind(this));
+        services.databaseEvents.onCloseDatabase.addHandler(this._onDBClose.bind(this));
+        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+        services.databaseEvents.onResetDatabase.addHandler(this._everyOnResetDatabase.bind(this));
+        services.database.openSimpleStore.setHandler(this._getSimpleStore.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
     }
 }

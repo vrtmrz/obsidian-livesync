@@ -346,7 +346,7 @@ export class ModuleDatabaseFileAccess extends AbstractModule implements Database
         return ret;
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.test.handleTest(this._everyModuleTest.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.test.test.addHandler(this._everyModuleTest.bind(this));
     }
 }

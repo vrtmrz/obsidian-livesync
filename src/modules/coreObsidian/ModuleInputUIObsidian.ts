@@ -113,6 +113,6 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements Con
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
     }
 }

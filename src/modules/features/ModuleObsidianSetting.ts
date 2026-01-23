@@ -323,13 +323,13 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
-        services.setting.handleClearUsedPassphrase(this._clearUsedPassphrase.bind(this));
-        services.setting.handleDecryptSettings(this._decryptSettings.bind(this));
-        services.setting.handleAdjustSettings(this._adjustSettings.bind(this));
-        services.setting.handleLoadSettings(this._loadSettings.bind(this));
-        services.setting.handleCurrentSettings(this._currentSettings.bind(this));
-        services.setting.handleSaveDeviceAndVaultName(this._saveDeviceAndVaultName.bind(this));
-        services.setting.handleSaveSettingData(this._saveSettingData.bind(this));
+        services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
+        services.setting.clearUsedPassphrase.setHandler(this._clearUsedPassphrase.bind(this));
+        services.setting.decryptSettings.setHandler(this._decryptSettings.bind(this));
+        services.setting.adjustSettings.setHandler(this._adjustSettings.bind(this));
+        services.setting.loadSettings.setHandler(this._loadSettings.bind(this));
+        services.setting.currentSettings.setHandler(this._currentSettings.bind(this));
+        services.setting.saveDeviceAndVaultName.setHandler(this._saveDeviceAndVaultName.bind(this));
+        services.setting.saveSettingData.setHandler(this._saveSettingData.bind(this));
     }
 }

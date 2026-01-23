@@ -329,19 +329,19 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.handleGetActiveReplicator(this._getReplicator.bind(this));
-        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
-        services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
-        services.databaseEvents.handleOnResetDatabase(this._everyOnResetDatabase.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.replication.handleParseSynchroniseResult(this._parseReplicationResult.bind(this));
-        services.appLifecycle.handleOnSuspending(this._everyBeforeSuspendProcess.bind(this));
-        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
-        services.replication.handleIsReplicationReady(this._canReplicate.bind(this));
-        services.replication.handleReplicate(this._replicate.bind(this));
-        services.replication.handleReplicateByEvent(this._replicateByEvent.bind(this));
-        services.remote.handleReplicateAllToRemote(this._replicateAllToServer.bind(this));
-        services.remote.handleReplicateAllFromRemote(this._replicateAllFromServer.bind(this));
-        services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
+        services.replicator.getActiveReplicator.setHandler(this._getReplicator.bind(this));
+        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+        services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
+        services.databaseEvents.onResetDatabase.addHandler(this._everyOnResetDatabase.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.replication.parseSynchroniseResult.setHandler(this._parseReplicationResult.bind(this));
+        services.appLifecycle.onSuspending.addHandler(this._everyBeforeSuspendProcess.bind(this));
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
+        services.replication.isReplicationReady.setHandler(this._canReplicate.bind(this));
+        services.replication.replicate.setHandler(this._replicate.bind(this));
+        services.replication.replicateByEvent.setHandler(this._replicateByEvent.bind(this));
+        services.remote.replicateAllToRemote.setHandler(this._replicateAllToServer.bind(this));
+        services.remote.replicateAllFromRemote.setHandler(this._replicateAllFromServer.bind(this));
+        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }

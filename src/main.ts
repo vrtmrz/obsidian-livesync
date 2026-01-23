@@ -70,6 +70,7 @@ import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 import type { LiveSyncManagers } from "./lib/src/managers/LiveSyncManagers.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServices.ts";
 import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
+import type { ServiceContext } from "./lib/src/services/ServiceHub.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -83,7 +84,7 @@ export default class ObsidianLiveSyncPlugin
     /**
      * The service hub for managing all services.
      */
-    _services: InjectableServiceHub = new ObsidianServiceHub(this);
+    _services: InjectableServiceHub<ServiceContext> = new ObsidianServiceHub(this);
     get services() {
         return this._services;
     }

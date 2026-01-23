@@ -213,8 +213,8 @@ export class ModuleConflictResolver extends AbstractModule {
     }
 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.conflict.handleResolveByDeletingRevision(this._resolveConflictByDeletingRev.bind(this));
-        services.conflict.handleResolve(this._resolveConflict.bind(this));
-        services.conflict.handleResolveByNewest(this._anyResolveConflictByNewest.bind(this));
+        services.conflict.resolveByDeletingRevision.setHandler(this._resolveConflictByDeletingRev.bind(this));
+        services.conflict.resolve.setHandler(this._resolveConflict.bind(this));
+        services.conflict.resolveByNewest.setHandler(this._anyResolveConflictByNewest.bind(this));
     }
 }

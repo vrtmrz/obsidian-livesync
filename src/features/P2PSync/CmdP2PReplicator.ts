@@ -271,11 +271,11 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     }
 
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.handleGetNewReplicator(this._anyNewReplicator.bind(this));
-        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnSuspending(this._everyBeforeSuspendProcess.bind(this));
-        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
-        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
+        services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
+        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onSuspending.addHandler(this._everyBeforeSuspendProcess.bind(this));
+        services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
+        services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
     }
 }

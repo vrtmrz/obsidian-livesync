@@ -20,6 +20,6 @@ export class ModuleObsidianGlobalHistory extends AbstractObsidianModule {
         void this.services.API.showWindow(VIEW_TYPE_GLOBAL_HISTORY);
     }
     onBindFunction(core: typeof this.core, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

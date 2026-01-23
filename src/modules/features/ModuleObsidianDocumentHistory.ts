@@ -52,6 +52,6 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: typeof this.core, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

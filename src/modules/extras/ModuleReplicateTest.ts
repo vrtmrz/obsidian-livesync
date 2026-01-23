@@ -581,8 +581,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         return this.testDone();
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
-        services.test.handleTestMultiDevice(this._everyModuleTestMultiDevice.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
+        services.test.testMultiDevice.addHandler(this._everyModuleTestMultiDevice.bind(this));
     }
 }

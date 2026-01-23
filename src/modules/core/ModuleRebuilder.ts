@@ -275,10 +275,10 @@ Please enable them from the settings screen after setup is complete.`,
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.database.handleResetDatabase(this._resetLocalDatabase.bind(this));
-        services.remote.handleTryResetDatabase(this._tryResetRemoteDatabase.bind(this));
-        services.remote.handleTryCreateDatabase(this._tryCreateRemoteDatabase.bind(this));
-        services.setting.handleSuspendAllSync(this._allSuspendAllSync.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.database.resetDatabase.setHandler(this._resetLocalDatabase.bind(this));
+        services.remote.tryResetDatabase.setHandler(this._tryResetRemoteDatabase.bind(this));
+        services.remote.tryCreateDatabase.setHandler(this._tryCreateRemoteDatabase.bind(this));
+        services.setting.suspendAllSync.addHandler(this._allSuspendAllSync.bind(this));
     }
 }

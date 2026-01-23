@@ -93,6 +93,9 @@
                 keys: () => {
                     return Promise.resolve(Array.from(map.keys()));
                 },
+                get db() {
+                    return Promise.resolve(this);
+                },
             } as SimpleStore<any>;
 
             const dummyPouch = new PouchDB<EntryDoc>("dummy");

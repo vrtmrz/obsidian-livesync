@@ -355,7 +355,7 @@ export class ModuleMigration extends AbstractModule {
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
-        services.appLifecycle.handleFirstInitialise(this._everyOnFirstInitialize.bind(this));
+        services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));
     }
 }

@@ -28,7 +28,7 @@ export class ModuleReplicatorP2P extends AbstractModule {
         return Promise.resolve(true);
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.handleGetNewReplicator(this._anyNewReplicator.bind(this));
-        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
+        services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
+        services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
     }
 }

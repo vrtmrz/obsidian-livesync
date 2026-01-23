@@ -436,8 +436,8 @@ export class ModuleFileHandler extends AbstractModule {
         );
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.fileProcessing.handleProcessFileEvent(this._anyHandlerProcessesFileEvent.bind(this));
-        services.replication.handleProcessSynchroniseResult(this._anyProcessReplicatedDoc.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.fileProcessing.processFileEvent.addHandler(this._anyHandlerProcessesFileEvent.bind(this));
+        services.replication.processSynchroniseResult.addHandler(this._anyProcessReplicatedDoc.bind(this));
     }
 }

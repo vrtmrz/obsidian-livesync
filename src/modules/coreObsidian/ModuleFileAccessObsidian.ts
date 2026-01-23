@@ -386,11 +386,11 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         super(plugin, core);
     }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.vault.handleIsStorageInsensitive(this._isStorageInsensitive.bind(this));
-        services.setting.handleShouldCheckCaseInsensitively(this._shouldCheckCaseInsensitive.bind(this));
-        services.appLifecycle.handleFirstInitialise(this._everyOnFirstInitialize.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.fileProcessing.handleCommitPendingFileEvents(this._everyCommitPendingFileEvent.bind(this));
+        services.vault.isStorageInsensitive.setHandler(this._isStorageInsensitive.bind(this));
+        services.setting.shouldCheckCaseInsensitively.setHandler(this._shouldCheckCaseInsensitive.bind(this));
+        services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.fileProcessing.commitPendingFileEvents.addHandler(this._everyCommitPendingFileEvent.bind(this));
     }
 }

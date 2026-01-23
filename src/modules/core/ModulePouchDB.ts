@@ -18,6 +18,6 @@ export class ModulePouchDB extends AbstractModule {
         return new PouchDB(name, optionPass);
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.database.handleCreatePouchDBInstance(this._createPouchDBInstance.bind(this));
+        services.database.createPouchDBInstance.setHandler(this._createPouchDBInstance.bind(this));
     }
 }

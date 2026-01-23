@@ -39,8 +39,8 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule {
         return this.localDatabase != null && this.localDatabase.isReady;
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.database.handleIsDatabaseReady(this._isDatabaseReady.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.database.handleOpenDatabase(this._openDatabase.bind(this));
+        services.database.isDatabaseReady.setHandler(this._isDatabaseReady.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.database.openDatabase.setHandler(this._openDatabase.bind(this));
     }
 }

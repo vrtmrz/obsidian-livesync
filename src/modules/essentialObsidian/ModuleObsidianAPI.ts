@@ -312,7 +312,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
 
-    private _reportUnresolvedMessages(): Promise<string[]> {
+    private _reportUnresolvedMessages(): Promise<(string | Error)[]> {
         return Promise.resolve([...this._previousErrors]);
     }
 
@@ -330,16 +330,16 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
-        services.API.handleGetCustomFetchHandler(this._customFetchHandler.bind(this));
-        services.API.handleIsLastPostFailedDueToPayloadSize(this._getLastPostFailedBySize.bind(this));
-        services.remote.handleConnect(this._connectRemoteCouchDB.bind(this));
-        services.API.handleIsMobile(this._isMobile.bind(this));
-        services.vault.handleGetVaultName(this._getVaultName.bind(this));
-        services.vault.handleVaultName(this._vaultName.bind(this));
-        services.vault.handleGetActiveFilePath(this._getActiveFilePath.bind(this));
-        services.API.handleGetAppID(this._anyGetAppId.bind(this));
-        services.API.handleGetAppVersion(this._getAppVersion.bind(this));
-        services.API.handleGetPluginVersion(this._getPluginVersion.bind(this));
-        services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
+        services.API.getCustomFetchHandler.setHandler(this._customFetchHandler.bind(this));
+        services.API.isLastPostFailedDueToPayloadSize.setHandler(this._getLastPostFailedBySize.bind(this));
+        services.remote.connect.setHandler(this._connectRemoteCouchDB.bind(this));
+        services.API.isMobile.setHandler(this._isMobile.bind(this));
+        services.vault.getVaultName.setHandler(this._getVaultName.bind(this));
+        services.vault.vaultName.setHandler(this._vaultName.bind(this));
+        services.vault.getActiveFilePath.setHandler(this._getActiveFilePath.bind(this));
+        services.API.getAppID.setHandler(this._anyGetAppId.bind(this));
+        services.API.getAppVersion.setHandler(this._getAppVersion.bind(this));
+        services.API.getPluginVersion.setHandler(this._getPluginVersion.bind(this));
+        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }
