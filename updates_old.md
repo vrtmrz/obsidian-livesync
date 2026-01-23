@@ -9,6 +9,52 @@ I have now rewritten the E2EE code to be more robust and easier to understand. I
 As a result, this is the first time in a while that forward compatibility has been broken. We have also taken the opportunity to change all metadata to use encryption rather than obfuscation. Furthermore, the `Dynamic Iteration Count` setting is now redundant and has been moved to the `Patches` pane in the settings. Thanks to Rabin-Karp, the eden setting is also no longer necessary and has been relocated accordingly. Therefore, v0.25.0 represents a legitimate and correct evolution.
 
 ---
+## 0.25.30
+
+17th November, 2025
+
+So sorry for the quick follow-up release, due to a humble mistake in a quick causing a matter.
+
+### Fixed
+
+- Now we can save settings correctly again (#756).
+
+## ~~0.25.28~~ 0.25.29
+
+(0.25.28 was skipped due to a packaging issue.)
+
+17th November, 2025
+
+### New feature
+
+- We can now configure hidden file synchronisation to always overwrite with the latest version (#579).
+
+### Fixed
+
+- Timing dependency issues during initialisation have been mitigated (#714)
+
+### Improved
+
+- Error logs now contain stack-traces for better inspection.
+
+## 0.25.27
+
+12th November, 2025
+
+### Improved
+
+- Now we can switch the database adapter between IndexedDB and IDB without rebuilding (#747).
+    - Just a local migration will be required, but faster than a full rebuild.
+- No longer checking for the adapter by `Doctor`.
+
+### Changes
+
+- The default adapter is reverted to IDB to avoid memory leaks (#747).
+
+### Fixed (?)
+
+- Reverted QR code library to v1.4.4 (To make sure #752).
+
 ## 0.25.26
 
 07th November, 2025
