@@ -92,7 +92,7 @@ export function paneRemoteConfig(
     }
     {
         void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer"), () => {}).then((paneEl) => {
-            const setting = new Setting(paneEl).setName("Active Remote Configuration");
+            const setting = new Setting(paneEl).setName($msg("Active Remote Configuration"));
 
             const el = setting.controlEl.createDiv({});
             el.setText(`${remoteNameMap[this.editingSettings.remoteType] || " - "}`);
