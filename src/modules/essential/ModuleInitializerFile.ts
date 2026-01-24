@@ -1,6 +1,6 @@
 import { unique } from "octagonal-wheels/collection";
 import { throttle } from "octagonal-wheels/function";
-import { eventHub } from "../../common/events.ts";
+import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "../../common/events.ts";
 import { BASE_IS_NEW, compareFileFreshness, EVEN, getPath, isValidPath, TARGET_IS_NEW } from "../../common/utils.ts";
 import {
     type FilePathWithPrefixLC,
@@ -13,6 +13,7 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_DEBUG,
     type UXFileInfoStub,
+    type LOG_LEVEL,
 } from "../../lib/src/common/types.ts";
 import { isAnyNote } from "../../lib/src/common/utils.ts";
 import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
@@ -21,30 +22,43 @@ import { withConcurrency } from "octagonal-wheels/iterable/map";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
 export class ModuleInitializerFile extends AbstractModule {
+    private _detectedErrors = new Set<string>();
+
+    private logDetectedError(message: string, logLevel: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) {
+        this._detectedErrors.add(message);
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        this._log(message, logLevel, key);
+    }
+    private resetDetectedError(message: string) {
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        this._detectedErrors.delete(message);
+    }
     private async _performFullScan(showingNotice?: boolean, ignoreSuspending: boolean = false): Promise<boolean> {
         this._log("Opening the key-value database", LOG_LEVEL_VERBOSE);
         const isInitialized = (await this.core.kvDB.get<boolean>("initialized")) || false;
         // synchronize all files between database and storage.
+
+        const ERR_NOT_CONFIGURED =
+            "LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.";
         if (!this.settings.isConfigured) {
-            if (showingNotice) {
-                this._log(
-                    "LiveSync is not configured yet. Synchronising between the storage and the local database is now prevented.",
-                    LOG_LEVEL_NOTICE,
-                    "syncAll"
-                );
-            }
+            this.logDetectedError(ERR_NOT_CONFIGURED, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
             return false;
         }
+        this.resetDetectedError(ERR_NOT_CONFIGURED);
+
+        const ERR_SUSPENDING =
+            "Now suspending file watching. Synchronising between the storage and the local database is now prevented.";
         if (!ignoreSuspending && this.settings.suspendFileWatching) {
-            if (showingNotice) {
-                this._log(
-                    "Now suspending file watching. Synchronising between the storage and the local database is now prevented.",
-                    LOG_LEVEL_NOTICE,
-                    "syncAll"
-                );
-            }
+            this.logDetectedError(ERR_SUSPENDING, showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO, "syncAll");
             return false;
         }
+        const MSG_IN_REMEDIATION = `Started in remediation Mode! (Max mtime for reflect events is set). Synchronising between the storage and the local database is now prevented.`;
+        this.resetDetectedError(ERR_SUSPENDING);
+        if (this.settings.maxMTimeForReflectEvents > 0) {
+            this.logDetectedError(MSG_IN_REMEDIATION, LOG_LEVEL_NOTICE, "syncAll");
+            return false;
+        }
+        this.resetDetectedError(MSG_IN_REMEDIATION);
 
         if (showingNotice) {
             this._log("Initializing", LOG_LEVEL_NOTICE, "syncAll");
@@ -383,10 +397,12 @@ export class ModuleInitializerFile extends AbstractModule {
             if (this.localDatabase.isReady) {
                 await this.services.vault.scanVault(showingNotice, ignoreSuspending);
             }
+            const ERR_INITIALISATION_FAILED = `Initializing database has been failed on some module!`;
             if (!(await this.services.databaseEvents.onDatabaseInitialised(showingNotice))) {
-                this._log(`Initializing database has been failed on some module!`, LOG_LEVEL_NOTICE);
+                this.logDetectedError(ERR_INITIALISATION_FAILED, LOG_LEVEL_NOTICE);
                 return false;
             }
+            this.resetDetectedError(ERR_INITIALISATION_FAILED);
             this.services.appLifecycle.markIsReady();
             // run queued event once.
             await this.services.fileProcessing.commitPendingFileEvents();
@@ -396,7 +412,11 @@ export class ModuleInitializerFile extends AbstractModule {
             return false;
         }
     }
+    private _reportDetectedErrors(): Promise<string[]> {
+        return Promise.resolve(Array.from(this._detectedErrors));
+    }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportDetectedErrors.bind(this));
         services.databaseEvents.initialiseDatabase.setHandler(this._initializeDatabase.bind(this));
         services.vault.scanVault.setHandler(this._performFullScan.bind(this));
     }

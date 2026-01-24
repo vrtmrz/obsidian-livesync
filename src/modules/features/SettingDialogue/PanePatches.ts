@@ -173,7 +173,62 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
+    void addPanel(paneEl, "Remediation").then((paneEl) => {
+        let dateEl: HTMLSpanElement;
+        new Setting(paneEl)
+            .addText((text) => {
+                const updateDateText = () => {
+                    if (this.editingSettings.maxMTimeForReflectEvents == 0) {
+                        dateEl.textContent = `No limit configured`;
+                    } else {
+                        const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
+                        dateEl.textContent = `Limit: ${date.toLocaleString()} (${this.editingSettings.maxMTimeForReflectEvents})`;
+                    }
+                    this.requestUpdate();
+                };
+                text.inputEl.before((dateEl = document.createElement("span")));
+                text.inputEl.type = "datetime-local";
+                if (this.editingSettings.maxMTimeForReflectEvents > 0) {
+                    const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
+                    const isoString = date.toISOString().slice(0, 16);
+                    text.setValue(isoString);
+                } else {
+                    text.setValue("");
+                }
+                text.onChange((value) => {
+                    if (value == "") {
+                        this.editingSettings.maxMTimeForReflectEvents = 0;
+                        updateDateText();
+                        return;
+                    }
+                    const date = new Date(value);
+                    if (!isNaN(date.getTime())) {
+                        this.editingSettings.maxMTimeForReflectEvents = date.getTime();
+                    }
+                    updateDateText();
+                });
+                updateDateText();
+                return text;
+            })
+            .setAuto("maxMTimeForReflectEvents")
+            .addApplyButton(["maxMTimeForReflectEvents"]);
 
+        this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
+            const buttons = ["Restart Now", "Later"] as const;
+            const reboot = await this.plugin.confirm.askSelectStringDialogue(
+                "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?",
+                buttons,
+                {
+                    title: "Remediation Setting Changed",
+                    defaultAction: "Restart Now",
+                }
+            );
+            if (reboot !== "Later") {
+                Logger("Remediation setting changed. Restarting Obsidian...", LOG_LEVEL_NOTICE);
+                this.services.appLifecycle.performRestart();
+            }
+        });
+    });
     void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
         // new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
         // const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));

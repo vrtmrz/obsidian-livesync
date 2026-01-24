@@ -23,7 +23,6 @@ import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
 
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 import { ModuleFileAccessObsidian } from "./modules/coreObsidian/ModuleFileAccessObsidian.ts";
-import { ModuleInputUIObsidian } from "./modules/coreObsidian/ModuleInputUIObsidian.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 
 import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
@@ -137,7 +136,6 @@ export default class ObsidianLiveSyncPlugin
         new ModuleObsidianSettingsAsMarkdown(this, this),
         new ModuleObsidianSettingDialogue(this, this),
         new ModuleLog(this, this),
-        new ModuleInputUIObsidian(this, this),
         new ModuleObsidianMenu(this, this),
         new ModuleRebuilder(this),
         new ModuleSetupObsidian(this, this),
@@ -166,7 +164,9 @@ export default class ObsidianLiveSyncPlugin
     managers!: LiveSyncManagers;
     simpleStore!: SimpleStore<CheckPointInfo>;
     replicator!: LiveSyncAbstractReplicator;
-    confirm!: Confirm;
+    get confirm(): Confirm {
+        return this.services.UI.confirm;
+    }
     storageAccess!: StorageAccess;
     databaseFileAccess!: DatabaseFileAccess;
     fileHandler!: ModuleFileHandler;

@@ -194,6 +194,32 @@ Please enable them from the settings screen after setup is complete.`,
         // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
         this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
+        if (this.core.settings.maxMTimeForReflectEvents > 0) {
+            const date = new Date(this.core.settings.maxMTimeForReflectEvents);
+
+            const ask = `Your settings restrict file reflection times to no later than ${date}.
+
+**This is a recovery configuration.**
+
+This operation should only be performed on an empty vault.
+Are you sure you wish to proceed?`;
+            const PROCEED = "I understand, proceed";
+            const CANCEL = "Cancel operation";
+            const CLEARANDPROCEED = "Clear restriction and proceed";
+            const choices = [PROCEED, CLEARANDPROCEED, CANCEL] as const;
+            const ret = await this.core.confirm.askSelectStringDialogue(ask, choices, {
+                title: "Confirm restricted fetch",
+                defaultAction: CANCEL,
+                timeout: 0,
+            });
+            if (ret == CLEARANDPROCEED) {
+                this.core.settings.maxMTimeForReflectEvents = 0;
+                await this.core.saveSettings();
+            }
+            if (ret == CANCEL) {
+                return;
+            }
+        }
         await this.suspendReflectingDatabase();
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();

@@ -318,6 +318,20 @@ export class ReplicateResultProcessor {
      */
     async parseDocumentChange(change: PouchDB.Core.ExistingDocument<EntryDoc>) {
         try {
+            if (isAnyNote(change)) {
+                const docMtime = change.mtime ?? 0;
+                const maxMTime = this.replicator.settings.maxMTimeForReflectEvents;
+                if (maxMTime > 0 && docMtime > maxMTime) {
+                    const docPath = getPath(change);
+                    this.log(
+                        `Processing ${docPath} has been skipped due to modification time (${new Date(
+                            docMtime * 1000
+                        ).toISOString()}) exceeding the limit`,
+                        LOG_LEVEL_INFO
+                    );
+                    return;
+                }
+            }
             // If the document is a virtual document, process it in the virtual document processor.
             if (await this.services.replication.processVirtualDocument(change)) return;
             // If the document is version info, check compatibility and return.

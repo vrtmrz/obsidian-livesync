@@ -243,6 +243,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
     async appendQueue(params: FileEvent[], ctx?: any) {
         if (!this.core.settings.isConfigured) return;
         if (this.core.settings.suspendFileWatching) return;
+        if (this.core.settings.maxMTimeForReflectEvents > 0) {
+            return;
+        }
         this.core.services.vault.markFileListPossiblyChanged();
         // Flag up to be reload
         for (const param of params) {
