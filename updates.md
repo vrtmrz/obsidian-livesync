@@ -3,6 +3,33 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.41
+
+24th January, 2026
+
+### Fixed
+
+- No longer `No available splitter for settings!!` errors occur after fetching old remote settings while rebuilding local database. (#748)
+
+### Improved
+
+- Boot sequence warning is now kept in the in-editor notification area.
+
+### New feature
+
+- We can now set the maximum modified time for reflect events in the settings. (for #754)
+    - This setting can be configured from  `Patches` -> `Remediation` in the settings dialogue.
+    - Enabling this setting will restrict the propagation from the database to storage to only those changes made before the specified date and time.
+    - This feature is primarily intended for recovery purposes. After placing `redflag.md` in an empty vault and importing the Self-hosted LiveSync configuration, please perform this configuration, and then fetch the local database from the remote.
+    - This feature is useful when we want to prevent recent unwanted changes from being reflected in the local storage.
+
+### Refactored
+- Module to service refactoring has been started for better maintainability:
+  - UI module has been moved to UI service.
+
+### Behaviour change
+- Default chunk splitter version has been changed to `Rabin-Karp` for new installations.
+
 ## 0.25.40
 
 23rd January, 2026
