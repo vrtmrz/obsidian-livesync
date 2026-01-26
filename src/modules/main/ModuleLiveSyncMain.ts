@@ -13,8 +13,8 @@ import { versionNumberString2Number } from "../../lib/src/string_and_binary/conv
 import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
 import { AbstractModule } from "../AbstractModule.ts";
-import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/base/APIBase.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { initialiseWorkerModule } from "@/lib/src/worker/bgWorker.ts";
 

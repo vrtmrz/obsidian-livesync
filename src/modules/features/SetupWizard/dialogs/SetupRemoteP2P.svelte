@@ -22,16 +22,15 @@
     import { TrysteroReplicator } from "../../../../lib/src/replication/trystero/TrysteroReplicator";
     import type { ReplicatorHostEnv } from "../../../../lib/src/replication/trystero/types";
     import { copyTo, pickP2PSyncSettings, type SimpleStore } from "../../../../lib/src/common/utils";
-    import { getObsidianDialogContext } from "../ObsidianSvelteDialog";
     import { onMount } from "svelte";
-    import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
+    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../../lib/src/common/types";
     import ExtraItems from "../../../../lib/src/UI/components/ExtraItems.svelte";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
 
-    const context = getObsidianDialogContext();
+    const context = getDialogContext();
     let error = $state("");
     const TYPE_CANCELLED = "cancelled";
     type SettingInfo = P2PConnectionInfo;
@@ -104,7 +103,7 @@
                 processReplicatedDocs: async (docs: any[]) => {
                     return;
                 },
-                confirm: context.plugin.confirm,
+                confirm: context.services.confirm,
                 db: dummyPouch,
                 simpleStore: store,
                 deviceName: syncSetting.P2P_DevicePeerName || "unnamed-device",

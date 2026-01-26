@@ -16,8 +16,7 @@
     } from "../../../../lib/src/common/types";
 
     import { onMount } from "svelte";
-    import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { getObsidianDialogContext } from "../ObsidianSvelteDialog";
+    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { copyTo, pickBucketSyncSettings } from "../../../../lib/src/common/utils";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
@@ -39,7 +38,7 @@
         }
     });
     let error = $state("");
-    const context = getObsidianDialogContext();
+    const context = getDialogContext();
     const isEndpointSecure = $derived.by(() => {
         return syncSetting.endpoint.trim().toLowerCase().startsWith("https://");
     });

@@ -67,9 +67,10 @@ import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleE
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 import type { LiveSyncManagers } from "./lib/src/managers/LiveSyncManagers.ts";
-import { ObsidianServiceHub } from "./modules/services/ObsidianServices.ts";
-import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
-import type { ServiceContext } from "./lib/src/services/ServiceHub.ts";
+import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
+import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
+import type { ServiceContext } from "./lib/src/services/base/ServiceBase.ts";
+// import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin

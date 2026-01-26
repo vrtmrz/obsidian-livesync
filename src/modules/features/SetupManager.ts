@@ -9,7 +9,6 @@ import {
 } from "../../lib/src/common/types.ts";
 import { generatePatchObj, isObjectDifferent } from "../../lib/src/common/utils.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { SvelteDialogManager } from "./SetupWizard/ObsidianSvelteDialog.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -52,10 +51,13 @@ export const enum UserMode {
  * Setup Manager to handle onboarding and configuration setup
  */
 export class SetupManager extends AbstractObsidianModule {
-    /**
-     * Dialog manager for handling Svelte dialogs
-     */
-    private dialogManager: SvelteDialogManager = new SvelteDialogManager(this.plugin);
+    // /**
+    //  * Dialog manager for handling Svelte dialogs
+    //  */
+    // private dialogManager: SvelteDialogManager = new SvelteDialogManager(this.plugin);
+    get dialogManager() {
+        return this.services.UI.dialogManager;
+    }
 
     /**
      * Starts the onboarding process

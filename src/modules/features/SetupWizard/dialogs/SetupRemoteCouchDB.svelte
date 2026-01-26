@@ -17,9 +17,8 @@
     } from "../../../../lib/src/common/types";
     import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
 
-    import { getObsidianDialogContext } from "../ObsidianSvelteDialog";
     import { onMount } from "svelte";
-    import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
+    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { copyTo, pickCouchDBSyncSettings } from "../../../../lib/src/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
 
@@ -40,7 +39,7 @@
     });
 
     let error = $state("");
-    const context = getObsidianDialogContext();
+    const context = getDialogContext();
 
     function generateSetting() {
         const connSetting: CouchDBConnection = {

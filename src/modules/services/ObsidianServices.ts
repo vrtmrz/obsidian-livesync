@@ -1,48 +1,56 @@
-import { ServiceContext, type ServiceInstances } from "@/lib/src/services/ServiceHub.ts";
-import {
-    InjectableAPIService,
-    InjectableAppLifecycleService,
-    InjectableConflictService,
-    InjectableDatabaseEventService,
-    InjectableDatabaseService,
-    InjectableFileProcessingService,
-    InjectablePathService,
-    InjectableRemoteService,
-    InjectableReplicationService,
-    InjectableReplicatorService,
-    InjectableSettingService,
-    InjectableTestService,
-    InjectableTweakValueService,
-    InjectableVaultService,
-} from "../../lib/src/services/InjectableServices.ts";
-import { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import { ConfigServiceBrowserCompat } from "../../lib/src/services/Services.ts";
-import type ObsidianLiveSyncPlugin from "../../main.ts";
-import { ObsidianUIService } from "./ObsidianUIService.ts";
-import type { App, Plugin } from "@/deps";
-
-export class ObsidianServiceContext extends ServiceContext {
-    app: App;
-    plugin: Plugin;
-    liveSyncPlugin: ObsidianLiveSyncPlugin;
-    constructor(app: App, plugin: Plugin, liveSyncPlugin: ObsidianLiveSyncPlugin) {
-        super();
-        this.app = app;
-        this.plugin = plugin;
-        this.liveSyncPlugin = liveSyncPlugin;
-    }
-}
+import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
+import { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
+import { InjectableConflictService } from "@lib/services/implements/injectable/InjectableConflictService";
+import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
+import { InjectableDatabaseService } from "@lib/services/implements/injectable/InjectableDatabaseService";
+import { InjectableFileProcessingService } from "@lib/services/implements/injectable/InjectableFileProcessingService";
+import { InjectablePathService } from "@lib/services/implements/injectable/InjectablePathService";
+import { InjectableRemoteService } from "@lib/services/implements/injectable/InjectableRemoteService";
+import { InjectableReplicationService } from "@lib/services/implements/injectable/InjectableReplicationService";
+import { InjectableReplicatorService } from "@lib/services/implements/injectable/InjectableReplicatorService";
+import { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
+import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
+import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
+import { InjectableVaultService } from "@lib/services/implements/injectable/InjectableVaultService";
+import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
+import { Platform } from "@/deps";
+import type { SimpleStore } from "@/lib/src/common/utils";
+import type { IDatabaseService } from "@/lib/src/services/base/IService";
+import { handlers } from "@/lib/src/services/lib/HandlerUtils";
 
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
     getPlatform(): string {
-        return "obsidian";
+        if (Platform.isAndroidApp) {
+            return "android-app";
+        } else if (Platform.isIosApp) {
+            return "ios";
+        } else if (Platform.isMacOS) {
+            return "macos";
+        } else if (Platform.isMobileApp) {
+            return "mobile-app";
+        } else if (Platform.isMobile) {
+            return "mobile";
+        } else if (Platform.isSafari) {
+            return "safari";
+        } else if (Platform.isDesktop) {
+            return "desktop";
+        } else if (Platform.isDesktopApp) {
+            return "desktop-app";
+        } else {
+            return "unknown-obsidian";
+        }
     }
 }
 export class ObsidianPathService extends InjectablePathService<ObsidianServiceContext> {}
-export class ObsidianDatabaseService extends InjectableDatabaseService<ObsidianServiceContext> {}
+export class ObsidianDatabaseService extends InjectableDatabaseService<ObsidianServiceContext> {
+    openSimpleStore = handlers<IDatabaseService>().binder("openSimpleStore") as (<T>(
+        kind: string
+    ) => SimpleStore<T>) & { setHandler: (handler: IDatabaseService["openSimpleStore"], override?: boolean) => void };
+}
 export class ObsidianDatabaseEventService extends InjectableDatabaseEventService<ObsidianServiceContext> {}
 
 // InjectableReplicatorService
@@ -66,49 +74,3 @@ export class ObsidianVaultService extends InjectableVaultService<ObsidianService
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService<ObsidianServiceContext> {}
 export class ObsidianConfigService extends ConfigServiceBrowserCompat<ObsidianServiceContext> {}
-
-// InjectableServiceHub
-
-export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceContext> {
-    constructor(plugin: ObsidianLiveSyncPlugin) {
-        const context = new ObsidianServiceContext(plugin.app, plugin, plugin);
-
-        const API = new ObsidianAPIService(context);
-        const appLifecycle = new ObsidianAppLifecycleService(context);
-        const conflict = new ObsidianConflictService(context);
-        const database = new ObsidianDatabaseService(context);
-        const fileProcessing = new ObsidianFileProcessingService(context);
-        const replication = new ObsidianReplicationService(context);
-        const replicator = new ObsidianReplicatorService(context);
-        const remote = new ObsidianRemoteService(context);
-        const setting = new ObsidianSettingService(context);
-        const tweakValue = new ObsidianTweakValueService(context);
-        const vault = new ObsidianVaultService(context);
-        const test = new ObsidianTestService(context);
-        const databaseEvents = new ObsidianDatabaseEventService(context);
-        const path = new ObsidianPathService(context);
-        const ui = new ObsidianUIService(context);
-        const config = new ObsidianConfigService(context, vault);
-        // Using 'satisfies' to ensure all services are provided
-        const serviceInstancesToInit = {
-            appLifecycle: appLifecycle,
-            conflict: conflict,
-            database: database,
-            databaseEvents: databaseEvents,
-            fileProcessing: fileProcessing,
-            replication: replication,
-            replicator: replicator,
-            remote: remote,
-            setting: setting,
-            tweakValue: tweakValue,
-            vault: vault,
-            test: test,
-            ui: ui,
-            path: path,
-            API: API,
-            config: config,
-        } satisfies Required<ServiceInstances<ObsidianServiceContext>>;
-
-        super(context, serviceInstancesToInit);
-    }
-}
