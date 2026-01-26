@@ -26,6 +26,7 @@
         "**/tests.ts",
         "**/**test.ts",
         "**/**.test.ts",
+        "src/apps/**",
         "esbuild.*.mjs",
         "terser.*.mjs"
     ],

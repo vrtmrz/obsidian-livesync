@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 script_dir=$(dirname "$0")
-webpeer_dir=$script_dir/../../src/lib/apps/webpeer
+webpeer_dir=$script_dir/../../src/apps/webpeer
 
 docker run -d --name relay-test -p 4000:8080 scsibug/nostr-rs-relay:latest
 npm run --prefix $webpeer_dir build

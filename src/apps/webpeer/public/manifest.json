@@ -1,0 +1,26 @@
+{
+    "name": "WebPeer - Pseudo client for Self-hosted LiveSync Peer-to-Peer Replication",
+    "short_name": "WepPeer",
+    "description": "A web-based pseudo peer-to-peer replication client using as like  server for background sync.",
+    "start_url": "./",
+    "display": "standalone",
+    "background_color": "#fff",
+    "theme_color": "#fff",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "./icon.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "maskable": true
+        }
+    ],
+    "additional_icons": [
+        {
+            "src": "./icon.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "maskable": true
+        }
+    ]
+}
