@@ -3,6 +3,39 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.41-patched-1
+
+- 29th January, 2026
+
+Yes, I have changed my mind. Let's release the beta version...
+
+We have set up the CI environment too. You know, naturally, the current CI is still in the foundational stage with mocked `harness` and checks quite the basic features; merely exists, for now, so I am eagerly awaiting your contributions.
+
+Schemes for beta releases:
+
+- Beta versions are denoted by appending `-patched-N` to the base version number.
+    - `The base version` mostly corresponds to the stable release version.
+        - e.g., v0.25.41-patched-1 is equivalent to v0.25.42-beta1.
+    - This notation is due to SemVer incompatibility of Obsidian's plugin system.
+    - Hence, this release is `0.25.41-patched-1`.
+- Each beta version may include larger changes, but bug fixes will often not be included.
+    - I think that in most cases, bug fixes will cause the stable releases.
+    - They will not be released per branch or backported; they will simply be released.
+    - Bug fixes for previous versions will be applied to the latest beta version.
+      This means, if xx.yy.02-patched-1 exists and there is a defect in xx.yy.01, a fix is applied to xx.yy.02-patched-1 and yields xx.yy.02-patched-2.
+      If the fix is required immediately, it is released as xx.yy.02 (with xx.yy.01-patched-1).
+    - This procedure remains unchanged from the current one.
+- At the very least, I am using the latest beta.
+    - However, I will not be using a beta continuously for a week after it has been released. It is probably closer to an RC in nature.
+
+In short, the situation remains unchanged for me, but it means you all become a little safer. Thank you for your understanding!
+
+### Refactored
+
+- `WebPeer` has been moved to the main repository from the sub repository `livesync-commonlib` for correct dependency management.
+- Migrated from the outdated, unstable platform abstraction layer to services.
+    - A bit more services will be added in the future for better maintainability.
+
 ## 0.25.41
 
 24th January, 2026
@@ -18,16 +51,18 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### New feature
 
 - We can now set the maximum modified time for reflect events in the settings. (for #754)
-    - This setting can be configured from  `Patches` -> `Remediation` in the settings dialogue.
+    - This setting can be configured from `Patches` -> `Remediation` in the settings dialogue.
     - Enabling this setting will restrict the propagation from the database to storage to only those changes made before the specified date and time.
     - This feature is primarily intended for recovery purposes. After placing `redflag.md` in an empty vault and importing the Self-hosted LiveSync configuration, please perform this configuration, and then fetch the local database from the remote.
     - This feature is useful when we want to prevent recent unwanted changes from being reflected in the local storage.
 
 ### Refactored
+
 - Module to service refactoring has been started for better maintainability:
-  - UI module has been moved to UI service.
+    - UI module has been moved to UI service.
 
 ### Behaviour change
+
 - Default chunk splitter version has been changed to `Rabin-Karp` for new installations.
 
 ## 0.25.40
