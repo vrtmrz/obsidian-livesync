@@ -15,7 +15,7 @@
         "predev": "npm run bakei18n",
         "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
-        "build": "node esbuild.config.mjs production",
+        "build": "node --env-file=.env esbuild.config.mjs production",
         "buildDev": "node esbuild.config.mjs dev",
         "lint": "eslint src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
