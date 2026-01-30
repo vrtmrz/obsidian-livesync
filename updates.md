@@ -3,9 +3,19 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.41-patched-2
+
+30th January, 2026
+
+### Refactored
+
+- Now the service context is `protected` instead of `private` in `ServiceBase`.
+    - This change allows derived classes to access the context directly.
+- Some dynamically bound services have been moved to services for better dependency management.
+
 ## 0.25.41-patched-1
 
-- 29th January, 2026
+29th January, 2026
 
 Yes, I have changed my mind. Let's release the beta version...
 
