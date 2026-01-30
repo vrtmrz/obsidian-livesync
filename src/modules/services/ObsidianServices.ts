@@ -18,11 +18,40 @@ import { Platform } from "@/deps";
 import type { SimpleStore } from "@/lib/src/common/utils";
 import type { IDatabaseService } from "@/lib/src/services/base/IService";
 import { handlers } from "@/lib/src/services/lib/HandlerUtils";
+import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
 
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
+    _customHandler: ObsHttpHandler | undefined;
+    getCustomFetchHandler(): ObsHttpHandler {
+        if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
+        return this._customHandler;
+    }
+
+    async showWindow(viewType: string): Promise<void> {
+        const leaves = this.app.workspace.getLeavesOfType(viewType);
+        if (leaves.length == 0) {
+            await this.app.workspace.getLeaf(true).setViewState({
+                type: viewType,
+                active: true,
+            });
+        } else {
+            await leaves[0].setViewState({
+                type: viewType,
+                active: true,
+            });
+        }
+        if (leaves.length > 0) {
+            await this.app.workspace.revealLeaf(leaves[0]);
+        }
+    }
+
+    private get app() {
+        return this.context.app;
+    }
+
     getPlatform(): string {
         if (Platform.isAndroidApp) {
             return "android-app";
@@ -43,6 +72,25 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         } else {
             return "unknown-obsidian";
         }
+    }
+    override isMobile(): boolean {
+        //@ts-ignore : internal API
+        return this.app.isMobile;
+    }
+    override getAppID(): string {
+        return `${"appId" in this.app ? this.app.appId : ""}`;
+    }
+    override getAppVersion(): string {
+        const navigatorString = globalThis.navigator?.userAgent ?? "";
+        const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
+        if (match && match.length >= 2) {
+            return match[1];
+        }
+        return "0.0.0";
+    }
+
+    override getPluginVersion(): string {
+        return this.context.plugin.manifest.version;
     }
 }
 export class ObsidianPathService extends InjectablePathService<ObsidianServiceContext> {}
