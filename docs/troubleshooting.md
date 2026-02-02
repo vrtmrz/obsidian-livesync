@@ -218,7 +218,7 @@ There are many cases where this is really unclear. One possibility is that the c
     - Your CouchDB database (this can be done by replicating to another database).
 2. Prepare the empty vault
 3. Place `redflag.md` at the top of the vault.
-4. Apply the settings **BUT DO NOT PROCEED TO BE DONE**.
+4. Apply the settings **BUT DO NOT PROCEED TO RESTORE YET**.
 5. Set `Maximum file modification time for reflected file events` in `Remediation` on the `🩹 Patches` pane.
     - If you know when the files were deleted, set the time a bit before that.
     - If not, bisecting may help us.
