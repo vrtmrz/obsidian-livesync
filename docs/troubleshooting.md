@@ -36,6 +36,7 @@
     - [While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.](#while-using-cloudflare-tunnels-often-obsidian-api-fallback-and-524-error-occurs)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
+    - [Flag Files](#flag-files)
     - [Old tips](#old-tips)
 
 <!-- - -->
@@ -358,12 +359,19 @@ self-signed certificate.
 
 ### I think that something bad happening on the vault...
 
-Place `redflag.md` on top of the vault, and restart Obsidian. The most simple
+Place the [flag file](#flag-files) on top of the vault, and restart Obsidian. The most simple
 way is to create a new note and rename it to `redflag`. Of course, we can put it
 without Obsidian.
 
-If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
+For example, if there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
 processes.
+
+### Flag Files
+
+The flag file is a simple Markdown file designed to prevent storage events and database events in self-hosted LiveSync.
+Its very existence is significant; it may be left blank, or it may contain text; either is acceptable.
+
+This file is in Markdown format so that it can be placed in the Vault externally, even if Obsidian fails to launch.
 
 There are some options to use `redflag.md`.
 
