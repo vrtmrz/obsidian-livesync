@@ -40,13 +40,13 @@ jobs:
 
       - name: Start test services (CouchDB)
         run: npm run test:docker-couchdb:start
-          if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
       - name: Start test services (MinIO)
         run: npm run test:docker-s3:start
-          if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
       - name: Start test services (Nostr Relay + WebPeer)
         run: npm run test:docker-p2p:start
-          if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suitep2p/' }}
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suitep2p/' }}
       - name: Run tests suite
         if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
         env:
