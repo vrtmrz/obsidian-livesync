@@ -57,6 +57,12 @@ jobs:
         env:
           CI: true
         run: npm run test suitep2p/
-      - name: Stop test services
-        if: always()
-        run: npm run test:docker-all:stop
+      - name: Stop test services (CouchDB)
+        run: npm run test:docker-couchdb:stop
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
+      - name: Stop test services (MinIO)
+        run: npm run test:docker-s3:stop
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}
+      - name: Stop test services (Nostr Relay + WebPeer)
+        run: npm run test:docker-p2p:stop
+        if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suitep2p/' }}
