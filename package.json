@@ -119,7 +119,7 @@
         "yaml": "^2.8.0"
     },
     "dependencies": {
-        "@aws-sdk/client-s3": "^3.808.0",
+        "@aws-sdk/client-s3": "^3.894.0",
         "@smithy/fetch-http-handler": "^5.0.2",
         "@smithy/md5-js": "^4.0.2",
         "@smithy/middleware-apply-body-checksum": "^4.1.0",
