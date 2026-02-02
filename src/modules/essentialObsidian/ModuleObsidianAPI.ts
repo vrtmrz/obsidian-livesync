@@ -15,7 +15,6 @@ import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
 import { disableEncryption } from "@/lib/src/pouchdb/encryption.ts";
 import { enableEncryption } from "@/lib/src/pouchdb/encryption.ts";
 import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
-import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
 import type { LiveSyncCore } from "../../main.ts";
@@ -27,10 +26,7 @@ async function fetchByAPI(request: RequestUrlParam, errorAsResult = false): Prom
     const ret = await requestUrl({ ...request, throw: !errorAsResult });
     return ret;
 }
-
 export class ModuleObsidianAPI extends AbstractObsidianModule {
-    _customHandler!: ObsHttpHandler;
-
     _authHeader = new AuthorizationHeaderGenerator();
     _previousErrors = new Set<string>();
 
@@ -47,10 +43,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
     }
     last_successful_post = false;
-    _customFetchHandler(): ObsHttpHandler {
-        if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
-        return this._customHandler;
-    }
+
     _getLastPostFailedBySize(): boolean {
         return !this.last_successful_post;
     }
@@ -286,11 +279,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         }
     }
 
-    _isMobile(): boolean {
-        //@ts-ignore : internal API
-        return this.app.isMobile;
-    }
-
     _vaultName(): string {
         return this.app.vault.getName();
     }
@@ -308,38 +296,16 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return undefined;
     }
 
-    _anyGetAppId(): string {
-        return `${"appId" in this.app ? this.app.appId : ""}`;
-    }
-
     private _reportUnresolvedMessages(): Promise<(string | Error)[]> {
         return Promise.resolve([...this._previousErrors]);
     }
 
-    private _getAppVersion(): string {
-        const navigatorString = globalThis.navigator?.userAgent ?? "";
-        const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
-        if (match && match.length >= 2) {
-            return match[1];
-        }
-        return "0.0.0";
-    }
-
-    private _getPluginVersion(): string {
-        return this.plugin.manifest.version;
-    }
-
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
-        services.API.getCustomFetchHandler.setHandler(this._customFetchHandler.bind(this));
         services.API.isLastPostFailedDueToPayloadSize.setHandler(this._getLastPostFailedBySize.bind(this));
         services.remote.connect.setHandler(this._connectRemoteCouchDB.bind(this));
-        services.API.isMobile.setHandler(this._isMobile.bind(this));
         services.vault.getVaultName.setHandler(this._getVaultName.bind(this));
         services.vault.vaultName.setHandler(this._vaultName.bind(this));
         services.vault.getActiveFilePath.setHandler(this._getActiveFilePath.bind(this));
-        services.API.getAppID.setHandler(this._anyGetAppId.bind(this));
-        services.API.getAppVersion.setHandler(this._getAppVersion.bind(this));
-        services.API.getPluginVersion.setHandler(this._getPluginVersion.bind(this));
         services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }

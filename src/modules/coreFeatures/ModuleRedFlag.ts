@@ -9,10 +9,11 @@ import {
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { SvelteDialogManager } from "../features/SetupWizard/ObsidianSvelteDialog.ts";
 import FetchEverything from "../features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "../features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
+import { SvelteDialogManagerBase } from "@/lib/src/UI/svelteDialog.ts";
+import type { ServiceContext } from "@/lib/src/services/base/ServiceBase.ts";
 
 export class ModuleRedFlag extends AbstractModule {
     async isFlagFileExist(path: string) {
@@ -52,7 +53,10 @@ export class ModuleRedFlag extends AbstractModule {
         await this.deleteFlagFile(FlagFilesOriginal.FETCH_ALL);
         await this.deleteFlagFile(FlagFilesHumanReadable.FETCH_ALL);
     }
-    dialogManager = new SvelteDialogManager(this.core);
+    // dialogManager = new SvelteDialogManagerBase(this.core);
+    get dialogManager(): SvelteDialogManagerBase<ServiceContext> {
+        return this.core.services.UI.dialogManager;
+    }
 
     /**
      * Adjust setting to remote if needed.

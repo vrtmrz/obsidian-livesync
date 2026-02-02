@@ -24,12 +24,5 @@
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts"],
-    "exclude": [
-        "pouchdb-browser-webpack",
-        "utils",
-        "src/lib/apps",
-        "src/**/*.test.ts",
-        "**/_test/**",
-        "src/**/*.test.ts"
-    ]
+    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**", "src/**/*.test.ts"]
 }

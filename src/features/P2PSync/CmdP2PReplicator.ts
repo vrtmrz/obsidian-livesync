@@ -29,7 +29,7 @@ import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
 import type ObsidianLiveSyncPlugin from "../../main.ts";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import { getPlatformName } from "../../lib/src/PlatformAPIs/obsidian/Environment.ts";
+// import { getPlatformName } from "../../lib/src/PlatformAPIs/obsidian/Environment.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { TrysteroReplicator } from "../../lib/src/replication/trystero/TrysteroReplicator.ts";
 import { SETTING_KEY_P2P_DEVICE_NAME } from "../../lib/src/common/types.ts";
@@ -130,7 +130,7 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
             const getDB = () => this.getDB();
 
             const getConfirm = () => this.confirm;
-            const getPlatform = () => this.getPlatform();
+            const getPlatform = () => this.services.API.getPlatform();
             const env = {
                 get db() {
                     return getDB();
@@ -165,9 +165,6 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
             this._log(e, LOG_LEVEL_VERBOSE);
             throw e;
         }
-    }
-    getPlatform(): string {
-        return getPlatformName();
     }
 
     onunload(): void {

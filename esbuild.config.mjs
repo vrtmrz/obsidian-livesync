@@ -21,14 +21,10 @@ const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
 
 const PATHS_TEST_INSTALL = process.env?.PATHS_TEST_INSTALL || "";
 const PATH_TEST_INSTALL = PATHS_TEST_INSTALL.split(path.delimiter).map(p => p.trim()).filter(p => p.length);
-if (!prod) {
-    if (PATH_TEST_INSTALL) {
-        console.log(`Built files will be copied to ${PATH_TEST_INSTALL}`);
-    } else {
-        console.log("Development build: You can install the plug-in to Obsidian for testing by exporting the PATHS_TEST_INSTALL environment variable with the paths to your vault plugins directories separated by your system path delimiter (':' on Unix, ';' on Windows).");
-    }
+if (PATH_TEST_INSTALL) {
+    console.log(`Built files will be copied to ${PATH_TEST_INSTALL}`);
 } else {
-    console.log("Production build");
+    console.log("Development build: You can install the plug-in to Obsidian for testing by exporting the PATHS_TEST_INSTALL environment variable with the paths to your vault plugins directories separated by your system path delimiter (':' on Unix, ';' on Windows).");
 }
 
 const moduleAliasPlugin = {

@@ -3,6 +3,21 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.42
+
+2nd, February, 2026
+
+This release is identical to 0.25.41-patched-3, except for the version number.
+
+### Refactored
+
+- Now the service context is `protected` instead of `private` in `ServiceBase`.
+    - This change allows derived classes to access the context directly.
+- Some dynamically bound services have been moved to services for better dependency management.
+- `WebPeer` has been moved to the main repository from the sub repository `livesync-commonlib` for correct dependency management.
+- Migrated from the outdated, unstable platform abstraction layer to services.
+    - A bit more services will be added in the future for better maintainability.
+
 ## 0.25.41
 
 24th January, 2026
@@ -18,16 +33,18 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### New feature
 
 - We can now set the maximum modified time for reflect events in the settings. (for #754)
-    - This setting can be configured from  `Patches` -> `Remediation` in the settings dialogue.
+    - This setting can be configured from `Patches` -> `Remediation` in the settings dialogue.
     - Enabling this setting will restrict the propagation from the database to storage to only those changes made before the specified date and time.
     - This feature is primarily intended for recovery purposes. After placing `redflag.md` in an empty vault and importing the Self-hosted LiveSync configuration, please perform this configuration, and then fetch the local database from the remote.
     - This feature is useful when we want to prevent recent unwanted changes from being reflected in the local storage.
 
 ### Refactored
+
 - Module to service refactoring has been started for better maintainability:
-  - UI module has been moved to UI service.
+    - UI module has been moved to UI service.
 
 ### Behaviour change
+
 - Default chunk splitter version has been changed to `Rabin-Karp` for new installations.
 
 ## 0.25.40

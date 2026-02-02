@@ -113,26 +113,8 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
 
-    private async _showView(viewType: string) {
-        const leaves = this.app.workspace.getLeavesOfType(viewType);
-        if (leaves.length == 0) {
-            await this.app.workspace.getLeaf(true).setViewState({
-                type: viewType,
-                active: true,
-            });
-        } else {
-            await leaves[0].setViewState({
-                type: viewType,
-                active: true,
-            });
-        }
-        if (leaves.length > 0) {
-            await this.app.workspace.revealLeaf(leaves[0]);
-        }
-    }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
-        services.API.showWindow.setHandler(this._showView.bind(this));
     }
 }

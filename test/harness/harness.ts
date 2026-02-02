@@ -3,9 +3,10 @@ import ObsidianLiveSyncPlugin from "@/main";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 import { LOG_LEVEL_VERBOSE, setGlobalLogFunction } from "@lib/common/logger";
 import { SettingCache } from "./obsidian-mock";
-import { delay, promiseWithResolvers } from "octagonal-wheels/promises";
+import { delay, fireAndForget, promiseWithResolvers } from "octagonal-wheels/promises";
+import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
 import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
-import { EVENT_PLATFORM_UNLOADED } from "@/lib/src/PlatformAPIs/base/APIBase";
+
 import { env } from "../suite/variables";
 
 export type LiveSyncHarness = {
@@ -79,12 +80,14 @@ export async function generateHarness(
     await plugin.onload();
     let isDisposed = false;
     const waitPromise = promiseWithResolvers<void>();
-    eventHub.once(EVENT_PLATFORM_UNLOADED, async () => {
-        console.log(`Harness for vault '${vaultName}' disposed.`);
-        await delay(100);
-        eventHub.offAll();
-        isDisposed = true;
-        waitPromise.resolve();
+    eventHub.once(EVENT_PLATFORM_UNLOADED, () => {
+        fireAndForget(async () => {
+            console.log(`Harness for vault '${vaultName}' disposed.`);
+            await delay(100);
+            eventHub.offAll();
+            isDisposed = true;
+            waitPromise.resolve();
+        });
     });
     eventHub.once(EVENT_LAYOUT_READY, () => {
         plugin.app.vault.trigger("layout-ready");
