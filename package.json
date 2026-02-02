@@ -43,6 +43,7 @@
         "test:docker-s3:stop": "npm run test:docker-s3:down",
         "test:docker-p2p:up": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/p2p-start.sh",
         "test:docker-p2p:init": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/p2p-init.sh",
+        "test:docker-p2p:start": "npm run test:docker-p2p:up && sleep 3 && npm run test:docker-p2p:init",
         "test:docker-p2p:down": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/p2p-stop.sh",
         "test:docker-p2p:stop": "npm run test:docker-p2p:down",
         "test:docker-all:up": "npm run test:docker-couchdb:up && npm run test:docker-s3:up && npm run test:docker-p2p:up",
