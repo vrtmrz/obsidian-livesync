@@ -132,6 +132,25 @@ export class ModuleExample extends AbstractObsidianModule {
 - [esbuild.config.mjs](esbuild.config.mjs) - Build configuration with platform/dev file replacement
 - [package.json](package.json) - Scripts reference and dependencies
 
+## Beta Policy
+
+- Beta versions are denoted by appending `-patched-N` to the base version number.
+    - `The base version` mostly corresponds to the stable release version.
+        - e.g., v0.25.41-patched-1 is equivalent to v0.25.42-beta1.
+    - This notation is due to SemVer incompatibility of Obsidian's plugin system.
+    - Hence, this release is `0.25.41-patched-1`.
+- Each beta version may include larger changes, but bug fixes will often not be included.
+    - I think that in most cases, bug fixes will cause the stable releases.
+    - They will not be released per branch or backported; they will simply be released.
+    - Bug fixes for previous versions will be applied to the latest beta version.
+      This means, if xx.yy.02-patched-1 exists and there is a defect in xx.yy.01, a fix is applied to xx.yy.02-patched-1 and yields xx.yy.02-patched-2.
+      If the fix is required immediately, it is released as xx.yy.02 (with xx.yy.01-patched-1).
+    - This procedure remains unchanged from the current one.
+- At the very least, I am using the latest beta.
+    - However, I will not be using a beta continuously for a week after it has been released. It is probably closer to an RC in nature.
+
+In short, the situation remains unchanged for me, but it means you all become a little safer. Thank you for your understanding!
+
 ## Contribution Guidelines
 
 - Follow existing code style and conventions
