@@ -9,6 +9,10 @@ import {
     type FilePathWithPrefix,
     type diff_result,
 } from "../../lib/src/common/types.ts";
+import * as fs from "fs";
+import * as path from "path";
+import { spawn } from "child_process";
+import * as os from "os";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
@@ -39,7 +43,16 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         // UI for resolving conflicts should one-by-one.
         return await serialized(`conflict-resolve-ui`, async () => {
             this._log("Merge:open conflict dialog", LOG_LEVEL_VERBOSE);
-            const dialog = new ConflictResolveModal(this.app, filename, conflictCheckResult);
+            const dialog = new ConflictResolveModal(
+                this.app,
+                filename,
+                conflictCheckResult,
+                false,
+                undefined,
+                async () => {
+                    return await this.openExternalMergeTool(filename, conflictCheckResult);
+                }
+            );
             dialog.open();
             const selected = await dialog.waitForResult();
             if (selected === CANCELLED) {
@@ -58,7 +71,25 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             }
             const toDelete = selected;
             // const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
-            if (toDelete === LEAVE_TO_SUBSEQUENT) {
+            if (typeof toDelete === "object" && "content" in toDelete) {
+                // External merge result
+                const p = toDelete.content;
+                const delRev = testDoc._conflicts[0];
+                if (!(await this.core.databaseFileAccess.storeContent(filename, p))) {
+                    this._log(`Merged content cannot be stored:${filename}`, LOG_LEVEL_NOTICE);
+                    return false;
+                }
+                if (
+                    (await this.services.conflict.resolveByDeletingRevision(filename, delRev, "UI Merged")) ==
+                    MISSING_OR_ERROR
+                ) {
+                    this._log(
+                        `Merged saved, but cannot delete conflicted revisions: ${filename}, (${displayRev(delRev)})`,
+                        LOG_LEVEL_NOTICE
+                    );
+                    return false;
+                }
+            } else if (toDelete === LEAVE_TO_SUBSEQUENT) {
                 // Concatenate both conflicted revisions.
                 // Create a new file by concatenating both conflicted revisions.
                 const p = conflictCheckResult.diff.map((e) => e[1]).join("");
@@ -102,6 +133,88 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             return false;
         });
     }
+
+    async openExternalMergeTool(filename: string, diff: diff_result): Promise<string | false> {
+        // @ts-ignore
+        const useExternalMergeTool = this.settings.useExternalMergeTool;
+        // @ts-ignore
+        const externalMergeToolCommand = this.settings.externalMergeToolCommand || "meld";
+
+        if (!useExternalMergeTool) return false;
+
+        const tmpDir = os.tmpdir();
+        const baseName = path.basename(filename);
+        const localPath = path.join(tmpDir, `base_${baseName}`);
+        const remotePath = path.join(tmpDir, `remote_${baseName}`);
+        const mergedPath = path.join(tmpDir, `merged_${baseName}`);
+
+        try {
+            // right is Base (local), left is Remote (conflicted)
+            // But verify content availability
+            const localContent = diff.right.content || "";
+            const remoteContent = diff.left.content || "";
+
+            await fs.promises.writeFile(localPath, localContent);
+            await fs.promises.writeFile(remotePath, remoteContent);
+            // Initialize merged with local content
+            await fs.promises.writeFile(mergedPath, localContent);
+
+            const parts = externalMergeToolCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [externalMergeToolCommand];
+            const executable = parts[0].replace(/^"|"$/g, "");
+            const userArgs = parts.slice(1).map((a) => a.replace(/^"|"$/g, ""));
+
+            const finalArgs = [...userArgs];
+
+            if (
+                externalMergeToolCommand.includes("%1") ||
+                externalMergeToolCommand.includes("%2") ||
+                externalMergeToolCommand.includes("%3")
+            ) {
+                // Replace in args
+                for (let i = 0; i < finalArgs.length; i++) {
+                    finalArgs[i] = finalArgs[i]
+                        .replace("%1", localPath)
+                        .replace("%2", remotePath)
+                        .replace("%3", mergedPath);
+                }
+            } else {
+                // Default 3-way merge
+                finalArgs.push(localPath, mergedPath, remotePath);
+            }
+
+            this._log(`Launching external merge tool: ${executable} ${finalArgs.join(" ")}`, LOG_LEVEL_INFO);
+
+            return new Promise((resolve) => {
+                const child = spawn(executable, finalArgs);
+                child.on("error", (err) => {
+                    this._log(`Error launching tool: ${err}`, LOG_LEVEL_NOTICE);
+                    resolve(false);
+                });
+                child.on("exit", async (code) => {
+                    if (code === 0) {
+                        try {
+                            const content = await fs.promises.readFile(mergedPath, "utf-8");
+                            // Cleanup
+                            await fs.promises.unlink(localPath);
+                            await fs.promises.unlink(remotePath);
+                            await fs.promises.unlink(mergedPath);
+                            resolve(content);
+                        } catch (err) {
+                            this._log(`Error reading merged file: ${err}`, LOG_LEVEL_NOTICE);
+                            resolve(false);
+                        }
+                    } else {
+                        this._log(`External tool exited with code ${code}`, LOG_LEVEL_NOTICE);
+                        resolve(false);
+                    }
+                });
+            });
+        } catch (e) {
+            this._log(`Failed to launch external merge tool: ${e}`, LOG_LEVEL_NOTICE);
+            return false;
+        }
+    }
+
     async allConflictCheck() {
         while (await this.pickFileForResolve());
     }

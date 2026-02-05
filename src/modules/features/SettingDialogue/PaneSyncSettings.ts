@@ -235,6 +235,18 @@ export function paneSyncSettings(
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("checkConflictOnlyOnOpen");
 
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("showMergeDialogOnlyOnActive");
+
+        new Setting(paneEl)
+            .setName($msg("obsidianLiveSyncSettingTab.optionUseExternalMergeTool"))
+            .setDesc($msg("obsidianLiveSyncSettingTab.optionUseExternalMergeToolDesc"))
+            .setClass("wizardHidden")
+            .autoWireToggle("useExternalMergeTool");
+
+        new Setting(paneEl)
+            .setName($msg("obsidianLiveSyncSettingTab.optionExternalMergeToolCommand"))
+            .setDesc($msg("obsidianLiveSyncSettingTab.optionExternalMergeToolCommandDesc"))
+            .setClass("wizardHidden")
+            .autoWireText("externalMergeToolCommand");
     });
 
     void addPanel(

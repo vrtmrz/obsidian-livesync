@@ -268,6 +268,17 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
         } else if (!(settings.chunkSplitterVersion in ChunkAlgorithmNames)) {
             settings.chunkSplitterVersion = "";
         }
+
+        // Initialize external merge tool settings
+        if (!("useExternalMergeTool" in settings)) {
+            // @ts-ignore
+            settings.useExternalMergeTool = false;
+        }
+        if (!("externalMergeToolCommand" in settings)) {
+            // @ts-ignore
+            settings.externalMergeToolCommand = "";
+        }
+
         return Promise.resolve(settings);
     }
 

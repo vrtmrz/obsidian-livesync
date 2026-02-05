@@ -6,7 +6,7 @@ import { delay } from "../../../lib/src/common/utils.ts";
 import { eventHub } from "../../../common/events.ts";
 import { globalSlipBoard } from "../../../lib/src/bureau/bureau.ts";
 
-export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
+export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string | { content: string };
 
 declare global {
     interface Slips extends LSSlips {
@@ -28,12 +28,21 @@ export class ConflictResolveModal extends Modal {
     localName: string = "Base";
     remoteName: string = "Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
+    onExternalMerge?: () => Promise<string | false>;
 
-    constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
+    constructor(
+        app: App,
+        filename: string,
+        diff: diff_result,
+        pluginPickMode?: boolean,
+        remoteName?: string,
+        onExternalMerge?: () => Promise<string | false>
+    ) {
         super(app);
         this.result = diff;
         this.filename = filename;
         this.pluginPickMode = pluginPickMode || false;
+        this.onExternalMerge = onExternalMerge;
         if (this.pluginPickMode) {
             this.title = "Pick a version";
             this.remoteName = `${remoteName || "Remote"}`;
@@ -98,6 +107,18 @@ export class ConflictResolveModal extends Modal {
         contentEl.createEl("button", { text: `Use ${this.remoteName}` }, (e) =>
             e.addEventListener("click", () => this.sendResponse(this.result.left.rev))
         ).style.marginRight = "4px";
+        if (this.onExternalMerge) {
+            contentEl.createEl("button", { text: "Open External Tool" }, (e) =>
+                e.addEventListener("click", async () => {
+                    if (this.onExternalMerge) {
+                        const res = await this.onExternalMerge();
+                        if (res !== false) {
+                            this.sendResponse({ content: res });
+                        }
+                    }
+                })
+            ).style.marginRight = "4px";
+        }
         if (!this.pluginPickMode) {
             contentEl.createEl("button", { text: "Concat both" }, (e) =>
                 e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))
