@@ -24,6 +24,7 @@ data.json
 
 # local config files
 *.local
+.gemini
 
 cov_profile/**
 
