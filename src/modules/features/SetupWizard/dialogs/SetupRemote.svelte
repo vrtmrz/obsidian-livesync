@@ -6,7 +6,7 @@
     import Options from "@/lib/src/UI/components/Options.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-        const TYPE_COUCHDB = "couchdb";
+    const TYPE_COUCHDB = "couchdb";
     const TYPE_BUCKET = "bucket";
     const TYPE_P2P = "p2p";
     const TYPE_CANCELLED = "cancelled";
@@ -44,9 +44,9 @@
             Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
         </Option>
         <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
-            This is an experimental feature enabling direct synchronisation between devices. No server is required, but
-            both devices must be online at the same time for synchronisation to occur, and some features may be limited.
-            Internet connection is only required to signalling (detecting peers) and not for data transfer.
+            This feature enables direct synchronisation between devices. No server is required, but both devices must be
+            online at the same time for synchronisation to occur, and some features may be limited. Internet connection
+            is only required to signalling (detecting peers) and not for data transfer.
         </Option>
     </Options>
 </Instruction>
