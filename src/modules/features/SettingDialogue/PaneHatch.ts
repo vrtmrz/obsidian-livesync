@@ -190,9 +190,11 @@ ${stringifyYaml({
         );
         new Setting(paneEl)
             .setName($msg("Analyse database usage"))
-            .setDesc($msg(
-                "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
-            ))
+            .setDesc(
+                $msg(
+                    "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
+                )
+            )
             .addButton((button) =>
                 button.setButtonText($msg("Analyse")).onClick(() => {
                     eventHub.emitEvent(EVENT_ANALYSE_DB_USAGE);
