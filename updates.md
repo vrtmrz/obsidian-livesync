@@ -3,6 +3,21 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43
+
+5th, February, 2026
+
+### Fixed
+
+- Encryption/decryption issues when using Object Storage as remote have been fixed.
+    - Now the plug-in falls back to V1 encryption/decryption when V2 fails (if not configured as ForceV1).
+    - This may fix the issue reported in #772.
+
+### Notice
+
+Quite a few packages have been updated in this release. Please report if you find any unexpected behaviour after this update.
+
+
 ## 0.25.42
 
 2nd, February, 2026
