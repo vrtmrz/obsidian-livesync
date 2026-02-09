@@ -3,15 +3,17 @@ import { normalizePath } from "../../deps.ts";
 import {
     FlagFilesHumanReadable,
     FlagFilesOriginal,
+    REMOTE_MINIO,
     TweakValuesShouldMatchedTemplate,
     type ObsidianLiveSyncSettings,
 } from "../../lib/src/common/types.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { SvelteDialogManager } from "../features/SetupWizard/ObsidianSvelteDialog.ts";
 import FetchEverything from "../features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "../features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
+import { SvelteDialogManagerBase } from "@/lib/src/UI/svelteDialog.ts";
+import type { ServiceContext } from "@/lib/src/services/base/ServiceBase.ts";
 
 export class ModuleRedFlag extends AbstractModule {
     async isFlagFileExist(path: string) {
@@ -51,7 +53,10 @@ export class ModuleRedFlag extends AbstractModule {
         await this.deleteFlagFile(FlagFilesOriginal.FETCH_ALL);
         await this.deleteFlagFile(FlagFilesHumanReadable.FETCH_ALL);
     }
-    dialogManager = new SvelteDialogManager(this.core);
+    // dialogManager = new SvelteDialogManagerBase(this.core);
+    get dialogManager(): SvelteDialogManagerBase<ServiceContext> {
+        return this.core.services.UI.dialogManager;
+    }
 
     /**
      * Adjust setting to remote if needed.
@@ -86,7 +91,7 @@ export class ModuleRedFlag extends AbstractModule {
             const remoteTweaks = await this.services.tweakValue.fetchRemotePreferred(config);
             if (!remoteTweaks) {
                 const choice = await this.core.confirm.askSelectStringDialogue(
-                    "Could not fetch remote configuration. What do you want to do?",
+                    "Could not fetch configuration from remote. If you are new to the Self-hosted LiveSync, this might be expected. If not, you should check your network or server settings.",
                     [SKIP_FETCH, RETRY_FETCH] as const,
                     {
                         defaultAction: RETRY_FETCH,
@@ -203,12 +208,13 @@ export class ModuleRedFlag extends AbstractModule {
             return false;
         }
         const { vault, extra } = method;
-
+        // If remote is MinIO, makeLocalChunkBeforeSync is not available. (because no-deduplication on sending).
+        const makeLocalChunkBeforeSyncAvailable = this.settings.remoteType !== REMOTE_MINIO;
         const mapVaultStateToAction = {
             identical: {
                 // If both are identical, no need to make local files/chunks before sync,
                 // Just for the efficiency, chunks should be made before sync.
-                makeLocalChunkBeforeSync: true,
+                makeLocalChunkBeforeSync: makeLocalChunkBeforeSyncAvailable,
                 makeLocalFilesBeforeSync: false,
             },
             independent: {
@@ -320,6 +326,6 @@ export class ModuleRedFlag extends AbstractModule {
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
     }
 }

@@ -1914,16 +1914,16 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         // No longer needed on initialisation
         // services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.fileProcessing.handleOptionalFileEvent(this._anyProcessOptionalFileEvent.bind(this));
-        services.conflict.handleGetOptionalConflictCheckMethod(this._anyGetOptionalConflictCheckMethod.bind(this));
-        services.replication.handleProcessOptionalSynchroniseResult(this._anyProcessOptionalSyncFiles.bind(this));
-        services.setting.handleOnRealiseSetting(this._everyRealizeSettingSyncMode.bind(this));
-        services.appLifecycle.handleOnResuming(this._everyOnResumeProcess.bind(this));
-        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
-        services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
-        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
-        services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
-        services.setting.handleEnableOptionalFeature(this._allConfigureOptionalSyncFeature.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
+        services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
+        services.replication.processOptionalSynchroniseResult.addHandler(this._anyProcessOptionalSyncFiles.bind(this));
+        services.setting.onRealiseSetting.addHandler(this._everyRealizeSettingSyncMode.bind(this));
+        services.appLifecycle.onResuming.addHandler(this._everyOnResumeProcess.bind(this));
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
+        services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
+        services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
+        services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
+        services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }

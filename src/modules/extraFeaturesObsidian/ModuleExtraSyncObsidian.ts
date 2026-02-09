@@ -12,7 +12,7 @@ export class ModuleExtraSyncObsidian extends AbstractObsidianModule {
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.setting.handleGetDeviceAndVaultName(this._getDeviceAndVaultName.bind(this));
-        services.setting.handleSetDeviceAndVaultName(this._setDeviceAndVaultName.bind(this));
+        services.setting.getDeviceAndVaultName.setHandler(this._getDeviceAndVaultName.bind(this));
+        services.setting.setDeviceAndVaultName.setHandler(this._setDeviceAndVaultName.bind(this));
     }
 }

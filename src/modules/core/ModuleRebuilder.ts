@@ -1,5 +1,6 @@
 import { delay } from "octagonal-wheels/promises";
 import {
+    DEFAULT_SETTINGS,
     FLAGMD_REDFLAG2_HR,
     FLAGMD_REDFLAG3_HR,
     LOG_LEVEL_NOTICE,
@@ -58,7 +59,7 @@ Please enable them from the settings screen after setup is complete.`,
     async rebuildRemote() {
         await this.services.setting.suspendExtraSync();
         this.core.settings.isConfigured = true;
-
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
         await this.services.setting.realiseSetting();
         await this.services.remote.markLocked();
         await this.services.remote.tryResetDatabase();
@@ -77,8 +78,9 @@ Please enable them from the settings screen after setup is complete.`,
 
     async rebuildEverything() {
         await this.services.setting.suspendExtraSync();
-        await this.askUseNewAdapter();
+        // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
@@ -167,29 +169,57 @@ Please enable them from the settings screen after setup is complete.`,
         await this.services.replication.onBeforeReplicate(false); //TODO: Check actual need of this.
         await this.core.saveSettings();
     }
-    async askUseNewAdapter() {
-        if (!this.core.settings.useIndexedDBAdapter) {
-            const message = `Now this core has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
-            const CHOICE_YES = "Yes, disable and use latest";
-            const CHOICE_NO = "No, keep compatibility";
-            const choices = [CHOICE_YES, CHOICE_NO];
-
-            const ret = await this.core.confirm.confirmWithMessage(
-                "Database adapter",
-                message,
-                choices,
-                CHOICE_YES,
-                10
-            );
-            if (ret == CHOICE_YES) {
-                this.core.settings.useIndexedDBAdapter = true;
-            }
-        }
-    }
+    // No longer needed, both adapters have each advantages and disadvantages.
+    // async askUseNewAdapter() {
+    //     if (!this.core.settings.useIndexedDBAdapter) {
+    //         const message = `Now this core has been configured to use the old database adapter for keeping compatibility. Do you want to deactivate it?`;
+    //         const CHOICE_YES = "Yes, disable and use latest";
+    //         const CHOICE_NO = "No, keep compatibility";
+    //         const choices = [CHOICE_YES, CHOICE_NO];
+    //
+    //         const ret = await this.core.confirm.confirmWithMessage(
+    //             "Database adapter",
+    //             message,
+    //             choices,
+    //             CHOICE_YES,
+    //             10
+    //         );
+    //         if (ret == CHOICE_YES) {
+    //             this.core.settings.useIndexedDBAdapter = true;
+    //         }
+    //     }
+    // }
     async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean) {
         await this.services.setting.suspendExtraSync();
-        await this.askUseNewAdapter();
+        // await this.askUseNewAdapter();
         this.core.settings.isConfigured = true;
+        this.core.settings.notifyThresholdOfRemoteStorageSize = DEFAULT_SETTINGS.notifyThresholdOfRemoteStorageSize;
+        if (this.core.settings.maxMTimeForReflectEvents > 0) {
+            const date = new Date(this.core.settings.maxMTimeForReflectEvents);
+
+            const ask = `Your settings restrict file reflection times to no later than ${date}.
+
+**This is a recovery configuration.**
+
+This operation should only be performed on an empty vault.
+Are you sure you wish to proceed?`;
+            const PROCEED = "I understand, proceed";
+            const CANCEL = "Cancel operation";
+            const CLEARANDPROCEED = "Clear restriction and proceed";
+            const choices = [PROCEED, CLEARANDPROCEED, CANCEL] as const;
+            const ret = await this.core.confirm.askSelectStringDialogue(ask, choices, {
+                title: "Confirm restricted fetch",
+                defaultAction: CANCEL,
+                timeout: 0,
+            });
+            if (ret == CLEARANDPROCEED) {
+                this.core.settings.maxMTimeForReflectEvents = 0;
+                await this.core.saveSettings();
+            }
+            if (ret == CANCEL) {
+                return;
+            }
+        }
         await this.suspendReflectingDatabase();
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
@@ -236,7 +266,7 @@ Please enable them from the settings screen after setup is complete.`,
     async fetchRemoteChunks() {
         if (
             !this.core.settings.doNotSuspendOnFetching &&
-            this.core.settings.readChunksOnline &&
+            !this.core.settings.useOnlyLocalChunk &&
             this.core.settings.remoteType == REMOTE_COUCHDB
         ) {
             this._log(`Fetching chunks`, LOG_LEVEL_NOTICE);
@@ -271,10 +301,10 @@ Please enable them from the settings screen after setup is complete.`,
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.database.handleResetDatabase(this._resetLocalDatabase.bind(this));
-        services.remote.handleTryResetDatabase(this._tryResetRemoteDatabase.bind(this));
-        services.remote.handleTryCreateDatabase(this._tryCreateRemoteDatabase.bind(this));
-        services.setting.handleSuspendAllSync(this._allSuspendAllSync.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.database.resetDatabase.setHandler(this._resetLocalDatabase.bind(this));
+        services.remote.tryResetDatabase.setHandler(this._tryResetRemoteDatabase.bind(this));
+        services.remote.tryCreateDatabase.setHandler(this._tryCreateRemoteDatabase.bind(this));
+        services.setting.suspendAllSync.addHandler(this._allSuspendAllSync.bind(this));
     }
 }

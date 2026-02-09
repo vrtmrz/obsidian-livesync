@@ -1,4 +1,4 @@
-import { LocalDatabaseMaintenance } from "../../../features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
+import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "../../../lib/src/common/logger.ts";
 import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "../../../lib/src/common/types.ts";
 import { fireAndForget } from "../../../lib/src/common/utils.ts";
@@ -187,92 +187,106 @@ export function paneMaintenance(
             )
             .addOnUpdate(this.onlyOnMinIO);
     });
-    void addPanel(paneEl, "Garbage Collection (Beta2)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
+    void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Scan garbage")
-            .setDesc("Scan for garbage chunks in the database.")
+            .setName("Perform Garbage Collection")
+            .setDesc("Perform Garbage Collection to remove unused chunks and reduce database size.")
             .addButton((button) =>
                 button
-                    .setButtonText("Scan")
-                    // .setWarning()
+                    .setButtonText("Perform Garbage Collection")
                     .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin
-                            .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                            ?.trackChanges(false, true);
-                    })
-            )
-            .addButton((button) =>
-                button.setButtonText("Rescan").onClick(async () => {
-                    await this.plugin
-                        .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                        ?.trackChanges(true, true);
-                })
-            );
-        new Setting(paneEl)
-            .setName("Collect garbage")
-            .setDesc("Remove all unused chunks from the local database.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Collect")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin
-                            .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                            ?.performGC(true);
-                    })
-            );
-        new Setting(paneEl)
-            .setName("Commit File Deletion")
-            .setDesc("Completely delete all deleted documents from the local database.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Delete")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.plugin
-                            .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                            ?.commitFileDeletion();
+                    .onClick(() => {
+                        this.closeSetting();
+                        eventHub.emitEvent(EVENT_REQUEST_PERFORM_GC_V3);
                     })
             );
     });
-    void addPanel(paneEl, "Garbage Collection (Old and Experimental)", (e) => e, this.onlyOnP2POrCouchDB).then(
-        (paneEl) => {
-            new Setting(paneEl)
-                .setName("Remove all orphaned chunks")
-                .setDesc("Remove all orphaned chunks from the local database.")
-                .addButton((button) =>
-                    button
-                        .setButtonText("Remove")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin
-                                .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                                ?.removeUnusedChunks();
-                        })
-                );
+    // void addPanel(paneEl, "Garbage Collection (Beta2)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
+    //     new Setting(paneEl)
+    //         .setName("Scan garbage")
+    //         .setDesc("Scan for garbage chunks in the database.")
+    //         .addButton((button) =>
+    //             button
+    //                 .setButtonText("Scan")
+    //                 // .setWarning()
+    //                 .setDisabled(false)
+    //                 .onClick(async () => {
+    //                     await this.plugin
+    //                         .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                         ?.trackChanges(false, true);
+    //                 })
+    //         )
+    //         .addButton((button) =>
+    //             button.setButtonText("Rescan").onClick(async () => {
+    //                 await this.plugin
+    //                     .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                     ?.trackChanges(true, true);
+    //             })
+    //         );
+    //     new Setting(paneEl)
+    //         .setName("Collect garbage")
+    //         .setDesc("Remove all unused chunks from the local database.")
+    //         .addButton((button) =>
+    //             button
+    //                 .setButtonText("Collect")
+    //                 .setWarning()
+    //                 .setDisabled(false)
+    //                 .onClick(async () => {
+    //                     await this.plugin
+    //                         .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                         ?.performGC(true);
+    //                 })
+    //         );
+    //     new Setting(paneEl)
+    //         .setName("Commit File Deletion")
+    //         .setDesc("Completely delete all deleted documents from the local database.")
+    //         .addButton((button) =>
+    //             button
+    //                 .setButtonText("Delete")
+    //                 .setWarning()
+    //                 .setDisabled(false)
+    //                 .onClick(async () => {
+    //                     await this.plugin
+    //                         .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                         ?.commitFileDeletion();
+    //                 })
+    //         );
+    // });
+    // void addPanel(paneEl, "Garbage Collection (Old and Experimental)", (e) => e, this.onlyOnP2POrCouchDB).then(
+    //     (paneEl) => {
+    //         new Setting(paneEl)
+    //             .setName("Remove all orphaned chunks")
+    //             .setDesc("Remove all orphaned chunks from the local database.")
+    //             .addButton((button) =>
+    //                 button
+    //                     .setButtonText("Remove")
+    //                     .setWarning()
+    //                     .setDisabled(false)
+    //                     .onClick(async () => {
+    //                         await this.plugin
+    //                             .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                             ?.removeUnusedChunks();
+    //                     })
+    //             );
 
-            new Setting(paneEl)
-                .setName("Resurrect deleted chunks")
-                .setDesc(
-                    "If you have deleted chunks before fully synchronised and missed some chunks, you possibly can resurrect them."
-                )
-                .addButton((button) =>
-                    button
-                        .setButtonText("Try resurrect")
-                        .setWarning()
-                        .setDisabled(false)
-                        .onClick(async () => {
-                            await this.plugin
-                                .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
-                                ?.resurrectChunks();
-                        })
-                );
-        }
-    );
+    //         new Setting(paneEl)
+    //             .setName("Resurrect deleted chunks")
+    //             .setDesc(
+    //                 "If you have deleted chunks before fully synchronised and missed some chunks, you possibly can resurrect them."
+    //             )
+    //             .addButton((button) =>
+    //                 button
+    //                     .setButtonText("Try resurrect")
+    //                     .setWarning()
+    //                     .setDisabled(false)
+    //                     .onClick(async () => {
+    //                         await this.plugin
+    //                             .getAddOn<LocalDatabaseMaintenance>(LocalDatabaseMaintenance.name)
+    //                             ?.resurrectChunks();
+    //                     })
+    //             );
+    //     }
+    // );
 
     void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)

@@ -6,7 +6,7 @@ import {
     ButtonComponent,
     type TextAreaComponent,
     type ValueComponent,
-} from "obsidian";
+} from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
 import {
     LEVEL_ADVANCED,

@@ -21,3 +21,11 @@ data.json
 
 # environment variables
 .env
+
+# local config files
+*.local
+.gemini
+
+cov_profile/**
+
+coverage

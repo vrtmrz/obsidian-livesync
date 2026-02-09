@@ -26,7 +26,13 @@ import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/s
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { EVENT_REQUEST_RUN_DOCTOR, EVENT_REQUEST_RUN_FIX_INCOMPLETE, eventHub } from "../../../common/events.ts";
+import {
+    EVENT_ANALYSE_DB_USAGE,
+    EVENT_REQUEST_CHECK_REMOTE_SIZE,
+    EVENT_REQUEST_RUN_DOCTOR,
+    EVENT_REQUEST_RUN_FIX_INCOMPLETE,
+    eventHub,
+} from "../../../common/events.ts";
 import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
@@ -42,7 +48,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setDesc($msg("Setting.TroubleShooting.Doctor.Desc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Run Doctor")
+                    .setButtonText($msg("Run Doctor"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
@@ -63,9 +69,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         eventHub.emitEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE);
                     })
             );
-        new Setting(paneEl).setName("Prepare the 'report' to create an issue").addButton((button) =>
+        new Setting(paneEl).setName($msg("Prepare the 'report' to create an issue")).addButton((button) =>
             button
-                .setButtonText("Copy Report to clipboard")
+                .setButtonText($msg("Copy Report to clipboard"))
                 .setCta()
                 .setDisabled(false)
                 .onClick(async () => {
@@ -182,6 +188,24 @@ ${stringifyYaml({
                     }
                 })
         );
+        new Setting(paneEl)
+            .setName($msg("Analyse database usage"))
+            .setDesc($msg(
+                "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
+            ))
+            .addButton((button) =>
+                button.setButtonText($msg("Analyse")).onClick(() => {
+                    eventHub.emitEvent(EVENT_ANALYSE_DB_USAGE);
+                })
+            );
+        new Setting(paneEl)
+            .setName($msg("Reset notification threshold and check the remote database usage"))
+            .setDesc($msg("Reset the remote storage size threshold and check the remote storage size again."))
+            .addButton((button) =>
+                button.setButtonText($msg("Check")).onClick(() => {
+                    eventHub.emitEvent(EVENT_REQUEST_CHECK_REMOTE_SIZE);
+                })
+            );
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");
     });
 

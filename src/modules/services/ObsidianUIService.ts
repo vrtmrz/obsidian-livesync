@@ -1,40 +1,30 @@
-import { UIService } from "../../lib/src/services/Services";
-import type ObsidianLiveSyncPlugin from "../../main";
-import { SvelteDialogManager } from "../features/SetupWizard/ObsidianSvelteDialog";
-import DialogueToCopy from "../../lib/src/UI/dialogues/DialogueToCopy.svelte";
+import type { ConfigService } from "@lib/services/base/ConfigService";
+import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
+import type { ReplicatorService } from "@lib/services/base/ReplicatorService";
+import { UIService } from "@lib/services//implements/base/UIService";
+import { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
+import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
+import { ObsidianConfirm } from "./ObsidianConfirm";
 
-export class ObsidianUIService extends UIService {
-    private _dialogManager: SvelteDialogManager;
-    private _plugin: ObsidianLiveSyncPlugin;
-    get dialogManager() {
-        return this._dialogManager;
-    }
-    constructor(plugin: ObsidianLiveSyncPlugin) {
-        super();
-        this._dialogManager = new SvelteDialogManager(plugin);
-        this._plugin = plugin;
-    }
-    async promptCopyToClipboard(title: string, value: string): Promise<boolean> {
-        const param = {
-            title: title,
-            dataToCopy: value,
-        };
-        const result = await this._dialogManager.open(DialogueToCopy, param);
-        if (result !== "ok") {
-            return false;
-        }
-        return true;
-    }
-    showMarkdownDialog<T extends string[]>(
-        title: string,
-        contentMD: string,
-        buttons: T,
-        defaultAction?: (typeof buttons)[number]
-    ): Promise<(typeof buttons)[number] | false> {
-        return this._plugin.confirm.askSelectStringDialogue(contentMD, buttons, {
-            title,
-            defaultAction: defaultAction ?? buttons[0],
-            timeout: 0,
+export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {
+    appLifecycle: AppLifecycleService<T>;
+    config: ConfigService<T>;
+    replicator: ReplicatorService<T>;
+};
+
+export class ObsidianUIService extends UIService<ObsidianServiceContext> {
+    constructor(context: ObsidianServiceContext, dependents: ObsidianUIServiceDependencies<ObsidianServiceContext>) {
+        const obsidianConfirm = new ObsidianConfirm(context);
+        const obsidianSvelteDialogManager = new ObsidianSvelteDialogManager<ObsidianServiceContext>(context, {
+            appLifecycle: dependents.appLifecycle,
+            config: dependents.config,
+            replicator: dependents.replicator,
+            confirm: obsidianConfirm,
+        });
+        super(context, {
+            appLifecycle: dependents.appLifecycle,
+            dialogManager: obsidianSvelteDialogManager,
+            confirm: obsidianConfirm,
         });
     }
 }

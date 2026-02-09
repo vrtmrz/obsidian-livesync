@@ -195,6 +195,6 @@ export class ModuleSetupObsidian extends AbstractObsidianModule {
     // }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
     }
 }

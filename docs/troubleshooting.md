@@ -1,5 +1,4 @@
 # Tips and Troubleshooting
-
 - [Tips and Troubleshooting](#tips-and-troubleshooting)
   - [Tips](#tips)
     - [CORS avoidance](#cors-avoidance)
@@ -14,7 +13,12 @@
   - [Notable bugs and fixes](#notable-bugs-and-fixes)
     - [Binary files get bigger on iOS](#binary-files-get-bigger-on-ios)
     - [Some setting name has been changed](#some-setting-name-has-been-changed)
-  - [FAQ](#faq)
+  - [Questions and Answers](#questions-and-answers)
+    - [How should I share the settings between multiple devices?](#how-should-i-share-the-settings-between-multiple-devices)
+    - [What should I enter for the passphrase of Setup-URI?](#what-should-i-enter-for-the-passphrase-of-setup-uri)
+    - [Why the settings of Self-hosted LiveSync itself is disabled in default?](#why-the-settings-of-self-hosted-livesync-itself-is-disabled-in-default)
+    - [The plug-in says `something went wrong`.](#the-plug-in-says-something-went-wrong)
+    - [A large number of files were deleted, and were synchronised!](#a-large-number-of-files-were-deleted-and-were-synchronised)
     - [Why `Use an old adapter for compatibility` is somehow enabled in my vault?](#why-use-an-old-adapter-for-compatibility-is-somehow-enabled-in-my-vault)
     - [ZIP (or any extensions) files were not synchronised. Why?](#zip-or-any-extensions-files-were-not-synchronised-why)
     - [I hope to report the issue, but you said you needs `Report`. How to make it?](#i-hope-to-report-the-issue-but-you-said-you-needs-report-how-to-make-it)
@@ -32,6 +36,7 @@
     - [While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.](#while-using-cloudflare-tunnels-often-obsidian-api-fallback-and-524-error-occurs)
     - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
     - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
+    - [Flag Files](#flag-files)
     - [Old tips](#old-tips)
 
 <!-- - -->
@@ -39,19 +44,21 @@
 ## Tips
 
 ### CORS avoidance
+
 If we are unable to configure CORS properly for any reason (for example, if we cannot configure non-administered network devices), we may choose to ignore CORS.
 To use the Obsidian API (also known as the Non-Native API) to bypass CORS, we can enable the toggle ``Use Request API to avoid `inevitable` CORS problem``.
+
 <!-- Add **Long explanation of CORS** here for integrity -->
 
 ### CORS configuration with reverse proxy
 
 - IMPORTANT: CouchDB handles CORS by itself. Do not process CORS on the reverse
   proxy.
-  - Do not process `Option` requests on the reverse proxy!
-  - Make sure `host` and `X-Forwarded-For` headers are forwarded to the CouchDB.
-  - If you are using a subdirectory, make sure to handle it properly. More
-    detailed information is in the
-    [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
+    - Do not process `Option` requests on the reverse proxy!
+    - Make sure `host` and `X-Forwarded-For` headers are forwarded to the CouchDB.
+    - If you are using a subdirectory, make sure to handle it properly. More
+      detailed information is in the
+      [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
 
 Minimal configurations are as follows:
 
@@ -170,7 +177,56 @@ Probably, we can accept that.
 | Setup Wizard                 | Minimal Setup                            |
 | Check database configuration | Check and Fix database configuration     |
 
-## FAQ
+## Questions and Answers
+
+### How should I share the settings between multiple devices?
+
+- Device setup:
+    - Using `Setup URI` is the most straightforward way.
+- Setting changes during use:
+    - Use `Sync settings via Markdown files` on the `🔄️ Sync settings` pane.
+
+### What should I enter for the passphrase of Setup-URI?
+
+- Anything you like is OK. However, the recommendation is as follows:
+    - Include the vault (group) information.
+    - Include the date of operation.
+    - Anything random for your security.
+    - For example, `MyVault-20240901-r4nd0mStr1ng`.
+- Why?
+    - The Setup-URI is encoded; that means it cannot indicate the actual settings. Hence, if you use the same passphrase for multiple vaults, you may accidentally mix up vaults.
+
+### Why the settings of Self-hosted LiveSync itself is disabled in default?
+
+Basically, if we configure all `additionalSuffixOfDatabaseName` the same, we can synchronise this file between multiple devices.
+(`additionalSuffixOfDatabaseName` should be unique in each device, not in the synchronised vaults).
+However, if we synchronise the settings of Self-hosted LiveSync itself, we may encounter some unexpected behaviours.
+For example, if a setting that 'let Self-hosted LiveSync setting be excluded' is synced, it is very unlikely that things will recover automatically after this, and there is little chance we will even notice this. Even if we change our minds and change the settings back on other devices. It could get even worse if incompatible changes are automatically reflected; everything will break.
+
+### The plug-in says `something went wrong`.
+
+There are many cases where this is really unclear. One possibility is that the chunk fetch did not go well.
+
+1. Restarting Obsidian sometimes helps (fetch-order problem).
+2. If actually there are no chunks, please perform `Recreate missing chunks for all files` on the `🧰 Hatch` pane at the other devices. And synchronise again. (also restart Obsidian may effect).
+3. If the problem persists, please perform `Verify and repair all files` on the `🧰 Hatch` pane. If our local database and storage are not matched, we will be asked to apply which one.
+
+### A large number of files were deleted, and were synchronised!
+
+1. Backup everything important.
+    - Your local vault.
+    - Your CouchDB database (this can be done by replicating to another database).
+2. Prepare the empty vault
+3. Place `redflag.md` at the top of the vault.
+4. Apply the settings **BUT DO NOT PROCEED TO RESTORE YET**.
+     - You can use `Setup URI`, QR Code, or manually apply the settings.
+5. Set `Maximum file modification time for reflected file events` in `Remediation` on the `🩹 Patches` pane.
+    - If you know when the files were deleted, set the time a bit before that.
+    - If not, bisecting may help us.
+6. Delete `redflag.md`.
+7. Perform `Reset synchronisation on This Device` on the `🎛️ Maintenance` pane.
+
+This mode is very fragile. Please be careful.
 
 ### Why `Use an old adapter for compatibility` is somehow enabled in my vault?
 
@@ -248,15 +304,17 @@ files. Only it takes a bit of time and traffics.
 ### How to launch the DevTools
 
 #### On Desktop Devices
+
 We can launch the DevTools by pressing `ctrl`+`shift`+`i` (`Command`+`shift`+`i` on Mac).
 
 #### On Android
+
 Please refer to [Remote debug Android devices](https://developer.chrome.com/docs/devtools/remote-debugging/).
 Once the DevTools have been launched, everything operates the same as on a PC.
 
 #### On iOS, iPadOS devices
-If we have a Mac, we can inspect from Safari on the Mac. Please refer to [Inspecting iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios).
 
+If we have a Mac, we can inspect from Safari on the Mac. Please refer to [Inspecting iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios).
 
 ### How can I use the DevTools?
 
@@ -302,12 +360,19 @@ self-signed certificate.
 
 ### I think that something bad happening on the vault...
 
-Place `redflag.md` on top of the vault, and restart Obsidian. The most simple
+Place the [flag file](#flag-files) on top of the vault, and restart Obsidian. The most simple
 way is to create a new note and rename it to `redflag`. Of course, we can put it
 without Obsidian.
 
-If there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
+For example, if there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
 processes.
+
+### Flag Files
+
+The flag file is a simple Markdown file designed to prevent storage events and database events in self-hosted LiveSync.
+Its very existence is significant; it may be left blank, or it may contain text; either is acceptable.
+
+This file is in Markdown format so that it can be placed in the Vault externally, even if Obsidian fails to launch.
 
 There are some options to use `redflag.md`.
 

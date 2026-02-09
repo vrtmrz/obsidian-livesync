@@ -1803,16 +1803,16 @@ export class ConfigSync extends LiveSyncCommands {
         return files;
     }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.fileProcessing.handleOptionalFileEvent(this._anyProcessOptionalFileEvent.bind(this));
-        services.conflict.handleGetOptionalConflictCheckMethod(this._anyGetOptionalConflictCheckMethod.bind(this));
-        services.replication.handleProcessVirtualDocuments(this._anyModuleParsedReplicationResultItem.bind(this));
-        services.setting.handleOnRealiseSetting(this._everyRealizeSettingSyncMode.bind(this));
-        services.appLifecycle.handleOnResuming(this._everyOnResumeProcess.bind(this));
-        services.appLifecycle.handleOnResumed(this._everyAfterResumeProcess.bind(this));
-        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
-        services.databaseEvents.handleDatabaseInitialised(this._everyOnDatabaseInitialized.bind(this));
-        services.setting.handleSuspendExtraSync(this._allSuspendExtraSync.bind(this));
-        services.setting.handleSuggestOptionalFeatures(this._allAskUsingOptionalSyncFeature.bind(this));
-        services.setting.handleEnableOptionalFeature(this._allConfigureOptionalSyncFeature.bind(this));
+        services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
+        services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
+        services.replication.processVirtualDocument.addHandler(this._anyModuleParsedReplicationResultItem.bind(this));
+        services.setting.onRealiseSetting.addHandler(this._everyRealizeSettingSyncMode.bind(this));
+        services.appLifecycle.onResuming.addHandler(this._everyOnResumeProcess.bind(this));
+        services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
+        services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
+        services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
+        services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
+        services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }

@@ -15,7 +15,6 @@ import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
 import { disableEncryption } from "@/lib/src/pouchdb/encryption.ts";
 import { enableEncryption } from "@/lib/src/pouchdb/encryption.ts";
 import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
-import { ObsHttpHandler } from "./APILib/ObsHttpHandler.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
 import type { LiveSyncCore } from "../../main.ts";
@@ -27,10 +26,7 @@ async function fetchByAPI(request: RequestUrlParam, errorAsResult = false): Prom
     const ret = await requestUrl({ ...request, throw: !errorAsResult });
     return ret;
 }
-
 export class ModuleObsidianAPI extends AbstractObsidianModule {
-    _customHandler!: ObsHttpHandler;
-
     _authHeader = new AuthorizationHeaderGenerator();
     _previousErrors = new Set<string>();
 
@@ -47,10 +43,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
     }
     last_successful_post = false;
-    _customFetchHandler(): ObsHttpHandler {
-        if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
-        return this._customHandler;
-    }
+
     _getLastPostFailedBySize(): boolean {
         return !this.last_successful_post;
     }
@@ -58,7 +51,20 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
     async __fetchByAPI(url: string, authHeader: string, opts?: RequestInit): Promise<Response> {
         const body = opts?.body as string;
 
-        const transformedHeaders = { ...(opts?.headers as Record<string, string>) };
+        const optHeaders = {} as Record<string, string>;
+        if (opts && "headers" in opts) {
+            if (opts.headers instanceof Headers) {
+                // For Compatibility, mostly headers.entries() is supported, but not all environments.
+                opts.headers.forEach((value, key) => {
+                    optHeaders[key] = value;
+                });
+            } else {
+                for (const [key, value] of Object.entries(opts.headers as Record<string, string>)) {
+                    optHeaders[key] = value;
+                }
+            }
+        }
+        const transformedHeaders = { ...optHeaders };
         if (authHeader != "") transformedHeaders["authorization"] = authHeader;
         delete transformedHeaders["host"];
         delete transformedHeaders["Host"];
@@ -132,7 +138,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
             return "Network is offline";
         }
         // let authHeader = await this._authHeader.getAuthorizationHeader(auth);
-
         const conf: PouchDB.HttpAdapter.HttpAdapterConfiguration = {
             adapter: "http",
             auth: "username" in auth ? auth : undefined,
@@ -166,7 +171,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                     if (!("username" in auth)) {
                         headers.append("authorization", authHeader);
                     }
-
                     try {
                         this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
                         const response: Response = await (useRequestAPI
@@ -275,11 +279,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         }
     }
 
-    _isMobile(): boolean {
-        //@ts-ignore : internal API
-        return this.app.isMobile;
-    }
-
     _vaultName(): string {
         return this.app.vault.getName();
     }
@@ -297,23 +296,16 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return undefined;
     }
 
-    _anyGetAppId(): string {
-        return `${"appId" in this.app ? this.app.appId : ""}`;
-    }
-
-    private _reportUnresolvedMessages(): Promise<string[]> {
+    private _reportUnresolvedMessages(): Promise<(string | Error)[]> {
         return Promise.resolve([...this._previousErrors]);
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
-        services.API.handleGetCustomFetchHandler(this._customFetchHandler.bind(this));
-        services.API.handleIsLastPostFailedDueToPayloadSize(this._getLastPostFailedBySize.bind(this));
-        services.remote.handleConnect(this._connectRemoteCouchDB.bind(this));
-        services.API.handleIsMobile(this._isMobile.bind(this));
-        services.vault.handleGetVaultName(this._getVaultName.bind(this));
-        services.vault.handleVaultName(this._vaultName.bind(this));
-        services.vault.handleGetActiveFilePath(this._getActiveFilePath.bind(this));
-        services.API.handleGetAppID(this._anyGetAppId.bind(this));
-        services.appLifecycle.reportUnresolvedMessages(this._reportUnresolvedMessages.bind(this));
+        services.API.isLastPostFailedDueToPayloadSize.setHandler(this._getLastPostFailedBySize.bind(this));
+        services.remote.connect.setHandler(this._connectRemoteCouchDB.bind(this));
+        services.vault.getVaultName.setHandler(this._getVaultName.bind(this));
+        services.vault.vaultName.setHandler(this._vaultName.bind(this));
+        services.vault.getActiveFilePath.setHandler(this._getActiveFilePath.bind(this));
+        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }

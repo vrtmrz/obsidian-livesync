@@ -1,11 +1,17 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import { AbstractModule } from "../AbstractModule.ts";
 import { sizeToHumanReadable } from "octagonal-wheels/number";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
+import { EVENT_REQUEST_CHECK_REMOTE_SIZE, eventHub } from "@/common/events.ts";
 
-export class ModuleCheckRemoteSize extends AbstractModule {
-    async _allScanStat(): Promise<boolean> {
+export class ModuleCheckRemoteSize extends AbstractObsidianModule {
+    checkRemoteSize(): Promise<boolean> {
+        this.settings.notifyThresholdOfRemoteStorageSize = 1;
+        return this._allScanStat();
+    }
+
+    private async _allScanStat(): Promise<boolean> {
         if (this.core.managers.networkManager.isOnline === false) {
             this._log("Network is offline, skipping remote size check.", LOG_LEVEL_INFO);
             return true;
@@ -109,7 +115,20 @@ export class ModuleCheckRemoteSize extends AbstractModule {
         }
         return true;
     }
+
+    private _everyOnloadStart(): Promise<boolean> {
+        this.addCommand({
+            id: "livesync-reset-remote-size-threshold-and-check",
+            name: "Reset notification threshold and check the remote database usage",
+            callback: async () => {
+                await this.checkRemoteSize();
+            },
+        });
+        eventHub.onEvent(EVENT_REQUEST_CHECK_REMOTE_SIZE, () => this.checkRemoteSize());
+        return Promise.resolve(true);
+    }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnScanningStartupIssues(this._allScanStat.bind(this));
+        services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

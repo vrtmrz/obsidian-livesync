@@ -9,6 +9,10 @@ import {
     type FilePathWithPrefix,
     type diff_result,
 } from "../../lib/src/common/types.ts";
+import * as fs from "fs";
+import * as path from "path";
+import { spawn } from "child_process";
+import * as os from "os";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
@@ -39,7 +43,16 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         // UI for resolving conflicts should one-by-one.
         return await serialized(`conflict-resolve-ui`, async () => {
             this._log("Merge:open conflict dialog", LOG_LEVEL_VERBOSE);
-            const dialog = new ConflictResolveModal(this.app, filename, conflictCheckResult);
+            const dialog = new ConflictResolveModal(
+                this.app,
+                filename,
+                conflictCheckResult,
+                false,
+                undefined,
+                async () => {
+                    return await this.openExternalMergeTool(filename, conflictCheckResult);
+                }
+            );
             dialog.open();
             const selected = await dialog.waitForResult();
             if (selected === CANCELLED) {
@@ -58,7 +71,25 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             }
             const toDelete = selected;
             // const toKeep = conflictCheckResult.left.rev != toDelete ? conflictCheckResult.left.rev : conflictCheckResult.right.rev;
-            if (toDelete === LEAVE_TO_SUBSEQUENT) {
+            if (typeof toDelete === "object" && "content" in toDelete) {
+                // External merge result
+                const p = toDelete.content;
+                const delRev = testDoc._conflicts[0];
+                if (!(await this.core.databaseFileAccess.storeContent(filename, p))) {
+                    this._log(`Merged content cannot be stored:${filename}`, LOG_LEVEL_NOTICE);
+                    return false;
+                }
+                if (
+                    (await this.services.conflict.resolveByDeletingRevision(filename, delRev, "UI Merged")) ==
+                    MISSING_OR_ERROR
+                ) {
+                    this._log(
+                        `Merged saved, but cannot delete conflicted revisions: ${filename}, (${displayRev(delRev)})`,
+                        LOG_LEVEL_NOTICE
+                    );
+                    return false;
+                }
+            } else if (toDelete === LEAVE_TO_SUBSEQUENT) {
                 // Concatenate both conflicted revisions.
                 // Create a new file by concatenating both conflicted revisions.
                 const p = conflictCheckResult.diff.map((e) => e[1]).join("");
@@ -102,6 +133,90 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             return false;
         });
     }
+
+    async openExternalMergeTool(filename: string, diff: diff_result): Promise<string | false> {
+        // @ts-ignore
+        const useExternalMergeTool = this.settings.useExternalMergeTool;
+        // @ts-ignore
+        const externalMergeToolCommand = this.settings.externalMergeToolCommand || "meld";
+
+        if (!useExternalMergeTool) return false;
+
+        const tmpDir = os.tmpdir();
+        const baseName = path.basename(filename);
+        const localPath = path.join(tmpDir, `base_${baseName}`);
+        const remotePath = path.join(tmpDir, `remote_${baseName}`);
+        const mergedPath = path.join(tmpDir, `merged_${baseName}`);
+
+        try {
+            // right is Base (local), left is Remote (conflicted)
+            // But verify content availability
+            const localContent = diff.right.data || "";
+            const remoteContent = diff.left.data || "";
+
+            await fs.promises.writeFile(localPath, localContent);
+            await fs.promises.writeFile(remotePath, remoteContent);
+            // Initialize merged with local content
+            await fs.promises.writeFile(mergedPath, localContent);
+
+            const parts = externalMergeToolCommand.match(/(?:[^\s"]+|"[^"]*")+/g) || [externalMergeToolCommand];
+            const executable = parts[0].replace(/^"|"$/g, "");
+            const userArgs = parts.slice(1).map((a) => a.replace(/^"|"$/g, ""));
+
+            const finalArgs = [...userArgs];
+
+            if (
+                externalMergeToolCommand.includes("%1") ||
+                externalMergeToolCommand.includes("%2") ||
+                externalMergeToolCommand.includes("%3")
+            ) {
+                // Replace in args
+                for (let i = 0; i < finalArgs.length; i++) {
+                    finalArgs[i] = finalArgs[i]
+                        .replace("%1", localPath)
+                        .replace("%2", remotePath)
+                        .replace("%3", mergedPath);
+                }
+            } else {
+                // Default 3-way merge
+                finalArgs.push(localPath, mergedPath, remotePath);
+            }
+
+            this._log(`Launching external merge tool: ${executable} ${finalArgs.join(" ")}`, LOG_LEVEL_INFO);
+
+            return new Promise((resolve) => {
+                const child = spawn(executable, finalArgs);
+                child.on("error", (err) => {
+                    this._log(`Error launching tool: ${err}`, LOG_LEVEL_NOTICE);
+                    resolve(false);
+                });
+                child.on("exit", (code) => {
+                    void (async () => {
+                        if (code === 0) {
+                            try {
+                                const content = await fs.promises.readFile(mergedPath, "utf-8");
+                                // Cleanup
+                                await fs.promises.unlink(localPath);
+                                await fs.promises.unlink(remotePath);
+                                await fs.promises.unlink(mergedPath);
+                                resolve(content);
+                            } catch (err) {
+                                this._log(`Error reading merged file: ${err}`, LOG_LEVEL_NOTICE);
+                                resolve(false);
+                            }
+                        } else {
+                            this._log(`External tool exited with code ${code}`, LOG_LEVEL_NOTICE);
+                            resolve(false);
+                        }
+                    })();
+                });
+            });
+        } catch (e) {
+            this._log(`Failed to launch external merge tool: ${e}`, LOG_LEVEL_NOTICE);
+            return false;
+        }
+    }
+
     async allConflictCheck() {
         while (await this.pickFileForResolve());
     }
@@ -131,36 +246,42 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     async _allScanStat(): Promise<boolean> {
         const notes: { path: string; mtime: number }[] = [];
         this._log(`Checking conflicted files`, LOG_LEVEL_VERBOSE);
-        for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
-            if (!("_conflicts" in doc)) continue;
-            notes.push({ path: getPath(doc), mtime: doc.mtime });
-        }
-        if (notes.length > 0) {
-            this.core.confirm.askInPopup(
-                `conflicting-detected-on-safety`,
-                `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`,
-                (anchor) => {
-                    anchor.text = "HERE";
-                    anchor.addEventListener("click", () => {
-                        fireAndForget(() => this.allConflictCheck());
-                    });
-                }
-            );
-            this._log(
-                `Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`,
-                LOG_LEVEL_VERBOSE
-            );
-            for (const note of notes) {
-                this._log(`Conflicted: ${note.path}`);
+        try {
+            for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
+                if (!("_conflicts" in doc)) continue;
+                notes.push({ path: getPath(doc), mtime: doc.mtime });
             }
-        } else {
-            this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
+            if (notes.length > 0) {
+                this.core.confirm.askInPopup(
+                    `conflicting-detected-on-safety`,
+                    `Some files have been left conflicted! Press {HERE} to resolve them, or you can do it later by "Pick a file to resolve conflict`,
+                    (anchor) => {
+                        anchor.text = "HERE";
+                        anchor.addEventListener("click", () => {
+                            fireAndForget(() => this.allConflictCheck());
+                        });
+                    }
+                );
+                this._log(
+                    `Some files have been left conflicted! Please resolve them by "Pick a file to resolve conflict". The list is written in the log.`,
+                    LOG_LEVEL_VERBOSE
+                );
+                for (const note of notes) {
+                    this._log(`Conflicted: ${note.path}`);
+                }
+            } else {
+                this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
+            }
+        } catch (e) {
+            this._log(`Error while scanning conflicted files: ${e}`, LOG_LEVEL_NOTICE);
+            this._log(e, LOG_LEVEL_VERBOSE);
+            return false;
         }
         return true;
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnScanningStartupIssues(this._allScanStat.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.conflict.handleResolveByUserInteraction(this._anyResolveConflictByUI.bind(this));
+        services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.conflict.resolveByUserInteraction.addHandler(this._anyResolveConflictByUI.bind(this));
     }
 }

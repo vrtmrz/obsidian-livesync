@@ -10,7 +10,7 @@
         pluginV2Progress,
     } from "./CmdConfigSync.ts";
     import PluginCombo from "./PluginCombo.svelte";
-    import { Menu, type PluginManifest } from "obsidian";
+    import { Menu, type PluginManifest } from "@/deps.ts";
     import { unique } from "../../lib/src/common/utils";
     import {
         MODE_SELECTIVE,

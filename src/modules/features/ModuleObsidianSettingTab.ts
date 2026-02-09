@@ -30,6 +30,6 @@ export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
     onBindFunction(core: typeof this.plugin, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

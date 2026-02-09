@@ -15,7 +15,6 @@ import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
     type LogEntry,
-    logStore,
     logMessages,
 } from "../../lib/src/mock_and_interop/stores.ts";
 import { eventHub } from "../../lib/src/hub/hub.ts";
@@ -28,35 +27,37 @@ import {
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { addIcon, normalizePath, Notice } from "../../deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { P2PLogCollector } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { LiveSyncError } from "@/lib/src/common/LSError.ts";
+import { isValidPath } from "@/common/utils.ts";
+import {
+    isValidFilenameInAndroid,
+    isValidFilenameInDarwin,
+    isValidFilenameInWidows,
+} from "@/lib/src/string_and_binary/path.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
 // DI the log again.
+const recentLogEntries = reactiveSource<LogEntry[]>([]);
 setGlobalLogFunction((message: any, level?: number, key?: string) => {
     const messageX =
         message instanceof Error
             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
             : message;
     const entry = { message: messageX, level, key } as LogEntry;
-    logStore.enqueue(entry);
+    recentLogEntries.value = [...recentLogEntries.value, entry];
 });
 let recentLogs = [] as string[];
 
-// Recent log splicer
-const recentLogProcessor = new QueueProcessor(
-    (logs: string[]) => {
-        recentLogs = [...recentLogs, ...logs].splice(-200);
-        logMessages.value = recentLogs;
-    },
-    { batchSize: 25, delay: 10, suspended: false, concurrentLimit: 1 }
-).resumePipeLine();
+function addLog(log: string) {
+    recentLogs = [...recentLogs, log].splice(-200);
+    logMessages.value = recentLogs;
+}
 // logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
 const showDebugLog = false;
@@ -229,19 +230,45 @@ export class ModuleLog extends AbstractObsidianModule {
     }
 
     async getActiveFileStatus() {
+        const reason = [] as string[];
+        const reasonWarn = [] as string[];
         const thisFile = this.app.workspace.getActiveFile();
         if (!thisFile) return "";
+        const validPath = isValidPath(thisFile.path);
+        if (!validPath) {
+            reason.push("This file has an invalid path under the current settings");
+        } else {
+            // The most narrow check: Filename validity on Windows
+            const validOnWindows = isValidFilenameInWidows(thisFile.name);
+            const validOnDarwin = isValidFilenameInDarwin(thisFile.name);
+            const validOnAndroid = isValidFilenameInAndroid(thisFile.name);
+            const labels = [];
+            if (!validOnWindows) labels.push("🪟");
+            if (!validOnDarwin) labels.push("🍎");
+            if (!validOnAndroid) labels.push("🤖");
+            if (labels.length > 0) {
+                reasonWarn.push("Some platforms may be unable to process this file correctly: " + labels.join(" "));
+            }
+        }
         // Case Sensitivity
         if (this.services.setting.shouldCheckCaseInsensitively()) {
             const f = this.core.storageAccess
                 .getFiles()
                 .map((e) => e.path)
                 .filter((e) => e.toLowerCase() == thisFile.path.toLowerCase());
-            if (f.length > 1) return "Not synchronised: There are multiple files with the same name";
+            if (f.length > 1) {
+                reason.push("There are multiple files with the same name (case-insensitive match)");
+            }
         }
-        if (!(await this.services.vault.isTargetFile(thisFile.path))) return "Not synchronised: not a target file";
-        if (this.services.vault.isFileSizeTooLarge(thisFile.stat.size)) return "Not synchronised: File size exceeded";
-        return "";
+        if (!(await this.services.vault.isTargetFile(thisFile.path))) {
+            reason.push("This file is ignored by the ignore rules");
+        }
+        if (this.services.vault.isFileSizeTooLarge(thisFile.stat.size)) {
+            reason.push("This file size exceeds the configured limit");
+        }
+        const result = reason.length > 0 ? "Not synchronised: " + reason.join(", ") : "";
+        const warnResult = reasonWarn.length > 0 ? "Warning: " + reasonWarn.join(", ") : "";
+        return [result, warnResult].filter((e) => e).join("\n");
     }
     async setFileStatus() {
         const fileStatus = await this.getActiveFileStatus();
@@ -341,16 +368,12 @@ export class ModuleLog extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
-        logStore
-            .pipeTo(
-                new QueueProcessor((logs) => logs.forEach((e) => this.__addLog(e.message, e.level, e.key)), {
-                    suspended: false,
-                    batchSize: 20,
-                    concurrentLimit: 1,
-                    delay: 0,
-                })
-            )
-            .startPipeline();
+        recentLogEntries.onChanged((entries) => {
+            if (entries.value.length === 0) return;
+            const newEntries = [...entries.value];
+            recentLogEntries.value = [];
+            newEntries.forEach((e) => this.__addLog(e.message, e.level, e.key));
+        });
         eventHub.onEvent(EVENT_FILE_RENAMED, (data) => {
             void this.setFileStatus();
         });
@@ -432,7 +455,7 @@ export class ModuleLog extends AbstractObsidianModule {
         if (this.settings?.writeLogToTheFile) {
             this.writeLogToTheFile(now, vaultName, newMessage);
         }
-        recentLogProcessor.enqueue(newMessage);
+        addLog(newMessage);
         this.logLines.push({ ttl: now.getTime() + 3000, message: newMessage });
 
         if (level >= LOG_LEVEL_NOTICE) {
@@ -472,9 +495,9 @@ export class ModuleLog extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.appLifecycle.handleOnBeforeUnload(this._allStartOnUnload.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.appLifecycle.onBeforeUnload.addHandler(this._allStartOnUnload.bind(this));
     }
 }

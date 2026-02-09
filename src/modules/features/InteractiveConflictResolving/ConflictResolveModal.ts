@@ -6,7 +6,7 @@ import { delay } from "../../../lib/src/common/utils.ts";
 import { eventHub } from "../../../common/events.ts";
 import { globalSlipBoard } from "../../../lib/src/bureau/bureau.ts";
 
-export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
+export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string | { content: string };
 
 declare global {
     interface Slips extends LSSlips {
@@ -28,12 +28,21 @@ export class ConflictResolveModal extends Modal {
     localName: string = "Base";
     remoteName: string = "Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
+    onExternalMerge?: () => Promise<string | false>;
 
-    constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
+    constructor(
+        app: App,
+        filename: string,
+        diff: diff_result,
+        pluginPickMode?: boolean,
+        remoteName?: string,
+        onExternalMerge?: () => Promise<string | false>
+    ) {
         super(app);
         this.result = diff;
         this.filename = filename;
         this.pluginPickMode = pluginPickMode || false;
+        this.onExternalMerge = onExternalMerge;
         if (this.pluginPickMode) {
             this.title = "Pick a version";
             this.remoteName = `${remoteName || "Remote"}`;
@@ -90,16 +99,28 @@ export class ConflictResolveModal extends Modal {
             new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
         const date2 =
             new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
-        div2.setHTMLUnsafe(`
-<span class='deleted'><span class='conflict-dev-name'>${this.localName}</span>: ${date1}</span><br>
-<span class='added'><span class='conflict-dev-name'>${this.remoteName}</span>: ${date2}</span><br>
-        `);
+        div2.innerHTML = `<span class='deleted'><span class='conflict-dev-name'>${this.localName}</span>: ${date1}</span><br>
+<span class='added'><span class='conflict-dev-name'>${this.remoteName}</span>: ${date2}</span><br>`;
         contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) =>
             e.addEventListener("click", () => this.sendResponse(this.result.right.rev))
         ).style.marginRight = "4px";
         contentEl.createEl("button", { text: `Use ${this.remoteName}` }, (e) =>
             e.addEventListener("click", () => this.sendResponse(this.result.left.rev))
         ).style.marginRight = "4px";
+        if (this.onExternalMerge) {
+            contentEl.createEl("button", { text: "Open External Tool" }, (e) =>
+                e.addEventListener("click", () => {
+                    void (async () => {
+                        if (this.onExternalMerge) {
+                            const res = await this.onExternalMerge();
+                            if (res !== false) {
+                                this.sendResponse({ content: res });
+                            }
+                        }
+                    })();
+                })
+            ).style.marginRight = "4px";
+        }
         if (!this.pluginPickMode) {
             contentEl.createEl("button", { text: "Concat both" }, (e) =>
                 e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))
@@ -109,11 +130,10 @@ export class ConflictResolveModal extends Modal {
             e.addEventListener("click", () => this.sendResponse(CANCELLED))
         ).style.marginRight = "4px";
         diff = diff.replace(/\n/g, "<br>");
-        // div.innerHTML = diff;
         if (diff.length > 100 * 1024) {
-            div.setText("(Too large diff to display)");
+            div.innerText = "(Too large diff to display)";
         } else {
-            div.setHTMLUnsafe(diff);
+            div.innerHTML = diff;
         }
     }
 

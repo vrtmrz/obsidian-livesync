@@ -75,8 +75,8 @@ export class ModuleConflictChecker extends AbstractModule {
             }
         );
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.conflict.handleQueueCheckForIfOpen(this._queueConflictCheckIfOpen.bind(this));
-        services.conflict.handleQueueCheckFor(this._queueConflictCheck.bind(this));
-        services.conflict.handleEnsureAllProcessed(this._waitForAllConflictProcessed.bind(this));
+        services.conflict.queueCheckForIfOpen.setHandler(this._queueConflictCheckIfOpen.bind(this));
+        services.conflict.queueCheckFor.setHandler(this._queueConflictCheck.bind(this));
+        services.conflict.ensureAllProcessed.setHandler(this._waitForAllConflictProcessed.bind(this));
     }
 }

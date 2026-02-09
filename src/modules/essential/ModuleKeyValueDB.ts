@@ -4,11 +4,14 @@ import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB.ts";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "../AbstractModule.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
+import type { InjectableServiceHub } from "@/lib/src/services/InjectableServices.ts";
+import type { ObsidianDatabaseService } from "../services/ObsidianServices.ts";
 
 export class ModuleKeyValueDB extends AbstractModule {
-    tryCloseKvDB() {
+    async tryCloseKvDB() {
         try {
-            this.core.kvDB?.close();
+            await this.core.kvDB?.close();
             return true;
         } catch (e) {
             this._log("Failed to close KeyValueDB", LOG_LEVEL_VERBOSE);
@@ -19,7 +22,7 @@ export class ModuleKeyValueDB extends AbstractModule {
     async openKeyValueDB(): Promise<boolean> {
         await delay(10);
         try {
-            this.tryCloseKvDB();
+            await this.tryCloseKvDB();
             await delay(10);
             await yieldMicrotask();
             this.core.kvDB = await OpenKeyValueDatabase(this.services.vault.getVaultName() + "-livesync-kv");
@@ -33,12 +36,12 @@ export class ModuleKeyValueDB extends AbstractModule {
         }
         return true;
     }
-    _onDBUnload(db: LiveSyncLocalDB) {
-        if (this.core.kvDB) this.core.kvDB.close();
+    async _onDBUnload(db: LiveSyncLocalDB) {
+        if (this.core.kvDB) await this.core.kvDB.close();
         return Promise.resolve(true);
     }
-    _onDBClose(db: LiveSyncLocalDB) {
-        if (this.core.kvDB) this.core.kvDB.close();
+    async _onDBClose(db: LiveSyncLocalDB) {
+        if (this.core.kvDB) await this.core.kvDB.close();
         return Promise.resolve(true);
     }
 
@@ -50,32 +53,34 @@ export class ModuleKeyValueDB extends AbstractModule {
         return Promise.resolve(true);
     }
     _getSimpleStore<T>(kind: string) {
+        const getDB = () => this.core.kvDB;
         const prefix = `${kind}-`;
         return {
             get: async (key: string): Promise<T> => {
-                return await this.core.kvDB.get(`${prefix}${key}`);
+                return await getDB().get(`${prefix}${key}`);
             },
             set: async (key: string, value: any): Promise<void> => {
-                await this.core.kvDB.set(`${prefix}${key}`, value);
+                await getDB().set(`${prefix}${key}`, value);
             },
             delete: async (key: string): Promise<void> => {
-                await this.core.kvDB.del(`${prefix}${key}`);
+                await getDB().del(`${prefix}${key}`);
             },
             keys: async (
                 from: string | undefined,
                 to: string | undefined,
                 count?: number | undefined
             ): Promise<string[]> => {
-                const ret = this.core.kvDB.keys(
+                const ret = await getDB().keys(
                     IDBKeyRange.bound(`${prefix}${from || ""}`, `${prefix}${to || ""}`),
                     count
                 );
-                return (await ret)
+                return ret
                     .map((e) => e.toString())
                     .filter((e) => e.startsWith(prefix))
                     .map((e) => e.substring(prefix.length));
             },
-        };
+            db: Promise.resolve(getDB()),
+        } satisfies SimpleStore<T>;
     }
     _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
         return this.openKeyValueDB();
@@ -98,12 +103,12 @@ export class ModuleKeyValueDB extends AbstractModule {
         }
         return true;
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.databaseEvents.handleOnUnloadDatabase(this._onDBUnload.bind(this));
-        services.databaseEvents.handleOnCloseDatabase(this._onDBClose.bind(this));
-        services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
-        services.databaseEvents.handleOnResetDatabase(this._everyOnResetDatabase.bind(this));
-        services.database.handleOpenSimpleStore(this._getSimpleStore.bind(this));
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.databaseEvents.onUnloadDatabase.addHandler(this._onDBUnload.bind(this));
+        services.databaseEvents.onCloseDatabase.addHandler(this._onDBClose.bind(this));
+        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+        services.databaseEvents.onResetDatabase.addHandler(this._everyOnResetDatabase.bind(this));
+        (services.database as ObsidianDatabaseService).openSimpleStore.setHandler(this._getSimpleStore.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
     }
 }

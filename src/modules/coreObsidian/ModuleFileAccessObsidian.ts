@@ -1,4 +1,4 @@
-import { TFile, TFolder, type ListedFiles } from "obsidian";
+import { TFile, TFolder, type ListedFiles } from "@/deps.ts";
 import { SerializedFileAccess } from "./storageLib/SerializedFileAccess";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
@@ -52,12 +52,16 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     }
     vaultAccess!: SerializedFileAccess;
     vaultManager: StorageEventManager = new StorageEventManagerObsidian(this.plugin, this.core, this);
+
+    restoreState() {
+        return this.vaultManager.restoreState();
+    }
     private _everyOnload(): Promise<boolean> {
         this.core.storageAccess = this;
         return Promise.resolve(true);
     }
-    _everyOnFirstInitialize(): Promise<boolean> {
-        this.vaultManager.beginWatch();
+    async _everyOnFirstInitialize(): Promise<boolean> {
+        await this.vaultManager.beginWatch();
         return Promise.resolve(true);
     }
 
@@ -65,8 +69,8 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     //     this.vaultManager.flushQueue();
     // }
 
-    _everyCommitPendingFileEvent(): Promise<boolean> {
-        this.vaultManager.flushQueue();
+    async _everyCommitPendingFileEvent(): Promise<boolean> {
+        await this.vaultManager.waitForIdle();
         return Promise.resolve(true);
     }
 
@@ -382,11 +386,11 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         super(plugin, core);
     }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.vault.handleIsStorageInsensitive(this._isStorageInsensitive.bind(this));
-        services.setting.handleShouldCheckCaseInsensitively(this._shouldCheckCaseInsensitive.bind(this));
-        services.appLifecycle.handleFirstInitialise(this._everyOnFirstInitialize.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
-        services.fileProcessing.handleCommitPendingFileEvents(this._everyCommitPendingFileEvent.bind(this));
+        services.vault.isStorageInsensitive.setHandler(this._isStorageInsensitive.bind(this));
+        services.setting.shouldCheckCaseInsensitively.setHandler(this._shouldCheckCaseInsensitive.bind(this));
+        services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
+        services.fileProcessing.commitPendingFileEvents.addHandler(this._everyCommitPendingFileEvent.bind(this));
     }
 }

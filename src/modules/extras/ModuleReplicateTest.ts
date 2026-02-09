@@ -4,7 +4,7 @@ import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-w
 import { eventHub } from "../../common/events";
 import { getWebCrypto } from "../../lib/src/mods.ts";
 import { uint8ArrayToHexString } from "octagonal-wheels/binary/hex";
-import { parseYaml, requestUrl, stringifyYaml } from "obsidian";
+import { parseYaml, requestUrl, stringifyYaml } from "@/deps.ts";
 import type { FilePath } from "../../lib/src/common/types.ts";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { getFileRegExp } from "../../lib/src/common/utils.ts";
@@ -581,8 +581,8 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         return this.testDone();
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnSettingLoaded(this._everyOnloadAfterLoadSettings.bind(this));
-        services.replication.handleBeforeReplicate(this._everyBeforeReplicate.bind(this));
-        services.test.handleTestMultiDevice(this._everyModuleTestMultiDevice.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
+        services.test.testMultiDevice.addHandler(this._everyModuleTestMultiDevice.bind(this));
     }
 }

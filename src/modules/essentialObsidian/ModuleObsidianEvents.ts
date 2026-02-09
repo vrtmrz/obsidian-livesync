@@ -67,6 +67,11 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _this = this;
         //@ts-ignore
+        if (!window.CodeMirrorAdapter) {
+            this._log("CodeMirrorAdapter is not available");
+            return;
+        }
+        //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
             _this.app.commands.executeCommandById("editor:save-file");
@@ -239,10 +244,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleLayoutReady(this._everyOnLayoutReady.bind(this));
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-        services.appLifecycle.handlePerformRestart(this._performRestart.bind(this));
-        services.appLifecycle.handleAskRestart(this._askReload.bind(this));
-        services.appLifecycle.handleScheduleRestart(this._scheduleAppReload.bind(this));
+        services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
+        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.performRestart.setHandler(this._performRestart.bind(this));
+        services.appLifecycle.askRestart.setHandler(this._askReload.bind(this));
+        services.appLifecycle.scheduleRestart.setHandler(this._scheduleAppReload.bind(this));
     }
 }

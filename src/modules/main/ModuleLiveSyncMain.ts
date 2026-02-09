@@ -13,9 +13,10 @@ import { versionNumberString2Number } from "../../lib/src/string_and_binary/conv
 import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
 import { AbstractModule } from "../AbstractModule.ts";
-import { EVENT_PLATFORM_UNLOADED } from "../../lib/src/PlatformAPIs/base/APIBase.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
+import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { initialiseWorkerModule } from "@/lib/src/worker/bgWorker.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -80,6 +81,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
     }
 
     async _onLiveSyncLoad(): Promise<boolean> {
+        initialiseWorkerModule();
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
@@ -206,17 +208,17 @@ export class ModuleLiveSyncMain extends AbstractModule {
 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.handleIsSuspended(this._isSuspended.bind(this));
-        services.appLifecycle.handleSetSuspended(this._setSuspended.bind(this));
-        services.appLifecycle.handleIsReady(this._isReady.bind(this));
-        services.appLifecycle.handleMarkIsReady(this._markIsReady.bind(this));
-        services.appLifecycle.handleResetIsReady(this._resetIsReady.bind(this));
-        services.appLifecycle.handleHasUnloaded(this._isUnloaded.bind(this));
-        services.appLifecycle.handleIsReloadingScheduled(this._isReloadingScheduled.bind(this));
-        services.appLifecycle.handleOnReady(this._onLiveSyncReady.bind(this));
-        services.appLifecycle.handleOnWireUpEvents(this._wireUpEvents.bind(this));
-        services.appLifecycle.handleOnLoad(this._onLiveSyncLoad.bind(this));
-        services.appLifecycle.handleOnAppUnload(this._onLiveSyncUnload.bind(this));
-        services.setting.handleRealiseSetting(this._realizeSettingSyncMode.bind(this));
+        services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
+        services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
+        services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
+        services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
+        services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
+        services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
+        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
+        services.appLifecycle.onReady.addHandler(this._onLiveSyncReady.bind(this));
+        services.appLifecycle.onWireUpEvents.addHandler(this._wireUpEvents.bind(this));
+        services.appLifecycle.onLoad.addHandler(this._onLiveSyncLoad.bind(this));
+        services.appLifecycle.onAppUnload.addHandler(this._onLiveSyncUnload.bind(this));
+        services.setting.realiseSetting.setHandler(this._realizeSettingSyncMode.bind(this));
     }
 }

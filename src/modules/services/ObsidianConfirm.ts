@@ -1,35 +1,32 @@
-// ModuleInputUIObsidian.ts
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { disposeMemoObject, memoIfNotExist, memoObject, retrieveMemoObject } from "../../common/utils.ts";
+import { type App, type Plugin, Notice } from "@/deps";
+import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
+import { $msg } from "@/lib/src/common/i18n";
+import type { Confirm } from "@/lib/src/interfaces/Confirm";
+import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
 import {
-    askSelectString,
-    askString,
     askYesNo,
-    confirmWithMessage,
+    askString,
     confirmWithMessageWithWideButton,
-} from "./UILib/dialogs.ts";
-import { Notice } from "../../deps.ts";
-import type { Confirm } from "../../lib/src/interfaces/Confirm.ts";
-import { setConfirmInstance } from "../../lib/src/PlatformAPIs/obsidian/Confirm.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import type { LiveSyncCore } from "../../main.ts";
+    askSelectString,
+    confirmWithMessage,
+} from "../coreObsidian/UILib/dialogs";
 
-// This module cannot be a common module because it depends on Obsidian's API.
-// However, we have to make compatible one for other platform.
-
-export class ModuleInputUIObsidian extends AbstractObsidianModule implements Confirm {
-    private _everyOnload(): Promise<boolean> {
-        this.core.confirm = this;
-        setConfirmInstance(this);
-        return Promise.resolve(true);
+export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
+    private _context: T;
+    get _app(): App {
+        return this._context.app;
     }
-
+    get _plugin(): Plugin {
+        return this._context.plugin;
+    }
+    constructor(context: T) {
+        this._context = context;
+    }
     askYesNo(message: string): Promise<"yes" | "no"> {
-        return askYesNo(this.app, message);
+        return askYesNo(this._app, message);
     }
     askString(title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> {
-        return askString(this.app, title, key, placeholder, isPassword);
+        return askString(this._app, title, key, placeholder, isPassword);
     }
 
     async askYesNoDialog(
@@ -41,7 +38,7 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements Con
         const noLabel = $msg("moduleInputUIObsidian.optionNo");
         const defaultOption = opt.defaultOption === "Yes" ? yesLabel : noLabel;
         const ret = await confirmWithMessageWithWideButton(
-            this.plugin,
+            this._plugin,
             opt.title || defaultTitle,
             message,
             [yesLabel, noLabel],
@@ -52,7 +49,7 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements Con
     }
 
     askSelectString(message: string, items: string[]): Promise<string> {
-        return askSelectString(this.app, message, items);
+        return askSelectString(this._app, message, items);
     }
 
     askSelectStringDialogue<T extends readonly string[]>(
@@ -62,7 +59,7 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements Con
     ): Promise<T[number] | false> {
         const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
         return confirmWithMessageWithWideButton(
-            this.plugin,
+            this._plugin,
             opt.title || defaultTitle,
             message,
             buttons,
@@ -109,10 +106,6 @@ export class ModuleInputUIObsidian extends AbstractObsidianModule implements Con
         defaultAction: (typeof buttons)[number],
         timeout?: number
     ): Promise<(typeof buttons)[number] | false> {
-        return confirmWithMessage(this.plugin, title, contentMd, buttons, defaultAction, timeout);
-    }
-
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnLoaded(this._everyOnload.bind(this));
+        return confirmWithMessage(this._plugin, title, contentMd, buttons, defaultAction, timeout);
     }
 }

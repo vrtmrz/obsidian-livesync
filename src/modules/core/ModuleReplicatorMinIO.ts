@@ -13,6 +13,6 @@ export class ModuleReplicatorMinIO extends AbstractModule {
         return Promise.resolve(false);
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.handleGetNewReplicator(this._anyNewReplicator.bind(this));
+        services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
     }
 }

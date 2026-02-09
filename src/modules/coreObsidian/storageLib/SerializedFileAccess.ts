@@ -169,7 +169,7 @@ export class SerializedFileAccess {
 
     getAbstractFileByPathInsensitive(path: FilePath | string): TAbstractFile | null {
         //@ts-ignore
-        return app.vault.getAbstractFileByPathInsensitive(path);
+        return this.app.vault.getAbstractFileByPathInsensitive(path);
     }
 
     getAbstractFileByPath(path: FilePath | string): TAbstractFile | null {

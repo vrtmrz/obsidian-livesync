@@ -24,6 +24,13 @@ export {
     parseYaml,
     ItemView,
     WorkspaceLeaf,
+    Menu,
+    request,
+    getLanguage,
+    ButtonComponent,
+    TextComponent,
+    ToggleComponent,
+    DropdownComponent,
 } from "obsidian";
 export type {
     DataWriteOptions,
@@ -32,6 +39,7 @@ export type {
     RequestUrlResponse,
     MarkdownFileInfo,
     ListedFiles,
+    ValueComponent,
 } from "obsidian";
 import { normalizePath as normalizePath_ } from "obsidian";
 const normalizePath = normalizePath_ as <T extends string | FilePath>(from: T) => T;

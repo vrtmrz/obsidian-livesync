@@ -4,7 +4,7 @@ if you want to view the source, please visit the github repository of this plugi
 */
 `;
 
-const prod = process.argv[2] === "production";
+const prod = process.argv[2] === "production" || process.env?.BUILD_MODE === "production";
 /***
  * @type import("terser").MinifyOptions
  */

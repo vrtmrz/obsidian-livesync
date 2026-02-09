@@ -285,11 +285,15 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     }
 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.tweakValue.handleFetchRemotePreferred(this._fetchRemotePreferredTweakValues.bind(this));
-        services.tweakValue.handleCheckAndAskResolvingMismatched(this._checkAndAskResolvingMismatchedTweaks.bind(this));
-        services.tweakValue.handleAskResolvingMismatched(this._askResolvingMismatchedTweaks.bind(this));
-        services.tweakValue.handleCheckAndAskUseRemoteConfiguration(this._checkAndAskUseRemoteConfiguration.bind(this));
-        services.tweakValue.handleAskUseRemoteConfiguration(this._askUseRemoteConfiguration.bind(this));
-        services.replication.handleCheckConnectionFailure(this._anyAfterConnectCheckFailed.bind(this));
+        services.tweakValue.fetchRemotePreferred.setHandler(this._fetchRemotePreferredTweakValues.bind(this));
+        services.tweakValue.checkAndAskResolvingMismatched.setHandler(
+            this._checkAndAskResolvingMismatchedTweaks.bind(this)
+        );
+        services.tweakValue.askResolvingMismatched.setHandler(this._askResolvingMismatchedTweaks.bind(this));
+        services.tweakValue.checkAndAskUseRemoteConfiguration.setHandler(
+            this._checkAndAskUseRemoteConfiguration.bind(this)
+        );
+        services.tweakValue.askUseRemoteConfiguration.setHandler(this._askUseRemoteConfiguration.bind(this));
+        services.replication.checkConnectionFailure.addHandler(this._anyAfterConnectCheckFailed.bind(this));
     }
 }
