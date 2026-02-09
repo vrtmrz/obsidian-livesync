@@ -67,6 +67,21 @@ const moduleAliasPlugin = {
     },
 };
 
+const nodeBuiltinPlugin = {
+    name: "node-builtin-external",
+    setup(build) {
+        const builtinFilter = new RegExp(`^(${builtins.join("|")})$`);
+        build.onResolve({ filter: builtinFilter }, (args) => ({
+            path: args.path,
+            external: true,
+        }));
+        build.onResolve({ filter: /^node:/ }, (args) => ({
+            path: args.path,
+            external: true,
+        }));
+    },
+};
+
 /** @type esbuild.Plugin[] */
 const plugins = [
     {
@@ -126,6 +141,10 @@ const plugins = [
 const externals = [
     "obsidian",
     "electron",
+    "fs",
+    "path",
+    "child_process",
+    "os",
     "crypto",
     "@codemirror/autocomplete",
     "@codemirror/collab",
@@ -170,6 +189,7 @@ const context = await esbuild.context({
     // keepNames: true,
     plugins: [
         moduleAliasPlugin,
+        nodeBuiltinPlugin,
         inlineWorkerPlugin({
             external: externals,
             treeShaking: true,
