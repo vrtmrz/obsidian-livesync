@@ -151,8 +151,8 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         try {
             // right is Base (local), left is Remote (conflicted)
             // But verify content availability
-            const localContent = diff.right.content || "";
-            const remoteContent = diff.left.content || "";
+            const localContent = diff.right.data || "";
+            const remoteContent = diff.left.data || "";
 
             await fs.promises.writeFile(localPath, localContent);
             await fs.promises.writeFile(remotePath, remoteContent);
