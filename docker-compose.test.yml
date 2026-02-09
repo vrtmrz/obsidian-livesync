@@ -1,0 +1,85 @@
+# Docker Compose for obsidian-livesync Test Environment
+# IaC replacement for imperative shell scripts in test/shell/
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d      # Start all services
+#   docker compose -f docker-compose.test.yml down       # Stop and remove
+#   docker compose -f docker-compose.test.yml logs -f    # View logs
+version: '3.8'
+
+services:
+  # CouchDB test database
+  couchdb-test:
+    image: couchdb:3.5.0
+    container_name: couchdb-test
+    ports:
+      - "5989:5984"
+    environment:
+      - COUCHDB_USER=${username}
+      - COUCHDB_PASSWORD=${password}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - livesync-test
+
+  # MinIO object storage test
+  minio-test:
+    image: minio/minio
+    container_name: minio-test
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      - MINIO_ROOT_USER=${accessKey}
+      - MINIO_ROOT_PASSWORD=${secretKey}
+      - MINIO_SERVER_URL=${minioEndpoint}
+    command: server /data --console-address ':9001'
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - livesync-test
+
+  # Nostr relay for P2P testing
+  relay-test:
+    image: scsibug/nostr-rs-relay:latest
+    container_name: relay-test
+    ports:
+      - "4000:8080"
+    networks:
+      - livesync-test
+
+  # WebPeer service (requires build step - see notes below)
+  # Uncomment after running: npm run --prefix src/apps/webpeer build
+  # webpeer-test:
+  #   image: pierrezemb/gostatic
+  #   container_name: webpeer-test
+  #   ports:
+  #     - "8081:8043"
+  #   volumes:
+  #     - ./src/apps/webpeer/dist:/srv/http:ro
+  #   depends_on:
+  #     - relay-test
+  #   networks:
+  #     - livesync-test
+
+networks:
+  livesync-test:
+    name: livesync-test
+    driver: bridge
+
+# NOTES:
+# 1. Run CouchDB init after first start:
+#    npx dotenv-cli -e .env -e .test.env -- ./test/shell/couchdb-init.sh
+#
+# 2. Run MinIO init after first start:
+#    npx dotenv-cli -e .env -e .test.env -- ./test/shell/minio-init.sh
+#
+# 3. For webpeer, build first:
+#    npm run --prefix src/apps/webpeer build
+#    Then uncomment the webpeer-test service above
