@@ -76,6 +76,7 @@ npm test             # Run vitest tests (requires Docker services)
     2. Run `npm run bakei18n` to compile: YAML → JSON → TypeScript constants
     3. Use `$t()`, `$msg()` functions for translations
        You can also use `$f` for formatted messages with Tagged Template Literals.
+- **Do not edit generated files**: `messagesJson/*.json` and `messages/combinedMessages.*.ts` are build artifacts. Always update the YAML sources and run `npm run bakei18n` so the generated files stay in sync.
 - **Usage**:
     ```typescript
     $msg("dialog.someKey"); // Typed key with autocomplete
