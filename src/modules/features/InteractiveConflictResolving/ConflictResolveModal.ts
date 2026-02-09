@@ -109,13 +109,15 @@ export class ConflictResolveModal extends Modal {
         ).style.marginRight = "4px";
         if (this.onExternalMerge) {
             contentEl.createEl("button", { text: "Open External Tool" }, (e) =>
-                e.addEventListener("click", async () => {
-                    if (this.onExternalMerge) {
-                        const res = await this.onExternalMerge();
-                        if (res !== false) {
-                            this.sendResponse({ content: res });
+                e.addEventListener("click", () => {
+                    void (async () => {
+                        if (this.onExternalMerge) {
+                            const res = await this.onExternalMerge();
+                            if (res !== false) {
+                                this.sendResponse({ content: res });
+                            }
                         }
-                    }
+                    })();
                 })
             ).style.marginRight = "4px";
         }

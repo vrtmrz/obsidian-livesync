@@ -190,23 +190,25 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     this._log(`Error launching tool: ${err}`, LOG_LEVEL_NOTICE);
                     resolve(false);
                 });
-                child.on("exit", async (code) => {
-                    if (code === 0) {
-                        try {
-                            const content = await fs.promises.readFile(mergedPath, "utf-8");
-                            // Cleanup
-                            await fs.promises.unlink(localPath);
-                            await fs.promises.unlink(remotePath);
-                            await fs.promises.unlink(mergedPath);
-                            resolve(content);
-                        } catch (err) {
-                            this._log(`Error reading merged file: ${err}`, LOG_LEVEL_NOTICE);
+                child.on("exit", (code) => {
+                    void (async () => {
+                        if (code === 0) {
+                            try {
+                                const content = await fs.promises.readFile(mergedPath, "utf-8");
+                                // Cleanup
+                                await fs.promises.unlink(localPath);
+                                await fs.promises.unlink(remotePath);
+                                await fs.promises.unlink(mergedPath);
+                                resolve(content);
+                            } catch (err) {
+                                this._log(`Error reading merged file: ${err}`, LOG_LEVEL_NOTICE);
+                                resolve(false);
+                            }
+                        } else {
+                            this._log(`External tool exited with code ${code}`, LOG_LEVEL_NOTICE);
                             resolve(false);
                         }
-                    } else {
-                        this._log(`External tool exited with code ${code}`, LOG_LEVEL_NOTICE);
-                        resolve(false);
-                    }
+                    })();
                 });
             });
         } catch (e) {
