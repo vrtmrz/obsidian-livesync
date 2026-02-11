@@ -123,7 +123,7 @@
         "@aws-sdk/client-s3": "^3.808.0",
         "@smithy/fetch-http-handler": "^5.0.2",
         "@smithy/md5-js": "^4.0.2",
-        "@smithy/middleware-apply-body-checksum": "^4.1.0",
+        "@smithy/middleware-apply-body-checksum": "^4.3.8",
         "@smithy/protocol-http": "^5.1.0",
         "@smithy/querystring-builder": "^4.0.2",
         "diff-match-patch": "^1.0.5",
