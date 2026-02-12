@@ -1,5 +1,4 @@
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import { getPath } from "../common/utils.ts";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -36,8 +35,9 @@ export abstract class LiveSyncCommands {
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
         return await this.services.path.path2id(filename, prefix);
     }
+
     getPath(entry: AnyEntry): FilePathWithPrefix {
-        return getPath(entry);
+        return this.services.path.getPath(entry);
     }
 
     constructor(plugin: ObsidianLiveSyncPlugin) {

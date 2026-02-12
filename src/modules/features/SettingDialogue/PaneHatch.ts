@@ -21,7 +21,7 @@ import {
 } from "../../../lib/src/common/utils.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { isCloudantURI } from "../../../lib/src/pouchdb/utils_couchdb.ts";
-import { getPath, requestToCouchDBWithCredentials } from "../../../common/utils.ts";
+import { requestToCouchDBWithCredentials } from "../../../common/utils.ts";
 import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
@@ -388,7 +388,7 @@ ${stringifyYaml({
 
                         const adn = this.plugin.localDatabase.findAllDocs();
                         for await (const i of adn) {
-                            const path = getPath(i);
+                            const path = this.services.path.getPath(i);
                             if (path.startsWith(ICXHeader)) continue;
                             if (path.startsWith(PSCHeader)) continue;
                             if (!this.plugin.settings.syncInternalFiles && path.startsWith(ICHeader)) continue;

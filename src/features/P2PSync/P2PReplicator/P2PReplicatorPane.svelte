@@ -33,18 +33,15 @@
     const initialSettings = { ...plugin.settings };
 
     let settings = $state<P2PSyncSetting>(initialSettings);
-    // const vaultName = service.vault.getVaultName();
-    // const dbKey = `${vaultName}-p2p-device-name`;
 
-    const initialDeviceName = cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? plugin.services.vault.getVaultName();
-    let deviceName = $state<string>(initialDeviceName);
+    let deviceName = $state<string>("");
 
     let eP2PEnabled = $state<boolean>(initialSettings.P2P_Enabled);
     let eRelay = $state<string>(initialSettings.P2P_relays);
     let eRoomId = $state<string>(initialSettings.P2P_roomID);
     let ePassword = $state<string>(initialSettings.P2P_passphrase);
     let eAppId = $state<string>(initialSettings.P2P_AppID);
-    let eDeviceName = $state<string>(initialDeviceName);
+    let eDeviceName = $state<string>("");
     let eAutoAccept = $state<boolean>(initialSettings.P2P_AutoAccepting == AutoAccepting.ALL);
     let eAutoStart = $state<boolean>(initialSettings.P2P_AutoStart);
     let eAutoBroadcast = $state<boolean>(initialSettings.P2P_AutoBroadcast);
@@ -103,6 +100,11 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
+        if(force){
+            const initDeviceName = cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? plugin.services.vault.getVaultName();
+            deviceName = initDeviceName;
+            eDeviceName = initDeviceName;
+        }
         const { P2P_relays, P2P_roomID, P2P_passphrase, P2P_AppID, P2P_AutoAccepting } = d;
         if (force || !isP2PEnabledModified) eP2PEnabled = d.P2P_Enabled;
         if (force || !isRelayModified) eRelay = P2P_relays;

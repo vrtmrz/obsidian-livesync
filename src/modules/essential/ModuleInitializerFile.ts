@@ -1,7 +1,7 @@
 import { unique } from "octagonal-wheels/collection";
 import { throttle } from "octagonal-wheels/function";
 import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "../../common/events.ts";
-import { BASE_IS_NEW, compareFileFreshness, EVEN, getPath, isValidPath, TARGET_IS_NEW } from "../../common/utils.ts";
+import { BASE_IS_NEW, compareFileFreshness, EVEN, isValidPath, TARGET_IS_NEW } from "../../common/utils.ts";
 import {
     type FilePathWithPrefixLC,
     type FilePathWithPrefix,
@@ -120,7 +120,7 @@ export class ModuleInitializerFile extends AbstractModule {
                     showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO,
                     "syncAll"
                 );
-            const path = getPath(doc);
+            const path = this.getPath(doc);
 
             if (isValidPath(path) && (await this.services.vault.isTargetFile(path, true))) {
                 if (!isMetaEntry(doc)) {
@@ -132,7 +132,7 @@ export class ModuleInitializerFile extends AbstractModule {
         }
 
         const databaseFileNameMap = Object.fromEntries(
-            _DBEntries.map((e) => [getPath(e), e] as [FilePathWithPrefix, MetaEntry])
+            _DBEntries.map((e) => [this.getPath(e), e] as [FilePathWithPrefix, MetaEntry])
         );
         const databaseFileNames = Object.keys(databaseFileNameMap) as FilePathWithPrefix[];
         const databaseFileNameCapsPair = databaseFileNames.map(
@@ -224,7 +224,7 @@ export class ModuleInitializerFile extends AbstractModule {
             runAll("UPDATE STORAGE", filesExistOnlyInDatabase, async (e) => {
                 const w = databaseFileNameMap[databaseFileNameCI2CS[e]];
                 // Exists in database but not in storage.
-                const path = getPath(w) ?? e;
+                const path = this.getPath(w) ?? e;
                 if (w && !(w.deleted || w._deleted)) {
                     if (!this.services.vault.isFileSizeTooLarge(w.size)) {
                         // Prevent applying the conflicted state to the storage.
@@ -275,7 +275,7 @@ export class ModuleInitializerFile extends AbstractModule {
                     await this.syncFileBetweenDBandStorage(file, doc);
                 } else {
                     this._log(
-                        `SYNC DATABASE AND STORAGE: ${getPath(doc)} has been skipped due to file size exceeding the limit`,
+                        `SYNC DATABASE AND STORAGE: ${this.getPath(doc)} has been skipped due to file size exceeding the limit`,
                         logLevel
                     );
                 }
@@ -365,7 +365,7 @@ export class ModuleInitializerFile extends AbstractModule {
             if (isAnyNote(doc)) {
                 if (doc.deleted && doc.mtime - limit < 0) {
                     notes.push({
-                        path: getPath(doc),
+                        path: this.getPath(doc),
                         mtime: doc.mtime,
                         ttl: (doc.mtime - limit) / 1000 / 86400,
                         doc: doc,

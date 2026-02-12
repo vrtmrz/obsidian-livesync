@@ -23,7 +23,7 @@ import {
     type UXFileInfo,
     type UXFileInfoStub,
 } from "../lib/src/common/types.ts";
-import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types.ts";
+import { ICHeader, ICXHeader } from "./types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
@@ -63,23 +63,12 @@ export function id2path(id: DocumentID, entry?: EntryHasPath): FilePathWithPrefi
     const fixedPath = temp.join(":") as FilePathWithPrefix;
     return fixedPath;
 }
-export function getPath(entry: AnyEntry) {
-    return id2path(entry._id, entry);
-}
-export function getPathWithoutPrefix(entry: AnyEntry) {
-    const f = getPath(entry);
-    return stripAllPrefixes(f);
-}
 
 export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
 
-export function isInternalFile(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return file.startsWith(ICHeader);
-    if (file.isInternal) return true;
-    return false;
-}
+import { isInternalFile } from "@lib/common/typeUtils.ts";
 export function getPathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
     if (typeof file == "string") return file as FilePathWithPrefix;
     return file.path;
@@ -137,32 +126,14 @@ export function trimPrefix(target: string, prefix: string) {
     return target.startsWith(prefix) ? target.substring(prefix.length) : target;
 }
 
-/**
- * returns is internal chunk of file
- * @param id ID
- * @returns
- */
-export function isInternalMetadata(id: FilePath | FilePathWithPrefix | DocumentID): boolean {
-    return id.startsWith(ICHeader);
-}
-export function stripInternalMetadataPrefix<T extends FilePath | FilePathWithPrefix | DocumentID>(id: T): T {
-    return id.substring(ICHeaderLength) as T;
-}
-export function id2InternalMetadataId(id: DocumentID): DocumentID {
-    return (ICHeader + id) as DocumentID;
-}
-
-// const CHeaderLength = CHeader.length;
-export function isChunk(str: string): boolean {
-    return str.startsWith(CHeader);
-}
-
-export function isPluginMetadata(str: string): boolean {
-    return str.startsWith(PSCHeader);
-}
-export function isCustomisationSyncMetadata(str: string): boolean {
-    return str.startsWith(ICXHeader);
-}
+export {
+    isInternalMetadata,
+    id2InternalMetadataId,
+    isChunk,
+    isCustomisationSyncMetadata,
+    isPluginMetadata,
+    stripInternalMetadataPrefix,
+} from "@lib/common/typeUtils.ts";
 
 export class PeriodicProcessor {
     _process: () => Promise<any>;
@@ -430,29 +401,6 @@ export function displayRev(rev: string) {
     return `${number}-${hash.substring(0, 6)}`;
 }
 
-type DocumentProps = {
-    id: DocumentID;
-    rev?: string;
-    prefixedPath: FilePathWithPrefix;
-    path: FilePath;
-    isDeleted: boolean;
-    revDisplay: string;
-    shortenedId: string;
-    shortenedPath: string;
-};
-
-export function getDocProps(doc: AnyEntry): DocumentProps {
-    const id = doc._id;
-    const shortenedId = id.substring(0, 10);
-    const prefixedPath = getPath(doc);
-    const path = stripAllPrefixes(prefixedPath);
-    const rev = doc._rev;
-    const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
-    // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
-    const shortenedPath = path.substring(0, 10);
-    const isDeleted = doc._deleted || doc.deleted || false;
-    return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
-}
 
 export function getLogLevel(showNotice: boolean) {
     return showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;

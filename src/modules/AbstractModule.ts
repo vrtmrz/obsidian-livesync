@@ -1,7 +1,8 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import type { LOG_LEVEL } from "../lib/src/common/types";
-import type { LiveSyncCore } from "../main";
-import { __$checkInstanceBinding } from "../lib/src/dev/checks";
+import type { AnyEntry, FilePathWithPrefix, LOG_LEVEL } from "@lib/common/types";
+import type { LiveSyncCore } from "@/main";
+import { __$checkInstanceBinding } from "@lib/dev/checks";
+import { stripAllPrefixes } from "@lib/string_and_binary/path";
 
 export abstract class AbstractModule {
     _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
@@ -20,6 +21,14 @@ export abstract class AbstractModule {
     }
     set settings(value) {
         this.core.settings = value;
+    }
+
+    getPath(entry: AnyEntry): FilePathWithPrefix {
+        return this.services.path.getPath(entry);
+    }
+
+    getPathWithoutPrefix(entry: AnyEntry): FilePathWithPrefix {
+        return stripAllPrefixes(this.services.path.getPath(entry));
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {

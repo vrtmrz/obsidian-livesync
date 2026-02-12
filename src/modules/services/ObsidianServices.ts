@@ -4,7 +4,6 @@ import { InjectableConflictService } from "@lib/services/implements/injectable/I
 import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
 import { InjectableDatabaseService } from "@lib/services/implements/injectable/InjectableDatabaseService";
 import { InjectableFileProcessingService } from "@lib/services/implements/injectable/InjectableFileProcessingService";
-import { InjectablePathService } from "@lib/services/implements/injectable/InjectablePathService";
 import { InjectableRemoteService } from "@lib/services/implements/injectable/InjectableRemoteService";
 import { InjectableReplicationService } from "@lib/services/implements/injectable/InjectableReplicationService";
 import { InjectableReplicatorService } from "@lib/services/implements/injectable/InjectableReplicatorService";
@@ -107,7 +106,6 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         return this.context.plugin.registerObsidianProtocolHandler(action, handler);
     }
 }
-export class ObsidianPathService extends InjectablePathService<ObsidianServiceContext> {}
 export class ObsidianDatabaseService extends InjectableDatabaseService<ObsidianServiceContext> {
     openSimpleStore = handlers<IDatabaseService>().binder("openSimpleStore") as (<T>(
         kind: string

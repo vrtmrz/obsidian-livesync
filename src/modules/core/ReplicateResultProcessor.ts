@@ -8,7 +8,7 @@ import {
     type MetaEntry,
 } from "@/lib/src/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
-import { getPath, isChunk, isValidPath } from "@/common/utils";
+import { isChunk, isValidPath } from "@/common/utils";
 import type { LiveSyncCore } from "@/main";
 import {
     LOG_LEVEL_DEBUG,
@@ -56,6 +56,10 @@ export class ReplicateResultProcessor {
     }
     get core(): LiveSyncCore {
         return this.replicator.core;
+    }
+
+    getPath(entry: AnyEntry): string {
+        return this.services.path.getPath(entry);
     }
 
     public suspend() {
@@ -230,7 +234,7 @@ export class ReplicateResultProcessor {
      */
     protected enqueueChange(doc: PouchDB.Core.ExistingDocument<EntryDoc>) {
         const old = this._queuedChanges.find((e) => e._id == doc._id);
-        const path = "path" in doc ? getPath(doc) : "<unknown>";
+        const path = "path" in doc ? this.getPath(doc) : "<unknown>";
         const docNote = `${path} (${shortenId(doc._id)}, ${shortenRev(doc._rev)})`;
         if (old) {
             if (old._rev == doc._rev) {
@@ -322,7 +326,7 @@ export class ReplicateResultProcessor {
                 const docMtime = change.mtime ?? 0;
                 const maxMTime = this.replicator.settings.maxMTimeForReflectEvents;
                 if (maxMTime > 0 && docMtime > maxMTime) {
-                    const docPath = getPath(change);
+                    const docPath = this.getPath(change);
                     this.log(
                         `Processing ${docPath} has been skipped due to modification time (${new Date(
                             docMtime * 1000
@@ -336,7 +340,7 @@ export class ReplicateResultProcessor {
             if (await this.services.replication.processVirtualDocument(change)) return;
             // If the document is version info, check compatibility and return.
             if (isAnyNote(change)) {
-                const docPath = getPath(change);
+                const docPath = this.getPath(change);
                 if (!(await this.services.vault.isTargetFile(docPath))) {
                     this.log(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
                     return;
@@ -383,7 +387,7 @@ export class ReplicateResultProcessor {
     // This function is serialized per document to avoid race-condition for the same document.
     private _applyToDatabase(doc_: PouchDB.Core.ExistingDocument<AnyEntry>) {
         const dbDoc = doc_ as LoadedEntry; // It has no `data`
-        const path = getPath(dbDoc);
+        const path = this.getPath(dbDoc);
         return serialized(`replication-process:${dbDoc._id}`, async () => {
             const docNote = `${path} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)})`;
             const isRequired = await this.checkIsChangeRequiredForDatabaseProcessing(dbDoc);
@@ -409,7 +413,7 @@ export class ReplicateResultProcessor {
             if (await this.services.replication.processOptionalSynchroniseResult(dbDoc)) {
                 // Already processed
                 this.log(`Processed by other processor: ${docNote}`, LOG_LEVEL_DEBUG);
-            } else if (isValidPath(getPath(doc))) {
+            } else if (isValidPath(this.getPath(doc))) {
                 // Apply to storage if the path is valid
                 await this.applyToStorage(doc as MetaEntry);
                 this.log(`Processed: ${docNote}`, LOG_LEVEL_DEBUG);
@@ -437,7 +441,7 @@ export class ReplicateResultProcessor {
      * @returns True if processing is required; false otherwise
      */
     protected async checkIsChangeRequiredForDatabaseProcessing(dbDoc: LoadedEntry): Promise<boolean> {
-        const path = getPath(dbDoc);
+        const path = this.getPath(dbDoc);
         try {
             const savedDoc = await this.localDatabase.getRaw<LoadedEntry>(dbDoc._id, {
                 conflicts: true,

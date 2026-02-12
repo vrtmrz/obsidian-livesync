@@ -11,7 +11,7 @@ import {
 } from "../../lib/src/common/types.ts";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
+import { displayRev } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncCore } from "../../main.ts";
@@ -110,7 +110,12 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (!("_conflicts" in doc)) continue;
-            notes.push({ id: doc._id, path: getPath(doc), dispPath: getPathWithoutPrefix(doc), mtime: doc.mtime });
+            notes.push({
+                id: doc._id,
+                path: this.getPath(doc),
+                dispPath: this.getPathWithoutPrefix(doc),
+                mtime: doc.mtime,
+            });
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
@@ -134,7 +139,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         try {
             for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
                 if (!("_conflicts" in doc)) continue;
-                notes.push({ path: getPath(doc), mtime: doc.mtime });
+                notes.push({ path: this.getPath(doc), mtime: doc.mtime });
             }
             if (notes.length > 0) {
                 this.core.confirm.askInPopup(

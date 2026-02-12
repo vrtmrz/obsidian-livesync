@@ -30,19 +30,18 @@ import {
 import {
     compareMTime,
     unmarkChanges,
-    getPath,
     isInternalMetadata,
     markChangesAreSame,
     PeriodicProcessor,
     TARGET_IS_NEW,
     scheduleTask,
-    getDocProps,
     getLogLevel,
     autosaveCache,
     type MapLike,
     onlyInNTimes,
     BASE_IS_NEW,
     EVEN,
+    displayRev,
 } from "../../common/utils.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
@@ -139,6 +138,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             this.updateSettingCache();
         });
     }
+
     // We cannot initialise autosaveCache because kvDB is not ready yet
     // async _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
     //     this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
@@ -243,7 +243,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (isInternalMetadata(doc._id)) {
             if (this.isThisModuleEnabled()) {
                 //system file
-                const filename = getPath(doc);
+                const filename = this.getPath(doc);
                 if (await this.services.vault.isTargetFile(filename)) {
                     // this.procInternalFile(filename);
                     await this.processReplicationResult(doc);
@@ -843,9 +843,32 @@ Offline Changed files: ${processFiles.length}`;
     // <-- Conflict processing
 
     // --> Event Source Handler (Database)
-
+    getDocProps(doc: LoadedEntry) {
+        /*
+            type DocumentProps = {
+                id: DocumentID;
+                rev?: string;
+                prefixedPath: FilePathWithPrefix;
+                path: FilePath;
+                isDeleted: boolean;
+                revDisplay: string;
+                shortenedId: string;
+                shortenedPath: string;
+            };
+        */
+        const id = doc._id;
+        const shortenedId = id.substring(0, 10);
+        const prefixedPath = this.getPath(doc);
+        const path = stripAllPrefixes(prefixedPath);
+        const rev = doc._rev;
+        const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
+        // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
+        const shortenedPath = path.substring(0, 10);
+        const isDeleted = doc._deleted || doc.deleted || false;
+        return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
+    }
     async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
-        const info = getDocProps(doc);
+        const info = this.getDocProps(doc);
         const path = info.path;
         const headerLine = `Tracking DB ${info.path} (${info.revDisplay}) :`;
         const ret = await this.trackDatabaseFileModification(path, headerLine);
@@ -1007,7 +1030,7 @@ Offline Changed files: ${processFiles.length}`;
             p.log("Enumerating database files...");
             const currentDatabaseFiles = await this.getAllDatabaseFiles();
             const allDatabaseMap = Object.fromEntries(
-                currentDatabaseFiles.map((e) => [stripAllPrefixes(getPath(e)), e])
+                currentDatabaseFiles.map((e) => [stripAllPrefixes(this.getPath(e)), e])
             );
             const currentDatabaseFileNames = [...Object.keys(allDatabaseMap)] as FilePath[];
             const untrackedLocal = currentStorageFiles.filter((e) => !this._fileInfoLastProcessed.has(e));
@@ -1250,14 +1273,14 @@ Offline Changed files: ${files.length}`;
             : currentStorageFilesAll;
         p.log("Enumerating database files...");
         const allDatabaseFiles = await this.getAllDatabaseFiles();
-        const allDatabaseMap = new Map(allDatabaseFiles.map((e) => [stripAllPrefixes(getPath(e)), e]));
+        const allDatabaseMap = new Map(allDatabaseFiles.map((e) => [stripAllPrefixes(this.getPath(e)), e]));
         const currentDatabaseFiles = targetFiles
-            ? allDatabaseFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(getPath(e))))
+            ? allDatabaseFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(this.getPath(e))))
             : allDatabaseFiles;
 
         const allFileNames = new Set([
             ...currentStorageFiles,
-            ...currentDatabaseFiles.map((e) => stripAllPrefixes(getPath(e))),
+            ...currentDatabaseFiles.map((e) => stripAllPrefixes(this.getPath(e))),
         ]);
         const storageToDatabase = [] as FilePath[];
         const databaseToStorage = [] as MetaEntry[];
@@ -1340,7 +1363,7 @@ Offline Changed files: ${files.length}`;
         // However, in perspective of performance and future-proofing, I feel somewhat justified in doing it here.
 
         const currentFiles = targetFiles
-            ? allFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(getPath(e))))
+            ? allFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(this.getPath(e))))
             : allFiles;
 
         p.once(`Database to Storage: ${currentFiles.length} files.`);
@@ -1383,7 +1406,7 @@ Offline Changed files: ${files.length}`;
             const onlyNew = direction == "pull";
             p.log(`Started: Database --> Storage ${onlyNew ? "(Only New)" : ""}`);
             const updatedEntries = await this.rebuildFromDatabase(showMessage, targetFiles, onlyNew);
-            const updatedFiles = updatedEntries.map((e) => stripAllPrefixes(getPath(e)));
+            const updatedFiles = updatedEntries.map((e) => stripAllPrefixes(this.getPath(e)));
             // making doubly sure, No more losing files.
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);

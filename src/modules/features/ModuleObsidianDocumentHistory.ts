@@ -4,7 +4,6 @@ import { EVENT_REQUEST_SHOW_HISTORY } from "../../common/obsidianEvents.ts";
 import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "../../lib/src/common/types.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts";
-import { getPath } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 
 export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
@@ -41,7 +40,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
     async fileHistory() {
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs()) {
-            notes.push({ id: doc._id, path: getPath(doc), dispPath: getPath(doc), mtime: doc.mtime });
+            notes.push({ id: doc._id, path: this.getPath(doc), dispPath: this.getPath(doc), mtime: doc.mtime });
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);

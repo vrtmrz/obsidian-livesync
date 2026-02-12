@@ -20,6 +20,7 @@
         "vite": "^7.3.0"
     },
     "imports": {
-        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts"
+        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
+        "@lib/worker/bgWorker.ts": "@lib/worker/bgWorker.mock.ts"
     }
 }

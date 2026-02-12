@@ -35,6 +35,7 @@ import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices";
 import { Menu } from "@/lib/src/services/implements/browser/Menu";
+import type { InjectableVaultServiceCompat } from "@/lib/src/services/implements/injectable/InjectableVaultService";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -79,7 +80,13 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
     constructor() {
         const browserServiceHub = new BrowserServiceHub<ServiceContext>();
         this.services = browserServiceHub;
-        this.services.vault.getVaultName.setHandler(() => "p2p-livesync-web-peer");
+        (this.services.vault as InjectableVaultServiceCompat<ServiceContext>).vaultName.setHandler(
+            () => "p2p-livesync-web-peer"
+        );
+
+        this.services.setting.currentSettings.setHandler(() => {
+            return this.settings as any;
+        });
     }
     async init() {
         // const { simpleStoreAPI } = await getWrappedSynchromesh();

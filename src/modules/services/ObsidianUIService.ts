@@ -5,7 +5,7 @@ import { UIService } from "@lib/services//implements/base/UIService";
 import { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
 import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
 import { ObsidianConfirm } from "./ObsidianConfirm";
-
+import DialogToCopy from "@/lib/src/UI/dialogues/DialogueToCopy.svelte";
 export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {
     appLifecycle: AppLifecycleService<T>;
     config: ConfigService<T>;
@@ -13,6 +13,9 @@ export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = Obs
 };
 
 export class ObsidianUIService extends UIService<ObsidianServiceContext> {
+    override get dialogToCopy() {
+        return DialogToCopy;
+    }
     constructor(context: ObsidianServiceContext, dependents: ObsidianUIServiceDependencies<ObsidianServiceContext>) {
         const obsidianConfirm = new ObsidianConfirm(context);
         const obsidianSvelteDialogManager = new ObsidianSvelteDialogManager<ObsidianServiceContext>(context, {

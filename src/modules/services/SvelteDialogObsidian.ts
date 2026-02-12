@@ -7,8 +7,8 @@ import {
     type SvelteDialogManagerDependencies,
 } from "@lib/services/implements/base/SvelteDialog";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-
-export const SvelteDialogBase = SvelteDialogMixIn(Modal);
+import DialogHost from "@/lib/src/UI/DialogHost.svelte";
+export const SvelteDialogBase = SvelteDialogMixIn(Modal, DialogHost);
 export class SvelteDialogObsidian<
     T,
     U,

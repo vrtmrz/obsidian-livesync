@@ -15,9 +15,9 @@ import {
     ObsidianTweakValueService,
     ObsidianTestService,
     ObsidianDatabaseEventService,
-    ObsidianPathService,
     ObsidianConfigService,
 } from "./ObsidianServices";
+import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
 
@@ -42,7 +42,9 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         });
         const test = new ObsidianTestService(context);
         const databaseEvents = new ObsidianDatabaseEventService(context);
-        const path = new ObsidianPathService(context);
+        const path = new ObsidianPathService(context, {
+            settingService: setting,
+        });
         const config = new ObsidianConfigService(context, vault);
         const ui = new ObsidianUIService(context, {
             appLifecycle,

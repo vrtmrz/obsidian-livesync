@@ -22,9 +22,9 @@ export class ModuleLocalDatabaseObsidian extends AbstractModule {
                 return getDB();
             },
             getActiveReplicator: () => this.core.replicator,
-            id2path: this.services.path.id2path,
+            id2path: this.services.path.id2path.bind(this.services.path),
             // path2id: this.core.$$path2id.bind(this.core),
-            path2id: this.services.path.path2id,
+            path2id: this.services.path.path2id.bind(this.services.path),
             get settings() {
                 return getSettings();
             },

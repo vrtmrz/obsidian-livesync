@@ -10,7 +10,7 @@ import {
 import { AbstractModule } from "../AbstractModule.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
-import { getPath, isValidPath } from "../../common/utils.ts";
+import { isValidPath } from "../../common/utils.ts";
 import { isMetaEntry } from "../../lib/src/common/types.ts";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
 import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
@@ -128,7 +128,7 @@ export class ModuleMigration extends AbstractModule {
 
         const errorFiles = [] as ErrorInfo[];
         for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
-            const path = getPath(metaDoc);
+            const path = this.getPath(metaDoc);
 
             if (!isValidPath(path)) {
                 continue;

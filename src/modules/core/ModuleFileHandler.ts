@@ -10,14 +10,7 @@ import type {
     UXInternalFileInfoStub,
 } from "../../lib/src/common/types";
 import { AbstractModule } from "../AbstractModule.ts";
-import {
-    compareFileFreshness,
-    EVEN,
-    getPath,
-    getPathWithoutPrefix,
-    getStoragePathFromUXFileInfo,
-    markChangesAreSame,
-} from "../../common/utils";
+import { compareFileFreshness, EVEN, getStoragePathFromUXFileInfo, markChangesAreSame } from "../../common/utils";
 import { getDocDataAsArray, isDocContentSame, readAsBlob, readContent } from "../../lib/src/common/utils";
 import { shouldBeIgnored } from "../../lib/src/string_and_binary/path";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
@@ -209,13 +202,13 @@ export class ModuleFileHandler extends AbstractModule {
     ): Promise<boolean> {
         const file = typeof info === "string" ? this.storage.getFileStub(info) : info;
         const mode = file == null ? "create" : "modify";
-        const pathFromEntryInfo = typeof entryInfo === "string" ? entryInfo : getPath(entryInfo);
+        const pathFromEntryInfo = typeof entryInfo === "string" ? entryInfo : this.getPath(entryInfo);
         const docEntry = await this.db.fetchEntryMeta(pathFromEntryInfo, undefined, true);
         if (!docEntry) {
             this._log(`File ${pathFromEntryInfo} is not exist on the database`, LOG_LEVEL_VERBOSE);
             return false;
         }
-        const path = getPath(docEntry);
+        const path = this.getPath(docEntry);
 
         // 1. Check if it already conflicted.
         const revs = await this.db.getConflictedRevs(path);
@@ -364,11 +357,11 @@ export class ModuleFileHandler extends AbstractModule {
                 this._log(`File ${entry.path} should be ignored`, LOG_LEVEL_VERBOSE);
                 return false;
             }
-            const path = getPath(entry);
+            const path = this.getPath(entry);
 
-            const targetFile = this.storage.getStub(getPathWithoutPrefix(entry));
+            const targetFile = this.storage.getStub(this.getPathWithoutPrefix(entry));
             if (targetFile && targetFile.isFolder) {
-                this._log(`${getPath(entry)} is already exist as the folder`);
+                this._log(`${path} is already exist as the folder`);
                 // Nothing to do and other modules should also nothing to do.
                 return true;
             } else {

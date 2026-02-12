@@ -1,22 +1,12 @@
 import { LRUCache } from "octagonal-wheels/memory/LRUCache";
-import {
-    getStoragePathFromUXFileInfo,
-    id2path,
-    isInternalMetadata,
-    path2id,
-    stripInternalMetadataPrefix,
-    useMemo,
-} from "../../common/utils";
+import { getStoragePathFromUXFileInfo, useMemo } from "../../common/utils";
 import {
     LOG_LEVEL_VERBOSE,
-    type DocumentID,
-    type EntryHasPath,
-    type FilePath,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
     type UXFileInfoStub,
 } from "../../lib/src/common/types";
-import { addPrefix, isAcceptedAll } from "../../lib/src/string_and_binary/path";
+import { isAcceptedAll } from "../../lib/src/string_and_binary/path";
 import { AbstractModule } from "../AbstractModule";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 import { isDirty } from "../../lib/src/common/utils";
@@ -34,23 +24,6 @@ export class ModuleTargetFilter extends AbstractModule {
             this.reloadIgnoreFiles();
         });
         return Promise.resolve(true);
-    }
-
-    _id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
-        const tempId = id2path(id, entry);
-        if (stripPrefix && isInternalMetadata(tempId)) {
-            const out = stripInternalMetadataPrefix(tempId);
-            return out;
-        }
-        return tempId;
-    }
-    async _path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        const destPath = addPrefix(filename, prefix ?? "");
-        return await path2id(
-            destPath,
-            this.settings.usePathObfuscation ? this.settings.passphrase : "",
-            !this.settings.handleFilenameCaseSensitive
-        );
     }
 
     _markFileListPossiblyChanged(): void {
@@ -166,8 +139,6 @@ export class ModuleTargetFilter extends AbstractModule {
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
-        services.path.id2path.setHandler(this._id2path.bind(this));
-        services.path.path2id.setHandler(this._path2id.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
         services.vault.isIgnoredByIgnoreFile.setHandler(this._isIgnoredByIgnoreFiles.bind(this));
         services.vault.isTargetFile.setHandler(this._isTargetFile.bind(this));

@@ -16,7 +16,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { initialiseWorkerModule } from "@/lib/src/worker/bgWorker.ts";
+import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
