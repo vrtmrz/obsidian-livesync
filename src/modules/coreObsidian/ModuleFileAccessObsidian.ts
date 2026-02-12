@@ -79,15 +79,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         return Promise.resolve(true);
     }
 
-    _isStorageInsensitive(): boolean {
-        return this.vaultAccess.isStorageInsensitive();
-    }
-
-    _shouldCheckCaseInsensitive(): boolean {
-        if (this.services.vault.isStorageInsensitive()) return false;
-        return !this.settings.handleFilenameCaseSensitive;
-    }
-
     async writeFileAuto(path: string, data: string | ArrayBuffer, opt?: UXDataWriteOptions): Promise<boolean> {
         const file = this.vaultAccess.getAbstractFileByPath(path);
         if (file instanceof TFile) {
@@ -386,8 +377,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
         super(plugin, core);
     }
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.vault.isStorageInsensitive.setHandler(this._isStorageInsensitive.bind(this));
-        services.setting.shouldCheckCaseInsensitively.setHandler(this._shouldCheckCaseInsensitive.bind(this));
         services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));

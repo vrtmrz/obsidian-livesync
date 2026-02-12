@@ -13,12 +13,12 @@ import {
     ObsidianRemoteService,
     ObsidianSettingService,
     ObsidianTweakValueService,
-    ObsidianVaultService,
     ObsidianTestService,
     ObsidianDatabaseEventService,
     ObsidianPathService,
     ObsidianConfigService,
 } from "./ObsidianServices";
+import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
 
 // InjectableServiceHub
@@ -37,7 +37,9 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const remote = new ObsidianRemoteService(context);
         const setting = new ObsidianSettingService(context);
         const tweakValue = new ObsidianTweakValueService(context);
-        const vault = new ObsidianVaultService(context);
+        const vault = new ObsidianVaultService(context, {
+            settingService: setting,
+        });
         const test = new ObsidianTestService(context);
         const databaseEvents = new ObsidianDatabaseEventService(context);
         const path = new ObsidianPathService(context);

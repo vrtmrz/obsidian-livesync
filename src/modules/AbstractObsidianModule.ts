@@ -10,20 +10,11 @@ export type ModuleKeys = keyof IObsidianModule;
 export type ChainableModuleProps = ChainableExecuteFunction<ObsidianLiveSyncPlugin>;
 
 export abstract class AbstractObsidianModule extends AbstractModule {
-    addCommand = this.plugin.addCommand.bind(this.plugin);
-    registerView = this.plugin.registerView.bind(this.plugin);
-    addRibbonIcon = this.plugin.addRibbonIcon.bind(this.plugin);
-    registerObsidianProtocolHandler = this.plugin.registerObsidianProtocolHandler.bind(this.plugin);
+    addCommand = this.services.API.addCommand.bind(this.services.API);
+    registerView = this.services.API.registerWindow.bind(this.services.API);
+    addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
+    registerObsidianProtocolHandler = this.services.API.registerProtocolHandler.bind(this.services.API);
 
-    get localDatabase() {
-        return this.plugin.localDatabase;
-    }
-    get settings() {
-        return this.plugin.settings;
-    }
-    set settings(value) {
-        this.plugin.settings = value;
-    }
     get app() {
         return this.plugin.app;
     }
@@ -33,18 +24,6 @@ export abstract class AbstractObsidianModule extends AbstractModule {
         public core: LiveSyncCore
     ) {
         super(core);
-    }
-
-    saveSettings = this.plugin.saveSettings.bind(this.plugin);
-
-    isMainReady() {
-        return this.services.appLifecycle.isReady();
-    }
-    isMainSuspended() {
-        return this.services.appLifecycle.isSuspended();
-    }
-    isDatabaseReady() {
-        return this.services.database.isDatabaseReady();
     }
 
     //should be overridden

@@ -8,8 +8,7 @@ import {
     type LOG_LEVEL,
 } from "octagonal-wheels/common/logger";
 import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
-import { type CouchDBCredentials, type EntryDoc, type FilePath } from "../../lib/src/common/types.ts";
-import { getPathFromTFile } from "../../common/utils.ts";
+import { type CouchDBCredentials, type EntryDoc } from "../../lib/src/common/types.ts";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
 import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
 import { disableEncryption } from "@/lib/src/pouchdb/encryption.ts";
@@ -279,23 +278,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         }
     }
 
-    _vaultName(): string {
-        return this.app.vault.getName();
-    }
-    _getVaultName(): string {
-        return (
-            this.services.vault.vaultName() +
-            (this.settings?.additionalSuffixOfDatabaseName ? "-" + this.settings.additionalSuffixOfDatabaseName : "")
-        );
-    }
-    _getActiveFilePath(): FilePath | undefined {
-        const file = this.app.workspace.getActiveFile();
-        if (file) {
-            return getPathFromTFile(file);
-        }
-        return undefined;
-    }
-
     private _reportUnresolvedMessages(): Promise<(string | Error)[]> {
         return Promise.resolve([...this._previousErrors]);
     }
@@ -303,9 +285,6 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
     onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         services.API.isLastPostFailedDueToPayloadSize.setHandler(this._getLastPostFailedBySize.bind(this));
         services.remote.connect.setHandler(this._connectRemoteCouchDB.bind(this));
-        services.vault.getVaultName.setHandler(this._getVaultName.bind(this));
-        services.vault.vaultName.setHandler(this._vaultName.bind(this));
-        services.vault.getActiveFilePath.setHandler(this._getActiveFilePath.bind(this));
         services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }

@@ -53,15 +53,6 @@ export class ModuleTargetFilter extends AbstractModule {
         );
     }
 
-    private _isFileSizeExceeded(size: number) {
-        if (this.settings.syncMaxSizeInMB > 0 && size > 0) {
-            if (this.settings.syncMaxSizeInMB * 1024 * 1024 < size) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     _markFileListPossiblyChanged(): void {
         this.totalFileEventCount++;
     }
@@ -110,7 +101,7 @@ export class ModuleTargetFilter extends AbstractModule {
 
         const filepath = getStoragePathFromUXFileInfo(file);
         const lc = filepath.toLowerCase();
-        if (this.services.setting.shouldCheckCaseInsensitively()) {
+        if (this.services.vault.shouldCheckCaseInsensitively()) {
             if (lc in fileCount && fileCount[lc] > 1) {
                 return false;
             }
@@ -178,7 +169,6 @@ export class ModuleTargetFilter extends AbstractModule {
         services.path.id2path.setHandler(this._id2path.bind(this));
         services.path.path2id.setHandler(this._path2id.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
-        services.vault.isFileSizeTooLarge.setHandler(this._isFileSizeExceeded.bind(this));
         services.vault.isIgnoredByIgnoreFile.setHandler(this._isIgnoredByIgnoreFiles.bind(this));
         services.vault.isTargetFile.setHandler(this._isTargetFile.bind(this));
     }

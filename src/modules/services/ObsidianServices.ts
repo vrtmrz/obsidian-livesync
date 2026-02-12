@@ -11,7 +11,6 @@ import { InjectableReplicatorService } from "@lib/services/implements/injectable
 import { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
 import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
-import { InjectableVaultService } from "@lib/services/implements/injectable/InjectableVaultService";
 import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
 import { Platform } from "@/deps";
@@ -19,6 +18,7 @@ import type { SimpleStore } from "@/lib/src/common/utils";
 import type { IDatabaseService } from "@/lib/src/services/base/IService";
 import { handlers } from "@/lib/src/services/lib/HandlerUtils";
 import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
+import type { Command, ViewCreator } from "obsidian";
 
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
@@ -92,6 +92,20 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     override getPluginVersion(): string {
         return this.context.plugin.manifest.version;
     }
+
+    addCommand<TCommand extends Command>(command: TCommand): TCommand {
+        return this.context.plugin.addCommand(command) as TCommand;
+    }
+
+    registerWindow(type: string, factory: ViewCreator): void {
+        return this.context.plugin.registerView(type, factory);
+    }
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement {
+        return this.context.plugin.addRibbonIcon(icon, title, callback);
+    }
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void {
+        return this.context.plugin.registerObsidianProtocolHandler(action, handler);
+    }
 }
 export class ObsidianPathService extends InjectablePathService<ObsidianServiceContext> {}
 export class ObsidianDatabaseService extends InjectableDatabaseService<ObsidianServiceContext> {
@@ -117,8 +131,6 @@ export class ObsidianAppLifecycleService extends InjectableAppLifecycleService<O
 export class ObsidianSettingService extends InjectableSettingService<ObsidianServiceContext> {}
 // InjectableTweakValueService
 export class ObsidianTweakValueService extends InjectableTweakValueService<ObsidianServiceContext> {}
-// InjectableVaultService
-export class ObsidianVaultService extends InjectableVaultService<ObsidianServiceContext> {}
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService<ObsidianServiceContext> {}
 export class ObsidianConfigService extends ConfigServiceBrowserCompat<ObsidianServiceContext> {}

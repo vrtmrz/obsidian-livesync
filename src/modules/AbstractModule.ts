@@ -62,4 +62,14 @@ export abstract class AbstractModule {
     get services() {
         return this.core._services;
     }
+
+    isMainReady() {
+        return this.services.appLifecycle.isReady();
+    }
+    isMainSuspended() {
+        return this.services.appLifecycle.isSuspended();
+    }
+    isDatabaseReady() {
+        return this.services.database.isDatabaseReady();
+    }
 }

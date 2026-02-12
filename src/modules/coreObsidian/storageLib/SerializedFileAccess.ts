@@ -1,11 +1,12 @@
 import { type App, TFile, type DataWriteOptions, TFolder, TAbstractFile } from "../../../deps.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { isPlainText } from "../../../lib/src/string_and_binary/path.ts";
-import type { FilePath, HasSettings, UXFileInfoStub } from "../../../lib/src/common/types.ts";
+import type { FilePath, UXFileInfoStub } from "../../../lib/src/common/types.ts";
 import { createBinaryBlob, isDocContentSame } from "../../../lib/src/common/utils.ts";
 import type { InternalFileInfo } from "../../../common/types.ts";
 import { markChangesAreSame } from "../../../common/utils.ts";
 import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
+import type { LiveSyncCore } from "@/main.ts";
 function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<ArrayBuffer>): ArrayBuffer {
     if (arr instanceof Uint8Array) {
         return arr.buffer;
@@ -18,9 +19,9 @@ function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<Arr
 
 export class SerializedFileAccess {
     app: App;
-    plugin: HasSettings<{ handleFilenameCaseSensitive: boolean }>;
+    plugin: LiveSyncCore;
     storageAccess: StorageAccess;
-    constructor(app: App, plugin: SerializedFileAccess["plugin"], storageAccess: StorageAccess) {
+    constructor(app: App, plugin: LiveSyncCore, storageAccess: StorageAccess) {
         this.app = app;
         this.plugin = plugin;
         this.storageAccess = storageAccess;
@@ -163,8 +164,7 @@ export class SerializedFileAccess {
     }
 
     isStorageInsensitive(): boolean {
-        //@ts-ignore
-        return this.app.vault.adapter.insensitive ?? true;
+        return this.plugin.services.vault.isStorageInsensitive();
     }
 
     getAbstractFileByPathInsensitive(path: FilePath | string): TAbstractFile | null {

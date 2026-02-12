@@ -251,7 +251,7 @@ export class ModuleLog extends AbstractObsidianModule {
             }
         }
         // Case Sensitivity
-        if (this.services.setting.shouldCheckCaseInsensitively()) {
+        if (this.services.vault.shouldCheckCaseInsensitively()) {
             const f = this.core.storageAccess
                 .getFiles()
                 .map((e) => e.path)
