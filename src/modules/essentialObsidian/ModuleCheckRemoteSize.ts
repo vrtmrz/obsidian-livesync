@@ -2,10 +2,10 @@ import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-w
 import { sizeToHumanReadable } from "octagonal-wheels/number";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { EVENT_REQUEST_CHECK_REMOTE_SIZE, eventHub } from "@/common/events.ts";
+import { AbstractModule } from "../AbstractModule.ts";
 
-export class ModuleCheckRemoteSize extends AbstractObsidianModule {
+export class ModuleCheckRemoteSize extends AbstractModule {
     checkRemoteSize(): Promise<boolean> {
         this.settings.notifyThresholdOfRemoteStorageSize = 1;
         return this._allScanStat();

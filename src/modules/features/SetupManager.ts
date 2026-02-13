@@ -8,7 +8,6 @@ import {
     REMOTE_P2P,
 } from "../../lib/src/common/types.ts";
 import { generatePatchObj, isObjectDifferent } from "../../lib/src/common/utils.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -23,6 +22,7 @@ import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "../../lib/src/API/processSetting.ts";
+import { AbstractModule } from "../AbstractModule.ts";
 
 /**
  * User modes for onboarding and setup
@@ -50,7 +50,7 @@ export const enum UserMode {
 /**
  * Setup Manager to handle onboarding and configuration setup
  */
-export class SetupManager extends AbstractObsidianModule {
+export class SetupManager extends AbstractModule {
     // /**
     //  * Dialog manager for handling Svelte dialogs
     //  */

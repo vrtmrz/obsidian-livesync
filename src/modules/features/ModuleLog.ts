@@ -63,8 +63,6 @@ function addLog(log: string) {
 const showDebugLog = false;
 export const MARK_DONE = "\u{2009}\u{2009}";
 export class ModuleLog extends AbstractObsidianModule {
-    registerView = this.plugin.registerView.bind(this.plugin);
-
     statusBar?: HTMLElement;
 
     statusDiv?: HTMLElement;

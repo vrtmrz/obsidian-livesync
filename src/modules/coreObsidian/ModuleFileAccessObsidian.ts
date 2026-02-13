@@ -56,10 +56,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     restoreState() {
         return this.vaultManager.restoreState();
     }
-    private _everyOnload(): Promise<boolean> {
-        this.core.storageAccess = this;
-        return Promise.resolve(true);
-    }
     async _everyOnFirstInitialize(): Promise<boolean> {
         await this.vaultManager.beginWatch();
         return Promise.resolve(true);
@@ -76,6 +72,7 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
 
     _everyOnloadStart(): Promise<boolean> {
         this.vaultAccess = new SerializedFileAccess(this.app, this.plugin, this);
+        this.core.storageAccess = this;
         return Promise.resolve(true);
     }
 
@@ -379,7 +376,6 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
-        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
         services.fileProcessing.commitPendingFileEvents.addHandler(this._everyCommitPendingFileEvent.bind(this));
     }
 }

@@ -1,146 +1,155 @@
-import { LRUCache } from "octagonal-wheels/memory/LRUCache";
-import { getStoragePathFromUXFileInfo, useMemo } from "../../common/utils";
-import {
-    LOG_LEVEL_VERBOSE,
-    type FilePathWithPrefix,
-    type ObsidianLiveSyncSettings,
-    type UXFileInfoStub,
-} from "../../lib/src/common/types";
+import { getStoragePathFromUXFileInfo } from "../../common/utils";
+import { LOG_LEVEL_DEBUG, LOG_LEVEL_VERBOSE, type UXFileInfoStub } from "../../lib/src/common/types";
 import { isAcceptedAll } from "../../lib/src/string_and_binary/path";
 import { AbstractModule } from "../AbstractModule";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
-import { isDirty } from "../../lib/src/common/utils";
 import type { LiveSyncCore } from "../../main";
+import { Computed } from "octagonal-wheels/dataobject/Computed";
 export class ModuleTargetFilter extends AbstractModule {
-    reloadIgnoreFiles() {
+    ignoreFiles: string[] = [];
+    private refreshSettings() {
         this.ignoreFiles = this.settings.ignoreFiles.split(",").map((e) => e.trim());
+        return Promise.resolve(true);
     }
+
     private _everyOnload(): Promise<boolean> {
-        this.reloadIgnoreFiles();
-        eventHub.onEvent(EVENT_SETTING_SAVED, (evt: ObsidianLiveSyncSettings) => {
-            this.reloadIgnoreFiles();
-        });
-        eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
-            this.reloadIgnoreFiles();
-        });
+        void this.refreshSettings();
         return Promise.resolve(true);
     }
 
     _markFileListPossiblyChanged(): void {
         this.totalFileEventCount++;
     }
-    totalFileEventCount = 0;
-    get fileListPossiblyChanged() {
-        if (isDirty("totalFileEventCount", this.totalFileEventCount)) {
-            return true;
-        }
-        return false;
-    }
 
-    private async _isTargetFile(file: string | UXFileInfoStub, keepFileCheckList = false) {
-        const fileCount = useMemo<Record<string, number>>(
-            {
-                key: "fileCount", // forceUpdate: !keepFileCheckList,
-            },
-            (ctx, prev) => {
-                if (keepFileCheckList && prev) return prev;
-                if (!keepFileCheckList && prev && !this.fileListPossiblyChanged) {
-                    return prev;
+    fileCountMap = new Computed({
+        evaluation: (fileEventCount: number) => {
+            const vaultFiles = this.core.storageAccess.getFileNames().sort();
+            const fileCountMap: Record<string, number> = {};
+            for (const file of vaultFiles) {
+                const lc = file.toLowerCase();
+                if (!fileCountMap[lc]) {
+                    fileCountMap[lc] = 1;
+                } else {
+                    fileCountMap[lc]++;
                 }
-                const fileList = (ctx.get("fileList") ?? []) as FilePathWithPrefix[];
-                // const fileNameList = (ctx.get("fileNameList") ?? []) as FilePath[];
-                // const fileNames =
-                const vaultFiles = this.core.storageAccess.getFileNames().sort();
-                if (prev && vaultFiles.length == fileList.length) {
-                    const fl3 = new Set([...fileList, ...vaultFiles]);
-                    if (fileList.length == fl3.size && vaultFiles.length == fl3.size) {
-                        return prev;
-                    }
-                }
-                ctx.set("fileList", vaultFiles);
-
-                const fileCount: Record<string, number> = {};
-                for (const file of vaultFiles) {
-                    const lc = file.toLowerCase();
-                    if (!fileCount[lc]) {
-                        fileCount[lc] = 1;
-                    } else {
-                        fileCount[lc]++;
-                    }
-                }
-                return fileCount;
             }
-        );
+            return fileCountMap;
+        },
+        requiresUpdate: (args, previousArgs, previousResult) => {
+            if (!previousResult) return true;
+            if (previousResult instanceof Error) return true;
+            if (!previousArgs) return true;
+            if (args[0] === previousArgs[0]) {
+                return false;
+            }
+            return true;
+        },
+    });
+
+    totalFileEventCount = 0;
+
+    private async _isTargetFileByFileNameDuplication(file: string | UXFileInfoStub) {
+        await this.fileCountMap.updateValue(this.totalFileEventCount);
+        const fileCountMap = this.fileCountMap.value;
+        if (!fileCountMap) {
+            this._log("File count map is not ready yet.");
+            return false;
+        }
 
         const filepath = getStoragePathFromUXFileInfo(file);
         const lc = filepath.toLowerCase();
         if (this.services.vault.shouldCheckCaseInsensitively()) {
-            if (lc in fileCount && fileCount[lc] > 1) {
+            if (lc in fileCountMap && fileCountMap[lc] > 1) {
+                this._log("File is duplicated (case-insensitive): " + filepath);
                 return false;
             }
         }
-        const fileNameLC = getStoragePathFromUXFileInfo(file).split("/").pop()?.toLowerCase();
-        if (this.settings.useIgnoreFiles) {
-            if (this.ignoreFiles.some((e) => e.toLowerCase() == fileNameLC)) {
-                // We must reload ignore files due to the its change.
-                await this.readIgnoreFile(filepath);
-            }
-            if (await this.services.vault.isIgnoredByIgnoreFile(file)) {
-                return false;
-            }
-        }
-        if (!this.localDatabase?.isTargetFile(filepath)) return false;
+        this._log("File is not duplicated: " + filepath, LOG_LEVEL_DEBUG);
         return true;
     }
 
-    ignoreFileCache = new LRUCache<string, string[] | false>(300, 250000, true);
-    ignoreFiles = [] as string[];
-    async readIgnoreFile(path: string) {
+    private ignoreFileCacheMap = new Map<string, string[] | undefined | false>();
+
+    private invalidateIgnoreFileCache(path: string) {
+        // This erases `/path/to/.ignorefile` from cache, therefore, next access will reload it.
+        // When detecting edited the ignore file, this method should be called.
+        // Do not check whether it exists in cache or not; just delete it.
+        const key = path.toLowerCase();
+        this.ignoreFileCacheMap.delete(key);
+    }
+    private async getIgnoreFile(path: string): Promise<string[] | false> {
+        const key = path.toLowerCase();
+        const cached = this.ignoreFileCacheMap.get(key);
+        if (cached !== undefined) {
+            // if cached is not undefined, cache hit (neither exists or not exists, string[] or false).
+            return cached;
+        }
         try {
-            // this._log(`[ignore]Reading ignore file: ${path}`, LOG_LEVEL_VERBOSE);
+            // load the ignore file
             if (!(await this.core.storageAccess.isExistsIncludeHidden(path))) {
-                this.ignoreFileCache.set(path, false);
-                // this._log(`[ignore]Ignore file not found: ${path}`, LOG_LEVEL_VERBOSE);
+                // file does not exist, cache as not exists
+                this.ignoreFileCacheMap.set(key, false);
                 return false;
             }
             const file = await this.core.storageAccess.readHiddenFileText(path);
-            const gitignore = file.split(/\r?\n/g);
-            this.ignoreFileCache.set(path, gitignore);
-            this._log(`[ignore]Ignore file loaded: ${path}`, LOG_LEVEL_VERBOSE);
+            const gitignore = file
+                .split(/\r?\n/g)
+                .map((e) => e.replace(/\r$/, ""))
+                .map((e) => e.trim());
+            this.ignoreFileCacheMap.set(key, gitignore);
+            this._log(`[ignore] Ignore file loaded: ${path}`, LOG_LEVEL_VERBOSE);
             return gitignore;
         } catch (ex) {
-            this._log(`[ignore]Failed to read ignore file ${path}`);
+            // Failed to read the ignore file, delete cache.
+            this._log(`[ignore] Failed to read ignore file ${path}`);
             this._log(ex, LOG_LEVEL_VERBOSE);
-            this.ignoreFileCache.set(path, false);
+            this.ignoreFileCacheMap.set(key, undefined);
             return false;
         }
     }
-    async getIgnoreFile(path: string) {
-        if (this.ignoreFileCache.has(path)) {
-            return this.ignoreFileCache.get(path) ?? false;
-        } else {
-            return await this.readIgnoreFile(path);
-        }
-    }
-    private async _isIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
-        if (!this.settings.useIgnoreFiles) {
-            return false;
-        }
+
+    private async _isTargetFileByLocalDB(file: string | UXFileInfoStub) {
         const filepath = getStoragePathFromUXFileInfo(file);
-        if (this.ignoreFileCache.has(filepath)) {
-            // Renew
-            await this.readIgnoreFile(filepath);
+        if (!this.localDatabase?.isTargetFile(filepath)) {
+            this._log("File is not target by local DB: " + filepath);
+            return false;
         }
-        if (!(await isAcceptedAll(filepath, this.ignoreFiles, (filename) => this.getIgnoreFile(filename)))) {
+        this._log("File is target by local DB: " + filepath, LOG_LEVEL_DEBUG);
+        return await Promise.resolve(true);
+    }
+
+    private async _isTargetFileFinal(file: string | UXFileInfoStub) {
+        this._log("File is target finally: " + getStoragePathFromUXFileInfo(file), LOG_LEVEL_DEBUG);
+        return await Promise.resolve(true);
+    }
+
+    private async _isTargetIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
+        if (!this.settings.useIgnoreFiles) {
             return true;
         }
-        return false;
+        const filepath = getStoragePathFromUXFileInfo(file);
+        this.invalidateIgnoreFileCache(filepath);
+        this._log("Checking ignore files for: " + filepath, LOG_LEVEL_DEBUG);
+        if (!(await isAcceptedAll(filepath, this.ignoreFiles, (filename) => this.getIgnoreFile(filename)))) {
+            this._log("File is ignored by ignore files: " + filepath);
+            return false;
+        }
+        this._log("File is not ignored by ignore files: " + filepath, LOG_LEVEL_DEBUG);
+        return true;
     }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
-        services.vault.isIgnoredByIgnoreFile.setHandler(this._isIgnoredByIgnoreFiles.bind(this));
-        services.vault.isTargetFile.setHandler(this._isTargetFile.bind(this));
+        services.vault.isIgnoredByIgnoreFile.setHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));
+        services.vault.isTargetFile.addHandler(this._isTargetFileByFileNameDuplication.bind(this));
+        services.vault.isTargetFile.addHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));
+        services.vault.isTargetFile.addHandler(this._isTargetFileByLocalDB.bind(this));
+        services.vault.isTargetFile.addHandler(this._isTargetFileFinal.bind(this));
+        services.setting.onSettingRealised.addHandler(this.refreshSettings.bind(this));
+        // services.vault.isTargetFile.use((ctx, next) => {
+        //     const [fileName, keepFileCheckList] = ctx.args;
+        //     const file = getS
+
+        // });
     }
 }

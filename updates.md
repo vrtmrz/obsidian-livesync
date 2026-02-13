@@ -3,6 +3,50 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-1
+
+13th February, 2026
+
+You know this is a patch version, is the beta-release practically? Do not worry about the following memos, as they are indeed freaking us out. I trust that you have thought this was too large; you're right.
+
+If this cannot be stable, I will revert to 0.24.43 and try again.
+
+### Refactored
+
+- Now resolving unexpected and inexplicable dependency order issues...
+- The function which is able to implement to the service is now moved to each service.
+    - AppLifecycleService.performRestart
+- VaultService.isTargetFile is now uses separated multiple checkers instead of a single function.
+    - This change allows better separation of concerns and easier extension in the future.
+- Application LifeCycle has now started in ServiceHub, not ObsidianMenuModule.
+
+    - It was on a QUITE unexpected place..., isn't it?
+    - Instead of, we should call `await this.services.appLifecycle.onReady()` in other platforms.
+    - As in browser platform, it will be called at `DOMContentLoaded` event.
+
+- ModuleTargetFilter, which is responsible for parsing ignore files has been refined.
+    - This should be separated to a TargetFilter and a IgnoreFileFilter for better maintainability.
+- Using `API.addCommand` or some Obsidian API and shimmer APIs, Many modules have been refactored to be derived to AbstractModule from AbstractObsidianModule, to clarify the dependencies. (we should make `app` usage clearer...)
+- Fixed initialising `storageAccess` too late in `FileAccessObsidian` module (I am still wonder why it worked before...).
+- Remove some redundant overrides in modules.
+
+### Planned
+
+- Some services have ambiguous name, such as `Injectable`. These will be renamed in the future for better clarity.
+- Following properties of `ObsidianLiveSyncPlugin` should be initialised more explicitly:
+    - property : where it is initialised currently
+    - `localDatabase` : `ModuleLocalDatabaseObsidian`
+    - `managers` : `ModuleLocalDatabaseObsidian`
+    - `replicator` : `ModuleReplicator`
+    - `simpleStore` : `ModuleKeyValueDB`
+    - `storageAccess` : `ModuleFileAccessObsidian`
+    - `databaseFileAccess` : `ModuleDatabaseFileAccess`
+    - `fileHandler` : `ModuleFileHandler`
+    - `rebuilder` : `ModuleRebuilder`
+    - `kvDB`: `ModuleKeyValueDB`
+    - And I think that having feature in modules directly is not good for maintainability, these should be separated to some module (loader) and implementation (not only service, but also independent something).
+- Plug-in statuses such as requestCount, responseCount... should be moved to a status service or somewhere for better separation of concerns.
+
 ## 0.25.43
 
 5th, February, 2026
@@ -16,7 +60,6 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Notice
 
 Quite a few packages have been updated in this release. Please report if you find any unexpected behaviour after this update.
-
 
 ## 0.25.42
 

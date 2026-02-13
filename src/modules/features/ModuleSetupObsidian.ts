@@ -9,7 +9,6 @@ import {
     EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
 } from "../../common/events.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { $msg } from "../../lib/src/common/i18n.ts";
 // import { performDoctorConsultation, RebuildOptions } from "@/lib/src/common/configForDoc.ts";
 import type { LiveSyncCore } from "../../main.ts";
@@ -20,11 +19,12 @@ import {
     OutputFormat,
 } from "../../lib/src/API/processSetting.ts";
 import { SetupManager, UserMode } from "./SetupManager.ts";
+import { AbstractModule } from "../AbstractModule.ts";
 
-export class ModuleSetupObsidian extends AbstractObsidianModule {
+export class ModuleSetupObsidian extends AbstractModule {
     private _setupManager!: SetupManager;
     private _everyOnload(): Promise<boolean> {
-        this._setupManager = this.plugin.getModule(SetupManager);
+        this._setupManager = this.core.getModule(SetupManager);
         this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
             if (conf.settings) {
                 await this._setupManager.onUseSetupURI(

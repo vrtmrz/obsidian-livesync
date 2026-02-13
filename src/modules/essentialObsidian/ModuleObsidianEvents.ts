@@ -31,13 +31,8 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
 
-    private _performRestart(): void {
-        this.__performAppReload();
-    }
-
     __performAppReload() {
-        //@ts-ignore
-        this.app.commands.executeCommandById("app:reload");
+        this.services.appLifecycle.performRestart();
     }
 
     initialCallback: any;
@@ -193,6 +188,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             }
         });
     }
+    // TODO: separate
     private _scheduleAppReload() {
         if (!this.core._totalProcessingCount) {
             const __tick = reactiveSource(0);
@@ -246,7 +242,6 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
-        services.appLifecycle.performRestart.setHandler(this._performRestart.bind(this));
         services.appLifecycle.askRestart.setHandler(this._askReload.bind(this));
         services.appLifecycle.scheduleRestart.setHandler(this._scheduleAppReload.bind(this));
     }

@@ -1,4 +1,3 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "../../common/events";
@@ -6,9 +5,13 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "../../lib/src/common/types";
 import { parseYaml, stringifyYaml } from "../../deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import { AbstractModule } from "../AbstractModule.ts";
+import type { ServiceContext } from "@/lib/src/services/base/ServiceBase.ts";
+import type { InjectableServiceHub } from "@/lib/src/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
-export class ModuleObsidianSettingsAsMarkdown extends AbstractObsidianModule {
+export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-export-config",
@@ -242,7 +245,8 @@ We can perform a command in this file.
             this._log(`Markdown setting: ${filename} has been updated!`, LOG_LEVEL_VERBOSE);
         }
     }
-    onBindFunction(core: typeof this.plugin, services: typeof core.services): void {
+
+    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub<ServiceContext>): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

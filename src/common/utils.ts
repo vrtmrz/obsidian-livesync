@@ -401,7 +401,6 @@ export function displayRev(rev: string) {
     return `${number}-${hash.substring(0, 6)}`;
 }
 
-
 export function getLogLevel(showNotice: boolean) {
     return showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
 }

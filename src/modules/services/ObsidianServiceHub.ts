@@ -4,7 +4,6 @@ import type { ServiceInstances } from "@/lib/src/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
 import {
     ObsidianAPIService,
-    ObsidianAppLifecycleService,
     ObsidianConflictService,
     ObsidianDatabaseService,
     ObsidianFileProcessingService,
@@ -17,6 +16,7 @@ import {
     ObsidianDatabaseEventService,
     ObsidianConfigService,
 } from "./ObsidianServices";
+import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
 import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";

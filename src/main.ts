@@ -126,31 +126,31 @@ export default class ObsidianLiveSyncPlugin
         new ModuleRemoteGovernor(this),
         new ModuleTargetFilter(this),
         new ModulePeriodicProcess(this),
-        // Obsidian modules
+        // Essential Modules
         new ModuleKeyValueDB(this),
         new ModuleInitializerFile(this),
         new ModuleObsidianAPI(this, this),
         new ModuleObsidianEvents(this, this),
         new ModuleFileAccessObsidian(this, this),
-        new ModuleObsidianSettings(this, this),
+        new ModuleObsidianSettings(this),
         new ModuleResolvingMismatchedTweaks(this),
-        new ModuleObsidianSettingsAsMarkdown(this, this),
+        new ModuleObsidianSettingsAsMarkdown(this),
         new ModuleObsidianSettingDialogue(this, this),
         new ModuleLog(this, this),
-        new ModuleObsidianMenu(this, this),
+        new ModuleObsidianMenu(this),
         new ModuleRebuilder(this),
-        new ModuleSetupObsidian(this, this),
+        new ModuleSetupObsidian(this),
         new ModuleObsidianDocumentHistory(this, this),
         new ModuleMigration(this),
         new ModuleRedFlag(this),
         new ModuleInteractiveConflictResolver(this, this),
         new ModuleObsidianGlobalHistory(this, this),
-        new ModuleCheckRemoteSize(this, this),
+        new ModuleCheckRemoteSize(this),
         // Test and Dev Modules
         new ModuleDev(this, this),
         new ModuleReplicateTest(this, this),
         new ModuleIntegratedTest(this, this),
-        new SetupManager(this, this),
+        new SetupManager(this),
     ] as (IObsidianModule | AbstractModule)[];
 
     getModule<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T {

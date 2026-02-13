@@ -1,11 +1,11 @@
 import { fireAndForget } from "octagonal-wheels/promises";
 import { addIcon, type Editor, type MarkdownFileInfo, type MarkdownView } from "../../deps.ts";
 import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { AbstractModule } from "../AbstractModule.ts";
 
-export class ModuleObsidianMenu extends AbstractObsidianModule {
+export class ModuleObsidianMenu extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {
         // UI
         addIcon(
@@ -105,16 +105,8 @@ export class ModuleObsidianMenu extends AbstractObsidianModule {
         });
         return Promise.resolve(true);
     }
-    private __onWorkspaceReady() {
-        void this.services.appLifecycle.onReady();
-    }
-    private _everyOnload(): Promise<boolean> {
-        this.app.workspace.onLayoutReady(this.__onWorkspaceReady.bind(this));
-        return Promise.resolve(true);
-    }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
-        services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
     }
 }

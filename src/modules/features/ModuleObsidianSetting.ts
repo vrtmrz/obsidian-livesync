@@ -1,4 +1,3 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
 import {
@@ -18,7 +17,8 @@ import { getLanguage } from "@/deps.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../lib/src/common/rosetta.ts";
 import { decryptString, encryptString } from "@/lib/src/encryption/stringEncryption.ts";
 import type { LiveSyncCore } from "../../main.ts";
-export class ModuleObsidianSettings extends AbstractObsidianModule {
+import { AbstractModule } from "../AbstractModule.ts";
+export class ModuleObsidianSettings extends AbstractModule {
     async _everyOnLayoutReady(): Promise<boolean> {
         let isChanged = false;
         if (this.settings.displayLanguage == "") {
@@ -105,7 +105,7 @@ export class ModuleObsidianSettings extends AbstractObsidianModule {
     }
 
     get appId() {
-        return `${"appId" in this.app ? this.app.appId : ""}`;
+        return this.services.API.getAppID();
     }
 
     async _saveSettingData() {

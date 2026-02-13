@@ -1,5 +1,4 @@
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
-import { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
 import { InjectableConflictService } from "@lib/services/implements/injectable/InjectableConflictService";
 import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
 import { InjectableDatabaseService } from "@lib/services/implements/injectable/InjectableDatabaseService";
@@ -123,8 +122,6 @@ export class ObsidianReplicationService extends InjectableReplicationService<Obs
 export class ObsidianRemoteService extends InjectableRemoteService<ObsidianServiceContext> {}
 // InjectableConflictService
 export class ObsidianConflictService extends InjectableConflictService<ObsidianServiceContext> {}
-// InjectableAppLifecycleService
-export class ObsidianAppLifecycleService extends InjectableAppLifecycleService<ObsidianServiceContext> {}
 // InjectableSettingService
 export class ObsidianSettingService extends InjectableSettingService<ObsidianServiceContext> {}
 // InjectableTweakValueService
