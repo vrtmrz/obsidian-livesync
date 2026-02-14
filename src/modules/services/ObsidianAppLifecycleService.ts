@@ -9,12 +9,6 @@ declare module "obsidian" {
 }
 // InjectableAppLifecycleService
 export class ObsidianAppLifecycleService<T extends ObsidianServiceContext> extends AppLifecycleServiceBase<T> {
-    constructor(context: T) {
-        super(context);
-        // The main entry point when Obsidian's workspace is ready
-        const onReady = this.onReady;
-        this.context.app.workspace.onLayoutReady(onReady);
-    }
     performRestart(): void {
         void this.context.plugin.app.commands.executeCommandById("app:reload");
     }

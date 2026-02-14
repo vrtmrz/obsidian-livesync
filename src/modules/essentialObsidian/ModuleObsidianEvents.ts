@@ -69,7 +69,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
-            _this.app.commands.executeCommandById("editor:save-file");
+            void _this.app.commands.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
         };
     }

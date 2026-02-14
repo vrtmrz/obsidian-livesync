@@ -78,7 +78,7 @@ export class ModuleInitializerFile extends AbstractModule {
         const _filesStorage = [] as typeof filesStorageSrc;
 
         for (const f of filesStorageSrc) {
-            if (await this.services.vault.isTargetFile(f.path, f != filesStorageSrc[0])) {
+            if (await this.services.vault.isTargetFile(f.path)) {
                 _filesStorage.push(f);
             }
         }
@@ -122,7 +122,7 @@ export class ModuleInitializerFile extends AbstractModule {
                 );
             const path = this.getPath(doc);
 
-            if (isValidPath(path) && (await this.services.vault.isTargetFile(path, true))) {
+            if (isValidPath(path) && (await this.services.vault.isTargetFile(path))) {
                 if (!isMetaEntry(doc)) {
                     this._log(`Invalid entry: ${path}`, LOG_LEVEL_INFO);
                     continue;

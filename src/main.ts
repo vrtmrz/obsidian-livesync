@@ -205,8 +205,13 @@ export default class ObsidianLiveSyncPlugin
         syncStatus: "CLOSED" as DatabaseConnectingStatus,
     });
 
+    private async _startUp() {
+        await this.services.appLifecycle.onLoad();
+        const onReady = this.services.appLifecycle.onReady.bind(this.services.appLifecycle);
+        this.app.workspace.onLayoutReady(onReady);
+    }
     onload() {
-        void this.services.appLifecycle.onLoad();
+        void this._startUp();
     }
     async saveSettings() {
         await this.services.setting.saveSettingData();

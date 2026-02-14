@@ -133,7 +133,7 @@ export class ModuleMigration extends AbstractModule {
             if (!isValidPath(path)) {
                 continue;
             }
-            if (!(await this.services.vault.isTargetFile(path, true))) {
+            if (!(await this.services.vault.isTargetFile(path))) {
                 continue;
             }
             if (!isMetaEntry(metaDoc)) {
