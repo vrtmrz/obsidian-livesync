@@ -203,6 +203,7 @@ Please keep your passphrase of Setup-URI.
 3. Type the previously displayed passphrase (`patient-haze`) for setup-uri passphrase.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
 5. `Reload app without save` once.
+6. Run 'Self-hosted LiveSync: Toggle LiveSync` in the command palette
 
 ---
 
