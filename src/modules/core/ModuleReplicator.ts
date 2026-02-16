@@ -1,48 +1,36 @@
-import { fireAndForget, yieldMicrotask } from "octagonal-wheels/promises";
-import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB";
+import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "../AbstractModule";
-import {
-    Logger,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_VERBOSE,
-    LEVEL_NOTICE,
-    LEVEL_INFO,
-    type LOG_LEVEL,
-} from "octagonal-wheels/common/logger";
+import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LEVEL_NOTICE, type LOG_LEVEL } from "octagonal-wheels/common/logger";
 import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
 import { type EntryDoc, type RemoteType } from "../../lib/src/common/types";
 import { rateLimitedSharedExecution, scheduleTask, updatePreviousExecutionTime } from "../../common/utils";
-import { EVENT_FILE_SAVED, EVENT_ON_UNRESOLVED_ERROR, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
-import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 
 import { $msg } from "../../lib/src/common/i18n";
-import { clearHandlers } from "../../lib/src/replication/SyncParamsHandler";
 import type { LiveSyncCore } from "../../main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import { UnresolvedErrorManager } from "@/lib/src/services/base/UnresolvedErrorManager";
+import { clearHandlers } from "@/lib/src/replication/SyncParamsHandler";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
 
 export class ModuleReplicator extends AbstractModule {
     _replicatorType?: RemoteType;
-    _previousErrors = new Set<string>();
+
     processor: ReplicateResultProcessor = new ReplicateResultProcessor(this);
+    private _unresolvedErrorManager: UnresolvedErrorManager = new UnresolvedErrorManager(
+        this.core.services.appLifecycle
+    );
 
     showError(msg: string, max_log_level: LOG_LEVEL = LEVEL_NOTICE) {
-        const level = this._previousErrors.has(msg) ? LEVEL_INFO : max_log_level;
-        this._log(msg, level);
-        if (!this._previousErrors.has(msg)) {
-            this._previousErrors.add(msg);
-            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
-        }
+        this._unresolvedErrorManager.showError(msg, max_log_level);
     }
     clearErrors() {
-        this._previousErrors.clear();
-        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        this._unresolvedErrorManager.clearErrors();
     }
 
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
@@ -52,9 +40,10 @@ export class ModuleReplicator extends AbstractModule {
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
-            if (this._replicatorType !== setting.remoteType) {
-                void this.setReplicator();
-            }
+            // ReplicatorService responds to `settingService.onRealiseSetting`.
+            // if (this._replicatorType !== setting.remoteType) {
+            //     void this.setReplicator();
+            // }
             if (this.core.settings.suspendParseReplicationResult) {
                 this.processor.suspend();
             } else {
@@ -65,39 +54,17 @@ export class ModuleReplicator extends AbstractModule {
         return Promise.resolve(true);
     }
 
-    async setReplicator() {
-        const replicator = await this.services.replicator.getNewReplicator();
-        if (!replicator) {
-            this.showError($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (this.core.replicator) {
-            await this.core.replicator.closeReplication();
-            this._log("Replicator closed for changing", LOG_LEVEL_VERBOSE);
-        }
-        this.core.replicator = replicator;
-        this._replicatorType = this.settings.remoteType;
-        await yieldMicrotask();
-        // Clear any existing sync parameter handlers (means clearing key-deriving salt).
+    _onReplicatorInitialised(): Promise<boolean> {
+        // For now, we only need to clear the error related to replicator initialisation, but in the future, if there are more things to do when the replicator is initialised, we can add them here.
         clearHandlers();
-        return true;
+        return Promise.resolve(true);
     }
 
-    _getReplicator(): LiveSyncAbstractReplicator {
-        return this.core.replicator;
-    }
-
-    _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return this.setReplicator();
-    }
     _everyOnDatabaseInitialized(showNotice: boolean): Promise<boolean> {
         fireAndForget(() => this.processor.restoreFromSnapshotOnce());
         return Promise.resolve(true);
     }
 
-    _everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return this.setReplicator();
-    }
     async ensureReplicatorPBKDF2Salt(showMessage: boolean = false): Promise<boolean> {
         // Checking salt
         const replicator = this.services.replicator.getActiveReplicator();
@@ -324,15 +291,9 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         return !checkResult;
     }
 
-    private _reportUnresolvedMessages(): Promise<string[]> {
-        return Promise.resolve([...this._previousErrors]);
-    }
-
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.getActiveReplicator.setHandler(this._getReplicator.bind(this));
-        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+        services.replicator.onReplicatorInitialised.addHandler(this._onReplicatorInitialised.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
-        services.databaseEvents.onResetDatabase.addHandler(this._everyOnResetDatabase.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.replication.parseSynchroniseResult.setHandler(this._parseReplicationResult.bind(this));
         services.appLifecycle.onSuspending.addHandler(this._everyBeforeSuspendProcess.bind(this));
@@ -342,6 +303,5 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         services.replication.replicateByEvent.setHandler(this._replicateByEvent.bind(this));
         services.remote.replicateAllToRemote.setHandler(this._replicateAllToServer.bind(this));
         services.remote.replicateAllFromRemote.setHandler(this._replicateAllFromServer.bind(this));
-        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
     }
 }

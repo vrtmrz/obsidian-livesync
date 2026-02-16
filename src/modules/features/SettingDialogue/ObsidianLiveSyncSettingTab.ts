@@ -424,8 +424,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     //@ts-ignore
     manifestVersion: string = MANIFEST_VERSION || "-";
-    //@ts-ignore
-    updateInformation: string = UPDATE_INFO || "";
 
     lastVersion = ~~(versionNumberString2Number(this.manifestVersion) / 1000);
 

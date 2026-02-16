@@ -3,6 +3,20 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-4
+
+16th February, 2026
+
+I have been working on it little by little in my spare time. Sorry for the delayed response for issues! ! However, thanks for your patience, we seems the `revert to 0.25.43` is not necessary, and I will keep going with this version.
+
+### Refactored
+
+- No longer `DatabaseService` is an injectable service. It is now actually a service which has its own handlers. No dynamic binding for necessary functions.
+- Now the following properties of `ObsidianLiveSyncPlugin` belong to each service:
+    - `replicator` : `services.replicator` (still we can access `ObsidianLiveSyncPlugin.replicator` for the active replicator)
+- A Handy class `UnresolvedErrorManager` has been added, which is responsible for managing unresolved errors and their handlers (we will see `unresolved errors` on a red-background-banner in the editor when they occur).
+    - This manager can be used to handle unresolved errors in a unified way, and it can also be used to display notifications or something when unresolved errors occur.
+
 ## 0.25.43-patched-3
 
 16th February, 2026
@@ -10,7 +24,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Refactored
 
 - Now following properties of `ObsidianLiveSyncPlugin` belong to each service:
-    - property : service
+    - property : service (still we can access these properties from `ObsidianLiveSyncPlugin` for better usability, but probably we should access these from services to clarify the dependencies)
     - `localDatabase` : `services.database`
     - `managers` : `services.database`
     - `simpleStore` : `services.keyValueDB`
@@ -22,9 +36,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Add `logUtils` for unifying logging method injection and formatting. This utility is able to accept the API service for log writing.
 - `ModuleKeyValueDB` has been removed, and its functionality is now implemented in the `keyValueDB` service.
 - `ModulePouchDB` and `ModuleLocalDatabaseObsidian` have been removed, and their functionality is now implemented in the `database` service.
-  - Please be aware that you have overridden createPouchDBInstance or something by dynamic binding; you should now override the createPouchDBInstance in the database service instead of using the module.
-  - You can refer to the `DirectFileManipulatorV2` for an example of how to override the createPouchDBInstance function in the database service.
-
+    - Please be aware that you have overridden createPouchDBInstance or something by dynamic binding; you should now override the createPouchDBInstance in the database service instead of using the module.
+    - You can refer to the `DirectFileManipulatorV2` for an example of how to override the createPouchDBInstance function in the database service.
 
 ## 0.25.43-patched-2
 

@@ -133,9 +133,9 @@ Please enable them from the settings screen after setup is complete.`,
         await this.core.replicator.tryCreateRemoteDatabase(this.settings);
     }
 
-    private async _resetLocalDatabase(): Promise<boolean> {
+    private _onResetLocalDatabase(): Promise<boolean> {
         this.core.storageAccess.clearTouched();
-        return await this.localDatabase.resetDatabase();
+        return Promise.resolve(true);
     }
 
     async suspendAllSync() {
@@ -305,7 +305,7 @@ Are you sure you wish to proceed?`;
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
-        services.database.resetDatabase.setHandler(this._resetLocalDatabase.bind(this));
+        services.database.onDatabaseReset.addHandler(this._onResetLocalDatabase.bind(this));
         services.remote.tryResetDatabase.setHandler(this._tryResetRemoteDatabase.bind(this));
         services.remote.tryCreateDatabase.setHandler(this._tryCreateRemoteDatabase.bind(this));
         services.setting.suspendAllSync.addHandler(this._allSuspendAllSync.bind(this));

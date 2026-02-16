@@ -33,7 +33,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const conflict = new ObsidianConflictService(context);
         const fileProcessing = new ObsidianFileProcessingService(context);
         const replication = new ObsidianReplicationService(context);
-        const replicator = new ObsidianReplicatorService(context);
+
         const remote = new ObsidianRemoteService(context);
         const setting = new ObsidianSettingService(context);
         const tweakValue = new ObsidianTweakValueService(context);
@@ -56,6 +56,11 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             vault: vault,
         });
         const config = new ObsidianConfigService(context, vault);
+        const replicator = new ObsidianReplicatorService(context, {
+            settingService: setting,
+            appLifecycleService: appLifecycle,
+            databaseEventService: databaseEvents,
+        });
         const ui = new ObsidianUIService(context, {
             appLifecycle,
             config,

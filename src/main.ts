@@ -7,10 +7,7 @@ import {
 } from "./lib/src/common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
 import { type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
-import {
-    LiveSyncAbstractReplicator,
-    type LiveSyncReplicatorEnv,
-} from "./lib/src/replication/LiveSyncAbstractReplicator.js";
+import { type LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
@@ -202,8 +199,10 @@ export default class ObsidianLiveSyncPlugin
         return this.services.keyValueDB.simpleStore as SimpleStore<CheckPointInfo>;
     }
 
-    // initialised at ModuleReplicator
-    replicator!: LiveSyncAbstractReplicator;
+    get replicator() {
+        return this.services.replicator.getActiveReplicator()!;
+    }
+
     // initialised at ModuleFileAccessObsidian
     storageAccess!: StorageAccess;
     // initialised at ModuleDatabaseFileAccess
