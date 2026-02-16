@@ -1,17 +1,18 @@
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import type { AnyEntry, FilePathWithPrefix, LOG_LEVEL } from "@lib/common/types";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
+import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
 import type { LiveSyncCore } from "@/main";
 import { __$checkInstanceBinding } from "@lib/dev/checks";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils";
 
 export abstract class AbstractModule {
-    _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
-        if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
-            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
+    _log = createInstanceLogFunction(this.constructor.name, this.services.API);
+    get services() {
+        if (!this.core._services) {
+            throw new Error("Services are not ready yet.");
         }
-        // console.log(msg);
-        Logger(msg, level, key);
-    };
+        return this.core._services;
+    }
 
     addCommand = this.services.API.addCommand.bind(this.services.API);
     registerView = this.services.API.registerWindow.bind(this.services.API);
@@ -71,10 +72,6 @@ export abstract class AbstractModule {
             return this.testFail(`${key} failed: ${ex}`);
         }
         return this.testDone();
-    }
-
-    get services() {
-        return this.core._services;
     }
 
     isMainReady() {

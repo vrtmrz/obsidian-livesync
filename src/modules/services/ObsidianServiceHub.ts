@@ -3,9 +3,7 @@ import { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/O
 import type { ServiceInstances } from "@/lib/src/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
 import {
-    ObsidianAPIService,
     ObsidianConflictService,
-    ObsidianDatabaseService,
     ObsidianFileProcessingService,
     ObsidianReplicationService,
     ObsidianReplicatorService,
@@ -15,7 +13,10 @@ import {
     ObsidianTestService,
     ObsidianDatabaseEventService,
     ObsidianConfigService,
+    ObsidianKeyValueDBService,
 } from "./ObsidianServices";
+import { ObsidianDatabaseService } from "./ObsidianDatabaseService";
+import { ObsidianAPIService } from "./ObsidianAPIService";
 import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
 import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
@@ -30,7 +31,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const API = new ObsidianAPIService(context);
         const appLifecycle = new ObsidianAppLifecycleService(context);
         const conflict = new ObsidianConflictService(context);
-        const database = new ObsidianDatabaseService(context);
         const fileProcessing = new ObsidianFileProcessingService(context);
         const replication = new ObsidianReplicationService(context);
         const replicator = new ObsidianReplicatorService(context);
@@ -44,6 +44,16 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const databaseEvents = new ObsidianDatabaseEventService(context);
         const path = new ObsidianPathService(context, {
             settingService: setting,
+        });
+        const database = new ObsidianDatabaseService(context, {
+            path: path,
+            vault: vault,
+            setting: setting,
+        });
+        const keyValueDB = new ObsidianKeyValueDBService(context, {
+            appLifecycle: appLifecycle,
+            databaseEvents: databaseEvents,
+            vault: vault,
         });
         const config = new ObsidianConfigService(context, vault);
         const ui = new ObsidianUIService(context, {
@@ -70,6 +80,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             path: path,
             API: API,
             config: config,
+            keyValueDB: keyValueDB,
         } satisfies Required<ServiceInstances<ObsidianServiceContext>>;
 
         super(context, serviceInstancesToInit);

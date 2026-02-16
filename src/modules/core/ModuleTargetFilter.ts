@@ -146,10 +146,5 @@ export class ModuleTargetFilter extends AbstractModule {
         services.vault.isTargetFile.addHandler(this._isTargetFileByLocalDB.bind(this));
         services.vault.isTargetFile.addHandler(this._isTargetFileFinal.bind(this));
         services.setting.onSettingRealised.addHandler(this.refreshSettings.bind(this));
-        // services.vault.isTargetFile.use((ctx, next) => {
-        //     const [fileName, keepFileCheckList] = ctx.args;
-        //     const file = getS
-
-        // });
     }
 }

@@ -39,19 +39,22 @@ import {
     isValidFilenameInDarwin,
     isValidFilenameInWidows,
 } from "@/lib/src/string_and_binary/path.ts";
+import { MARK_LOG_SEPARATOR } from "@/lib/src/services/lib/logUtils.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
 // DI the log again.
 const recentLogEntries = reactiveSource<LogEntry[]>([]);
-setGlobalLogFunction((message: any, level?: number, key?: string) => {
+const globalLogFunction = (message: any, level?: number, key?: string) => {
     const messageX =
         message instanceof Error
             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
             : message;
     const entry = { message: messageX, level, key } as LogEntry;
     recentLogEntries.value = [...recentLogEntries.value, entry];
-});
+};
+
+setGlobalLogFunction(globalLogFunction);
 let recentLogs = [] as string[];
 
 function addLog(log: string) {
@@ -304,9 +307,9 @@ export class ModuleLog extends AbstractObsidianModule {
             // const recent = logMessages.value;
             const newMsg = message;
             let newLog = this.settings?.showOnlyIconsOnEditor ? "" : status;
-            const moduleTagEnd = newLog.indexOf(`]\u{200A}`);
+            const moduleTagEnd = newLog.indexOf(`]${MARK_LOG_SEPARATOR}`);
             if (moduleTagEnd != -1) {
-                newLog = newLog.substring(moduleTagEnd + 2);
+                newLog = newLog.substring(moduleTagEnd + MARK_LOG_SEPARATOR.length + 1);
             }
 
             this.statusBar?.setText(newMsg.split("\n")[0]);
@@ -493,6 +496,7 @@ export class ModuleLog extends AbstractObsidianModule {
         }
     }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.API.addLog.setHandler(globalLogFunction);
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));

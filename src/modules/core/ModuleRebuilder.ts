@@ -224,7 +224,10 @@ Are you sure you wish to proceed?`;
         await this.services.setting.realiseSetting();
         await this.resetLocalDatabase();
         await delay(1000);
-        await this.services.database.openDatabase();
+        await this.services.database.openDatabase({
+            databaseEvents: this.services.databaseEvents,
+            replicator: this.services.replicator,
+        });
         // this.core.isReady = true;
         this.services.appLifecycle.markIsReady();
         if (makeLocalChunkBeforeSync) {

@@ -3,13 +3,37 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-3
+
+16th February, 2026
+
+### Refactored
+
+- Now following properties of `ObsidianLiveSyncPlugin` belong to each service:
+    - property : service
+    - `localDatabase` : `services.database`
+    - `managers` : `services.database`
+    - `simpleStore` : `services.keyValueDB`
+    - `kvDB`: `services.keyValueDB`
+- Initialising modules, addOns, and services are now explicitly separated in the `_startUp` function of the main plug-in class.
+- LiveSyncLocalDB now depends more explicitly on specified services, not the whole `ServiceHub`.
+- New service `keyValueDB` has been added. This had been separated from the `database` service.
+- Non-trivial modules, such as `ModuleExtraSyncObsidian` (which only holds deviceAndVaultName), are simply implemented in the service.
+- Add `logUtils` for unifying logging method injection and formatting. This utility is able to accept the API service for log writing.
+- `ModuleKeyValueDB` has been removed, and its functionality is now implemented in the `keyValueDB` service.
+- `ModulePouchDB` and `ModuleLocalDatabaseObsidian` have been removed, and their functionality is now implemented in the `database` service.
+  - Please be aware that you have overridden createPouchDBInstance or something by dynamic binding; you should now override the createPouchDBInstance in the database service instead of using the module.
+  - You can refer to the `DirectFileManipulatorV2` for an example of how to override the createPouchDBInstance function in the database service.
+
+
 ## 0.25.43-patched-2
 
 14th February, 2026
 
 ### Fixed
+
 - Application LifeCycle has now started in Main, not ServiceHub.
-  - Indeed, ServiceHub cannot be known other things in main have got ready, so it is quite natural to start the lifecycle in main.
+    - Indeed, ServiceHub cannot be known other things in main have got ready, so it is quite natural to start the lifecycle in main.
 
 ## 0.25.43-patched-1
 
@@ -29,6 +53,7 @@ If this cannot be stable, I will revert to 0.24.43 and try again.
 - VaultService.isTargetFile is now using multiple checkers instead of a single function.
     - This change allows better separation of concerns and easier extension in the future.
 - Application LifeCycle has now started in ServiceHub, not ObsidianMenuModule.
+
     - It was in a QUITE unexpected place..., isn't it?
     - Instead of, we should call `await this.services.appLifecycle.onReady()` in other platforms.
     - As in the browser platform, it will be called at `DOMContentLoaded` event.

@@ -393,7 +393,13 @@ export class ModuleInitializerFile extends AbstractModule {
         ignoreSuspending: boolean = false
     ): Promise<boolean> {
         this.services.appLifecycle.resetIsReady();
-        if (!reopenDatabase || (await this.services.database.openDatabase())) {
+        if (
+            !reopenDatabase ||
+            (await this.services.database.openDatabase({
+                databaseEvents: this.services.databaseEvents,
+                replicator: this.services.replicator,
+            }))
+        ) {
             if (this.localDatabase.isReady) {
                 await this.services.vault.scanVault(showingNotice, ignoreSuspending);
             }

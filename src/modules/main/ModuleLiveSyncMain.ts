@@ -126,7 +126,10 @@ export class ModuleLiveSyncMain extends AbstractModule {
             await this.saveSettings();
         }
         localStorage.setItem(lsKey, `${VER}`);
-        await this.services.database.openDatabase();
+        await this.services.database.openDatabase({
+            databaseEvents: this.services.databaseEvents,
+            replicator: this.services.replicator,
+        });
         // this.core.$$realizeSettingSyncMode = this.core.$$realizeSettingSyncMode.bind(this);
         // this.$$parseReplicationResult = this.$$parseReplicationResult.bind(this);
         // this.$$replicate = this.$$replicate.bind(this);

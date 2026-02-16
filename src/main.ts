@@ -1,4 +1,4 @@
-import { Plugin } from "./deps";
+import { Plugin, type App, type PluginManifest } from "./deps";
 import {
     type EntryDoc,
     type ObsidianLiveSyncSettings,
@@ -6,12 +6,11 @@ import {
     type HasSettings,
 } from "./lib/src/common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
-import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
+import { type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
 import {
     LiveSyncAbstractReplicator,
     type LiveSyncReplicatorEnv,
 } from "./lib/src/replication/LiveSyncAbstractReplicator.js";
-import { type KeyValueDatabase } from "./lib/src/interfaces/KeyValueDatabase.ts";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
@@ -48,29 +47,23 @@ import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidian
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
 import { ModuleInitializerFile } from "./modules/essential/ModuleInitializerFile.ts";
-import { ModuleKeyValueDB } from "./modules/essential/ModuleKeyValueDB.ts";
-import { ModulePouchDB } from "./modules/core/ModulePouchDB.ts";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator.ts";
 import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.ts";
 import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.ts";
 import { ModuleTargetFilter } from "./modules/core/ModuleTargetFilter.ts";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.ts";
 import { ModuleRemoteGovernor } from "./modules/coreFeatures/ModuleRemoteGovernor.ts";
-import { ModuleLocalDatabaseObsidian } from "./modules/core/ModuleLocalDatabaseObsidian.ts";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.ts";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.ts";
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
 import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
-import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
-import type { LiveSyncManagers } from "./lib/src/managers/LiveSyncManagers.ts";
 import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import type { ServiceContext } from "./lib/src/services/base/ServiceBase.ts";
-// import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -84,16 +77,36 @@ export default class ObsidianLiveSyncPlugin
     /**
      * The service hub for managing all services.
      */
-    _services: InjectableServiceHub<ServiceContext> = new ObsidianServiceHub(this);
+    _services: InjectableServiceHub<ServiceContext> | undefined = undefined;
+
     get services() {
+        if (!this._services) {
+            throw new Error("Services not initialised yet");
+        }
         return this._services;
     }
+
+    private initialiseServices() {
+        this._services = new ObsidianServiceHub(this);
+    }
+
+    // Keep order to display the dialogue in order.
+    addOns = [] as LiveSyncCommands[];
     /**
      * Bind functions to the service hub (for migration purpose).
      */
     // bindFunctions = (this.serviceHub as ObsidianServiceHub).bindFunctions.bind(this.serviceHub);
 
-    // --> Module System
+    private _registerAddOn(addOn: LiveSyncCommands) {
+        this.addOns.push(addOn);
+    }
+    private registerAddOns() {
+        this._registerAddOn(new ConfigSync(this));
+        this._registerAddOn(new HiddenFileSync(this));
+        this._registerAddOn(new LocalDatabaseMaintenance(this));
+        this._registerAddOn(new P2PReplicator(this));
+    }
+
     getAddOn<T extends LiveSyncCommands>(cls: string) {
         for (const addon of this.addOns) {
             if (addon.constructor.name == cls) return addon as T;
@@ -101,56 +114,8 @@ export default class ObsidianLiveSyncPlugin
         return undefined;
     }
 
-    // Keep order to display the dialogue in order.
-    addOns = [
-        new ConfigSync(this),
-        new HiddenFileSync(this),
-        new LocalDatabaseMaintenance(this),
-        new P2PReplicator(this),
-    ] as LiveSyncCommands[];
-
-    modules = [
-        new ModuleLiveSyncMain(this),
-        new ModuleExtraSyncObsidian(this, this),
-        // Only on Obsidian
-        new ModuleDatabaseFileAccess(this),
-        // Common
-        new ModulePouchDB(this),
-        new ModuleConflictChecker(this),
-        new ModuleLocalDatabaseObsidian(this),
-        new ModuleReplicatorMinIO(this),
-        new ModuleReplicatorCouchDB(this),
-        new ModuleReplicator(this),
-        new ModuleFileHandler(this),
-        new ModuleConflictResolver(this),
-        new ModuleRemoteGovernor(this),
-        new ModuleTargetFilter(this),
-        new ModulePeriodicProcess(this),
-        // Essential Modules
-        new ModuleKeyValueDB(this),
-        new ModuleInitializerFile(this),
-        new ModuleObsidianAPI(this, this),
-        new ModuleObsidianEvents(this, this),
-        new ModuleFileAccessObsidian(this, this),
-        new ModuleObsidianSettings(this),
-        new ModuleResolvingMismatchedTweaks(this),
-        new ModuleObsidianSettingsAsMarkdown(this),
-        new ModuleObsidianSettingDialogue(this, this),
-        new ModuleLog(this, this),
-        new ModuleObsidianMenu(this),
-        new ModuleRebuilder(this),
-        new ModuleSetupObsidian(this),
-        new ModuleObsidianDocumentHistory(this, this),
-        new ModuleMigration(this),
-        new ModuleRedFlag(this),
-        new ModuleInteractiveConflictResolver(this, this),
-        new ModuleObsidianGlobalHistory(this, this),
-        new ModuleCheckRemoteSize(this),
-        // Test and Dev Modules
-        new ModuleDev(this, this),
-        new ModuleReplicateTest(this, this),
-        new ModuleIntegratedTest(this, this),
-        new SetupManager(this),
+    private modules = [
+        // Move to registerModules
     ] as (IObsidianModule | AbstractModule)[];
 
     getModule<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T {
@@ -159,26 +124,97 @@ export default class ObsidianLiveSyncPlugin
         }
         throw new Error(`Module ${constructor} not found or not loaded.`);
     }
+    getModulesByType<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T[] {
+        const matchedModules: T[] = [];
+        for (const module of this.modules) {
+            if (module instanceof constructor) matchedModules.push(module);
+        }
+        return matchedModules;
+    }
 
-    settings!: ObsidianLiveSyncSettings;
-    localDatabase!: LiveSyncLocalDB;
-    managers!: LiveSyncManagers;
-    simpleStore!: SimpleStore<CheckPointInfo>;
-    replicator!: LiveSyncAbstractReplicator;
+    private _registerModule(module: IObsidianModule) {
+        this.modules.push(module);
+    }
+    private registerModules() {
+        this._registerModule(new ModuleLiveSyncMain(this));
+        // Only on Obsidian
+        this._registerModule(new ModuleDatabaseFileAccess(this));
+        // Common
+        this._registerModule(new ModuleConflictChecker(this));
+        this._registerModule(new ModuleReplicatorMinIO(this));
+        this._registerModule(new ModuleReplicatorCouchDB(this));
+        this._registerModule(new ModuleReplicator(this));
+        this._registerModule(new ModuleFileHandler(this));
+        this._registerModule(new ModuleConflictResolver(this));
+        this._registerModule(new ModuleRemoteGovernor(this));
+        this._registerModule(new ModuleTargetFilter(this));
+        this._registerModule(new ModulePeriodicProcess(this));
+        // Essential Modules
+        this._registerModule(new ModuleInitializerFile(this));
+        this._registerModule(new ModuleObsidianAPI(this, this));
+        this._registerModule(new ModuleObsidianEvents(this, this));
+        this._registerModule(new ModuleFileAccessObsidian(this, this));
+        this._registerModule(new ModuleObsidianSettings(this));
+        this._registerModule(new ModuleResolvingMismatchedTweaks(this));
+        this._registerModule(new ModuleObsidianSettingsAsMarkdown(this));
+        this._registerModule(new ModuleObsidianSettingDialogue(this, this));
+        this._registerModule(new ModuleLog(this, this));
+        this._registerModule(new ModuleObsidianMenu(this));
+        this._registerModule(new ModuleRebuilder(this));
+        this._registerModule(new ModuleSetupObsidian(this));
+        this._registerModule(new ModuleObsidianDocumentHistory(this, this));
+        this._registerModule(new ModuleMigration(this));
+        this._registerModule(new ModuleRedFlag(this));
+        this._registerModule(new ModuleInteractiveConflictResolver(this, this));
+        this._registerModule(new ModuleObsidianGlobalHistory(this, this));
+        this._registerModule(new ModuleCheckRemoteSize(this));
+        // Test and Dev Modules
+        this._registerModule(new ModuleDev(this, this));
+        this._registerModule(new ModuleReplicateTest(this, this));
+        this._registerModule(new ModuleIntegratedTest(this, this));
+        this._registerModule(new SetupManager(this));
+    }
+
     get confirm(): Confirm {
         return this.services.UI.confirm;
     }
-    storageAccess!: StorageAccess;
-    databaseFileAccess!: DatabaseFileAccess;
-    fileHandler!: ModuleFileHandler;
-    rebuilder!: Rebuilder;
 
-    kvDB!: KeyValueDatabase;
+    // This property will be changed from outside often, so will be set later.
+    settings!: ObsidianLiveSyncSettings;
+
+    getSettings(): ObsidianLiveSyncSettings {
+        return this.settings;
+    }
+
+    get localDatabase() {
+        return this.services.database.localDatabase;
+    }
+
+    get managers() {
+        return this.services.database.managers;
+    }
+
     getDatabase(): PouchDB.Database<EntryDoc> {
         return this.localDatabase.localDatabase;
     }
-    getSettings(): ObsidianLiveSyncSettings {
-        return this.settings;
+
+    get simpleStore() {
+        return this.services.keyValueDB.simpleStore as SimpleStore<CheckPointInfo>;
+    }
+
+    // initialised at ModuleReplicator
+    replicator!: LiveSyncAbstractReplicator;
+    // initialised at ModuleFileAccessObsidian
+    storageAccess!: StorageAccess;
+    // initialised at ModuleDatabaseFileAccess
+    databaseFileAccess!: DatabaseFileAccess;
+    // initialised at ModuleFileHandler
+    fileHandler!: ModuleFileHandler;
+    // initialised at ModuleRebuilder
+    rebuilder!: Rebuilder;
+
+    get kvDB() {
+        return this.services.keyValueDB.kvDB;
     }
 
     requestCount = reactiveSource(0);
@@ -204,6 +240,13 @@ export default class ObsidianLiveSyncPlugin
         lastSyncPushSeq: 0,
         syncStatus: "CLOSED" as DatabaseConnectingStatus,
     });
+
+    constructor(app: App, manifest: PluginManifest) {
+        super(app, manifest);
+        this.initialiseServices();
+        this.registerModules();
+        this.registerAddOns();
+    }
 
     private async _startUp() {
         await this.services.appLifecycle.onLoad();

@@ -1,4 +1,4 @@
-import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -12,6 +12,7 @@ import type ObsidianLiveSyncPlugin from "../main.ts";
 import { MARK_DONE } from "../modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "../main.ts";
 import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
+import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
@@ -43,6 +44,7 @@ export abstract class LiveSyncCommands {
     constructor(plugin: ObsidianLiveSyncPlugin) {
         this.plugin = plugin;
         this.onBindFunction(plugin, plugin.services);
+        this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
         __$checkInstanceBinding(this);
     }
     abstract onunload(): void;
@@ -58,13 +60,7 @@ export abstract class LiveSyncCommands {
         return this.services.database.isDatabaseReady();
     }
 
-    _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
-        if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
-            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
-        }
-        // console.log(msg);
-        Logger(msg, level, key);
-    };
+    _log: ReturnType<typeof createInstanceLogFunction>;
 
     _verbose = (msg: any, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);

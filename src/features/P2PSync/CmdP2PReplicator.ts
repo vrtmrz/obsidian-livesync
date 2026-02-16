@@ -107,7 +107,7 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     }
 
     init() {
-        this._simpleStore = this.services.database.openSimpleStore("p2p-sync");
+        this._simpleStore = this.services.keyValueDB.openSimpleStore("p2p-sync");
         return Promise.resolve(this);
     }
 
