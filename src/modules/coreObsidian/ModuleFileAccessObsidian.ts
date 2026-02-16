@@ -108,7 +108,22 @@ export class ModuleFileAccessObsidian extends AbstractObsidianModule implements 
                 // For safety, check existence
                 return await this.vaultAccess.adapterExists(path);
             } else {
-                return (await this.vaultAccess.vaultCreate(path, data, opt)) instanceof TFile;
+                // The same stale-index issue described above can also happen for .md files during
+                // concurrent initialisation (UPDATE STORAGE runs up to 10 ops in parallel).
+                // getAbstractFileByPath returns null because Obsidian's in-memory index hasn't
+                // caught up yet, but the file already exists on disk — causing vault.create() to
+                // throw "File already exists."
+                // Fall back to adapterWrite (same approach used for non-md files above) so the
+                // file is written correctly without an error.
+                try {
+                    return (await this.vaultAccess.vaultCreate(path, data, opt)) instanceof TFile;
+                } catch (ex) {
+                    if (ex instanceof Error && ex.message === "File already exists.") {
+                        await this.vaultAccess.adapterWrite(path, data, opt);
+                        return await this.vaultAccess.adapterExists(path);
+                    }
+                    throw ex;
+                }
             }
         } else {
             this._log(`Could not write file (Possibly already exists as a folder): ${path}`, LOG_LEVEL_VERBOSE);
