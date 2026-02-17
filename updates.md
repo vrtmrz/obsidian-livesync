@@ -3,6 +3,38 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-5
+
+17th February, 2026
+
+Yes, we mostly have got refactored!
+
+### Refactored
+
+- Following properties of `ObsidianLiveSyncPlugin` are now initialised more explicitly:
+
+    - property : what is responsible
+    - `storageAccess` : `ServiceFileAccessObsidian`
+    - `databaseFileAccess` : `ServiceDatabaseFileAccess`
+    - `fileHandler` : `ServiceFileHandler`
+    - `rebuilder` : `ServiceRebuilder`
+    - Not so long from now, ServiceFileAccessObsidian might be abstracted to a more general FileAccessService, and make more testable and maintainable.
+    - These properties are initialised in `initialiseServiceModules` on `ObsidianLiveSyncPlugin`.
+    - They are `ServiceModule`s.
+        - Which means they do not use dynamic binding themselves, but they use bound services.
+    - ServiceModules are in src/lib/src/serviceModules for common implementations, and src/serviceModules for Obsidian-specific implementations.
+    - Hence, now all ambiguous properties of `ObsidianLiveSyncPlugin` are initialised explicitly. We can proceed to testing.
+        - Well, I will release v0.25.44 after testing this.
+
+- Conflict service is now responsible for `resolveAllConflictedFilesByNewerOnes` function, which has been in the rebuilder.
+- New functions `updateSettings`, and `applyPartial` have been added to the setting service. We should use these functions instead of directly writing the settings on `ObsidianLiveSyncPlugin.setting`.
+- Some interfaces for services have been moved to src/lib/src/interfaces.
+- `RemoteService.tryResetDatabase` and `tryCreateDatabase` are now moved to the replicator service.
+    - You know that these functions are surely performed by the replicator.
+    - Probably, most of the functions in `RemoteService` should be moved to the replicator service, but for now, these two functions are moved as they are the most related ones, to rewrite the rebuilder service.
+- Common functions are gradually moved to the common library.
+- Now, binding functions on modules have been delayed until the services and service modules are initialised, to avoid fragile behaviour.
+
 ## 0.25.43-patched-4
 
 16th February, 2026

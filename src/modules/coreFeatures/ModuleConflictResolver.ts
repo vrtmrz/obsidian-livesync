@@ -211,10 +211,30 @@ export class ModuleConflictResolver extends AbstractModule {
         }
         return true;
     }
+    private async _resolveAllConflictedFilesByNewerOnes() {
+        this._log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
+
+        const files = this.core.storageAccess.getFileNames();
+
+        let i = 0;
+        for (const file of files) {
+            if (i++ % 10)
+                this._log(
+                    `Check and Processing ${i} / ${files.length}`,
+                    LOG_LEVEL_NOTICE,
+                    "resolveAllConflictedFilesByNewerOnes"
+                );
+            await this.services.conflict.resolveByNewest(file);
+        }
+        this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    }
 
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.conflict.resolveByDeletingRevision.setHandler(this._resolveConflictByDeletingRev.bind(this));
         services.conflict.resolve.setHandler(this._resolveConflict.bind(this));
         services.conflict.resolveByNewest.setHandler(this._anyResolveConflictByNewest.bind(this));
+        services.conflict.resolveAllConflictedFilesByNewerOnes.setHandler(
+            this._resolveAllConflictedFilesByNewerOnes.bind(this)
+        );
     }
 }

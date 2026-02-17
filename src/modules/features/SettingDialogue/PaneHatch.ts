@@ -361,7 +361,7 @@ ${stringifyYaml({
                     .setButtonText("Resolve All")
                     .setCta()
                     .onClick(async () => {
-                        await this.plugin.rebuilder.resolveAllConflictedFilesByNewerOnes();
+                        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
                     })
             );
 

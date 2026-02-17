@@ -5,7 +5,7 @@ import type { FilePath, UXFileInfoStub } from "../../../lib/src/common/types.ts"
 import { createBinaryBlob, isDocContentSame } from "../../../lib/src/common/utils.ts";
 import type { InternalFileInfo } from "../../../common/types.ts";
 import { markChangesAreSame } from "../../../common/utils.ts";
-import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
+import type { IStorageAccessManager } from "@lib/interfaces/StorageAccess.ts";
 import type { LiveSyncCore } from "@/main.ts";
 function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<ArrayBuffer>): ArrayBuffer {
     if (arr instanceof Uint8Array) {
@@ -16,44 +16,64 @@ function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<Arr
     }
     return arr;
 }
+// TODO: add abstraction for the file access (as wrapping TFile or something similar)
+export abstract class FileAccessBase<TNativeFile> {
+    storageAccessManager: IStorageAccessManager;
+    constructor(storageAccessManager: IStorageAccessManager) {
+        this.storageAccessManager = storageAccessManager;
+    }
+    abstract getPath(file: TNativeFile | string): FilePath;
+}
 
-export class SerializedFileAccess {
+export class ObsidianFileAccess extends FileAccessBase<TFile> {
     app: App;
     plugin: LiveSyncCore;
-    storageAccess: StorageAccess;
-    constructor(app: App, plugin: LiveSyncCore, storageAccess: StorageAccess) {
+
+    getPath(file: string | TFile): FilePath {
+        return (typeof file === "string" ? file : file.path) as FilePath;
+    }
+
+    constructor(app: App, plugin: LiveSyncCore, storageAccessManager: IStorageAccessManager) {
+        super(storageAccessManager);
         this.app = app;
         this.plugin = plugin;
-        this.storageAccess = storageAccess;
     }
 
     async tryAdapterStat(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, async () => {
+        return await this.storageAccessManager.processReadFile(path as FilePath, async () => {
             if (!(await this.app.vault.adapter.exists(path))) return null;
             return this.app.vault.adapter.stat(path);
         });
     }
     async adapterStat(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.adapter.stat(path));
+        return await this.storageAccessManager.processReadFile(path as FilePath, () =>
+            this.app.vault.adapter.stat(path)
+        );
     }
     async adapterExists(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.adapter.exists(path));
+        return await this.storageAccessManager.processReadFile(path as FilePath, () =>
+            this.app.vault.adapter.exists(path)
+        );
     }
     async adapterRemove(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.adapter.remove(path));
+        return await this.storageAccessManager.processWriteFile(path as FilePath, () =>
+            this.app.vault.adapter.remove(path)
+        );
     }
 
     async adapterRead(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.adapter.read(path));
+        return await this.storageAccessManager.processReadFile(path as FilePath, () =>
+            this.app.vault.adapter.read(path)
+        );
     }
     async adapterReadBinary(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
-        return await this.storageAccess.processReadFile(path as FilePath, () =>
+        return await this.storageAccessManager.processReadFile(path as FilePath, () =>
             this.app.vault.adapter.readBinary(path)
         );
     }
@@ -61,9 +81,11 @@ export class SerializedFileAccess {
     async adapterReadAuto(file: TFile | string) {
         const path = file instanceof TFile ? file.path : file;
         if (isPlainText(path)) {
-            return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.adapter.read(path));
+            return await this.storageAccessManager.processReadFile(path as FilePath, () =>
+                this.app.vault.adapter.read(path)
+            );
         }
-        return await this.storageAccess.processReadFile(path as FilePath, () =>
+        return await this.storageAccessManager.processReadFile(path as FilePath, () =>
             this.app.vault.adapter.readBinary(path)
         );
     }
@@ -75,39 +97,47 @@ export class SerializedFileAccess {
     ) {
         const path = file instanceof TFile ? file.path : file;
         if (typeof data === "string") {
-            return await this.storageAccess.processWriteFile(path as FilePath, () =>
+            return await this.storageAccessManager.processWriteFile(path as FilePath, () =>
                 this.app.vault.adapter.write(path, data, options)
             );
         } else {
-            return await this.storageAccess.processWriteFile(path as FilePath, () =>
+            return await this.storageAccessManager.processWriteFile(path as FilePath, () =>
                 this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), options)
             );
         }
     }
 
+    adapterList(basePath: string): Promise<{ files: string[]; folders: string[] }> {
+        return Promise.resolve(this.app.vault.adapter.list(basePath));
+    }
+
     async vaultCacheRead(file: TFile) {
-        return await this.storageAccess.processReadFile(file.path as FilePath, () => this.app.vault.cachedRead(file));
+        return await this.storageAccessManager.processReadFile(file.path as FilePath, () =>
+            this.app.vault.cachedRead(file)
+        );
     }
 
     async vaultRead(file: TFile) {
-        return await this.storageAccess.processReadFile(file.path as FilePath, () => this.app.vault.read(file));
+        return await this.storageAccessManager.processReadFile(file.path as FilePath, () => this.app.vault.read(file));
     }
 
     async vaultReadBinary(file: TFile) {
-        return await this.storageAccess.processReadFile(file.path as FilePath, () => this.app.vault.readBinary(file));
+        return await this.storageAccessManager.processReadFile(file.path as FilePath, () =>
+            this.app.vault.readBinary(file)
+        );
     }
 
     async vaultReadAuto(file: TFile) {
         const path = file.path;
         if (isPlainText(path)) {
-            return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.read(file));
+            return await this.storageAccessManager.processReadFile(path as FilePath, () => this.app.vault.read(file));
         }
-        return await this.storageAccess.processReadFile(path as FilePath, () => this.app.vault.readBinary(file));
+        return await this.storageAccessManager.processReadFile(path as FilePath, () => this.app.vault.readBinary(file));
     }
 
     async vaultModify(file: TFile, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: DataWriteOptions) {
         if (typeof data === "string") {
-            return await this.storageAccess.processWriteFile(file.path as FilePath, async () => {
+            return await this.storageAccessManager.processWriteFile(file.path as FilePath, async () => {
                 const oldData = await this.app.vault.read(file);
                 if (data === oldData) {
                     if (options && options.mtime) markChangesAreSame(file.path, file.stat.mtime, options.mtime);
@@ -117,7 +147,7 @@ export class SerializedFileAccess {
                 return true;
             });
         } else {
-            return await this.storageAccess.processWriteFile(file.path as FilePath, async () => {
+            return await this.storageAccessManager.processWriteFile(file.path as FilePath, async () => {
                 const oldData = await this.app.vault.readBinary(file);
                 if (await isDocContentSame(createBinaryBlob(oldData), createBinaryBlob(data))) {
                     if (options && options.mtime) markChangesAreSame(file.path, file.stat.mtime, options.mtime);
@@ -134,11 +164,11 @@ export class SerializedFileAccess {
         options?: DataWriteOptions
     ): Promise<TFile> {
         if (typeof data === "string") {
-            return await this.storageAccess.processWriteFile(path as FilePath, () =>
+            return await this.storageAccessManager.processWriteFile(path as FilePath, () =>
                 this.app.vault.create(path, data, options)
             );
         } else {
-            return await this.storageAccess.processWriteFile(path as FilePath, () =>
+            return await this.storageAccessManager.processWriteFile(path as FilePath, () =>
                 this.app.vault.createBinary(path, toArrayBuffer(data), options)
             );
         }
@@ -147,18 +177,21 @@ export class SerializedFileAccess {
     trigger(name: string, ...data: any[]) {
         return this.app.vault.trigger(name, ...data);
     }
+    async reconcileInternalFile(path: string) {
+        await (this.app.vault.adapter as any)?.reconcileInternalFile(path);
+    }
 
     async adapterAppend(normalizedPath: string, data: string, options?: DataWriteOptions) {
         return await this.app.vault.adapter.append(normalizedPath, data, options);
     }
 
     async delete(file: TFile | TFolder, force = false) {
-        return await this.storageAccess.processWriteFile(file.path as FilePath, () =>
+        return await this.storageAccessManager.processWriteFile(file.path as FilePath, () =>
             this.app.vault.delete(file, force)
         );
     }
     async trash(file: TFile | TFolder, force = false) {
-        return await this.storageAccess.processWriteFile(file.path as FilePath, () =>
+        return await this.storageAccessManager.processWriteFile(file.path as FilePath, () =>
             this.app.vault.trash(file, force)
         );
     }

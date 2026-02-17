@@ -1,7 +1,6 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
 import type { LiveSyncCore } from "@/main";
-import { __$checkInstanceBinding } from "@lib/dev/checks";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils";
 
@@ -41,9 +40,7 @@ export abstract class AbstractModule {
         // Override if needed.
     }
     constructor(public core: LiveSyncCore) {
-        this.onBindFunction(core, core.services);
         Logger(`[${this.constructor.name}] Loaded`, LOG_LEVEL_VERBOSE);
-        __$checkInstanceBinding(this);
     }
     saveSettings = this.core.saveSettings.bind(this.core);
 

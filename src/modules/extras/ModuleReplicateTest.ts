@@ -511,10 +511,11 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
         return this.__assertStorageContent((this.testRootPath + "task.md") as FilePath, mergedDoc, false, true);
     }
 
+    // No longer tested
     async checkConflictResolution() {
         this._log("Before testing conflicted files, resolve all once", LOG_LEVEL_NOTICE);
-        await this.core.rebuilder.resolveAllConflictedFilesByNewerOnes();
-        await this.core.rebuilder.resolveAllConflictedFilesByNewerOnes();
+        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
+        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
         await this.services.replication.replicate();
         await delay(1000);
         if (!(await this.testConflictAutomatic())) {

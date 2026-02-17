@@ -23,7 +23,7 @@ import {
     type UXFileInfo,
     type UXFileInfoStub,
 } from "../lib/src/common/types.ts";
-import { ICHeader, ICXHeader } from "./types.ts";
+export { ICHeader, ICXHeader } from "./types.ts";
 import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
 import { fireAndForget } from "../lib/src/common/utils.ts";
@@ -68,21 +68,13 @@ export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
 
-import { isInternalFile } from "@lib/common/typeUtils.ts";
-export function getPathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return file as FilePathWithPrefix;
-    return file.path;
-}
-export function getStoragePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return stripAllPrefixes(file as FilePathWithPrefix);
-    return stripAllPrefixes(file.path);
-}
-export function getDatabasePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string" && file.startsWith(ICXHeader)) return file as FilePathWithPrefix;
-    const prefix = isInternalFile(file) ? ICHeader : "";
-    if (typeof file == "string") return (prefix + stripAllPrefixes(file as FilePathWithPrefix)) as FilePathWithPrefix;
-    return (prefix + stripAllPrefixes(file.path)) as FilePathWithPrefix;
-}
+import {
+    isInternalFile,
+    getPathFromUXFileInfo,
+    getStoragePathFromUXFileInfo,
+    getDatabasePathFromUXFileInfo,
+} from "@lib/common/typeUtils.ts";
+export { isInternalFile, getPathFromUXFileInfo, getStoragePathFromUXFileInfo, getDatabasePathFromUXFileInfo };
 
 const memos: { [key: string]: any } = {};
 export function memoObject<T>(key: string, obj: T): T {
@@ -263,10 +255,8 @@ export function requestToCouchDBWithCredentials(
     return _requestToCouchDB(baseUri, credentials, origin, uri, body, method, customHeaders);
 }
 
-export const BASE_IS_NEW = Symbol("base");
-export const TARGET_IS_NEW = Symbol("target");
-export const EVEN = Symbol("even");
-
+import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
+export { BASE_IS_NEW, EVEN, TARGET_IS_NEW };
 // Why 2000? : ZIP FILE Does not have enough resolution.
 const resolution = 2000;
 export function compareMTime(

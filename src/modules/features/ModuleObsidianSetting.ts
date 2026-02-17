@@ -320,6 +320,25 @@ export class ModuleObsidianSettings extends AbstractModule {
     private _currentSettings(): ObsidianLiveSyncSettings {
         return this.settings;
     }
+    private _updateSettings(updateFn: (settings: ObsidianLiveSyncSettings) => ObsidianLiveSyncSettings): Promise<void> {
+        try {
+            const updated = updateFn(this.settings);
+            this.settings = updated;
+        } catch (ex) {
+            this._log("Error in update function: " + ex, LOG_LEVEL_URGENT);
+            return Promise.reject(ex);
+        }
+        return Promise.resolve();
+    }
+    private _applyPartial(partial: Partial<ObsidianLiveSyncSettings>): Promise<void> {
+        try {
+            this.settings = { ...this.settings, ...partial };
+        } catch (ex) {
+            this._log("Error in applying partial settings: " + ex, LOG_LEVEL_URGENT);
+            return Promise.reject(ex);
+        }
+        return Promise.resolve();
+    }
 
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
@@ -329,6 +348,8 @@ export class ModuleObsidianSettings extends AbstractModule {
         services.setting.adjustSettings.setHandler(this._adjustSettings.bind(this));
         services.setting.loadSettings.setHandler(this._loadSettings.bind(this));
         services.setting.currentSettings.setHandler(this._currentSettings.bind(this));
+        services.setting.updateSettings.setHandler(this._updateSettings.bind(this));
+        services.setting.applyPartial.setHandler(this._applyPartial.bind(this));
         services.setting.saveDeviceAndVaultName.setHandler(this._saveDeviceAndVaultName.bind(this));
         services.setting.saveSettingData.setHandler(this._saveSettingData.bind(this));
     }

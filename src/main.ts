@@ -4,6 +4,7 @@ import {
     type ObsidianLiveSyncSettings,
     type DatabaseConnectingStatus,
     type HasSettings,
+    LOG_LEVEL_INFO,
 } from "./lib/src/common/types.ts";
 import { type SimpleStore } from "./lib/src/common/utils.ts";
 import { type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
@@ -16,9 +17,7 @@ import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal
 import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
 import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
-
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
-import { ModuleFileAccessObsidian } from "./modules/coreObsidian/ModuleFileAccessObsidian.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 
 import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
@@ -30,15 +29,13 @@ import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
-import type { StorageAccess } from "./modules/interfaces/StorageAccess.ts";
+import type { StorageAccess } from "@lib/interfaces/StorageAccess.ts";
 import type { Confirm } from "./lib/src/interfaces/Confirm.ts";
-import type { Rebuilder } from "./modules/interfaces/DatabaseRebuilder.ts";
-import type { DatabaseFileAccess } from "./modules/interfaces/DatabaseFileAccess.ts";
-import { ModuleDatabaseFileAccess } from "./modules/core/ModuleDatabaseFileAccess.ts";
-import { ModuleFileHandler } from "./modules/core/ModuleFileHandler.ts";
+import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder.ts";
+import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess.ts";
 import { ModuleObsidianAPI } from "./modules/essentialObsidian/ModuleObsidianAPI.ts";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
-import { type AbstractModule } from "./modules/AbstractModule.ts";
+import { AbstractModule } from "./modules/AbstractModule.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
@@ -53,7 +50,6 @@ import { ModuleRemoteGovernor } from "./modules/coreFeatures/ModuleRemoteGoverno
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.ts";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.ts";
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
-import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
@@ -61,6 +57,15 @@ import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
 import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import type { ServiceContext } from "./lib/src/services/base/ServiceBase.ts";
+import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
+import type { IFileHandler } from "@lib/interfaces/FileHandler.ts";
+import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
+import { ServiceFileAccessObsidian } from "@/serviceModules/ServiceFileAccessObsidian.ts";
+import { StorageEventManagerObsidian } from "@/modules/coreObsidian/storageLib/StorageEventManager.ts";
+import { ObsidianFileAccess } from "@/modules/coreObsidian/storageLib/SerializedFileAccess.ts";
+import { StorageAccessManager } from "@lib/managers/StorageProcessingManager.ts";
+import { __$checkInstanceBinding } from "./lib/src/dev/checks.ts";
+import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -87,16 +92,17 @@ export default class ObsidianLiveSyncPlugin
         this._services = new ObsidianServiceHub(this);
     }
 
-    // Keep order to display the dialogue in order.
     addOns = [] as LiveSyncCommands[];
-    /**
-     * Bind functions to the service hub (for migration purpose).
-     */
-    // bindFunctions = (this.serviceHub as ObsidianServiceHub).bindFunctions.bind(this.serviceHub);
 
+    /**
+     * register an add-onn to the plug-in.
+     * Add-ons are features that are not essential to the core functionality of the plugin,
+     * @param addOn
+     */
     private _registerAddOn(addOn: LiveSyncCommands) {
         this.addOns.push(addOn);
     }
+
     private registerAddOns() {
         this._registerAddOn(new ConfigSync(this));
         this._registerAddOn(new HiddenFileSync(this));
@@ -104,6 +110,11 @@ export default class ObsidianLiveSyncPlugin
         this._registerAddOn(new P2PReplicator(this));
     }
 
+    /**
+     * Get an add-on by its class name. Returns undefined if not found.
+     * @param cls
+     * @returns
+     */
     getAddOn<T extends LiveSyncCommands>(cls: string) {
         for (const addon of this.addOns) {
             if (addon.constructor.name == cls) return addon as T;
@@ -111,53 +122,52 @@ export default class ObsidianLiveSyncPlugin
         return undefined;
     }
 
+    /**
+     * The modules of the plug-in. Modules are responsible for specific features or functionalities of the plug-in, such as file handling, conflict resolution, replication, etc.
+     */
     private modules = [
         // Move to registerModules
     ] as (IObsidianModule | AbstractModule)[];
 
+    /**
+     * Get a module by its class. Throws an error if not found.
+     * Mostly used for getting SetupManager.
+     * @param constructor
+     * @returns
+     */
     getModule<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T {
         for (const module of this.modules) {
             if (module.constructor === constructor) return module as T;
         }
         throw new Error(`Module ${constructor} not found or not loaded.`);
     }
-    getModulesByType<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T[] {
-        const matchedModules: T[] = [];
-        for (const module of this.modules) {
-            if (module instanceof constructor) matchedModules.push(module);
-        }
-        return matchedModules;
-    }
 
+    /**
+     * Register a module to the plug-in.
+     * @param module The module to register.
+     */
     private _registerModule(module: IObsidianModule) {
         this.modules.push(module);
     }
     private registerModules() {
         this._registerModule(new ModuleLiveSyncMain(this));
-        // Only on Obsidian
-        this._registerModule(new ModuleDatabaseFileAccess(this));
-        // Common
         this._registerModule(new ModuleConflictChecker(this));
         this._registerModule(new ModuleReplicatorMinIO(this));
         this._registerModule(new ModuleReplicatorCouchDB(this));
         this._registerModule(new ModuleReplicator(this));
-        this._registerModule(new ModuleFileHandler(this));
         this._registerModule(new ModuleConflictResolver(this));
         this._registerModule(new ModuleRemoteGovernor(this));
         this._registerModule(new ModuleTargetFilter(this));
         this._registerModule(new ModulePeriodicProcess(this));
-        // Essential Modules
         this._registerModule(new ModuleInitializerFile(this));
         this._registerModule(new ModuleObsidianAPI(this, this));
         this._registerModule(new ModuleObsidianEvents(this, this));
-        this._registerModule(new ModuleFileAccessObsidian(this, this));
         this._registerModule(new ModuleObsidianSettings(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleObsidianSettingsAsMarkdown(this));
         this._registerModule(new ModuleObsidianSettingDialogue(this, this));
         this._registerModule(new ModuleLog(this, this));
         this._registerModule(new ModuleObsidianMenu(this));
-        this._registerModule(new ModuleRebuilder(this));
         this._registerModule(new ModuleSetupObsidian(this));
         this._registerModule(new ModuleObsidianDocumentHistory(this, this));
         this._registerModule(new ModuleMigration(this));
@@ -172,6 +182,26 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new SetupManager(this));
     }
 
+    /**
+     * Bind module functions to services.
+     */
+    private bindModuleFunctions() {
+        for (const module of this.modules) {
+            if (module instanceof AbstractModule) {
+                module.onBindFunction(this, this.services);
+                __$checkInstanceBinding(module); // Check if all functions are properly bound, and log warnings if not.
+            } else {
+                this.services.API.addLog(
+                    `Module ${module.constructor.name} does not have onBindFunction, skipping binding.`,
+                    LOG_LEVEL_INFO
+                );
+            }
+        }
+    }
+
+    /**
+     * @obsolete Use services.UI.confirm instead. The confirm function to show a confirmation dialog to the user.
+     */
     get confirm(): Confirm {
         return this.services.UI.confirm;
     }
@@ -183,38 +213,67 @@ export default class ObsidianLiveSyncPlugin
         return this.settings;
     }
 
+    /**
+     * @obsolete Use services.database.localDatabase instead. The local database instance.
+     */
     get localDatabase() {
         return this.services.database.localDatabase;
     }
 
+    /**
+     * @obsolete Use services.database.managers instead. The database managers, including entry manager, revision manager, etc.
+     */
     get managers() {
         return this.services.database.managers;
     }
 
+    /**
+     * @obsolete Use services.database.localDatabase instead. Get the PouchDB database instance. Note that this is not the same as the local database instance, which is a wrapper around the PouchDB database.
+     * @returns The PouchDB database instance.
+     */
     getDatabase(): PouchDB.Database<EntryDoc> {
         return this.localDatabase.localDatabase;
     }
 
+    /**
+     * @obsolete Use services.keyValueDB.simpleStore instead. A simple key-value store for storing non-file data, such as checkpoints, sync status, etc.
+     */
     get simpleStore() {
         return this.services.keyValueDB.simpleStore as SimpleStore<CheckPointInfo>;
     }
 
+    /**
+     * @obsolete Use services.replication.getActiveReplicator instead. Get the active replicator instance. Note that there can be multiple replicators, but only one can be active at a time.
+     */
     get replicator() {
         return this.services.replicator.getActiveReplicator()!;
     }
 
-    // initialised at ModuleFileAccessObsidian
-    storageAccess!: StorageAccess;
-    // initialised at ModuleDatabaseFileAccess
-    databaseFileAccess!: DatabaseFileAccess;
-    // initialised at ModuleFileHandler
-    fileHandler!: ModuleFileHandler;
-    // initialised at ModuleRebuilder
-    rebuilder!: Rebuilder;
-
+    /**
+     * @obsolete Use services.keyValueDB.kvDB instead. Get the key-value database instance. This is used for storing large data that cannot be stored in the simple store, such as file metadata, etc.
+     */
     get kvDB() {
         return this.services.keyValueDB.kvDB;
     }
+
+    /// Modules which were relied on services
+    /**
+     * Storage Accessor for handling file operations.
+     */
+    storageAccess: StorageAccess;
+    /**
+     * Database File Accessor for handling file operations related to the database, such as exporting the database, importing from a file, etc.
+     */
+    databaseFileAccess: DatabaseFileAccess;
+
+    /**
+     * File Handler for handling file operations related to replication, such as resolving conflicts, applying changes from replication, etc.
+     */
+    fileHandler: IFileHandler;
+    /**
+     * Rebuilder for handling database rebuilding operations.
+     */
+    rebuilder: Rebuilder;
 
     requestCount = reactiveSource(0);
     responseCount = reactiveSource(0);
@@ -240,11 +299,74 @@ export default class ObsidianLiveSyncPlugin
         syncStatus: "CLOSED" as DatabaseConnectingStatus,
     });
 
+    private initialiseServiceModules() {
+        const storageAccessManager = new StorageAccessManager();
+        // If we want to implement to the other platform, implement ObsidianXXXXXService.
+        const vaultAccess = new ObsidianFileAccess(this.app, this, storageAccessManager);
+        const storageEventManager = new StorageEventManagerObsidian(this, this, storageAccessManager);
+        const storageAccess = new ServiceFileAccessObsidian({
+            API: this.services.API,
+            setting: this.services.setting,
+            fileProcessing: this.services.fileProcessing,
+            vault: this.services.vault,
+            appLifecycle: this.services.appLifecycle,
+            storageEventManager: storageEventManager,
+            storageAccessManager: storageAccessManager,
+            vaultAccess: vaultAccess,
+        });
+
+        const databaseFileAccess = new ServiceDatabaseFileAccess({
+            API: this.services.API,
+            database: this.services.database,
+            path: this.services.path,
+            storageAccess: storageAccess,
+            vault: this.services.vault,
+        });
+
+        const fileHandler = new ServiceFileHandler({
+            API: this.services.API,
+            databaseFileAccess: databaseFileAccess,
+            conflict: this.services.conflict,
+            setting: this.services.setting,
+            fileProcessing: this.services.fileProcessing,
+            vault: this.services.vault,
+            path: this.services.path,
+            replication: this.services.replication,
+            storageAccess: storageAccess,
+        });
+        const rebuilder = new ServiceRebuilder({
+            API: this.services.API,
+            database: this.services.database,
+            appLifecycle: this.services.appLifecycle,
+            setting: this.services.setting,
+            remote: this.services.remote,
+            databaseEvents: this.services.databaseEvents,
+            replication: this.services.replication,
+            replicator: this.services.replicator,
+            UI: this.services.UI,
+            vault: this.services.vault,
+            fileHandler: fileHandler,
+            storageAccess: storageAccess,
+        });
+        return {
+            rebuilder,
+            fileHandler,
+            databaseFileAccess,
+            storageAccess,
+        };
+    }
+
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.initialiseServices();
         this.registerModules();
         this.registerAddOns();
+        const instances = this.initialiseServiceModules();
+        this.rebuilder = instances.rebuilder;
+        this.fileHandler = instances.fileHandler;
+        this.databaseFileAccess = instances.databaseFileAccess;
+        this.storageAccess = instances.storageAccess;
+        this.bindModuleFunctions();
     }
 
     private async _startUp() {

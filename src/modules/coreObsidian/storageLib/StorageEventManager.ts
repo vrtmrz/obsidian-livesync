@@ -10,7 +10,6 @@ import {
     type FileEventType,
     type FilePath,
     type UXFileInfoStub,
-    type UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
 import { delay, fireAndForget, throttle } from "../../../lib/src/common/utils.ts";
 import { type FileEventItem } from "../../../common/types.ts";
@@ -20,19 +19,11 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "../../../main.ts";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "./utilObsidian.ts";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
-import type { StorageAccess } from "../../interfaces/StorageAccess.ts";
+import type { IStorageAccessManager } from "@lib/interfaces/StorageAccess.ts";
 import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
-// import { InternalFileToUXFileInfo } from "../platforms/obsidian.ts";
+import { StorageEventManager, type FileEvent } from "@lib/interfaces/StorageEventManager.ts";
 
-export type FileEvent = {
-    type: FileEventType;
-    file: UXFileInfoStub | UXInternalFileInfoStub;
-    oldPath?: string;
-    cachedData?: string;
-    skipBatchWait?: boolean;
-    cancelled?: boolean;
-};
 type WaitInfo = {
     since: number;
     type: FileEventType;
@@ -46,20 +37,10 @@ type FileEventItemSentinelFlush = {
 };
 type FileEventItemSentinel = FileEventItemSentinelFlush;
 
-export abstract class StorageEventManager {
-    abstract beginWatch(): Promise<void>;
-
-    abstract appendQueue(items: FileEvent[], ctx?: any): Promise<void>;
-
-    abstract isWaiting(filename: FilePath): boolean;
-    abstract waitForIdle(): Promise<void>;
-    abstract restoreState(): Promise<void>;
-}
-
 export class StorageEventManagerObsidian extends StorageEventManager {
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
-    storageAccess: StorageAccess;
+    storageAccess: IStorageAccessManager;
     get services() {
         return this.core.services;
     }
@@ -83,9 +64,9 @@ export class StorageEventManagerObsidian extends StorageEventManager {
      */
     snapShotRestored: Promise<void> | null = null;
 
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, storageAccess: StorageAccess) {
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, storageAccessManager: IStorageAccessManager) {
         super();
-        this.storageAccess = storageAccess;
+        this.storageAccess = storageAccessManager;
         this.plugin = plugin;
         this.core = core;
         this.cmdHiddenFileSync = this.plugin.getAddOn(HiddenFileSync.name) as HiddenFileSync;

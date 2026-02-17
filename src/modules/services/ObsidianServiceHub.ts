@@ -55,7 +55,11 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             databaseEvents: databaseEvents,
             vault: vault,
         });
-        const config = new ObsidianConfigService(context, vault);
+        const config = new ObsidianConfigService(context, {
+            vaultService: vault,
+            settingService: setting,
+            APIService: API,
+        });
         const replicator = new ObsidianReplicatorService(context, {
             settingService: setting,
             appLifecycleService: appLifecycle,
