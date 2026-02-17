@@ -36,6 +36,7 @@ import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices";
 import { Menu } from "@/lib/src/services/implements/browser/Menu";
 import type { InjectableVaultServiceCompat } from "@/lib/src/services/implements/injectable/InjectableVaultService";
+import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -102,8 +103,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
                 Logger(ex, LOG_LEVEL_VERBOSE);
             }
         }
-
-        const repStore = this.services.database.openSimpleStore<any>("p2p-livesync-web-peer");
+        const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
         this._simpleStore = repStore;
         let _settings = (await repStore.get("settings")) || ({ ...P2P_DEFAULT_SETTINGS } as P2PSyncSetting);
 
