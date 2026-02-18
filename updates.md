@@ -3,6 +3,27 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-6
+
+18th February, 2026
+
+Let me confess that I have lied about `now all ambiguous properties`... I have found some more implicit calling.
+
+Note: I have not checked hidden file sync and customisation sync, yet. Please report if you find any unexpected behaviour on these features.
+
+### Fixed
+
+- Now ReplicatorService responds to database reset and database initialisation events to dispose the active replicator.
+    - Fixes some unlocking issues during rebuilding.
+
+### Refactored
+
+- Now `StorageEventManagerBase` is separated from `StorageEventManagerObsidian` following their concerns.
+    - No longer using `ObsidianFileAccess` indirectly during checking duplicated-file events.
+    - Last event memorisation is now moved into the StorageAccessManager, just like the file processing interlocking.
+    - These methods, i.e., `ObsidianFileAccess.touch`. `StorageEventManager.recentlyTouched`, and `StorageEventManager.touch` are still available, but simply call the StorageAccessManager's methods.
+- Now `FileAccessBase` is separated from `FileAccessObsidian` following their concerns.
+
 ## 0.25.43-patched-5
 
 17th February, 2026

@@ -60,12 +60,12 @@ import type { ServiceContext } from "./lib/src/services/base/ServiceBase.ts";
 import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
 import type { IFileHandler } from "@lib/interfaces/FileHandler.ts";
 import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
-import { ServiceFileAccessObsidian } from "@/serviceModules/ServiceFileAccessObsidian.ts";
-import { StorageEventManagerObsidian } from "@/modules/coreObsidian/storageLib/StorageEventManager.ts";
-import { ObsidianFileAccess } from "@/modules/coreObsidian/storageLib/SerializedFileAccess.ts";
+import { ServiceFileAccessObsidian } from "@/serviceModules/ServiceFileAccessImpl.ts";
 import { StorageAccessManager } from "@lib/managers/StorageProcessingManager.ts";
 import { __$checkInstanceBinding } from "./lib/src/dev/checks.ts";
 import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
+import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
+import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -302,8 +302,19 @@ export default class ObsidianLiveSyncPlugin
     private initialiseServiceModules() {
         const storageAccessManager = new StorageAccessManager();
         // If we want to implement to the other platform, implement ObsidianXXXXXService.
-        const vaultAccess = new ObsidianFileAccess(this.app, this, storageAccessManager);
-        const storageEventManager = new StorageEventManagerObsidian(this, this, storageAccessManager);
+        const vaultAccess = new FileAccessObsidian(this.app, {
+            storageAccessManager: storageAccessManager,
+            vaultService: this.services.vault,
+            settingService: this.services.setting,
+            APIService: this.services.API,
+        });
+        const storageEventManager = new StorageEventManagerObsidian(this, this, {
+            fileProcessing: this.services.fileProcessing,
+            setting: this.services.setting,
+            vaultService: this.services.vault,
+            storageAccessManager: storageAccessManager,
+            APIService: this.services.API,
+        });
         const storageAccess = new ServiceFileAccessObsidian({
             API: this.services.API,
             setting: this.services.setting,

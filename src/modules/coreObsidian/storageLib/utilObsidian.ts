@@ -2,7 +2,6 @@
 
 import { TFile, type TAbstractFile, type TFolder } from "../../../deps.ts";
 import { ICHeader } from "../../../common/types.ts";
-import type { ObsidianFileAccess } from "./SerializedFileAccess.ts";
 import { addPrefix, isPlainText } from "../../../lib/src/string_and_binary/path.ts";
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import { createBlob } from "../../../lib/src/common/utils.ts";
@@ -15,6 +14,7 @@ import type {
     UXInternalFileInfoStub,
 } from "../../../lib/src/common/types.ts";
 import type { LiveSyncCore } from "../../../main.ts";
+import type { FileAccessObsidian } from "@/serviceModules/FileAccessObsidian.ts";
 
 export async function TFileToUXFileInfo(
     core: LiveSyncCore,
@@ -51,7 +51,7 @@ export async function TFileToUXFileInfo(
 
 export async function InternalFileToUXFileInfo(
     fullPath: string,
-    vaultAccess: ObsidianFileAccess,
+    vaultAccess: FileAccessObsidian,
     prefix: string = ICHeader
 ): Promise<UXFileInfo> {
     const name = fullPath.split("/").pop() as string;

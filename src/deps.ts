@@ -40,6 +40,7 @@ export type {
     MarkdownFileInfo,
     ListedFiles,
     ValueComponent,
+    Stat,
 } from "obsidian";
 import { normalizePath as normalizePath_ } from "obsidian";
 const normalizePath = normalizePath_ as <T extends string | FilePath>(from: T) => T;

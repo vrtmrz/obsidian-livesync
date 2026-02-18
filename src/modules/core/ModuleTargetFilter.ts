@@ -141,10 +141,10 @@ export class ModuleTargetFilter extends AbstractModule {
         services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
         services.vault.isIgnoredByIgnoreFile.setHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));
-        services.vault.isTargetFile.addHandler(this._isTargetFileByFileNameDuplication.bind(this));
-        services.vault.isTargetFile.addHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));
-        services.vault.isTargetFile.addHandler(this._isTargetFileByLocalDB.bind(this));
-        services.vault.isTargetFile.addHandler(this._isTargetFileFinal.bind(this));
+        services.vault.isTargetFile.addHandler(this._isTargetFileByFileNameDuplication.bind(this), 10);
+        services.vault.isTargetFile.addHandler(this._isTargetIgnoredByIgnoreFiles.bind(this), 20);
+        services.vault.isTargetFile.addHandler(this._isTargetFileByLocalDB.bind(this), 30);
+        services.vault.isTargetFile.addHandler(this._isTargetFileFinal.bind(this), 100);
         services.setting.onSettingRealised.addHandler(this.refreshSettings.bind(this));
     }
 }
