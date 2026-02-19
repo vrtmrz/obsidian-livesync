@@ -1,0 +1,49 @@
+import type { TerserOptions } from "vite";
+
+export const terserOption: TerserOptions = {
+    mangle: {
+        //     properties: {
+        //         regex: /^_p_/,
+        //     },
+        eval: true,
+        keep_classnames: true,
+        keep_fnames: true,
+        //     module: true,
+        //     safari10: true,
+        //     toplevel: true,
+    },
+    // mangle: false,
+    compress: {
+        defaults: false,
+        arguments: true,
+        // drop_console: false,
+        ecma: 2020,
+        // keep_classnames: true,
+        // keep_fnames: false,
+        // module: true,
+        passes: 4,
+        // arrows: true,
+        // collapse_vars: true,
+        // comparisons: true,
+        // computed_props: true,
+        // conditionals: true,
+        dead_code: true,
+        evaluate: true,
+        // hoist_funs: true,
+        // hoist_props: true,
+        // hoist_vars: false,
+        // if_return: true,
+        inline: true,
+        // join_vars: true,
+        // reduce_funcs: true,
+        // reduce_vars: true,
+        // sequences: true,
+        // side_effects: false,
+    },
+    format: {
+        // beautify: true,
+        ecma: 2020,
+        safari10: true,
+        webkit: true,
+    }
+}
