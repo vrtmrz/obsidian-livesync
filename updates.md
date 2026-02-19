@@ -3,6 +3,12 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## --next --
+
+### Fixed
+
+- Now device name is saved correctly. 
+
 ## 0.25.43-patched-7
 
 19th February, 2026
@@ -12,6 +18,10 @@ Right then, let us make a decision already.
 Last time, since I found a bug, I ended up doing a few other things as well, but next time I intend to release it with just the bug fix. It is quite substantial, after all.
 
 Customisation Sync has mostly been verified. Hidden file synchronisation has not been done yet.
+
+Vite's build system is not in the production. However, I possibly migrate to it in the future.
+
+And, the `daily-progress` will be tidied on releasing 0.25.44. Do not worry!
 
 ### Fixed
 
