@@ -1,6 +1,6 @@
-import { InjectableServiceHub } from "@/lib/src/services/implements/injectable/InjectableServiceHub";
-import { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
-import type { ServiceInstances } from "@/lib/src/services/ServiceHub";
+import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
+import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import type { ServiceInstances } from "@lib/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
 import {
     ObsidianConflictService,
@@ -8,13 +8,14 @@ import {
     ObsidianReplicationService,
     ObsidianReplicatorService,
     ObsidianRemoteService,
-    ObsidianSettingService,
     ObsidianTweakValueService,
     ObsidianTestService,
     ObsidianDatabaseEventService,
     ObsidianConfigService,
     ObsidianKeyValueDBService,
+    ObsidianControlService,
 } from "./ObsidianServices";
+import { ObsidianSettingService } from "./ObsidianSettingService";
 import { ObsidianDatabaseService } from "./ObsidianDatabaseService";
 import { ObsidianAPIService } from "./ObsidianAPIService";
 import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
@@ -35,10 +36,14 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const replication = new ObsidianReplicationService(context);
 
         const remote = new ObsidianRemoteService(context);
-        const setting = new ObsidianSettingService(context);
         const tweakValue = new ObsidianTweakValueService(context);
+
+        const setting = new ObsidianSettingService(context, {
+            APIService: API,
+        });
         const vault = new ObsidianVaultService(context, {
             settingService: setting,
+            APIService: API,
         });
         const test = new ObsidianTestService(context);
         const databaseEvents = new ObsidianDatabaseEventService(context);
@@ -56,7 +61,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             vault: vault,
         });
         const config = new ObsidianConfigService(context, {
-            vaultService: vault,
             settingService: setting,
             APIService: API,
         });
@@ -69,6 +73,14 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             appLifecycle,
             config,
             replicator,
+            APIService: API,
+        });
+        const control = new ObsidianControlService(context, {
+            appLifecycleService: appLifecycle,
+            databaseService: database,
+            fileProcessingService: fileProcessing,
+            settingService: setting,
+            APIService: API,
         });
 
         // Using 'satisfies' to ensure all services are provided
@@ -90,6 +102,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             API: API,
             config: config,
             keyValueDB: keyValueDB,
+            control: control,
         } satisfies Required<ServiceInstances<ObsidianServiceContext>>;
 
         super(context, serviceInstancesToInit);

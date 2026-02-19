@@ -6,7 +6,7 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
-} from "@/lib/src/common/types";
+} from "@lib/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
 import { isChunk, isValidPath } from "@/common/utils";
 import type { LiveSyncCore } from "@/main";
@@ -17,8 +17,8 @@ import {
     LOG_LEVEL_VERBOSE,
     Logger,
     type LOG_LEVEL,
-} from "@/lib/src/common/logger";
-import { fireAndForget, isAnyNote, throttle } from "@/lib/src/common/utils";
+} from "@lib/common/logger";
+import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
@@ -162,7 +162,8 @@ export class ReplicateResultProcessor {
      * Report the current status.
      */
     protected reportStatus() {
-        this.core.replicationResultCount.value = this._queuedChanges.length + this._processingChanges.length;
+        this.services.replication.replicationResultCount.value =
+            this._queuedChanges.length + this._processingChanges.length;
     }
 
     /**
@@ -381,7 +382,7 @@ export class ReplicateResultProcessor {
                     releaser();
                 }
             }
-        }, this.replicator.core.databaseQueueCount);
+        }, this.services.replication.databaseQueueCount);
     }
     // Phase 2.1: process the document and apply to storage
     // This function is serialized per document to avoid race-condition for the same document.
@@ -432,7 +433,7 @@ export class ReplicateResultProcessor {
     protected applyToStorage(entry: MetaEntry) {
         return this.withCounting(async () => {
             await this.services.replication.processSynchroniseResult(entry);
-        }, this.replicator.core.storageApplyingCount);
+        }, this.services.replication.storageApplyingCount);
     }
 
     /**

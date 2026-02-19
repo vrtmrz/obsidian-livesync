@@ -71,7 +71,7 @@ export class ModuleConflictChecker extends AbstractModule {
                 delay: 0,
                 keepResultUntilDownstreamConnected: true,
                 pipeTo: this.conflictResolveQueue,
-                totalRemainingReactiveSource: this.core.conflictProcessQueueCount,
+                totalRemainingReactiveSource: this.services.conflict.conflictProcessQueueCount,
             }
         );
     onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {

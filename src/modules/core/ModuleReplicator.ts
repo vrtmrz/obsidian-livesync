@@ -2,8 +2,8 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "../AbstractModule";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LEVEL_NOTICE, type LOG_LEVEL } from "octagonal-wheels/common/logger";
 import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
-import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks";
+import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
+import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
 import { type EntryDoc, type RemoteType } from "../../lib/src/common/types";
 import { rateLimitedSharedExecution, scheduleTask, updatePreviousExecutionTime } from "../../common/utils";
@@ -12,8 +12,8 @@ import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/ev
 import { $msg } from "../../lib/src/common/i18n";
 import type { LiveSyncCore } from "../../main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
-import { UnresolvedErrorManager } from "@/lib/src/services/base/UnresolvedErrorManager";
-import { clearHandlers } from "@/lib/src/replication/SyncParamsHandler";
+import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import { clearHandlers } from "@lib/replication/SyncParamsHandler";
 
 const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
 const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;

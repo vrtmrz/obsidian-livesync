@@ -1,13 +1,20 @@
-import { InjectableAPIService } from "@/lib/src/services/implements/injectable/InjectableAPIService";
-import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
+import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { Platform, type Command, type ViewCreator } from "obsidian";
 import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
+import { ObsidianConfirm } from "./ObsidianConfirm";
+import type { Confirm } from "@lib/interfaces/Confirm";
 
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
     _customHandler: ObsHttpHandler | undefined;
+    _confirmInstance: Confirm;
+    constructor(context: ObsidianServiceContext) {
+        super(context);
+        this._confirmInstance = new ObsidianConfirm(context);
+    }
     getCustomFetchHandler(): ObsHttpHandler {
         if (!this._customHandler) this._customHandler = new ObsHttpHandler(undefined, undefined);
         return this._customHandler;
@@ -63,6 +70,11 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     override getAppID(): string {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
+
+    override getSystemVaultName(): string {
+        return this.app.vault.getName();
+    }
+
     override getAppVersion(): string {
         const navigatorString = globalThis.navigator?.userAgent ?? "";
         const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
@@ -74,6 +86,10 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
 
     override getPluginVersion(): string {
         return this.context.plugin.manifest.version;
+    }
+
+    get confirm(): Confirm {
+        return this._confirmInstance;
     }
 
     addCommand<TCommand extends Command>(command: TCommand): TCommand {

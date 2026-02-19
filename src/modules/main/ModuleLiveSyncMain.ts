@@ -49,7 +49,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         }
         if (!(await this.core.services.appLifecycle.onFirstInitialise())) return false;
         // await this.core.$$realizeSettingSyncMode();
-        await this.services.setting.realiseSetting();
+        await this.services.control.applySettings();
         fireAndForget(async () => {
             this._log($msg("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
             if (!(await this.services.appLifecycle.onScanningStartupIssues())) {
@@ -65,7 +65,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             fireAndForget(async () => {
                 try {
-                    await this.core.services.setting.realiseSetting();
+                    await this.core.services.control.applySettings();
                     const lang = this.core.services.setting.currentSettings()?.displayLanguage ?? undefined;
                     if (lang !== undefined) {
                         setLang(this.core.services.setting.currentSettings()?.displayLanguage);
@@ -163,23 +163,19 @@ export class ModuleLiveSyncMain extends AbstractModule {
         return;
     }
 
-    private async _realizeSettingSyncMode(): Promise<void> {
-        await this.services.appLifecycle.onSuspending();
-        await this.services.setting.onBeforeRealiseSetting();
-        this.localDatabase.refreshSettings();
-        await this.services.fileProcessing.commitPendingFileEvents();
-        await this.services.setting.onRealiseSetting();
-        // disable all sync temporary.
-        if (this.services.appLifecycle.isSuspended()) return;
-        await this.services.appLifecycle.onResuming();
-        await this.services.appLifecycle.onResumed();
-        await this.services.setting.onSettingRealised();
-        return;
-    }
-
-    _isReloadingScheduled(): boolean {
-        return this.core._totalProcessingCount !== undefined;
-    }
+    // private async _realizeSettingSyncMode(): Promise<void> {
+    //     await this.services.appLifecycle.onSuspending();
+    //     await this.services.setting.onBeforeRealiseSetting();
+    //     this.localDatabase.refreshSettings();
+    //     await this.services.fileProcessing.commitPendingFileEvents();
+    //     await this.services.setting.onRealiseSetting();
+    //     // disable all sync temporary.
+    //     if (this.services.appLifecycle.isSuspended()) return;
+    //     await this.services.appLifecycle.onResuming();
+    //     await this.services.appLifecycle.onResumed();
+    //     await this.services.setting.onSettingRealised();
+    //     return;
+    // }
 
     isReady = false;
 
@@ -217,11 +213,9 @@ export class ModuleLiveSyncMain extends AbstractModule {
         services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
         services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
         services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
-        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
         services.appLifecycle.onReady.addHandler(this._onLiveSyncReady.bind(this));
         services.appLifecycle.onWireUpEvents.addHandler(this._wireUpEvents.bind(this));
         services.appLifecycle.onLoad.addHandler(this._onLiveSyncLoad.bind(this));
         services.appLifecycle.onAppUnload.addHandler(this._onLiveSyncUnload.bind(this));
-        services.setting.realiseSetting.setHandler(this._realizeSettingSyncMode.bind(this));
     }
 }

@@ -2,7 +2,6 @@ import { Plugin, type App, type PluginManifest } from "./deps";
 import {
     type EntryDoc,
     type ObsidianLiveSyncSettings,
-    type DatabaseConnectingStatus,
     type HasSettings,
     LOG_LEVEL_INFO,
 } from "./lib/src/common/types.ts";
@@ -12,7 +11,6 @@ import { type LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstra
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
 import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
 import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
@@ -24,7 +22,6 @@ import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRe
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.ts";
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
-import { ModuleObsidianSettings } from "./modules/features/ModuleObsidianSetting.ts";
 import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
@@ -66,6 +63,8 @@ import { __$checkInstanceBinding } from "./lib/src/dev/checks.ts";
 import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
 import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
+import { onLayoutReadyFeatures } from "./serviceFeatures/onLayoutReady.ts";
+import type { ServiceModules } from "./types.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -88,11 +87,26 @@ export default class ObsidianLiveSyncPlugin
         return this._services;
     }
 
-    private initialiseServices() {
-        this._services = new ObsidianServiceHub(this);
+    /**
+     * Service Modules
+     */
+    protected _serviceModules: ServiceModules;
+
+    get serviceModules() {
+        return this._serviceModules;
     }
 
+    /**
+     * addOns: Non-essential and graphically features
+     */
     addOns = [] as LiveSyncCommands[];
+
+    /**
+     * The modules of the plug-in. Modules are responsible for specific features or functionalities of the plug-in, such as file handling, conflict resolution, replication, etc.
+     */
+    private modules = [
+        // Move to registerModules
+    ] as (IObsidianModule | AbstractModule)[];
 
     /**
      * register an add-onn to the plug-in.
@@ -121,13 +135,6 @@ export default class ObsidianLiveSyncPlugin
         }
         return undefined;
     }
-
-    /**
-     * The modules of the plug-in. Modules are responsible for specific features or functionalities of the plug-in, such as file handling, conflict resolution, replication, etc.
-     */
-    private modules = [
-        // Move to registerModules
-    ] as (IObsidianModule | AbstractModule)[];
 
     /**
      * Get a module by its class. Throws an error if not found.
@@ -162,7 +169,6 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleInitializerFile(this));
         this._registerModule(new ModuleObsidianAPI(this, this));
         this._registerModule(new ModuleObsidianEvents(this, this));
-        this._registerModule(new ModuleObsidianSettings(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleObsidianSettingsAsMarkdown(this));
         this._registerModule(new ModuleObsidianSettingDialogue(this, this));
@@ -206,9 +212,24 @@ export default class ObsidianLiveSyncPlugin
         return this.services.UI.confirm;
     }
 
-    // This property will be changed from outside often, so will be set later.
-    settings!: ObsidianLiveSyncSettings;
+    /**
+     * @obsolete Use services.setting.currentSettings instead. The current settings of the plug-in.
+     */
+    get settings() {
+        return this.services.setting.settings;
+    }
 
+    /**
+     * @obsolete Use services.setting.settings instead. Set the settings of the plug-in.
+     */
+    set settings(value: ObsidianLiveSyncSettings) {
+        this.services.setting.settings = value;
+    }
+
+    /**
+     * @obsolete Use services.setting.currentSettings instead. Get the settings of the plug-in.
+     * @returns The current settings of the plug-in.
+     */
     getSettings(): ObsidianLiveSyncSettings {
         return this.settings;
     }
@@ -259,46 +280,63 @@ export default class ObsidianLiveSyncPlugin
     /// Modules which were relied on services
     /**
      * Storage Accessor for handling file operations.
+     * @obsolete Use serviceModules.storageAccess instead.
      */
-    storageAccess: StorageAccess;
+    get storageAccess(): StorageAccess {
+        return this.serviceModules.storageAccess;
+    }
     /**
      * Database File Accessor for handling file operations related to the database, such as exporting the database, importing from a file, etc.
+     * @obsolete Use serviceModules.databaseFileAccess instead.
      */
-    databaseFileAccess: DatabaseFileAccess;
-
+    get databaseFileAccess(): DatabaseFileAccess {
+        return this.serviceModules.databaseFileAccess;
+    }
     /**
      * File Handler for handling file operations related to replication, such as resolving conflicts, applying changes from replication, etc.
+     * @obsolete Use serviceModules.fileHandler instead.
      */
-    fileHandler: IFileHandler;
+    get fileHandler(): IFileHandler {
+        return this.serviceModules.fileHandler;
+    }
     /**
      * Rebuilder for handling database rebuilding operations.
+     * @obsolete Use serviceModules.rebuilder instead.
      */
-    rebuilder: Rebuilder;
+    get rebuilder(): Rebuilder {
+        return this.serviceModules.rebuilder;
+    }
 
-    requestCount = reactiveSource(0);
-    responseCount = reactiveSource(0);
-    totalQueued = reactiveSource(0);
-    batched = reactiveSource(0);
-    processing = reactiveSource(0);
-    databaseQueueCount = reactiveSource(0);
-    storageApplyingCount = reactiveSource(0);
-    replicationResultCount = reactiveSource(0);
-    conflictProcessQueueCount = reactiveSource(0);
-    pendingFileEventCount = reactiveSource(0);
-    processingFileEventCount = reactiveSource(0);
+    // requestCount = reactiveSource(0);
+    // responseCount = reactiveSource(0);
+    // totalQueued = reactiveSource(0);
+    // batched = reactiveSource(0);
+    // processing = reactiveSource(0);
+    // databaseQueueCount = reactiveSource(0);
+    // storageApplyingCount = reactiveSource(0);
+    // replicationResultCount = reactiveSource(0);
 
-    _totalProcessingCount?: ReactiveValue<number>;
+    // pendingFileEventCount = reactiveSource(0);
+    // processingFileEventCount = reactiveSource(0);
 
-    replicationStat = reactiveSource({
-        sent: 0,
-        arrived: 0,
-        maxPullSeq: 0,
-        maxPushSeq: 0,
-        lastSyncPullSeq: 0,
-        lastSyncPushSeq: 0,
-        syncStatus: "CLOSED" as DatabaseConnectingStatus,
-    });
+    // _totalProcessingCount?: ReactiveValue<number>;
 
+    // replicationStat = reactiveSource({
+    //     sent: 0,
+    //     arrived: 0,
+    //     maxPullSeq: 0,
+    //     maxPushSeq: 0,
+    //     lastSyncPullSeq: 0,
+    //     lastSyncPushSeq: 0,
+    //     syncStatus: "CLOSED" as DatabaseConnectingStatus,
+    // });
+
+    private initialiseServices() {
+        this._services = new ObsidianServiceHub(this);
+    }
+    /**
+     * Initialise service modules.
+     */
     private initialiseServiceModules() {
         const storageAccessManager = new StorageAccessManager();
         // If we want to implement to the other platform, implement ObsidianXXXXXService.
@@ -358,6 +396,7 @@ export default class ObsidianLiveSyncPlugin
             vault: this.services.vault,
             fileHandler: fileHandler,
             storageAccess: storageAccess,
+            control: this.services.control,
         });
         return {
             rebuilder,
@@ -367,34 +406,45 @@ export default class ObsidianLiveSyncPlugin
         };
     }
 
+    /**
+     * @obsolete Use services.setting.saveSettingData instead. Save the settings to the disk. This is usually called after changing the settings in the code, to persist the changes.
+     */
+    async saveSettings() {
+        await this.services.setting.saveSettingData();
+    }
+
+    /**
+     * Initialise ServiceFeatures.
+     * (Please refer `serviceFeatures` for more details)
+     */
+    initialiseServiceFeatures() {
+        for (const feature of onLayoutReadyFeatures) {
+            const curriedFeature = () => feature(this);
+            this.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
+        }
+    }
+
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.initialiseServices();
         this.registerModules();
         this.registerAddOns();
-        const instances = this.initialiseServiceModules();
-        this.rebuilder = instances.rebuilder;
-        this.fileHandler = instances.fileHandler;
-        this.databaseFileAccess = instances.databaseFileAccess;
-        this.storageAccess = instances.storageAccess;
+        this._serviceModules = this.initialiseServiceModules();
+        this.initialiseServiceFeatures();
         this.bindModuleFunctions();
     }
 
     private async _startUp() {
-        await this.services.appLifecycle.onLoad();
-        const onReady = this.services.appLifecycle.onReady.bind(this.services.appLifecycle);
+        if (!(await this.services.control.onLoad())) return;
+        const onReady = this.services.control.onReady.bind(this.services.control);
         this.app.workspace.onLayoutReady(onReady);
     }
     onload() {
         void this._startUp();
     }
-    async saveSettings() {
-        await this.services.setting.saveSettingData();
-    }
     onunload() {
-        return void this.services.appLifecycle.onAppUnload();
+        return void this.services.control.onUnload();
     }
-    // <-- Plug-in's overrideable functions
 }
 
 // For now,

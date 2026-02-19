@@ -122,13 +122,11 @@ export async function waitForIdle(harness: LiveSyncHarness): Promise<void> {
     for (let i = 0; i < 20; i++) {
         await delay(25);
         const processing =
-            harness.plugin.databaseQueueCount.value +
-            harness.plugin.processingFileEventCount.value +
-            harness.plugin.pendingFileEventCount.value +
-            harness.plugin.totalQueued.value +
-            harness.plugin.batched.value +
-            harness.plugin.processing.value +
-            harness.plugin.storageApplyingCount.value;
+            harness.plugin.services.replication.databaseQueueCount.value +
+            harness.plugin.services.fileProcessing.totalQueued.value +
+            harness.plugin.services.fileProcessing.batched.value +
+            harness.plugin.services.fileProcessing.processing.value +
+            harness.plugin.services.replication.storageApplyingCount.value;
 
         if (processing === 0) {
             if (i > 0) {

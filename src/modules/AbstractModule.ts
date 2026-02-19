@@ -2,7 +2,7 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/co
 import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
 import type { LiveSyncCore } from "@/main";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
-import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils";
+import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
 
 export abstract class AbstractModule {
     _log = createInstanceLogFunction(this.constructor.name, this.services.API);

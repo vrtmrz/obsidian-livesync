@@ -203,8 +203,8 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase {
         const totalItems = allItems.length + this.concurrentProcessing.waiting;
         const processing = this.processingCount;
         const batchedCount = this._waitingMap.size;
-        this.core.batched.value = batchedCount;
-        this.core.processing.value = processing;
-        this.core.totalQueued.value = totalItems + batchedCount + processing;
+        this.fileProcessing.batched.value = batchedCount;
+        this.fileProcessing.processing.value = processing;
+        this.fileProcessing.totalQueued.value = totalItems + batchedCount + processing;
     }
 }

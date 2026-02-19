@@ -32,14 +32,14 @@ import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "src/lib/src/common/i18n.ts";
 import { P2PLogCollector } from "../../lib/src/replication/trystero/P2PReplicatorCore.ts";
 import type { LiveSyncCore } from "../../main.ts";
-import { LiveSyncError } from "@/lib/src/common/LSError.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 import { isValidPath } from "@/common/utils.ts";
 import {
     isValidFilenameInAndroid,
     isValidFilenameInDarwin,
     isValidFilenameInWidows,
-} from "@/lib/src/string_and_binary/path.ts";
-import { MARK_LOG_SEPARATOR } from "@/lib/src/services/lib/logUtils.ts";
+} from "@lib/string_and_binary/path.ts";
+import { MARK_LOG_SEPARATOR } from "@lib/services/lib/logUtils.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -102,12 +102,12 @@ export class ModuleLog extends AbstractObsidianModule {
             });
             return computed(() => formatted.value);
         }
-        const labelReplication = padLeftSpComputed(this.core.replicationResultCount, `📥`);
-        const labelDBCount = padLeftSpComputed(this.core.databaseQueueCount, `📄`);
-        const labelStorageCount = padLeftSpComputed(this.core.storageApplyingCount, `💾`);
+        const labelReplication = padLeftSpComputed(this.services.replication.replicationResultCount, `📥`);
+        const labelDBCount = padLeftSpComputed(this.services.replication.databaseQueueCount, `📄`);
+        const labelStorageCount = padLeftSpComputed(this.services.replication.storageApplyingCount, `💾`);
         const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
         const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
-        const labelConflictProcessCount = padLeftSpComputed(this.core.conflictProcessQueueCount, `🔩`);
+        const labelConflictProcessCount = padLeftSpComputed(this.services.conflict.conflictProcessQueueCount, `🔩`);
         const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value - hiddenFilesProcessingCount.value);
         const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`);
         const queueCountLabelX = reactive(() => {
@@ -116,12 +116,12 @@ export class ModuleLog extends AbstractObsidianModule {
         const queueCountLabel = () => queueCountLabelX.value;
 
         const requestingStatLabel = computed(() => {
-            const diff = this.core.requestCount.value - this.core.responseCount.value;
+            const diff = this.services.API.requestCount.value - this.services.API.responseCount.value;
             return diff != 0 ? "📲 " : "";
         });
 
         const replicationStatLabel = computed(() => {
-            const e = this.core.replicationStat.value;
+            const e = this.services.replicator.replicationStatics.value;
             const sent = e.sent;
             const arrived = e.arrived;
             const maxPullSeq = e.maxPullSeq;
@@ -173,9 +173,9 @@ export class ModuleLog extends AbstractObsidianModule {
             }
             return { w, sent, pushLast, arrived, pullLast };
         });
-        const labelProc = padLeftSpComputed(this.core.processing, `⏳`);
-        const labelPend = padLeftSpComputed(this.core.totalQueued, `🛫`);
-        const labelInBatchDelay = padLeftSpComputed(this.core.batched, `📬`);
+        const labelProc = padLeftSpComputed(this.services.fileProcessing.processing, `⏳`);
+        const labelPend = padLeftSpComputed(this.services.fileProcessing.totalQueued, `🛫`);
+        const labelInBatchDelay = padLeftSpComputed(this.services.fileProcessing.batched, `📬`);
         const waitingLabel = computed(() => {
             return `${labelProc()}${labelPend()}${labelInBatchDelay()}`;
         });

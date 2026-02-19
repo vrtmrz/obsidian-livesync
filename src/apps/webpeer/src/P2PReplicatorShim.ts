@@ -34,9 +34,11 @@ import { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator
 import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices";
-import { Menu } from "@/lib/src/services/implements/browser/Menu";
-import type { InjectableVaultServiceCompat } from "@/lib/src/services/implements/injectable/InjectableVaultService";
+import { Menu } from "@lib/services/implements/browser/Menu";
+import type { InjectableVaultServiceCompat } from "@lib/services/implements/injectable/InjectableVaultService";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
+import type { InjectableAPIService } from "@/lib/src/services/implements/injectable/InjectableAPIService";
+import type { BrowserAPIService } from "@/lib/src/services/implements/browser/BrowserAPIService";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -81,13 +83,13 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
     constructor() {
         const browserServiceHub = new BrowserServiceHub<ServiceContext>();
         this.services = browserServiceHub;
-        (this.services.vault as InjectableVaultServiceCompat<ServiceContext>).vaultName.setHandler(
+
+        (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
             () => "p2p-livesync-web-peer"
         );
-
-        this.services.setting.currentSettings.setHandler(() => {
-            return this.settings as any;
-        });
+        // this.services.setting.currentSettings.setHandler(() => {
+        //     return this.settings as any;
+        // });
     }
     async init() {
         // const { simpleStoreAPI } = await getWrappedSynchromesh();
@@ -106,7 +108,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
         this._simpleStore = repStore;
         let _settings = (await repStore.get("settings")) || ({ ...P2P_DEFAULT_SETTINGS } as P2PSyncSetting);
-
+        this.services.setting.settings = _settings as any;
         this.plugin = {
             saveSettings: async () => {
                 await repStore.set("settings", _settings);

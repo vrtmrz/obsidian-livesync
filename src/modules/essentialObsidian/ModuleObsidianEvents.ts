@@ -5,7 +5,7 @@ import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { type TFile } from "../../deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
-import { reactive, reactiveSource } from "octagonal-wheels/dataobject/reactive";
+import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
@@ -188,20 +188,25 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             }
         });
     }
-    // TODO: separate
+
+    // Process counting for app reload scheduling
+    _totalProcessingCount?: ReactiveSource<number> = undefined;
     private _scheduleAppReload() {
-        if (!this.core._totalProcessingCount) {
+        if (!this._totalProcessingCount) {
             const __tick = reactiveSource(0);
-            this.core._totalProcessingCount = reactive(() => {
-                const dbCount = this.core.databaseQueueCount.value;
-                const replicationCount = this.core.replicationResultCount.value;
-                const storageApplyingCount = this.core.storageApplyingCount.value;
+            this._totalProcessingCount = reactive(() => {
+                const dbCount = this.services.replication.databaseQueueCount.value;
+                const replicationCount = this.services.replication.replicationResultCount.value;
+                const storageApplyingCount = this.services.replication.storageApplyingCount.value;
                 const chunkCount = collectingChunks.value;
                 const pluginScanCount = pluginScanningCount.value;
                 const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
-                const conflictProcessCount = this.core.conflictProcessQueueCount.value;
-                const e = this.core.pendingFileEventCount.value;
-                const proc = this.core.processingFileEventCount.value;
+                const conflictProcessCount = this.services.conflict.conflictProcessQueueCount.value;
+                // Now no longer `pendingFileEventCount` and `processingFileEventCount` is used
+                // const e = this.core.pendingFileEventCount.value;
+                // const proc = this.core.processingFileEventCount.value;
+                const e = 0;
+                const proc = 0;
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const __ = __tick.value;
                 return (
@@ -223,7 +228,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             );
 
             let stableCheck = 3;
-            this.core._totalProcessingCount.onChanged((e) => {
+            this._totalProcessingCount.onChanged((e) => {
                 if (e.value == 0) {
                     if (stableCheck-- <= 0) {
                         this.__performAppReload();
@@ -239,10 +244,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             });
         }
     }
+    _isReloadingScheduled(): boolean {
+        return this._totalProcessingCount !== undefined;
+    }
     onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.askRestart.setHandler(this._askReload.bind(this));
         services.appLifecycle.scheduleRestart.setHandler(this._scheduleAppReload.bind(this));
+        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
     }
 }

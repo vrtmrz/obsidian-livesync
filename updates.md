@@ -5,11 +5,28 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## 0.25.43-patched-7
 
--- Unreleased --
+19th February, 2026
+
+Right then, let us make a decision already.
+
+Last time, since I found a bug, I ended up doing a few other things as well, but next time I intend to release it with just the bug fix. It is quite substantial, after all.
+
+Customisation Sync has mostly been verified. Hidden file synchronisation has not been done yet.
 
 ### Fixed
 
-- Fixed an issue where the StorageEventManager was not correctly the loading the settings.
+- Fixed an issue where the StorageEventManager was not correctly loading the settings.
+- Replication statistics are now correctly reset after switching replicators.
+
+### Refactored
+
+- Now, many reactive values which keep the state or statistics of the plugin are moved to the services which have the responsibility for these states.
+- `serviceFeatures` are now able to be added to the services; this is not a class module, but a function which accepts dependencies and returns an addHandler-able function. This is for better separation of concerns, better maintainability, and testability.
+- `control` service; is a meta-service which is responsible for orchestrating services has been added.
+    - Don't you think stopping replication or something occurs during `settingService.realiseSetting` is quite weird? It may be done by the control service, which can orchestrate the setting service and the replicator service.
+    -
+- Some functions on services have been moved. e.g., `getSystemVaultName` is now on the API service.
+- Setting Service is now responsible for the setting, no longer using dynamic binding for the modules.
 
 ## 0.25.43-patched-6
 

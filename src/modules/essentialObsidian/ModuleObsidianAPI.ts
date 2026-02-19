@@ -10,9 +10,9 @@ import {
 import { Notice, requestUrl, type RequestUrlParam, type RequestUrlResponse } from "../../deps.ts";
 import { type CouchDBCredentials, type EntryDoc } from "../../lib/src/common/types.ts";
 import { isCloudantURI, isValidRemoteCouchDBURI } from "../../lib/src/pouchdb/utils_couchdb.ts";
-import { replicationFilter } from "@/lib/src/pouchdb/compress.ts";
-import { disableEncryption } from "@/lib/src/pouchdb/encryption.ts";
-import { enableEncryption } from "@/lib/src/pouchdb/encryption.ts";
+import { replicationFilter } from "@lib/pouchdb/compress.ts";
+import { disableEncryption } from "@lib/pouchdb/encryption.ts";
+import { enableEncryption } from "@lib/pouchdb/encryption.ts";
 import { setNoticeClass } from "../../lib/src/mock_and_interop/wrapper.ts";
 import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
@@ -96,7 +96,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         const size = body ? ` (${body.length})` : "";
         try {
             const r = await this.__fetchByAPI(url, authHeader, opts);
-            this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
+            this.services.API.requestCount.value = this.services.API.requestCount.value + 1;
             if (method == "POST" || method == "PUT") {
                 this.last_successful_post = r.status - (r.status % 100) == 200;
             } else {
@@ -113,7 +113,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
             this._log(ex);
             throw ex;
         } finally {
-            this.plugin.responseCount.value = this.plugin.responseCount.value + 1;
+            this.services.API.responseCount.value = this.services.API.responseCount.value + 1;
         }
     }
 
@@ -171,7 +171,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                         headers.append("authorization", authHeader);
                     }
                     try {
-                        this.plugin.requestCount.value = this.plugin.requestCount.value + 1;
+                        this.services.API.requestCount.value = this.services.API.requestCount.value + 1;
                         const response: Response = await (useRequestAPI
                             ? this.__fetchByAPI(url.toString(), authHeader, { ...opts, headers })
                             : fetch(url, { ...opts, headers }));
@@ -245,7 +245,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                     this._log(ex);
                     throw ex;
                 } finally {
-                    this.plugin.responseCount.value = this.plugin.responseCount.value + 1;
+                    this.services.API.responseCount.value = this.services.API.responseCount.value + 1;
                 }
 
                 // return await fetch(url, opts);

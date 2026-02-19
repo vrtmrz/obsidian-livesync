@@ -12,8 +12,8 @@ import type { LiveSyncCore } from "../../main.ts";
 import FetchEverything from "../features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "../features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { SvelteDialogManagerBase } from "@/lib/src/UI/svelteDialog.ts";
-import type { ServiceContext } from "@/lib/src/services/base/ServiceBase.ts";
+import { SvelteDialogManagerBase } from "@lib/UI/svelteDialog.ts";
+import type { ServiceContext } from "@lib/services/base/ServiceBase.ts";
 
 export class ModuleRedFlag extends AbstractModule {
     async isFlagFileExist(path: string) {

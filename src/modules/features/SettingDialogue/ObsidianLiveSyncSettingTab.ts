@@ -16,7 +16,7 @@ import {
 import { delay, isObjectDifferent, sizeToHumanReadable } from "../../../lib/src/common/utils.ts";
 import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
-import { checkSyncInfo } from "@/lib/src/pouchdb/negotiation.ts";
+import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import { scheduleTask } from "../../../common/utils.ts";
