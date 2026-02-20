@@ -44,7 +44,7 @@ export class ConflictResolveModal extends Modal {
         // sendValue("close-resolve-conflict:" + this.filename, false);
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
@@ -119,7 +119,7 @@ export class ConflictResolveModal extends Modal {
         this.close();
     }
 
-    onClose() {
+    override onClose() {
         const { contentEl } = this;
         contentEl.empty();
         if (this.offEvent) {

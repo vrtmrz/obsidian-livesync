@@ -169,7 +169,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         }
         return true;
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.conflict.resolveByUserInteraction.addHandler(this._anyResolveConflictByUI.bind(this));

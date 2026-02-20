@@ -87,9 +87,6 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
             () => "p2p-livesync-web-peer"
         );
-        // this.services.setting.currentSettings.setHandler(() => {
-        //     return this.settings as any;
-        // });
     }
     async init() {
         // const { simpleStoreAPI } = await getWrappedSynchromesh();
@@ -150,9 +147,9 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
     simpleStore(): SimpleStore<any> {
         return this._simpleStore;
     }
-    handleReplicatedDocuments(docs: EntryDoc[]): Promise<void> {
+    handleReplicatedDocuments(docs: EntryDoc[]): Promise<boolean> {
         // No op. This is a client and does not need to process the docs
-        return Promise.resolve();
+        return Promise.resolve(true);
     }
 
     getPluginShim() {

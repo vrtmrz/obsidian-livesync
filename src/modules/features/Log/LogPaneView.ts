@@ -19,11 +19,11 @@ export class LogPaneView extends SvelteItemView {
     }
 
     plugin: ObsidianLiveSyncPlugin;
-    icon = "view-log";
+    override icon = "view-log";
     title: string = "";
-    navigation = false;
+    override navigation = false;
 
-    getIcon(): string {
+    override getIcon(): string {
         return "view-log";
     }
 

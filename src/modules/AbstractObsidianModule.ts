@@ -16,7 +16,7 @@ export abstract class AbstractObsidianModule extends AbstractModule {
 
     constructor(
         public plugin: ObsidianLiveSyncPlugin,
-        public core: LiveSyncCore
+        core: LiveSyncCore
     ) {
         super(core);
     }

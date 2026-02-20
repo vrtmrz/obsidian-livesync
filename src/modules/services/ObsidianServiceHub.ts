@@ -30,16 +30,17 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const context = new ObsidianServiceContext(plugin.app, plugin, plugin);
 
         const API = new ObsidianAPIService(context);
-        const appLifecycle = new ObsidianAppLifecycleService(context);
         const conflict = new ObsidianConflictService(context);
         const fileProcessing = new ObsidianFileProcessingService(context);
-        const replication = new ObsidianReplicationService(context);
 
         const remote = new ObsidianRemoteService(context);
         const tweakValue = new ObsidianTweakValueService(context);
 
         const setting = new ObsidianSettingService(context, {
             APIService: API,
+        });
+        const appLifecycle = new ObsidianAppLifecycleService(context, {
+            settingService: setting,
         });
         const vault = new ObsidianVaultService(context, {
             settingService: setting,
@@ -69,20 +70,31 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             appLifecycleService: appLifecycle,
             databaseEventService: databaseEvents,
         });
-        const ui = new ObsidianUIService(context, {
-            appLifecycle,
-            config,
-            replicator,
+        const replication = new ObsidianReplicationService(context, {
             APIService: API,
+            appLifecycleService: appLifecycle,
+            databaseEventService: databaseEvents,
+            replicatorService: replicator,
+            settingService: setting,
+            fileProcessingService: fileProcessing,
+            databaseService: database,
         });
+
         const control = new ObsidianControlService(context, {
             appLifecycleService: appLifecycle,
             databaseService: database,
             fileProcessingService: fileProcessing,
             settingService: setting,
             APIService: API,
+            replicatorService: replicator,
         });
-
+        const ui = new ObsidianUIService(context, {
+            appLifecycle,
+            config,
+            replicator,
+            APIService: API,
+            control: control,
+        });
         // Using 'satisfies' to ensure all services are provided
         const serviceInstancesToInit = {
             appLifecycle: appLifecycle,

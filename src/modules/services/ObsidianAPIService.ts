@@ -42,7 +42,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         return this.context.app;
     }
 
-    getPlatform(): string {
+    override getPlatform(): string {
         if (Platform.isAndroidApp) {
             return "android-app";
         } else if (Platform.isIosApp) {

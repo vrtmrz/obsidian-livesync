@@ -50,7 +50,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
             this.showHistory(targetId.path, targetId.id);
         }
     }
-    onBindFunction(core: typeof this.core, services: typeof core.services): void {
+    override onBindFunction(core: typeof this.core, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

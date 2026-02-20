@@ -3,6 +3,7 @@ import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
 import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
 import type { IFileHandler } from "@lib/interfaces/FileHandler";
 import type { StorageAccess } from "@lib/interfaces/StorageAccess";
+import type { LogFunction } from "@/lib/src/services/lib/logUtils";
 
 export interface ServiceModules {
     storageAccess: StorageAccess;
@@ -31,6 +32,13 @@ export type NecessaryServices<T extends keyof IServiceHub, U extends keyof Servi
 export type ServiceFeatureFunction<T extends keyof IServiceHub, U extends keyof ServiceModules, TR> = (
     host: NecessaryServices<T, U>
 ) => TR;
+type ServiceFeatureContext<T> = T & {
+    _log: LogFunction;
+};
+export type ServiceFeatureFunctionWithContext<T extends keyof IServiceHub, U extends keyof ServiceModules, C, TR> = (
+    host: NecessaryServices<T, U>,
+    context: ServiceFeatureContext<C>
+) => TR;
 
 /**
  * Helper function to create a service feature with proper typing.
@@ -47,4 +55,24 @@ export function createServiceFeature<T extends keyof IServiceHub, U extends keyo
     featureFunction: ServiceFeatureFunction<T, U, TR>
 ): ServiceFeatureFunction<T, U, TR> {
     return featureFunction;
+}
+
+type ContextFactory<T extends keyof IServiceHub, U extends keyof ServiceModules, C> = (
+    host: NecessaryServices<T, U>
+) => ServiceFeatureContext<C>;
+
+export function serviceFeature<T extends keyof IServiceHub, U extends keyof ServiceModules>() {
+    return {
+        create<TR>(featureFunction: ServiceFeatureFunction<T, U, TR>) {
+            return featureFunction;
+        },
+        withContext<C extends object = object>(ContextFactory: ContextFactory<T, U, C>) {
+            return {
+                create:
+                    <TR>(featureFunction: ServiceFeatureFunctionWithContext<T, U, C, TR>) =>
+                    (host: NecessaryServices<T, U>, context: ServiceFeatureContext<C>) =>
+                        featureFunction(host, ContextFactory(host)),
+            };
+        },
+    };
 }

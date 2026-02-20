@@ -214,7 +214,7 @@ export class DocumentHistoryModal extends Modal {
         }
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText("Document History");
         contentEl.empty();
@@ -299,7 +299,7 @@ export class DocumentHistoryModal extends Modal {
             });
         });
     }
-    onClose() {
+    override onClose() {
         const { contentEl } = this;
         contentEl.empty();
         this.BlobURLs.forEach((value) => {

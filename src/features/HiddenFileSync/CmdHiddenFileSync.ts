@@ -1934,7 +1934,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     */
     // <-- Local Storage SubFunctions
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         // No longer needed on initialisation
         // services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));

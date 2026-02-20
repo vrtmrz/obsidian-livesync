@@ -43,7 +43,6 @@ import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.
 import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.ts";
 import { ModuleTargetFilter } from "./modules/core/ModuleTargetFilter.ts";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.ts";
-import { ModuleRemoteGovernor } from "./modules/coreFeatures/ModuleRemoteGovernor.ts";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.ts";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.ts";
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
@@ -115,6 +114,7 @@ export default class ObsidianLiveSyncPlugin
      */
     private _registerAddOn(addOn: LiveSyncCommands) {
         this.addOns.push(addOn);
+        this.services.appLifecycle.onUnload.addHandler(() => Promise.resolve(addOn.onunload()).then(() => true));
     }
 
     private registerAddOns() {
@@ -163,7 +163,6 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleReplicatorCouchDB(this));
         this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
-        this._registerModule(new ModuleRemoteGovernor(this));
         this._registerModule(new ModuleTargetFilter(this));
         this._registerModule(new ModulePeriodicProcess(this));
         this._registerModule(new ModuleInitializerFile(this));
@@ -439,10 +438,10 @@ export default class ObsidianLiveSyncPlugin
         const onReady = this.services.control.onReady.bind(this.services.control);
         this.app.workspace.onLayoutReady(onReady);
     }
-    onload() {
+    override onload() {
         void this._startUp();
     }
-    onunload() {
+    override onunload() {
         return void this.services.control.onUnload();
     }
 }

@@ -127,7 +127,7 @@ export class ModuleCheckRemoteSize extends AbstractModule {
         eventHub.onEvent(EVENT_REQUEST_CHECK_REMOTE_SIZE, () => this.checkRemoteSize());
         return Promise.resolve(true);
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }

@@ -137,7 +137,7 @@ export class ModuleTargetFilter extends AbstractModule {
         return true;
     }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
         services.vault.isIgnoredByIgnoreFile.setHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));

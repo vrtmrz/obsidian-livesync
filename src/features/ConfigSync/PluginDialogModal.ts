@@ -14,7 +14,7 @@ export class PluginDialogModal extends Modal {
         this.plugin = plugin;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.contentEl.style.overflow = "auto";
         this.contentEl.style.display = "flex";
@@ -28,7 +28,7 @@ export class PluginDialogModal extends Modal {
         }
     }
 
-    onClose() {
+    override onClose() {
         if (this.component) {
             void unmount(this.component);
             this.component = undefined;

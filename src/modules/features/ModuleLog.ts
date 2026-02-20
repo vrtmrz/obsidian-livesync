@@ -495,7 +495,7 @@ export class ModuleLog extends AbstractObsidianModule {
             }
         }
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.API.addLog.setHandler(globalLogFunction);
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));

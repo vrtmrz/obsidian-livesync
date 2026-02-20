@@ -106,7 +106,7 @@ export class ModuleObsidianMenu extends AbstractModule {
         return Promise.resolve(true);
     }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

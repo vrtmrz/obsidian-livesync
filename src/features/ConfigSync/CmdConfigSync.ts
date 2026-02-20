@@ -1802,7 +1802,7 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return files;
     }
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
         services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
         services.replication.processVirtualDocument.addHandler(this._anyModuleParsedReplicationResultItem.bind(this));

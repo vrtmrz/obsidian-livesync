@@ -35,7 +35,7 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
 
         return Promise.resolve(true);
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
         services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
     }

@@ -13,7 +13,7 @@ class AutoClosableModal extends Modal {
         this._closeByUnload = this._closeByUnload.bind(this);
         eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
-    onClose() {
+    override onClose() {
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }
@@ -43,7 +43,7 @@ export class InputStringDialog extends AutoClosableModal {
         this.isPassword = isPassword;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         const formEl = contentEl.createDiv();
@@ -75,7 +75,7 @@ export class InputStringDialog extends AutoClosableModal {
             );
     }
 
-    onClose() {
+    override onClose() {
         super.onClose();
         const { contentEl } = this;
         contentEl.empty();
@@ -87,7 +87,7 @@ export class InputStringDialog extends AutoClosableModal {
     }
 }
 export class PopoverSelectString extends FuzzySuggestModal<string> {
-    app: App;
+    _app: App;
     callback: ((e: string) => void) | undefined = () => {};
     getItemsFun: () => string[] = () => {
         return ["yes", "no"];
@@ -101,7 +101,7 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
         callback: (e: string) => void
     ) {
         super(app);
-        this.app = app;
+        this._app = app;
         this.setPlaceholder((placeholder ?? "y/n) ") + note);
         if (getItemsFun) this.getItemsFun = getItemsFun;
         this.callback = callback;
@@ -120,7 +120,7 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
         this.callback?.(item);
         this.callback = undefined;
     }
-    onClose(): void {
+    override onClose(): void {
         setTimeout(() => {
             if (this.callback) {
                 this.callback("");
@@ -184,7 +184,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         }
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
@@ -242,7 +242,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         }
     }
 
-    onClose() {
+    override onClose() {
         super.onClose();
         const { contentEl } = this;
         contentEl.empty();

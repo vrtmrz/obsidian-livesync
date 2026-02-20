@@ -421,7 +421,7 @@ export class ModuleInitializerFile extends AbstractModule {
     private _reportDetectedErrors(): Promise<string[]> {
         return Promise.resolve(Array.from(this._detectedErrors));
     }
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.appLifecycle.getUnresolvedMessages.addHandler(this._reportDetectedErrors.bind(this));
         services.databaseEvents.initialiseDatabase.setHandler(this._initializeDatabase.bind(this));
         services.vault.scanVault.setHandler(this._performFullScan.bind(this));

@@ -229,7 +229,7 @@ export class ModuleConflictResolver extends AbstractModule {
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     }
 
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.conflict.resolveByDeletingRevision.setHandler(this._resolveConflictByDeletingRev.bind(this));
         services.conflict.resolve.setHandler(this._resolveConflict.bind(this));
         services.conflict.resolveByNewest.setHandler(this._anyResolveConflictByNewest.bind(this));

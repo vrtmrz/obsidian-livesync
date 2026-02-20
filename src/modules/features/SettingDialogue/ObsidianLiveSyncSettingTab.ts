@@ -374,7 +374,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.initialSettings = undefined;
     }
 
-    hide() {
+    override hide() {
         this.isShown = false;
     }
     isShown: boolean = false;

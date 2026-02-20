@@ -194,7 +194,7 @@ export class ModuleSetupObsidian extends AbstractModule {
     //     }
     // }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
     }
 }

@@ -32,7 +32,7 @@ export function paneMaintenance(
                 (e) => {
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
-                            await this.services.remote.markResolved();
+                            await this.services.replication.markResolved();
                             this.display();
                         });
                     });
@@ -59,7 +59,7 @@ export function paneMaintenance(
                 (e) => {
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
-                            await this.services.remote.markUnlocked();
+                            await this.services.replication.markUnlocked();
                             this.display();
                         });
                     });
@@ -78,7 +78,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        await this.services.remote.markLocked();
+                        await this.services.replication.markLocked();
                     })
             )
             .addOnUpdate(this.onlyOnCouchDBOrMinIO);

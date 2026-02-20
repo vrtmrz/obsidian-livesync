@@ -156,7 +156,7 @@ export class ModuleDev extends AbstractObsidianModule {
         // this.addTestResult("Test of test3", true);
         return this.testDone();
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));

@@ -440,7 +440,7 @@ Line4:D`;
 
         return Promise.resolve(true);
     }
-    onBindFunction(core: typeof this.core, services: typeof core.services): void {
+    override onBindFunction(core: typeof this.core, services: typeof core.services): void {
         services.test.testMultiDevice.addHandler(this._everyModuleTestMultiDevice.bind(this));
     }
 }

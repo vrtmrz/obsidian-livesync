@@ -284,7 +284,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         return { result: false, requireFetch: false };
     }
 
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.tweakValue.fetchRemotePreferred.setHandler(this._fetchRemotePreferredTweakValues.bind(this));
         services.tweakValue.checkAndAskResolvingMismatched.setHandler(
             this._checkAndAskResolvingMismatchedTweaks.bind(this)

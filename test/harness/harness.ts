@@ -139,8 +139,8 @@ export async function waitForIdle(harness: LiveSyncHarness): Promise<void> {
 export async function waitForClosed(harness: LiveSyncHarness): Promise<void> {
     await delay(100);
     for (let i = 0; i < 10; i++) {
-        if (harness.plugin.services.appLifecycle.hasUnloaded()) {
-            console.log("App Lifecycle has unloaded");
+        if (harness.plugin.services.control.hasUnloaded()) {
+            console.log("App has unloaded");
             return;
         }
         await delay(100);

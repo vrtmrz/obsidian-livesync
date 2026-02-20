@@ -58,7 +58,7 @@ export class LiveSyncSetting extends Setting {
         }
     }
 
-    setDesc(desc: string | DocumentFragment): this {
+    override setDesc(desc: string | DocumentFragment): this {
         this.descBuf = desc;
         DEV: {
             this._createDocStub("desc", desc);
@@ -66,7 +66,7 @@ export class LiveSyncSetting extends Setting {
         super.setDesc(desc);
         return this;
     }
-    setName(name: string | DocumentFragment): this {
+    override setName(name: string | DocumentFragment): this {
         this.nameBuf = name;
         DEV: {
             this._createDocStub("name", name);

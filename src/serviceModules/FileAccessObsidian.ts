@@ -1,7 +1,7 @@
 import { markChangesAreSame } from "@/common/utils";
 import type { FilePath, UXDataWriteOptions, UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
 
-import { TFolder, type TAbstractFile, TFile, type Stat, type App, type DataWriteOptions } from "@/deps";
+import { TFolder, type TAbstractFile, TFile, type Stat, type App, type DataWriteOptions, normalizePath } from "@/deps";
 import { FileAccessBase, toArrayBuffer, type FileAccessBaseDependencies } from "@lib/serviceModules/FileAccessBase.ts";
 import { TFileToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian";
 
@@ -50,6 +50,10 @@ export class FileAccessObsidian extends FileAccessBase<TAbstractFile, TFile, TFo
             APIService: dependencies.APIService,
         });
         this.app = app;
+    }
+
+    protected override _normalisePath(path: string): string {
+        return normalizePath(path);
     }
 
     protected async _adapterMkdir(path: string) {

@@ -3,17 +3,13 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
-    EVENT_PLUGIN_UNLOADED,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,
     eventHub,
 } from "../../common/events.ts";
 import { $msg, setLang } from "../../lib/src/common/i18n.ts";
 import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
-import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
-import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
 import { AbstractModule } from "../AbstractModule.ts";
-import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
@@ -139,29 +135,29 @@ export class ModuleLiveSyncMain extends AbstractModule {
         return true;
     }
 
-    async _onLiveSyncUnload(): Promise<void> {
-        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
-        await this.services.appLifecycle.onBeforeUnload();
-        cancelAllPeriodicTask();
-        cancelAllTasks();
-        stopAllRunningProcessors();
-        await this.services.appLifecycle.onUnload();
-        this._unloaded = true;
-        for (const addOn of this.core.addOns) {
-            addOn.onunload();
-        }
-        if (this.localDatabase != null) {
-            this.localDatabase.onunload();
-            if (this.core.replicator) {
-                this.core.replicator?.closeReplication();
-            }
-            await this.localDatabase.close();
-        }
-        eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
-        eventHub.offAll();
-        this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
-        return;
-    }
+    // async _onLiveSyncUnload(): Promise<void> {
+    //     eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
+    //     await this.services.appLifecycle.onBeforeUnload();
+    //     cancelAllPeriodicTask();
+    //     cancelAllTasks();
+    //     stopAllRunningProcessors();
+    //     await this.services.appLifecycle.onUnload();
+    //     this._unloaded = true;
+    //     for (const addOn of this.core.addOns) {
+    //         addOn.onunload();
+    //     }
+    //     if (this.localDatabase != null) {
+    //         this.localDatabase.onunload();
+    //         if (this.core.replicator) {
+    //             this.core.replicator?.closeReplication();
+    //         }
+    //         await this.localDatabase.close();
+    //     }
+    //     eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
+    //     eventHub.offAll();
+    //     this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
+    //     return;
+    // }
 
     // private async _realizeSettingSyncMode(): Promise<void> {
     //     await this.services.appLifecycle.onSuspending();
@@ -177,45 +173,44 @@ export class ModuleLiveSyncMain extends AbstractModule {
     //     return;
     // }
 
-    isReady = false;
+    // isReady = false;
 
-    _isReady(): boolean {
-        return this.isReady;
-    }
+    // _isReady(): boolean {
+    //     return this.isReady;
+    // }
 
-    _markIsReady(): void {
-        this.isReady = true;
-    }
+    // _markIsReady(): void {
+    //     this.isReady = true;
+    // }
 
-    _resetIsReady(): void {
-        this.isReady = false;
-    }
+    // _resetIsReady(): void {
+    //     this.isReady = false;
+    // }
 
-    _suspended = false;
-    _isSuspended(): boolean {
-        return this._suspended || !this.settings?.isConfigured;
-    }
+    // _suspended = false;
+    // _isSuspended(): boolean {
+    //     return this._suspended || !this.settings?.isConfigured;
+    // }
 
-    _setSuspended(value: boolean) {
-        this._suspended = value;
-    }
+    // _setSuspended(value: boolean) {
+    //     this._suspended = value;
+    // }
 
-    _unloaded = false;
-    _isUnloaded(): boolean {
-        return this._unloaded;
-    }
+    // _unloaded = false;
+    // _isUnloaded(): boolean {
+    //     return this._unloaded;
+    // }
 
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
-        services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
-        services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
-        services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
-        services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
-        services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
+        // services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
+        // services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
+        // services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
+        // services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
+        // services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
+        // services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
         services.appLifecycle.onReady.addHandler(this._onLiveSyncReady.bind(this));
         services.appLifecycle.onWireUpEvents.addHandler(this._wireUpEvents.bind(this));
         services.appLifecycle.onLoad.addHandler(this._onLiveSyncLoad.bind(this));
-        services.appLifecycle.onAppUnload.addHandler(this._onLiveSyncUnload.bind(this));
     }
 }

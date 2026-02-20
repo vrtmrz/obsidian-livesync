@@ -35,11 +35,11 @@ function removeFromList(item: string, list: string) {
 
 export class P2PReplicatorPaneView extends SvelteItemView {
     plugin: ObsidianLiveSyncPlugin;
-    icon = "waypoints";
+    override icon = "waypoints";
     title: string = "";
-    navigation = false;
+    override navigation = false;
 
-    getIcon(): string {
+    override getIcon(): string {
         return "waypoints";
     }
     get replicator() {

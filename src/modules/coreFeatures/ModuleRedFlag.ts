@@ -324,7 +324,7 @@ export class ModuleRedFlag extends AbstractModule {
         }
         return true;
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
     }

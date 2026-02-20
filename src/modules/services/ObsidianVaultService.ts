@@ -11,7 +11,7 @@ declare module "obsidian" {
 
 // InjectableVaultService
 export class ObsidianVaultService extends InjectableVaultService<ObsidianServiceContext> {
-    vaultName(): string {
+    override vaultName(): string {
         return this.context.app.vault.getName();
     }
     getActiveFilePath(): FilePath | undefined {

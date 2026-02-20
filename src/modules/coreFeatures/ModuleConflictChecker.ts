@@ -74,7 +74,7 @@ export class ModuleConflictChecker extends AbstractModule {
                 totalRemainingReactiveSource: this.services.conflict.conflictProcessQueueCount,
             }
         );
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.conflict.queueCheckForIfOpen.setHandler(this._queueConflictCheckIfOpen.bind(this));
         services.conflict.queueCheckFor.setHandler(this._queueConflictCheck.bind(this));
         services.conflict.ensureAllProcessed.setHandler(this._waitForAllConflictProcessed.bind(this));

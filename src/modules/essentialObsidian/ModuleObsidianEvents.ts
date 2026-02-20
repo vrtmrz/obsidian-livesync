@@ -45,7 +45,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
-                    if (this.services.appLifecycle.hasUnloaded()) {
+                    if (this.services.control.hasUnloaded()) {
                         this._log("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
                         saveCommandDefinition.callback = this.initialCallback;
                         this.initialCallback = undefined;
@@ -247,7 +247,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     _isReloadingScheduled(): boolean {
         return this._totalProcessingCount !== undefined;
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.askRestart.setHandler(this._askReload.bind(this));

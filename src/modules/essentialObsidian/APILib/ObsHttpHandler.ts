@@ -28,7 +28,10 @@ export class ObsHttpHandler extends FetchHttpHandler {
         this.reverseProxyNoSignUrl = reverseProxyNoSignUrl;
     }
     // eslint-disable-next-line require-await
-    async handle(request: HttpRequest, { abortSignal }: HttpHandlerOptions = {}): Promise<{ response: HttpResponse }> {
+    override async handle(
+        request: HttpRequest,
+        { abortSignal }: HttpHandlerOptions = {}
+    ): Promise<{ response: HttpResponse }> {
         if (abortSignal?.aborted) {
             const abortError = new Error("Request aborted");
             abortError.name = "AbortError";

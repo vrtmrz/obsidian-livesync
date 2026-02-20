@@ -246,7 +246,7 @@ We can perform a command in this file.
         }
     }
 
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub<ServiceContext>): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub<ServiceContext>): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

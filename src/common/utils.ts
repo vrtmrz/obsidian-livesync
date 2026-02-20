@@ -31,7 +31,6 @@ import { sameChangePairs } from "./stores.ts";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
-import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels/promises";
 import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
 import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 
@@ -152,7 +151,7 @@ export class PeriodicProcessor {
             () =>
                 fireAndForget(async () => {
                     await this.process();
-                    if (this._plugin.services?.appLifecycle?.hasUnloaded()) {
+                    if (this._plugin.services?.control?.hasUnloaded()) {
                         this.disable();
                     }
                 }),
@@ -458,48 +457,4 @@ export function onlyInNTimes(n: number, proc: (progress: number) => any) {
             proc(counter);
         }
     };
-}
-
-const waitingTasks = {} as Record<string, { task?: PromiseWithResolvers<any>; previous: number; leastNext: number }>;
-
-export function rateLimitedSharedExecution<T>(key: string, interval: number, proc: () => Promise<T>): Promise<T> {
-    if (!(key in waitingTasks)) {
-        waitingTasks[key] = { task: undefined, previous: 0, leastNext: 0 };
-    }
-    if (waitingTasks[key].task) {
-        // Extend the previous execution time.
-        waitingTasks[key].leastNext = Date.now() + interval;
-        return waitingTasks[key].task.promise;
-    }
-
-    const previous = waitingTasks[key].previous;
-
-    const delay = previous == 0 ? 0 : Math.max(interval - (Date.now() - previous), 0);
-
-    const task = promiseWithResolver<T>();
-    void task.promise.finally(() => {
-        if (waitingTasks[key].task === task) {
-            waitingTasks[key].task = undefined;
-            waitingTasks[key].previous = Math.max(Date.now(), waitingTasks[key].leastNext);
-        }
-    });
-    waitingTasks[key] = {
-        task,
-        previous: Date.now(),
-        leastNext: Date.now() + interval,
-    };
-    void scheduleTask("thin-out-" + key, delay, async () => {
-        try {
-            task.resolve(await proc());
-        } catch (ex) {
-            task.reject(ex);
-        }
-    });
-    return task.promise;
-}
-export function updatePreviousExecutionTime(key: string, timeDelta: number = 0) {
-    if (!(key in waitingTasks)) {
-        waitingTasks[key] = { task: undefined, previous: 0, leastNext: 0 };
-    }
-    waitingTasks[key].leastNext = Math.max(Date.now() + timeDelta, waitingTasks[key].leastNext);
 }

@@ -16,11 +16,11 @@ export class GlobalHistoryView extends SvelteItemView {
     }
 
     plugin: ObsidianLiveSyncPlugin;
-    icon = "clock";
+    override icon = "clock";
     title: string = "";
-    navigation = true;
+    override navigation = true;
 
-    getIcon(): string {
+    override getIcon(): string {
         return "clock";
     }
 

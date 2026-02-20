@@ -31,7 +31,7 @@ export class ModulePeriodicProcess extends AbstractModule {
         return this.resumePeriodic();
     }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onUnload.addHandler(this._allOnUnload.bind(this));
         services.setting.onBeforeRealiseSetting.addHandler(this._everyBeforeRealizeSetting.bind(this));
         services.setting.onSettingRealised.addHandler(this._everyAfterRealizeSetting.bind(this));

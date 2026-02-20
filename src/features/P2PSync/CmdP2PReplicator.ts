@@ -40,9 +40,6 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     getSettings(): P2PSyncSetting {
         return this.plugin.settings;
     }
-    get settings() {
-        return this.plugin.settings;
-    }
     getDB() {
         return this.plugin.localDatabase.localDatabase;
     }
@@ -65,7 +62,7 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
         // this.onBindFunction(plugin, plugin.services);
     }
 
-    async handleReplicatedDocuments(docs: EntryDoc[]): Promise<void> {
+    async handleReplicatedDocuments(docs: EntryDoc[]): Promise<boolean> {
         // console.log("Processing Replicated Docs", docs);
         return await this.services.replication.parseSynchroniseResult(
             docs as PouchDB.Core.ExistingDocument<EntryDoc>[]

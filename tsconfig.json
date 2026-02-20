@@ -14,6 +14,7 @@
         "alwaysStrict": true,
         "allowImportingTsExtensions": true,
         "verbatimModuleSyntax": true,
+        "noImplicitOverride": true,
         "noEmit": true,
         "lib": ["es2018", "DOM", "ES5", "ES6", "ES7", "es2019.array", "ES2021.WeakRef", "ES2020.BigInt", "ESNext.Intl"],
         "strictBindCallApply": true,

@@ -5,12 +5,13 @@ import { UIService } from "@lib/services//implements/base/UIService";
 import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
 import DialogToCopy from "@lib/UI/dialogues/DialogueToCopy.svelte";
-import type { IAPIService } from "@lib/services/base/IService";
+import type { IAPIService, IControlService } from "@lib/services/base/IService";
 export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {
     appLifecycle: AppLifecycleService<T>;
     config: ConfigService<T>;
     replicator: ReplicatorService<T>;
     APIService: IAPIService;
+    control: IControlService;
 };
 
 export class ObsidianUIService extends UIService<ObsidianServiceContext> {
@@ -24,6 +25,7 @@ export class ObsidianUIService extends UIService<ObsidianServiceContext> {
             config: dependents.config,
             replicator: dependents.replicator,
             confirm: obsidianConfirm,
+            control: dependents.control,
         });
         super(context, {
             appLifecycle: dependents.appLifecycle,

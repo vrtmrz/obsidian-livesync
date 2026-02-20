@@ -50,7 +50,7 @@ export class JsonResolveModal extends Modal {
         this.callback = undefined;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -74,7 +74,7 @@ export class JsonResolveModal extends Modal {
         return;
     }
 
-    onClose() {
+    override onClose() {
         const { contentEl } = this;
         contentEl.empty();
         // contentEl.empty();

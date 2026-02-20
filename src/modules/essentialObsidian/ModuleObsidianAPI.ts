@@ -282,7 +282,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
         return Promise.resolve([...this._previousErrors]);
     }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         services.API.isLastPostFailedDueToPayloadSize.setHandler(this._getLastPostFailedBySize.bind(this));
         services.remote.connect.setHandler(this._connectRemoteCouchDB.bind(this));
         services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
