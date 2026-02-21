@@ -281,7 +281,11 @@ export class ModuleLog extends AbstractObsidianModule {
             const fileStatus = this.activeFileStatus.value;
             if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
             const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
-            messageLines.push(...messages);
+            if (this.settings.connectionWarningStyle === "banner") {
+                messageLines.push(...messages);
+            } else if (this.settings.connectionWarningStyle === "icon") {
+                if (messages.length > 0) messageLines.push("🔗❌");
+            }
             this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
         }
     }
