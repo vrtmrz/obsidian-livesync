@@ -47,7 +47,7 @@ export class ModuleTargetFilter extends AbstractModule {
 
     totalFileEventCount = 0;
 
-    private async _isTargetFileByFileNameDuplication(file: string | UXFileInfoStub) {
+    private async _isTargetAcceptedByFileNameDuplication(file: string | UXFileInfoStub) {
         await this.fileCountMap.updateValue(this.totalFileEventCount);
         const fileCountMap = this.fileCountMap.value;
         if (!fileCountMap) {
@@ -107,7 +107,7 @@ export class ModuleTargetFilter extends AbstractModule {
         }
     }
 
-    private async _isTargetFileByLocalDB(file: string | UXFileInfoStub) {
+    private async _isTargetAcceptedByLocalDB(file: string | UXFileInfoStub) {
         const filepath = getStoragePathFromUXFileInfo(file);
         if (!this.localDatabase?.isTargetFile(filepath)) {
             this._log("File is not target by local DB: " + filepath);
@@ -117,12 +117,12 @@ export class ModuleTargetFilter extends AbstractModule {
         return await Promise.resolve(true);
     }
 
-    private async _isTargetFileFinal(file: string | UXFileInfoStub) {
+    private async _isTargetAcceptedFinally(file: string | UXFileInfoStub) {
         this._log("File is target finally: " + getStoragePathFromUXFileInfo(file), LOG_LEVEL_DEBUG);
         return await Promise.resolve(true);
     }
 
-    private async _isTargetIgnoredByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
+    private async _isTargetAcceptedByIgnoreFiles(file: string | UXFileInfoStub): Promise<boolean> {
         if (!this.settings.useIgnoreFiles) {
             return true;
         }
@@ -137,14 +137,19 @@ export class ModuleTargetFilter extends AbstractModule {
         return true;
     }
 
+    private async _isTargetIgnoredByIgnoreFiles(file: string | UXFileInfoStub) {
+        const result = await this._isTargetAcceptedByIgnoreFiles(file);
+        return !result;
+    }
+
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.vault.markFileListPossiblyChanged.setHandler(this._markFileListPossiblyChanged.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));
         services.vault.isIgnoredByIgnoreFile.setHandler(this._isTargetIgnoredByIgnoreFiles.bind(this));
-        services.vault.isTargetFile.addHandler(this._isTargetFileByFileNameDuplication.bind(this), 10);
-        services.vault.isTargetFile.addHandler(this._isTargetIgnoredByIgnoreFiles.bind(this), 20);
-        services.vault.isTargetFile.addHandler(this._isTargetFileByLocalDB.bind(this), 30);
-        services.vault.isTargetFile.addHandler(this._isTargetFileFinal.bind(this), 100);
+        services.vault.isTargetFile.addHandler(this._isTargetAcceptedByFileNameDuplication.bind(this), 10);
+        services.vault.isTargetFile.addHandler(this._isTargetAcceptedByIgnoreFiles.bind(this), 20);
+        services.vault.isTargetFile.addHandler(this._isTargetAcceptedByLocalDB.bind(this), 30);
+        services.vault.isTargetFile.addHandler(this._isTargetAcceptedFinally.bind(this), 100);
         services.setting.onSettingRealised.addHandler(this.refreshSettings.bind(this));
     }
 }

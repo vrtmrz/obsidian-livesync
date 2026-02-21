@@ -3,6 +3,33 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.43-patched-9 a.ka. 0.25.44-rc1
+
+We are finally ready for release. I think I will go ahead and release it after using it for a few days.
+
+### Fixed
+
+- Hidden file synchronisation now works!
+- Now Hidden file synchronisation respects `.ignore` files.
+- Replicator initialisation during rebuilding now works correctly.
+
+### Refactored
+
+- Some methods naming have been changed for better clarity, i.e., `_isTargetFileByLocalDB` is now `_isTargetAcceptedByLocalDB`.
+
+### Follow-up tasks memo (After 0.25.44)
+
+Going forward, functionality that does not span multiple events is expected to be implemented as middleware-style functions rather than modules based on classes.
+
+Consequently, the existing modules will likely be gradually dismantled.
+For reference, `ModuleReplicator.ts` has extracted several functionalities as functions.
+
+However, this does not negate object-oriented design. Where lifecycles and state are present, and the Liskov Substitution Principle can be upheld, we design using classes. After all, a visible state is preferable to a hidden state. In other words, the handler still accepts both functions and member methods, so formally there is no change.
+
+As undertaking this for everything would be a bit longer task, I intend to release it at this stage.
+
+Note: I left using `setHandler`s that as a mark of `need to be refactored`. Basically, they should be implemented in the service itself. That because it is just only a mis-designed separated implementation.
+
 ## 0.25.43-patched-8
 
 I really must thank you all. You know that it seems we have just a little more to do.
