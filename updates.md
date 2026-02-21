@@ -3,7 +3,7 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## 0.25.43-patched-9 a.ka. 0.25.44-rc1
+## 0.25.43-patched-9 a.k.a. 0.25.44-rc1
 
 We are finally ready for release. I think I will go ahead and release it after using it for a few days.
 
@@ -28,7 +28,7 @@ However, this does not negate object-oriented design. Where lifecycles and state
 
 As undertaking this for everything would be a bit longer task, I intend to release it at this stage.
 
-Note: I left using `setHandler`s that as a mark of `need to be refactored`. Basically, they should be implemented in the service itself. That because it is just only a mis-designed separated implementation.
+Note: I left using `setHandler`s that as a mark of `need to be refactored`. Basically, they should be implemented in the service itself. That is because it is just a mis-designed, separated implementation.
 
 ## 0.25.43-patched-8
 
