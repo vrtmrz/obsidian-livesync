@@ -45,5 +45,5 @@ export const terserOption: TerserOptions = {
         ecma: 2020,
         safari10: true,
         webkit: true,
-    }
-}
+    },
+};

@@ -89,7 +89,6 @@ if (PATH_TEST_INSTALL) {
 }
 import { terserOption } from "./terser_vite.config";
 export default defineConfig(({ mode }) => {
-
     const prod = mode === "production" || mode === "original";
     let minify = prod ? "terser" : false;
     let outFile = `main_vite.${prod ? "prod" : "dev"}.js`;
@@ -129,7 +128,7 @@ export default defineConfig(({ mode }) => {
             },
         },
         build: {
-            target: 'es2018',
+            target: "es2018",
             commonjsOptions: {},
             lib: {
                 entry: path.resolve(__dirname, "src/main.ts"),
@@ -160,5 +159,5 @@ export default defineConfig(({ mode }) => {
         worker: {
             format: "iife",
         },
-    }
-})
+    };
+});
