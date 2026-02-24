@@ -15,6 +15,7 @@ import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { clearHandlers } from "@lib/replication/SyncParamsHandler";
 import type { NecessaryServices } from "@/serviceFeatures/types";
+import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -46,7 +47,7 @@ async function canReplicateWithPBKDF2(
     errorManager.clearError(errorMessage);
     // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
     // tagged as network error at beginning for error filtering with NetworkWarningStyles
-    const ensureMessage = "\u{200b}Failed to initialise the encryption key, preventing replication.";
+    const ensureMessage = `${MARK_LOG_NETWORK_ERROR}Failed to initialise the encryption key, preventing replication.`;
     const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, true);
     if (!ensureResult) {
         errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);

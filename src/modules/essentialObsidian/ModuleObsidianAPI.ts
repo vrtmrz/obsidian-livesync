@@ -18,6 +18,7 @@ import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.ts";
 import { AuthorizationHeaderGenerator } from "../../lib/src/replication/httplib.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "../../common/events.ts";
+import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils.ts";
 
 setNoticeClass(Notice);
 
@@ -236,7 +237,7 @@ export class ModuleObsidianAPI extends AbstractObsidianModule {
                 } catch (ex: any) {
                     this._log(`HTTP:${method}${size} to:${localURL} -> failed`, LOG_LEVEL_VERBOSE);
                     const msg = ex instanceof Error ? `${ex?.name}:${ex?.message}` : ex?.toString();
-                    this.showError(`\u{200b}Network Error: Failed to fetch: ${msg}`); // Do not show notice, due to throwing below
+                    this.showError(`${MARK_LOG_NETWORK_ERROR}Network Error: Failed to fetch: ${msg}`); // Do not show notice, due to throwing below
                     this._log(ex, LOG_LEVEL_VERBOSE);
                     // limit only in bulk_docs.
                     if (url.toString().indexOf("_bulk_docs") !== -1) {
