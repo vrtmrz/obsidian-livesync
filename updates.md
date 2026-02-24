@@ -3,223 +3,56 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## 0.25.43-patched-9 a.k.a. 0.25.44-rc1
+## 0.25.44
 
-We are finally ready for release. I think I will go ahead and release it after using it for a few days.
+24th February, 2026
 
-### Fixed
-
-- Hidden file synchronisation now works!
-- Now Hidden file synchronisation respects `.ignore` files.
-- Replicator initialisation during rebuilding now works correctly.
-
-### Refactored
-
-- Some methods naming have been changed for better clarity, i.e., `_isTargetFileByLocalDB` is now `_isTargetAcceptedByLocalDB`.
-
-### Follow-up tasks memo (After 0.25.44)
-
-Going forward, functionality that does not span multiple events is expected to be implemented as middleware-style functions rather than modules based on classes.
-
-Consequently, the existing modules will likely be gradually dismantled.
-For reference, `ModuleReplicator.ts` has extracted several functionalities as functions.
-
-However, this does not negate object-oriented design. Where lifecycles and state are present, and the Liskov Substitution Principle can be upheld, we design using classes. After all, a visible state is preferable to a hidden state. In other words, the handler still accepts both functions and member methods, so formally there is no change.
-
-As undertaking this for everything would be a bit longer task, I intend to release it at this stage.
-
-Note: I left using `setHandler`s that as a mark of `need to be refactored`. Basically, they should be implemented in the service itself. That is because it is just a mis-designed, separated implementation.
-
-## 0.25.43-patched-8
-
-I really must thank you all. You know that it seems we have just a little more to do.
-Note: This version is not fully tested yet. Be careful to use this. Very dogfood-y one.
+This release represents a significant architectural overhaul of the plug-in, focusing on modularity, testability, and stability. While many changes are internal, they pave the way for more robust features and easier maintenance.
+However, as this update is very substantial, please do feel free to let me know if you encounter any issues.
 
 ### Fixed
 
-- Now the device name is saved correctly.
+- Ignore files (e.g., `.ignore`) are now handled efficiently.
+- Replication & Database:
+    - Replication statistics are now correctly reset after switching replicators.
+- Fixed `File already exists` for .md files has been merged (PR #802) So thanks @waspeer for the contribution!
+
+### Improved
+
+- Now we can configure network-error banners as icons, or hide them completely with the new `Network Warning Style` setting in the `General` pane of the settings dialogue. (#770, PR #804)
+  - Thanks so much to @A-wry!
 
 ### Refactored
 
-- Add `override` keyword to all overridden items.
-- More dynamic binding has been removed.
-- The number of inverted dependencies has decreased much more.
-- Some check-logic; i.e., like pre-replication check is now separated into check functions and added to the service as handlers, layered.
-  - This may help with better testing and better maintainability.
+Architectural Overhaul:
 
+- A major transition from Class-based Modules to a Service/Middleware architecture has begun.
+    - Many modules (for example, `ModulePouchDB`, `ModuleLocalDatabaseObsidian`, `ModuleKeyValueDB`) have been removed or integrated into specific Services (`database`, `keyValueDB`, etc.).
+    - Reduced reliance on dynamic binding and inverted dependencies; dependencies are now explicit.
+    - `ObsidianLiveSyncPlugin` properties (`replicator`, `localDatabase`, `storageAccess`, etc.) have been moved to their respective services for better separation of concerns.
+    - In this refactoring, the Service will henceforth, as a rule, cease to use setHandler, that is to say, simple lazy binding.
+        - They will be implemented directly in the service.
+    - However, not everything will be middlewarised. Modules that maintain state or make decisions based on the results of multiple handlers are permitted.
+- Lifecycle:
+    - Application LifeCycle now starts in `Main` rather than `ServiceHub` or `ObsidianMenuModule`, ensuring smoother startup coordination.
 
-## 0.25.43-patched-7
+New Services & Utilities:
 
-19th February, 2026
+- Added a `control` service to orchestrate other services (for example, handling stop/start logic during settings realisation).
+- Added `UnresolvedErrorManager` to handle and display unresolved errors in a unified way.
+- Added `logUtils` to unify logging injection and formatting.
+- `VaultService.isTargetFile` now uses multiple, distinct checkers for better extensibility.
 
-Right then, let us make a decision already.
+Code Separation:
 
-Last time, since I found a bug, I ended up doing a few other things as well, but next time I intend to release it with just the bug fix. It is quite substantial, after all.
+- Separated Obsidian-specific logic from base logic for `StorageEventManager` and `FileAccess` modules.
+- Moved reactive state values and statistics from the main plug-in instance to the services responsible for them.
 
-Customisation Sync has mostly been verified. Hidden file synchronisation has not been done yet.
+Internal Cleanups:
 
-Vite's build system is not in the production. However, I possibly migrate to it in the future.
-
-And, the `daily-progress` will be tidied on releasing 0.25.44. Do not worry!
-
-### Fixed
-
-- Fixed an issue where the StorageEventManager was not correctly loading the settings.
-- Replication statistics are now correctly reset after switching replicators.
-
-### Refactored
-
-- Now, many reactive values which keep the state or statistics of the plugin are moved to the services which have the responsibility for these states.
-- `serviceFeatures` are now able to be added to the services; this is not a class module, but a function which accepts dependencies and returns an addHandler-able function. This is for better separation of concerns, better maintainability, and testability.
-- `control` service; is a meta-service which is responsible for orchestrating services has been added.
-    - Don't you think stopping replication or something occurs during `settingService.realiseSetting` is quite weird? It may be done by the control service, which can orchestrate the setting service and the replicator service.
-    -
-- Some functions on services have been moved. e.g., `getSystemVaultName` is now on the API service.
-- Setting Service is now responsible for the setting, no longer using dynamic binding for the modules.
-
-## 0.25.43-patched-6
-
-18th February, 2026
-
-Let me confess that I have lied about `now all ambiguous properties`... I have found some more implicit calling.
-
-Note: I have not checked hidden file sync and customisation sync yet. Please report if you find any unexpected behaviour in these features.
-
-### Fixed
-
-- Now ReplicatorService responds to database reset and database initialisation events to dispose of the active replicator.
-    - Fixes some unlocking issues during rebuilding.
-
-### Refactored
-
-- Now `StorageEventManagerBase` is separated from `StorageEventManagerObsidian` following their concerns.
-    - No longer using `ObsidianFileAccess` indirectly during checking duplicated-file events.
-    - Last event memorisation is now moved into the StorageAccessManager, just like the file processing interlocking.
-    - These methods, i.e., `ObsidianFileAccess.touch`. `StorageEventManager.recentlyTouched`, and `StorageEventManager.touch` are still available, but simply call the StorageAccessManager's methods.
-- Now `FileAccessBase` is separated from `FileAccessObsidian` following their concerns.
-
-## 0.25.43-patched-5
-
-17th February, 2026
-
-Yes, we mostly have got refactored!
-
-### Refactored
-
-- Following properties of `ObsidianLiveSyncPlugin` are now initialised more explicitly:
-
-    - property : what is responsible
-    - `storageAccess` : `ServiceFileAccessObsidian`
-    - `databaseFileAccess` : `ServiceDatabaseFileAccess`
-    - `fileHandler` : `ServiceFileHandler`
-    - `rebuilder` : `ServiceRebuilder`
-    - Not so long from now, ServiceFileAccessObsidian might be abstracted to a more general FileAccessService, and make more testable and maintainable.
-    - These properties are initialised in `initialiseServiceModules` on `ObsidianLiveSyncPlugin`.
-    - They are `ServiceModule`s.
-        - Which means they do not use dynamic binding themselves, but they use bound services.
-    - ServiceModules are in src/lib/src/serviceModules for common implementations, and src/serviceModules for Obsidian-specific implementations.
-    - Hence, now all ambiguous properties of `ObsidianLiveSyncPlugin` are initialised explicitly. We can proceed to testing.
-        - Well, I will release v0.25.44 after testing this.
-
-- Conflict service is now responsible for `resolveAllConflictedFilesByNewerOnes` function, which has been in the rebuilder.
-- New functions `updateSettings`, and `applyPartial` have been added to the setting service. We should use these functions instead of directly writing the settings on `ObsidianLiveSyncPlugin.setting`.
-- Some interfaces for services have been moved to src/lib/src/interfaces.
-- `RemoteService.tryResetDatabase` and `tryCreateDatabase` are now moved to the replicator service.
-    - You know that these functions are surely performed by the replicator.
-    - Probably, most of the functions in `RemoteService` should be moved to the replicator service, but for now, these two functions are moved as they are the most related ones, to rewrite the rebuilder service.
-- Common functions are gradually moved to the common library.
-- Now, binding functions on modules have been delayed until the services and service modules are initialised, to avoid fragile behaviour.
-
-## 0.25.43-patched-4
-
-16th February, 2026
-
-I have been working on it little by little in my spare time. Sorry for the delayed response for issues! ! However, thanks for your patience, we seems the `revert to 0.25.43` is not necessary, and I will keep going with this version.
-
-### Refactored
-
-- No longer `DatabaseService` is an injectable service. It is now actually a service which has its own handlers. No dynamic binding for necessary functions.
-- Now the following properties of `ObsidianLiveSyncPlugin` belong to each service:
-    - `replicator` : `services.replicator` (still we can access `ObsidianLiveSyncPlugin.replicator` for the active replicator)
-- A Handy class `UnresolvedErrorManager` has been added, which is responsible for managing unresolved errors and their handlers (we will see `unresolved errors` on a red-background-banner in the editor when they occur).
-    - This manager can be used to handle unresolved errors in a unified way, and it can also be used to display notifications or something when unresolved errors occur.
-
-## 0.25.43-patched-3
-
-16th February, 2026
-
-### Refactored
-
-- Now following properties of `ObsidianLiveSyncPlugin` belong to each service:
-    - property : service (still we can access these properties from `ObsidianLiveSyncPlugin` for better usability, but probably we should access these from services to clarify the dependencies)
-    - `localDatabase` : `services.database`
-    - `managers` : `services.database`
-    - `simpleStore` : `services.keyValueDB`
-    - `kvDB`: `services.keyValueDB`
-- Initialising modules, addOns, and services are now explicitly separated in the `_startUp` function of the main plug-in class.
-- LiveSyncLocalDB now depends more explicitly on specified services, not the whole `ServiceHub`.
-- New service `keyValueDB` has been added. This had been separated from the `database` service.
-- Non-trivial modules, such as `ModuleExtraSyncObsidian` (which only holds deviceAndVaultName), are simply implemented in the service.
-- Add `logUtils` for unifying logging method injection and formatting. This utility is able to accept the API service for log writing.
-- `ModuleKeyValueDB` has been removed, and its functionality is now implemented in the `keyValueDB` service.
-- `ModulePouchDB` and `ModuleLocalDatabaseObsidian` have been removed, and their functionality is now implemented in the `database` service.
-    - Please be aware that you have overridden createPouchDBInstance or something by dynamic binding; you should now override the createPouchDBInstance in the database service instead of using the module.
-    - You can refer to the `DirectFileManipulatorV2` for an example of how to override the createPouchDBInstance function in the database service.
-
-## 0.25.43-patched-2
-
-14th February, 2026
-
-### Fixed
-
-- Application LifeCycle has now started in Main, not ServiceHub.
-    - Indeed, ServiceHub cannot be known other things in main have got ready, so it is quite natural to start the lifecycle in main.
-
-## 0.25.43-patched-1
-
-13th February, 2026
-
-**NOTE: Hidden File Sync and Customisation Sync may not work in this version.**
-
-Just a heads-up: this is a patch version, which is essentially a beta release. Do not worry about the following memos, as they are indeed freaking us out. I trust that you have thought this was too large; you're right.
-
-If this cannot be stable, I will revert to 0.24.43 and try again.
-
-### Refactored
-
-- Now resolving unexpected and inexplicable dependency order issues...
-- The function which is able to implement to the service is now moved to each service.
-    - AppLifecycleService.performRestart
-- VaultService.isTargetFile is now using multiple checkers instead of a single function.
-    - This change allows better separation of concerns and easier extension in the future.
-- Application LifeCycle has now started in ServiceHub, not ObsidianMenuModule.
-
-    - It was in a QUITE unexpected place..., isn't it?
-    - Instead of, we should call `await this.services.appLifecycle.onReady()` in other platforms.
-    - As in the browser platform, it will be called at `DOMContentLoaded` event.
-
-- ModuleTargetFilter, which is responsible for parsing ignore files, has been refined.
-    - This should be separated to a TargetFilter and an IgnoreFileFilter for better maintainability.
-- Using `API.addCommand` or some Obsidian API and shimmer APIs, Many modules have been refactored to be derived to AbstractModule from AbstractObsidianModule, to clarify the dependencies. (we should make `app` usage clearer...)
-- Fixed initialising `storageAccess` too late in `FileAccessObsidian` module (I am still wondering why it worked before...).
-- Remove some redundant overrides in modules.
-
-### Planned
-
-- Some services have an ambiguous name, such as `Injectable`. These will be renamed in the future for better clarity.
-- Following properties of `ObsidianLiveSyncPlugin` should be initialised more explicitly:
-    - property : where it is initialised currently
-    - `localDatabase` : `ModuleLocalDatabaseObsidian`
-    - `managers` : `ModuleLocalDatabaseObsidian`
-    - `replicator` : `ModuleReplicator`
-    - `simpleStore` : `ModuleKeyValueDB`
-    - `storageAccess` : `ModuleFileAccessObsidian`
-    - `databaseFileAccess` : `ModuleDatabaseFileAccess`
-    - `fileHandler` : `ModuleFileHandler`
-    - `rebuilder` : `ModuleRebuilder`
-    - `kvDB`: `ModuleKeyValueDB`
-    - And I think that having a feature in modules directly is not good for maintainability, these should be separated to some module (loader) and implementation (not only service, but also independent something).
-- Plug-in statuses such as requestCount, responseCount... should be moved to a status service or somewhere for better separation of concerns.
+- Many functions have been renamed for clarity (for example, `_isTargetFileByLocalDB` is now `_isTargetAcceptedByLocalDB`).
+- Added `override` keywords to overridden items and removed dynamic binding for clearer code inheritance.
+- Moved common functions to the common library.
 
 ## 0.25.43
 
@@ -379,49 +212,5 @@ Sorry for a small release! I would like to keep things moving along like this if
 - Storage application process has been refactored.
     - Please report if you find any unexpected behaviour after this update. A bit of large refactoring.
 
-## 0.25.33
-
-05th December, 2025
-
-### New feature
-
-- We can analyse the local database with the `Analyse database usage` command.
-    - This command makes a TSV-style report of the database usage, which can be pasted into spreadsheet applications.
-        - The report contains the number of unique chunks and shared chunks for each document revision.
-            - Unique chunks indicate the actual consumption.
-            - Shared chunks indicate the reference counts from other chunks with no consumption.
-        - We can find which notes or files are using large amounts of storage in the database. Or which notes cannot share chunks effectively.
-        - This command is useful when optimising the database size or investigating an unexpectedly large database size.
-- We can reset the notification threshold and check the remote usage at once with the `Reset notification threshold and check the remote database usage` command.
-- Commands are available from the Command Palette, or `Hatch` pane in the settings dialogue.
-
-### Fixed
-
-- Now the plug-in resets the remote size notification threshold after rebuild.
-
-## 0.25.32
-
-02nd December, 2025
-
-Now I am back from a short (?) break! Thank you all for your patience. (It is nothing major, but the first half of the year has finally come to an end).
-Anyway, I will release the things a bit by bit. I think that we need a rehabilitation or getting gears in again.
-
-### Improved
-
-- Now the plugin warns when we are in several file-related situations that may cause unexpected behaviour (#300).
-    - These errors are displayed alongside issues such as file size exceeding limits.
-    - Such situations include:
-        - When the document has a name which is not supported by some file systems.
-        - When the vault has the same file names with different letter cases.
-
-## 0.25.31
-
-18th November, 2025
-
-### Fixed
-
-- Now fetching configuration from the server can handle the empty remote correctly (reported on #756).
-- No longer asking to switch adapters during rebuilding.
-
-Older notes are in
+Full notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
