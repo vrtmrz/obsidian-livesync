@@ -24,7 +24,7 @@ However, as this update is very substantial, please do feel free to let me know 
 
 ### Refactored
 
-Architectural Overhaul:
+#### Architectural Overhaul:
 
 - A major transition from Class-based Modules to a Service/Middleware architecture has begun.
     - Many modules (for example, `ModulePouchDB`, `ModuleLocalDatabaseObsidian`, `ModuleKeyValueDB`) have been removed or integrated into specific Services (`database`, `keyValueDB`, etc.).
@@ -36,23 +36,29 @@ Architectural Overhaul:
 - Lifecycle:
     - Application LifeCycle now starts in `Main` rather than `ServiceHub` or `ObsidianMenuModule`, ensuring smoother startup coordination.
 
-New Services & Utilities:
+#### New Services & Utilities:
 
 - Added a `control` service to orchestrate other services (for example, handling stop/start logic during settings realisation).
 - Added `UnresolvedErrorManager` to handle and display unresolved errors in a unified way.
 - Added `logUtils` to unify logging injection and formatting.
 - `VaultService.isTargetFile` now uses multiple, distinct checkers for better extensibility.
 
-Code Separation:
+#### Code Separation:
 
 - Separated Obsidian-specific logic from base logic for `StorageEventManager` and `FileAccess` modules.
 - Moved reactive state values and statistics from the main plug-in instance to the services responsible for them.
 
-Internal Cleanups:
+#### Internal Cleanups:
 
 - Many functions have been renamed for clarity (for example, `_isTargetFileByLocalDB` is now `_isTargetAcceptedByLocalDB`).
 - Added `override` keywords to overridden items and removed dynamic binding for clearer code inheritance.
 - Moved common functions to the common library.
+
+#### Dependencies:
+
+- Bumped dependencies simply to a point where they can be considered problem-free (by human-powered-artefacts-diff).
+  - Svelte, terser, and more something will be bumped later. they have a significant impact on diff and paints it totally.
+  - You may be surprised but, when bumping the library, I am actually checking for any unintended code.
 
 ## 0.25.43
 
