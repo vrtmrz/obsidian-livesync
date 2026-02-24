@@ -481,8 +481,14 @@ export class Plugin {
 }
 
 export class Notice {
+    private _key:number;
+    private static _counter = 0;
     constructor(message: string) {
-        console.log("Notice:", message);
+        this._key = Notice._counter++;
+        console.log(`Notice [${this._key}]:`, message);
+    }
+    setMessage(message: string) {
+        console.log(`Notice [${this._key}]:`, message);
     }
 }
 
