@@ -11,13 +11,28 @@ The plugin uses a dynamic module system to reduce coupling and improve maintaina
 
 - **Service Hub**: Central registry for services using dependency injection
     - Services are registered, and accessed via `this.services` (in most modules)
-- **Module Loading**: All modules extend `AbstractModule` or `AbstractObsidianModule` (which extends `AbstractModule`). These modules are loaded in main.ts and some modules
+- **Module Loading**: All modules extend `AbstractModule` or `AbstractObsidianModule` (which extends `AbstractModule`). These modules are loaded in main.ts and some modules.
 - **Module Categories** (by directory):
     - `core/` - Platform-independent core functionality
     - `coreObsidian/` - Obsidian-specific core (e.g., `ModuleFileAccessObsidian`)
     - `essential/` - Required modules (e.g., `ModuleMigration`, `ModuleKeyValueDB`)
     - `features/` - Optional features (e.g., `ModuleLog`, `ModuleObsidianSettings`)
     - `extras/` - Development/testing tools (e.g., `ModuleDev`, `ModuleIntegratedTest`)
+- **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
+    - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
+- **ServiceModule**: A new type of module that directly depends on services.
+
+#### Note on Module vs Service
+
+After v0.25.44 refactoring, the Service will henceforth, as a rule, cease to use setHandler, that is to say, simple lazy binding. - They will be implemented directly in the service. - However, not everything will be middlewarised. Modules that maintain state or make decisions based on the results of multiple handlers are permitted.
+
+Hence, the new feature should be implemented as follows:
+
+- If it is a simple extension point (e.g., adding a check before replication), it should be implemented as a handler in the service (e.g., `replication.onBeforeReplicate`).
+- If it requires maintaining state or making decisions based on multiple handlers, it should be implemented as a serviceModule dependent on the relevant services explicitly.
+- If you have to implement a new feature without much modification, you can extent existing modules, but it is recommended to implement a new module or serviceModule for better maintainability.
+- Refactoring existing modules to services is also always welcome!
+- Please write tests for new features, you will notice that the simple handler approach is quite testable.
 
 ### Key Architectural Components
 
