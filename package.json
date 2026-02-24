@@ -48,9 +48,9 @@
         "test:docker-p2p:start": "npm run test:docker-p2p:up && sleep 3 && npm run test:docker-p2p:init",
         "test:docker-p2p:down": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/p2p-stop.sh",
         "test:docker-p2p:stop": "npm run test:docker-p2p:down",
-        "test:docker-all:up": "npm run test:docker-couchdb:up && npm run test:docker-s3:up && npm run test:docker-p2p:up",
-        "test:docker-all:init": "npm run test:docker-couchdb:init && npm run test:docker-s3:init && npm run test:docker-p2p:init",
-        "test:docker-all:down": "npm run test:docker-couchdb:down && npm run test:docker-s3:down && npm run test:docker-p2p:down",
+        "test:docker-all:up": "npm run test:docker-couchdb:up ; npm run test:docker-s3:up ; npm run test:docker-p2p:up",
+        "test:docker-all:init": "npm run test:docker-couchdb:init ; npm run test:docker-s3:init ; npm run test:docker-p2p:init",
+        "test:docker-all:down": "npm run test:docker-couchdb:down ; npm run test:docker-s3:down ; npm run test:docker-p2p:down",
         "test:docker-all:start": "npm run test:docker-all:up && sleep 5 && npm run test:docker-all:init",
         "test:docker-all:stop": "npm run test:docker-all:down",
         "test:full": "npm run test:docker-all:start && vitest run --coverage && npm run test:docker-all:stop"
