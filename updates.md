@@ -57,8 +57,8 @@ However, as this update is very substantial, please do feel free to let me know 
 #### Dependencies:
 
 - Bumped dependencies simply to a point where they can be considered problem-free (by human-powered-artefacts-diff).
-  - Svelte, terser, and more something will be bumped later. they have a significant impact on diff and paints it totally.
-  - You may be surprised but, when bumping the library, I am actually checking for any unintended code.
+  - Svelte, terser, and more something will be bumped later. They have a significant impact on the diff and paint it totally.
+  - You may be surprised, but when I bump the library, I am actually checking for any unintended code.
 
 ## 0.25.43
 
