@@ -116,7 +116,8 @@ export class ModuleReplicator extends AbstractModule {
         }
         // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
         if (!(await this.ensureReplicatorPBKDF2Salt(false))) {
-            this.showError("Failed to initialise the encryption key, preventing replication.");
+            //tagged as network error at beginning for error filtering with NetworkWarningStyles
+            this.showError("\u{200b}Failed to initialise the encryption key, preventing replication.");
             return false;
         }
         await this.processor.restoreFromSnapshotOnce();
@@ -218,7 +219,11 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             return false;
         }
         if (!(await this.services.replication.onBeforeReplicate(showMessage))) {
-            this.showError($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
+            // check for tagged network errors for filtering by NetworkWarningStyles
+            const hasNetworkError = [...this._previousErrors].some(e => e.startsWith("\u{200b}"));
+            if (!hasNetworkError) {
+                this.showError($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
+            }
             return false;
         }
         this.clearErrors();
