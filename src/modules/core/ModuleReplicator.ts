@@ -44,7 +44,9 @@ async function canReplicateWithPBKDF2(
         return false;
     }
     errorManager.clearError(errorMessage);
-    const ensureMessage = "Failed to initialise the encryption key, preventing replication.";
+    // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
+    // tagged as network error at beginning for error filtering with NetworkWarningStyles
+    const ensureMessage = "\u{200b}Failed to initialise the encryption key, preventing replication.";
     const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, true);
     if (!ensureResult) {
         errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);

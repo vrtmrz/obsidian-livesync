@@ -4,6 +4,8 @@ import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
+import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
+import { NetworkWarningStyles } from "@lib/common/models/setting.const.ts";
 export function paneGeneral(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -24,6 +26,16 @@ export function paneGeneral(
         });
         new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
         new Setting(paneEl).autoWireToggle("hideFileWarningNotice");
+        new Setting(paneEl).autoWireDropDown("networkWarningStyle", {
+            options: {
+                [NetworkWarningStyles.BANNER]: "Show full banner",
+                [NetworkWarningStyles.ICON]: "Show icon only",
+                [NetworkWarningStyles.HIDDEN]: "Hide completely",
+            },
+        });
+        this.addOnSaved("networkWarningStyle", () => {
+            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        });
     });
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
         paneEl.addClass("wizardHidden");

@@ -40,6 +40,7 @@ import {
     isValidFilenameInWidows,
 } from "@lib/string_and_binary/path.ts";
 import { MARK_LOG_SEPARATOR } from "@lib/services/lib/logUtils.ts";
+import { NetworkWarningStyles } from "@lib/common/models/setting.const.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -282,7 +283,20 @@ export class ModuleLog extends AbstractObsidianModule {
             const fileStatus = this.activeFileStatus.value;
             if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
             const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
-            messageLines.push(...messages);
+            const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
+            const networkMessages = stringMessages.filter((m) => m.startsWith("\u{200b}"));
+            const otherMessages = stringMessages.filter((m) => !m.startsWith("\u{200b}"));
+
+            messageLines.push(...otherMessages);
+
+            if (
+                this.settings.networkWarningStyle !== NetworkWarningStyles.ICON &&
+                this.settings.networkWarningStyle !== NetworkWarningStyles.HIDDEN
+            ) {
+                messageLines.push(...networkMessages);
+            } else if (this.settings.networkWarningStyle === NetworkWarningStyles.ICON) {
+                if (networkMessages.length > 0) messageLines.push("🔗❌");
+            }
             this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
         }
     }
