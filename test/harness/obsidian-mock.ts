@@ -481,7 +481,7 @@ export class Plugin {
 }
 
 export class Notice {
-    private _key:number;
+    private _key: number;
     private static _counter = 0;
     constructor(message: string) {
         this._key = Notice._counter++;

@@ -33,7 +33,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const conflict = new ObsidianConflictService(context);
         const fileProcessing = new ObsidianFileProcessingService(context);
 
-        const remote = new ObsidianRemoteService(context);
         const tweakValue = new ObsidianTweakValueService(context);
 
         const setting = new ObsidianSettingService(context, {
@@ -41,6 +40,11 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         });
         const appLifecycle = new ObsidianAppLifecycleService(context, {
             settingService: setting,
+        });
+        const remote = new ObsidianRemoteService(context, {
+            APIService: API,
+            appLifecycle: appLifecycle,
+            setting: setting,
         });
         const vault = new ObsidianVaultService(context, {
             settingService: setting,

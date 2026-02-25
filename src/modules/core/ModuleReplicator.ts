@@ -14,17 +14,16 @@ import type { LiveSyncCore } from "../../main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { clearHandlers } from "@lib/replication/SyncParamsHandler";
-import type { NecessaryServices } from "@/serviceFeatures/types";
+import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
-    host: NecessaryServices<"database", any>,
+    host: NecessaryServices<"API", any>,
     showMessage: boolean
 ): Promise<boolean> {
     const errorMessage = "Network is offline";
-    const manager = host.services.database.managers.networkManager;
-    if (!manager.isOnline) {
+    if (!host.services.API.isOnline) {
         errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         return Promise.resolve(false);
     }
@@ -270,7 +269,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         // --> These handlers can be separated.
         const isOnlineAndCanReplicateWithHost = isOnlineAndCanReplicate.bind(null, this._unresolvedErrorManager, {
             services: {
-                database: services.database,
+                API: services.API,
             },
             serviceModules: {},
         });

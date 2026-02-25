@@ -6,7 +6,7 @@ export default mergeConfig(
     defineConfig({
         test: {
             name: "unit-tests",
-            include: ["**/*unit.test.ts"],
+            include: ["**/*unit.test.ts", "**/*.unit.spec.ts"],
             exclude: ["test/**"],
             coverage: {
                 include: ["src/**/*.ts"],

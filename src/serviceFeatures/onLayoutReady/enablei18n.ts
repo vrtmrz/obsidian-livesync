@@ -1,5 +1,5 @@
 import { getLanguage } from "@/deps";
-import { createServiceFeature } from "../types.ts";
+import { createServiceFeature } from "@lib/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta";
 import { $msg, setLang } from "@lib/common/i18n";
 

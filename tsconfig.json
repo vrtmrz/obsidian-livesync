@@ -24,6 +24,6 @@
             "@lib/*": ["src/lib/src/*"]
         }
     },
-    "include": ["**/*.ts", "test/**/*.test.ts"],
-    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**", "src/**/*.test.ts"]
+    "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts"],
+    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**"]
 }

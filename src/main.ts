@@ -1,4 +1,4 @@
-import { Plugin, type App, type PluginManifest } from "./deps";
+import { Notice, Plugin, type App, type PluginManifest } from "./deps";
 import {
     type EntryDoc,
     type ObsidianLiveSyncSettings,
@@ -30,7 +30,6 @@ import type { StorageAccess } from "@lib/interfaces/StorageAccess.ts";
 import type { Confirm } from "./lib/src/interfaces/Confirm.ts";
 import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder.ts";
 import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess.ts";
-import { ModuleObsidianAPI } from "./modules/essentialObsidian/ModuleObsidianAPI.ts";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
 import { AbstractModule } from "./modules/AbstractModule.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
@@ -41,7 +40,6 @@ import { ModuleInitializerFile } from "./modules/essential/ModuleInitializerFile
 import { ModuleReplicator } from "./modules/core/ModuleReplicator.ts";
 import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.ts";
 import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.ts";
-import { ModuleTargetFilter } from "./modules/core/ModuleTargetFilter.ts";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.ts";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.ts";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.ts";
@@ -64,6 +62,8 @@ import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
 import { onLayoutReadyFeatures } from "./serviceFeatures/onLayoutReady.ts";
 import type { ServiceModules } from "./types.ts";
+import { useTargetFilters } from "@lib/serviceFeatures/targetFilter.ts";
+import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -163,10 +163,8 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleReplicatorCouchDB(this));
         this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
-        this._registerModule(new ModuleTargetFilter(this));
         this._registerModule(new ModulePeriodicProcess(this));
         this._registerModule(new ModuleInitializerFile(this));
-        this._registerModule(new ModuleObsidianAPI(this, this));
         this._registerModule(new ModuleObsidianEvents(this, this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleObsidianSettingsAsMarkdown(this));
@@ -421,10 +419,15 @@ export default class ObsidianLiveSyncPlugin
             const curriedFeature = () => feature(this);
             this.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
         }
+        // enable target filter feature.
+        useTargetFilters(this);
     }
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
+        // Maybe no more need to setNoticeClass, but for safety, set it in the constructor of the main plugin class.
+        // TODO: remove this.
+        setNoticeClass(Notice);
         this.initialiseServices();
         this.registerModules();
         this.registerAddOns();

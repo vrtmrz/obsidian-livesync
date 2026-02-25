@@ -262,9 +262,7 @@ export class ModuleMigration extends AbstractModule {
         // Check local database for compromised chunks
         const localCompromised = await countCompromisedChunks(this.localDatabase.localDatabase);
         const remote = this.services.replicator.getActiveReplicator();
-        const remoteCompromised = this.core.managers.networkManager.isOnline
-            ? await remote?.countCompromisedChunks()
-            : 0;
+        const remoteCompromised = this.services.API.isOnline ? await remote?.countCompromisedChunks() : 0;
         if (localCompromised === false) {
             Logger(`Failed to count compromised chunks in local database`, LOG_LEVEL_NOTICE);
             return false;

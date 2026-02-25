@@ -12,7 +12,7 @@ export class ModuleCheckRemoteSize extends AbstractModule {
     }
 
     private async _allScanStat(): Promise<boolean> {
-        if (this.core.managers.networkManager.isOnline === false) {
+        if (this.services.API.isOnline === false) {
             this._log("Network is offline, skipping remote size check.", LOG_LEVEL_INFO);
             return true;
         }
