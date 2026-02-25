@@ -3,6 +3,20 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.45
+
+25th February, 2026
+
+As a result of recent refactoring, we are able to write tests more easily now!
+
+### Refactored
+
+- `ModuleTargetFilter`, which was responsible for checking if a file is a target file, has been ported to a serviceFeature.
+  - And also tests have been added. The middleware-style-power.
+- `ModuleObsidianAPI` has been removed and implemented in `APIService` and `RemoteService`.
+- Now `APIService` is responsible for the network-online-status, not `databaseService.managers.networkManager`.
+
+
 ## 0.25.44
 
 24th February, 2026
