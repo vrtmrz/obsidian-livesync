@@ -132,7 +132,7 @@
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
-        "minimatch": "^10.2.2",
+        "minimatch": "^10.2.3",
         "octagonal-wheels": "^0.1.45",
         "qrcode-generator": "^1.4.4",
         "trystero": "^0.22.0",
