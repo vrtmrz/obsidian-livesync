@@ -3,11 +3,26 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## -- in progress --
+## 0.25.46
+
+26th February, 2026
+
+### Fixed
+
+- Unexpected errors no longer occurred when the plug-in was unloaded.
+- Hidden File Sync now respects selectors.
+- Registering protocol-handlers now works safely without causing unexpected errors.
 
 ### Refactored
-- `ModuleCheckRemoteSize` has been ported to a serviceFeature, and also tests have been added.
+
+- `ModuleCheckRemoteSize` has been ported to a serviceFeature, and tests have also been added.
 - Some unnecessary things have been removed.
+- LiveSyncManagers has now explicit dependencies.
+- LiveSyncLocalDB is now responsible for LiveSyncManagers, not accepting the managers as dependencies.
+    - This is to avoid circular dependencies and clarify the ownership of the managers.
+- ChangeManager has been refactored. This had a potential issue, so something had been fixed, possibly.
+- Some tests have been ported from Deno's test runner to Vitest to accumulate coverage.
+
 
 ## 0.25.45
 
@@ -18,10 +33,9 @@ As a result of recent refactoring, we are able to write tests more easily now!
 ### Refactored
 
 - `ModuleTargetFilter`, which was responsible for checking if a file is a target file, has been ported to a serviceFeature.
-  - And also tests have been added. The middleware-style-power.
+    - And also tests have been added. The middleware-style-power.
 - `ModuleObsidianAPI` has been removed and implemented in `APIService` and `RemoteService`.
 - Now `APIService` is responsible for the network-online-status, not `databaseService.managers.networkManager`.
-
 
 ## 0.25.44
 
@@ -40,7 +54,7 @@ However, as this update is very substantial, please do feel free to let me know 
 ### Improved
 
 - Now we can configure network-error banners as icons, or hide them completely with the new `Network Warning Style` setting in the `General` pane of the settings dialogue. (#770, PR #804)
-  - Thanks so much to @A-wry!
+    - Thanks so much to @A-wry!
 
 ### Refactored
 
@@ -77,8 +91,8 @@ However, as this update is very substantial, please do feel free to let me know 
 #### Dependencies:
 
 - Bumped dependencies simply to a point where they can be considered problem-free (by human-powered-artefacts-diff).
-  - Svelte, terser, and more something will be bumped later. They have a significant impact on the diff and paint it totally.
-  - You may be surprised, but when I bump the library, I am actually checking for any unintended code.
+    - Svelte, terser, and more something will be bumped later. They have a significant impact on the diff and paint it totally.
+    - You may be surprised, but when I bump the library, I am actually checking for any unintended code.
 
 ## 0.25.43
 
