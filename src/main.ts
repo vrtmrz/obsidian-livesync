@@ -240,13 +240,6 @@ export default class ObsidianLiveSyncPlugin
     }
 
     /**
-     * @obsolete Use services.database.managers instead. The database managers, including entry manager, revision manager, etc.
-     */
-    get managers() {
-        return this.services.database.managers;
-    }
-
-    /**
      * @obsolete Use services.database.localDatabase instead. Get the PouchDB database instance. Note that this is not the same as the local database instance, which is a wrapper around the PouchDB database.
      * @returns The PouchDB database instance.
      */

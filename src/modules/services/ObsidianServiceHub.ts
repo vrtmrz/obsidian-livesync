@@ -59,6 +59,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             path: path,
             vault: vault,
             setting: setting,
+            API: API,
         });
         const keyValueDB = new ObsidianKeyValueDBService(context, {
             appLifecycle: appLifecycle,

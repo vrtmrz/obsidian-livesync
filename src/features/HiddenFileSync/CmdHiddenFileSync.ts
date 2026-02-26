@@ -92,7 +92,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return this.plugin.kvDB;
     }
     getConflictedDoc(path: FilePathWithPrefix, rev: string) {
-        return this.plugin.managers.conflictManager.getConflictedDoc(path, rev);
+        return this.localDatabase.managers.conflictManager.getConflictedDoc(path, rev);
     }
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
@@ -244,13 +244,23 @@ export class HiddenFileSync extends LiveSyncCommands {
             if (this.isThisModuleEnabled()) {
                 //system file
                 const filename = this.getPath(doc);
-                if (await this.services.vault.isTargetFile(filename)) {
-                    // this.procInternalFile(filename);
-                    await this.processReplicationResult(doc);
+                const unprefixedPath = stripAllPrefixes(filename);
+                // No need to check via vaultService
+                // if (!await this.services.vault.isTargetFile(unprefixedPath)) {
+                //     this._log(`Skipped processing sync file:${unprefixedPath} (Not target)`, LOG_LEVEL_VERBOSE);
+                //     return true;
+                // }
+                if (!(await this.isTargetFile(stripAllPrefixes(unprefixedPath)))) {
+                    this._log(
+                        `Skipped processing sync file:${unprefixedPath} (Not Hidden File Sync target)`,
+                        LOG_LEVEL_VERBOSE
+                    );
+                    // We should return true, we made sure that document is a internalMetadata.
                     return true;
-                } else {
-                    this._log(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE);
-                    return false;
+                }
+                if (!(await this.processReplicationResult(doc))) {
+                    this._log(`Failed to process sync file:${unprefixedPath}`, LOG_LEVEL_NOTICE);
+                    // Do not yield false, this file had been processed.
                 }
             }
             return true;
@@ -700,7 +710,7 @@ Offline Changed files: ${processFiles.length}`;
                         revFrom._revs_info
                             ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
                             .first()?.rev ?? "";
-                    const result = await this.plugin.managers.conflictManager.mergeObject(
+                    const result = await this.localDatabase.managers.conflictManager.mergeObject(
                         doc.path,
                         commonBase,
                         doc._rev,

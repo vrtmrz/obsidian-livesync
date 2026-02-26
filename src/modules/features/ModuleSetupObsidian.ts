@@ -1,4 +1,4 @@
-import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE } from "../../lib/src/common/types.ts";
+import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types.ts";
 import { configURIBase } from "../../common/types.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser.js";
 import { fireAndForget } from "../../lib/src/common/utils.ts";
@@ -25,16 +25,24 @@ export class ModuleSetupObsidian extends AbstractModule {
     private _setupManager!: SetupManager;
     private _everyOnload(): Promise<boolean> {
         this._setupManager = this.core.getModule(SetupManager);
-        this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
-            if (conf.settings) {
-                await this._setupManager.onUseSetupURI(
-                    UserMode.Unknown,
-                    `${configURIBase}${encodeURIComponent(conf.settings)}`
-                );
-            } else if (conf.settingsQR) {
-                await this._setupManager.decodeQR(conf.settingsQR);
-            }
-        });
+        try {
+            this.registerObsidianProtocolHandler("setuplivesync", async (conf: any) => {
+                if (conf.settings) {
+                    await this._setupManager.onUseSetupURI(
+                        UserMode.Unknown,
+                        `${configURIBase}${encodeURIComponent(conf.settings)}`
+                    );
+                } else if (conf.settingsQR) {
+                    await this._setupManager.decodeQR(conf.settingsQR);
+                }
+            });
+        } catch (e) {
+            this._log(
+                "Failed to register protocol handler. This feature may not work in some environments.",
+                LOG_LEVEL_NOTICE
+            );
+            this._log(e, LOG_LEVEL_VERBOSE);
+        }
         this.addCommand({
             id: "livesync-setting-qr",
             name: "Show settings as a QR code",
