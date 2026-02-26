@@ -18,7 +18,7 @@ import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 
-import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
+// import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.ts";
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
@@ -64,6 +64,7 @@ import { onLayoutReadyFeatures } from "./serviceFeatures/onLayoutReady.ts";
 import type { ServiceModules } from "./types.ts";
 import { useTargetFilters } from "@lib/serviceFeatures/targetFilter.ts";
 import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
+import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -177,7 +178,7 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleRedFlag(this));
         this._registerModule(new ModuleInteractiveConflictResolver(this, this));
         this._registerModule(new ModuleObsidianGlobalHistory(this, this));
-        this._registerModule(new ModuleCheckRemoteSize(this));
+        // this._registerModule(new ModuleCheckRemoteSize(this));
         // Test and Dev Modules
         this._registerModule(new ModuleDev(this, this));
         this._registerModule(new ModuleReplicateTest(this, this));
@@ -421,6 +422,7 @@ export default class ObsidianLiveSyncPlugin
         }
         // enable target filter feature.
         useTargetFilters(this);
+        useCheckRemoteSize(this);
     }
 
     constructor(app: App, manifest: PluginManifest) {

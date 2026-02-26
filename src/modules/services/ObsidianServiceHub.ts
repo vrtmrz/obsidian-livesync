@@ -77,7 +77,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const replication = new ObsidianReplicationService(context, {
             APIService: API,
             appLifecycleService: appLifecycle,
-            databaseEventService: databaseEvents,
             replicatorService: replicator,
             settingService: setting,
             fileProcessingService: fileProcessing,
