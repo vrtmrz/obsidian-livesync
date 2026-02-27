@@ -1,6 +1,7 @@
 import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";
+import path from "path";
 import dotenv from "dotenv";
 import { grantClipboardPermissions, openWebPeer, closeWebPeer, acceptWebPeer } from "./test/lib/commands";
 const defEnv = dotenv.config({ path: ".env" }).parsed;
@@ -12,6 +13,11 @@ const headless = !debuggerEnabled && !enableUI;
 export default mergeConfig(
     viteConfig,
     defineConfig({
+        resolve: {
+            alias: {
+                obsidian: path.resolve(__dirname, "./test/harness/obsidian-mock.ts"),
+            },
+        },
         test: {
             env: env,
             testTimeout: 40000,

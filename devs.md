@@ -52,6 +52,7 @@ Hence, the new feature should be implemented as follows:
 ### Commands
 
 ```bash
+npm run test:unit    # Run unit tests with vitest (or `npm run test:unit:coverage` for coverage)
 npm run check        # TypeScript and svelte type checking
 npm run dev          # Development build with auto-rebuild (uses .env for test vault paths)
 npm run build        # Production build
@@ -67,8 +68,11 @@ npm test             # Run vitest tests (requires Docker services)
 
 ### Testing Infrastructure
 
-- **Deno Tests**: Unit tests for platform-independent code (e.g., `HashManager.test.ts`)
-- **Vitest** (`vitest.config.ts`): E2E test by Browser-based-harness using Playwright
+- ~~**Deno Tests**: Unit tests for platform-independent code (e.g., `HashManager.test.ts`)~~
+    - This is now obsolete, migrated to vitest.
+- **Vitest** (`vitest.config.ts`): E2E test by Browser-based-harness using Playwright, unit tests.
+    - Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`).
+
 - **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
     ```bash
     npm run test:docker-all:start  # Start all test services
