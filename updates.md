@@ -3,6 +3,27 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.47
+
+27th February, 2026
+
+Phew, the financial year is still not over yet, but I have got some time to work on the plug-in again!
+
+### Fixed and refactored
+
+- Fixed the inexplicable behaviour when retrieving chunks from the network.
+    - The chunk manager has been layered to be responsible for its own areas and duties. e.g., `DatabaseWriteLayer`, `DatabaseReadLayer`, `NetworkLayer`, `CacheLayer`, and `ArrivalWaitLayer`.
+        - All layers have been tested now!
+        - `LayeredChunkManager` has been implemented to manage these layers. Also tested.
+    - `EntryManager` has been mostly rewritten and also tested.
+
+- Now we can configure `Never warn` for remote storage size notification again.
+
+### Tests
+
+- The following test has been added:
+    - `ConflictManager`.
+
 ## 0.25.46
 
 26th February, 2026
@@ -22,7 +43,6 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
     - This is to avoid circular dependencies and clarify the ownership of the managers.
 - ChangeManager has been refactored. This had a potential issue, so something had been fixed, possibly.
 - Some tests have been ported from Deno's test runner to Vitest to accumulate coverage.
-
 
 ## 0.25.45
 
