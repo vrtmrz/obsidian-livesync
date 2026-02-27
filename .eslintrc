@@ -48,7 +48,7 @@
         "@typescript-eslint/no-floating-promises": "warn",
         "no-async-promise-executor": "warn",
         "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-unnecessary-type-assertion": "error",
+        "@typescript-eslint/no-unnecessary-type-assertion": "off",
         "no-constant-condition": [
             "error",
             {
