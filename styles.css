@@ -1,13 +1,13 @@
-.added {
+.op-scrollable .added {
     color: var(--text-on-accent);
     background-color: var(--text-accent);
 }
 
-.normal {
+.op-scrollable .normal {
     color: var(--text-normal);
 }
 
-.deleted {
+.op-scrollable .deleted {
     color: var(--text-on-accent);
     background-color: var(--text-muted);
 }
