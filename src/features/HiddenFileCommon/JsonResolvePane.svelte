@@ -143,7 +143,7 @@
     </div>
 
     {#if selectedObj != false}
-        <div class="op-scrollable json-source">
+        <div class="op-scrollable json-source ls-dialog">
             {#each diffs as diff}
                 <span class={diff[0] == DIFF_DELETE ? "deleted" : diff[0] == DIFF_INSERT ? "added" : "normal"}
                     >{diff[1]}</span

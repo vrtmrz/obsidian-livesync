@@ -1,4 +1,4 @@
-import { getPathFromTFile } from "@/common/utils";
+import { getPathFromTFile, isValidPath } from "@/common/utils";
 import { InjectableVaultService } from "@/lib/src/services/implements/injectable/InjectableVaultService";
 import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
 import type { FilePath } from "@/lib/src/common/types";
@@ -29,5 +29,8 @@ export class ObsidianVaultService extends InjectableVaultService<ObsidianService
         // If the storage is insensitive, always return false, that because no need to check again.
         if (this.isStorageInsensitive()) return false;
         return super.shouldCheckCaseInsensitively(); // Check the setting
+    }
+    override isValidPath(path: string): boolean {
+        return isValidPath(path);
     }
 }

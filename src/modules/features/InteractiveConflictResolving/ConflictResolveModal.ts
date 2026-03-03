@@ -63,6 +63,7 @@ export class ConflictResolveModal extends Modal {
         contentEl.createEl("span", { text: this.filename });
         const div = contentEl.createDiv("");
         div.addClass("op-scrollable");
+        div.addClass("ls-dialog");
         let diff = "";
         for (const v of this.result.diff) {
             const x1 = v[0];
@@ -86,6 +87,7 @@ export class ConflictResolveModal extends Modal {
         }
 
         const div2 = contentEl.createDiv("");
+        div2.addClass("ls-dialog");
         const date1 =
             new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
         const date2 =

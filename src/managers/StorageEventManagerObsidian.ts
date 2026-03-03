@@ -2,10 +2,7 @@ import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync";
 import type { FilePath } from "@lib/common/types";
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { LiveSyncCore } from "@/main";
-import {
-    StorageEventManagerBase,
-    type StorageEventManagerBaseDependencies,
-} from "@lib/managers/StorageEventManager";
+import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@lib/managers/StorageEventManager";
 import { ObsidianStorageEventManagerAdapter } from "./ObsidianStorageEventManagerAdapter";
 
 export class StorageEventManagerObsidian extends StorageEventManagerBase<ObsidianStorageEventManagerAdapter> {

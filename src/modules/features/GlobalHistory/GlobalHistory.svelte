@@ -250,7 +250,11 @@
                             <!-- svelte-ignore a11y-click-events-have-key-events -->
                             <!-- svelte-ignore a11y-no-static-element-interactions -->
                             <!-- svelte-ignore a11y-missing-attribute -->
-                            <span class="filename"><a on:click={() => openFile(entry.path)}>{entry.filename}</a></span>
+                            {#if entry.isDeleted}
+                                <span class="filename" style="text-decoration: line-through">{entry.filename}</span>
+                            {:else}
+                                <span class="filename"><a on:click={() => openFile(entry.path)}>{entry.filename}</a></span>
+                            {/if}
                         </div>
                     </td>
                     <td>

@@ -1,13 +1,13 @@
-.op-scrollable .added {
+.ls-dialog .added {
     color: var(--text-on-accent);
     background-color: var(--text-accent);
 }
 
-.op-scrollable .normal {
+.ls-dialog .normal {
     color: var(--text-normal);
 }
 
-.op-scrollable .deleted {
+.ls-dialog .deleted {
     color: var(--text-on-accent);
     background-color: var(--text-muted);
 }
