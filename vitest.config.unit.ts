@@ -26,7 +26,7 @@ export default mergeConfig(
                     ...importOnlyFiles,
                 ],
                 provider: "v8",
-                reporter: ["text", "json", "html"],
+                reporter: ["text", "json", "html", ["text", { file: "coverage-text.txt" }]],
             },
         },
     })

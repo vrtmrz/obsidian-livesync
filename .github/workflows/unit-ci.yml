@@ -30,8 +30,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install test dependencies (Playwright Chromium)
-        run: npm run test:install-dependencies
+      # unit tests do not require Playwright, so we can skip installing its dependencies to save time
+      # - name: Install test dependencies (Playwright Chromium)
+      #   run: npm run test:install-dependencies
 
-      - name: Run unit tests suite
-        run: npm run test:unit
+      - name: Run unit tests suite with coverage
+        run: npm run test:unit:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/**
