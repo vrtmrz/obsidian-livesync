@@ -206,7 +206,7 @@ export async function adjustSettingToRemoteIfNeeded(
     } else {
         log("Remote configuration not applied.", LOG_LEVEL_NOTICE);
     }
-    log(JSON.stringify(config), LOG_LEVEL_VERBOSE);
+    // log(JSON.stringify(config), LOG_LEVEL_VERBOSE);
 }
 
 /**
