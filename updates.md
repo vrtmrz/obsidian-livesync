@@ -3,6 +3,22 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.49
+
+3rd March, 2026
+
+### Fixed
+
+- No longer deleted files are not clickable in the Global History pane.
+- Diff view now uses more specific classes (#803).
+- A message of configuration mismatching slightly added for better understanding.
+    - Now it says `When replication is initiated manually via the command palette or ribbon, a dialogue box will open to address this.` to make it clear that the user can fix the issue by themselves.
+
+### Refactored
+
+- `ModuleRedFlag` has been refactored to `serviceFeatures/redFlag` and also tested.
+- `ModuleInitializerFile` has been refactored to `lib/serviceFeatures/offlineScanner` and also tested.
+
 ## 0.25.48
 
 2nd March, 2026
