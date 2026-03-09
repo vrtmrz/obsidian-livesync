@@ -3,6 +3,23 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.52
+
+9th March, 2026
+
+Excuses: Too much `I`.
+Whilst I had a fever, I could not figure it out at all, but once I felt better, I spotted the problem in about thirty seconds. I apologise for causing you concern. I am grateful for your patience.
+I would like to devise a mechanism for running simple test scenarios. Now that we have got the Obsidian CLI up and running, it seems the perfect opportunity.
+
+To improve the bus factor, we really need to organise the source code more thoroughly. Your cooperation and contributions would be greatly appreciated.
+
+### Fixed
+- No longer unexpected deletion-propagation occurs when the parent directory is not empty (#813).
+
+### Revert reversions
+- Reverted the reversion of ModuleCheckRemoteSize. Now it is back to the service feature.
+
+
 ## 0.25.51
 
 7th March, 2026
