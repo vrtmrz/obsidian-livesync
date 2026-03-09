@@ -64,6 +64,10 @@ Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
 # Creating the save data & configuration directories.
 mkdir couchdb-data
 mkdir couchdb-etc
+
+# Changing perms to user 5984.
+chown -R 5984:5984 ./couchdb-data
+chown -R 5984:5984 ./couchdb-etc
 ```
 
 #### 2. Create a `docker-compose.yml` file with the following added to it
