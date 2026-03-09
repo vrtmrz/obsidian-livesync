@@ -22,7 +22,7 @@ import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.ts";
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
-import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
+// import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
@@ -36,7 +36,7 @@ import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidian
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
-import { ModuleInitializerFile } from "./modules/essential/ModuleInitializerFile.ts";
+// import { ModuleInitializerFile } from "./modules/essential/ModuleInitializerFile.ts";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator.ts";
 import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.ts";
 import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.ts";
@@ -65,8 +65,8 @@ import type { ServiceModules } from "./types.ts";
 import { useTargetFilters } from "@lib/serviceFeatures/targetFilter.ts";
 import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
 import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize.ts";
-// import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
-// import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner.ts";
+import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
+import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner.ts";
 
 export default class ObsidianLiveSyncPlugin
     extends Plugin
@@ -167,7 +167,7 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
         this._registerModule(new ModulePeriodicProcess(this));
-        this._registerModule(new ModuleInitializerFile(this));
+        // this._registerModule(new ModuleInitializerFile(this));
         this._registerModule(new ModuleObsidianEvents(this, this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleObsidianSettingsAsMarkdown(this));
@@ -177,7 +177,7 @@ export default class ObsidianLiveSyncPlugin
         this._registerModule(new ModuleSetupObsidian(this));
         this._registerModule(new ModuleObsidianDocumentHistory(this, this));
         this._registerModule(new ModuleMigration(this));
-        this._registerModule(new ModuleRedFlag(this));
+        // this._registerModule(new ModuleRedFlag(this));
         this._registerModule(new ModuleInteractiveConflictResolver(this, this));
         this._registerModule(new ModuleObsidianGlobalHistory(this, this));
         // this._registerModule(new ModuleCheckRemoteSize(this));
@@ -416,9 +416,8 @@ export default class ObsidianLiveSyncPlugin
             const curriedFeature = () => feature(this);
             this.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
         }
-        // redFlag and offline scanner features disabled v0.25.50 due to some unexpected issues. Will re-enable after further testing.
-        // useRedFlagFeatures(this);
-        // useOfflineScanner(this);
+        useRedFlagFeatures(this);
+        useOfflineScanner(this);
 
         // enable target filter feature.
         useTargetFilters(this);
