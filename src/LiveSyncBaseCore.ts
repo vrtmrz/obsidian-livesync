@@ -12,8 +12,6 @@ import type { LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb
 import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes";
 import type { LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicatorEnv";
 import type { LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator";
-import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize";
-import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner";
 import { useTargetFilters } from "./lib/src/serviceFeatures/targetFilter";
 import type { ServiceContext } from "./lib/src/services/base/ServiceBase";
 import type { InjectableServiceHub } from "./lib/src/services/InjectableServices";
@@ -27,8 +25,8 @@ import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictRes
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "./lib/src/interfaces/ServiceModule";
-import { useRedFlagFeatures } from "./serviceFeatures/redFlag";
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
+import { usePrepareDatabaseForUse } from "./lib/src/serviceFeatures/prepareDatabaseForUse";
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -271,12 +269,9 @@ export class LiveSyncBaseCore<
      * (Please refer `serviceFeatures` for more details)
      */
     initialiseServiceFeatures() {
-        useRedFlagFeatures(this);
-        useOfflineScanner(this);
-
-        // enable target filter feature.
         useTargetFilters(this);
-        useCheckRemoteSize(this);
+        // enable target filter feature.
+        usePrepareDatabaseForUse(this);
     }
 }
 

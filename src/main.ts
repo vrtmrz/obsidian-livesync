@@ -34,6 +34,9 @@ import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsid
 import { SetupManager } from "./modules/features/SetupManager.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
+import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner.ts";
+import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize.ts";
+import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -167,6 +170,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const featuresInitialiser = enableI18nFeature;
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
+                useOfflineScanner(core);
+                useRedFlagFeatures(core);
+                useCheckRemoteSize(core);
             }
         );
     }
