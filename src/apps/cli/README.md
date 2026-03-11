@@ -32,16 +32,11 @@ CLI Main
     - Platform-agnostic file operations using Node.js `fs/promises`
     - Implements same interface as Obsidian's file system
 
-2. **CLI Storage Event Manager** (`managers/`)
-    - File-based snapshot persistence (JSON)
-    - Console-based status updates
-    - Optional file watching (can be extended with chokidar)
-
-3. **Service Modules** (`serviceModules/`)
+2. **Service Modules** (`serviceModules/`)
     - Direct port from `main.ts` `initialiseServiceModules`
     - All core sync functionality preserved
 
-4. **Main Entry Point** (`main.ts`)
+3. **Main Entry Point** (`main.ts`)
     - Command-line interface
     - Settings management (JSON file)
     - Graceful shutdown handling
