@@ -108,7 +108,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // File watching is not activated in the CLI.
         // Because the CLI is designed for push/pull operations, not real-time sync.
-        console.log("[CLIWatchAdapter] File watching is not enabled in CLI version");
+        console.error("[CLIWatchAdapter] File watching is not enabled in CLI version");
         return Promise.resolve();
     }
 }

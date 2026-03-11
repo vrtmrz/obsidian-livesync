@@ -3,7 +3,7 @@
     "private": true,
     "version": "0.0.1",
     "type": "module",
-    "description": "Browser-based Obsidian LiveSync using FileSystem API",
+    "description": "Browser-based Self-hosted LiveSync using FileSystem API",
     "scripts": {
         "dev": "vite",
         "build": "vite build",

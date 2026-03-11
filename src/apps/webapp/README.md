@@ -1,12 +1,12 @@
 # LiveSync WebApp
-Browser-based implementation of Obsidian LiveSync using the FileSystem API.
+Browser-based implementation of Self-hosted LiveSync using the FileSystem API.
 Note: (I vrtmrz have not tested this so much yet).
 
 ## Features
 
 - 🌐 Runs entirely in the browser
 - 📁 Uses FileSystem API to access your local vault
-- 🔄 Syncs with CouchDB, Object Storage server (compatible with Obsidian LiveSync plugin)
+- 🔄 Syncs with CouchDB, Object Storage server (compatible with Self-hosted LiveSync plugin)
 - 🚫 No server-side code required!!
 - 💾 Settings stored in `.livesync/settings.json` within your vault
 - 👁️ Real-time file watching (Chrome 124+ with FileSystemObserver)
@@ -178,4 +178,4 @@ Uses `BrowserServiceHub` which provides:
 
 ## License
 
-Same as the main Obsidian LiveSync project.
+Same as the main Self-hosted LiveSync project.

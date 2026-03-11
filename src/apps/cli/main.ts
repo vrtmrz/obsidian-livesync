@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Self-hosted LiveSync CLI
- * Command-line version of Obsidian LiveSync plugin for syncing vaults without Obsidian
+ * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
  */
 
 if (!("localStorage" in globalThis)) {
@@ -24,24 +24,16 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
-import {
-    DEFAULT_SETTINGS,
-    LOG_LEVEL_VERBOSE,
-    type LOG_LEVEL,
-    type ObsidianLiveSyncSettings,
-    type FilePathWithPrefix,
-} from "@lib/common/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
 import { LOG_LEVEL_DEBUG, setGlobalLogFunction, defaultLoggerEnv } from "octagonal-wheels/common/logger";
-import PouchDb from "pouchdb-core";
+import { runCommand } from "./commands/runCommand";
+import { VALID_COMMANDS } from "./commands/types";
+import type { CLICommand, CLIOptions } from "./commands/types";
 
 const SETTINGS_FILE = ".livesync/settings.json";
-const VALID_COMMANDS = new Set(["sync", "push", "pull", "init-settings"] as const);
-
-type CLICommand = "daemon" | "sync" | "push" | "pull" | "init-settings";
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 // DI the log again.
 // const recentLogEntries = reactiveSource<LogEntry[]>([]);
@@ -55,20 +47,11 @@ defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 // };
 
 setGlobalLogFunction((msg, level) => {
-    console.log(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
+    console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
     if (msg instanceof Error) {
         console.error(msg);
     }
 });
-interface CLIOptions {
-    databasePath?: string;
-    settingsPath?: string;
-    verbose?: boolean;
-    force?: boolean;
-    command: CLICommand;
-    commandArgs: string[];
-}
-
 function printHelp(): void {
     console.log(`
 Self-hosted LiveSync CLI
@@ -83,18 +66,28 @@ Commands:
   sync                    Run one replication cycle and exit
   push <src> <dst>        Push local file <src> into local database path <dst>
   pull <src> <dst>        Pull file <src> from local database into local file <dst>
-    init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
-
-Options:
-  --settings, -s <path>   Path to settings file (default: .livesync/settings.json in local database directory)
-    --force, -f             Overwrite existing file on init-settings
-  --verbose, -v           Enable verbose logging
-  --help, -h              Show this help message
-
+    pull-rev <src> <dst> <rev>   Pull file <src> at specific revision <rev> into local file <dst>
+    setup <setupURI>        Apply setup URI to settings file
+    put <dst>               Read UTF-8 content from stdin and write to local database path <dst>
+    cat <src>               Read file <src> from local database and write to stdout
+    cat-rev <src> <rev>     Read file <src> at specific revision <rev> and write to stdout
+    ls [prefix]             List DB files as path<TAB>size<TAB>mtime<TAB>revision[*]
+    info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
+    rm <path>               Mark a file as deleted in local database
+    resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
 Examples:
   livesync-cli ./my-database sync
   livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
   livesync-cli ./my-database pull folder/note.md ./exports/note.md
+    livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
+    livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
+    echo "Hello" | livesync-cli ./my-database put notes/hello.md
+    livesync-cli ./my-database cat notes/hello.md
+    livesync-cli ./my-database cat-rev notes/hello.md 3-abcdef
+    livesync-cli ./my-database ls notes/
+    livesync-cli ./my-database info notes/hello.md
+    livesync-cli ./my-database rm notes/hello.md
+    livesync-cli ./my-database resolve notes/hello.md 3-abcdef
     livesync-cli init-settings ./data.json
   livesync-cli ./my-database --verbose
         `);
@@ -202,86 +195,16 @@ async function createDefaultSettingsFile(options: CLIOptions) {
     console.log(`[Done] Created settings file: ${targetPath}`);
 }
 
-function toArrayBuffer(data: Buffer): ArrayBuffer {
-    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-}
-
-function toVaultRelativePath(inputPath: string, vaultPath: string): string {
-    const stripped = inputPath.replace(/^[/\\]+/, "");
-    if (!path.isAbsolute(inputPath)) {
-        return stripped.replace(/\\/g, "/");
-    }
-    const resolved = path.resolve(inputPath);
-    const rel = path.relative(vaultPath, resolved);
-    if (rel.startsWith("..") || path.isAbsolute(rel)) {
-        throw new Error(`Path ${inputPath} is outside of the local database directory`);
-    }
-    return rel.replace(/\\/g, "/");
-}
-
-async function runCommand(
-    options: CLIOptions,
-    vaultPath: string,
-    core: LiveSyncBaseCore<ServiceContext, any>
-): Promise<boolean> {
-    await core.services.control.activated;
-    if (options.command === "daemon") {
-        return true;
-    }
-
-    if (options.command === "sync") {
-        console.log("[Command] sync");
-        const result = await core.services.replication.replicate(true);
-        return !!result;
-    }
-
-    if (options.command === "push") {
-        if (options.commandArgs.length < 2) {
-            throw new Error("push requires two arguments: <src> <dst>");
-        }
-        const sourcePath = path.resolve(options.commandArgs[0]);
-        const destinationVaultPath = toVaultRelativePath(options.commandArgs[1], vaultPath);
-        const sourceData = await fs.readFile(sourcePath);
-        const sourceStat = await fs.stat(sourcePath);
-        console.log(`[Command] push ${sourcePath} -> ${destinationVaultPath}`);
-
-        await core.serviceModules.storageAccess.writeFileAuto(destinationVaultPath, toArrayBuffer(sourceData), {
-            mtime: sourceStat.mtimeMs,
-            ctime: sourceStat.ctimeMs,
-        });
-        const destinationPathWithPrefix = destinationVaultPath as FilePathWithPrefix;
-        const stored = await core.serviceModules.fileHandler.storeFileToDB(destinationPathWithPrefix, true);
-        return stored;
-    }
-
-    if (options.command === "pull") {
-        if (options.commandArgs.length < 2) {
-            throw new Error("pull requires two arguments: <src> <dst>");
-        }
-        const sourceVaultPath = toVaultRelativePath(options.commandArgs[0], vaultPath);
-        const destinationPath = path.resolve(options.commandArgs[1]);
-        console.log(`[Command] pull ${sourceVaultPath} -> ${destinationPath}`);
-
-        const sourcePathWithPrefix = sourceVaultPath as FilePathWithPrefix;
-        const restored = await core.serviceModules.fileHandler.dbToStorage(sourcePathWithPrefix, null, true);
-        if (!restored) {
-            return false;
-        }
-        const data = await core.serviceModules.storageAccess.readFileAuto(sourceVaultPath);
-        await fs.mkdir(path.dirname(destinationPath), { recursive: true });
-        if (typeof data === "string") {
-            await fs.writeFile(destinationPath, data, "utf-8");
-        } else {
-            await fs.writeFile(destinationPath, new Uint8Array(data));
-        }
-        return true;
-    }
-
-    throw new Error(`Unsupported command: ${options.command}`);
-}
-
 async function main() {
     const options = parseArgs();
+    const avoidStdoutNoise =
+        options.command === "cat" ||
+        options.command === "cat-rev" ||
+        options.command === "ls" ||
+        options.command === "info" ||
+        options.command === "rm" ||
+        options.command === "resolve";
+    const infoLog = avoidStdoutNoise ? console.error : console.log;
 
     if (options.command === "init-settings") {
         await createDefaultSettingsFile(options);
@@ -307,10 +230,10 @@ async function main() {
         ? path.resolve(options.settingsPath)
         : path.join(vaultPath, SETTINGS_FILE);
 
-    console.log(`Self-hosted LiveSync CLI`);
-    console.log(`Vault: ${vaultPath}`);
-    console.log(`Settings: ${settingsPath}`);
-    console.log();
+    infoLog(`Self-hosted LiveSync CLI`);
+    infoLog(`Vault: ${vaultPath}`);
+    infoLog(`Settings: ${settingsPath}`);
+    infoLog("");
 
     // Create service context and hub
     const context = new NodeServiceContext(vaultPath);
@@ -320,11 +243,11 @@ async function main() {
         if (level <= LOG_LEVEL_VERBOSE) {
             if (!options.verbose) return;
         }
-        console.log(`${prefix} ${message}`);
+        console.error(`${prefix} ${message}`);
     });
     // Prevent replication result to be processed automatically.
     serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-        console.log(`[Info] Replication result received, but not processed automatically in CLI mode.`);
+        console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
         return await Promise.resolve(true);
     }, -100);
     // Setup settings handlers
@@ -335,7 +258,7 @@ async function main() {
             try {
                 await fs.writeFile(settingsPath, JSON.stringify(data, null, 2), "utf-8");
                 if (options.verbose) {
-                    console.log(`[Settings] Saved to ${settingsPath}`);
+                    console.error(`[Settings] Saved to ${settingsPath}`);
                 }
             } catch (error) {
                 console.error(`[Settings] Failed to save:`, error);
@@ -349,14 +272,14 @@ async function main() {
                 const content = await fs.readFile(settingsPath, "utf-8");
                 const data = JSON.parse(content);
                 if (options.verbose) {
-                    console.log(`[Settings] Loaded from ${settingsPath}`);
+                    console.error(`[Settings] Loaded from ${settingsPath}`);
                 }
                 // Force disable IndexedDB adapter in CLI environment
                 data.useIndexedDBAdapter = false;
                 return data;
             } catch (error) {
                 if (options.verbose) {
-                    console.log(`[Settings] File not found, using defaults`);
+                    console.error(`[Settings] File not found, using defaults`);
                 }
                 return undefined;
             }
@@ -393,7 +316,7 @@ async function main() {
 
     // Start the core
     try {
-        console.log(`[Starting] Initializing LiveSync...`);
+        infoLog(`[Starting] Initializing LiveSync...`);
 
         const loadResult = await core.services.control.onLoad();
         if (!loadResult) {
@@ -403,9 +326,9 @@ async function main() {
 
         await core.services.control.onReady();
 
-        console.log(`[Ready] LiveSync is running`);
-        console.log(`[Ready] Press Ctrl+C to stop`);
-        console.log();
+        infoLog(`[Ready] LiveSync is running`);
+        infoLog(`[Ready] Press Ctrl+C to stop`);
+        infoLog("");
 
         // Check if configured
         const settings = core.services.setting.currentSettings();
@@ -420,17 +343,17 @@ async function main() {
             console.warn(`  - couchDB_DBNAME: Database name`);
             console.warn();
         } else {
-            console.log(`[Info] LiveSync is configured and ready`);
-            console.log(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
-            console.log();
+            infoLog(`[Info] LiveSync is configured and ready`);
+            infoLog(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
+            infoLog("");
         }
 
-        const result = await runCommand(options, vaultPath, core);
+        const result = await runCommand(options, { vaultPath, core, settingsPath });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
         } else if (options.command !== "daemon") {
-            console.log(`[Done] Command '${options.command}' completed`);
+            infoLog(`[Done] Command '${options.command}' completed`);
         }
 
         if (options.command === "daemon") {
