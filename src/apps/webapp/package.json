@@ -13,9 +13,5 @@
     "devDependencies": {
         "typescript": "5.9.3",
         "vite": "^7.3.1"
-    },
-    "imports": {
-        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
-        "@lib/worker/bgWorker.ts": "@lib/worker/bgWorker.mock.ts"
     }
 }

@@ -3,16 +3,19 @@
  * Browser-based version of Self-hosted LiveSync plugin using FileSystem API
  */
 
-import { BrowserServiceHub } from "../../lib/src/services/BrowserServices";
-import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
-import { ServiceContext } from "../../lib/src/services/base/ServiceBase";
+import { BrowserServiceHub } from "@lib/services/BrowserServices";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { ServiceContext } from "@lib/services/base/ServiceBase";
 import { initialiseServiceModulesFSAPI } from "./serviceModules/FSAPIServiceModules";
-import type { ObsidianLiveSyncSettings } from "../../lib/src/common/types";
-import type { BrowserAPIService } from "../../lib/src/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "../../lib/src/services/implements/injectable/InjectableSettingService";
-// import { SetupManager } from "@/modules/features/SetupManager";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
+import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
+import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
+import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
+import { SetupManager } from "@/modules/features/SetupManager";
 // import { ModuleObsidianSettingsAsMarkdown } from "@/modules/features/ModuleObsidianSettingAsMarkdown";
-// import { ModuleSetupObsidian } from "@/modules/features/ModuleSetupObsidian";
+import { ModuleSetupObsidian } from "@/modules/features/ModuleSetupObsidian";
 // import { ModuleObsidianMenu } from "@/modules/essentialObsidian/ModuleObsidianMenu";
 
 const SETTINGS_DIR = ".livesync";
@@ -105,7 +108,8 @@ class LiveSyncWebApp {
                 // new ModuleObsidianEvents(this, core),
                 // new ModuleObsidianSettingDialogue(this, core),
                 // new ModuleObsidianMenu(core),
-                // new ModuleSetupObsidian(core),
+                new ModuleSetupObsidian(core),
+                new SetupManager(core),
                 // new ModuleObsidianSettingsAsMarkdown(core),
                 // new ModuleLog(this, core),
                 // new ModuleObsidianDocumentHistory(this, core),
@@ -116,8 +120,12 @@ class LiveSyncWebApp {
                 // new ModuleIntegratedTest(this, core),
                 // new SetupManager(core),
             ],
-            () => [],// No add-ons
-            () => [],
+            () => [], // No add-ons
+            (core) => {
+                useOfflineScanner(core);
+                useRedFlagFeatures(core);
+                useCheckRemoteSize(core);
+            }
         );
 
         // Start the core

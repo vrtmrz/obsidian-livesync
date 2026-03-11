@@ -1,5 +1,5 @@
-import type { UXFileInfoStub, UXFolderInfo } from "../../../lib/src/common/types";
-import type { IConversionAdapter } from "../../../lib/src/serviceModules/adapters";
+import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
+import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
 
 /**

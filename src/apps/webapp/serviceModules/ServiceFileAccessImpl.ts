@@ -1,7 +1,4 @@
-import {
-    ServiceFileAccessBase,
-    type StorageAccessBaseDependencies,
-} from "../../../lib/src/serviceModules/ServiceFileAccessBase";
+import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@lib/serviceModules/ServiceFileAccessBase";
 import { FSAPIFileSystemAdapter } from "../adapters/FSAPIFileSystemAdapter";
 
 /**

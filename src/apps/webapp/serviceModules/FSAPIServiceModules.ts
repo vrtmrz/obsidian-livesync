@@ -1,14 +1,15 @@
-import type { InjectableServiceHub } from "../../../lib/src/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "../../../lib/src/serviceModules/Rebuilder";
-import { ServiceFileHandler } from "../../../serviceModules/FileHandler";
-import { StorageAccessManager } from "../../../lib/src/managers/StorageProcessingManager";
-import type { ServiceModules } from "../../../types";
-import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
-import type { ServiceContext } from "../../../lib/src/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
+import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
+
+import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { FileAccessFSAPI } from "./FileAccessFSAPI";
 import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
 import { StorageEventManagerFSAPI } from "../managers/StorageEventManagerFSAPI";
+import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 
 /**
  * Initialize service modules for FileSystem API webapp version

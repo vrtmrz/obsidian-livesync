@@ -1,5 +1,5 @@
-import type { FilePath, UXDataWriteOptions } from "../../../lib/src/common/types";
-import type { IVaultAdapter } from "../../../lib/src/serviceModules/adapters";
+import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
+import type { IVaultAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
 
 /**

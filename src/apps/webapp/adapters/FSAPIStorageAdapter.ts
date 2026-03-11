@@ -1,5 +1,5 @@
-import type { UXDataWriteOptions } from "../../../lib/src/common/types";
-import type { IStorageAdapter } from "../../../lib/src/serviceModules/adapters";
+import type { UXDataWriteOptions } from "@lib/common/types";
+import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIStat } from "./FSAPITypes";
 
 /**

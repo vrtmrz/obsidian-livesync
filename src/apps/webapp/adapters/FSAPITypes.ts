@@ -1,4 +1,4 @@
-import type { FilePath, UXStat } from "../../../lib/src/common/types";
+import type { FilePath, UXStat } from "@lib/common/types";
 
 /**
  * FileSystem API file representation

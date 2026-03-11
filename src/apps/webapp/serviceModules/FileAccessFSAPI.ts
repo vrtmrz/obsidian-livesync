@@ -1,4 +1,4 @@
-import { FileAccessBase, type FileAccessBaseDependencies } from "../../../lib/src/serviceModules/FileAccessBase";
+import { FileAccessBase, type FileAccessBaseDependencies } from "@lib/serviceModules/FileAccessBase";
 import { FSAPIFileSystemAdapter } from "../adapters/FSAPIFileSystemAdapter";
 
 /**

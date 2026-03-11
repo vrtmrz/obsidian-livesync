@@ -1,5 +1,5 @@
-import type { FilePath } from "../../../lib/src/common/types";
-import type { IPathAdapter } from "../../../lib/src/serviceModules/adapters";
+import type { FilePath } from "@lib/common/types";
+import type { IPathAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIFile } from "./FSAPITypes";
 
 /**

@@ -1,6 +1,6 @@
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "../../../lib/src/common/types";
-import type { FileEventItem } from "../../../lib/src/common/types";
-import type { IStorageEventManagerAdapter } from "../../../lib/src/managers/adapters";
+import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
+import type { FileEventItem } from "@lib/common/types";
+import type { IStorageEventManagerAdapter } from "@lib/managers/adapters";
 import type {
     IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
@@ -8,8 +8,8 @@ import type {
     IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
     IStorageEventWatchHandlers,
-} from "../../../lib/src/managers/adapters";
-import type { FileEventItemSentinel } from "../../../lib/src/managers/StorageEventManager";
+} from "@lib/managers/adapters";
+import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { FSAPIFile, FSAPIFolder } from "../adapters/FSAPITypes";
 
 /**

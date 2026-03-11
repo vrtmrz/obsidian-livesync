@@ -1,5 +1,5 @@
-import type { FilePath, UXStat } from "../../../lib/src/common/types";
-import type { IFileSystemAdapter } from "../../../lib/src/serviceModules/adapters";
+import type { FilePath, UXStat } from "@lib/common/types";
+import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
 import { FSAPIPathAdapter } from "./FSAPIPathAdapter";
 import { FSAPITypeGuardAdapter } from "./FSAPITypeGuardAdapter";
 import { FSAPIConversionAdapter } from "./FSAPIConversionAdapter";
@@ -75,7 +75,7 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     }
 
     /**
-     * 
+     *
      */
     async getAbstractFileByPathInsensitive(p: FilePath | string): Promise<FSAPIFile | null> {
         const pathStr = this.normalisePath(p);
