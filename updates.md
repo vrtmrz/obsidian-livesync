@@ -3,6 +3,26 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## -- Unreleased2 --
+
+11th March, 2026 (second commit).
+
+### Refactored
+
+- Offline change scanner and the local database preparation has been separated.
+- Set default priority for processFileEvent and processSynchroniseResult for the place for adding hooks.
+- ControlService now provides the readiness for processing operations.
+- DatabaseService now able to modify database opening options on derived classes.
+- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
+
+### Fixed
+
+- HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
+- Non-worker version of bgWorker now correctly handles some functions.
+
+### New something
+- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless, and a dedicated version.
+
 ## -- Unreleased --
 
 11th March, 2026
