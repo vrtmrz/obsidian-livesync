@@ -129,11 +129,13 @@
         "@smithy/middleware-apply-body-checksum": "^4.3.9",
         "@smithy/protocol-http": "^5.3.9",
         "@smithy/querystring-builder": "^4.2.9",
+        "commander": "^14.0.3",
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
         "minimatch": "^10.2.2",
         "octagonal-wheels": "^0.1.45",
+        "pouchdb-adapter-leveldb": "^9.0.0",
         "qrcode-generator": "^1.4.4",
         "trystero": "^0.22.0",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
