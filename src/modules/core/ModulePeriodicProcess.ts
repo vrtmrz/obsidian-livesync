@@ -1,4 +1,4 @@
-import { PeriodicProcessor } from "../../common/utils";
+import { PeriodicProcessor } from "@/common/PeriodicProcessor";
 import type { LiveSyncCore } from "../../main";
 import { AbstractModule } from "../AbstractModule";
 

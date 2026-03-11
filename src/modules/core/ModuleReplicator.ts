@@ -6,7 +6,8 @@ import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
 import { type EntryDoc, type RemoteType } from "../../lib/src/common/types";
-import { scheduleTask } from "../../common/utils";
+
+import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
 
 import { $msg } from "../../lib/src/common/i18n";

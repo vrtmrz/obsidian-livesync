@@ -1,0 +1,21 @@
+{
+    "name": "livesync-webapp",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "description": "Browser-based Obsidian LiveSync using FileSystem API",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "typescript": "5.9.3",
+        "vite": "^7.3.1"
+    },
+    "imports": {
+        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
+        "@lib/worker/bgWorker.ts": "@lib/worker/bgWorker.mock.ts"
+    }
+}

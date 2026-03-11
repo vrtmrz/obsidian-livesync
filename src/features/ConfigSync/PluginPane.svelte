@@ -22,19 +22,22 @@
     import { normalizePath } from "../../deps";
     import { HiddenFileSync } from "../HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     export let plugin: ObsidianLiveSyncPlugin;
+    export let core :LiveSyncBaseCore;
+    // $: core = plugin.core;
 
     $: hideNotApplicable = false;
-    $: thisTerm = plugin.services.setting.getDeviceAndVaultName();
+    $: thisTerm = core.services.setting.getDeviceAndVaultName();
 
-    const addOn = plugin.getAddOn(ConfigSync.name) as ConfigSync;
+    const addOn = core.getAddOn<ConfigSync>(ConfigSync.name)!;
     if (!addOn) {
         const msg =
             "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.";
         Logger(msg, LOG_LEVEL_NOTICE);
         throw new Error(msg);
     }
-    const addOnHiddenFileSync = plugin.getAddOn(HiddenFileSync.name) as HiddenFileSync;
+    const addOnHiddenFileSync = core.getAddOn<HiddenFileSync>(HiddenFileSync.name) as HiddenFileSync;
     if (!addOnHiddenFileSync) {
         const msg =
             "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.";
@@ -98,7 +101,7 @@
         await requestUpdate();
     }
     async function replicate() {
-        await plugin.services.replication.replicate(true);
+        await core.services.replication.replicate(true);
     }
     function selectAllNewest(selectMode: boolean) {
         selectNewestPulse++;
@@ -147,8 +150,8 @@
     }
     function applyAutomaticSync(key: string, direction: "pushForce" | "pullForce" | "safe") {
         setMode(key, MODE_AUTOMATIC);
-        const configDir = normalizePath(plugin.app.vault.configDir);
-        const files = (plugin.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((e) => `${configDir}/${e}`);
+        const configDir = normalizePath(plugin.core.services.API.getSystemConfigDir());
+        const files = (plugin.core.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((e) => `${configDir}/${e}`);
         addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
@@ -222,22 +225,22 @@
         );
         if (mode == MODE_SELECTIVE) {
             automaticList.delete(key);
-            delete plugin.settings.pluginSyncExtendedSetting[key];
+            delete plugin.core.settings.pluginSyncExtendedSetting[key];
             automaticListDisp = automaticList;
         } else {
             automaticList.set(key, mode);
             automaticListDisp = automaticList;
-            if (!(key in plugin.settings.pluginSyncExtendedSetting)) {
-                plugin.settings.pluginSyncExtendedSetting[key] = {
+            if (!(key in plugin.core.settings.pluginSyncExtendedSetting)) {
+                plugin.core.settings.pluginSyncExtendedSetting[key] = {
                     key,
                     mode,
                     files: [],
                 };
             }
-            plugin.settings.pluginSyncExtendedSetting[key].files = files;
-            plugin.settings.pluginSyncExtendedSetting[key].mode = mode;
+            plugin.core.settings.pluginSyncExtendedSetting[key].files = files;
+            plugin.core.settings.pluginSyncExtendedSetting[key].mode = mode;
         }
-        plugin.services.setting.saveSettingData();
+        core.services.setting.saveSettingData();
     }
     function getIcon(mode: SYNC_MODE) {
         if (mode in ICONS) {
@@ -250,7 +253,7 @@
     let automaticListDisp = new Map<string, SYNC_MODE>();
 
     // apply current configuration to the dialogue
-    for (const { key, mode } of Object.values(plugin.settings.pluginSyncExtendedSetting)) {
+    for (const { key, mode } of Object.values(plugin.core.settings.pluginSyncExtendedSetting)) {
         automaticList.set(key, mode);
     }
 
@@ -259,7 +262,7 @@
     let displayKeys: Record<string, string[]> = {};
 
     function computeDisplayKeys(list: IPluginDataExDisplay[]) {
-        const extraKeys = Object.keys(plugin.settings.pluginSyncExtendedSetting);
+        const extraKeys = Object.keys(plugin.core.settings.pluginSyncExtendedSetting);
         return [
             ...list,
             ...extraKeys
@@ -321,7 +324,7 @@
     $: {
         pluginEntries = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
     }
-    let useSyncPluginEtc = plugin.settings.usePluginEtc;
+    let useSyncPluginEtc = plugin.core.settings.usePluginEtc;
 </script>
 
 <div class="buttonsWrap">

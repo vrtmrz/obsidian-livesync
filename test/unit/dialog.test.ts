@@ -69,7 +69,7 @@ describe("Dialog Tests", async () => {
     it("should show copy to clipboard dialog and confirm", async () => {
         const testString = "This is a test string to copy to clipboard.";
         const title = "Copy Test";
-        const result = harness.plugin.services.UI.promptCopyToClipboard(title, testString);
+        const result = harness.plugin.core.services.UI.promptCopyToClipboard(title, testString);
         const isDialogShown = await waitForDialogShown(title, 500);
         expect(isDialogShown).toBe(true);
         const copyButton = page.getByText("📋");

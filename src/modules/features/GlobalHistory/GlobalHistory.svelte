@@ -6,7 +6,9 @@
     import { diff_match_patch } from "../../../deps.ts";
     import { DocumentHistoryModal } from "../DocumentHistory/DocumentHistoryModal.ts";
     import { isPlainText, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     export let plugin: ObsidianLiveSyncPlugin;
+    export let core: LiveSyncBaseCore;
 
     let showDiffInfo = false;
     let showChunkCorrected = false;
@@ -44,12 +46,12 @@
     let history = [] as HistoryData[];
     let loading = false;
     function getPath(entry: AnyEntry): FilePathWithPrefix {
-        return plugin.services.path.getPath(entry);
+        return core.services.path.getPath(entry);
     }
 
     async function fetchChanges(): Promise<HistoryData[]> {
         try {
-            const db = plugin.localDatabase;
+            const db = core.localDatabase;
             let result = [] as typeof history;
             for await (const docA of db.findAllNormalDocs()) {
                 if (docA.mtime < range_from_epoch) {
@@ -112,11 +114,11 @@
                         }
                         if (rev == docA._rev) {
                             if (checkStorageDiff) {
-                                const isExist = await plugin.storageAccess.isExistsIncludeHidden(
+                                const isExist = await core.storageAccess.isExistsIncludeHidden(
                                     stripAllPrefixes(getPath(docA))
                                 );
                                 if (isExist) {
-                                    const data = await plugin.storageAccess.readHiddenFileBinary(
+                                    const data = await core.storageAccess.readHiddenFileBinary(
                                         stripAllPrefixes(getPath(docA))
                                     );
                                     const d = readAsBlob(doc);
@@ -189,7 +191,7 @@
     onDestroy(() => {});
 
     function showHistory(file: string, rev: string) {
-        new DocumentHistoryModal(plugin.app, plugin, file as unknown as FilePathWithPrefix, undefined, rev).open();
+        new DocumentHistoryModal(plugin.app, plugin.core, plugin, file as unknown as FilePathWithPrefix, undefined, rev).open();
     }
     function openFile(file: string) {
         plugin.app.workspace.openLinkText(file, file);

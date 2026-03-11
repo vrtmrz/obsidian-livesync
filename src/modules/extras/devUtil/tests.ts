@@ -48,7 +48,7 @@ async function formatPerfResults(items: NamedMeasureResult[]) {
 }
 export async function perf_trench(plugin: ObsidianLiveSyncPlugin) {
     clearResult("trench");
-    const trench = new Trench(plugin.simpleStore);
+    const trench = new Trench(plugin.core.simpleStore);
     const result = [] as NamedMeasureResult[];
     result.push(
         await measure("trench-short-string", async () => {
@@ -57,7 +57,7 @@ export async function perf_trench(plugin: ObsidianLiveSyncPlugin) {
         })
     );
     {
-        const testBinary = await plugin.storageAccess.readHiddenFileBinary("testdata/10kb.png");
+        const testBinary = await plugin.core.storageAccess.readHiddenFileBinary("testdata/10kb.png");
         const uint8Array = new Uint8Array(testBinary);
         result.push(
             await measure("trench-binary-10kb", async () => {
@@ -67,7 +67,7 @@ export async function perf_trench(plugin: ObsidianLiveSyncPlugin) {
         );
     }
     {
-        const testBinary = await plugin.storageAccess.readHiddenFileBinary("testdata/100kb.jpeg");
+        const testBinary = await plugin.core.storageAccess.readHiddenFileBinary("testdata/100kb.jpeg");
         const uint8Array = new Uint8Array(testBinary);
         result.push(
             await measure("trench-binary-100kb", async () => {
@@ -77,7 +77,7 @@ export async function perf_trench(plugin: ObsidianLiveSyncPlugin) {
         );
     }
     {
-        const testBinary = await plugin.storageAccess.readHiddenFileBinary("testdata/1mb.png");
+        const testBinary = await plugin.core.storageAccess.readHiddenFileBinary("testdata/1mb.png");
         const uint8Array = new Uint8Array(testBinary);
         result.push(
             await measure("trench-binary-1mb", async () => {

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-hosted LiveSync WebApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        #status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        #status.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        #status.warning {
+            background: #ffeaa7;
+            color: #d63031;
+            border: 1px solid #fdcb6e;
+        }
+
+        #status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        #status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .info-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .info-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .info-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-section li {
+            padding: 8px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-section li::before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+            padding-right: 0.5em;
+        }
+
+        .feature-list {
+            margin-top: 20px;
+        }
+
+        .feature-list h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #444;
+        }
+
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .console-link {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Self-hosted LiveSync</h1>
+        <p class="subtitle">Browser-based Self-hosted LiveSync using FileSystem API</p>
+
+        <div id="status" class="info">
+            Initialising...
+        </div>
+
+        <div class="info-section">
+            <h2>About This Application</h2>
+            <ul>
+                <li>Runs entirely in your browser</li>
+                <li>Uses FileSystem API to access your local vault</li>
+                <li>Syncs with CouchDB server (like Obsidian plugin)</li>
+                <li>Settings stored in <code>.livesync/settings.json</code></li>
+                <li>Real-time file watching with FileSystemObserver (Chrome 124+)</li>
+            </ul>
+        </div>
+
+        <div class="info-section">
+            <h2>How to Use</h2>
+            <ul>
+                <li>Grant directory access when prompted</li>
+                <li>Create <code>.livesync/settings.json</code> in your vault folder. (Compatible with Obsidian's Self-hosted LiveSync)</li>
+                <li>Add your CouchDB connection details</li>
+                <li>Your files will be synced automatically</li>
+            </ul>
+        </div>
+
+        <div class="console-link">
+            💡 Open browser console (F12) for detailed logs
+        </div>
+
+        <div class="footer">
+            <p>
+                Powered by 
+                <a href="https://github.com/vrtmrz/obsidian-livesync" target="_blank">
+                    Self-hosted LiveSync
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

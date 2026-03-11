@@ -28,3 +28,4 @@ data.json
 cov_profile/**
 
 coverage
+src/apps/cli/dist/*

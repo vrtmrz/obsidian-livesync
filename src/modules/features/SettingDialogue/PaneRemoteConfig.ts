@@ -68,7 +68,7 @@ export function paneRemoteConfig(
                 .addButton((button) =>
                     button
                         .onClick(async () => {
-                            const setupManager = this.plugin.getModule(SetupManager);
+                            const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
                             updateE2EESummary();
@@ -79,7 +79,7 @@ export function paneRemoteConfig(
                 .addButton((button) =>
                     button
                         .onClick(async () => {
-                            const setupManager = this.plugin.getModule(SetupManager);
+                            const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onConfigureManually(originalSettings, UserMode.Update);
                             updateE2EESummary();
@@ -101,7 +101,7 @@ export function paneRemoteConfig(
                     .setButtonText("Change Remote and Setup")
                     .setCta()
                     .onClick(async () => {
-                        const setupManager = this.plugin.getModule(SetupManager);
+                        const setupManager = this.core.getModule(SetupManager);
                         const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                         await setupManager.onSelectServer(originalSettings, UserMode.Update);
                     })
@@ -127,7 +127,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.plugin.getModule(SetupManager);
+                            const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onCouchDBManualSetup(
                                 UserMode.Update,
@@ -162,7 +162,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.plugin.getModule(SetupManager);
+                            const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onBucketManualSetup(
                                 UserMode.Update,
@@ -202,7 +202,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.plugin.getModule(SetupManager);
+                            const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onP2PManualSetup(
                                 UserMode.Update,

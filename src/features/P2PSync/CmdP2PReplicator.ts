@@ -38,14 +38,14 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     storeP2PStatusLine = reactiveSource("");
 
     getSettings(): P2PSyncSetting {
-        return this.plugin.settings;
+        return this.core.settings;
     }
     getDB() {
-        return this.plugin.localDatabase.localDatabase;
+        return this.core.localDatabase.localDatabase;
     }
 
     get confirm(): Confirm {
-        return this.plugin.confirm;
+        return this.core.confirm;
     }
     _simpleStore!: SimpleStore<any>;
 
@@ -53,8 +53,8 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
         return this._simpleStore;
     }
 
-    constructor(plugin: ObsidianLiveSyncPlugin) {
-        super(plugin);
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
+        super(plugin, core);
         setReplicatorFunc(() => this._replicatorInstance);
         addP2PEventHandlers(this);
         this.afterConstructor();
@@ -72,7 +72,7 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator> {
         const settings = { ...this.settings, ...settingOverride };
         if (settings.remoteType == REMOTE_P2P) {
-            return Promise.resolve(new LiveSyncTrysteroReplicator(this.plugin));
+            return Promise.resolve(new LiveSyncTrysteroReplicator(this.plugin.core));
         }
         return undefined!;
     }
@@ -183,12 +183,12 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     }
 
     private async _allSuspendExtraSync() {
-        this.plugin.settings.P2P_Enabled = false;
-        this.plugin.settings.P2P_AutoAccepting = AutoAccepting.NONE;
-        this.plugin.settings.P2P_AutoBroadcast = false;
-        this.plugin.settings.P2P_AutoStart = false;
-        this.plugin.settings.P2P_AutoSyncPeers = "";
-        this.plugin.settings.P2P_AutoWatchPeers = "";
+        this.plugin.core.settings.P2P_Enabled = false;
+        this.plugin.core.settings.P2P_AutoAccepting = AutoAccepting.NONE;
+        this.plugin.core.settings.P2P_AutoBroadcast = false;
+        this.plugin.core.settings.P2P_AutoStart = false;
+        this.plugin.core.settings.P2P_AutoSyncPeers = "";
+        this.plugin.core.settings.P2P_AutoWatchPeers = "";
         return await Promise.resolve(true);
     }
 
@@ -201,7 +201,10 @@ export class P2PReplicator extends LiveSyncCommands implements P2PReplicatorBase
     }
 
     async _everyOnloadStart(): Promise<boolean> {
-        this.plugin.registerView(VIEW_TYPE_P2P, (leaf) => new P2PReplicatorPaneView(leaf, this.plugin));
+        this.plugin.registerView(
+            VIEW_TYPE_P2P,
+            (leaf) => new P2PReplicatorPaneView(leaf, this.plugin.core, this.plugin)
+        );
         this.plugin.addCommand({
             id: "open-p2p-replicator",
             name: "P2P Sync : Open P2P Replicator",

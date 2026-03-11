@@ -16,18 +16,22 @@ import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
+    /**
+     * @deprecated This class is deprecated. Please use core
+     */
     plugin: ObsidianLiveSyncPlugin;
+    core: LiveSyncCore;
     get app() {
         return this.plugin.app;
     }
     get settings() {
-        return this.plugin.settings;
+        return this.core.settings;
     }
     get localDatabase() {
-        return this.plugin.localDatabase;
+        return this.core.localDatabase;
     }
     get services() {
-        return this.plugin.services;
+        return this.core.services;
     }
 
     // id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
@@ -41,9 +45,10 @@ export abstract class LiveSyncCommands {
         return this.services.path.getPath(entry);
     }
 
-    constructor(plugin: ObsidianLiveSyncPlugin) {
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
         this.plugin = plugin;
-        this.onBindFunction(plugin, plugin.services);
+        this.core = core;
+        this.onBindFunction(this.core, this.core.services);
         this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
         __$checkInstanceBinding(this);
     }
@@ -51,7 +56,7 @@ export abstract class LiveSyncCommands {
     abstract onload(): void | Promise<void>;
 
     _isMainReady() {
-        return this.plugin.services.appLifecycle.isReady();
+        return this.services.appLifecycle.isReady();
     }
     _isMainSuspended() {
         return this.services.appLifecycle.isSuspended();

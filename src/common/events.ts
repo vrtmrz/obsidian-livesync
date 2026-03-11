@@ -1,5 +1,5 @@
 import { eventHub } from "../lib/src/hub/hub";
-import type ObsidianLiveSyncPlugin from "../main";
+// import type ObsidianLiveSyncPlugin from "../main";
 
 export const EVENT_PLUGIN_LOADED = "plugin-loaded";
 export const EVENT_PLUGIN_UNLOADED = "plugin-unloaded";
@@ -29,7 +29,7 @@ export const EVENT_REQUEST_PERFORM_GC_V3 = "request-perform-gc-v3";
 
 declare global {
     interface LSEvents {
-        [EVENT_PLUGIN_LOADED]: ObsidianLiveSyncPlugin;
+        [EVENT_PLUGIN_LOADED]: undefined;
         [EVENT_PLUGIN_UNLOADED]: undefined;
         [EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG]: undefined;
         [EVENT_REQUEST_OPEN_SETTINGS]: undefined;

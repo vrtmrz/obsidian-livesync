@@ -71,7 +71,7 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
 
     async confirm(title: string, message: string, affirmative = "Yes", negative = "No") {
         return (
-            (await this.plugin.confirm.askSelectStringDialogue(message, [affirmative, negative], {
+            (await this.core.confirm.askSelectStringDialogue(message, [affirmative, negative], {
                 title,
                 defaultAction: affirmative,
             })) === affirmative
@@ -302,7 +302,7 @@ Note: **Make sure to synchronise all devices before deletion.**
     }
 
     async scanUnusedChunks() {
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
         const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
         const chunkUsageMap = (await kvDB.get<ChunkUsageMap>(DB_KEY_DOC_USAGE_MAP)) || new Map();
         const KEEP_MAX_REVS = 10;
@@ -328,7 +328,7 @@ Note: **Make sure to synchronise all devices before deletion.**
     async trackChanges(fromStart: boolean = false, showNotice: boolean = false) {
         if (!this.isAvailable()) return;
         const logLevel = showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
 
         const previousSeq = fromStart ? "" : await kvDB.get<string>(DB_KEY_SEQ);
         const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
@@ -457,7 +457,7 @@ Are you ready to delete unused chunks?`;
         const BUTTON_OK = `Yes, delete chunks`;
         const BUTTON_CANCEL = "Cancel";
 
-        const result = await this.plugin.confirm.askSelectStringDialogue(
+        const result = await this.core.confirm.askSelectStringDialogue(
             confirmMessage,
             [BUTTON_OK, BUTTON_CANCEL] as const,
             {
@@ -506,7 +506,7 @@ Are you ready to delete unused chunks?`;
         const message = `Garbage Collection completed.
 Success: ${successCount}, Errored: ${errored}`;
         this._log(message, logLevel);
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
         await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
     }
 
@@ -723,7 +723,7 @@ Success: ${successCount}, Errored: ${errored}`;
     }
 
     async compactDatabase() {
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
             this._notice("Failed to connect to remote for compaction.", "gc-compact");
@@ -767,7 +767,7 @@ Success: ${successCount}, Errored: ${errored}`;
         // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
         // Very dangerous operation, so now suppressed.
         return false;
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
             this._notice("Failed to connect to remote for compaction.");
@@ -822,7 +822,7 @@ Success: ${successCount}, Errored: ${errored}`;
     }
     async gcv3() {
         if (!this.isAvailable()) return;
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         // Start one-shot replication to ensure all changes are synced before GC.
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
         if (!r0) {
@@ -835,7 +835,7 @@ Success: ${successCount}, Errored: ${errored}`;
         // Delete the chunk, but first verify the following:
         // Fetch the list of accepted nodes from the replicator.
         const OPTION_CANCEL = "Cancel Garbage Collection";
-        const info = await this.plugin.replicator.getConnectedDeviceList();
+        const info = await this.core.replicator.getConnectedDeviceList();
         if (!info) {
             this._notice("No connected device information found. Cancelling Garbage Collection.");
             return;
@@ -855,7 +855,7 @@ It is preferable to update all devices if possible. If you have any devices that
             const OPTION_IGNORE = "Ignore and Proceed";
             // const OPTION_DELETE = "Delete them and proceed";
             const buttons = [OPTION_CANCEL, OPTION_IGNORE] as const;
-            const result = await this.plugin.confirm.askSelectStringDialogue(message, buttons, {
+            const result = await this.core.confirm.askSelectStringDialogue(message, buttons, {
                 title: "Node Information Missing",
                 defaultAction: OPTION_CANCEL,
             });
@@ -896,7 +896,7 @@ This may indicate that some devices have not completed synchronisation, which co
                 : `All devices have the same progress value (${maxProgress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.`;
         const buttons = [OPTION_PROCEED, OPTION_CANCEL] as const;
         const defaultAction = progressDifference != 0 ? OPTION_CANCEL : OPTION_PROCEED;
-        const result = await this.plugin.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
+        const result = await this.core.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
             title: "Garbage Collection Confirmation",
             defaultAction,
         });

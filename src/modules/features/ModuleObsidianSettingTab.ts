@@ -2,6 +2,7 @@ import { ObsidianLiveSyncSettingTab } from "./SettingDialogue/ObsidianLiveSyncSe
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "../../common/events.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
     settingTab!: ObsidianLiveSyncSettingTab;
@@ -29,7 +30,7 @@ export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
     get appId() {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
-    override onBindFunction(core: typeof this.plugin, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

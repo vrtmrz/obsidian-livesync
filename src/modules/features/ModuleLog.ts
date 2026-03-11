@@ -254,8 +254,7 @@ export class ModuleLog extends AbstractObsidianModule {
         }
         // Case Sensitivity
         if (this.services.vault.shouldCheckCaseInsensitively()) {
-            const f = this.core.storageAccess
-                .getFiles()
+            const f = (await this.core.storageAccess.getFiles())
                 .map((e) => e.path)
                 .filter((e) => e.toLowerCase() == thisFile.path.toLowerCase());
             if (f.length > 1) {
@@ -405,8 +404,8 @@ export class ModuleLog extends AbstractObsidianModule {
         this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
-            this.statusBar = this.core.addStatusBarItem();
-            this.statusBar.addClass("syncstatusbar");
+            this.statusBar = this.services.API.addStatusBarItem();
+            this.statusBar?.addClass("syncstatusbar");
         }
         this.adjustStatusDivPosition();
         return Promise.resolve(true);

@@ -34,7 +34,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
     }
 
     showHistory(file: TFile | FilePathWithPrefix, id?: DocumentID) {
-        new DocumentHistoryModal(this.app, this.plugin, file, id).open();
+        new DocumentHistoryModal(this.app, this.core, this.plugin, file, id).open();
     }
 
     async fileHistory() {

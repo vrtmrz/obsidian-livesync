@@ -9,6 +9,7 @@
     import { writable } from "svelte/store";
     export let plugin: ObsidianLiveSyncPlugin;
     export let moduleDev: ModuleDev;
+    $: core = plugin.core;
     let performanceTestResult = "";
     let functionCheckResult = "";
     let testRunning = false;
@@ -42,7 +43,7 @@
         // performTest();
 
         eventHub.onceEvent(EVENT_LAYOUT_READY, async () => {
-            if (await plugin.storageAccess.isExistsIncludeHidden("_AUTO_TEST.md")) {
+            if (await core.storageAccess.isExistsIncludeHidden("_AUTO_TEST.md")) {
                 new Notice("Auto test file found, running tests...");
                 fireAndForget(async () => {
                     await allTest();
@@ -57,14 +58,14 @@
     function moduleMultiDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.services.test.testMultiDevice().finally(() => {
+        core.services.test.testMultiDevice().finally(() => {
             moduleTesting = false;
         });
     }
     function moduleSingleDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.services.test.test().finally(() => {
+        core.services.test.test().finally(() => {
             moduleTesting = false;
         });
     }
@@ -72,8 +73,8 @@
         if (moduleTesting) return;
         moduleTesting = true;
         try {
-            await plugin.services.test.test();
-            await plugin.services.test.testMultiDevice();
+            await core.services.test.test();
+            await core.services.test.testMultiDevice();
         } finally {
             moduleTesting = false;
         }

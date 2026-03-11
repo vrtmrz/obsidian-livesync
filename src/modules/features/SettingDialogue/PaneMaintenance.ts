@@ -11,8 +11,8 @@ export function paneMaintenance(
     paneEl: HTMLElement,
     { addPanel }: PageFunctions
 ): void {
-    const isRemoteLockedAndDeviceNotAccepted = () => this.plugin?.replicator?.remoteLockedAndDeviceNotAccepted;
-    const isRemoteLocked = () => this.plugin?.replicator?.remoteLocked;
+    const isRemoteLockedAndDeviceNotAccepted = () => this.core?.replicator?.remoteLockedAndDeviceNotAccepted;
+    const isRemoteLocked = () => this.core?.replicator?.remoteLocked;
     // if (this.plugin?.replicator?.remoteLockedAndDeviceNotAccepted) {
     this.createEl(
         paneEl,
@@ -92,7 +92,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
+                        await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
                         this.services.appLifecycle.performRestart();
                     })
             );
@@ -108,7 +108,7 @@ export function paneMaintenance(
                     .setCta()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.plugin.storageAccess.writeFileAuto(FlagFilesHumanReadable.FETCH_ALL, "");
+                        await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.FETCH_ALL, "");
                         this.services.appLifecycle.performRestart();
                     })
             );
@@ -121,7 +121,7 @@ export function paneMaintenance(
                     .setCta()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.plugin.storageAccess.writeFileAuto(FlagFilesHumanReadable.REBUILD_ALL, "");
+                        await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.REBUILD_ALL, "");
                         this.services.appLifecycle.performRestart();
                     })
             );
@@ -137,8 +137,8 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        if (this.plugin.replicator instanceof LiveSyncCouchDBReplicator) {
-                            await this.plugin.replicator.sendChunks(this.plugin.settings, undefined, true, 0);
+                        if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
+                            await this.core.replicator.sendChunks(this.core.settings, undefined, true, 0);
                         }
                     })
             )
@@ -299,7 +299,7 @@ export function paneMaintenance(
                     .setButtonText("Perform")
                     .setDisabled(false)
                     .onClick(async () => {
-                        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+                        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
                         Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
                         if (await replicator.compactRemote(this.editingSettings)) {
                             Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");

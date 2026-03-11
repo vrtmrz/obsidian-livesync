@@ -80,7 +80,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         initialiseWorkerModule();
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
-        eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
+        eventHub.emitEvent(EVENT_PLUGIN_LOADED);
         this._log($msg("moduleLiveSyncMain.logLoadingPlugin"));
         if (!(await this.services.appLifecycle.onInitialise())) {
             this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);

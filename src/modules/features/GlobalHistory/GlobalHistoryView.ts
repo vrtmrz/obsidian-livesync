@@ -11,6 +11,7 @@ export class GlobalHistoryView extends SvelteItemView {
             target: target,
             props: {
                 plugin: this.plugin,
+                core: this.plugin.core,
             },
         });
     }

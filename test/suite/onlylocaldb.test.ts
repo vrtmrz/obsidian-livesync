@@ -28,12 +28,12 @@ describe.skip("Plugin Integration Test (Local Database)", async () => {
     });
 
     it("should have services initialized", async () => {
-        expect(harness.plugin.services).toBeDefined();
+        expect(harness.plugin.core.services).toBeDefined();
         return await Promise.resolve();
     });
     it("should have local database initialized", async () => {
-        expect(harness.plugin.localDatabase).toBeDefined();
-        expect(harness.plugin.localDatabase.isReady).toBe(true);
+        expect(harness.plugin.core.localDatabase).toBeDefined();
+        expect(harness.plugin.core.localDatabase.isReady).toBe(true);
         return await Promise.resolve();
     });
 
@@ -54,11 +54,11 @@ describe.skip("Plugin Integration Test (Local Database)", async () => {
             const readContent = await harness.app.vault.read(file);
             expect(readContent).toBe(content);
         }
-        await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+        await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
         await waitForIdle(harness);
         // await delay(100); // Wait a bit for the local database to process
 
-        const entry = await harness.plugin.localDatabase.getDBEntry(path as FilePath);
+        const entry = await harness.plugin.core.localDatabase.getDBEntry(path as FilePath);
         expect(entry).not.toBe(false);
         if (entry) {
             expect(readContent(entry)).toBe(content);
@@ -80,10 +80,10 @@ describe.skip("Plugin Integration Test (Local Database)", async () => {
             const readContent = await harness.app.vault.read(file);
             expect(readContent).toBe(content);
         }
-        await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+        await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
         await waitForIdle(harness);
 
-        const entry = await harness.plugin.localDatabase.getDBEntry(path as FilePath);
+        const entry = await harness.plugin.core.localDatabase.getDBEntry(path as FilePath);
         expect(entry).not.toBe(false);
         if (entry) {
             expect(readContent(entry)).toBe(content);
@@ -108,9 +108,9 @@ describe.skip("Plugin Integration Test (Local Database)", async () => {
             expect(await isDocContentSame(readContent, content)).toBe(true);
         }
 
-        await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+        await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
         await waitForIdle(harness);
-        const entry = await harness.plugin.localDatabase.getDBEntry(path as FilePath);
+        const entry = await harness.plugin.core.localDatabase.getDBEntry(path as FilePath);
         expect(entry).not.toBe(false);
         if (entry) {
             const entryContent = await readContent(entry);

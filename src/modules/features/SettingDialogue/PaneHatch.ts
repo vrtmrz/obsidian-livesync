@@ -165,7 +165,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     }
                     const obsidianInfo = {
                         navigator: navigator.userAgent,
-                        fileSystem: this.plugin.services.vault.isStorageInsensitive() ? "insensitive" : "sensitive",
+                        fileSystem: this.core.services.vault.isStorageInsensitive() ? "insensitive" : "sensitive",
                     };
                     const msgConfig = `# ---- Obsidian info ----
 ${stringifyYaml(obsidianInfo)}
@@ -221,7 +221,7 @@ ${stringifyYaml({
 
     void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
         const addResult = async (path: string, file: FilePathWithPrefix | false, fileOnDB: LoadedEntry | false) => {
-            const storageFileStat = file ? await this.plugin.storageAccess.statHidden(file) : null;
+            const storageFileStat = file ? await this.core.storageAccess.statHidden(file) : null;
             resultArea.appendChild(
                 this.createEl(resultArea, "div", {}, (el) => {
                     el.appendChild(this.createEl(el, "h6", { text: path }));
@@ -256,7 +256,7 @@ ${stringifyYaml({
                             this.createEl(el, "button", { text: "Storage -> Database" }, (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (file.startsWith(".")) {
-                                        const addOn = this.plugin.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+                                        const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
                                         if (addOn) {
                                             const file = (await addOn.scanInternalFiles()).find((e) => e.path == path);
                                             if (!file) {
@@ -275,7 +275,7 @@ ${stringifyYaml({
                                             }
                                         }
                                     } else {
-                                        if (!(await this.plugin.fileHandler.storeFileToDB(file as FilePath, true))) {
+                                        if (!(await this.core.fileHandler.storeFileToDB(file as FilePath, true))) {
                                             Logger(
                                                 `Failed to store the file to the database: ${file}`,
                                                 LOG_LEVEL_NOTICE
@@ -293,7 +293,7 @@ ${stringifyYaml({
                             this.createEl(el, "button", { text: "Database -> Storage" }, (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (fileOnDB.path.startsWith(ICHeader)) {
-                                        const addOn = this.plugin.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+                                        const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
                                         if (addOn) {
                                             if (
                                                 !(await addOn.extractInternalFileFromDatabase(path as FilePath, true))
@@ -307,7 +307,7 @@ ${stringifyYaml({
                                         }
                                     } else {
                                         if (
-                                            !(await this.plugin.fileHandler.dbToStorage(
+                                            !(await this.core.fileHandler.dbToStorage(
                                                 fileOnDB as MetaEntry,
                                                 null,
                                                 true
@@ -332,7 +332,7 @@ ${stringifyYaml({
 
         const checkBetweenStorageAndDatabase = async (file: FilePathWithPrefix, fileOnDB: LoadedEntry) => {
             const dataContent = readAsBlob(fileOnDB);
-            const content = createBlob(await this.plugin.storageAccess.readHiddenFileBinary(file));
+            const content = createBlob(await this.core.storageAccess.readHiddenFileBinary(file));
             if (await isDocContentSame(content, dataContent)) {
                 Logger(`Compare: SAME: ${file}`);
             } else {
@@ -348,7 +348,7 @@ ${stringifyYaml({
                     .setButtonText("Recreate all")
                     .setCta()
                     .onClick(async () => {
-                        await this.plugin.fileHandler.createAllChunks(true);
+                        await this.core.fileHandler.createAllChunks(true);
                     })
             );
         new Setting(paneEl)
@@ -377,21 +377,21 @@ ${stringifyYaml({
                     .setCta()
                     .onClick(async () => {
                         Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-                        const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
-                        this.plugin.localDatabase.clearCaches();
+                        const ignorePatterns = getFileRegExp(this.core.settings, "syncInternalFilesIgnorePatterns");
+                        const targetPatterns = getFileRegExp(this.core.settings, "syncInternalFilesTargetPatterns");
+                        this.core.localDatabase.clearCaches();
                         Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                        const files = this.plugin.settings.syncInternalFiles
-                            ? await this.plugin.storageAccess.getFilesIncludeHidden("/", targetPatterns, ignorePatterns)
-                            : await this.plugin.storageAccess.getFileNames();
+                        const files = this.core.settings.syncInternalFiles
+                            ? await this.core.storageAccess.getFilesIncludeHidden("/", targetPatterns, ignorePatterns)
+                            : await this.core.storageAccess.getFileNames();
                         const documents = [] as FilePath[];
 
-                        const adn = this.plugin.localDatabase.findAllDocs();
+                        const adn = this.core.localDatabase.findAllDocs();
                         for await (const i of adn) {
                             const path = this.services.path.getPath(i);
                             if (path.startsWith(ICXHeader)) continue;
                             if (path.startsWith(PSCHeader)) continue;
-                            if (!this.plugin.settings.syncInternalFiles && path.startsWith(ICHeader)) continue;
+                            if (!this.core.settings.syncInternalFiles && path.startsWith(ICHeader)) continue;
                             documents.push(stripAllPrefixes(path));
                         }
                         const allPaths = [...new Set([...documents, ...files])];
@@ -411,8 +411,8 @@ ${stringifyYaml({
                                 if (shouldBeIgnored(path)) {
                                     return incProc();
                                 }
-                                const stat = (await this.plugin.storageAccess.isExistsIncludeHidden(path))
-                                    ? await this.plugin.storageAccess.statHidden(path)
+                                const stat = (await this.core.storageAccess.isExistsIncludeHidden(path))
+                                    ? await this.core.storageAccess.statHidden(path)
                                     : false;
                                 const fileOnStorage = stat != null ? stat : false;
                                 if (!(await this.services.vault.isTargetFile(path))) return incProc();
@@ -422,7 +422,7 @@ ${stringifyYaml({
                                 try {
                                     const isHiddenFile = path.startsWith(".");
                                     const dbPath = isHiddenFile ? addPrefix(path, ICHeader) : path;
-                                    const fileOnDB = await this.plugin.localDatabase.getDBEntry(dbPath);
+                                    const fileOnDB = await this.core.localDatabase.getDBEntry(dbPath);
                                     if (fileOnDB && this.services.vault.isFileSizeTooLarge(fileOnDB.size))
                                         return incProc();
 
@@ -466,10 +466,10 @@ ${stringifyYaml({
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
-                        for await (const docName of this.plugin.localDatabase.findAllDocNames()) {
+                        for await (const docName of this.core.localDatabase.findAllDocNames()) {
                             if (!docName.startsWith("f:")) {
                                 const idEncoded = await this.services.path.path2id(docName as FilePathWithPrefix);
-                                const doc = await this.plugin.localDatabase.getRaw(docName as DocumentID);
+                                const doc = await this.core.localDatabase.getRaw(docName as DocumentID);
                                 if (!doc) continue;
                                 if (doc.type != "newnote" && doc.type != "plain") {
                                     continue;
@@ -482,7 +482,7 @@ ${stringifyYaml({
                                 // @ts-ignore
                                 delete newDoc._rev;
                                 try {
-                                    const obfuscatedDoc = await this.plugin.localDatabase.getRaw(idEncoded, {
+                                    const obfuscatedDoc = await this.core.localDatabase.getRaw(idEncoded, {
                                         revs_info: true,
                                     });
                                     // Unfortunately we have to delete one of them.
@@ -499,14 +499,14 @@ ${stringifyYaml({
                                                 -32
                                             );
                                     }
-                                    const ret = await this.plugin.localDatabase.putRaw(newDoc, { force: true });
+                                    const ret = await this.core.localDatabase.putRaw(newDoc, { force: true });
                                     if (ret.ok) {
                                         Logger(
                                             `${docName} has been converted as conflicted document`,
                                             LOG_LEVEL_NOTICE
                                         );
                                         doc._deleted = true;
-                                        if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
+                                        if ((await this.core.localDatabase.putRaw(doc)).ok) {
                                             Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                         }
                                         await this.services.conflict.queueCheckForIfOpen(docName as FilePathWithPrefix);
@@ -517,10 +517,10 @@ ${stringifyYaml({
                                 } catch (ex: any) {
                                     if (ex?.status == 404) {
                                         // We can perform this safely
-                                        if ((await this.plugin.localDatabase.putRaw(newDoc)).ok) {
+                                        if ((await this.core.localDatabase.putRaw(newDoc)).ok) {
                                             Logger(`${docName} has been converted`, LOG_LEVEL_NOTICE);
                                             doc._deleted = true;
-                                            if ((await this.plugin.localDatabase.putRaw(doc)).ok) {
+                                            if ((await this.core.localDatabase.putRaw(doc)).ok) {
                                                 Logger(`Old ${docName} has been deleted`, LOG_LEVEL_NOTICE);
                                             }
                                         }
@@ -555,7 +555,7 @@ ${stringifyYaml({
                 .setWarning()
                 .onClick(async () => {
                     Logger(`Deleting customization sync data`, LOG_LEVEL_NOTICE);
-                    const entriesToDelete = await this.plugin.localDatabase.allDocsRaw({
+                    const entriesToDelete = await this.core.localDatabase.allDocsRaw({
                         startkey: "ix:",
                         endkey: "ix:\u{10ffff}",
                         include_docs: true,
@@ -564,7 +564,7 @@ ${stringifyYaml({
                         ...e.doc,
                         _deleted: true,
                     }));
-                    const r = await this.plugin.localDatabase.bulkDocsRaw(newData as any[]);
+                    const r = await this.core.localDatabase.bulkDocsRaw(newData as any[]);
                     // Do not care about the result.
                     Logger(
                         `${r.length} items have been removed, to confirm how many items are left, please perform it again.`,

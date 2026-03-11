@@ -24,13 +24,10 @@ import {
     type UXFileInfoStub,
 } from "../lib/src/common/types.ts";
 export { ICHeader, ICXHeader } from "./types.ts";
-import type ObsidianLiveSyncPlugin from "../main.ts";
 import { writeString } from "../lib/src/string_and_binary/convert.ts";
-import { fireAndForget } from "../lib/src/common/utils.ts";
 import { sameChangePairs } from "./stores.ts";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
 import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
 import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 
@@ -125,47 +122,6 @@ export {
     isPluginMetadata,
     stripInternalMetadataPrefix,
 } from "@lib/common/typeUtils.ts";
-
-export class PeriodicProcessor {
-    _process: () => Promise<any>;
-    _timer?: number = undefined;
-    _plugin: ObsidianLiveSyncPlugin;
-    constructor(plugin: ObsidianLiveSyncPlugin, process: () => Promise<any>) {
-        this._plugin = plugin;
-        this._process = process;
-        eventHub.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
-            this.disable();
-        });
-    }
-    async process() {
-        try {
-            await this._process();
-        } catch (ex) {
-            Logger(ex);
-        }
-    }
-    enable(interval: number) {
-        this.disable();
-        if (interval == 0) return;
-        this._timer = window.setInterval(
-            () =>
-                fireAndForget(async () => {
-                    await this.process();
-                    if (this._plugin.services?.control?.hasUnloaded()) {
-                        this.disable();
-                    }
-                }),
-            interval
-        );
-        this._plugin.registerInterval(this._timer);
-    }
-    disable() {
-        if (this._timer !== undefined) {
-            window.clearInterval(this._timer);
-            this._timer = undefined;
-        }
-    }
-}
 
 export const _requestToCouchDBFetch = async (
     baseUri: string,
@@ -373,11 +329,6 @@ export function disposeAllMemo() {
     _cached.clear();
 }
 
-export function displayRev(rev: string) {
-    const [number, hash] = rev.split("-");
-    return `${number}-${hash.substring(0, 6)}`;
-}
-
 export function getLogLevel(showNotice: boolean) {
     return showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
 }
@@ -446,3 +397,5 @@ export function onlyInNTimes(n: number, proc: (progress: number) => any) {
         }
     };
 }
+
+export { displayRev } from "@lib/common/utils.ts";

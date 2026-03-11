@@ -15,6 +15,7 @@ import { isErrorOfMissingDoc } from "../../../lib/src/pouchdb/utils_couchdb.ts";
 import { fireAndForget, getDocData, readContent } from "../../../lib/src/common/utils.ts";
 import { isPlainText, stripPrefix } from "../../../lib/src/string_and_binary/path.ts";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
@@ -46,8 +47,9 @@ function readDocument(w: LoadedEntry) {
 }
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
+    core: LiveSyncBaseCore;
     get services() {
-        return this.plugin.services;
+        return this.core.services;
     }
     range!: HTMLInputElement;
     contentView!: HTMLDivElement;
@@ -66,6 +68,7 @@ export class DocumentHistoryModal extends Modal {
 
     constructor(
         app: App,
+        core: LiveSyncBaseCore,
         plugin: ObsidianLiveSyncPlugin,
         file: TFile | FilePathWithPrefix,
         id?: DocumentID,
@@ -73,6 +76,7 @@ export class DocumentHistoryModal extends Modal {
     ) {
         super(app);
         this.plugin = plugin;
+        this.core = core;
         this.file = file instanceof TFile ? getPathFromTFile(file) : file;
         this.id = id;
         this.initialRev = revision;
@@ -88,7 +92,7 @@ export class DocumentHistoryModal extends Modal {
         if (!this.id) {
             this.id = await this.services.path.path2id(this.file);
         }
-        const db = this.plugin.localDatabase;
+        const db = this.core.localDatabase;
         try {
             const w = await db.getRaw(this.id, { revs_info: true });
             this.revs_info = w._revs_info?.filter((e) => e?.status == "available") ?? [];
@@ -137,7 +141,7 @@ export class DocumentHistoryModal extends Modal {
     }
 
     async showExactRev(rev: string) {
-        const db = this.plugin.localDatabase;
+        const db = this.core.localDatabase;
         const w = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
         this.currentText = "";
         this.currentDeleted = false;
@@ -292,7 +296,7 @@ export class DocumentHistoryModal extends Modal {
                         return;
                     }
                     const d = readContent(this.currentDoc);
-                    await this.plugin.storageAccess.writeHiddenFileAuto(pathToWrite, d);
+                    await this.core.storageAccess.writeHiddenFileAuto(pathToWrite, d);
                     await focusFile(pathToWrite);
                     this.close();
                 });

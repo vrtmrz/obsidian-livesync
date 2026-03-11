@@ -20,17 +20,18 @@
     import { type P2PReplicatorStatus } from "../../../lib/src/replication/trystero/TrysteroReplicator";
     import { $msg as _msg } from "../../../lib/src/common/i18n";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../lib/src/common/types";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        plugin: PluginShim;
         cmdSync: CommandShim;
+        core: LiveSyncBaseCore;
     }
 
-    let { plugin, cmdSync }: Props = $props();
+    let { cmdSync, core }: Props = $props();
     // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
     setContext("getReplicator", () => cmdSync);
-
-    const initialSettings = { ...plugin.settings };
+    const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
+    const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
     let settings = $state<P2PSyncSetting>(initialSettings);
 
@@ -70,21 +71,33 @@
     );
 
     async function saveAndApply() {
-        const newSettings = {
-            ...plugin.settings,
-            P2P_Enabled: eP2PEnabled,
-            P2P_relays: eRelay,
-            P2P_roomID: eRoomId,
-            P2P_passphrase: ePassword,
-            P2P_AppID: eAppId,
-            P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
-            P2P_AutoStart: eAutoStart,
-            P2P_AutoBroadcast: eAutoBroadcast,
-        };
-        plugin.settings = newSettings;
+        // const newSettings = {
+        //     ...currentSettings(),
+        //     P2P_Enabled: eP2PEnabled,
+        //     P2P_relays: eRelay,
+        //     P2P_roomID: eRoomId,
+        //     P2P_passphrase: ePassword,
+        //     P2P_AppID: eAppId,
+        //     P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
+        //     P2P_AutoStart: eAutoStart,
+        //     P2P_AutoBroadcast: eAutoBroadcast,
+        // };
+        await core.services.setting.applyPartial(
+            {
+                P2P_Enabled: eP2PEnabled,
+                P2P_relays: eRelay,
+                P2P_roomID: eRoomId,
+                P2P_passphrase: ePassword,
+                P2P_AppID: eAppId,
+                P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
+                P2P_AutoStart: eAutoStart,
+                P2P_AutoBroadcast: eAutoBroadcast,
+            },
+            true
+        );
         cmdSync.setConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
-        await plugin.saveSettings();
+        // await plugin.saveSettings();
     }
     async function revert() {
         eP2PEnabled = settings.P2P_Enabled;
@@ -100,8 +113,9 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
-        if(force){
-            const initDeviceName = cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? plugin.services.vault.getVaultName();
+        if (force) {
+            const initDeviceName =
+                cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
             deviceName = initDeviceName;
             eDeviceName = initDeviceName;
         }
@@ -124,7 +138,7 @@
             closeServer();
         });
         const rx = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
-            applyLoadSettings(plugin.settings, true);
+            applyLoadSettings(currentSettings(), true);
         });
         const r2 = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
@@ -254,7 +268,7 @@
         cmdSync.setConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
     let isObsidian = $derived.by(() => {
-        return plugin.services.API.getPlatform() === "obsidian";
+        return core.services.API.getPlatform() === "obsidian";
     });
 </script>
 

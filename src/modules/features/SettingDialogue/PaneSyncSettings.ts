@@ -109,7 +109,7 @@ export function paneSyncSettings(
                     await this.rebuildDB("localOnly");
                     // this.resetEditingSettings();
                     if (
-                        (await this.plugin.confirm.askYesNoDialog(
+                        (await this.core.confirm.askYesNoDialog(
                             $msg("obsidianLiveSyncSettingTab.msgGenerateSetupURI"),
                             {
                                 defaultOption: "Yes",

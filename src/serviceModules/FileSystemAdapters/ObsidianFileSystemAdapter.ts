@@ -42,16 +42,16 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
         this.vault = new ObsidianVaultAdapter(app);
     }
 
-    getAbstractFileByPath(path: FilePath | string): TAbstractFile | null {
-        return this.app.vault.getAbstractFileByPath(path);
+    getAbstractFileByPath(path: FilePath | string): Promise<TAbstractFile | null> {
+        return Promise.resolve(this.app.vault.getAbstractFileByPath(path));
     }
 
-    getAbstractFileByPathInsensitive(path: FilePath | string): TAbstractFile | null {
-        return this.app.vault.getAbstractFileByPathInsensitive(path);
+    getAbstractFileByPathInsensitive(path: FilePath | string): Promise<TAbstractFile | null> {
+        return Promise.resolve(this.app.vault.getAbstractFileByPathInsensitive(path));
     }
 
-    getFiles(): TFile[] {
-        return this.app.vault.getFiles();
+    getFiles(): Promise<TFile[]> {
+        return Promise.resolve(this.app.vault.getFiles());
     }
 
     statFromNative(file: TFile): Promise<UXStat> {

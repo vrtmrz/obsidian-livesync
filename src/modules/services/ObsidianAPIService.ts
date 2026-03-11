@@ -171,4 +171,18 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             statusText: `${r.status}`,
         });
     }
+
+    override addStatusBarItem(): HTMLElement | undefined {
+        return this.context.plugin.addStatusBarItem();
+    }
+
+    override setInterval(handler: () => void, timeout: number): number {
+        const timerId = globalThis.setInterval(handler, timeout) as unknown as number;
+        this.context.plugin.registerInterval(timerId);
+        return timerId;
+    }
+
+    override getSystemConfigDir() {
+        return this.app.vault.configDir;
+    }
 }

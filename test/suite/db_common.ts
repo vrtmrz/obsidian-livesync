@@ -40,12 +40,12 @@ export async function storeFile(
             expect(readContent).toBe(content);
         }
     }
-    await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+    await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
     await waitForIdle(harness);
     return file;
 }
 export async function readFromLocalDB(harness: LiveSyncHarness, path: string) {
-    const entry = await harness.plugin.localDatabase.getDBEntry(path as FilePath);
+    const entry = await harness.plugin.core.localDatabase.getDBEntry(path as FilePath);
     expect(entry).not.toBe(false);
     return entry;
 }
@@ -95,11 +95,11 @@ export async function testFileWrite(
 ) {
     const file = await storeFile(harness, path, content, false, fileOptions);
     expect(file).toBeInstanceOf(TFile);
-    await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+    await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
     await waitForIdle(harness);
     const vaultFile = await readFromVault(harness, path, content instanceof Blob, fileOptions);
     expect(await isDocContentSame(vaultFile, content)).toBe(true);
-    await harness.plugin.services.fileProcessing.commitPendingFileEvents();
+    await harness.plugin.core.services.fileProcessing.commitPendingFileEvents();
     await waitForIdle(harness);
     if (skipCheckToBeWritten) {
         return Promise.resolve();

@@ -8,8 +8,7 @@ import {
     type MetaEntry,
 } from "@lib/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
-import { isChunk, isValidPath } from "@/common/utils";
-import type { LiveSyncCore } from "@/main";
+import { isChunk } from "@/lib/src/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -22,6 +21,7 @@ import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 type ReplicateResultProcessorState = {
@@ -54,7 +54,7 @@ export class ReplicateResultProcessor {
     get services() {
         return this.replicator.core.services;
     }
-    get core(): LiveSyncCore {
+    get core(): LiveSyncBaseCore {
         return this.replicator.core;
     }
 
@@ -414,7 +414,7 @@ export class ReplicateResultProcessor {
             if (await this.services.replication.processOptionalSynchroniseResult(dbDoc)) {
                 // Already processed
                 this.log(`Processed by other processor: ${docNote}`, LOG_LEVEL_DEBUG);
-            } else if (isValidPath(this.getPath(doc))) {
+            } else if (this.services.vault.isValidPath(this.getPath(doc))) {
                 // Apply to storage if the path is valid
                 await this.applyToStorage(doc as MetaEntry);
                 this.log(`Processed: ${docNote}`, LOG_LEVEL_DEBUG);

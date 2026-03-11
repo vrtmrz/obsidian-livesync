@@ -23,7 +23,7 @@ export class PluginDialogModal extends Modal {
         if (!this.component) {
             this.component = mount(PluginPane, {
                 target: contentEl,
-                props: { plugin: this.plugin },
+                props: { plugin: this.plugin, core: this.plugin.core },
             });
         }
     }

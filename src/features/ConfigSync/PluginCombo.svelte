@@ -30,7 +30,8 @@
     export let plugin: ObsidianLiveSyncPlugin;
     export let isMaintenanceMode: boolean = false;
     export let isFlagged: boolean = false;
-    const addOn = plugin.getAddOn<ConfigSync>(ConfigSync.name)!;
+    $: core = plugin.core;
+    const addOn = plugin.core.getAddOn<ConfigSync>(ConfigSync.name)!;
     if (!addOn) {
         Logger(`Could not load the add-on ${ConfigSync.name}`, LOG_LEVEL_INFO);
         throw new Error(`Could not load the add-on ${ConfigSync.name}`);
@@ -334,13 +335,13 @@
             Logger(`Could not find local item`, LOG_LEVEL_VERBOSE);
             return;
         }
-        const duplicateTermName = await plugin.confirm.askString("Duplicate", "device name", "");
+        const duplicateTermName = await core.confirm.askString("Duplicate", "device name", "");
         if (duplicateTermName) {
             if (duplicateTermName.contains("/")) {
                 Logger(`We can not use "/" to the device name`, LOG_LEVEL_NOTICE);
                 return;
             }
-            const key = `${plugin.app.vault.configDir}/${local.files[0].filename}`;
+            const key = `${plugin.core.services.API.getSystemConfigDir()}/${local.files[0].filename}`;
             await addOn.storeCustomizationFiles(key as FilePath, duplicateTermName);
             await addOn.updatePluginList(false, addOn.filenameToUnifiedKey(key, duplicateTermName));
         }

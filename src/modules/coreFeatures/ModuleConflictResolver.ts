@@ -11,13 +11,9 @@ import {
     type diff_check_result,
     type FilePathWithPrefix,
 } from "../../lib/src/common/types";
-import {
-    compareMTime,
-    displayRev,
-    isCustomisationSyncMetadata,
-    isPluginMetadata,
-    TARGET_IS_NEW,
-} from "../../common/utils";
+import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
+import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
+import { compareMTime, displayRev } from "@lib/common/utils.ts";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "../../lib/src/string_and_binary/path";
 import { eventHub } from "../../common/events.ts";
@@ -214,7 +210,7 @@ export class ModuleConflictResolver extends AbstractModule {
     private async _resolveAllConflictedFilesByNewerOnes() {
         this._log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
 
-        const files = this.core.storageAccess.getFileNames();
+        const files = await this.core.storageAccess.getFileNames();
 
         let i = 0;
         for (const file of files) {

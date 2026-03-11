@@ -38,8 +38,8 @@ export function addDebugFileLog(message: any, stackLog = false) {
             // const out = "--" + timestamp + "--\n" + messageContent + " " + (stack || "");
             // const out
             try {
-                await plugin.storageAccess.appendHiddenFile(
-                    plugin.app.vault.configDir + "/ls-debug/" + outFile,
+                await plugin.core.storageAccess.appendHiddenFile(
+                    plugin.core.services.API.getSystemConfigDir() + "/ls-debug/" + outFile,
                     JSON.stringify(out) + "\n"
                 );
             } catch {

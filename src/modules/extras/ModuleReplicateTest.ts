@@ -1,3 +1,4 @@
+// I intend to discontinue maintenance of this class. It seems preferable to test it externally.
 import { delay } from "octagonal-wheels/promises";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
@@ -169,7 +170,7 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
             this._log("No storage access", LOG_LEVEL_INFO);
             return;
         }
-        const files = this.core.storageAccess.getFiles();
+        const files = await this.core.storageAccess.getFiles();
         const out = [] as any[];
         const webcrypto = await getWebCrypto();
         for (const file of files) {
@@ -205,8 +206,8 @@ export class ModuleReplicateTest extends AbstractObsidianModule {
     }
 
     async __dumpFileListIncludeHidden(outFile?: string) {
-        const ignorePatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-        const targetPatterns = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+        const ignorePatterns = getFileRegExp(this.core.settings, "syncInternalFilesIgnorePatterns");
+        const targetPatterns = getFileRegExp(this.core.settings, "syncInternalFilesTargetPatterns");
         const out = [] as any[];
         const files = await this.core.storageAccess.getFilesIncludeHidden("", targetPatterns, ignorePatterns);
         // console.dir(files);

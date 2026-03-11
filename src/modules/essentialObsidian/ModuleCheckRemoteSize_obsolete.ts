@@ -35,13 +35,13 @@ export class ModuleCheckRemoteSize extends AbstractModule {
             );
             if (ret == ANSWER_0) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 0;
-                await this.core.saveSettings();
+                await this.saveSettings();
             } else if (ret == ANSWER_800) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 800;
-                await this.core.saveSettings();
+                await this.saveSettings();
             } else if (ret == ANSWER_2000) {
                 this.settings.notifyThresholdOfRemoteStorageSize = 2000;
-                await this.core.saveSettings();
+                await this.saveSettings();
             }
         }
         if (this.settings.notifyThresholdOfRemoteStorageSize > 0) {
@@ -88,7 +88,8 @@ export class ModuleCheckRemoteSize extends AbstractModule {
                                 }),
                                 LOG_LEVEL_NOTICE
                             );
-                            await this.core.saveSettings();
+                            // await this.core.saveSettings();
+                            await this.core.services.setting.saveSettingData();
                         } else {
                             // Dismiss or Close the dialog
                         }

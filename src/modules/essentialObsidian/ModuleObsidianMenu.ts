@@ -1,10 +1,10 @@
-import { fireAndForget } from "octagonal-wheels/promises";
-import { addIcon, type Editor, type MarkdownFileInfo, type MarkdownView } from "../../deps.ts";
-import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { type Editor, type MarkdownFileInfo, type MarkdownView } from "@/deps.ts";
+import { addIcon } from "@/deps.ts";
+import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-
+// Obsidian specific menu commands.
 export class ModuleObsidianMenu extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {
         // UI
@@ -23,22 +23,6 @@ export class ModuleObsidianMenu extends AbstractModule {
         }).addClass("livesync-ribbon-replicate");
 
         this.addCommand({
-            id: "livesync-replicate",
-            name: "Replicate now",
-            callback: async () => {
-                await this.services.replication.replicate();
-            },
-        });
-        this.addCommand({
-            id: "livesync-dump",
-            name: "Dump information of this doc ",
-            callback: () => {
-                const file = this.services.vault.getActiveFilePath();
-                if (!file) return;
-                fireAndForget(() => this.localDatabase.getDBEntry(file, {}, true, false));
-            },
-        });
-        this.addCommand({
             id: "livesync-checkdoc-conflicted",
             name: "Resolve if conflicted.",
             editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
@@ -48,61 +32,6 @@ export class ModuleObsidianMenu extends AbstractModule {
             },
         });
 
-        this.addCommand({
-            id: "livesync-toggle",
-            name: "Toggle LiveSync",
-            callback: async () => {
-                if (this.settings.liveSync) {
-                    this.settings.liveSync = false;
-                    this._log("LiveSync Disabled.", LOG_LEVEL_NOTICE);
-                } else {
-                    this.settings.liveSync = true;
-                    this._log("LiveSync Enabled.", LOG_LEVEL_NOTICE);
-                }
-                await this.services.control.applySettings();
-                await this.services.setting.saveSettingData();
-            },
-        });
-        this.addCommand({
-            id: "livesync-suspendall",
-            name: "Toggle All Sync.",
-            callback: async () => {
-                if (this.services.appLifecycle.isSuspended()) {
-                    this.services.appLifecycle.setSuspended(false);
-                    this._log("Self-hosted LiveSync resumed", LOG_LEVEL_NOTICE);
-                } else {
-                    this.services.appLifecycle.setSuspended(true);
-                    this._log("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
-                }
-                await this.services.control.applySettings();
-                await this.services.setting.saveSettingData();
-            },
-        });
-
-        this.addCommand({
-            id: "livesync-scan-files",
-            name: "Scan storage and database again",
-            callback: async () => {
-                await this.services.vault.scanVault(true);
-            },
-        });
-
-        this.addCommand({
-            id: "livesync-runbatch",
-            name: "Run pended batch processes",
-            callback: async () => {
-                await this.services.fileProcessing.commitPendingFileEvents();
-            },
-        });
-
-        // TODO, Replicator is possibly one of features. It should be moved to features.
-        this.addCommand({
-            id: "livesync-abortsync",
-            name: "Abort synchronization immediately",
-            callback: () => {
-                this.core.replicator.terminateSync();
-            },
-        });
         return Promise.resolve(true);
     }
 

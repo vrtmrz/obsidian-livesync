@@ -2,6 +2,7 @@ import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
 import {
     type EntryDoc,
     type LOG_LEVEL,
+    type ObsidianLiveSyncSettings,
     type P2PSyncSetting,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
@@ -39,6 +40,7 @@ import type { InjectableVaultServiceCompat } from "@lib/services/implements/inje
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 import type { InjectableAPIService } from "@/lib/src/services/implements/injectable/InjectableAPIService";
 import type { BrowserAPIService } from "@/lib/src/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -87,6 +89,22 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
             () => "p2p-livesync-web-peer"
         );
+        this.services.API.addLog.setHandler(Logger);
+        const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
+        this._simpleStore = repStore;
+        let _settings = { ...P2P_DEFAULT_SETTINGS, additionalSuffixOfDatabaseName: "" } as ObsidianLiveSyncSettings;
+        this.services.setting.settings = _settings as any;
+        (this.services.setting as InjectableSettingService<any>).saveData.setHandler(async (data) => {
+            await repStore.set("settings", data);
+            eventHub.emitEvent(EVENT_SETTING_SAVED, data);
+        });
+        (this.services.setting as InjectableSettingService<any>).loadData.setHandler(async () => {
+            const settings = { ..._settings, ...((await repStore.get("settings")) as ObsidianLiveSyncSettings) };
+            return settings;
+        });
+    }
+    get settings() {
+        return this.services.setting.currentSettings() as P2PSyncSetting;
     }
     async init() {
         // const { simpleStoreAPI } = await getWrappedSynchromesh();
@@ -102,23 +120,27 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
                 Logger(ex, LOG_LEVEL_VERBOSE);
             }
         }
-        const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
-        this._simpleStore = repStore;
-        let _settings = (await repStore.get("settings")) || ({ ...P2P_DEFAULT_SETTINGS } as P2PSyncSetting);
-        this.services.setting.settings = _settings as any;
+
+        await this.services.setting.loadSettings();
         this.plugin = {
-            saveSettings: async () => {
-                await repStore.set("settings", _settings);
-                eventHub.emitEvent(EVENT_SETTING_SAVED, _settings);
-            },
-            get settings() {
-                return _settings;
-            },
-            set settings(newSettings: P2PSyncSetting) {
-                _settings = { ..._settings, ...newSettings };
-            },
-            rebuilder: null,
+            // saveSettings: async () => {
+            //     await repStore.set("settings", _settings);
+            //     eventHub.emitEvent(EVENT_SETTING_SAVED, _settings);
+            // },
+            // get settings() {
+            //     return _settings;
+            // },
+            // set settings(newSettings: P2PSyncSetting) {
+            //     _settings = { ..._settings, ...newSettings };
+            // },
+            // rebuilder: null,
+            // core: {
+            //     settings: this.services.setting.settings,
+            // },
             services: this.services,
+            core: {
+                services: this.services,
+            },
             // $$scheduleAppReload: () => {},
             // $$getVaultName: () => "p2p-livesync-web-peer",
         };
@@ -132,9 +154,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         }, 1000);
         return this;
     }
-    get settings() {
-        return this.plugin.settings;
-    }
+
     _log(msg: any, level?: LOG_LEVEL): void {
         Logger(msg, level);
     }
@@ -334,12 +354,11 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
                         }
                     }
                 }
-                this.plugin.settings = remoteConfig;
-                await this.plugin.saveSettings();
+                await this.services.setting.applyPartial(remoteConfig, true);
                 if (yn === DROP) {
-                    await this.plugin.rebuilder.scheduleFetch();
+                    // await this.plugin.rebuilder.scheduleFetch();
                 } else {
-                    await this.plugin.services.appLifecycle.scheduleRestart();
+                    await this.plugin.core.services.appLifecycle.scheduleRestart();
                 }
             } else {
                 Logger(`Cancelled\nRemote config for ${peer.name} is not applied`, LOG_LEVEL_NOTICE);
@@ -357,13 +376,18 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         } as const;
 
         const targetSetting = settingMap[prop];
+        const currentSettingAll = this.plugin.core.services.setting.currentSettings();
+        const currentSetting = {
+            [targetSetting]: currentSettingAll ? currentSettingAll[targetSetting] : "",
+        };
         if (peer[prop]) {
-            this.plugin.settings[targetSetting] = removeFromList(peer.name, this.plugin.settings[targetSetting]);
-            await this.plugin.saveSettings();
+            // this.plugin.settings[targetSetting] = removeFromList(peer.name, this.plugin.settings[targetSetting]);
+            // await this.plugin.saveSettings();
+            currentSetting[targetSetting] = removeFromList(peer.name, currentSetting[targetSetting]);
         } else {
-            this.plugin.settings[targetSetting] = addToList(peer.name, this.plugin.settings[targetSetting]);
-            await this.plugin.saveSettings();
+            currentSetting[targetSetting] = addToList(peer.name, currentSetting[targetSetting]);
         }
+        await this.plugin.core.services.setting.applyPartial(currentSetting, true);
     }
 }
 

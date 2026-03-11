@@ -27,7 +27,7 @@
 <main>
     <div class="control">
         {#await synchronised then cmdSync}
-            <P2PReplicatorPane plugin={cmdSync.plugin} {cmdSync}></P2PReplicatorPane>
+            <P2PReplicatorPane plugin={cmdSync.plugin} {cmdSync} core={cmdSync.plugin.core}></P2PReplicatorPane>
         {:catch error}
             <p>{error.message}</p>
         {/await}

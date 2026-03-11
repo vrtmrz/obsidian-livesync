@@ -68,7 +68,7 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
                 await waitForIdle(harnessInit);
             });
             afterAll(async () => {
-                await harnessInit.plugin.services.replicator.getActiveReplicator()?.closeReplication();
+                await harnessInit.plugin.core.services.replicator.getActiveReplicator()?.closeReplication();
                 await harnessInit.dispose();
                 await delay(1000);
             });
@@ -81,7 +81,7 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             it("should be prepared for replication", async () => {
                 await waitForReady(harnessInit);
                 if (setting.remoteType !== RemoteTypes.REMOTE_P2P) {
-                    const status = await harnessInit.plugin.services.replicator
+                    const status = await harnessInit.plugin.core.services.replicator
                         .getActiveReplicator()
                         ?.getRemoteStatus(sync_test_setting_init);
                     console.log("Connected devices after reset:", status);
@@ -120,12 +120,12 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             });
 
             it("should have services initialized", () => {
-                expect(harnessUpload.plugin.services).toBeDefined();
+                expect(harnessUpload.plugin.core.services).toBeDefined();
             });
 
             it("should have local database initialized", () => {
-                expect(harnessUpload.plugin.localDatabase).toBeDefined();
-                expect(harnessUpload.plugin.localDatabase.isReady).toBe(true);
+                expect(harnessUpload.plugin.core.localDatabase).toBeDefined();
+                expect(harnessUpload.plugin.core.localDatabase.isReady).toBe(true);
             });
 
             it("should prepare remote database", async () => {
@@ -138,7 +138,7 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
                 const path = nameFile("store", "md", 0);
                 await testFileWrite(harnessUpload, path, content, false, fileOptions);
                 // Perform replication
-                // await harness.plugin.services.replication.replicate(true);
+                // await harness.plugin.core.services.replication.replicate(true);
             });
             it("should different content of several files have been created correctly", async () => {
                 await testFileWrite(harnessUpload, nameFile("test-diff-1", "md", 0), "Content A", false, fileOptions);
@@ -149,7 +149,7 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             test.each(FILE_SIZE_MD)("should large file of size %i bytes has been created", async (size) => {
                 const content = Array.from(generateFile(size)).join("");
                 const path = nameFile("large", "md", size);
-                const isTooLarge = harnessUpload.plugin.services.vault.isFileSizeTooLarge(size);
+                const isTooLarge = harnessUpload.plugin.core.services.vault.isFileSizeTooLarge(size);
                 if (isTooLarge) {
                     console.log(`Skipping file of size ${size} bytes as it is too large to sync.`);
                     expect(true).toBe(true);
@@ -162,7 +162,7 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
                 const content = new Blob([...generateBinaryFile(size)], { type: "application/octet-stream" });
                 const path = nameFile("binary", "bin", size);
                 await testFileWrite(harnessUpload, path, content, true, fileOptions);
-                const isTooLarge = harnessUpload.plugin.services.vault.isFileSizeTooLarge(size);
+                const isTooLarge = harnessUpload.plugin.core.services.vault.isFileSizeTooLarge(size);
                 if (isTooLarge) {
                     console.log(`Skipping file of size ${size} bytes as it is too large to sync.`);
                     expect(true).toBe(true);
@@ -210,12 +210,12 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             });
 
             it("should have services initialized", () => {
-                expect(harnessDownload.plugin.services).toBeDefined();
+                expect(harnessDownload.plugin.core.services).toBeDefined();
             });
 
             it("should have local database initialized", () => {
-                expect(harnessDownload.plugin.localDatabase).toBeDefined();
-                expect(harnessDownload.plugin.localDatabase.isReady).toBe(true);
+                expect(harnessDownload.plugin.core.localDatabase).toBeDefined();
+                expect(harnessDownload.plugin.core.localDatabase.isReady).toBe(true);
             });
 
             it("should a file has been synchronised", async () => {
@@ -232,9 +232,9 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             test.each(FILE_SIZE_MD)("should the file %i bytes had been synchronised", async (size) => {
                 const content = Array.from(generateFile(size)).join("");
                 const path = nameFile("large", "md", size);
-                const isTooLarge = harnessDownload.plugin.services.vault.isFileSizeTooLarge(size);
+                const isTooLarge = harnessDownload.plugin.core.services.vault.isFileSizeTooLarge(size);
                 if (isTooLarge) {
-                    const entry = await harnessDownload.plugin.localDatabase.getDBEntry(path as FilePath);
+                    const entry = await harnessDownload.plugin.core.localDatabase.getDBEntry(path as FilePath);
                     console.log(`Skipping file of size ${size} bytes as it is too large to sync.`);
                     expect(entry).toBe(false);
                 } else {
@@ -245,9 +245,9 @@ export function syncBasicCase(label: string, { setting, fileOptions }: TestOptio
             test.each(FILE_SIZE_BINS)("should binary file of size %i bytes had been synchronised", async (size) => {
                 const path = nameFile("binary", "bin", size);
 
-                const isTooLarge = harnessDownload.plugin.services.vault.isFileSizeTooLarge(size);
+                const isTooLarge = harnessDownload.plugin.core.services.vault.isFileSizeTooLarge(size);
                 if (isTooLarge) {
-                    const entry = await harnessDownload.plugin.localDatabase.getDBEntry(path as FilePath);
+                    const entry = await harnessDownload.plugin.core.localDatabase.getDBEntry(path as FilePath);
                     console.log(`Skipping file of size ${size} bytes as it is too large to sync.`);
                     expect(entry).toBe(false);
                 } else {

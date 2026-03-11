@@ -35,7 +35,7 @@ export function paneSetup(
             .setDesc($msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."))
             .addButton((text) => {
                 text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
-                    const setupManager = this.plugin.getModule(SetupManager);
+                    const setupManager = this.core.getModule(SetupManager);
                     await setupManager.onOnboard(UserMode.ExistingUser);
                     // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
                 });
@@ -86,14 +86,14 @@ export function paneSetup(
                 text.setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
                     .onClick(async () => {
                         if (
-                            (await this.plugin.confirm.askYesNoDialog(
+                            (await this.core.confirm.askYesNoDialog(
                                 $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
                                 { defaultOption: "No" }
                             )) == "yes"
                         ) {
                             this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
                             await this.saveAllDirtySettings();
-                            this.plugin.settings = { ...DEFAULT_SETTINGS };
+                            this.core.settings = { ...DEFAULT_SETTINGS };
                             await this.services.setting.saveSettingData();
                             await this.services.database.resetDatabase();
                             // await this.plugin.initializeDatabase();

@@ -31,7 +31,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
         const migrateAllToIndexedDB = async () => {
-            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
+            const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
             const options = {
                 adapter: "indexeddb",
                 //@ts-ignore :missing def
@@ -42,18 +42,19 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             const openTo = () => {
                 return new PouchDB(dbToName, options);
             };
-            if (await migrateDatabases("to IndexedDB", this.plugin.localDatabase.localDatabase, openTo)) {
+            if (await migrateDatabases("to IndexedDB", this.core.localDatabase.localDatabase, openTo)) {
                 Logger(
                     "Migration to IndexedDB completed. Obsidian will be restarted with new configuration immediately.",
                     LOG_LEVEL_NOTICE
                 );
-                this.plugin.settings.useIndexedDBAdapter = true;
-                await this.services.setting.saveSettingData();
+                // this.plugin.settings.useIndexedDBAdapter = true;
+                // await this.services.setting.saveSettingData();
+                await this.core.services.setting.applyPartial({ useIndexedDBAdapter: true }, true);
                 this.services.appLifecycle.performRestart();
             }
         };
         const migrateAllToIDB = async () => {
-            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName;
+            const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName;
             const options = {
                 adapter: "idb",
                 auto_compaction: false,
@@ -62,13 +63,14 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             const openTo = () => {
                 return new PouchDB(dbToName, options);
             };
-            if (await migrateDatabases("to IDB", this.plugin.localDatabase.localDatabase, openTo)) {
+            if (await migrateDatabases("to IDB", this.core.localDatabase.localDatabase, openTo)) {
                 Logger(
                     "Migration to IDB completed. Obsidian will be restarted with new configuration immediately.",
                     LOG_LEVEL_NOTICE
                 );
-                this.plugin.settings.useIndexedDBAdapter = false;
-                await this.services.setting.saveSettingData();
+                await this.core.services.setting.applyPartial({ useIndexedDBAdapter: false }, true);
+                // this.core.settings.useIndexedDBAdapter = false;
+                // await this.services.setting.saveSettingData();
                 this.services.appLifecycle.performRestart();
             }
         };
@@ -151,7 +153,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             } as Record<HashAlgorithm, string>,
         });
         this.addOnSaved("hashAlg", async () => {
-            await this.plugin.localDatabase._prepareHashFunctions();
+            await this.core.localDatabase._prepareHashFunctions();
         });
     });
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
@@ -215,7 +217,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
             const buttons = ["Restart Now", "Later"] as const;
-            const reboot = await this.plugin.confirm.askSelectStringDialogue(
+            const reboot = await this.core.confirm.askSelectStringDialogue(
                 "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?",
                 buttons,
                 {

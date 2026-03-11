@@ -73,7 +73,7 @@ export class ModuleInitializerFile extends AbstractModule {
         await this.collectDeletedFiles();
 
         this._log("Collecting local files on the storage", LOG_LEVEL_VERBOSE);
-        const filesStorageSrc = this.core.storageAccess.getFiles();
+        const filesStorageSrc = await this.core.storageAccess.getFiles();
 
         const _filesStorage = [] as typeof filesStorageSrc;
 
@@ -300,7 +300,7 @@ export class ModuleInitializerFile extends AbstractModule {
             throw new Error(`Missing doc:${(file as any).path}`);
         }
         if ("path" in file) {
-            const w = this.core.storageAccess.getFileStub((file as any).path);
+            const w = await this.core.storageAccess.getFileStub((file as any).path);
             if (w) {
                 file = w;
             } else {

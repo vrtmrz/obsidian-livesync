@@ -8,7 +8,7 @@ import {
     eventHub,
 } from "../../common/events.ts";
 import { AbstractModule } from "../AbstractModule.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
 import { isValidPath } from "../../common/utils.ts";
 import { isMetaEntry } from "../../lib/src/common/types.ts";
@@ -40,7 +40,7 @@ export class ModuleMigration extends AbstractModule {
         );
         if (isModified) {
             this.settings = settings;
-            await this.core.saveSettings();
+            await this.saveSettings();
         }
         if (!skipRebuild) {
             if (shouldRebuild) {
@@ -231,7 +231,7 @@ export class ModuleMigration extends AbstractModule {
         if (ret == FIX) {
             for (const file of recoverable) {
                 // Overwrite the database with the files on the storage
-                const stubFile = this.core.storageAccess.getFileStub(file.path);
+                const stubFile = await this.core.storageAccess.getFileStub(file.path);
                 if (stubFile == null) {
                     Logger(`Could not find stub file for ${file.path}`, LOG_LEVEL_NOTICE);
                     continue;

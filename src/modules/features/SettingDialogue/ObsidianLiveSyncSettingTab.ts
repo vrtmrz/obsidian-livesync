@@ -86,8 +86,11 @@ export function createStub(name: string, key: string, value: string, panel: stri
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
+    get core() {
+        return this.plugin.core;
+    }
     get services() {
-        return this.plugin.services;
+        return this.core.services;
     }
     selectedScreen = "";
 
@@ -122,9 +125,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 continue;
             }
             //@ts-ignore
-            this.plugin.settings[k] = this.editingSettings[k];
+            this.core.settings[k] = this.editingSettings[k];
             //@ts-ignore
-            this.initialSettings[k] = this.plugin.settings[k];
+            this.initialSettings[k] = this.core.settings[k];
         }
         keys.forEach((e) => this.refreshSetting(e));
     }
@@ -164,14 +167,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 continue;
             }
             //@ts-ignore
-            this.plugin.settings[k] = this.editingSettings[k];
+            this.core.settings[k] = this.editingSettings[k];
             //@ts-ignore
-            this.initialSettings[k] = this.plugin.settings[k];
+            this.initialSettings[k] = this.core.settings[k];
             hasChanged = true;
         }
 
         if (hasChanged) {
-            await this.plugin.saveSettings();
+            await this.services.setting.saveSettingData();
         }
 
         // if (runOnSaved) {
@@ -231,7 +234,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      */
     reloadAllSettings(skipUpdate: boolean = false) {
         const localSetting = this.reloadAllLocalSettings();
-        this._editingSettings = { ...this.plugin.settings, ...localSetting };
+        this._editingSettings = { ...this.core.settings, ...localSetting };
         this._editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
         this.initialSettings = { ...this.editingSettings };
         if (!skipUpdate) this.requestUpdate();
@@ -242,7 +245,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      */
     refreshSetting(key: AllSettingItemKey) {
         const localSetting = this.reloadAllLocalSettings();
-        if (key in this.plugin.settings) {
+        if (key in this.core.settings) {
             if (key in localSetting) {
                 //@ts-ignore
                 this.initialSettings[key] = localSetting[key];
@@ -250,7 +253,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 this.editingSettings[key] = localSetting[key];
             } else {
                 //@ts-ignore
-                this.initialSettings[key] = this.plugin.settings[key];
+                this.initialSettings[key] = this.core.settings[key];
                 //@ts-ignore
                 this.editingSettings[key] = this.initialSettings[key];
             }
@@ -319,7 +322,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     closeSetting() {
         // @ts-ignore
-        this.plugin.app.setting.close();
+        this.core.app.setting.close();
     }
 
     handleElement(element: HTMLElement, func: OnUpdateFunc) {
@@ -381,7 +384,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     requestReload() {
         if (this.isShown) {
-            const newConf = this.plugin.settings;
+            const newConf = this.core.settings;
             const keys = Object.keys(newConf) as (keyof ObsidianLiveSyncSettings)[];
             let hasLoaded = false;
             for (const k of keys) {
@@ -389,7 +392,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     // Something has changed
                     if (this.isDirty(k as AllSettingItemKey)) {
                         // And modified.
-                        this.plugin.confirm.askInPopup(
+                        this.core.confirm.askInPopup(
                             `config-reloaded-${k}`,
                             $msg("obsidianLiveSyncSettingTab.msgSettingModified", {
                                 setting: getConfName(k as AllSettingItemKey),
@@ -457,7 +460,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.editingSettings.syncOnStart = false;
         this.editingSettings.syncOnFileOpen = false;
         this.editingSettings.syncAfterMerge = false;
-        this.plugin.replicator.closeReplication();
+        this.core.replicator.closeReplication();
         await this.saveAllDirtySettings();
         this.containerEl.addClass("isWizard");
         this.inWizard = true;
@@ -514,8 +517,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (this.isConfiguredAs("syncOnStart", true)) return true;
         if (this.isConfiguredAs("syncAfterMerge", true)) return true;
         if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
-        if (this.plugin?.replicator?.syncStatus == "CONNECTED") return true;
-        if (this.plugin?.replicator?.syncStatus == "PAUSED") return true;
+        if (this.core?.replicator?.syncStatus == "CONNECTED") return true;
+        if (this.core?.replicator?.syncStatus == "PAUSED") return true;
         return false;
     }
 
@@ -605,7 +608,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.saveAllDirtySettings();
         this.closeSetting();
         await delay(2000);
-        await this.plugin.rebuilder.$performRebuildDB(method);
+        await this.core.rebuilder.$performRebuildDB(method);
     };
     async confirmRebuild() {
         if (!(await this.isPassphraseValid())) {
@@ -633,7 +636,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (result == OPTION_FETCH) {
             if (!(await this.checkWorkingPassphrase())) {
                 if (
-                    (await this.plugin.confirm.askYesNoDialog($msg("obsidianLiveSyncSettingTab.msgAreYouSureProceed"), {
+                    (await this.core.confirm.askYesNoDialog($msg("obsidianLiveSyncSettingTab.msgAreYouSureProceed"), {
                         defaultOption: "No",
                     })) != "yes"
                 )
@@ -646,16 +649,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.saveAllDirtySettings();
         await this.applyAllSettings();
         if (result == OPTION_FETCH) {
-            await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
+            await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
             this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
             // await rebuildDB("localOnly");
         } else if (result == OPTION_REBUILD_BOTH) {
-            await this.plugin.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
+            await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
             this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
         } else if (result == OPTION_ONLY_SETTING) {
-            await this.plugin.saveSettings();
+            await this.services.setting.saveSettingData();
         }
     }
 
@@ -868,7 +871,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     getMinioJournalSyncClient() {
-        return new JournalSyncMinio(this.plugin.settings, this.plugin.simpleStore, this.plugin);
+        return new JournalSyncMinio(this.core.settings, this.core.simpleStore, this.core);
     }
     async resetRemoteBucket() {
         const minioJournal = this.getMinioJournalSyncClient();
