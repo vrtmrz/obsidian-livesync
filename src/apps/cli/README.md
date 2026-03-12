@@ -137,7 +137,7 @@ Usage:
   livesync-cli [database-path] [options] [command] [command-args]
 
 Arguments:
-  database-path           Path to the local database directory (required)
+  database-path           Path to the local database directory (required except for init-settings)
 
 Options:
   --settings, -s <path>   Path to settings file (default: .livesync/settings.json in local database directory)
@@ -155,7 +155,7 @@ Commands:
   put <vaultPath>         Read text from standard input and write to local database
   cat <vaultPath>         Write latest file content from local database to standard output
   cat-rev <vaultPath> <revision>   Write specific revision content from local database to standard output
-  ls <prefix>             List files as path<TAB>size<TAB>mtime<TAB>revision[*]
+  ls [prefix]             List files as path<TAB>size<TAB>mtime<TAB>revision[*]
   info <vaultPath>        Show file metadata including current and past revisions, conflicts, and chunk list
   rm <vaultPath>          Mark file as deleted in local database
   resolve <vaultPath> <revision>   Resolve conflict by keeping the specified revision
@@ -176,8 +176,8 @@ npm run cli -- [database-path] [options] [command] [command-args]
 - `path`: Vault-relative path
 - `size`: Size in bytes
 - `revisions`: Available non-current revisions
-- `Chunks`: Number of chunk IDs
-- `child: ...`: Chunk ID list
+- `chunks`: Number of chunk IDs
+- `children`: Chunk ID list
 
 ### Planned options:
 
@@ -245,13 +245,16 @@ npm run cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.m
 src/apps/cli/
 ├── commands/            # Command dispatcher and command utilities
 │   ├── runCommand.ts
+│   ├── runCommand.unit.spec.ts
 │   ├── types.ts
-│   └── utils.ts
+│   ├── utils.ts
+│   └── utils.unit.spec.ts
 ├── adapters/            # Node.js FileSystem Adapter
 │   ├── NodeConversionAdapter.ts
 │   ├── NodeFileSystemAdapter.ts
 │   ├── NodePathAdapter.ts
 │   ├── NodeStorageAdapter.ts
+│   ├── NodeStorageAdapter.unit.spec.ts
 │   ├── NodeTypeGuardAdapter.ts
 │   ├── NodeTypes.ts
 │   └── NodeVaultAdapter.ts
@@ -270,13 +273,19 @@ src/apps/cli/
 │   ├── NodeServiceHub.ts
 │   └── NodeSettingService.ts
 ├── test/
+│   ├── test-e2e-two-vaults-common.sh
+│   ├── test-e2e-two-vaults-matrix.sh
+│   ├── test-e2e-two-vaults-with-docker-linux.sh
 │   ├── test-push-pull-linux.sh
 │   ├── test-setup-put-cat-linux.sh
 │   └── test-sync-two-local-databases-linux.sh
 ├── .gitignore
+├── entrypoint.ts         # CLI executable entry point (shebang)
 ├── main.ts              # CLI entry point
+├── main.unit.spec.ts
 ├── package.json
 ├── README.md            # This file
 ├── tsconfig.json
+├── util/                # Test and local utility scripts
 └── vite.config.ts
 ```
