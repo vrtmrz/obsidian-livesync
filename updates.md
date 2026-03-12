@@ -3,7 +3,7 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Unnamed 12th March, 2026
+## 0.25.52-patched-1
 
 12th March, 2026
 
@@ -11,56 +11,34 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 - Fixed Journal Sync had not been working on some timing, due to a compatibility issue (for a long time).
 - ServiceFileAccessBase now correctly handles the reading of binary files.
-
-### Internal behaviour change (or fix)
-
-- Journal Replicator now yields true after the replication is done. 
-
-### CLI
-
-- Add more tests.
-- Object Storage support has also been confirmed (and fixed) in CLI.
-  - Yes, we have finally managed to 'get one file'.
-- Now binary files are also supported in the CLI.
-
-
-## Unnamed 11th March, 2026
-
-11th March, 2026 (second commit).
-
-### Refactored
-
-- Offline change scanner and the local database preparation has been separated.
-- Set default priority for processFileEvent and processSynchroniseResult for the place for adding hooks.
-- ControlService now provides the readiness for processing operations.
-- DatabaseService now able to modify database opening options on derived classes.
-- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
-
-### Fixed
-
 - HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
 - Non-worker version of bgWorker now correctly handles some functions.
-
-### New something
-- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless, and a dedicated version.
-
-## Unnamed 11th March, 2026
-
-11th March, 2026
-
-Now, Self-hosted LiveSync has finally begun to be split into the Self-hosted LiveSync plugin for Obsidian, and a properly abstracted version of it.
-This may not offer much benefit to Obsidian plugin users, or might even cause a slight inconvenience, but I believe it will certainly help improve testability and make the ecosystem better.
-However, I do not see the point in putting something with little benefit into beta, so I am handling this on the alpha branch. I would actually preferred to create an R&D branch, but I was not keen on the ampersand, and I feel it will eventually become a proper beta anyway.
 
 ### Refactored
 
 - Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
 - Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
 - Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
+- Offline change scanner and the local database preparation has been separated.
+- Set default priority for processFileEvent and processSynchroniseResult for the place for adding hooks.
+- ControlService now provides the readiness for processing operations.
+- DatabaseService now able to modify database opening options on derived classes.
+- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
 
 ### Internal API changes
 
 - Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
+- Journal Replicator now yields true after the replication is done.
+
+### CLI
+
+We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
+
+- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless, and a dedicated version.
+- Add more tests.
+- Object Storage support has also been confirmed (and fixed) in CLI.
+  - Yes, we have finally managed to 'get one file'.
+- Now binary files are also supported in the CLI.
 
 ### R&D
 
