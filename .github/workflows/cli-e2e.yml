@@ -1,0 +1,84 @@
+# Run CLI E2E tests
+name: cli-e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'CLI E2E suite to run'
+        type: choice
+        options:
+          - two-vaults-matrix
+          - two-vaults-couchdb
+          - two-vaults-minio
+        default: two-vaults-matrix
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - '.github/workflows/cli-e2e.yml'
+      - 'src/apps/cli/**'
+      - 'src/lib/src/API/processSetting.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/cli-e2e.yml'
+      - 'src/apps/cli/**'
+      - 'src/lib/src/API/processSetting.ts'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CLI E2E suite
+        working-directory: src/apps/cli
+        env:
+          CI: true
+          TEST_SUITE: ${{ github.event_name == 'workflow_dispatch' && inputs.suite || 'two-vaults-matrix' }}
+        run: |
+          set -euo pipefail
+          echo "[INFO] Running CLI E2E suite: $TEST_SUITE"
+          case "$TEST_SUITE" in
+            two-vaults-matrix)
+              npm run test:e2e:two-vaults:matrix
+              ;;
+            two-vaults-couchdb)
+              REMOTE_TYPE=COUCHDB ENCRYPT=0 npm run test:e2e:two-vaults
+              ;;
+            two-vaults-minio)
+              REMOTE_TYPE=MINIO ENCRYPT=0 npm run test:e2e:two-vaults
+              ;;
+            *)
+              echo "[ERROR] Unknown suite: $TEST_SUITE" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Stop test containers
+        if: always()
+        working-directory: src/apps/cli
+        run: |
+          bash ./util/couchdb-stop.sh >/dev/null 2>&1 || true
+          bash ./util/minio-stop.sh >/dev/null 2>&1 || true
