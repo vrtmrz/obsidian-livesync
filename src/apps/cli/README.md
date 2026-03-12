@@ -16,12 +16,12 @@ This CLI version is built using the same core as the Obsidian plugin:
 ```
 CLI Main
   └─ LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>
-     ├─ HeadlessServiceHub (All services without Obsidian dependencies)
-     └─ ServiceModules (Ported from main.ts)
+     ├─ NodeServiceHub (All services without Obsidian dependencies)
+     └─ ServiceModules (wired by initialiseServiceModulesCLI)
         ├─ FileAccessCLI (Node.js FileSystemAdapter)
         ├─ StorageEventManagerCLI
         ├─ ServiceFileAccessCLI
-        ├─ ServiceDatabaseFileAccess
+        ├─ ServiceDatabaseFileAccessCLI
         ├─ ServiceFileHandler
         └─ ServiceRebuilder
 ```
@@ -33,10 +33,14 @@ CLI Main
     - Implements same interface as Obsidian's file system
 
 2. **Service Modules** (`serviceModules/`)
-    - Direct port from `main.ts` `initialiseServiceModules`
+    - Initialised by `initialiseServiceModulesCLI`
     - All core sync functionality preserved
 
-3. **Main Entry Point** (`main.ts`)
+3. **Service Hub and Settings Services** (`services/`)
+    - `NodeServiceHub` provides the CLI service context
+    - Node-specific settings and key-value services are provided without Obsidian dependencies
+
+4. **Main Entry Point** (`main.ts`)
     - Command-line interface
     - Settings management (JSON file)
     - Graceful shutdown handling
@@ -59,43 +63,43 @@ As you know, the CLI is designed to be used in a headless environment. Hence all
 
 ```bash
 # Sync local database with CouchDB (no files will be changed).
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json sync
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json sync
 
 # Push files to local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
 
 # Pull files from local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
 
 # Verbose logging
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json --verbose
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json --verbose
 
 # Apply setup URI to settings file (settings only; does not run synchronisation)
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
 
 # Put text from stdin into local database
-echo "Hello from stdin" | node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
+echo "Hello from stdin" | npm run cli -- /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
 
 # Output a file from local database to stdout
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
 
 # Output a specific revision of a file from local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
 
 # Pull a specific revision of a file from local database to local storage
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
 
 # List files in local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
 
 # Show metadata for a file in local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
 
 # Mark a file as deleted in local database
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
 
 # Resolve conflict by keeping a specific revision
-node dist/index.cjs /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
+npm run cli -- /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
 ```
 
 ### Configuration
@@ -157,15 +161,21 @@ Commands:
   resolve <vaultPath> <revision>   Resolve conflict by keeping the specified revision
 ```
 
+Run via npm script:
+
+```bash
+npm run cli -- [database-path] [options] [command] [command-args]
+```
+
 `info` output fields:
 
-- `ID`: Document ID
-- `Revision`: Current revision
-- `Conflicts`: Conflicted revisions, or `N/A`
-- `Filename`: Basename of path
-- `Path`: Vault-relative path
-- `Size`: Size in bytes
-- `PastRevisions`: Available non-current revisions
+- `id`: Document ID
+- `revision`: Current revision
+- `conflicts`: Conflicted revisions, or `N/A`
+- `filename`: Basename of path
+- `path`: Vault-relative path
+- `size`: Size in bytes
+- `revisions`: Available non-current revisions
 - `Chunks`: Number of chunk IDs
 - `child: ...`: Chunk ID list
 
@@ -187,9 +197,9 @@ TODO: Conflict and resolution checks for real local databases.
 Create default settings, apply a setup URI, then run one sync cycle.
 
 ```bash
-node dist/index.cjs init-settings /data/livesync-settings.json
-printf '%s\n' "$SETUP_PASSPHRASE" | node dist/index.cjs /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json sync
+npm run cli -- init-settings /data/livesync-settings.json
+printf '%s\n' "$SETUP_PASSPHRASE" | npm run cli -- /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
+npm run cli -- /data/vault --settings /data/livesync-settings.json sync
 ```
 
 ### 2. Scripted import and export
@@ -197,8 +207,8 @@ node dist/index.cjs /data/vault --settings /data/livesync-settings.json sync
 Push local files into the database from automation, and pull them back for export or backup.
 
 ```bash
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
 ```
 
 ### 3. Revision inspection and restore
@@ -206,9 +216,9 @@ node dist/index.cjs /data/vault --settings /data/livesync-settings.json pull not
 List metadata, find an older revision, then restore it by content (`cat-rev`) or file output (`pull-rev`).
 
 ```bash
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json info notes/note.md
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
+npm run cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
+npm run cli -- /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
 ```
 
 ### 4. Conflict and cleanup workflow
@@ -216,9 +226,9 @@ node dist/index.cjs /data/vault --settings /data/livesync-settings.json pull-rev
 Inspect conflicted revisions, resolve by keeping one revision, then delete obsolete files.
 
 ```bash
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json info notes/note.md
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
+npm run cli -- /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
 ```
 
 ### 5. CI smoke test for content round-trip
@@ -226,8 +236,8 @@ node dist/index.cjs /data/vault --settings /data/livesync-settings.json rm notes
 Validate that `put`/`cat` is behaving as expected in a pipeline.
 
 ```bash
-echo "hello-ci" | node dist/index.cjs /data/vault --settings /data/livesync-settings.json put ci/test.md
-node dist/index.cjs /data/vault --settings /data/livesync-settings.json cat ci/test.md
+echo "hello-ci" | npm run cli -- /data/vault --settings /data/livesync-settings.json put ci/test.md
+npm run cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.md
 ```
 
 ## Development
@@ -236,26 +246,40 @@ node dist/index.cjs /data/vault --settings /data/livesync-settings.json cat ci/t
 
 ```
 src/apps/cli/
-├── commands/           # Command dispatcher and command utilities
+├── commands/            # Command dispatcher and command utilities
 │   ├── runCommand.ts
 │   ├── types.ts
 │   └── utils.ts
-├── adapters/           # Node.js FileSystem Adapter
+├── adapters/            # Node.js FileSystem Adapter
+│   ├── NodeConversionAdapter.ts
 │   ├── NodeFileSystemAdapter.ts
 │   ├── NodePathAdapter.ts
-│   ├── NodeTypeGuardAdapter.ts
-│   ├── NodeConversionAdapter.ts
 │   ├── NodeStorageAdapter.ts
-│   ├── NodeVaultAdapter.ts
-│   └── NodeTypes.ts
-├── managers/           # CLI-specific managers
+│   ├── NodeTypeGuardAdapter.ts
+│   ├── NodeTypes.ts
+│   └── NodeVaultAdapter.ts
+├── lib/
+│   └── pouchdb-node.ts
+├── managers/            # CLI-specific managers
 │   ├── CLIStorageEventManagerAdapter.ts
 │   └── StorageEventManagerCLI.ts
-├── serviceModules/     # Service modules (ported from main.ts)
+├── serviceModules/      # Service modules (ported from main.ts)
 │   ├── CLIServiceModules.ts
+│   ├── DatabaseFileAccess.ts
 │   ├── FileAccessCLI.ts
-│   ├── ServiceFileAccessImpl.ts
-│   └── DatabaseFileAccess.ts
-├── main.ts            # CLI entry point
-└── README.md          # This file
+│   └── ServiceFileAccessImpl.ts
+├── services/
+│   ├── NodeKeyValueDBService.ts
+│   ├── NodeServiceHub.ts
+│   └── NodeSettingService.ts
+├── test/
+│   ├── test-push-pull-linux.sh
+│   ├── test-setup-put-cat-linux.sh
+│   └── test-sync-two-local-databases-linux.sh
+├── .gitignore
+├── main.ts              # CLI entry point
+├── package.json
+├── README.md            # This file
+├── tsconfig.json
+└── vite.config.ts
 ```

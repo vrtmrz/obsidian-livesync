@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$CLI_DIR"
 
-CLI_ENTRY="${CLI_ENTRY:-$CLI_DIR/dist/index.cjs}"
+CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
 REMOTE_PATH="${REMOTE_PATH:-test/push-pull.txt}"
 
@@ -19,13 +19,12 @@ if [[ "$RUN_BUILD" == "1" ]]; then
     npm run build
 fi
 
-if [[ ! -f "$CLI_ENTRY" ]]; then
-    echo "[ERROR] CLI entry not found: $CLI_ENTRY" >&2
-    exit 1
-fi
+run_cli() {
+    "${CLI_CMD[@]}" "$@"
+}
 
 echo "[INFO] generating settings from DEFAULT_SETTINGS -> $SETTINGS_FILE"
-node "$CLI_ENTRY" init-settings --force "$SETTINGS_FILE"
+run_cli init-settings --force "$SETTINGS_FILE"
 
 if [[ -n "${COUCHDB_URI:-}" && -n "${COUCHDB_USER:-}" && -n "${COUCHDB_PASSWORD:-}" && -n "${COUCHDB_DBNAME:-}" ]]; then
     echo "[INFO] applying CouchDB env vars to generated settings"
@@ -52,10 +51,10 @@ PULLED_FILE="$WORK_DIR/pull-result.txt"
 printf 'push-pull-test %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SRC_FILE"
 
 echo "[INFO] push -> $REMOTE_PATH"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" push "$SRC_FILE" "$REMOTE_PATH"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" push "$SRC_FILE" "$REMOTE_PATH"
 
 echo "[INFO] pull <- $REMOTE_PATH"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" pull "$REMOTE_PATH" "$PULLED_FILE"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" pull "$REMOTE_PATH" "$PULLED_FILE"
 
 if cmp -s "$SRC_FILE" "$PULLED_FILE"; then
     echo "[PASS] push/pull roundtrip matched"

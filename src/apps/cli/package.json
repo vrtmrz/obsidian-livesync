@@ -2,14 +2,16 @@
     "name": "self-hosted-livesync-cli",
     "private": true,
     "version": "0.0.0",
+    "main": "dist/index.cjs",
     "type": "module",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "run": "node dist/index.cjs",
-        "buildRun": "npm run build && npm run",
-        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+        "cli": "node dist/index.cjs",
+        "buildRun": "npm run build && npm run cli --",
+        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+        "test:e2e:two-vaults": "bash test/test-e2e-two-vaults-with-docker-linux.sh"
     },
     "dependencies": {},
     "devDependencies": {}

@@ -6,7 +6,7 @@ CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd -- "$CLI_DIR/../../.." && pwd)"
 cd "$CLI_DIR"
 
-CLI_ENTRY="${CLI_ENTRY:-$CLI_DIR/dist/index.cjs}"
+CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
 REMOTE_PATH="${REMOTE_PATH:-test/setup-put-cat.txt}"
 SETUP_PASSPHRASE="${SETUP_PASSPHRASE:-setup-passphrase}"
@@ -21,13 +21,12 @@ if [[ "$RUN_BUILD" == "1" ]]; then
     npm run build
 fi
 
-if [[ ! -f "$CLI_ENTRY" ]]; then
-    echo "[ERROR] CLI entry not found: $CLI_ENTRY" >&2
-    exit 1
-fi
+run_cli() {
+    "${CLI_CMD[@]}" "$@"
+}
 
 echo "[INFO] generating settings from DEFAULT_SETTINGS -> $SETTINGS_FILE"
-node "$CLI_ENTRY" init-settings --force "$SETTINGS_FILE"
+run_cli init-settings --force "$SETTINGS_FILE"
 
 echo "[INFO] creating setup URI from settings"
 SETUP_URI="$(
@@ -57,7 +56,7 @@ mkdir -p "$VAULT_DIR/test"
 echo "[INFO] applying setup URI"
 SETUP_LOG="$WORK_DIR/setup-output.log"
 set +e
-printf '%s\n' "$SETUP_PASSPHRASE" | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" setup "$SETUP_URI" \
+printf '%s\n' "$SETUP_PASSPHRASE" | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" setup "$SETUP_URI" \
     >"$SETUP_LOG" 2>&1
 SETUP_EXIT=$?
 set -e
@@ -78,11 +77,11 @@ SRC_FILE="$WORK_DIR/put-source.txt"
 printf 'setup-put-cat-test %s\nline-2\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SRC_FILE"
 
 echo "[INFO] put -> $REMOTE_PATH"
-cat "$SRC_FILE" | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REMOTE_PATH"
+cat "$SRC_FILE" | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REMOTE_PATH"
 
 echo "[INFO] cat <- $REMOTE_PATH"
 CAT_OUTPUT="$WORK_DIR/cat-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" cat "$REMOTE_PATH" > "$CAT_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" cat "$REMOTE_PATH" > "$CAT_OUTPUT"
 
 CAT_OUTPUT_CLEAN="$WORK_DIR/cat-output-clean.txt"
 grep -v '^\[CLIWatchAdapter\] File watching is not enabled in CLI version$' "$CAT_OUTPUT" > "$CAT_OUTPUT_CLEAN" || true
@@ -100,7 +99,7 @@ fi
 
 echo "[INFO] ls $REMOTE_PATH"
 LS_OUTPUT="$WORK_DIR/ls-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" ls "$REMOTE_PATH" > "$LS_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" ls "$REMOTE_PATH" > "$LS_OUTPUT"
 
 LS_LINE="$(grep -F "$REMOTE_PATH" "$LS_OUTPUT" | head -n 1 || true)"
 if [[ -z "$LS_LINE" ]]; then
@@ -129,12 +128,12 @@ fi
 echo "[PASS] ls output format matched"
 
 echo "[INFO] adding more files for ls test cases"
-printf 'file-a\n' | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/a-first.txt >/dev/null
-printf 'file-z\n' | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/z-last.txt >/dev/null
+printf 'file-a\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/a-first.txt >/dev/null
+printf 'file-z\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/z-last.txt >/dev/null
 
 echo "[INFO] ls test/ (prefix filter and sorting)"
 LS_PREFIX_OUTPUT="$WORK_DIR/ls-prefix-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/ > "$LS_PREFIX_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/ > "$LS_PREFIX_OUTPUT"
 
 if [[ "$(wc -l < "$LS_PREFIX_OUTPUT")" -lt 3 ]]; then
     echo "[FAIL] ls prefix output expected at least 3 rows" >&2
@@ -164,7 +163,7 @@ echo "[PASS] ls prefix and sorting matched"
 
 echo "[INFO] ls no-match prefix"
 LS_EMPTY_OUTPUT="$WORK_DIR/ls-empty-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" ls no-such-prefix/ > "$LS_EMPTY_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" ls no-such-prefix/ > "$LS_EMPTY_OUTPUT"
 if [[ -s "$LS_EMPTY_OUTPUT" ]]; then
     echo "[FAIL] ls no-match prefix should produce empty output" >&2
     cat "$LS_EMPTY_OUTPUT" >&2
@@ -174,7 +173,7 @@ echo "[PASS] ls no-match prefix matched"
 
 echo "[INFO] info $REMOTE_PATH"
 INFO_OUTPUT="$WORK_DIR/info-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REMOTE_PATH" > "$INFO_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REMOTE_PATH" > "$INFO_OUTPUT"
 
 # Check required label lines
 for label in "ID:" "Revision:" "Conflicts:" "Filename:" "Path:" "Size:" "Chunks:"; do
@@ -225,7 +224,7 @@ echo "[PASS] info output format matched"
 
 echo "[INFO] info non-existent path"
 INFO_MISSING_EXIT=0
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" info no-such-file.md > /dev/null || INFO_MISSING_EXIT=$?
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" info no-such-file.md > /dev/null || INFO_MISSING_EXIT=$?
 if [[ "$INFO_MISSING_EXIT" -eq 0 ]]; then
     echo "[FAIL] info on non-existent file should exit non-zero" >&2
     exit 1
@@ -233,17 +232,17 @@ fi
 echo "[PASS] info non-existent path returns non-zero"
 
 echo "[INFO] rm test/z-last.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" rm test/z-last.txt > /dev/null
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" rm test/z-last.txt > /dev/null
 
 RM_CAT_EXIT=0
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" cat test/z-last.txt > /dev/null || RM_CAT_EXIT=$?
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" cat test/z-last.txt > /dev/null || RM_CAT_EXIT=$?
 if [[ "$RM_CAT_EXIT" -eq 0 ]]; then
     echo "[FAIL] rm target should not be readable by cat" >&2
     exit 1
 fi
 
 LS_AFTER_RM="$WORK_DIR/ls-after-rm.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/ > "$LS_AFTER_RM"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/ > "$LS_AFTER_RM"
 if grep -Fq $'test/z-last.txt\t' "$LS_AFTER_RM"; then
     echo "[FAIL] rm target should not appear in ls output" >&2
     cat "$LS_AFTER_RM" >&2
@@ -252,7 +251,7 @@ fi
 echo "[PASS] rm removed target from visible entries"
 
 echo "[INFO] resolve test/a-first.txt using current revision"
-RESOLVE_LS_LINE="$(node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/a-first.txt | head -n 1)"
+RESOLVE_LS_LINE="$(run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" ls test/a-first.txt | head -n 1)"
 if [[ -z "$RESOLVE_LS_LINE" ]]; then
     echo "[FAIL] could not fetch revision for resolve test" >&2
     exit 1
@@ -263,12 +262,12 @@ if [[ -z "$RESOLVE_REV" ]]; then
     exit 1
 fi
 
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" resolve test/a-first.txt "$RESOLVE_REV" > /dev/null
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" resolve test/a-first.txt "$RESOLVE_REV" > /dev/null
 echo "[PASS] resolve accepted current revision"
 
 echo "[INFO] resolve with non-existent revision"
 RESOLVE_BAD_EXIT=0
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" resolve test/a-first.txt 9-no-such-rev > /dev/null || RESOLVE_BAD_EXIT=$?
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" resolve test/a-first.txt 9-no-such-rev > /dev/null || RESOLVE_BAD_EXIT=$?
 if [[ "$RESOLVE_BAD_EXIT" -eq 0 ]]; then
     echo "[FAIL] resolve with non-existent revision should exit non-zero" >&2
     exit 1
@@ -285,13 +284,13 @@ printf 'revision-v1\n' > "$REV_V1_FILE"
 printf 'revision-v2\n' > "$REV_V2_FILE"
 printf 'revision-v3\n' > "$REV_V3_FILE"
 
-cat "$REV_V1_FILE" | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
-cat "$REV_V2_FILE" | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
-cat "$REV_V3_FILE" | node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
+cat "$REV_V1_FILE" | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
+cat "$REV_V2_FILE" | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
+cat "$REV_V3_FILE" | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put "$REV_PATH" > /dev/null
 
 echo "[INFO] info $REV_PATH (past revisions)"
 REV_INFO_OUTPUT="$WORK_DIR/rev-info-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REV_PATH" > "$REV_INFO_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REV_PATH" > "$REV_INFO_OUTPUT"
 
 PAST_REV="$(grep '^  rev: ' "$REV_INFO_OUTPUT" | head -n 1 | sed 's/^  rev: //')"
 if [[ -z "$PAST_REV" ]]; then
@@ -302,7 +301,7 @@ fi
 
 echo "[INFO] cat-rev $REV_PATH @ $PAST_REV"
 REV_CAT_OUTPUT="$WORK_DIR/rev-cat-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" cat-rev "$REV_PATH" "$PAST_REV" > "$REV_CAT_OUTPUT"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" cat-rev "$REV_PATH" "$PAST_REV" > "$REV_CAT_OUTPUT"
 
 if cmp -s "$REV_CAT_OUTPUT" "$REV_V1_FILE" || cmp -s "$REV_CAT_OUTPUT" "$REV_V2_FILE"; then
     echo "[PASS] cat-rev matched one of the past revisions from info"
@@ -321,7 +320,7 @@ fi
 
 echo "[INFO] pull-rev $REV_PATH @ $PAST_REV"
 REV_PULL_OUTPUT="$WORK_DIR/rev-pull-output.txt"
-node "$CLI_ENTRY" "$VAULT_DIR" --settings "$SETTINGS_FILE" pull-rev "$REV_PATH" "$REV_PULL_OUTPUT" "$PAST_REV" > /dev/null
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" pull-rev "$REV_PATH" "$REV_PULL_OUTPUT" "$PAST_REV" > /dev/null
 
 if cmp -s "$REV_PULL_OUTPUT" "$REV_V1_FILE" || cmp -s "$REV_PULL_OUTPUT" "$REV_V2_FILE"; then
     echo "[PASS] pull-rev matched one of the past revisions from info"

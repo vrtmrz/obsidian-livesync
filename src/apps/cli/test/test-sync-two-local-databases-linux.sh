@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$CLI_DIR"
 
-CLI_ENTRY="${CLI_ENTRY:-$CLI_DIR/dist/index.cjs}"
+CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
 COUCHDB_URI="${COUCHDB_URI:-}"
 COUCHDB_USER="${COUCHDB_USER:-}"
@@ -26,10 +26,9 @@ if [[ "$RUN_BUILD" == "1" ]]; then
     npm run build
 fi
 
-if [[ ! -f "$CLI_ENTRY" ]]; then
-    echo "[ERROR] CLI entry not found: $CLI_ENTRY" >&2
-    exit 1
-fi
+run_cli() {
+    "${CLI_CMD[@]}" "$@"
+}
 
 DB_SUFFIX="$(date +%s)-$RANDOM"
 COUCHDB_DBNAME="${COUCHDB_DBNAME_BASE}-${DB_SUFFIX}"
@@ -42,8 +41,8 @@ SETTINGS_A="$WORK_DIR/a-settings.json"
 SETTINGS_B="$WORK_DIR/b-settings.json"
 mkdir -p "$VAULT_A" "$VAULT_B"
 
-node "$CLI_ENTRY" init-settings --force "$SETTINGS_A" >/dev/null
-node "$CLI_ENTRY" init-settings --force "$SETTINGS_B" >/dev/null
+run_cli init-settings --force "$SETTINGS_A" >/dev/null
+run_cli init-settings --force "$SETTINGS_B" >/dev/null
 
 apply_settings() {
     local settings_file="$1"
@@ -73,11 +72,11 @@ apply_settings "$SETTINGS_A"
 apply_settings "$SETTINGS_B"
 
 run_cli_a() {
-    node "$CLI_ENTRY" "$VAULT_A" --settings "$SETTINGS_A" "$@"
+    run_cli "$VAULT_A" --settings "$SETTINGS_A" "$@"
 }
 
 run_cli_b() {
-    node "$CLI_ENTRY" "$VAULT_B" --settings "$SETTINGS_B" "$@"
+    run_cli "$VAULT_B" --settings "$SETTINGS_B" "$@"
 }
 
 sync_a() {

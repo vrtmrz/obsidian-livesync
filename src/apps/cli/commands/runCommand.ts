@@ -237,22 +237,19 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 })
                 .map((entry: { rev: string }) => entry.rev);
             const pastRevisionsText =
-                pastRevisions.length > 0 ? pastRevisions.map((rev: string) => `  rev: ${rev}`) : ["  N/A"];
-
-            const out =
-                [
-                    `ID:        ${doc._id}`,
-                    `Revision:  ${doc._rev ?? ""}`,
-                    `Conflicts: ${conflictsText}`,
-                    `Filename:  ${filename}`,
-                    `Path:      ${docPath}`,
-                    `Size:      ${doc.size}`,
-                    `PastRevisions:`,
-                    ...pastRevisionsText,
-                    `Chunks:    ${children.length}`,
-                    ...children.map((id) => `  child: ${id}`),
-                ].join("\n") + "\n";
-            process.stdout.write(out);
+                pastRevisions.length > 0 ? pastRevisions.map((rev: string) => `${rev}`) : ["N/A"];
+            const out = {
+                id: doc._id,
+                revision: doc._rev ?? "",
+                conflicts: conflictsText,
+                filename: filename,
+                path: docPath,
+                size: doc.size,
+                revisions: pastRevisionsText,
+                chunks: children.length,
+                children: children,
+            };
+            process.stdout.write(JSON.stringify(out, null, 2) + "\n");
             return true;
         }
 
