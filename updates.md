@@ -10,6 +10,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Fixed
 
 - Fixed Journal Sync had not been working on some timing, due to a compatibility issue (for a long time).
+- ServiceFileAccessBase now correctly handles the reading of binary files.
 
 ### Internal behaviour change (or fix)
 
@@ -20,6 +21,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Add more tests.
 - Object Storage support has also been confirmed (and fixed) in CLI.
   - Yes, we have finally managed to 'get one file'.
+- Now binary files are also supported in the CLI.
+
 
 ## Unnamed 11th March, 2026
 
