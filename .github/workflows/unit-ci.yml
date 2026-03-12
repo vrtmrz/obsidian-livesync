@@ -7,6 +7,21 @@ on:
     branches:
       - main
       - beta
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'lib/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vitest.config*.ts'
+      - 'esbuild.config.mjs'
+      - 'eslint.config.mjs'
+      - '.github/workflows/unit-ci.yml'
+    paths-ignore:
+      - '*.md'
+      - '**/*.md'
 
 permissions:
   contents: read
