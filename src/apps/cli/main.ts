@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Self-hosted LiveSync CLI
  * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
@@ -22,7 +21,6 @@ if (!("localStorage" in globalThis)) {
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import { pathToFileURL } from "node:url";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
@@ -201,7 +199,7 @@ async function createDefaultSettingsFile(options: CLIOptions) {
     console.log(`[Done] Created settings file: ${targetPath}`);
 }
 
-async function main() {
+export async function main() {
     const options = parseArgs();
     const avoidStdoutNoise =
         options.command === "cat" ||
@@ -372,22 +370,4 @@ async function main() {
         console.error(`[Error] Failed to start:`, error);
         process.exit(1);
     }
-}
-
-// Run main only when invoked as the entrypoint, not when imported by tests.
-const isEntryPoint = (() => {
-    const argv1 = process.argv[1];
-    if (!argv1) return false;
-    try {
-        return import.meta.url === pathToFileURL(argv1).href;
-    } catch {
-        return false;
-    }
-})();
-
-if (isEntryPoint) {
-    main().catch((error) => {
-        console.error(`[Fatal Error]`, error);
-        process.exit(1);
-    });
 }

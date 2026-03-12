@@ -134,6 +134,18 @@ assert_command_fails() {
     fi
 }
 
+assert_files_equal() {
+    local expected_file="$1"
+    local actual_file="$2"
+    local message="$3"
+    if ! cmp -s "$expected_file" "$actual_file"; then
+        echo "[FAIL] $message" >&2
+        echo "[FAIL] expected sha256: $(sha256sum "$expected_file" | awk '{print $1}')" >&2
+        echo "[FAIL] actual   sha256: $(sha256sum "$actual_file" | awk '{print $1}')" >&2
+        exit 1
+    fi
+}
+
 sanitise_cat_stdout() {
     sed '/^\[CLIWatchAdapter\] File watching is not enabled in CLI version$/d'
 }
@@ -295,6 +307,7 @@ TARGET_A_ONLY="e2e/a-only-info.md"
 TARGET_SYNC="e2e/sync-info.md"
 TARGET_PUSH="e2e/pushed-from-a.md"
 TARGET_PUT="e2e/put-from-a.md"
+TARGET_PUSH_BINARY="e2e/pushed-from-a.bin"
 TARGET_CONFLICT="e2e/conflict.md"
 
 echo "[CASE] A puts and A can get info"
@@ -318,17 +331,20 @@ run_cli_a push "$PUSH_SRC" "$TARGET_PUSH" >/dev/null
 printf 'put-content-%s\n' "$DB_SUFFIX" | run_cli_a put "$TARGET_PUT" >/dev/null
 sync_both
 run_cli_b pull "$TARGET_PUSH" "$PULL_DST" >/dev/null
-if ! cmp -s "$PUSH_SRC" "$PULL_DST"; then
-    echo "[FAIL] B pull result does not match pushed source" >&2
-    echo "--- source ---" >&2
-    cat "$PUSH_SRC" >&2
-    echo "--- pulled ---" >&2
-    cat "$PULL_DST" >&2
-    exit 1
-fi
+assert_files_equal "$PUSH_SRC" "$PULL_DST" "B pull result does not match pushed source"
 CAT_B_PUT="$(run_cli_b cat "$TARGET_PUT" | sanitise_cat_stdout)"
 assert_equal "put-content-$DB_SUFFIX" "$CAT_B_PUT" "B cat should return A put content"
 echo "[PASS] push/pull and put/cat across vaults"
+
+echo "[CASE] A pushes binary, both sync, and B can pull identical bytes"
+PUSH_BINARY_SRC="$WORK_DIR/push-source.bin"
+PULL_BINARY_DST="$WORK_DIR/pull-destination.bin"
+head -c 4096 /dev/urandom > "$PUSH_BINARY_SRC"
+run_cli_a push "$PUSH_BINARY_SRC" "$TARGET_PUSH_BINARY" >/dev/null
+sync_both
+run_cli_b pull "$TARGET_PUSH_BINARY" "$PULL_BINARY_DST" >/dev/null
+assert_files_equal "$PUSH_BINARY_SRC" "$PULL_BINARY_DST" "B pull result does not match pushed binary source"
+echo "[PASS] binary push/pull across vaults"
 
 echo "[CASE] A removes, both sync, and B can no longer cat"
 run_cli_a rm "$TARGET_PUT" >/dev/null

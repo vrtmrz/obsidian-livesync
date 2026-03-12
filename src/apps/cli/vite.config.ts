@@ -33,7 +33,7 @@ export default defineConfig({
         minify: false,
         rollupOptions: {
             input: {
-                index: path.resolve(__dirname, "main.ts"),
+                index: path.resolve(__dirname, "entrypoint.ts"),
             },
             external: (id) => {
                 if (defaultExternal.includes(id)) return true;
@@ -48,7 +48,7 @@ export default defineConfig({
             },
         },
         lib: {
-            entry: path.resolve(__dirname, "main.ts"),
+            entry: path.resolve(__dirname, "entrypoint.ts"),
             formats: ["cjs"],
             fileName: "index",
         },

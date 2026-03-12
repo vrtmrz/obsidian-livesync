@@ -3,7 +3,25 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## -- Unreleased2 --
+## Unnamed 12th March, 2026
+
+12th March, 2026
+
+### Fixed
+
+- Fixed Journal Sync had not been working on some timing, due to a compatibility issue (for a long time).
+
+### Internal behaviour change (or fix)
+
+- Journal Replicator now yields true after the replication is done. 
+
+### CLI
+
+- Add more tests.
+- Object Storage support has also been confirmed (and fixed) in CLI.
+  - Yes, we have finally managed to 'get one file'.
+
+## Unnamed 11th March, 2026
 
 11th March, 2026 (second commit).
 
@@ -23,7 +41,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### New something
 - Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless, and a dedicated version.
 
-## -- Unreleased --
+## Unnamed 11th March, 2026
 
 11th March, 2026
 
