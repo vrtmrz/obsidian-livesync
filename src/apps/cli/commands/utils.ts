@@ -8,7 +8,13 @@ export function toArrayBuffer(data: Buffer): ArrayBuffer {
 export function toVaultRelativePath(inputPath: string, vaultPath: string): string {
     const stripped = inputPath.replace(/^[/\\]+/, "");
     if (!path.isAbsolute(inputPath)) {
-        return stripped.replace(/\\/g, "/");
+        const normalized = stripped.replace(/\\/g, "/");
+        const resolved = path.resolve(vaultPath, normalized);
+        const rel = path.relative(vaultPath, resolved);
+        if (rel.startsWith("..") || path.isAbsolute(rel)) {
+            throw new Error(`Path ${inputPath} is outside of the local database directory`);
+        }
+        return rel.replace(/\\/g, "/");
     }
     const resolved = path.resolve(inputPath);
     const rel = path.relative(vaultPath, resolved);

@@ -22,6 +22,7 @@ if (!("localStorage" in globalThis)) {
 
 import * as fs from "fs/promises";
 import * as path from "path";
+import { pathToFileURL } from "node:url";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
@@ -93,7 +94,7 @@ Examples:
         `);
 }
 
-function parseArgs(): CLIOptions {
+export function parseArgs(): CLIOptions {
     const args = process.argv.slice(2);
 
     if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
@@ -154,6 +155,11 @@ function parseArgs(): CLIOptions {
 
     if (!databasePath && command !== "init-settings") {
         console.error("Error: database-path is required");
+        process.exit(1);
+    }
+
+    if (command === "daemon" && commandArgs.length > 0) {
+        console.error(`Error: Unknown command '${commandArgs[0]}'`);
         process.exit(1);
     }
 
@@ -323,7 +329,7 @@ async function main() {
             console.error(`[Error] Failed to initialize LiveSync`);
             process.exit(1);
         }
-
+        await core.services.setting.suspendAllSync();
         await core.services.control.onReady();
 
         infoLog(`[Ready] LiveSync is running`);
@@ -368,8 +374,20 @@ async function main() {
     }
 }
 
-// Run main
-main().catch((error) => {
-    console.error(`[Fatal Error]`, error);
-    process.exit(1);
-});
+// Run main only when invoked as the entrypoint, not when imported by tests.
+const isEntryPoint = (() => {
+    const argv1 = process.argv[1];
+    if (!argv1) return false;
+    try {
+        return import.meta.url === pathToFileURL(argv1).href;
+    } catch {
+        return false;
+    }
+})();
+
+if (isEntryPoint) {
+    main().catch((error) => {
+        console.error(`[Fatal Error]`, error);
+        process.exit(1);
+    });
+}

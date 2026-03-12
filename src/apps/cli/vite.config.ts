@@ -12,6 +12,14 @@ export default defineConfig({
         alias: {
             "@lib/worker/bgWorker.ts": "../../lib/src/worker/bgWorker.mock.ts",
             "@lib/pouchdb/pouchdb-browser.ts": path.resolve(__dirname, "lib/pouchdb-node.ts"),
+            // The CLI runs on Node.js; force AWS XML builder to its CJS Node entry
+            // so Vite does not resolve the browser DOMParser-based XML parser.
+            "@aws-sdk/xml-builder": path.resolve(
+                __dirname,
+                "../../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js"
+            ),
+            // Force fflate to the Node CJS entry; browser entry expects Web Worker globals.
+            fflate: path.resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
             "@": path.resolve(__dirname, "../../"),
             "@lib": path.resolve(__dirname, "../../lib/src"),
             "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
@@ -32,7 +40,8 @@ export default defineConfig({
                 if (id.startsWith(".") || id.startsWith("/")) return false;
                 if (id.startsWith("@/") || id.startsWith("@lib/")) return false;
                 if (id.endsWith(".ts") || id.endsWith(".js")) return false;
-                if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto") return true;
+                if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto" || id === "worker_threads")
+                    return true;
                 if (id.startsWith("pouchdb-")) return true;
                 if (id.startsWith("node:")) return true;
                 return false;

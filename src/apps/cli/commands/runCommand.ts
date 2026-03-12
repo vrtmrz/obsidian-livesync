@@ -151,7 +151,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (body.type === "text/plain") {
             process.stdout.write(await body.text());
         } else {
-            process.stdout.write(Buffer.from(await body.arrayBuffer()));
+            const buffer = Buffer.from(await body.arrayBuffer());
+            process.stdout.write(new Uint8Array(buffer));
         }
         return true;
     }
@@ -178,7 +179,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (body.type === "text/plain") {
             process.stdout.write(await body.text());
         } else {
-            process.stdout.write(Buffer.from(await body.arrayBuffer()));
+            const buffer = Buffer.from(await body.arrayBuffer());
+            process.stdout.write(new Uint8Array(buffer));
         }
         return true;
     }
@@ -236,8 +238,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                     return entry.status === "available";
                 })
                 .map((entry: { rev: string }) => entry.rev);
-            const pastRevisionsText =
-                pastRevisions.length > 0 ? pastRevisions.map((rev: string) => `${rev}`) : ["N/A"];
+            const pastRevisionsText = pastRevisions.length > 0 ? pastRevisions.map((rev: string) => `${rev}`) : ["N/A"];
             const out = {
                 id: doc._id,
                 revision: doc._rev ?? "",
