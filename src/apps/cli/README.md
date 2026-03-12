@@ -181,8 +181,6 @@ npm run cli -- [database-path] [options] [command] [command-args]
 
 ### Planned options:
 
-TODO: Conflict and resolution checks for real local databases.
-
 - `--immediate`: Perform sync after the command (e.g. `push`, `pull`, `put`, `rm`).
 - `serve`: Start CLI in server mode, exposing REST APIs for remote, and batch operations.
 - `cause-conflicted <vaultPath>`: Mark a file as conflicted without changing its content, to trigger conflict resolution in Obsidian.
