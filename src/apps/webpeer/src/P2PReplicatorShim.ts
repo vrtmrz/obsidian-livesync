@@ -89,7 +89,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase, CommandShim {
         (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
             () => "p2p-livesync-web-peer"
         );
-        this.services.API.addLog.setHandler(Logger);
+        // this.services.API.addLog.setHandler(Logger);
         const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
         this._simpleStore = repStore;
         let _settings = { ...P2P_DEFAULT_SETTINGS, additionalSuffixOfDatabaseName: "" } as ObsidianLiveSyncSettings;
