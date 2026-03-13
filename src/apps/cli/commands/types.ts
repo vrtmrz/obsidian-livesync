@@ -15,12 +15,14 @@ export type CLICommand =
     | "info"
     | "rm"
     | "resolve"
+    | "mirror"
     | "init-settings";
 
 export interface CLIOptions {
     databasePath?: string;
     settingsPath?: string;
     verbose?: boolean;
+    debug?: boolean;
     force?: boolean;
     command: CLICommand;
     commandArgs: string[];
@@ -45,5 +47,6 @@ export const VALID_COMMANDS = new Set([
     "info",
     "rm",
     "resolve",
+    "mirror",
     "init-settings",
 ] as const);

@@ -5,11 +5,13 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd -- "$CLI_DIR/../../.." && pwd)"
 cd "$CLI_DIR"
+source "$SCRIPT_DIR/test-helpers.sh"
+display_test_info
 
-CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
 REMOTE_PATH="${REMOTE_PATH:-test/setup-put-cat.txt}"
 SETUP_PASSPHRASE="${SETUP_PASSPHRASE:-setup-passphrase}"
+cli_test_init_cli_cmd
 
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/livesync-cli-test.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -21,12 +23,8 @@ if [[ "$RUN_BUILD" == "1" ]]; then
     npm run build
 fi
 
-run_cli() {
-    "${CLI_CMD[@]}" "$@"
-}
-
 echo "[INFO] generating settings from DEFAULT_SETTINGS -> $SETTINGS_FILE"
-run_cli init-settings --force "$SETTINGS_FILE"
+cli_test_init_settings_file "$SETTINGS_FILE"
 
 echo "[INFO] creating setup URI from settings"
 SETUP_URI="$(
@@ -84,7 +82,7 @@ CAT_OUTPUT="$WORK_DIR/cat-output.txt"
 run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" cat "$REMOTE_PATH" > "$CAT_OUTPUT"
 
 CAT_OUTPUT_CLEAN="$WORK_DIR/cat-output-clean.txt"
-grep -v '^\[CLIWatchAdapter\] File watching is not enabled in CLI version$' "$CAT_OUTPUT" > "$CAT_OUTPUT_CLEAN" || true
+cli_test_sanitise_cat_stdout < "$CAT_OUTPUT" > "$CAT_OUTPUT_CLEAN"
 
 if cmp -s "$SRC_FILE" "$CAT_OUTPUT_CLEAN"; then
     echo "[PASS] setup/put/cat roundtrip matched"
@@ -175,48 +173,52 @@ echo "[INFO] info $REMOTE_PATH"
 INFO_OUTPUT="$WORK_DIR/info-output.txt"
 run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REMOTE_PATH" > "$INFO_OUTPUT"
 
-# Check required label lines
-for label in "ID:" "Revision:" "Conflicts:" "Filename:" "Path:" "Size:" "Chunks:"; do
-    if ! grep -q "^$label" "$INFO_OUTPUT"; then
-        echo "[FAIL] info output missing label: $label" >&2
-        cat "$INFO_OUTPUT" >&2
-        exit 1
-    fi
-done
-
-# Path value must match
-INFO_PATH="$(grep '^Path:' "$INFO_OUTPUT" | sed 's/^Path:[[:space:]]*//')"
-if [[ "$INFO_PATH" != "$REMOTE_PATH" ]]; then
-    echo "[FAIL] info Path mismatch: $INFO_PATH" >&2
-    exit 1
-fi
-
-# Filename must be the basename
-INFO_FILENAME="$(grep '^Filename:' "$INFO_OUTPUT" | sed 's/^Filename:[[:space:]]*//')"
 EXPECTED_FILENAME="$(basename "$REMOTE_PATH")"
-if [[ "$INFO_FILENAME" != "$EXPECTED_FILENAME" ]]; then
-    echo "[FAIL] info Filename mismatch: $INFO_FILENAME != $EXPECTED_FILENAME" >&2
-    exit 1
-fi
+set +e
+INFO_JSON_CHECK="$(
+    INFO_OUTPUT="$INFO_OUTPUT" REMOTE_PATH="$REMOTE_PATH" EXPECTED_FILENAME="$EXPECTED_FILENAME" node - <<'NODE'
+const fs = require("node:fs");
 
-# Size must be numeric
-INFO_SIZE="$(grep '^Size:' "$INFO_OUTPUT" | sed 's/^Size:[[:space:]]*//')"
-if [[ ! "$INFO_SIZE" =~ ^[0-9]+$ ]]; then
-    echo "[FAIL] info Size is not numeric: $INFO_SIZE" >&2
-    exit 1
-fi
+const content = fs.readFileSync(process.env.INFO_OUTPUT, "utf-8");
+let data;
+try {
+    data = JSON.parse(content);
+} catch (ex) {
+    console.error("invalid-json");
+    process.exit(1);
+}
 
-# Chunks count must be numeric and ≥1
-INFO_CHUNKS="$(grep '^Chunks:' "$INFO_OUTPUT" | sed 's/^Chunks:[[:space:]]*//')"
-if [[ ! "$INFO_CHUNKS" =~ ^[0-9]+$ ]] || [[ "$INFO_CHUNKS" -lt 1 ]]; then
-    echo "[FAIL] info Chunks is not a positive integer: $INFO_CHUNKS" >&2
-    exit 1
-fi
-
-# Conflicts should be N/A (no live CouchDB)
-INFO_CONFLICTS="$(grep '^Conflicts:' "$INFO_OUTPUT" | sed 's/^Conflicts:[[:space:]]*//')"
-if [[ "$INFO_CONFLICTS" != "N/A" ]]; then
-    echo "[FAIL] info Conflicts expected N/A, got: $INFO_CONFLICTS" >&2
+if (!data || typeof data !== "object") {
+    console.error("invalid-payload");
+    process.exit(1);
+}
+if (data.path !== process.env.REMOTE_PATH) {
+    console.error(`path-mismatch:${String(data.path)}`);
+    process.exit(1);
+}
+if (data.filename !== process.env.EXPECTED_FILENAME) {
+    console.error(`filename-mismatch:${String(data.filename)}`);
+    process.exit(1);
+}
+if (!Number.isInteger(data.size) || data.size < 0) {
+    console.error(`size-invalid:${String(data.size)}`);
+    process.exit(1);
+}
+if (!Number.isInteger(data.chunks) || data.chunks < 1) {
+    console.error(`chunks-invalid:${String(data.chunks)}`);
+    process.exit(1);
+}
+if (data.conflicts !== "N/A") {
+    console.error(`conflicts-invalid:${String(data.conflicts)}`);
+    process.exit(1);
+}
+NODE
+)"
+INFO_JSON_EXIT=$?
+set -e
+if [[ "$INFO_JSON_EXIT" -ne 0 ]]; then
+    echo "[FAIL] info JSON output validation failed: $INFO_JSON_CHECK" >&2
+    cat "$INFO_OUTPUT" >&2
     exit 1
 fi
 
@@ -292,8 +294,30 @@ echo "[INFO] info $REV_PATH (past revisions)"
 REV_INFO_OUTPUT="$WORK_DIR/rev-info-output.txt"
 run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" info "$REV_PATH" > "$REV_INFO_OUTPUT"
 
-PAST_REV="$(grep '^  rev: ' "$REV_INFO_OUTPUT" | head -n 1 | sed 's/^  rev: //')"
-if [[ -z "$PAST_REV" ]]; then
+set +e
+PAST_REV="$(
+    REV_INFO_OUTPUT="$REV_INFO_OUTPUT" node - <<'NODE'
+const fs = require("node:fs");
+
+const content = fs.readFileSync(process.env.REV_INFO_OUTPUT, "utf-8");
+let data;
+try {
+    data = JSON.parse(content);
+} catch {
+    process.exit(1);
+}
+
+const revisions = Array.isArray(data?.revisions) ? data.revisions : [];
+const revision = revisions.find((rev) => typeof rev === "string" && rev !== "N/A");
+if (!revision) {
+    process.exit(1);
+}
+process.stdout.write(revision);
+NODE
+)"
+PAST_REV_EXIT=$?
+set -e
+if [[ "$PAST_REV_EXIT" -ne 0 ]] || [[ -z "$PAST_REV" ]]; then
     echo "[FAIL] info output did not include any past revision" >&2
     cat "$REV_INFO_OUTPUT" >&2
     exit 1

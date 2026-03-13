@@ -10,6 +10,78 @@ import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
 import * as nodeFs from "node:fs";
 import * as nodePath from "node:path";
 
+const NODE_KV_TYPED_KEY = "__nodeKvType";
+const NODE_KV_VALUES_KEY = "values";
+
+type SerializableContainer =
+    | {
+          [NODE_KV_TYPED_KEY]: "Set";
+          [NODE_KV_VALUES_KEY]: unknown[];
+      }
+    | {
+          [NODE_KV_TYPED_KEY]: "Uint8Array";
+          [NODE_KV_VALUES_KEY]: number[];
+      }
+    | {
+          [NODE_KV_TYPED_KEY]: "ArrayBuffer";
+          [NODE_KV_VALUES_KEY]: number[];
+      };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function serializeForNodeKV(value: unknown): unknown {
+    if (value instanceof Set) {
+        return {
+            [NODE_KV_TYPED_KEY]: "Set",
+            [NODE_KV_VALUES_KEY]: [...value].map((entry) => serializeForNodeKV(entry)),
+        } satisfies SerializableContainer;
+    }
+    if (value instanceof Uint8Array) {
+        return {
+            [NODE_KV_TYPED_KEY]: "Uint8Array",
+            [NODE_KV_VALUES_KEY]: Array.from(value),
+        } satisfies SerializableContainer;
+    }
+    if (value instanceof ArrayBuffer) {
+        return {
+            [NODE_KV_TYPED_KEY]: "ArrayBuffer",
+            [NODE_KV_VALUES_KEY]: Array.from(new Uint8Array(value)),
+        } satisfies SerializableContainer;
+    }
+    if (Array.isArray(value)) {
+        return value.map((entry) => serializeForNodeKV(entry));
+    }
+    if (isRecord(value)) {
+        return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, serializeForNodeKV(v)]));
+    }
+    return value;
+}
+
+function deserializeFromNodeKV(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map((entry) => deserializeFromNodeKV(entry));
+    }
+    if (!isRecord(value)) {
+        return value;
+    }
+
+    const taggedType = value[NODE_KV_TYPED_KEY];
+    const taggedValues = value[NODE_KV_VALUES_KEY];
+    if (taggedType === "Set" && Array.isArray(taggedValues)) {
+        return new Set(taggedValues.map((entry) => deserializeFromNodeKV(entry)));
+    }
+    if (taggedType === "Uint8Array" && Array.isArray(taggedValues)) {
+        return Uint8Array.from(taggedValues);
+    }
+    if (taggedType === "ArrayBuffer" && Array.isArray(taggedValues)) {
+        return Uint8Array.from(taggedValues).buffer;
+    }
+
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deserializeFromNodeKV(v)]));
+}
+
 class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private filePath: string;
     private data = new Map<string, unknown>();
@@ -29,7 +101,9 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private load() {
         try {
             const loaded = JSON.parse(nodeFs.readFileSync(this.filePath, "utf-8")) as Record<string, unknown>;
-            this.data = new Map(Object.entries(loaded));
+            this.data = new Map(
+                Object.entries(loaded).map(([key, value]) => [key, deserializeFromNodeKV(value)])
+            );
         } catch {
             this.data = new Map();
         }
@@ -37,7 +111,10 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
 
     private flush() {
         nodeFs.mkdirSync(nodePath.dirname(this.filePath), { recursive: true });
-        nodeFs.writeFileSync(this.filePath, JSON.stringify(Object.fromEntries(this.data), null, 2), "utf-8");
+        const serializable = Object.fromEntries(
+            [...this.data.entries()].map(([key, value]) => [key, serializeForNodeKV(value)])
+        );
+        nodeFs.writeFileSync(this.filePath, JSON.stringify(serializable, null, 2), "utf-8");
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {

@@ -66,9 +66,9 @@ class CLIStatusAdapter implements IStorageEventStatusAdapter {
         const now = Date.now();
         if (now - this.lastUpdate > this.updateInterval) {
             if (status.totalQueued > 0 || status.processing > 0) {
-                console.log(
-                    `[StorageEventManager] Batched: ${status.batched}, Processing: ${status.processing}, Total Queued: ${status.totalQueued}`
-                );
+                // console.log(
+                //     `[StorageEventManager] Batched: ${status.batched}, Processing: ${status.processing}, Total Queued: ${status.totalQueued}`
+                // );
             }
             this.lastUpdate = now;
         }
@@ -108,7 +108,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // File watching is not activated in the CLI.
         // Because the CLI is designed for push/pull operations, not real-time sync.
-        console.error("[CLIWatchAdapter] File watching is not enabled in CLI version");
+        // console.error("[CLIWatchAdapter] File watching is not enabled in CLI version");
         return Promise.resolve();
     }
 }

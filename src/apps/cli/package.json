@@ -18,7 +18,9 @@
         "test:e2e:push-pull": "bash test/test-push-pull-linux.sh",
         "test:e2e:setup-put-cat": "bash test/test-setup-put-cat-linux.sh",
         "test:e2e:sync-two-local": "bash test/test-sync-two-local-databases-linux.sh",
-        "test:e2e:all": "npm run test:e2e:two-vaults && npm run test:e2e:push-pull && npm run test:e2e:setup-put-cat && npm run test:e2e:sync-two-local"
+        "test:e2e:mirror": "bash test/test-mirror-linux.sh",
+        "pretest:e2e:all": "npm run build",
+        "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:mirror && npm run test:e2e:two-vaults"
     },
     "dependencies": {},
     "devDependencies": {}

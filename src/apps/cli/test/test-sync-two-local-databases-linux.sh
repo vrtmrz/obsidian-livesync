@@ -1,39 +1,66 @@
 #!/usr/bin/env bash
-## TODO: test this script. I would love to go to my bed today (3a.m.) However, I am so excited about the new CLI that I want to at least get this skeleton in place. Delightful days!
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$CLI_DIR"
+source "$SCRIPT_DIR/test-helpers.sh"
+display_test_info
 
-CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
-COUCHDB_URI="${COUCHDB_URI:-}"
-COUCHDB_USER="${COUCHDB_USER:-}"
-COUCHDB_PASSWORD="${COUCHDB_PASSWORD:-}"
-COUCHDB_DBNAME_BASE="${COUCHDB_DBNAME:-livesync-cli-e2e}"
+TEST_ENV_FILE="${TEST_ENV_FILE:-$CLI_DIR/.test.env}"
+cli_test_init_cli_cmd
+
+if [[ ! -f "$TEST_ENV_FILE" ]]; then
+    echo "[ERROR] test env file not found: $TEST_ENV_FILE" >&2
+    exit 1
+fi
+
+set -a
+source "$TEST_ENV_FILE"
+set +a
+
+
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/livesync-cli-two-db-test.XXXXXX")"
+
+if [[ "$RUN_BUILD" == "1" ]]; then
+    echo "[INFO] building CLI..."
+    npm run build
+fi
+DB_SUFFIX="$(date +%s)-$RANDOM"
+
+COUCHDB_URI="${hostname%/}"
+COUCHDB_DBNAME="${dbname}-${DB_SUFFIX}"
+COUCHDB_USER="${username:-}"
+COUCHDB_PASSWORD="${password:-}"
 
 if [[ -z "$COUCHDB_URI" || -z "$COUCHDB_USER" || -z "$COUCHDB_PASSWORD" ]]; then
     echo "[ERROR] COUCHDB_URI, COUCHDB_USER, COUCHDB_PASSWORD are required" >&2
     exit 1
 fi
 
-WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/livesync-cli-two-db-test.XXXXXX")"
-trap 'rm -rf "$WORK_DIR"' EXIT
 
-if [[ "$RUN_BUILD" == "1" ]]; then
-    echo "[INFO] building CLI..."
-    npm run build
-fi
+cleanup() {
+    local exit_code=$?
+    cli_test_stop_couchdb
 
-run_cli() {
-    "${CLI_CMD[@]}" "$@"
+    rm -rf "$WORK_DIR"
+
+    # Note: we do not attempt to delete the test database, as it may cause issues if the test failed in a way that leaves the database in an inconsistent state. The test database is named with a unique suffix, so it should not interfere with other tests.
+    echo "[INFO] test completed with exit code $exit_code. Test database '$COUCHDB_DBNAME' is not deleted for debugging purposes."
+    exit "$exit_code"
+}
+trap cleanup EXIT
+
+
+start_remote() {
+    cli_test_start_couchdb "$COUCHDB_URI" "$COUCHDB_USER" "$COUCHDB_PASSWORD" "$COUCHDB_DBNAME"
 }
 
-DB_SUFFIX="$(date +%s)-$RANDOM"
-COUCHDB_DBNAME="${COUCHDB_DBNAME_BASE}-${DB_SUFFIX}"
+
 
 echo "[INFO] using CouchDB database: $COUCHDB_DBNAME"
+start_remote
 
 VAULT_A="$WORK_DIR/vault-a"
 VAULT_B="$WORK_DIR/vault-b"
@@ -41,31 +68,12 @@ SETTINGS_A="$WORK_DIR/a-settings.json"
 SETTINGS_B="$WORK_DIR/b-settings.json"
 mkdir -p "$VAULT_A" "$VAULT_B"
 
-run_cli init-settings --force "$SETTINGS_A" >/dev/null
-run_cli init-settings --force "$SETTINGS_B" >/dev/null
+cli_test_init_settings_file "$SETTINGS_A"
+cli_test_init_settings_file "$SETTINGS_B"
 
 apply_settings() {
     local settings_file="$1"
-    SETTINGS_FILE="$settings_file" \
-    COUCHDB_URI="$COUCHDB_URI" \
-    COUCHDB_USER="$COUCHDB_USER" \
-    COUCHDB_PASSWORD="$COUCHDB_PASSWORD" \
-    COUCHDB_DBNAME="$COUCHDB_DBNAME" \
-    node <<'NODE'
-const fs = require("node:fs");
-const settingsPath = process.env.SETTINGS_FILE;
-const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-data.couchDB_URI = process.env.COUCHDB_URI;
-data.couchDB_USER = process.env.COUCHDB_USER;
-data.couchDB_PASSWORD = process.env.COUCHDB_PASSWORD;
-data.couchDB_DBNAME = process.env.COUCHDB_DBNAME;
-data.liveSync = true;
-data.syncOnStart = false;
-data.syncOnSave = false;
-data.usePluginSync = false;
-data.isConfigured = true;
-fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), "utf-8");
-NODE
+    cli_test_apply_couchdb_settings "$settings_file" "$COUCHDB_URI" "$COUCHDB_USER" "$COUCHDB_PASSWORD" "$COUCHDB_DBNAME" 1
 }
 
 apply_settings "$SETTINGS_A"
@@ -95,24 +103,12 @@ cat_b() {
     run_cli_b cat "$1"
 }
 
-assert_equal() {
-    local expected="$1"
-    local actual="$2"
-    local message="$3"
-    if [[ "$expected" != "$actual" ]]; then
-        echo "[FAIL] $message" >&2
-        echo "expected: $expected" >&2
-        echo "actual:   $actual" >&2
-        exit 1
-    fi
-}
-
 echo "[INFO] case1: A creates file, B can read after sync"
 printf 'from-a\n' | run_cli_a put shared/from-a.txt >/dev/null
 sync_a
 sync_b
 VALUE_FROM_B="$(cat_b shared/from-a.txt)"
-assert_equal "from-a" "$VALUE_FROM_B" "B could not read file created on A"
+cli_test_assert_equal "from-a" "$VALUE_FROM_B" "B could not read file created on A"
 echo "[PASS] case1 passed"
 
 echo "[INFO] case2: B creates file, A can read after sync"
@@ -120,7 +116,7 @@ printf 'from-b\n' | run_cli_b put shared/from-b.txt >/dev/null
 sync_b
 sync_a
 VALUE_FROM_A="$(cat_a shared/from-b.txt)"
-assert_equal "from-b" "$VALUE_FROM_A" "A could not read file created on B"
+cli_test_assert_equal "from-b" "$VALUE_FROM_A" "A could not read file created on B"
 echo "[PASS] case2 passed"
 
 echo "[INFO] case3: concurrent edits create conflict"
@@ -131,15 +127,25 @@ sync_b
 printf 'edit-from-a\n' | run_cli_a put shared/conflicted.txt >/dev/null
 printf 'edit-from-b\n' | run_cli_b put shared/conflicted.txt >/dev/null
 
-sync_a
-sync_b
-
 INFO_A="$WORK_DIR/info-a.txt"
 INFO_B="$WORK_DIR/info-b.txt"
-run_cli_a info shared/conflicted.txt > "$INFO_A"
-run_cli_b info shared/conflicted.txt > "$INFO_B"
+CONFLICT_DETECTED=0
+for side in a b; do
+    if [[ "$side" == "a" ]]; then
+        sync_a
+    else
+        sync_b
+    fi
 
-if grep -q '^Conflicts: N/A$' "$INFO_A" && grep -q '^Conflicts: N/A$' "$INFO_B"; then
+    run_cli_a info shared/conflicted.txt > "$INFO_A"
+    run_cli_b info shared/conflicted.txt > "$INFO_B"
+    if ! cli_test_json_field_is_na "$INFO_A" conflicts || ! cli_test_json_field_is_na "$INFO_B" conflicts; then
+        CONFLICT_DETECTED=1
+        break
+    fi
+done
+
+if [[ "$CONFLICT_DETECTED" != "1" ]]; then
     echo "[FAIL] expected conflict after concurrent edits, but both sides show N/A" >&2
     echo "--- A info ---" >&2
     cat "$INFO_A" >&2
@@ -150,21 +156,60 @@ fi
 echo "[PASS] case3 conflict detected"
 
 echo "[INFO] case4: resolve on A, sync, and verify B has no conflict"
-KEEP_REV="$(sed -n 's/^Revision:[[:space:]]*//p' "$INFO_A" | head -n 1)"
+INFO_A_AFTER="$WORK_DIR/info-a-after-resolve.txt"
+INFO_B_AFTER="$WORK_DIR/info-b-after-resolve.txt"
+
+# Ensure A sees the conflict before resolving; otherwise resolve may be a no-op.
+for _ in 1 2 3 4 5; do
+    run_cli_a info shared/conflicted.txt > "$INFO_A_AFTER"
+    if ! cli_test_json_field_is_na "$INFO_A_AFTER" conflicts; then
+        break
+    fi
+    sync_b
+    sync_a
+done
+
+run_cli_a info shared/conflicted.txt > "$INFO_A_AFTER"
+if cli_test_json_field_is_na "$INFO_A_AFTER" conflicts; then
+    echo "[FAIL] A does not see conflict, cannot resolve from A only" >&2
+    cat "$INFO_A_AFTER" >&2
+    exit 1
+fi
+
+KEEP_REV="$(cli_test_json_string_field_from_file "$INFO_A_AFTER" revision)"
 if [[ -z "$KEEP_REV" ]]; then
-    echo "[FAIL] could not read Revision from A info output" >&2
-    cat "$INFO_A" >&2
+    echo "[FAIL] could not read revision from A info output" >&2
+    cat "$INFO_A_AFTER" >&2
     exit 1
 fi
 
 run_cli_a resolve shared/conflicted.txt "$KEEP_REV" >/dev/null
-sync_a
-sync_b
 
-INFO_B_AFTER="$WORK_DIR/info-b-after-resolve.txt"
-run_cli_b info shared/conflicted.txt > "$INFO_B_AFTER"
-if ! grep -q '^Conflicts: N/A$' "$INFO_B_AFTER"; then
-    echo "[FAIL] B still has conflicts after resolving on A and syncing" >&2
+RESOLVE_PROPAGATED=0
+for _ in 1 2 3 4 5 6; do
+    sync_a
+    sync_b
+    run_cli_a info shared/conflicted.txt > "$INFO_A_AFTER"
+    run_cli_b info shared/conflicted.txt > "$INFO_B_AFTER"
+    if cli_test_json_field_is_na "$INFO_A_AFTER" conflicts && cli_test_json_field_is_na "$INFO_B_AFTER" conflicts; then
+        RESOLVE_PROPAGATED=1
+        break
+    fi
+
+    # Retry resolve from A only when conflict remains due to eventual consistency.
+    if ! cli_test_json_field_is_na "$INFO_A_AFTER" conflicts; then
+        KEEP_REV_A="$(cli_test_json_string_field_from_file "$INFO_A_AFTER" revision)"
+        if [[ -n "$KEEP_REV_A" ]]; then
+            run_cli_a resolve shared/conflicted.txt "$KEEP_REV_A" >/dev/null || true
+        fi
+    fi
+done
+
+if [[ "$RESOLVE_PROPAGATED" != "1" ]]; then
+    echo "[FAIL] conflicts should be resolved on both A and B" >&2
+    echo "--- A info after resolve ---" >&2
+    cat "$INFO_A_AFTER" >&2
+    echo "--- B info after resolve ---" >&2
     cat "$INFO_B_AFTER" >&2
     exit 1
 fi

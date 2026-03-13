@@ -27,10 +27,12 @@ import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules"
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
-import { LOG_LEVEL_DEBUG, setGlobalLogFunction, defaultLoggerEnv } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_DEBUG, setGlobalLogFunction, defaultLoggerEnv, LOG_LEVEL_INFO, LOG_LEVEL_URGENT, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { runCommand } from "./commands/runCommand";
 import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
+import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
+import { stripAllPrefixes } from "@lib/string_and_binary/path";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
@@ -45,12 +47,12 @@ defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 //     recentLogEntries.value = [...recentLogEntries.value, entry];
 // };
 
-setGlobalLogFunction((msg, level) => {
-    console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
-    if (msg instanceof Error) {
-        console.error(msg);
-    }
-});
+// setGlobalLogFunction((msg, level) => {
+//     console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
+//     if (msg instanceof Error) {
+//         console.error(msg);
+//     }
+// });
 function printHelp(): void {
     console.log(`
 Self-hosted LiveSync CLI
@@ -103,6 +105,7 @@ export function parseArgs(): CLIOptions {
     let databasePath: string | undefined;
     let settingsPath: string | undefined;
     let verbose = false;
+    let debug = false;
     let force = false;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
@@ -120,6 +123,10 @@ export function parseArgs(): CLIOptions {
                 settingsPath = args[i];
                 break;
             }
+            case "--debug":
+            case "-d":
+                // debugging automatically enables verbose logging, as it is intended for debugging issues.
+                debug = true;
             case "--verbose":
             case "-v":
                 verbose = true;
@@ -165,6 +172,7 @@ export function parseArgs(): CLIOptions {
         databasePath,
         settingsPath,
         verbose,
+        debug,
         force,
         command,
         commandArgs,
@@ -209,7 +217,18 @@ export async function main() {
         options.command === "rm" ||
         options.command === "resolve";
     const infoLog = avoidStdoutNoise ? console.error : console.log;
-
+    if(options.debug){
+        setGlobalLogFunction((msg, level) => {
+            console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
+            if (msg instanceof Error) {
+                console.error(msg);
+            }
+        });
+    }else{
+        setGlobalLogFunction((msg, level) => {
+            // NO OP, leave it to logFunction
+        })
+    }
     if (options.command === "init-settings") {
         await createDefaultSettingsFile(options);
         return;
@@ -243,8 +262,28 @@ export async function main() {
     const context = new NodeServiceContext(vaultPath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(vaultPath, context);
     serviceHubInstance.API.addLog.setHandler((message: string, level: LOG_LEVEL) => {
-        const prefix = `[${level}]`;
-        if (level <= LOG_LEVEL_VERBOSE) {
+        let levelStr = "";
+        switch (level) {
+            case LOG_LEVEL_DEBUG:
+                levelStr = "debug";
+                break;
+            case LOG_LEVEL_VERBOSE:
+                levelStr = "Verbose";
+                break;
+            case LOG_LEVEL_INFO:
+                levelStr = "Info";
+                break;
+            case LOG_LEVEL_NOTICE:
+                levelStr = "Notice";
+                break;
+            case LOG_LEVEL_URGENT:
+                levelStr = "Urgent";
+                break;
+            default:
+                levelStr = `${level}`;
+        }
+        const prefix = `(${levelStr})`;
+        if (level <= LOG_LEVEL_INFO) {
             if (!options.verbose) return;
         }
         console.error(`${prefix} ${message}`);
@@ -254,6 +293,7 @@ export async function main() {
         console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
         return await Promise.resolve(true);
     }, -100);
+
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
 
@@ -298,7 +338,18 @@ export async function main() {
         },
         () => [], // No extra modules
         () => [], // No add-ons
-        () => [] // No serviceFeatures
+        (core) => {
+            // Add target filter to prevent internal files are handled
+            core.services.vault.isTargetFile.addHandler(async (target) => {
+                const vaultPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                const parts = vaultPath.split(path.sep);
+                // if some part of the path starts with dot, treat it as internal file and ignore.
+                if (parts.some((part) => part.startsWith("."))) {
+                    return await Promise.resolve(false);
+                }
+                return await Promise.resolve(true);
+            }, -1 /* highest priority */);
+        }
     );
 
     // Setup signal handlers for graceful shutdown

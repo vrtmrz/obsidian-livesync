@@ -6,6 +6,8 @@ import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSetting
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toVaultRelativePath } from "./utils";
+import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
+import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
     const { vaultPath, core, settingsPath } = context;
@@ -307,6 +309,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }
         }
         return true;
+    }
+
+    if (options.command === "mirror") {
+        console.error("[Command] mirror");
+        const log = (msg: unknown) => console.error(`[Mirror] ${msg}`);
+        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
+        return await performFullScan(core as any, log, errorManager, false, true);
     }
 
     throw new Error(`Unsupported command: ${options.command}`);

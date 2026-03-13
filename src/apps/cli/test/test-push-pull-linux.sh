@@ -4,10 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$CLI_DIR"
+source "$SCRIPT_DIR/test-helpers.sh"
+display_test_info
 
-CLI_CMD=(npm run cli --)
 RUN_BUILD="${RUN_BUILD:-1}"
 REMOTE_PATH="${REMOTE_PATH:-test/push-pull.txt}"
+cli_test_init_cli_cmd
 
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/livesync-cli-test.XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -19,26 +21,12 @@ if [[ "$RUN_BUILD" == "1" ]]; then
     npm run build
 fi
 
-run_cli() {
-    "${CLI_CMD[@]}" "$@"
-}
-
 echo "[INFO] generating settings from DEFAULT_SETTINGS -> $SETTINGS_FILE"
-run_cli init-settings --force "$SETTINGS_FILE"
+cli_test_init_settings_file "$SETTINGS_FILE"
 
 if [[ -n "${COUCHDB_URI:-}" && -n "${COUCHDB_USER:-}" && -n "${COUCHDB_PASSWORD:-}" && -n "${COUCHDB_DBNAME:-}" ]]; then
     echo "[INFO] applying CouchDB env vars to generated settings"
-    SETTINGS_FILE="$SETTINGS_FILE" node <<'NODE'
-const fs = require("node:fs");
-const settingsPath = process.env.SETTINGS_FILE;
-const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-data.couchDB_URI = process.env.COUCHDB_URI;
-data.couchDB_USER = process.env.COUCHDB_USER;
-data.couchDB_PASSWORD = process.env.COUCHDB_PASSWORD;
-data.couchDB_DBNAME = process.env.COUCHDB_DBNAME;
-data.isConfigured = true;
-fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), "utf-8");
-NODE
+    cli_test_apply_couchdb_settings "$SETTINGS_FILE" "$COUCHDB_URI" "$COUCHDB_USER" "$COUCHDB_PASSWORD" "$COUCHDB_DBNAME"
 else
     echo "[WARN] CouchDB env vars are not fully set. push/pull may fail unless generated settings are updated."
 fi
