@@ -63,43 +63,43 @@ As you know, the CLI is designed to be used in a headless environment. Hence all
 
 ```bash
 # Sync local database with CouchDB (no files will be changed).
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json sync
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json sync
 
 # Push files to local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
 
 # Pull files from local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
 
 # Verbose logging
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json --verbose
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json --verbose
 
 # Apply setup URI to settings file (settings only; does not run synchronisation)
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
 
 # Put text from stdin into local database
-echo "Hello from stdin" | npm run cli -- /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
+echo "Hello from stdin" | npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
 
 # Output a file from local database to stdout
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
 
 # Output a specific revision of a file from local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
 
 # Pull a specific revision of a file from local database to local storage
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
 
 # List files in local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
 
 # Show metadata for a file in local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
 
 # Mark a file as deleted in local database
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
 
 # Resolve conflict by keeping a specific revision
-npm run cli -- /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
+npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
 ```
 
 ### Configuration
@@ -159,13 +159,25 @@ Commands:
   info <vaultPath>        Show file metadata including current and past revisions, conflicts, and chunk list
   rm <vaultPath>          Mark file as deleted in local database
   resolve <vaultPath> <revision>   Resolve conflict by keeping the specified revision
+  mirror <storagePath> <vaultPath>   Mirror local file into local database.
 ```
 
 Run via npm script:
 
 ```bash
-npm run cli -- [database-path] [options] [command] [command-args]
+npm run --silent cli -- [database-path] [options] [command] [command-args]
 ```
+
+#### Detailed Command Descriptions
+
+##### ls
+`ls` lists files in the local database with optional prefix filtering. Output format is:
+
+```vault/path/file.md<TAB>size<TAB>mtime<TAB>revision[*]
+```
+Note: `*` indicates if the file has conflicts.
+
+##### info
 
 `info` output fields:
 
@@ -178,6 +190,38 @@ npm run cli -- [database-path] [options] [command] [command-args]
 - `revisions`: Available non-current revisions
 - `chunks`: Number of chunk IDs
 - `children`: Chunk ID list
+
+##### mirror
+
+`mirror` is a command that synchronises your storage with your local vault. It is essentially a process that runs upon startup in Obsidian.
+
+In other words, it performs the following actions:
+
+1. **Precondition checks** — Aborts early if any of the following conditions are not met:
+   - Settings must be configured (`isConfigured: true`).
+   - File watching must not be suspended (`suspendFileWatching: false`).
+   - Remediation mode must be inactive (`maxMTimeForReflectEvents: 0`).
+
+2. **State restoration** — On subsequent runs (after the first successful scan), restores the previous storage state before proceeding.
+
+3. **Expired deletion cleanup** — If `automaticallyDeleteMetadataOfDeletedFiles` is set to a positive number of days, any document that is marked deleted and whose `mtime` is older than the retention period is permanently removed from the local database.
+
+4. **File collection** — Enumerates files from two sources:
+   - **Storage**: all files under the vault path that pass `isTargetFile`.
+   - **Local database**: all normal documents (fetched with conflict information) whose paths are valid and pass `isTargetFile`.
+   - Both collections build case-insensitive ↔ case-sensitive path maps, controlled by `handleFilenameCaseSensitive`.
+
+5. **Categorisation and synchronisation** — The union of both file sets is split into three groups and processed concurrently (up to 10 files at a time):
+
+   | Group | Condition | Action |
+   |---|---|---|
+   | **UPDATE DATABASE** | File exists in storage only | Store the file into the local database. |
+   | **UPDATE STORAGE** | File exists in database only | If the entry is active (not deleted) and not conflicted, restore the file from the database to storage. Deleted entries and conflicted entries are skipped. |
+   | **SYNC DATABASE AND STORAGE** | File exists in both | Compare `mtime` freshness. If storage is newer → write to database (`STORAGE → DB`). If database is newer → restore to storage (`STORAGE ← DB`). If equal → do nothing. Conflicted documents and files exceeding the size limit are always skipped. |
+
+6. **Initialisation flag** — On the very first successful run, writes `initialized = true` to the key-value database so that subsequent runs can restore state in step 2.
+
+Note: `mirror` does not respect file deletions. If a file is deleted in storage, it will be restored on the next `mirror` run. To delete a file, use the `rm` command instead. This is a little inconvenient, but it is intentional behaviour (if we handle this automatically in `mirror`, we should be against a ton of edge cases).
 
 ### Planned options:
 
@@ -192,9 +236,9 @@ npm run cli -- [database-path] [options] [command] [command-args]
 Create default settings, apply a setup URI, then run one sync cycle.
 
 ```bash
-npm run cli -- init-settings /data/livesync-settings.json
-printf '%s\n' "$SETUP_PASSPHRASE" | npm run cli -- /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
-npm run cli -- /data/vault --settings /data/livesync-settings.json sync
+npm run --silent cli -- init-settings /data/livesync-settings.json
+printf '%s\n' "$SETUP_PASSPHRASE" | npm run --silent cli -- /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json sync
 ```
 
 ### 2. Scripted import and export
@@ -202,8 +246,8 @@ npm run cli -- /data/vault --settings /data/livesync-settings.json sync
 Push local files into the database from automation, and pull them back for export or backup.
 
 ```bash
-npm run cli -- /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
-npm run cli -- /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
 ```
 
 ### 3. Revision inspection and restore
@@ -211,9 +255,9 @@ npm run cli -- /data/vault --settings /data/livesync-settings.json pull notes/no
 List metadata, find an older revision, then restore it by content (`cat-rev`) or file output (`pull-rev`).
 
 ```bash
-npm run cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
-npm run cli -- /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
-npm run cli -- /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
 ```
 
 ### 4. Conflict and cleanup workflow
@@ -221,9 +265,9 @@ npm run cli -- /data/vault --settings /data/livesync-settings.json pull-rev note
 Inspect conflicted revisions, resolve by keeping one revision, then delete obsolete files.
 
 ```bash
-npm run cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
-npm run cli -- /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
-npm run cli -- /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
 ```
 
 ### 5. CI smoke test for content round-trip
@@ -231,8 +275,8 @@ npm run cli -- /data/vault --settings /data/livesync-settings.json rm notes/obso
 Validate that `put`/`cat` is behaving as expected in a pipeline.
 
 ```bash
-echo "hello-ci" | npm run cli -- /data/vault --settings /data/livesync-settings.json put ci/test.md
-npm run cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.md
+echo "hello-ci" | npm run --silent cli -- /data/vault --settings /data/livesync-settings.json put ci/test.md
+npm run --silent cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.md
 ```
 
 ## Development

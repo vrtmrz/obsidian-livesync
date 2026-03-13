@@ -4,8 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 cd "$CLI_DIR"
-
-CLI_CMD=(npm --silent run cli -- -v)
+VERBOSE_TEST_LOGGING="${VERBOSE_TEST_LOGGING:-0}"
+if [[ "$VERBOSE_TEST_LOGGING" == "1" ]]; then
+    CLI_CMD=(npm --silent run cli -- -v)
+else
+    CLI_CMD=(npm --silent run cli --)
+fi
 RUN_BUILD="${RUN_BUILD:-1}"
 KEEP_TEST_DATA="${KEEP_TEST_DATA:-0}"
 TEST_ENV_FILE="${TEST_ENV_FILE:-$CLI_DIR/.test.env}"

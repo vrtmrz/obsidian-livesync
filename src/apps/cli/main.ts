@@ -31,6 +31,8 @@ import { LOG_LEVEL_DEBUG, setGlobalLogFunction, defaultLoggerEnv } from "octagon
 import { runCommand } from "./commands/runCommand";
 import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
+import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
+import { stripAllPrefixes } from "@lib/string_and_binary/path";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
@@ -254,6 +256,7 @@ export async function main() {
         console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
         return await Promise.resolve(true);
     }, -100);
+
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
 
@@ -298,7 +301,18 @@ export async function main() {
         },
         () => [], // No extra modules
         () => [], // No add-ons
-        () => [] // No serviceFeatures
+        (core) => {
+            // Add target filter to prevent internal files are handled
+            core.services.vault.isTargetFile.addHandler(async (target) => {
+                const vaultPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                const parts = vaultPath.split(path.sep);
+                // if some part of the path starts with dot, treat it as internal file and ignore.
+                if (parts.some((part) => part.startsWith("."))) {
+                    return await Promise.resolve(false);
+                }
+                return await Promise.resolve(true);
+            }, -1 /* highest priority */);
+        }
     );
 
     // Setup signal handlers for graceful shutdown

@@ -15,6 +15,7 @@ export type CLICommand =
     | "info"
     | "rm"
     | "resolve"
+    | "mirror"
     | "init-settings";
 
 export interface CLIOptions {
@@ -45,5 +46,6 @@ export const VALID_COMMANDS = new Set([
     "info",
     "rm",
     "resolve",
+    "mirror",
     "init-settings",
 ] as const);
