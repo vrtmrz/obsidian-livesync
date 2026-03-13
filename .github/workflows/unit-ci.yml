@@ -19,9 +19,6 @@ on:
       - 'esbuild.config.mjs'
       - 'eslint.config.mjs'
       - '.github/workflows/unit-ci.yml'
-    paths-ignore:
-      - '*.md'
-      - '**/*.md'
 
 permissions:
   contents: read
