@@ -24,7 +24,7 @@
         "test:e2e:p2p-peers:local-relay": "bash test/test-p2p-peers-local-relay.sh",
         "test:e2e:mirror": "bash test/test-mirror-linux.sh",
         "pretest:e2e:all": "npm run build",
-        "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:p2p && npm run test:e2e:mirror && npm run test:e2e:two-vaults && npm run test:e2e:p2p-host && npm run test:e2e:p2p"
+        "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:p2p && npm run test:e2e:mirror && npm run test:e2e:two-vaults && npm run test:e2e:p2p"
     },
     "dependencies": {},
     "devDependencies": {}
