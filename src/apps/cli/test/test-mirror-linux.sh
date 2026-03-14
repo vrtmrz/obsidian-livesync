@@ -47,6 +47,33 @@ FAIL=0
 assert_pass() { echo "[PASS] $1"; PASS=$((PASS + 1)); }
 assert_fail() { echo "[FAIL] $1" >&2; FAIL=$((FAIL + 1)); }
 
+# Return timestamp for touch -t in YYYYMMDDHHMM format.
+# Accepts offsets such as "+1 hour" or "-1 hour".
+portable_touch_timestamp() {
+    local offset="$1"
+    if command -v gdate >/dev/null 2>&1; then
+        gdate -d "$offset" +%Y%m%d%H%M
+        return
+    fi
+    if date -d "$offset" +%Y%m%d%H%M >/dev/null 2>&1; then
+        date -d "$offset" +%Y%m%d%H%M
+        return
+    fi
+
+    case "$offset" in
+        "+1 hour")
+            date -v+1H +%Y%m%d%H%M
+            ;;
+        "-1 hour")
+            date -v-1H +%Y%m%d%H%M
+            ;;
+        *)
+            echo "[FAIL] Unsupported date offset on this platform: $offset" >&2
+            exit 1
+            ;;
+    esac
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Case 1: File exists only in storage → should be synced into DB after mirror
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,7 +150,7 @@ printf 'old content\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put te
 
 # Write new content to storage with a timestamp 1 hour in the future
 printf 'new content\n' > "$VAULT_DIR/test/sync-storage-newer.md"
-touch -t "$(date -d '+1 hour' +%Y%m%d%H%M)" "$VAULT_DIR/test/sync-storage-newer.md"
+touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/test/sync-storage-newer.md"
 
 run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
 
@@ -145,7 +172,7 @@ echo "=== Case 5: DB newer → storage updated ==="
 
 # Write old content to storage with a timestamp 1 hour in the past
 printf 'old storage content\n' > "$VAULT_DIR/test/sync-db-newer.md"
-touch -t "$(date -d '-1 hour' +%Y%m%d%H%M)" "$VAULT_DIR/test/sync-db-newer.md"
+touch -t "$(portable_touch_timestamp '-1 hour')" "$VAULT_DIR/test/sync-db-newer.md"
 
 # Write new content to DB only (mtime ≈ now, newer than the storage file)
 printf 'new db content\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/sync-db-newer.md
