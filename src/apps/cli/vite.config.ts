@@ -5,7 +5,16 @@ import { readFileSync } from "node:fs";
 const packageJson = JSON.parse(readFileSync("../../../package.json", "utf-8"));
 const manifestJson = JSON.parse(readFileSync("../../../manifest.json", "utf-8"));
 // https://vite.dev/config/
-const defaultExternal = ["obsidian", "electron", "crypto", "pouchdb-adapter-leveldb", "commander", "punycode"];
+const defaultExternal = [
+    "obsidian",
+    "electron",
+    "crypto",
+    "pouchdb-adapter-leveldb",
+    "commander",
+    "punycode",
+    "node-datachannel",
+    "node-datachannel/polyfill",
+];
 export default defineConfig({
     plugins: [svelte()],
     resolve: {
@@ -43,6 +52,7 @@ export default defineConfig({
                 if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto" || id === "worker_threads")
                     return true;
                 if (id.startsWith("pouchdb-")) return true;
+                if (id.startsWith("node-datachannel")) return true;
                 if (id.startsWith("node:")) return true;
                 return false;
             },

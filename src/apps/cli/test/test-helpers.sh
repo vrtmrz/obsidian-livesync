@@ -211,6 +211,57 @@ fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), "utf-8");
 NODE
 }
 
+cli_test_apply_p2p_settings() {
+    local settings_file="$1"
+    local room_id="$2"
+    local passphrase="$3"
+    local app_id="${4:-self-hosted-livesync-cli-tests}"
+    local relays="${5:-ws://localhost:4000/}"
+    local auto_accept="${6:-~.*}"
+    SETTINGS_FILE="$settings_file" \
+    P2P_ROOM_ID="$room_id" \
+    P2P_PASSPHRASE="$passphrase" \
+    P2P_APP_ID="$app_id" \
+    P2P_RELAYS="$relays" \
+    P2P_AUTO_ACCEPT="$auto_accept" \
+    node <<'NODE'
+const fs = require("node:fs");
+const settingsPath = process.env.SETTINGS_FILE;
+const data = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+
+data.P2P_Enabled = true;
+data.P2P_AutoStart = false;
+data.P2P_AutoBroadcast = false;
+data.P2P_AppID = process.env.P2P_APP_ID;
+data.P2P_roomID = process.env.P2P_ROOM_ID;
+data.P2P_passphrase = process.env.P2P_PASSPHRASE;
+data.P2P_relays = process.env.P2P_RELAYS;
+data.P2P_AutoAcceptingPeers = process.env.P2P_AUTO_ACCEPT;
+data.P2P_AutoDenyingPeers = "";
+data.P2P_IsHeadless = true;
+data.isConfigured = true;
+
+fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), "utf-8");
+NODE
+}
+
+cli_test_is_local_p2p_relay() {
+    local relay_url="$1"
+    [[ "$relay_url" == "ws://localhost:4000" || "$relay_url" == "ws://localhost:4000/" ]]
+}
+
+cli_test_stop_p2p_relay() {
+    bash "$CLI_DIR/util/p2p-stop.sh" >/dev/null 2>&1 || true
+}
+
+cli_test_start_p2p_relay() {
+    echo "[INFO] stopping leftover P2P relay container if present"
+    cli_test_stop_p2p_relay
+
+    echo "[INFO] starting local P2P relay container"
+    bash "$CLI_DIR/util/p2p-start.sh"
+}
+
 cli_test_stop_couchdb() {
     bash "$CLI_DIR/util/couchdb-stop.sh" >/dev/null 2>&1 || true
 }

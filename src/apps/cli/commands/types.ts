@@ -4,6 +4,9 @@ import { ServiceContext } from "@lib/services/base/ServiceBase";
 export type CLICommand =
     | "daemon"
     | "sync"
+    | "p2p-peers"
+    | "p2p-sync"
+    | "p2p-host"
     | "push"
     | "pull"
     | "pull-rev"
@@ -36,6 +39,9 @@ export interface CLICommandContext {
 
 export const VALID_COMMANDS = new Set([
     "sync",
+    "p2p-peers",
+    "p2p-sync",
+    "p2p-host",
     "push",
     "pull",
     "pull-rev",

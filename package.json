@@ -134,6 +134,7 @@
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
         "minimatch": "^10.2.2",
+        "node-datachannel": "^0.32.1",
         "octagonal-wheels": "^0.1.45",
         "pouchdb-adapter-leveldb": "^9.0.0",
         "qrcode-generator": "^1.4.4",

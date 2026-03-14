@@ -27,7 +27,14 @@ import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules"
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
-import { LOG_LEVEL_DEBUG, setGlobalLogFunction, defaultLoggerEnv, LOG_LEVEL_INFO, LOG_LEVEL_URGENT, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
+import {
+    LOG_LEVEL_DEBUG,
+    setGlobalLogFunction,
+    defaultLoggerEnv,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_URGENT,
+    LOG_LEVEL_NOTICE,
+} from "octagonal-wheels/common/logger";
 import { runCommand } from "./commands/runCommand";
 import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
@@ -36,6 +43,7 @@ import { stripAllPrefixes } from "@lib/string_and_binary/path";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
+
 // DI the log again.
 // const recentLogEntries = reactiveSource<LogEntry[]>([]);
 // const globalLogFunction = (message: any, level?: number, key?: string) => {
@@ -65,6 +73,10 @@ Arguments:
 
 Commands:
   sync                    Run one replication cycle and exit
+    p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
+    p2p-sync <peer> <timeout>
+                            Sync with the specified peer-id or peer-name
+    p2p-host                Start P2P host mode and wait until interrupted
   push <src> <dst>        Push local file <src> into local database path <dst>
   pull <src> <dst>        Pull file <src> from local database into local file <dst>
     pull-rev <src> <dst> <rev>   Pull file <src> at specific revision <rev> into local file <dst>
@@ -78,6 +90,9 @@ Commands:
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
 Examples:
   livesync-cli ./my-database sync
+    livesync-cli ./my-database p2p-peers 5
+    livesync-cli ./my-database p2p-sync my-peer-name 15
+    livesync-cli ./my-database p2p-host
   livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
   livesync-cli ./my-database pull folder/note.md ./exports/note.md
     livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
@@ -213,21 +228,22 @@ export async function main() {
         options.command === "cat" ||
         options.command === "cat-rev" ||
         options.command === "ls" ||
+        options.command === "p2p-peers" ||
         options.command === "info" ||
         options.command === "rm" ||
         options.command === "resolve";
     const infoLog = avoidStdoutNoise ? console.error : console.log;
-    if(options.debug){
+    if (options.debug) {
         setGlobalLogFunction((msg, level) => {
             console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
             if (msg instanceof Error) {
                 console.error(msg);
             }
         });
-    }else{
+    } else {
         setGlobalLogFunction((msg, level) => {
             // NO OP, leave it to logFunction
-        })
+        });
     }
     if (options.command === "init-settings") {
         await createDefaultSettingsFile(options);
@@ -421,4 +437,6 @@ export async function main() {
         console.error(`[Error] Failed to start:`, error);
         process.exit(1);
     }
+    // To prevent unexpected hanging in webRTC connections.
+    process.exit(0);
 }

@@ -148,6 +148,9 @@ Options:
 Commands:
   init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
   sync                    Run one replication cycle and exit
+  p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
+  p2p-sync <peer> <timeout>   Synchronise with specified peer-id or peer-name
+  p2p-host                Start P2P host mode and wait until interrupted (Ctrl+C)
   push <src> <dst>        Push local file <src> into local database path <dst>
   pull <src> <dst>        Pull file <src> from local database into local file <dst>
   pull-rev <src> <dst> <revision>   Pull specific revision into local file <dst>
@@ -176,6 +179,32 @@ npm run --silent cli -- [database-path] [options] [command] [command-args]
 ```vault/path/file.md<TAB>size<TAB>mtime<TAB>revision[*]
 ```
 Note: `*` indicates if the file has conflicts.
+
+##### p2p-peers
+
+`p2p-peers <timeout>` waits for the specified number of seconds, then prints each discovered peer on a separate line:
+
+```text
+[peer]<TAB><peer-id><TAB><peer-name>
+```
+
+Use this command to select a target for `p2p-sync`.
+
+##### p2p-sync
+
+`p2p-sync <peer> <timeout>` discovers peers up to the specified timeout and synchronises with the selected peer.
+
+- `<peer>` accepts either `peer-id` or `peer-name` from `p2p-peers` output.
+- On success, the command prints a completion message to standard error and exits with status code `0`.
+- On failure, the command prints an error message and exits non-zero.
+
+##### p2p-host
+
+`p2p-host` starts the local P2P host and keeps running until interrupted.
+
+- Other peers can discover and synchronise with this host while it is running.
+- Stop the host with `Ctrl+C`.
+- In CLI mode, behaviour is non-interactive and acceptance follows settings.
 
 ##### info
 

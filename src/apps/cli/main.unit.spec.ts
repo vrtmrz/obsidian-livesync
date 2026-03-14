@@ -58,4 +58,31 @@ describe("CLI parseArgs", () => {
         expect(combined).toContain("Usage:");
         expect(combined).toContain("livesync-cli [database-path]");
     });
+
+    it("parses p2p-peers command and timeout", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "p2p-peers", "5"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.command).toBe("p2p-peers");
+        expect(parsed.commandArgs).toEqual(["5"]);
+    });
+
+    it("parses p2p-sync command with peer and timeout", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "p2p-sync", "peer-1", "12"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.command).toBe("p2p-sync");
+        expect(parsed.commandArgs).toEqual(["peer-1", "12"]);
+    });
+
+    it("parses p2p-host command", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "p2p-host"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.command).toBe("p2p-host");
+        expect(parsed.commandArgs).toEqual([]);
+    });
 });

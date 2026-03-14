@@ -11,16 +11,20 @@
         "cli": "node dist/index.cjs",
         "buildRun": "npm run build && npm run cli --",
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-        "test:unit": "cd ../../.. && npx vitest run --config vitest.config.unit.ts src/apps/cli/main.unit.spec.ts src/apps/cli/commands/utils.unit.spec.ts src/apps/cli/commands/runCommand.unit.spec.ts",
+        "test:unit": "cd ../../.. && npx vitest run --config vitest.config.unit.ts src/apps/cli/main.unit.spec.ts src/apps/cli/commands/utils.unit.spec.ts src/apps/cli/commands/runCommand.unit.spec.ts src/apps/cli/commands/p2p.unit.spec.ts",
         "test:e2e:two-vaults": "bash test/test-e2e-two-vaults-with-docker-linux.sh",
         "test:e2e:two-vaults:common": "bash test/test-e2e-two-vaults-common.sh",
         "test:e2e:two-vaults:matrix": "bash test/test-e2e-two-vaults-matrix.sh",
         "test:e2e:push-pull": "bash test/test-push-pull-linux.sh",
         "test:e2e:setup-put-cat": "bash test/test-setup-put-cat-linux.sh",
         "test:e2e:sync-two-local": "bash test/test-sync-two-local-databases-linux.sh",
+        "test:e2e:p2p": "bash test/test-p2p-three-nodes-conflict-linux.sh",
+        "test:e2e:p2p-host": "bash test/test-p2p-host-linux.sh",
+        "test:e2e:p2p-sync": "bash test/test-p2p-sync-linux.sh",
+        "test:e2e:p2p-peers:local-relay": "bash test/test-p2p-peers-local-relay.sh",
         "test:e2e:mirror": "bash test/test-mirror-linux.sh",
         "pretest:e2e:all": "npm run build",
-        "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:mirror && npm run test:e2e:two-vaults"
+        "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:p2p && npm run test:e2e:mirror && npm run test:e2e:two-vaults && npm run test:e2e:p2p-host && npm run test:e2e:p2p"
     },
     "dependencies": {},
     "devDependencies": {}

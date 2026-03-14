@@ -101,9 +101,7 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private load() {
         try {
             const loaded = JSON.parse(nodeFs.readFileSync(this.filePath, "utf-8")) as Record<string, unknown>;
-            this.data = new Map(
-                Object.entries(loaded).map(([key, value]) => [key, deserializeFromNodeKV(value)])
-            );
+            this.data = new Map(Object.entries(loaded).map(([key, value]) => [key, deserializeFromNodeKV(value)]));
         } catch {
             this.data = new Map();
         }

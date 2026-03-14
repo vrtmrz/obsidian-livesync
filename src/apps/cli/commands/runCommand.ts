@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSetting
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toVaultRelativePath } from "./utils";
+import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 
@@ -21,6 +22,42 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         console.log("[Command] sync");
         const result = await core.services.replication.replicate(true);
         return !!result;
+    }
+
+    if (options.command === "p2p-peers") {
+        if (options.commandArgs.length < 1) {
+            throw new Error("p2p-peers requires one argument: <timeout>");
+        }
+        const timeoutSec = parseTimeoutSeconds(options.commandArgs[0], "p2p-peers");
+        console.error(`[Command] p2p-peers timeout=${timeoutSec}s`);
+        const peers = await collectPeers(core as any, timeoutSec);
+        if (peers.length > 0) {
+            process.stdout.write(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
+        }
+        return true;
+    }
+
+    if (options.command === "p2p-sync") {
+        if (options.commandArgs.length < 2) {
+            throw new Error("p2p-sync requires two arguments: <peer> <timeout>");
+        }
+        const peerToken = options.commandArgs[0].trim();
+        if (!peerToken) {
+            throw new Error("p2p-sync requires a non-empty <peer>");
+        }
+        const timeoutSec = parseTimeoutSeconds(options.commandArgs[1], "p2p-sync");
+        console.error(`[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
+        const peer = await syncWithPeer(core as any, peerToken, timeoutSec);
+        console.error(`[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
+        return true;
+    }
+
+    if (options.command === "p2p-host") {
+        console.error("[Command] p2p-host");
+        await openP2PHost(core as any);
+        console.error("[Ready] P2P host is running. Press Ctrl+C to stop.");
+        await new Promise(() => {});
+        return true;
     }
 
     if (options.command === "push") {

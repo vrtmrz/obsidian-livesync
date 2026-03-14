@@ -5,9 +5,11 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## -- unreleased --
 
-### New features
+### CLI new features
 
 - `mirror` command has been added to the CLI. This command is intended to mirror the storage to the local database.
+- `p2p-sync`, `p2p-peers`, and `p2p-host` commands have been added to the CLI. These commands are intended for P2P synchronisation.
+  - Yes, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can handle it by itself.
 
 ## 0.25.52-patched-1
 
