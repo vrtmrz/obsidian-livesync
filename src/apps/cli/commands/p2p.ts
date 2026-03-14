@@ -2,6 +2,7 @@ import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
 import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import { addP2PEventHandlers } from "@lib/replication/trystero/P2PReplicatorCore";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -34,7 +35,9 @@ function validateP2PSettings(core: LiveSyncBaseCore<ServiceContext, any>) {
 
 function createReplicator(core: LiveSyncBaseCore<ServiceContext, any>): LiveSyncTrysteroReplicator {
     validateP2PSettings(core);
-    return new LiveSyncTrysteroReplicator({ services: core.services });
+    const replicator = new LiveSyncTrysteroReplicator({ services: core.services });
+    addP2PEventHandlers(replicator);
+    return replicator;
 }
 
 function getSortedPeers(replicator: LiveSyncTrysteroReplicator): CLIP2PPeer[] {

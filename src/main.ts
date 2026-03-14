@@ -14,7 +14,8 @@ import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHist
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
+import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "./features/P2PSync/P2PReplicator/P2PReplicatorPaneView.ts";
+import { useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore.ts";
 import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
@@ -132,6 +133,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         const serviceHub = new ObsidianServiceHub(this);
 
+        // Capture useP2PReplicator result so it can be passed to the P2PReplicator addon
+        // TODO: Dependency fix: bit hacky
+        let p2pReplicatorResult: ReturnType<typeof useP2PReplicator> | undefined;
+
         this.core = new LiveSyncBaseCore(
             serviceHub,
             (core, serviceHub) => {
@@ -161,7 +166,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ConfigSync(this, core),
                     new HiddenFileSync(this, core),
                     new LocalDatabaseMaintenance(this, core),
-                    new P2PReplicator(this, core),
                 ];
                 return addOns;
             },
@@ -173,6 +177,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                p2pReplicatorResult = useP2PReplicator(core, [
+                    VIEW_TYPE_P2P,
+                    (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
+                ]);
             }
         );
     }

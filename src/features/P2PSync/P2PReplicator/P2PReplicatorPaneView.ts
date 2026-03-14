@@ -1,19 +1,15 @@
 import { Menu, WorkspaceLeaf } from "@/deps.ts";
 import ReplicatorPaneComponent from "./P2PReplicatorPane.svelte";
-import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import { mount } from "svelte";
-import { SvelteItemView } from "../../../common/SvelteItemView.ts";
-import { eventHub } from "../../../common/events.ts";
+import { SvelteItemView } from "@/common/SvelteItemView.ts";
+import { eventHub } from "@/common/events.ts";
 
 import { unique } from "octagonal-wheels/collection";
-import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "../../../lib/src/common/types.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
-import { P2PReplicator } from "../CmdP2PReplicator.ts";
-import {
-    EVENT_P2P_PEER_SHOW_EXTRA_MENU,
-    type PeerStatus,
-} from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon.ts";
+import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@lib/common/types.ts";
+import { Logger } from "@lib/common/logger.ts";
+import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
+import type { UseP2PReplicatorResult } from "@lib/replication/trystero/P2PReplicatorCore.ts";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {
@@ -35,8 +31,8 @@ function removeFromList(item: string, list: string) {
 }
 
 export class P2PReplicatorPaneView extends SvelteItemView {
-    // plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncBaseCore;
+    private _p2pResult: UseP2PReplicatorResult;
     override icon = "waypoints";
     title: string = "";
     override navigation = false;
@@ -45,11 +41,7 @@ export class P2PReplicatorPaneView extends SvelteItemView {
         return "waypoints";
     }
     get replicator() {
-        const r = this.core.getAddOn<P2PReplicator>(P2PReplicator.name);
-        if (!r || !r.liveSyncReplicator) {
-            throw new Error("Replicator not found");
-        }
-        return r.liveSyncReplicator;
+        return this._p2pResult.replicator;
     }
     async replicateFrom(peer: PeerStatus) {
         await this.replicator.replicateFrom(peer.peerId);
@@ -131,10 +123,10 @@ And you can also drop the local database to rebuild from the remote device.`,
         await this.core.services.setting.applyPartial(currentSetting, true);
     }
     m?: Menu;
-    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, plugin: ObsidianLiveSyncPlugin) {
+    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, p2pResult: UseP2PReplicatorResult) {
         super(leaf);
-        // this.plugin = plugin;
         this.core = core;
+        this._p2pResult = p2pResult;
         eventHub.onEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, ({ peer, event }) => {
             if (this.m) {
                 this.m.hide();
@@ -192,14 +184,10 @@ And you can also drop the local database to rebuild from the remote device.`,
         }
     }
     instantiateComponent(target: HTMLElement) {
-        const cmdSync = this.core.getAddOn<P2PReplicator>(P2PReplicator.name);
-        if (!cmdSync) {
-            throw new Error("Replicator not found");
-        }
         return mount(ReplicatorPaneComponent, {
             target: target,
             props: {
-                cmdSync: cmdSync,
+                cmdSync: this._p2pResult.replicator,
                 core: this.core,
             },
         });

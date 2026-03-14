@@ -6,7 +6,7 @@
         ConnectionStatus,
         type PeerStatus,
     } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
-    import type { P2PReplicator } from "../CmdP2PReplicator";
+    import type { LiveSyncTrysteroReplicator } from "../../../lib/src/replication/trystero/LiveSyncTrysteroReplicator";
     import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
     import {
@@ -22,7 +22,7 @@
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        cmdSync: P2PReplicator;
+        cmdSync: LiveSyncTrysteroReplicator;
         core: LiveSyncBaseCore;
     }
 
@@ -237,10 +237,10 @@
         await cmdSync.close();
     }
     function startBroadcasting() {
-        void cmdSync.enableBroadcastCastings();
+        void cmdSync.enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void cmdSync.disableBroadcastCastings();
+        void cmdSync.disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;

@@ -17,11 +17,7 @@ import {
     type PeerStatus,
     type PluginShim,
 } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-import {
-    P2PLogCollector,
-    type P2PReplicatorBase,
-    useP2PReplicator,
-} from "@lib/replication/trystero/P2PReplicatorCore";
+import { P2PLogCollector, type P2PReplicatorBase, useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
@@ -34,9 +30,7 @@ import { Menu } from "@lib/services/implements/browser/Menu";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 import type { BrowserAPIService } from "@/lib/src/services/implements/browser/BrowserAPIService";
 import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
-import {
-    LiveSyncTrysteroReplicator,
-} from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -82,7 +76,11 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
     p2pLogCollector!: P2PLogCollector;
 
     private _initP2PReplicator() {
-        const { replicator, p2pLogCollector, storeP2PStatusLine: p2pStatusLine } = useP2PReplicator({ services: this.services } as any);
+        const {
+            replicator,
+            p2pLogCollector,
+            storeP2PStatusLine: p2pStatusLine,
+        } = useP2PReplicator({ services: this.services } as any);
         this._liveSyncReplicator = replicator;
         this.p2pLogCollector = p2pLogCollector;
         p2pLogCollector.p2pReplicationLine.onChanged((line) => {
