@@ -1,7 +1,7 @@
 import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
-import { P2P_DEFAULT_SETTINGS, SETTING_KEY_P2P_DEVICE_NAME, type EntryDoc } from "@lib/common/types";
+import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
+import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -32,42 +32,12 @@ function validateP2PSettings(core: LiveSyncBaseCore<ServiceContext, any>) {
     settings.P2P_IsHeadless = true;
 }
 
-async function createReplicator(core: LiveSyncBaseCore<ServiceContext, any>): Promise<TrysteroReplicator> {
+function createReplicator(core: LiveSyncBaseCore<ServiceContext, any>): LiveSyncTrysteroReplicator {
     validateP2PSettings(core);
-    const getSettings = () => core.services.setting.currentSettings();
-    const getDB = () => core.services.database.localDatabase.localDatabase;
-    const getSimpleStore = () => core.services.keyValueDB.openSimpleStore("p2p-sync");
-    const getDeviceName = () =>
-        core.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) || core.services.vault.getVaultName();
-
-    const env = {
-        get settings() {
-            return getSettings();
-        },
-        get db() {
-            return getDB();
-        },
-        get simpleStore() {
-            return getSimpleStore();
-        },
-        get deviceName() {
-            return getDeviceName();
-        },
-        get platform() {
-            return core.services.API.getPlatform();
-        },
-        get confirm() {
-            return core.services.API.confirm;
-        },
-        processReplicatedDocs: async (docs: EntryDoc[]) => {
-            await core.services.replication.parseSynchroniseResult(docs as any);
-        },
-    };
-
-    return new TrysteroReplicator(env as any);
+    return new LiveSyncTrysteroReplicator({ services: core.services });
 }
 
-function getSortedPeers(replicator: TrysteroReplicator): CLIP2PPeer[] {
+function getSortedPeers(replicator: LiveSyncTrysteroReplicator): CLIP2PPeer[] {
     return [...replicator.knownAdvertisements]
         .map((peer) => ({ peerId: peer.peerId, name: peer.name }))
         .sort((a, b) => a.peerId.localeCompare(b.peerId));
@@ -77,7 +47,7 @@ export async function collectPeers(
     core: LiveSyncBaseCore<ServiceContext, any>,
     timeoutSec: number
 ): Promise<CLIP2PPeer[]> {
-    const replicator = await createReplicator(core);
+    const replicator = createReplicator(core);
     await replicator.open();
     try {
         await delay(timeoutSec * 1000);
@@ -107,7 +77,7 @@ export async function syncWithPeer(
     peerToken: string,
     timeoutSec: number
 ): Promise<CLIP2PPeer> {
-    const replicator = await createReplicator(core);
+    const replicator = createReplicator(core);
     await replicator.open();
     try {
         const timeoutMs = timeoutSec * 1000;
@@ -142,8 +112,8 @@ export async function syncWithPeer(
     }
 }
 
-export async function openP2PHost(core: LiveSyncBaseCore<ServiceContext, any>): Promise<TrysteroReplicator> {
-    const replicator = await createReplicator(core);
+export async function openP2PHost(core: LiveSyncBaseCore<ServiceContext, any>): Promise<LiveSyncTrysteroReplicator> {
+    const replicator = createReplicator(core);
     await replicator.open();
     return replicator;
 }

@@ -57,7 +57,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        cmdReplicator._replicatorInstance?.server?.makeDecision({
+        cmdReplicator.liveSyncReplicator?.makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -65,13 +65,13 @@
         });
     }
     function revokeDecision() {
-        cmdReplicator._replicatorInstance?.server?.revokeDecision({
+        cmdReplicator.liveSyncReplicator?.revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
     }
     const cmdReplicator = getContext<() => P2PReplicator>("getReplicator")();
-    const replicator = cmdReplicator._replicatorInstance!;
+    const replicator = cmdReplicator.liveSyncReplicator;
 
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
@@ -87,14 +87,14 @@
         return attrs;
     });
     function startWatching() {
-        replicator.watchPeer(peer.peerId);
+        replicator?.watchPeer(peer.peerId);
     }
     function stopWatching() {
-        replicator.unwatchPeer(peer.peerId);
+        replicator?.unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        replicator.sync(peer.peerId, false);
+        void replicator?.sync(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {

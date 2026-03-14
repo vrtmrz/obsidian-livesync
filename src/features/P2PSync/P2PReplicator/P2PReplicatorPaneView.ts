@@ -46,10 +46,10 @@ export class P2PReplicatorPaneView extends SvelteItemView {
     }
     get replicator() {
         const r = this.core.getAddOn<P2PReplicator>(P2PReplicator.name);
-        if (!r || !r._replicatorInstance) {
+        if (!r || !r.liveSyncReplicator) {
             throw new Error("Replicator not found");
         }
-        return r._replicatorInstance;
+        return r.liveSyncReplicator;
     }
     async replicateFrom(peer: PeerStatus) {
         await this.replicator.replicateFrom(peer.peerId);

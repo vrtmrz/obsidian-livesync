@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
-import { LOG_LEVEL_INFO, RemoteTypes, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import { RemoteTypes, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 
 import { delay, fireAndForget } from "@/lib/src/common/utils";
 import { commands } from "vitest/browser";
@@ -15,14 +15,10 @@ async function waitForP2PPeers(harness: LiveSyncHarness) {
         if (!(replicator instanceof LiveSyncTrysteroReplicator)) {
             throw new Error("Replicator is not an instance of LiveSyncTrysteroReplicator");
         }
-        const p2pReplicator = await replicator.getP2PConnection(LOG_LEVEL_INFO);
-        if (!p2pReplicator) {
-            throw new Error("P2P Replicator is not initialized");
-        }
         while (retries-- > 0) {
             fireAndForget(() => commands.acceptWebPeer());
             await delay(1000);
-            const peers = p2pReplicator.knownAdvertisements;
+            const peers = replicator.knownAdvertisements;
 
             if (peers && peers.length > 0) {
                 console.log("P2P peers connected:", peers);

@@ -4,10 +4,9 @@
     import {
         AcceptedStatus,
         ConnectionStatus,
-        type CommandShim,
         type PeerStatus,
-        type PluginShim,
     } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicator } from "../CmdP2PReplicator";
     import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
     import {
@@ -23,7 +22,7 @@
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        cmdSync: CommandShim;
+        cmdSync: P2PReplicator;
         core: LiveSyncBaseCore;
     }
 
@@ -95,9 +94,8 @@
             },
             true
         );
-        cmdSync.setConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
+        core.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
-        // await plugin.saveSettings();
     }
     async function revert() {
         eP2PEnabled = settings.P2P_Enabled;
@@ -115,7 +113,7 @@
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
         if (force) {
             const initDeviceName =
-                cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
+                core.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
             deviceName = initDeviceName;
             eDeviceName = initDeviceName;
         }
@@ -248,7 +246,7 @@
     const initialDialogStatusKey = `p2p-dialog-status`;
     const getDialogStatus = () => {
         try {
-            const initialDialogStatus = JSON.parse(cmdSync.getConfig(initialDialogStatusKey) ?? "{}") as {
+            const initialDialogStatus = JSON.parse(core.services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
                 notice?: boolean;
                 setting?: boolean;
             };
@@ -265,7 +263,7 @@
             notice: isNoticeOpened,
             setting: isSettingOpened,
         };
-        cmdSync.setConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
+        core.services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
     let isObsidian = $derived.by(() => {
         return core.services.API.getPlatform() === "obsidian";
