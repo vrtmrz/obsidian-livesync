@@ -438,5 +438,5 @@ export async function main() {
         process.exit(1);
     }
     // To prevent unexpected hanging in webRTC connections.
-    process.exit(0);
+    process.exit(process.exitCode ?? 0);
 }
