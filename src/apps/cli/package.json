@@ -19,6 +19,7 @@
         "test:e2e:setup-put-cat": "bash test/test-setup-put-cat-linux.sh",
         "test:e2e:sync-two-local": "bash test/test-sync-two-local-databases-linux.sh",
         "test:e2e:p2p": "bash test/test-p2p-three-nodes-conflict-linux.sh",
+        "test:e2e:p2p-upload-download-repro": "bash test/test-p2p-upload-download-repro-linux.sh",
         "test:e2e:p2p-host": "bash test/test-p2p-host-linux.sh",
         "test:e2e:p2p-sync": "bash test/test-p2p-sync-linux.sh",
         "test:e2e:p2p-peers:local-relay": "bash test/test-p2p-peers-local-relay.sh",

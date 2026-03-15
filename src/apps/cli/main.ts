@@ -23,6 +23,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
+import { ModuleReplicatorP2P } from "../../modules/core/ModuleReplicatorP2P";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
@@ -352,7 +353,7 @@ export async function main() {
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
             return initialiseServiceModulesCLI(vaultPath, core, serviceHub);
         },
-        () => [], // No extra modules
+        (core) => [new ModuleReplicatorP2P(core)], // Register P2P replicator for CLI (useP2PReplicator is not used here)
         () => [], // No add-ons
         (core) => {
             // Add target filter to prevent internal files are handled

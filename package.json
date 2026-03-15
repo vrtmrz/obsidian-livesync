@@ -53,7 +53,8 @@
         "test:docker-all:down": "npm run test:docker-couchdb:down ; npm run test:docker-s3:down ; npm run test:docker-p2p:down",
         "test:docker-all:start": "npm run test:docker-all:up && sleep 5 && npm run test:docker-all:init",
         "test:docker-all:stop": "npm run test:docker-all:down",
-        "test:full": "npm run test:docker-all:start && vitest run --coverage && npm run test:docker-all:stop"
+        "test:full": "npm run test:docker-all:start && vitest run --coverage && npm run test:docker-all:stop",
+        "test:p2p": "bash test/suitep2p/run-p2p-tests.sh"
     },
     "keywords": [],
     "author": "vorotamoroz",
