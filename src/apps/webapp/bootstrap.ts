@@ -42,7 +42,7 @@ async function renderHistoryList(): Promise<VaultHistoryItem[]> {
     const [items, lastUsedId] = await Promise.all([historyStore.getVaultHistory(), historyStore.getLastUsedVaultId()]);
 
     listEl.innerHTML = "";
-    emptyEl.style.display = items.length > 0 ? "none" : "block";
+    emptyEl.classList.toggle("is-hidden", items.length > 0);
 
     for (const item of items) {
         const row = document.createElement("div");
@@ -82,7 +82,7 @@ async function startWithHandle(handle: FileSystemDirectoryHandle): Promise<void>
     await app.initialize();
 
     const selectorEl = getRequiredElement<HTMLDivElement>("vault-selector");
-    selectorEl.style.display = "none";
+    selectorEl.classList.add("is-hidden");
 }
 
 async function startWithHistory(item: VaultHistoryItem): Promise<void> {

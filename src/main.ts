@@ -29,7 +29,6 @@ import type { ServiceModules } from "./types.ts";
 import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
 import type { ObsidianServiceContext } from "./lib/src/services/implements/obsidian/ObsidianServiceContext.ts";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
-import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
@@ -38,6 +37,10 @@ import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts
 import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner.ts";
 import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize.ts";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
+import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
+import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
+import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -147,7 +150,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleObsidianEvents(this, core),
                     new ModuleObsidianSettingDialogue(this, core),
                     new ModuleObsidianMenu(core),
-                    new ModuleSetupObsidian(core),
                     new ModuleObsidianSettingsAsMarkdown(core),
                     new ModuleLog(this, core),
                     new ModuleObsidianDocumentHistory(this, core),
@@ -174,6 +176,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const featuresInitialiser = enableI18nFeature;
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
+                const setupManager = core.getModule(SetupManager);
+                useSetupProtocolFeature(core, setupManager);
+                useSetupQRCodeFeature(core);
+                useSetupURIFeature(core);
+                useSetupManagerHandlersFeature(core, setupManager);
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);

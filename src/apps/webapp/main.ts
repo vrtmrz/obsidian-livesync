@@ -13,6 +13,9 @@ import type { InjectableSettingService } from "@lib/services/implements/injectab
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
+import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
+import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { SetupManager } from "@/modules/features/SetupManager";
 // import { ModuleObsidianSettingsAsMarkdown } from "@/modules/features/ModuleObsidianSettingAsMarkdown";
 // import { ModuleObsidianMenu } from "@/modules/essentialObsidian/ModuleObsidianMenu";
 
@@ -112,12 +115,15 @@ class LiveSyncWebApp {
                 // new ModuleReplicateTest(this, core),
                 // new ModuleIntegratedTest(this, core),
                 // new SetupManager(core),
+                new SetupManager(core), // this should be moved to core?
             ],
             () => [], // No add-ons
             (core) => {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                useSetupQRCodeFeature(core);
+                useSetupURIFeature(core);
             }
         );
 

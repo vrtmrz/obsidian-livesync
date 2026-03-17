@@ -62,10 +62,7 @@ export class VaultHistoryStore {
         });
     }
 
-    private async withStore<T>(
-        mode: IDBTransactionMode,
-        task: (store: IDBObjectStore) => Promise<T>
-    ): Promise<T> {
+    private async withStore<T>(mode: IDBTransactionMode, task: (store: IDBObjectStore) => Promise<T>): Promise<T> {
         const db = await this.openHandleDB();
         try {
             const tx = db.transaction([HANDLE_STORE_NAME], mode);
@@ -141,7 +138,9 @@ export class VaultHistoryStore {
             await this.requestAsPromise(store.put(item, makeVaultKey(item.id)));
             await this.requestAsPromise(store.put(item.id, LAST_USED_KEY));
 
-            const merged = [...existing.filter((v) => v.id !== item.id), item].sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+            const merged = [...existing.filter((v) => v.id !== item.id), item].sort(
+                (a, b) => b.lastUsedAt - a.lastUsedAt
+            );
             const stale = merged.slice(MAX_HISTORY_COUNT);
             for (const old of stale) {
                 await this.requestAsPromise(store.delete(makeVaultKey(old.id)));

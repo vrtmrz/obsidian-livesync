@@ -22,9 +22,7 @@ export default defineConfig({
                 index: path.resolve(__dirname, "index.html"),
                 webapp: path.resolve(__dirname, "webapp.html"),
             },
-            external:[
-                "crypto"
-            ]
+            external: ["crypto"],
         },
     },
     define: {
