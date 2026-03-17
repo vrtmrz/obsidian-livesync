@@ -3,6 +3,177 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.53
+
+17th March, 2026
+
+I did wonder whether I should have released a minor version update, but when I actually tested it, compatibility seemed to be intact, so I didn’t. Hmm.
+
+### Fixed
+
+#### P2P Synchronisation
+
+- Fixed flaky timing issues in P2P synchronisation.
+- No longer unexpected `Unhandled Rejections` during P2P operations (waiting for acceptance).
+
+#### Journal Sync
+
+- Fixed an issue where some conflicts cannot be resolved in Journal Sync.
+- Many minor fixes have been made for better stability and reliability.
+
+### Tests
+
+- Rewrite P2P end-to-end tests to use the CLI as a host.
+
+### CLI
+
+We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
+- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
+- P2P sync and Object Storage are also supported in the CLI.
+  - Yes, we have finally managed to 'get one file'.
+  - Also, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can do it.
+
+- Now binary files are also supported in the CLI.
+
+### Refactored or internal changes
+
+- ServiceFileAccessBase now correctly handles the reading of binary files.
+- HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
+- Non-worker version of bgWorker now correctly handles some functions.
+- Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
+- Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
+- Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
+- Offline change scanner and the local database preparation have been separated.
+- Set default priority for processFileEvent and processSynchroniseResult for the place to add hooks.
+- ControlService now provides the readiness for processing operations.
+- DatabaseService is now able to modify database opening options on derived classes.
+- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
+- Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
+- Journal Replicator now yields true after the replication is done.
+
+### R&D
+
+- Browser-version of Self-hosted LiveSync is now in development. This is not intended for public use now, but I will eventually make it available for testing.
+- We can see the code in `src/apps/webapp` for the browser version.
+
+
+## 0.25.52-patched-3
+
+16th March, 2026
+
+### Fixed
+
+- Fixed flaky timing issues in P2P synchronisation.
+- Fixed more binary file handling issues in CLI.
+
+### Tests
+
+- Rewrite P2P end-to-end tests to use the CLI as host.
+
+
+## 0.25.52-patched-2
+
+14th March, 2026
+
+### Fixed
+
+- No longer unexpected `Unhandled Rejections` during P2P operations (waiting acceptance).
+- Fixed an issue where conflicts cannot be resolved in Journal Sync
+
+### CLI new features
+
+- `mirror` command has been added to the CLI. This command is intended to mirror the storage to the local database.
+- `p2p-sync`, `p2p-peers`, and `p2p-host` commands have been added to the CLI. These commands are intended for P2P synchronisation.
+  - Yes, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can handle it by itself.
+
+## 0.25.52-patched-1
+
+12th March, 2026
+
+### Fixed
+
+- Fixed Journal Sync had not been working on some timing, due to a compatibility issue (for a long time).
+- ServiceFileAccessBase now correctly handles the reading of binary files.
+- HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
+- Non-worker version of bgWorker now correctly handles some functions.
+
+### Refactored
+
+- Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
+- Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
+- Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
+- Offline change scanner and the local database preparation have been separated.
+- Set default priority for processFileEvent and processSynchroniseResult for the place to add hooks.
+- ControlService now provides the readiness for processing operations.
+- DatabaseService is now able to modify database opening options on derived classes.
+- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
+
+### Internal API changes
+
+- Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
+- Journal Replicator now yields true after the replication is done.
+
+### CLI
+
+We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
+
+- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
+- Add more tests.
+- Object Storage support has also been confirmed (and fixed) in CLI.
+  - Yes, we have finally managed to 'get one file'.
+- Now binary files are also supported in the CLI.
+
+### R&D
+
+- Browser-version of Self-hosted LiveSync is now in development. This is not intended for public use now, but I will eventually make it available for testing.
+- We can see the code in `src/apps/webapp` for the browser version.
+
+
+## 0.25.52
+
+9th March, 2026
+
+Excuses: Too much `I`.
+Whilst I had a fever, I could not figure it out at all, but once I felt better, I spotted the problem in about thirty seconds. I apologise for causing you concern. I am grateful for your patience.
+I would like to devise a mechanism for running simple test scenarios. Now that we have got the Obsidian CLI up and running, it seems the perfect opportunity.
+
+To improve the bus factor, we really need to organise the source code more thoroughly. Your cooperation and contributions would be greatly appreciated.
+
+### Fixed
+
+- No longer unexpected deletion-propagation occurs when the parent directory is not empty (#813).
+
+### Revert reversions
+
+- Reverted the reversion of ModuleCheckRemoteSize. Now it is back to the service feature.
+
+## 0.25.51
+
+7th March, 2026
+
+### Reverted
+
+- Reverted to ModuleRedFlag and ModuleInitializerFile to the previous version because of some unexpected issues. (#813)
+    - I will re-implement them in the future with better design and tests.
+
+## 0.25.50
+
+3rd March, 2026
+
+Note: 0.25.49 has been skipped because of too verbose logging (credentials are logged in verbose level, but I realised that could lead to unexpected exposure on issue reporting). Please bump to 0.25.50 to get the fix if you are on 0.25.49. (No expected behaviour changes except the logging).
+
+### Fixed
+
+- No longer deleted files are not clickable in the Global History pane.
+- Diff view now uses more specific classes (#803).
+- A message of configuration mismatching slightly added for better understanding.
+    - Now it says `When replication is initiated manually via the command palette or ribbon, a dialogue box will open to address this.` to make it clear that the user can fix the issue by themselves.
+
+### Refactored
+
+- `ModuleRedFlag` has been refactored to `serviceFeatures/redFlag` and also tested.
+- `ModuleInitializerFile` has been refactored to `lib/serviceFeatures/offlineScanner` and also tested.
+
 ## 0.25.48
 
 2nd March, 2026

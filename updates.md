@@ -3,48 +3,43 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## 0.25.52-patched-3
+## 0.25.53
 
-16th March, 2026
+17th March, 2026
+
+I did wonder whether I should have released a minor version update, but when I actually tested it, compatibility seemed to be intact, so I didn’t. Hmm.
 
 ### Fixed
 
+#### P2P Synchronisation
+
 - Fixed flaky timing issues in P2P synchronisation.
-- Fixed more binary file handling issues in CLI.
+- No longer unexpected `Unhandled Rejections` during P2P operations (waiting for acceptance).
+
+#### Journal Sync
+
+- Fixed an issue where some conflicts cannot be resolved in Journal Sync.
+- Many minor fixes have been made for better stability and reliability.
 
 ### Tests
 
-- Rewrite P2P end-to-end tests to use the CLI as host.
+- Rewrite P2P end-to-end tests to use the CLI as a host.
 
+### CLI
 
-## 0.25.52-patched-2
+We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
+- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
+- P2P sync and Object Storage are also supported in the CLI.
+  - Yes, we have finally managed to 'get one file'.
+  - Also, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can do it.
 
-14th March, 2026
+- Now binary files are also supported in the CLI.
 
-### Fixed
+### Refactored or internal changes
 
-- No longer unexpected `Unhandled Rejections` during P2P operations (waiting acceptance).
-- Fixed an issue where conflicts cannot be resolved in Journal Sync
-
-### CLI new features
-
-- `mirror` command has been added to the CLI. This command is intended to mirror the storage to the local database.
-- `p2p-sync`, `p2p-peers`, and `p2p-host` commands have been added to the CLI. These commands are intended for P2P synchronisation.
-  - Yes, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can handle it by itself.
-
-## 0.25.52-patched-1
-
-12th March, 2026
-
-### Fixed
-
-- Fixed Journal Sync had not been working on some timing, due to a compatibility issue (for a long time).
 - ServiceFileAccessBase now correctly handles the reading of binary files.
 - HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
 - Non-worker version of bgWorker now correctly handles some functions.
-
-### Refactored
-
 - Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
 - Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
 - Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
@@ -53,21 +48,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - ControlService now provides the readiness for processing operations.
 - DatabaseService is now able to modify database opening options on derived classes.
 - Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
-
-### Internal API changes
-
 - Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
 - Journal Replicator now yields true after the replication is done.
-
-### CLI
-
-We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
-
-- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
-- Add more tests.
-- Object Storage support has also been confirmed (and fixed) in CLI.
-  - Yes, we have finally managed to 'get one file'.
-- Now binary files are also supported in the CLI.
 
 ### R&D
 
@@ -270,68 +252,6 @@ This release is identical to 0.25.41-patched-3, except for the version number.
 - `WebPeer` has been moved to the main repository from the sub repository `livesync-commonlib` for correct dependency management.
 - Migrated from the outdated, unstable platform abstraction layer to services.
     - A bit more services will be added in the future for better maintainability.
-
-## 0.25.41
-
-24th January, 2026
-
-### Fixed
-
-- No longer `No available splitter for settings!!` errors occur after fetching old remote settings while rebuilding local database. (#748)
-
-### Improved
-
-- Boot sequence warning is now kept in the in-editor notification area.
-
-### New feature
-
-- We can now set the maximum modified time for reflect events in the settings. (for #754)
-    - This setting can be configured from `Patches` -> `Remediation` in the settings dialogue.
-    - Enabling this setting will restrict the propagation from the database to storage to only those changes made before the specified date and time.
-    - This feature is primarily intended for recovery purposes. After placing `redflag.md` in an empty vault and importing the Self-hosted LiveSync configuration, please perform this configuration, and then fetch the local database from the remote.
-    - This feature is useful when we want to prevent recent unwanted changes from being reflected in the local storage.
-
-### Refactored
-
-- Module to service refactoring has been started for better maintainability:
-    - UI module has been moved to UI service.
-
-### Behaviour change
-
-- Default chunk splitter version has been changed to `Rabin-Karp` for new installations.
-
-## 0.25.40
-
-23rd January, 2026
-
-### Fixed
-
-- Fixed an issue where some events were not triggered correctly after the refactoring in 0.25.39.
-
-## 0.25.39
-
-23rd January, 2026
-
-Also no behaviour changes or fixes in this release. Just refactoring for better maintainability. Thank you for your patience! I will address some of the reported issues soon.
-However, this is not a minor refactoring, so please be careful. Let me know if you find any unexpected behaviour after this update.
-
-### Refactored
-
-- Rewrite the service's binding/handler assignment systems
-- Removed loopholes that allowed traversal between services to clarify dependencies.
-- Consolidated the hidden state-related state, the handler, and the addition of bindings to the handler into a single object.
-    - Currently, functions that can have handlers added implement either addHandler or setHandler directly on the function itself.
-      I understand there are differing opinions on this, but for now, this is how it stands.
-- Services now possess a Context. Please ensure each platform has a class that inherits from ServiceContext.
-- To permit services to be dynamically bound, the services themselves are now defined by interfaces.
-
-## 0.25.38
-
-17th January, 2026
-
-### Fixed
-
-- Fixed an issue where indexedDB would not close correctly on some environments, causing unexpected errors during database operations.
 
 Full notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
