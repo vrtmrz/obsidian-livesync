@@ -13,9 +13,7 @@ import type { InjectableSettingService } from "@lib/services/implements/injectab
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
-import { SetupManager } from "@/modules/features/SetupManager";
 // import { ModuleObsidianSettingsAsMarkdown } from "@/modules/features/ModuleObsidianSettingAsMarkdown";
-import { ModuleSetupObsidian } from "@/modules/features/ModuleSetupObsidian";
 // import { ModuleObsidianMenu } from "@/modules/essentialObsidian/ModuleObsidianMenu";
 
 const SETTINGS_DIR = ".livesync";
@@ -47,20 +45,17 @@ const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
 };
 
 class LiveSyncWebApp {
-    private rootHandle: FileSystemDirectoryHandle | null = null;
+    private rootHandle: FileSystemDirectoryHandle;
     private core: LiveSyncBaseCore<ServiceContext, any> | null = null;
     private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
+
+    constructor(rootHandle: FileSystemDirectoryHandle) {
+        this.rootHandle = rootHandle;
+    }
 
     async initialize() {
         console.log("Self-hosted LiveSync WebApp");
         console.log("Initializing...");
-
-        // Request directory access
-        await this.requestDirectoryAccess();
-
-        if (!this.rootHandle) {
-            throw new Error("Failed to get directory access");
-        }
 
         console.log(`Vault directory: ${this.rootHandle.name}`);
 
@@ -102,14 +97,12 @@ class LiveSyncWebApp {
         this.core = new LiveSyncBaseCore(
             this.serviceHub,
             (core, serviceHub) => {
-                return initialiseServiceModulesFSAPI(this.rootHandle!, core, serviceHub);
+                return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
             },
             (core) => [
                 // new ModuleObsidianEvents(this, core),
                 // new ModuleObsidianSettingDialogue(this, core),
                 // new ModuleObsidianMenu(core),
-                new ModuleSetupObsidian(core),
-                new SetupManager(core),
                 // new ModuleObsidianSettingsAsMarkdown(core),
                 // new ModuleLog(this, core),
                 // new ModuleObsidianDocumentHistory(this, core),
@@ -133,8 +126,6 @@ class LiveSyncWebApp {
     }
 
     private async saveSettingsToFile(data: ObsidianLiveSyncSettings): Promise<void> {
-        if (!this.rootHandle) return;
-
         try {
             // Create .livesync directory if it doesn't exist
             const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
@@ -151,8 +142,6 @@ class LiveSyncWebApp {
     }
 
     private async loadSettingsFromFile(): Promise<Partial<ObsidianLiveSyncSettings> | null> {
-        if (!this.rootHandle) return null;
-
         try {
             const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR);
             const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE);
@@ -163,90 +152,6 @@ class LiveSyncWebApp {
             // File doesn't exist yet
             return null;
         }
-    }
-
-    private async requestDirectoryAccess() {
-        try {
-            // Check if we have a cached directory handle
-            const cached = await this.loadCachedDirectoryHandle();
-            if (cached) {
-                // Verify permission (cast to any for compatibility)
-                try {
-                    const permission = await (cached as any).queryPermission({ mode: "readwrite" });
-                    if (permission === "granted") {
-                        this.rootHandle = cached;
-                        console.log("[Directory] Using cached directory handle");
-                        return;
-                    }
-                } catch (e) {
-                    // queryPermission might not be supported, try to use anyway
-                    console.log("[Directory] Could not verify permission, requesting new access");
-                }
-            }
-
-            // Request new directory access
-            console.log("[Directory] Requesting directory access...");
-            this.rootHandle = await (window as any).showDirectoryPicker({
-                mode: "readwrite",
-                startIn: "documents",
-            });
-
-            // Save the handle for next time
-            await this.saveCachedDirectoryHandle(this.rootHandle);
-            console.log("[Directory] Directory access granted");
-        } catch (error) {
-            console.error("[Directory] Failed to get directory access:", error);
-            throw error;
-        }
-    }
-
-    private async saveCachedDirectoryHandle(handle: FileSystemDirectoryHandle) {
-        try {
-            // Use IndexedDB to store the directory handle
-            const db = await this.openHandleDB();
-            const transaction = db.transaction(["handles"], "readwrite");
-            const store = transaction.objectStore("handles");
-            await new Promise((resolve, reject) => {
-                const request = store.put(handle, "rootHandle");
-                request.onsuccess = resolve;
-                request.onerror = reject;
-            });
-            db.close();
-        } catch (error) {
-            console.error("[Directory] Failed to cache handle:", error);
-        }
-    }
-
-    private async loadCachedDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
-        try {
-            const db = await this.openHandleDB();
-            const transaction = db.transaction(["handles"], "readonly");
-            const store = transaction.objectStore("handles");
-            const handle = await new Promise<FileSystemDirectoryHandle | null>((resolve, reject) => {
-                const request = store.get("rootHandle");
-                request.onsuccess = () => resolve(request.result || null);
-                request.onerror = reject;
-            });
-            db.close();
-            return handle;
-        } catch (error) {
-            console.error("[Directory] Failed to load cached handle:", error);
-            return null;
-        }
-    }
-
-    private async openHandleDB(): Promise<IDBDatabase> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open("livesync-webapp-handles", 1);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                if (!db.objectStoreNames.contains("handles")) {
-                    db.createObjectStore("handles");
-                }
-            };
-        });
     }
 
     private async start() {
@@ -333,21 +238,4 @@ class LiveSyncWebApp {
     }
 }
 
-// Initialize on load
-const app = new LiveSyncWebApp();
-
-window.addEventListener("load", async () => {
-    try {
-        await app.initialize();
-    } catch (error) {
-        console.error("Failed to initialize:", error);
-    }
-});
-
-// Handle page unload
-window.addEventListener("beforeunload", () => {
-    void app.shutdown();
-});
-
-// Export for debugging
-(window as any).livesyncApp = app;
+export { LiveSyncWebApp };

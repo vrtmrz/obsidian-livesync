@@ -20,7 +20,11 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 index: path.resolve(__dirname, "index.html"),
+                webapp: path.resolve(__dirname, "webapp.html"),
             },
+            external:[
+                "crypto"
+            ]
         },
     },
     define: {

@@ -55,8 +55,8 @@ The built files will be in the `dist` directory.
 
 ### Usage
 
-1. Open the webapp in your browser
-2. Grant directory access when prompted
+1. Open the webapp in your browser (`webapp.html`)
+2. Select a vault from history or grant access to a new directory
 3. Configure CouchDB connection by editing `.livesync/settings.json` in your vault
     - You can also copy data.json from Obsidian's plug-in folder.
 
@@ -98,8 +98,11 @@ webapp/
 │   ├── ServiceFileAccessImpl.ts
 │   ├── DatabaseFileAccess.ts
 │   └── FSAPIServiceModules.ts
-├── main.ts              # Application entry point
-├── index.html           # HTML entry
+├── bootstrap.ts         # Vault picker + startup orchestration
+├── main.ts              # LiveSync core bootstrap (after vault selected)
+├── vaultSelector.ts     # FileSystem handle history and permission flow
+├── webapp.html          # Main HTML entry
+├── index.html           # Redirect entry for compatibility
 ├── package.json
 ├── vite.config.ts
 └── README.md
