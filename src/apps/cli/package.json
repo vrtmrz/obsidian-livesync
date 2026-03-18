@@ -22,7 +22,6 @@
         "test:e2e:p2p-upload-download-repro": "bash test/test-p2p-upload-download-repro-linux.sh",
         "test:e2e:p2p-host": "bash test/test-p2p-host-linux.sh",
         "test:e2e:p2p-sync": "bash test/test-p2p-sync-linux.sh",
-        "test:e2e:p2p-peers:local-relay": "bash test/test-p2p-peers-local-relay.sh",
         "test:e2e:mirror": "bash test/test-mirror-linux.sh",
         "pretest:e2e:all": "npm run build",
         "test:e2e:all": " export RUN_BUILD=0 && npm run test:e2e:setup-put-cat && npm run test:e2e:push-pull && npm run test:e2e:sync-two-local && npm run test:e2e:p2p && npm run test:e2e:mirror && npm run test:e2e:two-vaults && npm run test:e2e:p2p"

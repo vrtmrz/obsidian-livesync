@@ -45,23 +45,6 @@ import { stripAllPrefixes } from "@lib/string_and_binary/path";
 const SETTINGS_FILE = ".livesync/settings.json";
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
-// DI the log again.
-// const recentLogEntries = reactiveSource<LogEntry[]>([]);
-// const globalLogFunction = (message: any, level?: number, key?: string) => {
-//     const messageX =
-//         message instanceof Error
-//             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
-//             : message;
-//     const entry = { message: messageX, level, key } as LogEntry;
-//     recentLogEntries.value = [...recentLogEntries.value, entry];
-// };
-
-// setGlobalLogFunction((msg, level) => {
-//     console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
-//     if (msg instanceof Error) {
-//         console.error(msg);
-//     }
-// });
 function printHelp(): void {
     console.log(`
 Self-hosted LiveSync CLI
@@ -78,8 +61,8 @@ Commands:
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
     p2p-host                Start P2P host mode and wait until interrupted
-  push <src> <dst>        Push local file <src> into local database path <dst>
-  pull <src> <dst>        Pull file <src> from local database into local file <dst>
+    push <src> <dst>        Push local file <src> into local database path <dst>
+    pull <src> <dst>        Pull file <src> from local database into local file <dst>
     pull-rev <src> <dst> <rev>   Pull file <src> at specific revision <rev> into local file <dst>
     setup <setupURI>        Apply setup URI to settings file
     put <dst>               Read UTF-8 content from stdin and write to local database path <dst>
@@ -90,12 +73,12 @@ Commands:
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
 Examples:
-  livesync-cli ./my-database sync
+    livesync-cli ./my-database sync
     livesync-cli ./my-database p2p-peers 5
     livesync-cli ./my-database p2p-sync my-peer-name 15
     livesync-cli ./my-database p2p-host
-  livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
-  livesync-cli ./my-database pull folder/note.md ./exports/note.md
+    livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
+    livesync-cli ./my-database pull folder/note.md ./exports/note.md
     livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
     livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
     echo "Hello" | livesync-cli ./my-database put notes/hello.md
@@ -106,7 +89,7 @@ Examples:
     livesync-cli ./my-database rm notes/hello.md
     livesync-cli ./my-database resolve notes/hello.md 3-abcdef
     livesync-cli init-settings ./data.json
-  livesync-cli ./my-database --verbose
+    livesync-cli ./my-database --verbose
         `);
 }
 
@@ -353,7 +336,10 @@ export async function main() {
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
             return initialiseServiceModulesCLI(vaultPath, core, serviceHub);
         },
-        (core) => [new ModuleReplicatorP2P(core)], // Register P2P replicator for CLI (useP2PReplicator is not used here)
+        (core) => [
+            // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
+            // new ModuleReplicatorP2P(core),
+        ],
         () => [], // No add-ons
         (core) => {
             // Add target filter to prevent internal files are handled
