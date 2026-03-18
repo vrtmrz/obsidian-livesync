@@ -106,10 +106,10 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this._log($msg("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
         }
 
-        //@ts-ignore
-        if (this.isMobile) {
-            this.settings.disableRequestURI = true;
-        }
+        // //@ts-ignore
+        // if (this.isMobile) {
+        //     this.settings.disableRequestURI = true;
+        // }
         if (last_version && Number(last_version) < VER) {
             this.settings.liveSync = false;
             this.settings.syncOnSave = false;

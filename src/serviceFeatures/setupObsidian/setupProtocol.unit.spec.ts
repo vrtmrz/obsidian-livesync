@@ -37,8 +37,8 @@ describe("setupObsidian/setupProtocol", () => {
         } as any;
         const log = vi.fn();
         const setupManager = {
-            onUseSetupURI: vi.fn(async () => true),
-            decodeQR: vi.fn(async () => true),
+            onUseSetupURI: vi.fn(async () => await Promise.resolve(true)),
+            decodeQR: vi.fn(async () => await Promise.resolve(true)),
         } as any;
 
         registerSetupProtocolHandler(host, log, setupManager);
@@ -67,8 +67,8 @@ describe("setupObsidian/setupProtocol", () => {
         } as any;
         const log = vi.fn();
         const setupManager = {
-            onUseSetupURI: vi.fn(async () => true),
-            decodeQR: vi.fn(async () => true),
+            onUseSetupURI: vi.fn(async () => await Promise.resolve(true)),
+            decodeQR: vi.fn(async () => await Promise.resolve(true)),
         } as any;
 
         registerSetupProtocolHandler(host, log, setupManager);

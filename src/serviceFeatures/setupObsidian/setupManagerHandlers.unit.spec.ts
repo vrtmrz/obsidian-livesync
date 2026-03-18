@@ -20,7 +20,7 @@ describe("setupObsidian/setupManagerHandlers", () => {
 
     it("openSetupURI should delegate to SetupManager.onUseSetupURI", async () => {
         const setupManager = {
-            onUseSetupURI: vi.fn(async () => true),
+            onUseSetupURI: vi.fn(async () => await Promise.resolve(true)),
         } as any;
 
         await openSetupURI(setupManager);
@@ -37,7 +37,7 @@ describe("setupObsidian/setupManagerHandlers", () => {
             },
         } as any;
         const setupManager = {
-            onP2PManualSetup: vi.fn(async () => true),
+            onP2PManualSetup: vi.fn(async () => await Promise.resolve(true)),
         } as any;
 
         await openP2PSettings(host, setupManager);
@@ -65,8 +65,8 @@ describe("setupObsidian/setupManagerHandlers", () => {
             },
         } as any;
         const setupManager = {
-            onUseSetupURI: vi.fn(async () => true),
-            onP2PManualSetup: vi.fn(async () => true),
+            onUseSetupURI: vi.fn(async () => await Promise.resolve(true)),
+            onP2PManualSetup: vi.fn(async () => await Promise.resolve(true)),
         } as any;
 
         useSetupManagerHandlersFeature(host, setupManager);
