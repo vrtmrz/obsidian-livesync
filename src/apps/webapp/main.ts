@@ -13,11 +13,11 @@ import type { InjectableSettingService } from "@lib/services/implements/injectab
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
-import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
 import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
 import { SetupManager } from "@/modules/features/SetupManager";
-// import { ModuleObsidianSettingsAsMarkdown } from "@/modules/features/ModuleObsidianSettingAsMarkdown";
-// import { ModuleObsidianMenu } from "@/modules/essentialObsidian/ModuleObsidianMenu";
+import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
+import { useP2PReplicatorCommands } from "@/lib/src/replication/trystero/useP2PReplicatorCommands";
+import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
@@ -96,6 +96,16 @@ class LiveSyncWebApp {
             return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
         });
 
+        // App lifecycle handlers
+        this.serviceHub.appLifecycle.scheduleRestart.setHandler(async () => {
+            console.log("[AppLifecycle] Restart requested");
+            await this.shutdown();
+            await this.initialize();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        });
+
         // Create LiveSync core
         this.core = new LiveSyncBaseCore(
             this.serviceHub,
@@ -114,15 +124,18 @@ class LiveSyncWebApp {
                 // new ModuleDev(this, core),
                 // new ModuleReplicateTest(this, core),
                 // new ModuleIntegratedTest(this, core),
-                // new SetupManager(core),
-                new SetupManager(core), // this should be moved to core?
+                // new ModuleReplicatorP2P(core), // Register P2P replicator for CLI (useP2PReplicator is not used here)
+                new SetupManager(core),
             ],
             () => [], // No add-ons
             (core) => {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
-                useSetupQRCodeFeature(core);
+                const replicator = useP2PReplicatorFeature(core);
+                useP2PReplicatorCommands(core, replicator);
+                const setupManager = core.getModule(SetupManager);
+                useSetupManagerHandlersFeature(core, setupManager);
                 useSetupURIFeature(core);
             }
         );
