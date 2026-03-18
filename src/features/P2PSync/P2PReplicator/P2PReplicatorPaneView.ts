@@ -9,7 +9,7 @@ import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@lib/common/types.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { UseP2PReplicatorResult } from "@lib/replication/trystero/P2PReplicatorCore.ts";
+import type { P2PPaneParams } from "@/lib/src/replication/trystero/UseP2PReplicatorResult";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {
@@ -32,7 +32,7 @@ function removeFromList(item: string, list: string) {
 
 export class P2PReplicatorPaneView extends SvelteItemView {
     core: LiveSyncBaseCore;
-    private _p2pResult: UseP2PReplicatorResult;
+    private _p2pResult: P2PPaneParams;
     override icon = "waypoints";
     title: string = "";
     override navigation = false;
@@ -123,7 +123,7 @@ And you can also drop the local database to rebuild from the remote device.`,
         await this.core.services.setting.applyPartial(currentSetting, true);
     }
     m?: Menu;
-    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, p2pResult: UseP2PReplicatorResult) {
+    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, p2pResult: P2PPaneParams) {
         super(leaf);
         this.core = core;
         this._p2pResult = p2pResult;

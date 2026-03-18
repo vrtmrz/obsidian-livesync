@@ -14,9 +14,7 @@ import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHist
 import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
 import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "./features/P2PSync/P2PReplicator/P2PReplicatorPaneView.ts";
-import { useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore.ts";
-import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
 import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
@@ -27,20 +25,23 @@ import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
 import type { ServiceModules } from "./types.ts";
 import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
-import type { ObsidianServiceContext } from "./lib/src/services/implements/obsidian/ObsidianServiceContext.ts";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
-import { useOfflineScanner } from "./lib/src/serviceFeatures/offlineScanner.ts";
-import { useCheckRemoteSize } from "./lib/src/serviceFeatures/checkRemoteSize.ts";
+import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
+import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
 import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
 import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
 import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
+import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
+import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
+import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -136,10 +137,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         const serviceHub = new ObsidianServiceHub(this);
 
-        // Capture useP2PReplicator result so it can be passed to the P2PReplicator addon
-        // TODO: Dependency fix: bit hacky
-        let p2pReplicatorResult: ReturnType<typeof useP2PReplicator> | undefined;
-
         this.core = new LiveSyncBaseCore(
             serviceHub,
             (core, serviceHub) => {
@@ -184,10 +181,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
-                p2pReplicatorResult = useP2PReplicator(core, [
-                    VIEW_TYPE_P2P,
-                    (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
-                ]);
+                // p2pReplicatorResult = useP2PReplicator(core, [
+                //     VIEW_TYPE_P2P,
+                //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
+                // ]);
+                const replicator = useP2PReplicatorFeature(core);
+                useP2PReplicatorCommands(core, replicator);
+                useP2PReplicatorUI(core, core, replicator);
             }
         );
     }
