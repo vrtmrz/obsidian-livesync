@@ -10,23 +10,23 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Fixed
 
 - Remote storage size check now works correctly again (#818).
-- Some buttons on the setting dialogue now respond correctly again (#827).
+- Some buttons on the settings dialogue now respond correctly again (#827).
 
 ### Refactored
 
-- P2P replicator has been refactored to be a little roust and easier to understand.
+- P2P replicator has been refactored to be a little more robust and easier to understand.
 - Delete items which are no longer used that might cause potential problems
 
 ### CLI
 
 - Fixed the corrupted display of the help message.
-- Remove some unnecessary codes.
+- Remove some unnecessary code.
 
 ### WebApp
 
 - Fixed the issue where the detail level was not being applied in the log pane.
 - Pop-ups are now shown.
-- Add coverage for test.
+- Add coverage for the test.
 - Pop-ups are now shown in the web app as well.
 
 ## 0.25.53
