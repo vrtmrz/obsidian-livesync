@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>LiveSync WebApp – E2E Test Page</title>
+        <style>
+            body {
+                font-family: monospace;
+                padding: 1rem;
+            }
+            #status {
+                margin-top: 1rem;
+                padding: 0.5rem;
+                border: 1px solid #ccc;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>LiveSync WebApp E2E</h2>
+        <p>This page is used by Playwright tests only. <code>window.livesyncTest</code> is exposed by the script below.</p>
+        <!-- status div required by LiveSyncWebApp internal helpers -->
+        <div id="status">Loading…</div>
+        <script type="module" src="/test-entry.ts"></script>
+    </body>
+</html>
