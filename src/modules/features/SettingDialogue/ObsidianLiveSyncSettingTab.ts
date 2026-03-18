@@ -321,8 +321,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     closeSetting() {
-        // @ts-ignore
-        this.core.app.setting.close();
+        //@ts-ignore :
+        this.plugin.app.setting.close();
     }
 
     handleElement(element: HTMLElement, func: OnUpdateFunc) {
