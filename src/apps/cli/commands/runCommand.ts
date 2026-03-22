@@ -21,6 +21,15 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "sync") {
         console.log("[Command] sync");
         const result = await core.services.replication.replicate(true);
+        if (!result) {
+            const replicator = core.services.replicator.getActiveReplicator();
+            if (replicator?.remoteLockedAndDeviceNotAccepted) {
+                console.error(
+                    `[Error] The remote database is locked and this device is not yet accepted.\n` +
+                        `[Error] Please unlock the database from the Obsidian plugin and retry.`
+                );
+            }
+        }
         return !!result;
     }
 
