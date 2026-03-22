@@ -3,7 +3,7 @@
  * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
  */
 
-if (!("localStorage" in globalThis)) {
+if (!("localStorage" in globalThis) || typeof (globalThis as any).localStorage?.getItem !== "function") {
     const store = new Map<string, string>();
     (globalThis as any).localStorage = {
         getItem: (key: string) => (store.has(key) ? store.get(key)! : null),
