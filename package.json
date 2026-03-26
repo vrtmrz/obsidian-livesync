@@ -80,9 +80,9 @@
         "@types/transform-pouch": "^1.0.6",
         "@typescript-eslint/eslint-plugin": "8.56.1",
         "@typescript-eslint/parser": "8.56.1",
-        "@vitest/browser": "^4.0.16",
-        "@vitest/browser-playwright": "^4.0.16",
-        "@vitest/coverage-v8": "^4.0.16",
+        "@vitest/browser": "^4.1.1",
+        "@vitest/browser-playwright": "^4.1.1",
+        "@vitest/coverage-v8": "^4.1.1",
         "builtin-modules": "5.0.0",
         "dotenv": "^17.3.1",
         "dotenv-cli": "^11.0.0",
@@ -121,8 +121,8 @@
         "typescript": "5.9.3",
         "vite": "^7.3.1",
         "vite-plugin-istanbul": "^8.0.0",
-        "vitest": "^4.0.16",
-        "webdriverio": "^9.24.0",
+        "vitest": "^4.1.1",
+        "webdriverio": "^9.27.0",
         "yaml": "^2.8.2"
     },
     "dependencies": {
