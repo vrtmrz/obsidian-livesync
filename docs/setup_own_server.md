@@ -170,17 +170,17 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 
 ### 1. Generate the setup URI on a desktop device or server
 ```bash
-export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
-export database=obsidiannotes #Please change as you like
-export passphrase=dfsapkdjaskdjasdas #Please change as you like
-export username=johndoe
-export password=abc123
+export LIVESYNC_HOST=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
+export LIVESYNC_DB=obsidiannotes #Please change as you like
+export LIVESYNC_PASSPHRASE=dfsapkdjaskdjasdas #Please change as you like
+export LIVESYNC_USER=johndoe
+export LIVESYNC_PASS=abc123
 deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 ```
 
 > [!TIP]
-> What is the `passphrase`? Is it different from `uri_passphrase`?
-> Yes, the `passphrase` we have exported now is for an End-to-End Encryption passphrase.
+> What is the `LIVESYNC_PASSPHRASE`? Is it different from `uri_passphrase`?
+> Yes, the `LIVESYNC_PASSPHRASE` we have exported now is for an End-to-End Encryption passphrase.
 > And, `uri_passphrase` that used in the `generate_setupuri.ts` is a different one; for decrypting Set-up URI at using that.
 > Why: I (vorotamoroz) think that the passphrase of the Setup-URI should be different from the E2EE passphrase to prevent exposure caused by operational errors or the possibility of evil in our environment. On top of that, I believe that it is desirable for the Setup-URI to be random. Setup-URI is inevitably long, so it goes through the clipboard. I think that its passphrase should not go through the same path, so it should essentially be typed manually.
 > Hence, if we keep empty for uri_passphrase, generate_setupuri.ts generates an adjective-noun-randomnumber passphrase so that we can remember it without going through the clipboard.
