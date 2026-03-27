@@ -5,6 +5,23 @@ import path from "path";
 import dotenv from "dotenv";
 import { grantClipboardPermissions, writeHandoffFile, readHandoffFile } from "./test/lib/commands";
 
+// P2P test environment variables
+// Configure these in .env or .test.env, or inject via shell before running tests.
+// Shell-injected values take precedence over dotenv files.
+//
+// Required:
+//   P2P_TEST_ROOM_ID         - Shared room identifier for peers to discover each other
+//   P2P_TEST_PASSPHRASE      - Encryption passphrase shared between test peers
+//
+// Optional:
+//   P2P_TEST_HOST_PEER_NAME  - Name used to identify the host peer (default varies)
+//   P2P_TEST_RELAY           - WebRTC relay/TURN server URL (falls back to built-in signalling)
+//   P2P_TEST_APP_ID          - Application ID scoping the P2P session
+//   P2P_TEST_HANDOFF_FILE    - File path used to pass state between up/down test phases
+//
+// General test options (also read from env):
+//   ENABLE_DEBUGGER          - Set to "true" to attach a debugger and pause before tests
+//   ENABLE_UI                - Set to "true" to open a visible browser window during tests
 const defEnv = dotenv.config({ path: ".env" }).parsed;
 const testEnv = dotenv.config({ path: ".test.env" }).parsed;
 // Merge: dotenv files < process.env (so shell-injected vars like P2P_TEST_* take precedence)
