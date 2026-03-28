@@ -11,7 +11,7 @@ export class ModuleConflictChecker extends AbstractModule {
         if (this.settings.checkConflictOnlyOnOpen) {
             const af = this.services.vault.getActiveFilePath();
             if (af && af != path) {
-                this._log(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
+                this._log(`Conflict check for '${file.path}' postponed because it's not the active file (setting: checkConflictOnlyOnOpen).`, LOG_LEVEL_NOTICE);
                 return;
             }
         }
