@@ -1,58 +1,10 @@
-import { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
+import { LOG_LEVEL } from "@lib/common/types";
 
-export type CLICommand =
-    | "daemon"
-    | "sync"
-    | "p2p-peers"
-    | "p2p-sync"
-    | "p2p-host"
-    | "push"
-    | "pull"
-    | "pull-rev"
-    | "setup"
-    | "put"
-    | "cat"
-    | "cat-rev"
-    | "ls"
-    | "info"
-    | "rm"
-    | "resolve"
-    | "mirror"
-    | "init-settings";
+export const VALID_COMMANDS = ["sync", "help", "init", "clear-data"] as const;
+export type CLICommand = (typeof VALID_COMMANDS)[number];
 
 export interface CLIOptions {
-    databasePath?: string;
-    settingsPath?: string;
-    verbose?: boolean;
-    debug?: boolean;
-    force?: boolean;
-    command: CLICommand;
-    commandArgs: string[];
-}
-
-export interface CLICommandContext {
     vaultPath: string;
-    core: LiveSyncBaseCore<ServiceContext, any>;
-    settingsPath: string;
+    command: CLICommand;
+    logLevel: LOG_LEVEL;
 }
-
-export const VALID_COMMANDS = new Set([
-    "sync",
-    "p2p-peers",
-    "p2p-sync",
-    "p2p-host",
-    "push",
-    "pull",
-    "pull-rev",
-    "setup",
-    "put",
-    "cat",
-    "cat-rev",
-    "ls",
-    "info",
-    "rm",
-    "resolve",
-    "mirror",
-    "init-settings",
-] as const);
