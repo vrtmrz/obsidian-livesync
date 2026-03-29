@@ -15,7 +15,7 @@ import { grantClipboardPermissions, writeHandoffFile, readHandoffFile } from "./
 //
 // Optional:
 //   P2P_TEST_HOST_PEER_NAME  - Name used to identify the host peer (default varies)
-//   P2P_TEST_RELAY           - WebRTC relay/TURN server URL (falls back to built-in signalling)
+//   P2P_TEST_RELAY           - Nostr relay server URL used for peer signalling/discovery
 //   P2P_TEST_APP_ID          - Application ID scoping the P2P session
 //   P2P_TEST_HANDOFF_FILE    - File path used to pass state between up/down test phases
 //
