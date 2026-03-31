@@ -112,6 +112,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             this.fileCache.set(pathStr, file);
             return file;
         } catch {
+            // Evict so a deleted file is not returned by subsequent cache scans.
             this.fileCache.delete(pathStr);
             return null;
         }
