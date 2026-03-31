@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# ─── local init hook ────────────────────────────────────────────────────────
+# If test-init.local.sh exists alongside this file, source it before anything
+# else.  Use it to set up your local environment (e.g. activate nvm, set
+# DOCKER_IMAGE, ...).  The file is git-ignored so it is safe to put personal
+# or machine-specific configuration there.
+_TEST_HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+[[ -f "$_TEST_HELPERS_DIR/test-init.local.sh" ]] && source "$_TEST_HELPERS_DIR/test-init.local.sh"
+unset _TEST_HELPERS_DIR
+
 cli_test_init_cli_cmd() {
     if [[ "${VERBOSE_TEST_LOGGING:-0}" == "1" ]]; then
         CLI_CMD=(npm --silent run cli -- -v)
@@ -344,3 +354,9 @@ display_test_info(){
     echo "Git commit: $(git -C "$SCRIPT_DIR/.." rev-parse --short HEAD 2>/dev/null || echo "N/A")"
     echo "======================"
 }
+
+# Docker-mode hook — source overrides when LIVESYNC_TEST_DOCKER=1.
+if [[ "${LIVESYNC_TEST_DOCKER:-0}" == "1" ]]; then
+    # shellcheck source=/dev/null
+    source "$(dirname "${BASH_SOURCE[0]}")/test-helpers-docker.sh"
+fi

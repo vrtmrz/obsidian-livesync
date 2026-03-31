@@ -1,0 +1,24 @@
+{
+    "name": "livesync-cli-runtime",
+    "private": true,
+    "version": "0.0.0",
+    "description": "Runtime dependencies for Self-hosted LiveSync CLI Docker image",
+    "dependencies": {
+        "commander": "^14.0.3",
+        "werift": "^0.22.9",
+        "pouchdb-adapter-http": "^9.0.0",
+        "pouchdb-adapter-idb": "^9.0.0",
+        "pouchdb-adapter-indexeddb": "^9.0.0",
+        "pouchdb-adapter-leveldb": "^9.0.0",
+        "pouchdb-adapter-memory": "^9.0.0",
+        "pouchdb-core": "^9.0.0",
+        "pouchdb-errors": "^9.0.0",
+        "pouchdb-find": "^9.0.0",
+        "pouchdb-mapreduce": "^9.0.0",
+        "pouchdb-merge": "^9.0.0",
+        "pouchdb-replication": "^9.0.0",
+        "pouchdb-utils": "^9.0.0",
+        "pouchdb-wrappers": "*",
+        "transform-pouch": "^2.0.0"
+    }
+}

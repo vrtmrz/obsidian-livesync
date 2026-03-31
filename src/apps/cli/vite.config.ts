@@ -12,8 +12,7 @@ const defaultExternal = [
     "pouchdb-adapter-leveldb",
     "commander",
     "punycode",
-    "node-datachannel",
-    "node-datachannel/polyfill",
+    "werift",
 ];
 export default defineConfig({
     plugins: [svelte()],
@@ -52,7 +51,7 @@ export default defineConfig({
                 if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto" || id === "worker_threads")
                     return true;
                 if (id.startsWith("pouchdb-")) return true;
-                if (id.startsWith("node-datachannel")) return true;
+                if (id.startsWith("werift")) return true;
                 if (id.startsWith("node:")) return true;
                 return false;
             },

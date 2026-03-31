@@ -1,0 +1,31 @@
+# Git history
+.git/
+.gitignore
+
+# Dependencies — re-installed inside Docker
+node_modules/
+src/apps/cli/node_modules/
+
+# Pre-built CLI output — rebuilt inside Docker
+src/apps/cli/dist/
+
+# Obsidian plugin build outputs
+main.js
+main_org.js
+pouchdb-browser.js
+production/
+
+# Test coverage and reports
+coverage/
+
+# Local environment / secrets
+.env
+*.env
+.test.env
+
+# local config files
+*.local
+
+# OS artefacts
+.DS_Store
+Thumbs.db

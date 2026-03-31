@@ -45,6 +45,60 @@ CLI Main
     - Settings management (JSON file)
     - Graceful shutdown handling
 
+## Docker
+
+A Docker image is provided for headless / server deployments. Build from the repository root:
+
+```bash
+docker build -f src/apps/cli/Dockerfile -t livesync-cli .
+```
+
+Run:
+
+```bash
+# Sync with CouchDB
+docker run --rm -v /path/to/your/vault:/data livesync-cli sync
+
+# List files in the local database
+docker run --rm -v /path/to/your/vault:/data livesync-cli ls
+
+# Generate a default settings file
+docker run --rm -v /path/to/your/vault:/data livesync-cli init-settings
+```
+
+The vault directory is mounted at `/data` by default. Override with `-e LIVESYNC_DB_PATH=/other/path`.
+
+### P2P (WebRTC) and Docker networking
+
+The P2P replicator (`p2p-host`, `p2p-sync`, `p2p-peers`) uses WebRTC and generates
+three kinds of ICE candidates. The default Docker bridge network affects which
+candidates are usable:
+
+| Candidate type | Description | Bridge network |
+|---|---|---|
+| `host` | Container bridge IP (`172.17.x.x`) | Unreachable from LAN peers |
+| `srflx` | Host public IP via STUN reflection | Works over the internet |
+| `relay` | Traffic relayed via TURN server | Always reachable |
+
+**LAN P2P on Linux** — use `--network host` so that the real host IP is
+advertised as the `host` candidate:
+
+```bash
+docker run --rm --network host -v /path/to/your/vault:/data livesync-cli p2p-host
+```
+
+> `--network host` is not available on Docker Desktop for macOS or Windows.
+
+**LAN P2P on macOS / Windows Docker Desktop** — configure a TURN server in the
+settings file (`P2P_turnServers`, `P2P_turnUsername`, `P2P_turnCredential`).
+All P2P traffic will then be relayed through the TURN server, bypassing the
+bridge-network limitation.
+
+**Internet P2P** — the default bridge network is sufficient. The `srflx`
+candidate carries the host's public IP and peers can connect normally.
+
+**CouchDB sync only (no P2P)** — no special network configuration is required.
+
 ## Installation
 
 ```bash
