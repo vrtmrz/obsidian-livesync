@@ -22,7 +22,8 @@ import type { ServiceModules } from "@lib/interfaces/ServiceModule";
 export function initialiseServiceModulesCLI(
     basePath: string,
     core: LiveSyncBaseCore<ServiceContext, any>,
-    services: InjectableServiceHub<ServiceContext>
+    services: InjectableServiceHub<ServiceContext>,
+    watchEnabled: boolean = false,
 ): ServiceModules {
     const storageAccessManager = new StorageAccessManager();
 
@@ -42,6 +43,12 @@ export function initialiseServiceModulesCLI(
         vaultService: services.vault,
         storageAccessManager: storageAccessManager,
         APIService: services.API,
+    }, false);
+
+    // Close the file watcher during graceful shutdown so the process can exit cleanly.
+    services.appLifecycle.onUnload.addHandler(async () => {
+        await storageEventManager.close();
+        return true;
     });
 
     // Storage access using CLI file system adapter

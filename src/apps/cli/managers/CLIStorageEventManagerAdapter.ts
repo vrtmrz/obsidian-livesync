@@ -11,8 +11,10 @@ import type {
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { NodeFile, NodeFolder } from "../adapters/NodeTypes";
+import type { Stats } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 
 /**
  * CLI-specific type guard adapter
@@ -56,22 +58,11 @@ class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
 }
 
 /**
- * CLI-specific status adapter (console logging)
+ * CLI-specific status adapter (no-op — daemon uses journald for status)
  */
 class CLIStatusAdapter implements IStorageEventStatusAdapter {
-    private lastUpdate = 0;
-    private updateInterval = 5000; // Update every 5 seconds
-
-    updateStatus(status: { batched: number; processing: number; totalQueued: number }): void {
-        const now = Date.now();
-        if (now - this.lastUpdate > this.updateInterval) {
-            if (status.totalQueued > 0 || status.processing > 0) {
-                // console.log(
-                //     `[StorageEventManager] Batched: ${status.batched}, Processing: ${status.processing}, Total Queued: ${status.totalQueued}`
-                // );
-            }
-            this.lastUpdate = now;
-        }
+    updateStatus(_status: { batched: number; processing: number; totalQueued: number }): void {
+        // intentional no-op
     }
 }
 
@@ -100,15 +91,100 @@ class CLIConverterAdapter implements IStorageEventConverterAdapter<NodeFile> {
 }
 
 /**
- * CLI-specific watch adapter (optional file watching with chokidar)
+ * CLI-specific watch adapter using chokidar for real-time filesystem monitoring.
  */
 class CLIWatchAdapter implements IStorageEventWatchAdapter {
-    constructor(private basePath: string) {}
+    private _watcher: FSWatcher | undefined;
+
+    constructor(private basePath: string, private watchEnabled: boolean = false) {}
+
+    private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
+        return {
+            path: path.relative(this.basePath, filePath) as FilePath,
+            stat: {
+                ctime: stats?.ctimeMs ?? Date.now(),
+                mtime: stats?.mtimeMs ?? Date.now(),
+                size: stats?.size ?? 0,
+                type: "file",
+            },
+        };
+    }
+
+    private _toNodeFileStub(filePath: string): NodeFile {
+        return {
+            path: path.relative(this.basePath, filePath) as FilePath,
+            stat: {
+                ctime: Date.now(),
+                mtime: Date.now(),
+                size: 0,
+                type: "file",
+            },
+        };
+    }
+
+    private _toNodeFolder(dirPath: string): NodeFolder {
+        return {
+            path: path.relative(this.basePath, dirPath) as FilePath,
+            isFolder: true,
+        };
+    }
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
-        // File watching is not activated in the CLI.
-        // Because the CLI is designed for push/pull operations, not real-time sync.
-        // console.error("[CLIWatchAdapter] File watching is not enabled in CLI version");
+        if (!this.watchEnabled) return;
+        const watcher = chokidarWatch(this.basePath, {
+            ignored: [
+                /(^|[/\\])\./,
+            ],
+            ignoreInitial: true,
+            persistent: true,
+            awaitWriteFinish: {
+                stabilityThreshold: 500,
+                pollInterval: 100,
+            },
+        });
+
+        watcher.on("add", (filePath, stats) => {
+            const nodeFile = this._toNodeFile(filePath, stats);
+            handlers.onCreate(nodeFile);
+        });
+
+        watcher.on("change", (filePath, stats) => {
+            const nodeFile = this._toNodeFile(filePath, stats);
+            handlers.onChange(nodeFile);
+        });
+
+        watcher.on("unlink", (filePath) => {
+            const nodeFile = this._toNodeFileStub(filePath);
+            handlers.onDelete(nodeFile);
+        });
+
+        watcher.on("addDir", (dirPath) => {
+            const nodeFolder = this._toNodeFolder(dirPath);
+            handlers.onCreate(nodeFolder);
+        });
+
+        watcher.on("unlinkDir", (dirPath) => {
+            const nodeFolder = this._toNodeFolder(dirPath);
+            handlers.onDelete(nodeFolder);
+        });
+
+        watcher.on("error", (err) => {
+            console.error("[CLIWatchAdapter] Fatal watcher error — file watching stopped:", err);
+            console.error("[CLIWatchAdapter] Exiting for systemd restart.");
+            void watcher.close();
+            this._watcher = undefined;
+            // Use exit(1) rather than SIGTERM so systemd Restart=on-failure engages.
+            process.exit(1);
+        });
+
+        await new Promise<void>((resolve) => watcher.once("ready", resolve));
+        this._watcher = watcher;
+    }
+
+    close(): Promise<void> {
+        if (this._watcher) {
+            return this._watcher.close();
+        }
         return Promise.resolve();
     }
 }
@@ -123,11 +199,15 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
     readonly status: CLIStatusAdapter;
     readonly converter: CLIConverterAdapter;
 
-    constructor(basePath: string) {
+    constructor(basePath: string, watchEnabled: boolean = false) {
         this.typeGuard = new CLITypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath);
-        this.watch = new CLIWatchAdapter(basePath);
+        this.watch = new CLIWatchAdapter(basePath, watchEnabled);
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
+    }
+
+    close(): Promise<void> {
+        return this.watch.close();
     }
 }
