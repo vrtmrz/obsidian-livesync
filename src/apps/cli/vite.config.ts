@@ -11,6 +11,7 @@ const defaultExternal = [
     "crypto",
     "pouchdb-adapter-leveldb",
     "commander",
+    "chokidar",
     "punycode",
     "werift",
 ];

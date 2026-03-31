@@ -10,9 +10,10 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
     constructor(
         basePath: string,
         core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>,
-        dependencies: StorageEventManagerBaseDependencies
+        dependencies: StorageEventManagerBaseDependencies,
+        watchEnabled?: boolean
     ) {
-        const adapter = new CLIStorageEventManagerAdapter(basePath);
+        const adapter = new CLIStorageEventManagerAdapter(basePath, watchEnabled);
         super(adapter, dependencies);
         this.core = core;
     }
@@ -24,5 +25,12 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
     protected override async _watchVaultRawEvents(path: string) {
         // No-op in CLI version
         // Internal file handling is not needed
+    }
+
+    /**
+     * Close the file watcher. Call this during graceful shutdown.
+     */
+    close(): Promise<void> {
+        return this.adapter.close();
     }
 }
