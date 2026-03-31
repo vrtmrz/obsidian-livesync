@@ -15,6 +15,73 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     await core.services.control.activated;
     if (options.command === "daemon") {
+        const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
+
+        // 1. Run mirror scan to bring local filesystem in sync with CouchDB before going live.
+        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
+        log("Running initial mirror scan...");
+        const scanOk = await performFullScan(core as any, log, errorManager, false, true);
+        if (!scanOk) {
+            console.error("[Daemon] Initial mirror scan failed, cannot continue");
+            return false;
+        }
+        log("Mirror scan complete");
+
+        // 3. Re-enable sync.
+        const restoreSyncSettings = async () => {
+            await core.services.setting.applyPartial({
+                ...context.originalSyncSettings,
+                suspendFileWatching: false,
+            }, true);
+            await core.services.control.applySettings();
+            // Explicitly clear after applySettings() — lifecycle events may re-enable these.
+            await core.services.setting.applyPartial({ suspendFileWatching: false, suspendParseReplicationResult: false }, true);
+        };
+        if (options.interval) {
+            log(`Polling mode: syncing every ${options.interval}s`);
+            await restoreSyncSettings();
+            const baseIntervalMs = options.interval * 1000;
+            let currentIntervalMs = baseIntervalMs;
+            let consecutiveFailures = 0;
+            const maxIntervalMs = 5 * 60 * 1000; // 5 minutes cap
+
+            const poll = async () => {
+                try {
+                    await core.services.replication.replicate(true);
+                    if (consecutiveFailures > 0) {
+                        consecutiveFailures = Math.max(0, consecutiveFailures - 1);
+                        currentIntervalMs = Math.max(baseIntervalMs, currentIntervalMs / 2);
+                        if (consecutiveFailures === 0) {
+                            log(`Replication recovered`);
+                        }
+                    }
+                } catch (err) {
+                    consecutiveFailures++;
+                    currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, consecutiveFailures), maxIntervalMs);
+                    console.error(`[Daemon] Poll error (${consecutiveFailures} consecutive): ${err}`);
+                    if (consecutiveFailures >= 5) {
+                        console.error(`[Daemon] Warning: ${consecutiveFailures} consecutive failures, backing off to ${Math.round(currentIntervalMs / 1000)}s`);
+                    }
+                }
+                pollTimer = setTimeout(poll, currentIntervalMs);
+            };
+            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll, currentIntervalMs);
+            core.services.appLifecycle.onUnload.addHandler(async () => {
+                clearTimeout(pollTimer);
+                return true;
+            });
+        } else {
+            log("LiveSync mode: restoring sync settings and starting _changes feed");
+            await restoreSyncSettings();
+            log("LiveSync active");
+            const currentSettings = core.services.setting.currentSettings();
+            if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
+                console.error("[Daemon] Warning: liveSync and syncOnStart are both disabled in settings. " +
+                    "No sync will occur. Set liveSync=true in your settings file for continuous sync, " +
+                    "or use --interval for polling mode.");
+            }
+        }
+
         return true;
     }
 
