@@ -17,12 +17,21 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "daemon") {
         const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
 
-        // 1. Run mirror scan to bring local filesystem in sync with CouchDB before going live.
+        // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
+        log("Replicating from CouchDB...");
+        const replResult = await core.services.replication.replicate(true);
+        if (!replResult) {
+            console.error("[Daemon] Initial CouchDB replication failed, cannot continue");
+            return false;
+        }
+        log("CouchDB replication complete");
+
+        // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
-        log("Running initial mirror scan...");
+        log("Running mirror scan...");
         const scanOk = await performFullScan(core as any, log, errorManager, false, true);
         if (!scanOk) {
-            console.error("[Daemon] Initial mirror scan failed, cannot continue");
+            console.error("[Daemon] Mirror scan failed, cannot continue");
             return false;
         }
         log("Mirror scan complete");

@@ -14,6 +14,7 @@ const defaultExternal = [
     "chokidar",
     "punycode",
     "werift",
+    "micromatch",
 ];
 export default defineConfig({
     plugins: [svelte()],

@@ -5,6 +5,7 @@
     "description": "Runtime dependencies for Self-hosted LiveSync CLI Docker image",
     "dependencies": {
         "chokidar": "^4.0.0",
+        "micromatch": "^4.0.0",
         "commander": "^14.0.3",
         "werift": "^0.22.9",
         "pouchdb-adapter-http": "^9.0.0",

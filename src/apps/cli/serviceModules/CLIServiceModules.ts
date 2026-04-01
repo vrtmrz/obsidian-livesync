@@ -9,6 +9,7 @@ import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
 import { StorageEventManagerCLI } from "../managers/StorageEventManagerCLI";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { IgnoreRules } from "./IgnoreRules";
 
 /**
  * Initialize service modules for CLI version
@@ -23,6 +24,7 @@ export function initialiseServiceModulesCLI(
     basePath: string,
     core: LiveSyncBaseCore<ServiceContext, any>,
     services: InjectableServiceHub<ServiceContext>,
+    ignoreRules?: IgnoreRules,
     watchEnabled: boolean = false,
 ): ServiceModules {
     const storageAccessManager = new StorageAccessManager();
@@ -43,7 +45,7 @@ export function initialiseServiceModulesCLI(
         vaultService: services.vault,
         storageAccessManager: storageAccessManager,
         APIService: services.API,
-    }, false);
+    }, ignoreRules, watchEnabled);
 
     // Close the file watcher during graceful shutdown so the process can exit cleanly.
     services.appLifecycle.onUnload.addHandler(async () => {
