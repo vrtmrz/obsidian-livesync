@@ -15,6 +15,7 @@ import type { Stats } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
+import type { IgnoreRules } from "../serviceModules/IgnoreRules";
 
 /**
  * CLI-specific type guard adapter
@@ -96,7 +97,7 @@ class CLIConverterAdapter implements IStorageEventConverterAdapter<NodeFile> {
 class CLIWatchAdapter implements IStorageEventWatchAdapter {
     private _watcher: FSWatcher | undefined;
 
-    constructor(private basePath: string, private watchEnabled: boolean = false) {}
+    constructor(private basePath: string, private ignoreRules?: IgnoreRules, private watchEnabled: boolean = false) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {
@@ -105,18 +106,6 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
                 ctime: stats?.ctimeMs ?? Date.now(),
                 mtime: stats?.mtimeMs ?? Date.now(),
                 size: stats?.size ?? 0,
-                type: "file",
-            },
-        };
-    }
-
-    private _toNodeFileStub(filePath: string): NodeFile {
-        return {
-            path: path.relative(this.basePath, filePath) as FilePath,
-            stat: {
-                ctime: Date.now(),
-                mtime: Date.now(),
-                size: 0,
                 type: "file",
             },
         };
@@ -131,10 +120,19 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         if (!this.watchEnabled) return;
+        const baseIgnored: Array<RegExp | string | ((p: string) => boolean)> = [
+            /(^|[/\\])\./,
+            /(^|[/\\])[^/\\]*-livesync-v2([/\\]|$)/,
+        ];
+        // Bind rules to a local const before the closure — chokidar v4 requires a
+        // MatchFunction, not glob strings, for custom patterns.
+        const rules = this.ignoreRules;
+        const ignored = rules
+            ? [...baseIgnored, (p: string) => rules.shouldIgnore(path.relative(this.basePath, p))]
+            : baseIgnored;
+
         const watcher = chokidarWatch(this.basePath, {
-            ignored: [
-                /(^|[/\\])\./,
-            ],
+            ignored,
             ignoreInitial: true,
             persistent: true,
             awaitWriteFinish: {
@@ -154,7 +152,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         });
 
         watcher.on("unlink", (filePath) => {
-            const nodeFile = this._toNodeFileStub(filePath);
+            const nodeFile = this._toNodeFile(filePath, undefined);
             handlers.onDelete(nodeFile);
         });
 
@@ -199,10 +197,10 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
     readonly status: CLIStatusAdapter;
     readonly converter: CLIConverterAdapter;
 
-    constructor(basePath: string, watchEnabled: boolean = false) {
+    constructor(basePath: string, ignoreRules?: IgnoreRules, watchEnabled: boolean = false) {
         this.typeGuard = new CLITypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath);
-        this.watch = new CLIWatchAdapter(basePath, watchEnabled);
+        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled);
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
     }

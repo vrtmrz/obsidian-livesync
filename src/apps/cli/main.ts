@@ -26,6 +26,7 @@ import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { IgnoreRules } from "./serviceModules/IgnoreRules";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -221,6 +222,9 @@ async function createDefaultSettingsFile(options: CLIOptions) {
 
 export async function main() {
     const options = parseArgs();
+    if (options.interval && options.command !== "daemon") {
+        console.error(`Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+    }
     const avoidStdoutNoise =
         options.command === "cat" ||
         options.command === "cat-rev" ||
@@ -275,13 +279,13 @@ export async function main() {
     // For daemon and mirror mode, load ignore rules before the core is constructed so that
     // chokidar's ignored option is populated when beginWatch() fires during onLoad().
     const watchEnabled = options.command === "daemon";
-    const vaultPathForIgnoreRules =
+    const vaultPath =
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : databasePath;
     let ignoreRules: IgnoreRules | undefined;
     if (options.command === "daemon" || options.command === "mirror") {
-        ignoreRules = new IgnoreRules(vaultPathForIgnoreRules);
+        ignoreRules = new IgnoreRules(vaultPath);
         await ignoreRules.load();
     }
 
@@ -365,11 +369,7 @@ export async function main() {
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
-            const mirrorVaultPath =
-                options.command === "mirror" && options.commandArgs[0]
-                    ? path.resolve(options.commandArgs[0])
-                    : databasePath;
-            return initialiseServiceModulesCLI(mirrorVaultPath, core, serviceHub);
+            return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
         (core) => [
             // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
@@ -385,8 +385,25 @@ export async function main() {
                 if (parts.some((part) => part.startsWith("."))) {
                     return await Promise.resolve(false);
                 }
+                // PouchDB LevelDB database directory lives in the vault directory.
+                if (parts[0]?.endsWith("-livesync-v2")) {
+                    return await Promise.resolve(false);
+                }
                 return await Promise.resolve(true);
             }, -1 /* highest priority */);
+
+            // Apply user-defined ignore rules for daemon mode (lower priority, runs after dotfile check).
+            if (ignoreRules) {
+                const rules = ignoreRules;
+                core.services.vault.isTargetFile.addHandler(async (target) => {
+                    const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                    if (rules.shouldIgnore(targetPath)) {
+                        return false;
+                    }
+                    // undefined = pass through to next handler in chain
+                    return undefined;
+                }, 0);
+            }
         }
     );
 

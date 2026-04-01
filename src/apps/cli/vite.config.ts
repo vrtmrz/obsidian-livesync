@@ -30,6 +30,10 @@ if (typeof globalThis.FileReader === "undefined") {
                 if (this.onload) this.onload({ target: this });
             }).catch((err) => { if (this.onerror) this.onerror({ target: this, error: err }); });
         }
+        readAsArrayBuffer() { throw new Error("FileReader.readAsArrayBuffer is not implemented in this polyfill"); }
+        readAsBinaryString() { throw new Error("FileReader.readAsBinaryString is not implemented in this polyfill"); }
+        readAsText() { throw new Error("FileReader.readAsText is not implemented in this polyfill"); }
+        abort() { throw new Error("FileReader.abort is not implemented in this polyfill"); }
     };
 }
 `;

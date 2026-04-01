@@ -2,6 +2,7 @@ import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } fro
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { IgnoreRules } from "../serviceModules/IgnoreRules";
 // import type { IMinimumLiveSyncCommands } from "@lib/services/base/IService";
 
 export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEventManagerAdapter> {
@@ -11,9 +12,10 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
         basePath: string,
         core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>,
         dependencies: StorageEventManagerBaseDependencies,
+        ignoreRules?: IgnoreRules,
         watchEnabled?: boolean
     ) {
-        const adapter = new CLIStorageEventManagerAdapter(basePath, watchEnabled);
+        const adapter = new CLIStorageEventManagerAdapter(basePath, ignoreRules, watchEnabled);
         super(adapter, dependencies);
         this.core = core;
     }
