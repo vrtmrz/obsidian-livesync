@@ -3,6 +3,47 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+
+
+## ~~0.25.55~~ 0.25.56
+
+30th March, 2026
+
+### Fixed
+
+- No longer `Peer-to-Peer Sync is not enabled. We cannot open a new connection.` error occurs when we have not enabled P2P sync and are not expected to use it (#830).
+
+### CLI
+
+- Fixed incomplete localStorage support in the CLI (#831). Thank you so much @rewse !
+- Fixed the issue where the CLI could not be connected to the remote which had been locked once (#833), also thanks to @rewse !
+
+## 0.25.54
+
+18th March, 2026
+
+### Fixed
+
+- Remote storage size check now works correctly again (#818).
+- Some buttons on the settings dialogue now respond correctly again (#827).
+
+### Refactored
+
+- P2P replicator has been refactored to be a little more robust and easier to understand.
+- Delete items which are no longer used that might cause potential problems
+
+### CLI
+
+- Fixed the corrupted display of the help message.
+- Remove some unnecessary code.
+
+### WebApp
+
+- Fixed the issue where the detail level was not being applied in the log pane.
+- Pop-ups are now shown.
+- Add coverage for the test.
+- Pop-ups are now shown in the web app as well.
+
 ## 0.25.53
 
 17th March, 2026

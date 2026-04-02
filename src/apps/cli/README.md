@@ -45,6 +45,10 @@ CLI Main
     - Settings management (JSON file)
     - Graceful shutdown handling
 
+## Something I realised later that could lead to misunderstandings
+
+The term `vault` in this README refers to the directory containing your local database and settings file. Not the actual files you want to sync. I will fix this later, but please be mind this for now.
+
 ## Docker
 
 A Docker image is provided for headless / server deployments. Build from the repository root:

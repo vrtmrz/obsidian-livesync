@@ -3,25 +3,10 @@
  * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
  */
 
-if (!("localStorage" in globalThis) || typeof (globalThis as any).localStorage?.getItem !== "function") {
-    const store = new Map<string, string>();
-    (globalThis as any).localStorage = {
-        getItem: (key: string) => (store.has(key) ? store.get(key)! : null),
-        setItem: (key: string, value: string) => {
-            store.set(key, value);
-        },
-        removeItem: (key: string) => {
-            store.delete(key);
-        },
-        clear: () => {
-            store.clear();
-        },
-    };
-}
-
 import * as fs from "fs/promises";
 import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
+import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
 import { ModuleReplicatorP2P } from "../../modules/core/ModuleReplicatorP2P";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
@@ -43,6 +28,7 @@ import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 
 const SETTINGS_FILE = ".livesync/settings.json";
+ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
 function printHelp(): void {
@@ -252,6 +238,7 @@ export async function main() {
     const settingsPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : path.join(vaultPath, SETTINGS_FILE);
+    configureNodeLocalStorage(path.join(vaultPath, ".livesync", "runtime", "local-storage.json"));
 
     infoLog(`Self-hosted LiveSync CLI`);
     infoLog(`Vault: ${vaultPath}`);
