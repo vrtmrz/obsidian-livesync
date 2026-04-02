@@ -1,0 +1,101 @@
+# Build and push the CLI Docker image to GitHub Container Registry (GHCR).#
+# Image tag format: <manifest-version>-<unix-epoch>-cli
+# Example: 0.25.56-1743500000-cli
+#
+# The image is also tagged 'latest' for convenience.
+# Image name: ghcr.io/<owner>/livesync-cli
+name: Build and Push CLI Docker Image
+
+on:
+    push:
+        tags:
+            - "*.*.*-cli"
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: Build only (do not push image to GHCR)
+                required: false
+                type: boolean
+                default: true
+            force:
+                description: Continue to build/push even if CLI E2E fails (workflow_dispatch only)
+                required: false
+                type: boolean
+                default: false
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Derive image tag
+              id: meta
+              run: |
+                  VERSION=$(jq -r '.version' manifest.json)
+                  EPOCH=$(date +%s)
+                  TAG="${VERSION}-${EPOCH}-cli"
+                  IMAGE="ghcr.io/${{ github.repository_owner }}/livesync-cli"
+                  echo "tag=${TAG}"                        >> $GITHUB_OUTPUT
+                  echo "image=${IMAGE}"                    >> $GITHUB_OUTPUT
+                  echo "full=${IMAGE}:${TAG}"              >> $GITHUB_OUTPUT
+                  echo "version=${IMAGE}:${VERSION}-cli"   >> $GITHUB_OUTPUT
+                  echo "latest=${IMAGE}:latest"            >> $GITHUB_OUTPUT
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run CLI E2E (docker)
+              id: e2e
+              continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+              working-directory: src/apps/cli
+              env:
+                  CI: true
+              run: npm run test:e2e:docker:all
+
+            - name: Stop test containers (safety net)
+              if: always()
+              working-directory: src/apps/cli
+              run: |
+                  # Keep this as a safety net for future suites/steps that may leave containers running.
+                  bash ./util/couchdb-stop.sh >/dev/null 2>&1 || true
+                  bash ./util/minio-stop.sh >/dev/null 2>&1 || true
+                  bash ./util/p2p-stop.sh >/dev/null 2>&1 || true
+
+            - name: Build and push
+              if: ${{ steps.e2e.outcome == 'success' || (github.event_name == 'workflow_dispatch' && inputs.force) }}
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: src/apps/cli/Dockerfile
+                  push: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+                  tags: |
+                      ${{ steps.meta.outputs.full }}
+                      ${{ steps.meta.outputs.version }}
+                      ${{ steps.meta.outputs.latest }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
