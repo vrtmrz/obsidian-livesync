@@ -108,4 +108,4 @@ RUN chmod +x /usr/local/bin/livesync-cli
 # Mount your vault / local database directory here
 VOLUME ["/data"]
 
-ENTRYPOINT ["/usr/local/bin/livesync-cli"]
+ENTRYPOINT ["livesync-cli"]
