@@ -136,6 +136,8 @@ fi
 
 TARGET_A_ONLY="e2e/a-only-info.md"
 TARGET_SYNC="e2e/sync-info.md"
+TARGET_SYNC_TWICE_FIRST="e2e/sync-twice-first.md"
+TARGET_SYNC_TWICE_SECOND="e2e/sync-twice-second.md"
 TARGET_PUSH="e2e/pushed-from-a.md"
 TARGET_PUT="e2e/put-from-a.md"
 TARGET_PUSH_BINARY="e2e/pushed-from-a.bin"
@@ -153,6 +155,20 @@ sync_both
 INFO_B_SYNC="$(run_cli_b info "$TARGET_SYNC")"
 cli_test_assert_contains "$INFO_B_SYNC" "\"path\": \"$TARGET_SYNC\"" "B info should include path after sync"
 echo "[PASS] sync A->B and B info"
+
+echo "[CASE] B can sync again after first replication has completed"
+printf 'first-sync-round-%s\n' "$DB_SUFFIX" | run_cli_a put "$TARGET_SYNC_TWICE_FIRST" >/dev/null
+run_cli_a sync >/dev/null
+run_cli_b sync >/dev/null
+CAT_B_SYNC_TWICE_FIRST="$(run_cli_b cat "$TARGET_SYNC_TWICE_FIRST" | cli_test_sanitise_cat_stdout)"
+cli_test_assert_equal "first-sync-round-$DB_SUFFIX" "$CAT_B_SYNC_TWICE_FIRST" "B should receive first update after first sync"
+
+printf 'second-sync-round-%s\n' "$DB_SUFFIX" | run_cli_a put "$TARGET_SYNC_TWICE_SECOND" >/dev/null
+run_cli_a sync >/dev/null
+run_cli_b sync >/dev/null
+CAT_B_SYNC_TWICE_SECOND="$(run_cli_b cat "$TARGET_SYNC_TWICE_SECOND" | cli_test_sanitise_cat_stdout)"
+cli_test_assert_equal "second-sync-round-$DB_SUFFIX" "$CAT_B_SYNC_TWICE_SECOND" "B should receive second update after re-running sync"
+echo "[PASS] second sync after completion works"
 
 echo "[CASE] A pushes and puts, both sync, and B can pull and cat"
 PUSH_SRC="$WORK_DIR/push-source.txt"

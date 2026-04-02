@@ -9,11 +9,9 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ### CLI
 
-#### (may) Fixed, to be confirmed
+#### Fixed
 
 - Replication progress is now correctly saved and restored in the CLI.
-
-
 
 ## ~~0.25.55~~ 0.25.56
 
