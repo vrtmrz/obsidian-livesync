@@ -6,6 +6,8 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:docker": "docker build -f Dockerfile -t livesync-webpeer ../../..",
+        "run:docker": "docker run -p 8001:80 livesync-webpeer",
         "preview": "vite preview",
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
     },
