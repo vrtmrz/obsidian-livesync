@@ -13,6 +13,7 @@ import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTy
 import type { LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicatorEnv";
 import type { LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator";
 import { useTargetFilters } from "./lib/src/serviceFeatures/targetFilter";
+import { useRemoteConfigurationMigration } from "./lib/src/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "./lib/src/services/base/ServiceBase";
 import type { InjectableServiceHub } from "./lib/src/services/InjectableServices";
 import { AbstractModule } from "./modules/AbstractModule";
@@ -272,6 +273,8 @@ export class LiveSyncBaseCore<
         useTargetFilters(this);
         // enable target filter feature.
         usePrepareDatabaseForUse(this);
+        // Migration to multiple remote configurations
+        useRemoteConfigurationMigration(this);
     }
 }
 

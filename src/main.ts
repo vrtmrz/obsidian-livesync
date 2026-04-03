@@ -33,6 +33,7 @@ import { SetupManager } from "./modules/features/SetupManager.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
+import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
@@ -174,6 +175,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
                 const setupManager = core.getModule(SetupManager);
+
+                useRemoteConfiguration(core);
+
                 useSetupProtocolFeature(core, setupManager);
                 useSetupQRCodeFeature(core);
                 useSetupURIFeature(core);

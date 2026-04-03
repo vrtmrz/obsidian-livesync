@@ -14,6 +14,7 @@ import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
 import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
 import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
 import { useP2PReplicatorCommands } from "@/lib/src/replication/trystero/useP2PReplicatorCommands";
@@ -132,6 +133,7 @@ class LiveSyncWebApp {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                useRemoteConfiguration(core);
                 const replicator = useP2PReplicatorFeature(core);
                 useP2PReplicatorCommands(core, replicator);
                 const setupManager = core.getModule(SetupManager);

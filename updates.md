@@ -3,6 +3,23 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased 2
+
+3rd April, 2026
+
+As this commit is a bit of a fragile matter, I shall add a note here.
+
+You know that untagged updates shall not be tested well. please be careful to use your own build. In most cases, I check that the warnings have disappeared, that the code compiles successfully without any warnings, and that it runs on the desktop.
+
+### Fixed
+
+- No unexpected error (about a replicator) during early stage of initialisation.
+
+### New features
+
+- Now we can configure multiple Remote Databases of the same type, e.g, multiple CouchDBs or S3 remotes.
+- We can switch between multiple Remote Databases in the settings dialogue.
+
 ## Unreleased
 
 2nd April, 2026
