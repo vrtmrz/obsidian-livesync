@@ -21,6 +21,9 @@ export function paneGeneral(
         });
         this.addOnSaved("displayLanguage", () => this.display());
         new Setting(paneEl).autoWireToggle("showStatusOnEditor");
+        this.addOnSaved("showStatusOnEditor", () => {
+            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        });
         new Setting(paneEl).autoWireToggle("showOnlyIconsOnEditor", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)),
         });

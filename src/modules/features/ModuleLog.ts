@@ -277,27 +277,36 @@ export class ModuleLog extends AbstractObsidianModule {
     }
 
     async updateMessageArea() {
-        if (this.messageArea) {
-            const messageLines = [];
-            const fileStatus = this.activeFileStatus.value;
-            if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
-            const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
-            const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
-            const networkMessages = stringMessages.filter((m) => m.startsWith(MARK_LOG_NETWORK_ERROR));
-            const otherMessages = stringMessages.filter((m) => !m.startsWith(MARK_LOG_NETWORK_ERROR));
+        if (!this.messageArea) return;
 
-            messageLines.push(...otherMessages);
-
-            if (
-                this.settings.networkWarningStyle !== NetworkWarningStyles.ICON &&
-                this.settings.networkWarningStyle !== NetworkWarningStyles.HIDDEN
-            ) {
-                messageLines.push(...networkMessages);
-            } else if (this.settings.networkWarningStyle === NetworkWarningStyles.ICON) {
-                if (networkMessages.length > 0) messageLines.push("🔗❌");
-            }
-            this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
+        const showStatusOnEditor = this.settings?.showStatusOnEditor ?? false;
+        if (this.statusDiv) {
+            this.statusDiv.style.display = showStatusOnEditor ? "" : "none";
         }
+        if (!showStatusOnEditor) {
+            this.messageArea.innerText = "";
+            return;
+        }
+
+        const messageLines = [];
+        const fileStatus = this.activeFileStatus.value;
+        if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
+        const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
+        const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
+        const networkMessages = stringMessages.filter((m) => m.startsWith(MARK_LOG_NETWORK_ERROR));
+        const otherMessages = stringMessages.filter((m) => !m.startsWith(MARK_LOG_NETWORK_ERROR));
+
+        messageLines.push(...otherMessages);
+
+        if (
+            this.settings.networkWarningStyle !== NetworkWarningStyles.ICON &&
+            this.settings.networkWarningStyle !== NetworkWarningStyles.HIDDEN
+        ) {
+            messageLines.push(...networkMessages);
+        } else if (this.settings.networkWarningStyle === NetworkWarningStyles.ICON) {
+            if (networkMessages.length > 0) messageLines.push("🔗❌");
+        }
+        this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
     }
 
     onActiveLeafChange() {
@@ -326,6 +335,9 @@ export class ModuleLog extends AbstractObsidianModule {
             }
 
             this.statusBar?.setText(newMsg.split("\n")[0]);
+            if (this.statusDiv) {
+                this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+            }
             if (this.settings?.showStatusOnEditor && this.statusDiv) {
                 if (this.settings.showLongerLogInsideEditor) {
                     const now = new Date().getTime();
@@ -402,6 +414,7 @@ export class ModuleLog extends AbstractObsidianModule {
         this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
         this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
         this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
+        this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
