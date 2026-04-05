@@ -14,6 +14,7 @@ function createCoreMock() {
                 applySettings: vi.fn(async () => {}),
             },
             setting: {
+                applyExternalSettings: vi.fn(async () => {}),
                 applyPartial: vi.fn(async () => {}),
             },
         },
@@ -176,9 +177,9 @@ describe("runCommand abnormal cases", () => {
         });
 
         expect(result).toBe(true);
-        expect(core.services.setting.applyPartial).toHaveBeenCalledTimes(1);
+        expect(core.services.setting.applyExternalSettings).toHaveBeenCalledTimes(1);
         expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
-        const [appliedSettings, saveImmediately] = core.services.setting.applyPartial.mock.calls[0];
+        const [appliedSettings, saveImmediately] = core.services.setting.applyExternalSettings.mock.calls[0];
         expect(saveImmediately).toBe(true);
         expect(appliedSettings.couchDB_URI).toBe("http://127.0.0.1:5984");
         expect(appliedSettings.couchDB_DBNAME).toBe("livesync-test-db");
@@ -198,7 +199,7 @@ describe("runCommand abnormal cases", () => {
             })
         ).rejects.toThrow();
 
-        expect(core.services.setting.applyPartial).not.toHaveBeenCalled();
+        expect(core.services.setting.applyExternalSettings).not.toHaveBeenCalled();
         expect(core.services.control.applySettings).not.toHaveBeenCalled();
     });
 });

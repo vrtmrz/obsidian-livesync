@@ -176,7 +176,7 @@ export async function adjustSettingToRemote(
                 ...config,
                 ...Object.fromEntries(differentItems),
             } satisfies ObsidianLiveSyncSettings;
-            await host.services.setting.applyPartial(config, true);
+            await host.services.setting.applyExternalSettings(config, true);
             log("Remote configuration applied.", LOG_LEVEL_NOTICE);
             canProceed = true;
             const updatedConfig = host.services.setting.currentSettings();

@@ -3,8 +3,10 @@ import {
     REMOTE_MINIO,
     REMOTE_P2P,
     DEFAULT_SETTINGS,
+    LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
 } from "../../../lib/src/common/types.ts";
+import { Menu } from "@/deps.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -24,6 +26,7 @@ import { SetupManager, UserMode } from "../SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
 import { activateRemoteConfiguration } from "../../../lib/src/serviceFeatures/remoteConfig.ts";
 import { ConnectionStringParser } from "../../../lib/src/common/ConnectionString.ts";
+import type { RemoteConfigurationResult } from "../../../lib/src/common/ConnectionString.ts";
 import type { RemoteConfiguration } from "../../../lib/src/common/models/setting.type.ts";
 import SetupRemote from "../SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "../SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
@@ -65,6 +68,29 @@ function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): strin
         return ConnectionStringParser.serialize({ type: "p2p", settings });
     }
     return ConnectionStringParser.serialize({ type: "couchdb", settings });
+}
+
+function setEmojiButton(button: any, emoji: string, tooltip: string) {
+    button.setButtonText(emoji);
+    button.setTooltip(tooltip, { delay: 10, placement: "top" });
+    // button.buttonEl.addClass("clickable-icon");
+    button.buttonEl.addClass("mod-muted");
+    return button;
+}
+
+function suggestRemoteConfigurationName(parsed: RemoteConfigurationResult): string {
+    if (parsed.type === "couchdb") {
+        try {
+            const url = new URL(parsed.settings.couchDB_URI);
+            return `CouchDB ${url.host}`;
+        } catch {
+            return "Imported CouchDB";
+        }
+    }
+    if (parsed.type === "s3") {
+        return `S3 ${parsed.settings.bucket || parsed.settings.endpoint}`;
+    }
+    return `P2P ${parsed.settings.P2P_roomID || "Remote"}`;
 }
 
 export function paneRemoteConfig(
@@ -237,9 +263,58 @@ export function paneRemoteConfig(
                 await persistRemoteConfigurations(this.editingSettings.activeConfigurationId === id);
                 refreshList();
             };
+            const importRemoteConfiguration = async () => {
+                const importedURI = await this.services.UI.confirm.askString(
+                    "Import connection",
+                    "Paste a connection string",
+                    ""
+                );
+                if (importedURI === false) {
+                    return;
+                }
+
+                const trimmedURI = importedURI.trim();
+                if (trimmedURI === "") {
+                    return;
+                }
+
+                let parsed: RemoteConfigurationResult;
+                try {
+                    parsed = ConnectionStringParser.parse(trimmedURI);
+                } catch (ex) {
+                    this.services.API.addLog(`Failed to import remote configuration: ${ex}`, LOG_LEVEL_NOTICE);
+                    return;
+                }
+
+                const defaultName = suggestRemoteConfigurationName(parsed);
+                const name = await this.services.UI.confirm.askString("Remote name", "Display name", defaultName);
+                if (name === false) {
+                    return;
+                }
+
+                const id = createRemoteConfigurationId();
+                const configs = cloneRemoteConfigurations(this.editingSettings.remoteConfigurations);
+                configs[id] = {
+                    id,
+                    name: name.trim() || defaultName,
+                    uri: ConnectionStringParser.serialize(parsed),
+                    isEncrypted: false,
+                };
+                this.editingSettings.remoteConfigurations = configs;
+                if (!this.editingSettings.activeConfigurationId) {
+                    this.editingSettings.activeConfigurationId = id;
+                }
+                await persistRemoteConfigurations(this.editingSettings.activeConfigurationId === id);
+                refreshList();
+            };
             actions.addButton((button) =>
-                button.setButtonText("Add New Connection").onClick(async () => {
+                setEmojiButton(button, "➕", "Add new connection").onClick(async () => {
                     await addRemoteConfiguration();
+                })
+            );
+            actions.addButton((button) =>
+                setEmojiButton(button, "📥", "Import connection").onClick(async () => {
+                    await importRemoteConfiguration();
                 })
             );
             const refreshList = () => {
@@ -256,7 +331,7 @@ export function paneRemoteConfig(
                     }
 
                     row.addButton((btn) =>
-                        btn.setButtonText("Configure").onClick(async () => {
+                        setEmojiButton(btn, "🔧", "Configure").onClick(async () => {
                             const parsed = ConnectionStringParser.parse(config.uri);
                             const workSettings = createBaseRemoteSettings();
                             if (parsed.type === "couchdb") {
@@ -285,88 +360,106 @@ export function paneRemoteConfig(
                         })
                     );
                     row.addButton((btn) =>
-                        btn.setButtonText("Rename").onClick(async () => {
-                            const nextName = await this.services.UI.confirm.askString(
-                                "Remote name",
-                                "Display name",
-                                config.name
-                            );
-                            if (nextName === false) {
-                                return;
-                            }
-                            const nextConfigs = cloneRemoteConfigurations(this.editingSettings.remoteConfigurations);
-                            nextConfigs[config.id] = {
-                                ...config,
-                                name: nextName.trim() || config.name,
-                            };
-                            this.editingSettings.remoteConfigurations = nextConfigs;
-                            await persistRemoteConfigurations();
-                            refreshList();
-                        })
-                    );
-                    row.addButton((btn) =>
-                        btn.setButtonText("Duplicate").onClick(async () => {
-                            const nextName = await this.services.UI.confirm.askString(
-                                "Duplicate remote",
-                                "Display name",
-                                `${config.name} (Copy)`
-                            );
-                            if (nextName === false) {
-                                return;
-                            }
-
-                            const nextId = createRemoteConfigurationId();
-                            const nextConfigs = cloneRemoteConfigurations(this.editingSettings.remoteConfigurations);
-                            nextConfigs[nextId] = {
-                                ...config,
-                                id: nextId,
-                                name: nextName.trim() || `${config.name} (Copy)`,
-                            };
-                            this.editingSettings.remoteConfigurations = nextConfigs;
-                            await persistRemoteConfigurations();
-                            refreshList();
-                        })
-                    );
-                    row.addButton((btn) =>
                         btn
-                            .setButtonText("Delete")
-                            .setWarning()
-                            .onClick(async () => {
-                                const confirmed = await this.services.UI.confirm.askYesNoDialog(
-                                    `Delete remote configuration '${config.name}'?`,
-                                    { title: "Delete Remote Configuration", defaultOption: "No" }
-                                );
-                                if (confirmed !== "yes") {
-                                    return;
-                                }
-
-                                const nextConfigs = cloneRemoteConfigurations(
-                                    this.editingSettings.remoteConfigurations
-                                );
-                                delete nextConfigs[config.id];
-                                this.editingSettings.remoteConfigurations = nextConfigs;
-
-                                let syncActiveRemote = false;
-                                if (this.editingSettings.activeConfigurationId === config.id) {
-                                    const nextActiveId = Object.keys(nextConfigs)[0] || "";
-                                    this.editingSettings.activeConfigurationId = nextActiveId;
-                                    syncActiveRemote = nextActiveId !== "";
-                                }
-
-                                await persistRemoteConfigurations(syncActiveRemote);
-                                refreshList();
-                            })
-                    );
-
-                    row.addButton((btn) =>
-                        btn
-                            .setButtonText("Activate")
+                            .setButtonText("✅")
+                            .setTooltip("Activate", { delay: 10, placement: "top" })
                             .setDisabled(config.id === this.editingSettings.activeConfigurationId)
                             .onClick(async () => {
                                 this.editingSettings.activeConfigurationId = config.id;
                                 await persistRemoteConfigurations(true);
                                 refreshList();
                             })
+                    );
+
+                    row.addButton((btn) =>
+                        setEmojiButton(btn, "…", "More actions").onClick(() => {
+                            const menu = new Menu()
+                                .addItem((item) => {
+                                    item.setTitle("🪪 Rename").onClick(async () => {
+                                        const nextName = await this.services.UI.confirm.askString(
+                                            "Remote name",
+                                            "Display name",
+                                            config.name
+                                        );
+                                        if (nextName === false) {
+                                            return;
+                                        }
+                                        const nextConfigs = cloneRemoteConfigurations(
+                                            this.editingSettings.remoteConfigurations
+                                        );
+                                        nextConfigs[config.id] = {
+                                            ...config,
+                                            name: nextName.trim() || config.name,
+                                        };
+                                        this.editingSettings.remoteConfigurations = nextConfigs;
+                                        await persistRemoteConfigurations();
+                                        refreshList();
+                                    });
+                                })
+                                .addItem((item) => {
+                                    item.setTitle("📤 Export").onClick(async () => {
+                                        await this.services.UI.promptCopyToClipboard(
+                                            `Remote configuration: ${config.name}`,
+                                            config.uri
+                                        );
+                                    });
+                                })
+                                .addItem((item) => {
+                                    item.setTitle("🧬 Duplicate").onClick(async () => {
+                                        const nextName = await this.services.UI.confirm.askString(
+                                            "Duplicate remote",
+                                            "Display name",
+                                            `${config.name} (Copy)`
+                                        );
+                                        if (nextName === false) {
+                                            return;
+                                        }
+
+                                        const nextId = createRemoteConfigurationId();
+                                        const nextConfigs = cloneRemoteConfigurations(
+                                            this.editingSettings.remoteConfigurations
+                                        );
+                                        nextConfigs[nextId] = {
+                                            ...config,
+                                            id: nextId,
+                                            name: nextName.trim() || `${config.name} (Copy)`,
+                                        };
+                                        this.editingSettings.remoteConfigurations = nextConfigs;
+                                        await persistRemoteConfigurations();
+                                        refreshList();
+                                    });
+                                })
+                                .addSeparator()
+                                .addItem((item) => {
+                                    item.setTitle("🗑 Delete").onClick(async () => {
+                                        const confirmed = await this.services.UI.confirm.askYesNoDialog(
+                                            `Delete remote configuration '${config.name}'?`,
+                                            { title: "Delete Remote Configuration", defaultOption: "No" }
+                                        );
+                                        if (confirmed !== "yes") {
+                                            return;
+                                        }
+
+                                        const nextConfigs = cloneRemoteConfigurations(
+                                            this.editingSettings.remoteConfigurations
+                                        );
+                                        delete nextConfigs[config.id];
+                                        this.editingSettings.remoteConfigurations = nextConfigs;
+
+                                        let syncActiveRemote = false;
+                                        if (this.editingSettings.activeConfigurationId === config.id) {
+                                            const nextActiveId = Object.keys(nextConfigs)[0] || "";
+                                            this.editingSettings.activeConfigurationId = nextActiveId;
+                                            syncActiveRemote = nextActiveId !== "";
+                                        }
+
+                                        await persistRemoteConfigurations(syncActiveRemote);
+                                        refreshList();
+                                    });
+                                });
+                            const rect = btn.buttonEl.getBoundingClientRect();
+                            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+                        })
                     );
                 }
             };

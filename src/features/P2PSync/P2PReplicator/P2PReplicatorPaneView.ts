@@ -87,7 +87,7 @@ And you can also drop the local database to rebuild from the remote device.`,
 
                 // this.plugin.settings = remoteConfig;
                 // await this.plugin.saveSettings();
-                await this.core.services.setting.applyPartial(remoteConfig);
+                await this.core.services.setting.applyExternalSettings(remoteConfig);
                 if (yn === DROP) {
                     await this.core.rebuilder.scheduleFetch();
                 } else {

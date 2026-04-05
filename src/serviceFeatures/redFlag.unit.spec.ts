@@ -49,6 +49,10 @@ const createSettingServiceMock = () => {
     return {
         settings,
         currentSettings: vi.fn(() => settings),
+        applyExternalSettings: vi.fn((partial: any, _feedback?: boolean) => {
+            Object.assign(settings, partial);
+            return Promise.resolve();
+        }),
         applyPartial: vi.fn((partial: any, _feedback?: boolean) => {
             Object.assign(settings, partial);
             return Promise.resolve();
@@ -552,7 +556,7 @@ describe("Red Flag Feature", () => {
 
                 await adjustSettingToRemote(host as any, createLoggerMock(), config);
                 expect(host.mocks.ui.confirm.askSelectStringDialogue).toHaveBeenCalled();
-                expect(host.mocks.setting.applyPartial).toHaveBeenCalled();
+                expect(host.mocks.setting.applyExternalSettings).toHaveBeenCalled();
             }
         );
         const mismatchAcceptedKeys = Object.keys(TweakValuesRecommendedTemplate).filter(
@@ -579,7 +583,7 @@ describe("Red Flag Feature", () => {
 
                 await adjustSettingToRemote(host as any, createLoggerMock(), config);
 
-                expect(host.mocks.setting.applyPartial).toHaveBeenCalled();
+                expect(host.mocks.setting.applyExternalSettings).toHaveBeenCalled();
                 expect(host.mocks.ui.confirm.askSelectStringDialogue).not.toHaveBeenCalled();
             }
         );

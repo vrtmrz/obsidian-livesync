@@ -275,6 +275,10 @@ export class SetupManager extends AbstractModule {
         activate: boolean = true,
         extra: () => void = () => {}
     ): Promise<boolean> {
+        newConf = await this.services.setting.adjustSettings({
+            ...this.settings,
+            ...newConf,
+        });
         let userMode = _userMode;
         if (userMode === UserMode.Unknown) {
             if (isObjectDifferent(this.settings, newConf, true) === false) {
@@ -368,13 +372,8 @@ export class SetupManager extends AbstractModule {
      * @returns Promise that resolves to true if settings applied successfully, false otherwise
      */
     async applySetting(newConf: ObsidianLiveSyncSettings, userMode: UserMode) {
-        const newSetting = {
-            ...this.core.settings,
-            ...newConf,
-        };
-        this.core.settings = newSetting;
         this.services.setting.clearUsedPassphrase();
-        await this.services.setting.saveSettingData();
+        await this.services.setting.applyExternalSettings(newConf, true);
         return true;
     }
 }

@@ -162,8 +162,8 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
                             result == APPLY_AND_REBUILD ||
                             result == APPLY_AND_FETCH
                         ) {
-                            this.core.settings = settingToApply;
-                            await this.services.setting.saveSettingData();
+                            await this.services.setting.applyExternalSettings(settingToApply, true);
+                            this.services.setting.clearUsedPassphrase();
                             if (result == APPLY_ONLY) {
                                 this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
                                 return;

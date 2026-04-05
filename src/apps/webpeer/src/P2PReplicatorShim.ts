@@ -276,7 +276,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
                         }
                     }
                 }
-                await this.services.setting.applyPartial(remoteConfig, true);
+                await this.services.setting.applyExternalSettings(remoteConfig, true);
                 if (yn !== DROP) {
                     await this.plugin.core.services.appLifecycle.scheduleRestart();
                 }

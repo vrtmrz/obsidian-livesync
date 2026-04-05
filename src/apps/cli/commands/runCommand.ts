@@ -166,7 +166,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         } as ObsidianLiveSyncSettings;
 
         console.log(`[Command] setup -> ${settingsPath}`);
-        await core.services.setting.applyPartial(nextSettings, true);
+        await core.services.setting.applyExternalSettings(nextSettings, true);
         await core.services.control.applySettings();
         return true;
     }
