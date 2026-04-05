@@ -332,7 +332,16 @@ export function paneRemoteConfig(
 
                     row.addButton((btn) =>
                         setEmojiButton(btn, "🔧", "Configure").onClick(async () => {
-                            const parsed = ConnectionStringParser.parse(config.uri);
+                            let parsed: RemoteConfigurationResult;
+                            try {
+                                parsed = ConnectionStringParser.parse(config.uri);
+                            } catch (ex) {
+                                this.services.API.addLog(
+                                    `Failed to parse remote configuration '${config.id}' for editing: ${ex}`,
+                                    LOG_LEVEL_NOTICE
+                                );
+                                return;
+                            }
                             const workSettings = createBaseRemoteSettings();
                             if (parsed.type === "couchdb") {
                                 workSettings.remoteType = REMOTE_COUCHDB;
@@ -427,6 +436,38 @@ export function paneRemoteConfig(
                                         this.editingSettings.remoteConfigurations = nextConfigs;
                                         await persistRemoteConfigurations();
                                         refreshList();
+                                    });
+                                })
+                                .addSeparator()
+                                .addItem((item) => {
+                                    item.setTitle("📡 Fetch remote settings").onClick(async () => {
+                                        let parsed: RemoteConfigurationResult;
+                                        try {
+                                            parsed = ConnectionStringParser.parse(config.uri);
+                                        } catch (ex) {
+                                            this.services.API.addLog(
+                                                `Failed to parse remote configuration '${config.id}': ${ex}`,
+                                                LOG_LEVEL_NOTICE
+                                            );
+                                            return;
+                                        }
+                                        const workSettings = createBaseRemoteSettings();
+                                        if (parsed.type === "couchdb") {
+                                            workSettings.remoteType = REMOTE_COUCHDB;
+                                        } else if (parsed.type === "s3") {
+                                            workSettings.remoteType = REMOTE_MINIO;
+                                        } else {
+                                            workSettings.remoteType = REMOTE_P2P;
+                                        }
+                                        Object.assign(workSettings, parsed.settings);
+                                        const newTweaks =
+                                            await this.services.tweakValue.checkAndAskUseRemoteConfiguration(
+                                                workSettings
+                                            );
+                                        if (newTweaks.result !== false) {
+                                            this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
+                                            this.requestUpdate();
+                                        }
                                     });
                                 })
                                 .addSeparator()

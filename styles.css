@@ -73,6 +73,12 @@
     overflow-y: scroll;
 }
 
+.sls-remote-list .setting-item-description {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .sls-plugins-tbl {
     border: 1px solid var(--background-modifier-border);
     width: 100%;
