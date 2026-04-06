@@ -254,7 +254,7 @@ export function paneRemoteConfig(
                     id,
                     name: name.trim() || "New Remote",
                     uri: serializeRemoteConfiguration(nextSettings),
-                    isEncrypted: nextSettings.encrypt,
+                    isEncrypted: false,
                 };
                 this.editingSettings.remoteConfigurations = configs;
                 if (!this.editingSettings.activeConfigurationId) {
@@ -361,7 +361,7 @@ export function paneRemoteConfig(
                             nextConfigs[config.id] = {
                                 ...config,
                                 uri: serializeRemoteConfiguration(nextSettings),
-                                isEncrypted: nextSettings.encrypt,
+                                isEncrypted: false,
                             };
                             this.editingSettings.remoteConfigurations = nextConfigs;
                             await persistRemoteConfigurations(config.id === this.editingSettings.activeConfigurationId);
