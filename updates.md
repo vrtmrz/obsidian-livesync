@@ -3,6 +3,17 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.56+patched4
+
+6th April, 2026
+
+### Fixed
+
+- Remote configuration URIs are now correctly encrypted when saved after editing in the settings dialogue.
+- Fixed an issue where devices could no longer upload after another device performed 'Fresh Start Wipe' and 'Overwrite remote' in Object Storage mode (#848).
+  - Each device's local deduplication caches (`knownIDs`, `sentIDs`, `receivedFiles`, `sentFiles`) now track the remote journal epoch (derived from the encryption parameters stored on the remote).
+  - When the epoch changes, the plugin verifies whether the device's last uploaded file still exists on the remote. If the file is gone, it confirms a remote wipe and automatically clears the stale caches. If the file is still present (e.g. a protocol upgrade without a wipe), the caches are preserved and only the epoch is updated. This means normal upgrades never cause unnecessary re-processing.
+
 ## 0.25.56+patched3
 
 5th April, 2026
