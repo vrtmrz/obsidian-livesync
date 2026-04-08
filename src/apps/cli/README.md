@@ -201,9 +201,11 @@ Options:
   --settings, -s <path>   Path to settings file (default: .livesync/settings.json in local database directory)
   --force, -f             Overwrite existing file on init-settings
   --verbose, -v           Enable verbose logging
+  --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --help, -h              Show this help message
 
 Commands:
+  daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
   init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
   sync                    Run one replication cycle and exit
   p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
@@ -309,6 +311,85 @@ In other words, it performs the following actions:
 6. **Initialisation flag** — On the very first successful run, writes `initialized = true` to the key-value database so that subsequent runs can restore state in step 2.
 
 Note: `mirror` does not respect file deletions. If a file is deleted in storage, it will be restored on the next `mirror` run. To delete a file, use the `rm` command instead. This is a little inconvenient, but it is intentional behaviour (if we handle this automatically in `mirror`, we should be against a ton of edge cases).
+
+##### daemon
+
+`daemon` is the default command when no command is specified. It runs an initial mirror scan and then continuously syncs changes in both directions:
+
+- **CouchDB → local filesystem**: via the `_changes` feed (LiveSync mode, default) or periodic polling (`--interval N`).
+- **local filesystem → CouchDB**: via chokidar file watching. Any file created, modified, or deleted in the vault directory is pushed to CouchDB.
+
+In **LiveSync mode** the `_changes` feed delivers remote changes as they arrive, with sub-second latency. In **polling mode** (`--interval N`) the CLI polls CouchDB every N seconds. Use polling mode if your CouchDB instance does not support long-lived HTTP connections, or if you need predictable network usage.
+
+The daemon exits cleanly on `SIGINT` or `SIGTERM`.
+
+```bash
+# LiveSync mode (default — _changes feed, near-real-time)
+livesync-cli /path/to/vault
+
+# Polling mode — poll every 60 seconds
+livesync-cli /path/to/vault --interval 60
+```
+
+### .livesync/ignore
+
+Place a `.livesync/ignore` file in your vault root to exclude files from sync in both directions (local → CouchDB and CouchDB → local).
+
+**Format:**
+
+- Lines beginning with `#` are comments.
+- Blank lines are ignored.
+- All other lines are [micromatch](https://github.com/micromatch/micromatch) glob patterns, relative to the vault root.
+- The directive `import: .gitignore` (exactly this string) reads `.gitignore` from the vault root and merges its non-comment, non-blank lines into the ignore rules.
+
+**Example `.livesync/ignore`:**
+
+```
+# Ignore temporary files
+*.tmp
+*.swp
+
+# Ignore build output
+build/
+dist/
+
+# Merge patterns from .gitignore
+import: .gitignore
+```
+
+Patterns apply in both directions: the chokidar watcher will not emit events for matched files, and the `isTargetFile` filter will exclude them from CouchDB → local sync.
+
+Changes to this file require a daemon restart to take effect.
+
+### Systemd Installation
+
+The `deploy/` directory contains a systemd unit template and an install script.
+
+**Automated install (user service, recommended):**
+
+```bash
+bash src/apps/cli/deploy/install.sh --vault /path/to/vault
+```
+
+**With polling interval:**
+
+```bash
+bash src/apps/cli/deploy/install.sh --vault /path/to/vault --interval 60
+```
+
+**System-wide install** (requires root / sudo for `/etc/systemd/system/`):
+
+```bash
+bash src/apps/cli/deploy/install.sh --system --vault /path/to/vault
+```
+
+The script:
+1. Builds the CLI (`npm install` + `npm run build`).
+2. Installs the binary to `~/.local/bin/livesync-cli` (user) or `/usr/local/bin/livesync-cli` (system).
+3. Writes the unit file to `~/.config/systemd/user/livesync-cli.service` (user) or `/etc/systemd/system/livesync-cli.service` (system).
+4. Runs `systemctl [--user] daemon-reload && systemctl [--user] enable --now livesync-cli`.
+
+**Manual setup** — if you prefer to manage the unit yourself, copy `deploy/livesync-cli.service`, replace `LIVESYNC_BIN` and `LIVESYNC_VAULT_PATH` with the actual binary path and vault path, then install to the appropriate systemd directory.
 
 ### Planned options:
 

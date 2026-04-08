@@ -26,6 +26,7 @@ import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { IgnoreRules } from "./serviceModules/IgnoreRules";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -42,6 +43,7 @@ Arguments:
   database-path           Path to the local database directory (required)
 
 Commands:
+  daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
   sync                    Run one replication cycle and exit
     p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
     p2p-sync <peer> <timeout>
@@ -58,7 +60,13 @@ Commands:
     info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
+
+Options:
+  --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
+
 Examples:
+    livesync-cli ./my-database                        Run daemon (LiveSync mode)
+    livesync-cli ./my-database --interval 30          Run daemon (polling every 30s)
     livesync-cli ./my-database sync
     livesync-cli ./my-database p2p-peers 5
     livesync-cli ./my-database p2p-sync my-peer-name 15
@@ -92,6 +100,7 @@ export function parseArgs(): CLIOptions {
     let verbose = false;
     let debug = false;
     let force = false;
+    let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
 
@@ -106,6 +115,21 @@ export function parseArgs(): CLIOptions {
                     process.exit(1);
                 }
                 settingsPath = args[i];
+                break;
+            }
+            case "--interval":
+            case "-i": {
+                i++;
+                if (!args[i]) {
+                    console.error(`Error: Missing value for ${token}`);
+                    process.exit(1);
+                }
+                const n = parseInt(args[i], 10);
+                if (!Number.isInteger(n) || n <= 0) {
+                    console.error(`Error: --interval requires a positive integer, got '${args[i]}'`);
+                    process.exit(1);
+                }
+                interval = n;
                 break;
             }
             case "--debug":
@@ -161,6 +185,7 @@ export function parseArgs(): CLIOptions {
         force,
         command,
         commandArgs,
+        interval,
     };
 }
 
@@ -194,6 +219,9 @@ async function createDefaultSettingsFile(options: CLIOptions) {
 
 export async function main() {
     const options = parseArgs();
+    if (options.interval && options.command !== "daemon") {
+        console.error(`Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+    }
     const avoidStdoutNoise =
         options.command === "cat" ||
         options.command === "cat-rev" ||
@@ -245,6 +273,15 @@ export async function main() {
     infoLog(`Settings: ${settingsPath}`);
     infoLog("");
 
+    // For daemon and mirror mode, load ignore rules before the core is constructed so that
+    // chokidar's ignored option is populated when beginWatch() fires during onLoad().
+    const watchEnabled = options.command === "daemon";
+    let ignoreRules: IgnoreRules | undefined;
+    if (options.command === "daemon" || options.command === "mirror") {
+        ignoreRules = new IgnoreRules(vaultPath);
+        await ignoreRules.load();
+    }
+
     // Create service context and hub
     const context = new NodeServiceContext(vaultPath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(vaultPath, context);
@@ -275,11 +312,14 @@ export async function main() {
         }
         console.error(`${prefix} ${message}`);
     });
-    // Prevent replication result to be processed automatically.
-    serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-        console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
-        return await Promise.resolve(true);
-    }, -100);
+    // Prevent replication result from being processed automatically in non-daemon commands.
+    // In daemon mode the default handler must run so changes are applied to the filesystem.
+    if (options.command !== "daemon") {
+        serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
+            console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
+            return await Promise.resolve(true);
+        }, -100);
+    }
 
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
@@ -321,7 +361,7 @@ export async function main() {
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
-            return initialiseServiceModulesCLI(vaultPath, core, serviceHub);
+            return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
         (core) => [
             // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
@@ -337,8 +377,24 @@ export async function main() {
                 if (parts.some((part) => part.startsWith("."))) {
                     return await Promise.resolve(false);
                 }
+                // PouchDB LevelDB database directory lives in the vault directory.
+                if (parts[0]?.endsWith("-livesync-v2")) {
+                    return await Promise.resolve(false);
+                }
                 return await Promise.resolve(true);
             }, -1 /* highest priority */);
+
+            // Apply user-defined ignore rules for daemon mode (lower priority, runs after dotfile check).
+            if (ignoreRules) {
+                core.services.vault.isTargetFile.addHandler(async (target) => {
+                    const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                    if (ignoreRules.shouldIgnore(targetPath)) {
+                        return false;
+                    }
+                    // undefined = pass through to next handler in chain
+                    return undefined;
+                }, 0);
+            }
         }
     );
 
@@ -368,6 +424,18 @@ export async function main() {
             console.error(`[Error] Failed to initialize LiveSync`);
             process.exit(1);
         }
+        // Capture sync settings before suspendAllSync() clobbers them.
+        // Used by daemon mode to restore the correct sync behaviour after the mirror scan.
+        const settingsBeforeSuspend = core.services.setting.currentSettings();
+        const originalSyncSettings = {
+            liveSync: settingsBeforeSuspend.liveSync,
+            syncOnStart: settingsBeforeSuspend.syncOnStart,
+            periodicReplication: settingsBeforeSuspend.periodicReplication,
+            syncOnSave: settingsBeforeSuspend.syncOnSave,
+            syncOnEditorSave: settingsBeforeSuspend.syncOnEditorSave,
+            syncOnFileOpen: settingsBeforeSuspend.syncOnFileOpen,
+            syncAfterMerge: settingsBeforeSuspend.syncAfterMerge,
+        };
         await core.services.setting.suspendAllSync();
         await core.services.control.onReady();
 
@@ -393,7 +461,7 @@ export async function main() {
             infoLog("");
         }
 
-        const result = await runCommand(options, { vaultPath, core, settingsPath });
+        const result = await runCommand(options, { vaultPath, core, settingsPath, originalSyncSettings });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
@@ -401,7 +469,7 @@ export async function main() {
             infoLog(`[Done] Command '${options.command}' completed`);
         }
 
-        if (options.command === "daemon") {
+        if (options.command === "daemon" && result) {
             // Keep the process running
             await new Promise(() => {});
         } else {
