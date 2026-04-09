@@ -17,6 +17,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "daemon") {
         const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
 
+        // Skip the config mismatch dialog — the daemon cannot resolve it interactively
+        // and the default "Dismiss" action would block replication. The daemon should
+        // accept whatever configuration the remote has.
+        await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
+
         // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
         log("Replicating from CouchDB...");
         const replResult = await core.services.replication.replicate(true);
