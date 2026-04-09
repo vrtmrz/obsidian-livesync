@@ -3,60 +3,32 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## 0.25.56+patched5
+## 0.25.57
 
-6th April, 2026
-
-### Fixed
+9th April, 2026
 
 - Packing a batch during the journal sync now continues even if the batch contains no items to upload.
-
-## 0.25.56+patched4
-
-6th April, 2026
-
-### Fixed
-
-- Remote configuration URIs are now correctly encrypted when saved after editing in the settings dialogue.
+- No unexpected error (about a replicator) during the early stage of initialisation.
+- Now error messages are kept hidden if the show status inside the editor is disabled (related: #829).
 - Fixed an issue where devices could no longer upload after another device performed 'Fresh Start Wipe' and 'Overwrite remote' in Object Storage mode (#848).
   - Each device's local deduplication caches (`knownIDs`, `sentIDs`, `receivedFiles`, `sentFiles`) now track the remote journal epoch (derived from the encryption parameters stored on the remote).
-  - When the epoch changes, the plugin verifies whether the device's last uploaded file still exists on the remote. If the file is gone, it confirms a remote wipe and automatically clears the stale caches. If the file is still present (e.g. a protocol upgrade without a wipe), the caches are preserved and only the epoch is updated. This means normal upgrades never cause unnecessary re-processing.
-
-## 0.25.56+patched3
-
-5th April, 2026
-
-### Fixed
-
-- Now surely remote configurations are editable in the settings dialogue.
-- We can fetch remote settings from the remote and apply them to the local settings for each remote configuration entry.
-- No longer layout breaking occurs when the description of a remote configuration entry is too long.
-
-## 0.25.56+patched2
-
-5th April, 2026
-
-Beta release tagging is now changed to +patched1, +patched2, and so on.
+  - When the epoch changes, the plugin verifies whether the device's last uploaded file still exists on the remote. If the file is gone, it confirms a remote wipe and automatically clears the stale caches. If the file is still present (e.g. a protocol upgrade without a wipe), the caches are preserved, and only the epoch is updated. This means normal upgrades never cause unnecessary re-processing.
 
 ### Translations
 
-- Russian translation has been added! Thank you so much for the contribution!
-
-### Fixed
-
-- No unexpected error (about a replicator) during the early stage of initialisation.
-- Now error messages are kept hidden if the show status inside the editor is disabled.
+- Russian translation has been added! Thank you so much for the contribution, @vipka1n! (#845)
 
 ### New features
 
 - Now we can configure multiple Remote Databases of the same type, e.g, multiple CouchDBs or S3 remotes.
+  - A user interface for managing multiple remote databases has been added to the settings dialogue. I think no explanation is needed for the UI, but please let me know if you have any questions.
 - We can switch between multiple Remote Databases in the settings dialogue.
 
 ### CLI
 
 #### Fixed
 
-- Replication progress is now correctly saved and restored in the CLI.
+- Replication progress is now correctly saved and restored in the CLI (related: #846).
 
 ## ~~0.25.55~~ 0.25.56
 
