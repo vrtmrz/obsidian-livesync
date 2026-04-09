@@ -22,7 +22,6 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         // accept whatever configuration the remote has.
         await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
 
-
         // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
         log("Replicating from CouchDB...");
         const replResult = await core.services.replication.replicate(true);
