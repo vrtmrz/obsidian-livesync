@@ -24,7 +24,7 @@ Additionally, it supports peer-to-peer synchronisation using WebRTC now (experim
   - WebRTC is a peer-to-peer synchronisation method, so **at least one device must be online to synchronise**.
   - Instead of keeping your device online as a stable peer, you can use two pseudo-peers:
     - [livesync-serverpeer](https://github.com/vrtmrz/livesync-serverpeer): A pseudo-client running on the server for receiving and sending data between devices.
-    - [webpeer](https://github.com/vrtmrz/livesync-commonlib/tree/main/apps/webpeer): A pseudo-client for receiving and sending data between devices.
+    - [webpeer](https://github.com/vrtmrz/obsidian-livesync/tree/main/src/apps/webpeer): A pseudo-client for receiving and sending data between devices.
     - A pre-built instance is available at [fancy-syncing.vrtmrz.net/webpeer](https://fancy-syncing.vrtmrz.net/webpeer/) (hosted on the vrtmrz blog site). This is also peer-to-peer. Feel free to use it.
   - For more information, refer to the [English explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync-en.html) or the [Japanese explanatory article](https://fancy-syncing.vrtmrz.net/blog/0034-p2p-sync).
 
