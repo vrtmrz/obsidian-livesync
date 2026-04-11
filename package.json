@@ -12,6 +12,7 @@
         "prettyjson": "prettier --config ./.prettierrc.mjs ./src/lib/src/common/messagesJson/*.json --write --log-level error",
         "postbakei18n": "prettier --config ./.prettierrc.mjs ./src/lib/src/common/messages/*.ts --write --log-level error",
         "posti18n:yaml2json": "npm run prettyjson",
+        "verify:ui-zh": "node ./src/lib/_tools/check-ui-zh.mjs",
         "predev": "npm run bakei18n",
         "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",

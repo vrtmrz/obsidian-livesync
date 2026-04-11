@@ -31,10 +31,10 @@ export function paneSetup(
             });
 
         new Setting(paneEl)
-            .setName($msg("Rerun Onboarding Wizard"))
-            .setDesc($msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."))
+            .setName($msg("Ui.Settings.Setup.RerunWizardName"))
+            .setDesc($msg("Ui.Settings.Setup.RerunWizardDesc"))
             .addButton((text) => {
-                text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
+                text.setButtonText($msg("Ui.Settings.Setup.RerunWizardButton")).onClick(async () => {
                     const setupManager = this.core.getModule(SetupManager);
                     await setupManager.onOnboard(UserMode.ExistingUser);
                     // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
