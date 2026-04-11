@@ -43,7 +43,8 @@ export default [
             "src/apps/**/*",
             ".prettierrc.*.mjs",
             ".prettierrc.mjs",
-            "*.config.mjs"
+            "*.config.mjs",
+            "src/lib/_tools/*.mjs"
         ],
     },
     ...compat.extends(

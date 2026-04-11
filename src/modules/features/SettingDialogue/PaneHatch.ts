@@ -48,7 +48,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setDesc($msg("Setting.TroubleShooting.Doctor.Desc"))
             .addButton((button) =>
                 button
-                    .setButtonText($msg("Run Doctor"))
+                    .setButtonText($msg("Ui.Settings.Hatch.RunDoctor"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
@@ -61,7 +61,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setDesc($msg("Setting.TroubleShooting.ScanBrokenFiles.Desc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Scan for Broken files")
+                    .setButtonText($msg("Ui.Settings.Hatch.ScanBrokenFiles"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
@@ -69,9 +69,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         eventHub.emitEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE);
                     })
             );
-        new Setting(paneEl).setName($msg("Prepare the 'report' to create an issue")).addButton((button) =>
+        new Setting(paneEl).setName($msg("Ui.Settings.Hatch.PrepareIssueReport")).addButton((button) =>
             button
-                .setButtonText($msg("Copy Report to clipboard"))
+                .setButtonText($msg("Ui.Settings.Hatch.CopyIssueReport"))
                 .setCta()
                 .setDisabled(false)
                 .onClick(async () => {
@@ -179,7 +179,7 @@ ${stringifyYaml({
     ...pluginConfig,
 })}`;
                     console.log(msgConfig);
-                    if ((await this.services.UI.promptCopyToClipboard("Generated report", msgConfig)) == true) {
+                    if ((await this.services.UI.promptCopyToClipboard($msg("Ui.Settings.Hatch.GeneratedReport"), msgConfig)) == true) {
                         // await navigator.clipboard.writeText(msgConfig);
                         // Logger(
                         //     `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
@@ -189,29 +189,25 @@ ${stringifyYaml({
                 })
         );
         new Setting(paneEl)
-            .setName($msg("Analyse database usage"))
-            .setDesc(
-                $msg(
-                    "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
-                )
-            )
+            .setName($msg("Ui.Settings.Hatch.AnalyseDatabaseUsage"))
+            .setDesc($msg("Ui.Settings.Hatch.AnalyseDatabaseUsageDesc"))
             .addButton((button) =>
-                button.setButtonText($msg("Analyse")).onClick(() => {
+                button.setButtonText($msg("Ui.Settings.Common.Analyse")).onClick(() => {
                     eventHub.emitEvent(EVENT_ANALYSE_DB_USAGE);
                 })
             );
         new Setting(paneEl)
-            .setName($msg("Reset notification threshold and check the remote database usage"))
-            .setDesc($msg("Reset the remote storage size threshold and check the remote storage size again."))
+            .setName($msg("Ui.Settings.Hatch.ResetRemoteUsage"))
+            .setDesc($msg("Ui.Settings.Hatch.ResetRemoteUsageDesc"))
             .addButton((button) =>
-                button.setButtonText($msg("Check")).onClick(() => {
+                button.setButtonText($msg("Ui.Settings.Common.Check")).onClick(() => {
                     eventHub.emitEvent(EVENT_REQUEST_CHECK_REMOTE_SIZE);
                 })
             );
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");
     });
 
-    void addPanel(paneEl, "Scram Switches").then((paneEl) => {
+    void addPanel(paneEl, $msg("Ui.Settings.Hatch.ScramSwitches")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("suspendFileWatching");
         this.addOnSaved("suspendFileWatching", () => this.services.appLifecycle.askRestart());
 
@@ -219,7 +215,19 @@ ${stringifyYaml({
         this.addOnSaved("suspendParseReplicationResult", () => this.services.appLifecycle.askRestart());
     });
 
-    void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
+    void addPanel(paneEl, $msg("Ui.Settings.Hatch.RecoveryAndRepair")).then((paneEl) => {
+        const missingText = $msg("Ui.Settings.Hatch.Missing");
+        const formatStorageDetails = (mtime: number, size: number) =>
+            $msg("Ui.Settings.Hatch.ModifiedSize", {
+                modified: new Date(mtime).toLocaleString(),
+                size: `${size}`,
+            });
+        const formatDatabaseDetails = (mtime: number, size: number, actualSize: number) =>
+            $msg("Ui.Settings.Hatch.ModifiedSizeActual", {
+                modified: new Date(mtime).toLocaleString(),
+                size: `${size}`,
+                actualSize: `${actualSize}`,
+            });
         const addResult = async (path: string, file: FilePathWithPrefix | false, fileOnDB: LoadedEntry | false) => {
             const storageFileStat = file ? await this.core.storageAccess.statHidden(file) : null;
             resultArea.appendChild(
@@ -229,19 +237,31 @@ ${stringifyYaml({
                         this.createEl(el, "div", {}, (infoGroupEl) => {
                             infoGroupEl.appendChild(
                                 this.createEl(infoGroupEl, "div", {
-                                    text: `Storage : Modified: ${!storageFileStat ? `Missing:` : `${new Date(storageFileStat.mtime).toLocaleString()}, Size:${storageFileStat.size}`}`,
+                                    text: $msg("Ui.Settings.Hatch.StorageLabel", {
+                                        details: !storageFileStat
+                                            ? missingText
+                                            : formatStorageDetails(storageFileStat.mtime, storageFileStat.size),
+                                    }),
                                 })
                             );
                             infoGroupEl.appendChild(
                                 this.createEl(infoGroupEl, "div", {
-                                    text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size} (actual size:${readAsBlob(fileOnDB).size})`}`,
+                                    text: $msg("Ui.Settings.Hatch.DatabaseLabel", {
+                                        details: !fileOnDB
+                                            ? missingText
+                                            : formatDatabaseDetails(
+                                                  fileOnDB.mtime,
+                                                  fileOnDB.size,
+                                                  readAsBlob(fileOnDB).size
+                                              ),
+                                    }),
                                 })
                             );
                         })
                     );
                     if (fileOnDB && file) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Show history" }, (buttonEl) => {
+                            this.createEl(el, "button", { text: $msg("Ui.Settings.Hatch.ShowHistory") }, (buttonEl) => {
                                 buttonEl.onClickEvent(() => {
                                     eventHub.emitEvent(EVENT_REQUEST_SHOW_HISTORY, {
                                         file: file,
@@ -253,7 +273,11 @@ ${stringifyYaml({
                     }
                     if (file) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Storage -> Database" }, (buttonEl) => {
+                            this.createEl(
+                                el,
+                                "button",
+                                { text: $msg("Ui.Settings.Hatch.StorageToDatabase") },
+                                (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (file.startsWith(".")) {
                                         const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
@@ -285,12 +309,17 @@ ${stringifyYaml({
                                     }
                                     el.remove();
                                 });
-                            })
+                                }
+                            )
                         );
                     }
                     if (fileOnDB) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Database -> Storage" }, (buttonEl) => {
+                            this.createEl(
+                                el,
+                                "button",
+                                { text: $msg("Ui.Settings.Hatch.DatabaseToStorage") },
+                                (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (fileOnDB.path.startsWith(ICHeader)) {
                                         const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
@@ -322,7 +351,8 @@ ${stringifyYaml({
                                     }
                                     el.remove();
                                 });
-                            })
+                                }
+                            )
                         );
                     }
                     return el;
@@ -341,24 +371,22 @@ ${stringifyYaml({
             }
         };
         new Setting(paneEl)
-            .setName("Recreate missing chunks for all files")
-            .setDesc("This will recreate chunks for all files. If there were missing chunks, this may fix the errors.")
+            .setName($msg("Ui.Settings.Hatch.RecreateMissingChunks"))
+            .setDesc($msg("Ui.Settings.Hatch.RecreateMissingChunksDesc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Recreate all")
+                    .setButtonText($msg("Ui.Settings.Hatch.RecreateAll"))
                     .setCta()
                     .onClick(async () => {
                         await this.core.fileHandler.createAllChunks(true);
                     })
             );
         new Setting(paneEl)
-            .setName("Resolve All conflicted files by the newer one")
-            .setDesc(
-                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
-            )
+            .setName($msg("Ui.Settings.Hatch.ResolveAllConflictedFiles"))
+            .setDesc($msg("Ui.Settings.Hatch.ResolveAllConflictedFilesDesc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Resolve All")
+                    .setButtonText($msg("Ui.Settings.Common.ResolveAll"))
                     .setCta()
                     .onClick(async () => {
                         await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
@@ -366,13 +394,11 @@ ${stringifyYaml({
             );
 
         new Setting(paneEl)
-            .setName("Verify and repair all files")
-            .setDesc(
-                "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep."
-            )
+            .setName($msg("Ui.Settings.Hatch.VerifyAndRepairAllFiles"))
+            .setDesc($msg("Ui.Settings.Hatch.VerifyAndRepairAllFilesDesc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Verify all")
+                    .setButtonText($msg("Ui.Settings.Common.VerifyAll"))
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {
@@ -458,11 +484,11 @@ ${stringifyYaml({
             );
         const resultArea = paneEl.createDiv({ text: "" });
         new Setting(paneEl)
-            .setName("Check and convert non-path-obfuscated files")
-            .setDesc("")
+            .setName($msg("Ui.Settings.Hatch.ConvertNonObfuscated"))
+            .setDesc($msg("Ui.Settings.Hatch.ConvertNonObfuscatedDesc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Perform")
+                    .setButtonText($msg("Ui.Settings.Common.Perform"))
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
@@ -536,10 +562,10 @@ ${stringifyYaml({
                     })
             );
     });
-    void addPanel(paneEl, "Reset").then((paneEl) => {
-        new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+    void addPanel(paneEl, $msg("Ui.Settings.Hatch.ResetPanel")).then((paneEl) => {
+        new Setting(paneEl).setName($msg("Ui.Settings.Hatch.BackToNonConfigured")).addButton((button) =>
             button
-                .setButtonText("Back")
+                .setButtonText($msg("Ui.Settings.Common.Back"))
                 .setDisabled(false)
                 .onClick(async () => {
                     this.editingSettings.isConfigured = false;
@@ -548,9 +574,9 @@ ${stringifyYaml({
                 })
         );
 
-        new Setting(paneEl).setName("Delete all customization sync data").addButton((button) =>
+        new Setting(paneEl).setName($msg("Ui.Settings.Hatch.DeleteCustomizationSyncData")).addButton((button) =>
             button
-                .setButtonText("Delete")
+                .setButtonText($msg("Ui.Settings.Common.Delete"))
                 .setDisabled(false)
                 .setWarning()
                 .onClick(async () => {
