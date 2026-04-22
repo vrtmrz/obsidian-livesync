@@ -1,6 +1,7 @@
 import { type TFile } from "@/deps.ts";
 import { eventHub } from "../../common/events.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "../../common/obsidianEvents.ts";
+import { $msg } from "../../lib/src/common/i18n.ts";
 import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "../../lib/src/common/types.ts";
 import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts";
@@ -10,7 +11,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-history",
-            name: "Show history",
+            name: $msg("Show history"),
             callback: () => {
                 const file = this.services.vault.getActiveFilePath();
                 if (file) this.showHistory(file, undefined);
@@ -19,7 +20,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
 
         this.addCommand({
             id: "livesync-filehistory",
-            name: "Pick a file to show history",
+            name: $msg("Pick a file to show history"),
             callback: () => {
                 fireAndForget(async () => await this.fileHistory());
             },
@@ -44,7 +45,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
-        const target = await this.core.confirm.askSelectString("File to view History", notesList);
+        const target = await this.core.confirm.askSelectString($msg("File to view History"), notesList);
         if (target) {
             const targetId = notes.find((e) => e.dispPath == target)!;
             this.showHistory(targetId.path, targetId.id);

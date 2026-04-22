@@ -1760,7 +1760,7 @@ export class ConfigSync extends LiveSyncCommands {
 
         if (mode == "CUSTOMIZE") {
             if (!this.services.setting.getDeviceAndVaultName()) {
-                let name = await this.core.confirm.askString("Device name", "Please set this device name", `desktop`);
+                let name = await this.core.confirm.askString($msg("Device name"), $msg("Please set this device name"), $msg("desktop"));
                 if (!name) {
                     if (Platform.isAndroidApp) {
                         name = "android-app";

@@ -286,21 +286,21 @@ export function paneSyncSettings(
                 .setName($msg("obsidianLiveSyncSettingTab.nameEnableHiddenFileSync"))
                 .setClass("wizardHidden")
                 .addButton((button) => {
-                    button.setButtonText("Merge").onClick(async () => {
+                    button.setButtonText($msg("Merge")).onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
                         await this.services.setting.enableOptionalFeature("MERGE");
                     });
                 })
                 .addButton((button) => {
-                    button.setButtonText("Fetch").onClick(async () => {
+                    button.setButtonText($msg("Fetch")).onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
                         await this.services.setting.enableOptionalFeature("FETCH");
                     });
                 })
                 .addButton((button) => {
-                    button.setButtonText("Overwrite").onClick(async () => {
+                    button.setButtonText($msg("Overwrite")).onClick(async () => {
                         this.closeSetting();
                         // this.resetEditingSettings();
                         await this.services.setting.enableOptionalFeature("OVERWRITE");

@@ -7,9 +7,8 @@
     import Options from "@/lib/src/UI/components/Options.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
-    import Check from "@/lib/src/UI/components/Check.svelte";
+    import { $msg as msg, currentLang as lang } from "../../../../lib/src/common/i18n.ts";
+
     const TYPE_USE_SETUP_URI = "use-setup-uri";
     const TYPE_SCAN_QR_CODE = "scan-qr-code";
     const TYPE_CONFIGURE_MANUALLY = "configure-manually";
@@ -22,13 +21,13 @@
     let userType = $state<ResultType>(TYPE_CANCELLED);
     let proceedTitle = $derived.by(() => {
         if (userType === TYPE_USE_SETUP_URI) {
-            return "Proceed with Setup URI";
+            return msg("Proceed with Setup URI", {}, lang);
         } else if (userType === TYPE_CONFIGURE_MANUALLY) {
-            return "I know my server details, let me enter them";
+            return msg("I know my server details, let me enter them", {}, lang);
         } else if (userType === TYPE_SCAN_QR_CODE) {
-            return "Scan the QR code displayed on an active device using this device's camera.";
+            return msg("Scan the QR code displayed on an active device using this device's camera.", {}, lang);
         } else {
-            return "Please select an option to proceed";
+            return msg("Please select an option to proceed", {}, lang);
         }
     });
     const canProceed = $derived.by(() => {
@@ -36,27 +35,31 @@
     });
 </script>
 
-<DialogHeader title="Device Setup Method" />
-<Guidance>You are adding this device to an existing synchronisation setup.</Guidance>
+<DialogHeader title={msg("Device Setup Method", {}, lang)} />
+<Guidance>{msg("You are adding this device to an existing synchronisation setup.", {}, lang)}</Guidance>
 <Instruction>
-    <Question>Please select a method to import the settings from another device.</Question>
+    <Question>{msg("Please select a method to import the settings from another device.", {}, lang)}</Question>
     <Options>
-        <Option selectedValue={TYPE_USE_SETUP_URI} title="Use a Setup URI (Recommended)" bind:value={userType}>
-            Paste the Setup URI generated from one of your active devices.
+        <Option selectedValue={TYPE_USE_SETUP_URI} title={msg("Use a Setup URI (Recommended)", {}, lang)} bind:value={userType}>
+            {msg("Paste the Setup URI generated from one of your active devices.", {}, lang)}
         </Option>
-        <Option selectedValue={TYPE_SCAN_QR_CODE} title="Scan a QR Code (Recommended for mobile)" bind:value={userType}>
-            Scan the QR code displayed on an active device using this device's camera.
+        <Option selectedValue={TYPE_SCAN_QR_CODE} title={msg("Scan a QR Code (Recommended for mobile)", {}, lang)} bind:value={userType}>
+            {msg("Scan the QR code displayed on an active device using this device's camera.", {}, lang)}
         </Option>
         <Option
             selectedValue={TYPE_CONFIGURE_MANUALLY}
-            title="Enter the server information manually"
+            title={msg("Enter the server information manually", {}, lang)}
             bind:value={userType}
         >
-            Configure the same server information as your other devices again, manually, very advanced users only.
+            {msg(
+                "Configure the same server information as your other devices again, manually, very advanced users only.",
+                {},
+                lang
+            )}
         </Option>
     </Options>
 </Instruction>
 <UserDecisions>
     <Decision title={proceedTitle} important={canProceed} disabled={!canProceed} commit={() => setResult(userType)} />
-    <Decision title="Cancel" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title={msg("Cancel", {}, lang)} commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

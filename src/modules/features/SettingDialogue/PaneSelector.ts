@@ -1,3 +1,4 @@
+import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LEVEL_ADVANCED, type CustomRegExpSource } from "../../../lib/src/common/types.ts";
 import { constructCustomRegExpList, splitCustomRegExpList } from "../../../lib/src/common/utils.ts";
 import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
@@ -7,13 +8,13 @@ import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
-    void addPanel(paneEl, "Normal Files").then((paneEl) => {
+    void addPanel(paneEl, $msg("Normal Files")).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
         const syncFilesSetting = new Setting(paneEl)
-            .setName("Synchronising files")
+            .setName($msg("Synchronising files"))
             .setDesc(
-                "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
+                $msg("(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.")
             )
             .setClass("wizardHidden");
         mount(MultipleRegExpControl, {
@@ -30,8 +31,8 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         });
 
         const nonSyncFilesSetting = new Setting(paneEl)
-            .setName("Non-Synchronising files")
-            .setDesc("(RegExp) If this is set, any changes to local and remote files that match this will be skipped.")
+            .setName($msg("Non-Synchronising files"))
+            .setDesc($msg("(RegExp) If this is set, any changes to local and remote files that match this will be skipped."))
             .setClass("wizardHidden");
 
         mount(MultipleRegExpControl, {
@@ -53,11 +54,11 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             onUpdate: visibleOnly(() => this.isConfiguredAs("useIgnoreFiles", true)),
         });
     });
-    void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
+    void addPanel(paneEl, $msg("Hidden Files"), undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
         const targetPatternSetting = new Setting(paneEl)
-            .setName("Target patterns")
+            .setName($msg("Target patterns"))
             .setClass("wizardHidden")
-            .setDesc("Patterns to match files for syncing");
+            .setDesc($msg("Patterns to match files for syncing"));
         const patTarget = splitCustomRegExpList(this.editingSettings.syncInternalFilesTargetPatterns, ",");
         mount(MultipleRegExpControl, {
             target: targetPatternSetting.controlEl,
@@ -77,7 +78,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             defaultSkipPattern + ",\\/workspace$ ,\\/workspace.json$,\\/workspace-mobile.json$";
 
         const pat = splitCustomRegExpList(this.editingSettings.syncInternalFilesIgnorePatterns, ",");
-        const patSetting = new Setting(paneEl).setName("Ignore patterns").setClass("wizardHidden").setDesc("");
+        const patSetting = new Setting(paneEl).setName($msg("Ignore patterns")).setClass("wizardHidden").setDesc("");
 
         mount(MultipleRegExpControl, {
             target: patSetting.controlEl,
@@ -105,23 +106,23 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         };
 
         new Setting(paneEl)
-            .setName("Add default patterns")
+            .setName($msg("Add default patterns"))
             .setClass("wizardHidden")
             .addButton((button) => {
-                button.setButtonText("Default").onClick(async () => {
+                button.setButtonText($msg("Default")).onClick(async () => {
                     await addDefaultPatterns(defaultSkipPattern);
                 });
             })
             .addButton((button) => {
-                button.setButtonText("Cross-platform").onClick(async () => {
+                button.setButtonText($msg("Cross-platform")).onClick(async () => {
                     await addDefaultPatterns(defaultSkipPatternXPlat);
                 });
             });
 
         const overwritePatterns = new Setting(paneEl)
-            .setName("Overwrite patterns")
+            .setName($msg("Overwrite patterns"))
             .setClass("wizardHidden")
-            .setDesc("Patterns to match files for overwriting instead of merging");
+            .setDesc($msg("Patterns to match files for overwriting instead of merging"));
         const patTarget2 = splitCustomRegExpList(this.editingSettings.syncInternalFileOverwritePatterns, ",");
         mount(MultipleRegExpControl, {
             target: overwritePatterns.controlEl,

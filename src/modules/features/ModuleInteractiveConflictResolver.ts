@@ -1,3 +1,4 @@
+import { $msg } from "../../lib/src/common/i18n.ts";
 import {
     CANCELLED,
     LEAVE_TO_SUBSEQUENT,
@@ -20,14 +21,14 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-conflictcheck",
-            name: "Pick a file to resolve conflict",
+            name: $msg("Pick a file to resolve conflict"),
             callback: async () => {
                 await this.pickFileForResolve();
             },
         });
         this.addCommand({
             id: "livesync-all-conflictcheck",
-            name: "Resolve all conflicted files",
+            name: $msg("Resolve all conflicted files"),
             callback: async () => {
                 await this.allConflictCheck();
             },
@@ -123,7 +124,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             this._log("There are no conflicted documents", LOG_LEVEL_NOTICE);
             return false;
         }
-        const target = await this.core.confirm.askSelectString("File to resolve conflict", notesList);
+        const target = await this.core.confirm.askSelectString($msg("File to resolve conflict"), notesList);
         if (target) {
             const targetItem = notes.find((e) => e.dispPath == target)!;
             await this.services.conflict.queueCheckFor(targetItem.path);

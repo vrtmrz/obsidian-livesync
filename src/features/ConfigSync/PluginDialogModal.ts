@@ -1,5 +1,6 @@
 import { mount, unmount } from "svelte";
 import { App, Modal } from "../../deps.ts";
+import { $msg } from "../../lib/src/common/i18n.ts";
 import ObsidianLiveSyncPlugin from "../../main.ts";
 import PluginPane from "./PluginPane.svelte";
 export class PluginDialogModal extends Modal {
@@ -19,7 +20,7 @@ export class PluginDialogModal extends Modal {
         this.contentEl.style.overflow = "auto";
         this.contentEl.style.display = "flex";
         this.contentEl.style.flexDirection = "column";
-        this.titleEl.setText("Customization Sync (Beta3)");
+        this.titleEl.setText($msg("Customization Sync (Beta3)"));
         if (!this.component) {
             this.component = mount(PluginPane, {
                 target: contentEl,

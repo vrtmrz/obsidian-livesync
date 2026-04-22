@@ -11,6 +11,7 @@ import {
     LOG_LEVEL_VERBOSE,
 } from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
+import { $msg } from "../../../lib/src/common/i18n.ts";
 import { isErrorOfMissingDoc } from "../../../lib/src/pouchdb/utils_couchdb.ts";
 import { fireAndForget, getDocData, readContent } from "../../../lib/src/common/utils.ts";
 import { isPlainText, stripPrefix } from "../../../lib/src/string_and_binary/path.ts";
@@ -220,7 +221,7 @@ export class DocumentHistoryModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        this.titleEl.setText("Document History");
+        this.titleEl.setText($msg("Document History"));
         contentEl.empty();
         this.fileInfo = contentEl.createDiv("");
         this.fileInfo.addClass("op-info");
@@ -251,7 +252,7 @@ export class DocumentHistoryModal extends Modal {
                             });
                         })
                     );
-                    label.appendText("Highlight diff");
+                    label.appendText($msg("Highlight diff"));
                 });
             })
             .addClass("op-info");

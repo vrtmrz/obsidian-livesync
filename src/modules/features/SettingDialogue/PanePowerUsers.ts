@@ -1,3 +1,4 @@
+import { $msg } from "../../../lib/src/common/i18n.ts";
 import { type ConfigPassphraseStore } from "../../../lib/src/common/types.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -8,14 +9,16 @@ export function panePowerUsers(
     paneEl: HTMLElement,
     { addPanel }: PageFunctions
 ): void {
-    void addPanel(paneEl, "CouchDB Connection Tweak", undefined, this.onlyOnCouchDB).then((paneEl) => {
+    void addPanel(paneEl, $msg("CouchDB Connection Tweak"), undefined, this.onlyOnCouchDB).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
         this.createEl(
             paneEl,
             "div",
             {
-                text: `If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.`,
+                text: $msg(
+                    "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value."
+                ),
             },
             undefined,
             this.onlyOnCouchDB
@@ -30,15 +33,15 @@ export function panePowerUsers(
         });
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("useTimeouts", { onUpdate: this.onlyOnCouchDB });
     });
-    void addPanel(paneEl, "Configuration Encryption").then((paneEl) => {
+    void addPanel(paneEl, $msg("Configuration Encryption")).then((paneEl) => {
         const passphrase_options: Record<ConfigPassphraseStore, string> = {
-            "": "Default",
-            LOCALSTORAGE: "Use a custom passphrase",
-            ASK_AT_LAUNCH: "Ask an passphrase at every launch",
+            "": $msg("Default"),
+            LOCALSTORAGE: $msg("Use a custom passphrase"),
+            ASK_AT_LAUNCH: $msg("Ask a passphrase at every launch"),
         };
 
         new Setting(paneEl)
-            .setName("Encrypting sensitive configuration items")
+            .setName($msg("Encrypting sensitive configuration items"))
             .autoWireDropDown("configPassphraseStore", {
                 options: passphrase_options,
                 holdValue: true,
@@ -53,7 +56,7 @@ export function panePowerUsers(
             }));
         new Setting(paneEl).addApplyButton(["configPassphrase", "configPassphraseStore"]).setClass("wizardHidden");
     });
-    void addPanel(paneEl, "Developer").then((paneEl) => {
+    void addPanel(paneEl, $msg("Developer")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("enableDebugTools").setClass("wizardHidden");
     });
 }

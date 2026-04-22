@@ -12,7 +12,7 @@ import type { LiveSyncCore } from "../../main.ts";
 import FetchEverything from "../features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "../features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { SvelteDialogManagerBase } from "@lib/UI/svelteDialog.ts";
+import { SvelteDialogManagerBase, type ComponentHasResult } from "@lib/UI/svelteDialog.ts";
 import type { ServiceContext } from "@lib/services/base/ServiceBase.ts";
 
 export class ModuleRedFlag extends AbstractModule {
@@ -177,7 +177,15 @@ export class ModuleRedFlag extends AbstractModule {
      * @returns true if can be continued, false if app restart is needed.
      */
     async onRebuildEverythingScheduled() {
-        const method = await this.dialogManager.openWithExplicitCancel(RebuildEverything);
+        const method = await this.dialogManager.openWithExplicitCancel(
+            RebuildEverything as ComponentHasResult<
+                | "cancelled"
+                | {
+                      backup: "backup_done" | "backup_skipped" | "unable_to_backup" | "cancelled";
+                      extra: { preventFetchingConfig: boolean };
+                  }
+            >
+        );
         if (method === "cancelled") {
             // Clean up the flag file and restart the app.
             this._log("Rebuild everything cancelled by user.", LOG_LEVEL_NOTICE);
@@ -199,7 +207,16 @@ export class ModuleRedFlag extends AbstractModule {
      * @returns true if can be continued, false if app restart is needed.
      */
     async onFetchAllScheduled() {
-        const method = await this.dialogManager.openWithExplicitCancel(FetchEverything);
+        const method = await this.dialogManager.openWithExplicitCancel(
+            FetchEverything as ComponentHasResult<
+                | "cancelled"
+                | {
+                      vault: "identical" | "independent" | "unbalanced" | "cancelled";
+                      backup: "backup_done" | "backup_skipped" | "unable_to_backup" | "cancelled";
+                      extra: { preventFetchingConfig: boolean };
+                  }
+            >
+        );
         if (method === "cancelled") {
             this._log("Fetch everything cancelled by user.", LOG_LEVEL_NOTICE);
             // Clean up the flag file and restart the app.

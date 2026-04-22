@@ -19,6 +19,8 @@ import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/Li
 import { delay, parseHeaderValues } from "@/lib/src/common/utils";
 import { generateCredentialObject } from "@/lib/src/replication/httplib";
 import { _requestToCouchDB } from "@/common/utils";
+import { $msg } from "@/lib/src/common/i18n.ts";
+const msg = (key: string, params: Record<string, string> = {}) => $msg(key as never, params);
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
 const DB_KEY_DOC_USAGE_MAP = "doc-usage-map";
@@ -70,20 +72,24 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
     }
 
     async confirm(title: string, message: string, affirmative = "Yes", negative = "No") {
+        const localizedTitle = msg(title);
+        const localizedMessage = msg(message);
+        const localizedAffirmative = msg(affirmative);
+        const localizedNegative = msg(negative);
         return (
-            (await this.core.confirm.askSelectStringDialogue(message, [affirmative, negative], {
-                title,
-                defaultAction: affirmative,
-            })) === affirmative
+            (await this.core.confirm.askSelectStringDialogue(localizedMessage, [localizedAffirmative, localizedNegative], {
+                title: localizedTitle,
+                defaultAction: localizedAffirmative,
+            })) === localizedAffirmative
         );
     }
     isAvailable() {
         if (!this.settings.doNotUseFixedRevisionForChunks) {
-            this._notice("Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.");
+            this._notice(msg("Please enable 'Compute revisions for chunks' in settings to use Garbage Collection."));
             return false;
         }
         if (this.settings.readChunksOnline) {
-            this._notice("Please disable 'Read chunks online' in settings to use Garbage Collection.");
+            this._notice(msg("Please disable 'Read chunks online' in settings to use Garbage Collection."));
             return false;
         }
         return true;
@@ -133,22 +139,25 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
         const resurrectChunks = excessiveDeletions.filter((e) => e.data !== "").map((e) => ({ ...e, _deleted: false }));
 
         if (resurrectChunks.length == 0) {
-            this._notice("No chunks are found to be resurrected.");
+            this._notice(msg("No chunks are found to be resurrected."));
             return;
         }
-        const message = `We have following chunks that are deleted but still used in the database.
-
-- Completely lost chunks: ${completelyLostChunks.length}
-- Resurrectable chunks: ${resurrectChunks.length}
-
-Do you want to resurrect these chunks?`;
+        const message = msg("We have following chunks that are deleted but still used in the database.\n\n- Completely lost chunks: ${completelyLostChunks}\n- Resurrectable chunks: ${resurrectableChunks}\n\nDo you want to resurrect these chunks?", {
+            completelyLostChunks: `${completelyLostChunks.length}`,
+            resurrectableChunks: `${resurrectChunks.length}`,
+        });
         if (await this.confirm("Resurrect Chunks", message, "Resurrect", "Cancel")) {
             const result = await this.database.bulkDocs(resurrectChunks);
             this.clearHash();
             const resurrectedChunks = result.filter((e) => "ok" in e).map((e) => e.id);
-            this._notice(`Resurrected chunks: ${resurrectedChunks.length} / ${resurrectChunks.length}`);
+            this._notice(
+                msg("Resurrected chunks: ${resurrectedChunks} / ${totalChunks}", {
+                    resurrectedChunks: `${resurrectedChunks.length}`,
+                    totalChunks: `${resurrectChunks.length}`,
+                })
+            );
         } else {
-            this._notice("Resurrect operation is cancelled.");
+            this._notice(msg("Resurrect operation is cancelled."));
         }
     }
     /**
@@ -170,17 +179,10 @@ Do you want to resurrect these chunks?`;
         }
         p.log(`Found ${deletedDocs.length} deleted files.`);
 
-        const message = `We have following files that are marked as deleted.
-
-- Deleted files: ${deletedDocs.length}
-
-Are you sure to delete these files permanently?
-
-Note: **Make sure to synchronise all devices before deletion.**
-
-> [!Note]
-> This operation affects the database permanently. Deleted files will not be recovered after this operation.
-> And, the chunks that are used in the deleted files will be ready for compaction.`;
+        const message = msg(
+            "We have following files that are marked as deleted.\n\n- Deleted files: ${deletedFiles}\n\nAre you sure to delete these files permanently?\n\nNote: **Make sure to synchronise all devices before deletion.**\n\n> [!Note]\n> This operation affects the database permanently. Deleted files will not be recovered after this operation.\n> And, the chunks that are used in the deleted files will be ready for compaction.",
+            { deletedFiles: `${deletedDocs.length}` }
+        );
 
         const deletingDocs = deletedDocs.map((e) => ({ ...e.doc, _deleted: true }) as MetaEntry);
 
@@ -205,29 +207,26 @@ Note: **Make sure to synchronise all devices before deletion.**
         const deletedNotVacantChunks = deletedChunks.map((e) => ({ ...e, data: "", _deleted: true }));
         const size = deletedChunks.reduce((acc, e) => acc + e.data.length, 0);
         const humanSize = sizeToHumanReadable(size);
-        const message = `We have following chunks that are marked as deleted.
-
-- Deleted chunks: ${deletedNotVacantChunks.length} (${humanSize})
-
-Are you sure to delete these chunks permanently?
-
-Note: **Make sure to synchronise all devices before deletion.**
-
-> [!Note]
-> This operation finally reduces the capacity of the remote.`;
+        const message = msg(
+            "We have following chunks that are marked as deleted.\n\n- Deleted chunks: ${deletedChunks} (${humanSize})\n\nAre you sure to delete these chunks permanently?\n\nNote: **Make sure to synchronise all devices before deletion.**\n\n> [!Note]\n> This operation finally reduces the capacity of the remote.",
+            { deletedChunks: `${deletedNotVacantChunks.length}`, humanSize }
+        );
 
         if (deletedNotVacantChunks.length == 0) {
-            this._notice("No deleted chunks found.");
+            this._notice(msg("No deleted chunks found."));
             return;
         }
         if (await this.confirm("Delete Chunks", message, "Delete", "Cancel")) {
             const result = await this.database.bulkDocs(deletedNotVacantChunks);
             this.clearHash();
             this._notice(
-                `Deleted chunks: ${result.filter((e) => "ok" in e).length} / ${deletedNotVacantChunks.length}`
+                msg("Deleted chunks: ${deletedChunks} / ${totalChunks}", {
+                    deletedChunks: `${result.filter((e) => "ok" in e).length}`,
+                    totalChunks: `${deletedNotVacantChunks.length}`,
+                })
             );
         } else {
-            this._notice("Deletion operation is cancelled.");
+            this._notice(msg("Deletion operation is cancelled."));
         }
     }
     /**
@@ -247,24 +246,23 @@ Note: **Make sure to synchronise all devices before deletion.**
         const size = deleteChunks.reduce((acc, e) => acc + e.data.length, 0);
         const humanSize = sizeToHumanReadable(size);
         if (deleteChunks.length == 0) {
-            this._notice("No unused chunks found.");
+            this._notice(msg("No unused chunks found."));
             return;
         }
-        const message = `We have following chunks that are not used from any files.
-
-- Chunks: ${deleteChunks.length} (${humanSize})
-
-Are you sure to mark these chunks to be deleted?
-
-Note: **Make sure to synchronise all devices before deletion.**
-
-> [!Note]
-> This operation will not reduces the capacity of the remote until permanent deletion.`;
+        const message = msg(
+            "We have following chunks that are not used from any files.\n\n- Chunks: ${chunks} (${humanSize})\n\nAre you sure to mark these chunks to be deleted?\n\nNote: **Make sure to synchronise all devices before deletion.**\n\n> [!Note]\n> This operation will not reduces the capacity of the remote until permanent deletion.",
+            { chunks: `${deleteChunks.length}`, humanSize }
+        );
 
         if (await this.confirm("Mark unused chunks", message, "Mark", "Cancel")) {
             const result = await this.database.bulkDocs(deleteChunks);
             this.clearHash();
-            this._notice(`Marked chunks: ${result.filter((e) => "ok" in e).length} / ${deleteChunks.length}`);
+            this._notice(
+                msg("Marked chunks: ${markedChunks} / ${totalChunks}", {
+                    markedChunks: `${result.filter((e) => "ok" in e).length}`,
+                    totalChunks: `${deleteChunks.length}`,
+                })
+            );
         }
     }
 
@@ -280,23 +278,22 @@ Note: **Make sure to synchronise all devices before deletion.**
         const size = unusedChunks.reduce((acc, e) => acc + e.data.length, 0);
         const humanSize = sizeToHumanReadable(size);
         if (deleteChunks.length == 0) {
-            this._notice("No unused chunks found.");
+            this._notice(msg("No unused chunks found."));
             return;
         }
-        const message = `We have following chunks that are not used from any files.
-
-- Chunks: ${deleteChunks.length} (${humanSize})
-
-Are you sure to delete these chunks?
-
-Note: **Make sure to synchronise all devices before deletion.**
-
-> [!Note]
-> Chunks referenced from deleted files are not deleted. Please run "Commit File Deletion" before this operation.`;
+        const message = msg(
+            "We have following chunks that are not used from any files.\n\n- Chunks: ${chunks} (${humanSize})\n\nAre you sure to delete these chunks?\n\nNote: **Make sure to synchronise all devices before deletion.**\n\n> [!Note]\n> Chunks referenced from deleted files are not deleted. Please run \"Commit File Deletion\" before this operation.",
+            { chunks: `${deleteChunks.length}`, humanSize }
+        );
 
         if (await this.confirm("Mark unused chunks", message, "Mark", "Cancel")) {
             const result = await this.database.bulkDocs(deleteChunks);
-            this._notice(`Deleted chunks: ${result.filter((e) => "ok" in e).length} / ${deleteChunks.length}`);
+            this._notice(
+                msg("Deleted chunks: ${deletedChunks} / ${totalChunks}", {
+                    deletedChunks: `${result.filter((e) => "ok" in e).length}`,
+                    totalChunks: `${deleteChunks.length}`,
+                })
+            );
             this.clearHash();
         }
     }
@@ -438,24 +435,24 @@ Note: **Make sure to synchronise all devices before deletion.**
 
         const result = await this.scanUnusedChunks();
 
-        const message = `Total chunks: ${result.chunkSet.size}\nUnused chunks: ${result.unusedSet.size}`;
+        const message = msg("Total chunks: ${totalChunks}\nUnused chunks: ${unusedChunks}", {
+            totalChunks: `${result.chunkSet.size}`,
+            unusedChunks: `${result.unusedSet.size}`,
+        });
         this._log(message, logLevel);
     }
     async performGC(showingNotice = false) {
         if (!this.isAvailable()) return;
         await this.trackChanges(false, showingNotice);
-        const title = "Are all devices synchronised?";
-        const confirmMessage = `This function deletes unused chunks from the device. If there are differences between devices, some chunks may be missing when resolving conflicts.
-Be sure to synchronise before executing.
-
-However, if you have deleted them, you may be able to recover them by performing Hatch -> Recreate missing chunks for all files.
-
-Are you ready to delete unused chunks?`;
+        const title = msg("Are all devices synchronised?");
+        const confirmMessage = msg(
+            "This function deletes unused chunks from the device. If there are differences between devices, some chunks may be missing when resolving conflicts.\nBe sure to synchronise before executing.\n\nHowever, if you have deleted them, you may be able to recover them by performing Hatch -> Recreate missing chunks for all files.\n\nAre you ready to delete unused chunks?"
+        );
 
         const logLevel = showingNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
 
-        const BUTTON_OK = `Yes, delete chunks`;
-        const BUTTON_CANCEL = "Cancel";
+        const BUTTON_OK = msg("Yes, delete chunks");
+        const BUTTON_CANCEL = msg("Cancel");
 
         const result = await this.core.confirm.askSelectStringDialogue(
             confirmMessage,
@@ -466,7 +463,7 @@ Are you ready to delete unused chunks?`;
             }
         );
         if (result !== BUTTON_OK) {
-            this._log("User cancelled chunk deletion", logLevel);
+            this._log(msg("User cancelled chunk deletion"), logLevel);
             return;
         }
         const { unusedSet, chunkSet } = await this.scanUnusedChunks();
@@ -486,7 +483,7 @@ Are you ready to delete unused chunks?`;
                 _deleted: true,
             }));
 
-        this._log(`Deleting chunks: ${deleteDocs.length}`, logLevel);
+        this._log(msg("Deleting chunks: ${chunks}", { chunks: `${deleteDocs.length}` }), logLevel);
         const deleteChunkBatch = arrayToChunkedArray(deleteDocs, 100);
         let successCount = 0;
         let errored = 0;
@@ -497,14 +494,16 @@ Are you ready to delete unused chunks?`;
                     chunkSet.delete(result.id as DocumentID);
                     successCount++;
                 } else {
-                    this._log(`Failed to delete doc: ${result.id}`, LOG_LEVEL_VERBOSE);
+                    this._log(msg("Failed to delete doc: ${docId}", { docId: `${result.id}` }), LOG_LEVEL_VERBOSE);
                     errored++;
                 }
             }
-            this._log(`Deleting chunks: ${successCount} `, logLevel, "gc-preforming");
+            this._log(msg("Deleting chunks: ${chunks}", { chunks: `${successCount}` }), logLevel, "gc-preforming");
         }
-        const message = `Garbage Collection completed.
-Success: ${successCount}, Errored: ${errored}`;
+        const message = msg("Garbage Collection completed.\nSuccess: ${successCount}, Errored: ${errored}", {
+            successCount: `${successCount}`,
+            errored: `${errored}`,
+        });
         this._log(message, logLevel);
         const kvDB = this.core.kvDB;
         await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
@@ -726,11 +725,11 @@ Success: ${successCount}, Errored: ${errored}`;
         const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
-            this._notice("Failed to connect to remote for compaction.", "gc-compact");
+            this._notice(msg("Failed to connect to remote for compaction."), "gc-compact");
             return;
         }
         if (typeof remote == "string") {
-            this._notice(`Failed to connect to remote for compaction. ${remote}`, "gc-compact");
+            this._notice(msg("Failed to connect to remote for compaction. ${reason}", { reason: remote }), "gc-compact");
             return;
         }
         const compactResult = await remote.db.compact({
@@ -741,11 +740,11 @@ Success: ${successCount}, Errored: ${errored}`;
         do {
             const status = await remote.db.info();
             if ("compact_running" in status && status?.compact_running) {
-                this._notice("Compaction in progress on remote database...", "gc-compact");
+                this._notice(msg("Compaction in progress on remote database..."), "gc-compact");
                 await delay(2000);
                 timeout -= 2000;
                 if (timeout <= 0) {
-                    this._notice("Compaction on remote database timed out.", "gc-compact");
+                    this._notice(msg("Compaction on remote database timed out."), "gc-compact");
                     break;
                 }
             } else {
@@ -753,9 +752,9 @@ Success: ${successCount}, Errored: ${errored}`;
             }
         } while (true);
         if (compactResult && "ok" in compactResult) {
-            this._notice("Compaction on remote database completed successfully.", "gc-compact");
+            this._notice(msg("Compaction on remote database completed successfully."), "gc-compact");
         } else {
-            this._notice("Compaction on remote database failed.", "gc-compact");
+            this._notice(msg("Compaction on remote database failed."), "gc-compact");
         }
     }
 
@@ -827,17 +826,17 @@ Success: ${successCount}, Errored: ${errored}`;
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
         if (!r0) {
             this._notice(
-                "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled."
+                msg("Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.")
             );
             return;
         }
 
         // Delete the chunk, but first verify the following:
         // Fetch the list of accepted nodes from the replicator.
-        const OPTION_CANCEL = "Cancel Garbage Collection";
+        const OPTION_CANCEL = msg("Cancel Garbage Collection");
         const info = await this.core.replicator.getConnectedDeviceList();
         if (!info) {
-            this._notice("No connected device information found. Cancelling Garbage Collection.");
+            this._notice(msg("No connected device information found. Cancelling Garbage Collection."));
             return;
         }
         const { accepted_nodes, node_info } = info;
@@ -849,21 +848,23 @@ Success: ${successCount}, Errored: ${errored}`;
             }
         }
         if (infoMissingNodes.length > 0) {
-            const message = `The following accepted nodes are missing its node information:\n- ${infoMissingNodes.join("\n- ")}\n\nThis indicates that they have not been connected for some time or have been left on an older version.
-It is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.`;
+            const message = msg(
+                "The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.",
+                { missingNodes: infoMissingNodes.join("\n- ") }
+            );
 
-            const OPTION_IGNORE = "Ignore and Proceed";
+            const OPTION_IGNORE = msg("Ignore and Proceed");
             // const OPTION_DELETE = "Delete them and proceed";
             const buttons = [OPTION_CANCEL, OPTION_IGNORE] as const;
             const result = await this.core.confirm.askSelectStringDialogue(message, buttons, {
-                title: "Node Information Missing",
+                title: msg("Node Information Missing"),
                 defaultAction: OPTION_CANCEL,
             });
             if (result === OPTION_CANCEL) {
-                this._notice("Garbage Collection cancelled by user.");
+                this._notice(msg("Garbage Collection cancelled by user."));
                 return;
             } else if (result === OPTION_IGNORE) {
-                this._notice("Proceeding with Garbage Collection, ignoring missing nodes.");
+                this._notice(msg("Proceeding with Garbage Collection, ignoring missing nodes."));
             }
         }
 
@@ -874,37 +875,42 @@ It is preferable to update all devices if possible. If you have any devices that
         const maxProgress = Math.max(...progressValues);
         const minProgress = Math.min(...progressValues);
         const progressDifference = maxProgress - minProgress;
-        const OPTION_PROCEED = "Proceed Garbage Collection";
+        const OPTION_PROCEED = msg("Proceed Garbage Collection");
         //   - If they differ significantly, the node may not have completed synchronisation, potentially causing conflicts. Display a confirmation dialog as a precaution.
         // - If they are not significantly different, display the standard confirmation dialogue message.
 
-        const detail = `> [!INFO]- The connected devices have been detected as follows:
-${Object.entries(node_info)
-    .map(
-        ([nodeId, nodeData]) =>
-            `> - Device: ${nodeData.device_name} (Node ID: ${nodeId})
->   - Obsidian version: ${nodeData.app_version}
->   - Plug-in version: ${nodeData.plugin_version}
->   - Progress: ${nodeData.progress.split("-")[0]}`
-    )
-    .join("\n")}
-`;
+        const detail = msg(
+            "> [!INFO]- The connected devices have been detected as follows:\n${devices}",
+            {
+                devices: Object.entries(node_info)
+                    .map(
+                        ([nodeId, nodeData]) =>
+                            `> - ${msg("Device")}: ${nodeData.device_name} (${msg("Node ID")}: ${nodeId})\n>   - ${msg("Obsidian version")}: ${nodeData.app_version}\n>   - ${msg("Plug-in version")}: ${nodeData.plugin_version}\n>   - ${msg("Progress")}: ${nodeData.progress.split("-")[0]}`
+                    )
+                    .join("\n"),
+            }
+        );
         const message =
             progressDifference != 0
-                ? `Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).
-This may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.`
-                : `All devices have the same progress value (${maxProgress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.`;
+                ? msg(
+                      "Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.",
+                      { maxProgress: `${maxProgress}`, minProgress: `${minProgress}` }
+                  )
+                : msg(
+                      "All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.",
+                      { progress: `${maxProgress}` }
+                  );
         const buttons = [OPTION_PROCEED, OPTION_CANCEL] as const;
         const defaultAction = progressDifference != 0 ? OPTION_CANCEL : OPTION_PROCEED;
         const result = await this.core.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
-            title: "Garbage Collection Confirmation",
+            title: msg("Garbage Collection Confirmation"),
             defaultAction,
         });
         if (result !== OPTION_PROCEED) {
-            this._notice("Garbage Collection cancelled by user.");
+            this._notice(msg("Garbage Collection cancelled by user."));
             return;
         }
-        this._notice("Proceeding with Garbage Collection.");
+        this._notice(msg("Proceeding with Garbage Collection."));
         //-  3. Once OK is confirmed in the dialogue, execute the chunk deletion. This is performed on the local database and immediately reflected on the remote. After reflecting on the remote, perform compaction.
         const gcStartTime = Date.now();
         // Perform Garbage Collection (new implementation).
@@ -919,7 +925,13 @@ This may indicate that some devices have not completed synchronisation, which co
             const doc = await this.localDatabase.getRaw(id as DocumentID);
             i++;
             if (i % 100 == 0) {
-                this._notice(`Garbage Collection: Scanned ${i} / ~${doc_count} `, "gc-scanning");
+                this._notice(
+                    msg("Garbage Collection: Scanned ${scanned} / ~${docCount}", {
+                        scanned: `${i}`,
+                        docCount: `${doc_count}`,
+                    }),
+                    "gc-scanning"
+                );
             }
             if (!doc) continue;
             if ("children" in doc) {
@@ -932,12 +944,20 @@ This may indicate that some devices have not completed synchronisation, which co
             }
         }
         this._notice(
-            `Garbage Collection: Scanning completed. Total chunks: ${allChunks.size}, Used chunks: ${usedChunks.size}`,
+            msg("Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}", {
+                totalChunks: `${allChunks.size}`,
+                usedChunks: `${usedChunks.size}`,
+            }),
             "gc-scanning"
         );
 
         const unusedChunks = [...allChunks.keys()].filter((e) => !usedChunks.has(e));
-        this._notice(`Garbage Collection: Found ${unusedChunks.length} unused chunks to delete.`, "gc-scanning");
+        this._notice(
+            msg("Garbage Collection: Found ${unusedChunks} unused chunks to delete.", {
+                unusedChunks: `${unusedChunks.length}`,
+            }),
+            "gc-scanning"
+        );
         const deleteChunkDocs = unusedChunks.map(
             (chunkId) =>
                 ({
@@ -950,13 +970,20 @@ This may indicate that some devices have not completed synchronisation, which co
         const deletedCount = response.filter((e) => "ok" in e).length;
         const gcEndTime = Date.now();
         this._notice(
-            `Garbage Collection completed. Deleted chunks: ${deletedCount} / ${unusedChunks.length}. Time taken: ${(gcEndTime - gcStartTime) / 1000} seconds.`
+            msg(
+                "Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.",
+                {
+                    deletedChunks: `${deletedCount}`,
+                    totalChunks: `${unusedChunks.length}`,
+                    seconds: `${(gcEndTime - gcStartTime) / 1000}`,
+                }
+            )
         );
         // Send changes to remote
         const r = await replicator.openOneShotReplication(this.settings, false, false, "pushOnly");
         // Wait for replication to complete
         if (!r) {
-            this._notice("Failed to start replication after Garbage Collection.");
+            this._notice(msg("Failed to start replication after Garbage Collection."));
             return;
         }
         // Perform compaction

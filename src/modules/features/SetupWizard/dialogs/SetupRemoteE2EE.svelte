@@ -7,6 +7,7 @@
     import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
     import InputRow from "@/lib/src/UI/components/InputRow.svelte";
     import Password from "@/lib/src/UI/components/Password.svelte";
+    import { $msg as msg, currentLang as lang } from "../../../../lib/src/common/i18n.ts";
     import {
         DEFAULT_SETTINGS,
         E2EEAlgorithmNames,
@@ -47,30 +48,27 @@
     }
 </script>
 
-<DialogHeader title="End-to-End Encryption" />
-<Guidance>Please configure your end-to-end encryption settings.</Guidance>
-<InputRow label="End-to-End Encryption">
+<DialogHeader title={msg("Setup.RemoteE2EE.Title", {}, lang)} />
+<Guidance>{msg("Setup.RemoteE2EE.Guidance", {}, lang)}</Guidance>
+<InputRow label={msg("Setup.RemoteE2EE.LabelEncrypt", {}, lang)}>
     <input type="checkbox" bind:checked={encryptionSettings.encrypt} />
     <Password
         name="e2ee-passphrase"
-        placeholder="Enter your passphrase"
+        placeholder={msg("Setup.RemoteE2EE.PlaceholderPassphrase", {}, lang)}
         bind:value={encryptionSettings.passphrase}
         disabled={!encryptionSettings.encrypt}
         required={encryptionSettings.encrypt}
     />
 </InputRow>
-<InfoNote title="Strongly Recommended">
-    Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote
-    server. This means that even if someone gains access to the server, they won't be able to read your data without the
-    passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.
+<InfoNote title={msg("Setup.RemoteE2EE.StronglyRecommendedTitle", {}, lang)}>
+    {msg("Setup.RemoteE2EE.StronglyRecommendedLine1", {}, lang)}
     <br />
-    Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch
-    to other methods and connect to a remote server in the future.
+    {msg("Setup.RemoteE2EE.StronglyRecommendedLine2", {}, lang)}
 </InfoNote>
 <InfoNote warning>
-    This setting must be the same even when connecting to multiple synchronisation destinations.
+    {msg("Setup.RemoteE2EE.MultiDestinationWarning", {}, lang)}
 </InfoNote>
-<InputRow label="Obfuscate Properties">
+<InputRow label={msg("Setup.RemoteE2EE.LabelObfuscateProperties", {}, lang)}>
     <input
         type="checkbox"
         bind:checked={encryptionSettings.usePathObfuscation}
@@ -79,14 +77,11 @@
 </InputRow>
 
 <InfoNote>
-    Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of
-    security by making it harder to identify the structure and names of your files and folders on the remote server.
-    This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your
-    data.
+    {msg("Setup.RemoteE2EE.ObfuscatePropertiesDesc", {}, lang)}
 </InfoNote>
 
-<ExtraItems title="Advanced">
-    <InputRow label="Encryption Algorithm">
+<ExtraItems title={msg("Setup.RemoteE2EE.AdvancedTitle", {}, lang)}>
+    <InputRow label={msg("Setup.RemoteE2EE.LabelEncryptionAlgorithm", {}, lang)}>
         <select bind:value={encryptionSettings.E2EEAlgorithm} disabled={!encryptionSettings.encrypt}>
             {#each Object.values(E2EEAlgorithms) as alg}
                 <option value={alg}>{E2EEAlgorithmNames[alg] ?? alg}</option>
@@ -94,30 +89,29 @@
         </select>
     </InputRow>
     <InfoNote>
-        In most cases, you should stick with the default algorithm ({E2EEAlgorithmNames[
-            DEFAULT_SETTINGS.E2EEAlgorithm
-        ]}), This setting is only required if you have an existing Vault encrypted in a different format.
+        {msg(
+            "Setup.RemoteE2EE.DefaultAlgorithmDesc",
+            {
+                algorithm: E2EEAlgorithmNames[DEFAULT_SETTINGS.E2EEAlgorithm] ?? DEFAULT_SETTINGS.E2EEAlgorithm,
+            },
+            lang
+        )}
     </InfoNote>
     <InfoNote warning>
-        Changing the encryption algorithm will prevent access to any data previously encrypted with a different
-        algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your
-        data.
+        {msg("Setup.RemoteE2EE.AlgorithmWarning", {}, lang)}
     </InfoNote>
 </ExtraItems>
 
 <InfoNote warning>
     <p>
-        Please be aware that the End-to-End Encryption passphrase is not validated until the synchronisation process
-        actually commences. This is a security measure designed to protect your data.
+        {msg("Setup.RemoteE2EE.PassphraseValidationLine1", {}, lang)}
     </p>
     <p>
-        Therefore, we ask that you exercise extreme caution when configuring server information manually. If an
-        incorrect passphrase is entered, the data on the server will become corrupted. <br /><br />
-        Please understand that this is intended behaviour.
+        {msg("Setup.RemoteE2EE.PassphraseValidationLine2", {}, lang)}
     </p>
 </InfoNote>
 
 <UserDecisions>
-    <Decision title="Proceed" important disabled={!e2eeValid} commit={() => commit()} />
-    <Decision title="Cancel" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title={msg("Setup.RemoteE2EE.ButtonProceed", {}, lang)} important disabled={!e2eeValid} commit={() => commit()} />
+    <Decision title={msg("Setup.RemoteE2EE.ButtonCancel", {}, lang)} commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

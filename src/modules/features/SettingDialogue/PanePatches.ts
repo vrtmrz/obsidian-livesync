@@ -1,3 +1,4 @@
+import { $msg } from "../../../lib/src/common/i18n.ts";
 import {
     E2EEAlgorithmNames,
     E2EEAlgorithms,
@@ -15,7 +16,7 @@ import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
-    void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Metadata)")).then((paneEl) => {
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("deleteMetadataOfDeletedFiles");
 
         new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", {
@@ -23,13 +24,13 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         });
     });
 
-    void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Conflict Behaviour)")).then((paneEl) => {
         paneEl.addClass("wizardHidden");
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
     });
 
-    void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Database structure)")).then((paneEl) => {
         const migrateAllToIndexedDB = async () => {
             const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
             const options = {
@@ -77,21 +78,29 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         {
             const infoClass = this.editingSettings.useIndexedDBAdapter ? "op-warn" : "op-warn-info";
             paneEl.createDiv({
-                text: "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.",
+                text: $msg(
+                    "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead."
+                ),
                 cls: infoClass,
             });
             paneEl.createDiv({
-                text: "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.",
+                text: $msg(
+                    "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding."
+                ),
                 cls: "op-warn-info",
             });
             const setting = new Setting(paneEl)
-                .setName("Database Adapter")
-                .setDesc("Select the database adapter to use. ");
+                .setName($msg("Database Adapter"))
+                .setDesc($msg("Select the database adapter to use."));
             const el = setting.controlEl.createDiv({});
-            el.setText(`Current adapter: ${this.editingSettings.useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
+            el.setText(
+                $msg("Current adapter: {adapter}", {
+                    adapter: this.editingSettings.useIndexedDBAdapter ? "IndexedDB" : "IDB",
+                })
+            );
             if (!this.editingSettings.useIndexedDBAdapter) {
                 setting.addButton((button) => {
-                    button.setButtonText("Switch to IndexedDB").onClick(async () => {
+                    button.setButtonText($msg("Switch to IndexedDB")).onClick(async () => {
                         Logger("Migrating all data to IndexedDB...", LOG_LEVEL_NOTICE);
                         await migrateAllToIndexedDB();
                         Logger(
@@ -102,7 +111,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 });
             } else {
                 setting.addButton((button) => {
-                    button.setButtonText("Switch to IDB").onClick(async () => {
+                    button.setButtonText($msg("Switch to IDB")).onClick(async () => {
                         Logger("Migrating all data to IDB...", LOG_LEVEL_NOTICE);
                         await migrateAllToIDB();
                         Logger(
@@ -116,10 +125,10 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
     });
 
-    void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Internal API Usage)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
     });
-    void addPanel(paneEl, "Compatibility (Remote Database)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Remote Database)")).then((paneEl) => {
         new Setting(paneEl).autoWireDropDown("E2EEAlgorithm", {
             options: E2EEAlgorithmNames,
         });
@@ -133,7 +142,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         ),
     });
 
-    void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Database)")).then((paneEl) => {
         new Setting(paneEl)
             .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
             .addApplyButton(["additionalSuffixOfDatabaseName"]);
@@ -145,24 +154,24 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
         new Setting(paneEl).autoWireDropDown("hashAlg", {
             options: {
-                "": "Old Algorithm",
-                xxhash32: "xxhash32 (Fast but less collision resistance)",
-                xxhash64: "xxhash64 (Fastest)",
-                "mixed-purejs": "PureJS fallback  (Fast, W/O WebAssembly)",
-                sha1: "Older fallback (Slow, W/O WebAssembly)",
+                "": $msg("Old Algorithm"),
+                xxhash32: $msg("xxhash32 (Fast but less collision resistance)"),
+                xxhash64: $msg("xxhash64 (Fastest)"),
+                "mixed-purejs": $msg("PureJS fallback  (Fast, W/O WebAssembly)"),
+                sha1: $msg("Older fallback (Slow, W/O WebAssembly)"),
             } as Record<HashAlgorithm, string>,
         });
         this.addOnSaved("hashAlg", async () => {
             await this.core.localDatabase._prepareHashFunctions();
         });
     });
-    void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Behaviour)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
         new Setting(paneEl).autoWireToggle("processSizeMismatchedFiles");
     });
 
-    void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Processing)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableWorkerForGeneratingChunks");
 
         new Setting(paneEl).autoWireToggle("processSmallFilesInUIThread", {
@@ -172,19 +181,22 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     // void addPanel(paneEl, "Edge case addressing (Networking)").then((paneEl) => {
     // new Setting(paneEl).autoWireToggle("useRequestAPI");
     // });
-    void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Trouble addressed)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
-    void addPanel(paneEl, "Remediation").then((paneEl) => {
+    void addPanel(paneEl, $msg("Remediation")).then((paneEl) => {
         let dateEl: HTMLSpanElement;
         new Setting(paneEl)
             .addText((text) => {
                 const updateDateText = () => {
                     if (this.editingSettings.maxMTimeForReflectEvents == 0) {
-                        dateEl.textContent = `No limit configured`;
+                        dateEl.textContent = $msg("No limit configured");
                     } else {
                         const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
-                        dateEl.textContent = `Limit: ${date.toLocaleString()} (${this.editingSettings.maxMTimeForReflectEvents})`;
+                        dateEl.textContent = $msg("Limit: {datetime} ({timestamp})", {
+                            datetime: date.toLocaleString(),
+                            timestamp: `${this.editingSettings.maxMTimeForReflectEvents}`,
+                        });
                     }
                     this.requestUpdate();
                 };
@@ -216,22 +228,24 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             .addApplyButton(["maxMTimeForReflectEvents"]);
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
-            const buttons = ["Restart Now", "Later"] as const;
+            const buttons = [$msg("Restart Now"), $msg("Later")] as const;
             const reboot = await this.core.confirm.askSelectStringDialogue(
-                "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?",
+                $msg(
+                    "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?"
+                ),
                 buttons,
                 {
-                    title: "Remediation Setting Changed",
-                    defaultAction: "Restart Now",
+                    title: $msg("Remediation Setting Changed"),
+                    defaultAction: $msg("Restart Now"),
                 }
             );
-            if (reboot !== "Later") {
+            if (reboot !== $msg("Later")) {
                 Logger("Remediation setting changed. Restarting Obsidian...", LOG_LEVEL_NOTICE);
                 this.services.appLifecycle.performRestart();
             }
         });
     });
-    void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Remote Database Tweak (In sunset)")).then((paneEl) => {
         // new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
         // const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
         // new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");

@@ -1,4 +1,4 @@
-import { $msg, $t } from "../../../lib/src/common/i18n.ts";
+import { $msg, $t, setLang } from "../../../lib/src/common/i18n.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../../lib/src/common/rosetta.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -13,13 +13,16 @@ export function paneGeneral(
 ): void {
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
         const languages = Object.fromEntries([
-            // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
+            ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
             ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
         ]) as Record<I18N_LANGS, string>;
         new Setting(paneEl).autoWireDropDown("displayLanguage", {
             options: languages,
         });
-        this.addOnSaved("displayLanguage", () => this.display());
+        this.addOnSaved("displayLanguage", (value) => {
+            setLang(value);
+            this.display();
+        });
         new Setting(paneEl).autoWireToggle("showStatusOnEditor");
         this.addOnSaved("showStatusOnEditor", () => {
             eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
@@ -31,9 +34,9 @@ export function paneGeneral(
         new Setting(paneEl).autoWireToggle("hideFileWarningNotice");
         new Setting(paneEl).autoWireDropDown("networkWarningStyle", {
             options: {
-                [NetworkWarningStyles.BANNER]: "Show full banner",
-                [NetworkWarningStyles.ICON]: "Show icon only",
-                [NetworkWarningStyles.HIDDEN]: "Hide completely",
+                [NetworkWarningStyles.BANNER]: $msg("Show full banner"),
+                [NetworkWarningStyles.ICON]: $msg("Show icon only"),
+                [NetworkWarningStyles.HIDDEN]: $msg("Hide completely"),
             },
         });
         this.addOnSaved("networkWarningStyle", () => {

@@ -61,7 +61,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setDesc($msg("Setting.TroubleShooting.ScanBrokenFiles.Desc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Scan for Broken files")
+                    .setButtonText($msg("Scan for Broken files"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
@@ -211,7 +211,7 @@ ${stringifyYaml({
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");
     });
 
-    void addPanel(paneEl, "Scram Switches").then((paneEl) => {
+    void addPanel(paneEl, $msg("Scram Switches")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("suspendFileWatching");
         this.addOnSaved("suspendFileWatching", () => this.services.appLifecycle.askRestart());
 
@@ -219,7 +219,7 @@ ${stringifyYaml({
         this.addOnSaved("suspendParseReplicationResult", () => this.services.appLifecycle.askRestart());
     });
 
-    void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
+    void addPanel(paneEl, $msg("Recovery and Repair")).then((paneEl) => {
         const addResult = async (path: string, file: FilePathWithPrefix | false, fileOnDB: LoadedEntry | false) => {
             const storageFileStat = file ? await this.core.storageAccess.statHidden(file) : null;
             resultArea.appendChild(
@@ -241,7 +241,7 @@ ${stringifyYaml({
                     );
                     if (fileOnDB && file) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Show history" }, (buttonEl) => {
+                            this.createEl(el, "button", { text: $msg("Show history") }, (buttonEl) => {
                                 buttonEl.onClickEvent(() => {
                                     eventHub.emitEvent(EVENT_REQUEST_SHOW_HISTORY, {
                                         file: file,
@@ -253,7 +253,7 @@ ${stringifyYaml({
                     }
                     if (file) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Storage -> Database" }, (buttonEl) => {
+                            this.createEl(el, "button", { text: $msg("Storage -> Database") }, (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (file.startsWith(".")) {
                                         const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
@@ -290,7 +290,7 @@ ${stringifyYaml({
                     }
                     if (fileOnDB) {
                         el.appendChild(
-                            this.createEl(el, "button", { text: "Database -> Storage" }, (buttonEl) => {
+                            this.createEl(el, "button", { text: $msg("Database -> Storage") }, (buttonEl) => {
                                 buttonEl.onClickEvent(async () => {
                                     if (fileOnDB.path.startsWith(ICHeader)) {
                                         const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
@@ -341,24 +341,26 @@ ${stringifyYaml({
             }
         };
         new Setting(paneEl)
-            .setName("Recreate missing chunks for all files")
-            .setDesc("This will recreate chunks for all files. If there were missing chunks, this may fix the errors.")
+            .setName($msg("Recreate missing chunks for all files"))
+            .setDesc($msg("This will recreate chunks for all files. If there were missing chunks, this may fix the errors."))
             .addButton((button) =>
                 button
-                    .setButtonText("Recreate all")
+                    .setButtonText($msg("Recreate all"))
                     .setCta()
                     .onClick(async () => {
                         await this.core.fileHandler.createAllChunks(true);
                     })
             );
         new Setting(paneEl)
-            .setName("Resolve All conflicted files by the newer one")
+            .setName($msg("Resolve All conflicted files by the newer one"))
             .setDesc(
-                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                $msg(
+                    "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                )
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Resolve All")
+                    .setButtonText($msg("Resolve All"))
                     .setCta()
                     .onClick(async () => {
                         await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
@@ -366,13 +368,15 @@ ${stringifyYaml({
             );
 
         new Setting(paneEl)
-            .setName("Verify and repair all files")
+            .setName($msg("Verify and repair all files"))
             .setDesc(
-                "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep."
+                $msg(
+                    "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep."
+                )
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Verify all")
+                    .setButtonText($msg("Verify all"))
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {
@@ -458,11 +462,11 @@ ${stringifyYaml({
             );
         const resultArea = paneEl.createDiv({ text: "" });
         new Setting(paneEl)
-            .setName("Check and convert non-path-obfuscated files")
-            .setDesc("")
+            .setName($msg("Check and convert non-path-obfuscated files"))
+            .setDesc($msg("Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary."))
             .addButton((button) =>
                 button
-                    .setButtonText("Perform")
+                    .setButtonText($msg("Perform"))
                     .setDisabled(false)
                     .setWarning()
                     .onClick(async () => {
@@ -536,10 +540,10 @@ ${stringifyYaml({
                     })
             );
     });
-    void addPanel(paneEl, "Reset").then((paneEl) => {
-        new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+    void addPanel(paneEl, $msg("Reset")).then((paneEl) => {
+        new Setting(paneEl).setName($msg("Back to non-configured")).addButton((button) =>
             button
-                .setButtonText("Back")
+                .setButtonText($msg("Back"))
                 .setDisabled(false)
                 .onClick(async () => {
                     this.editingSettings.isConfigured = false;
@@ -548,9 +552,9 @@ ${stringifyYaml({
                 })
         );
 
-        new Setting(paneEl).setName("Delete all customization sync data").addButton((button) =>
+        new Setting(paneEl).setName($msg("Delete all customization sync data")).addButton((button) =>
             button
-                .setButtonText("Delete")
+                .setButtonText($msg("Delete"))
                 .setDisabled(false)
                 .setWarning()
                 .onClick(async () => {
