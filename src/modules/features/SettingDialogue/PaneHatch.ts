@@ -137,6 +137,23 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     pluginConfig.accessKey = REDACTED;
                     pluginConfig.secretKey = REDACTED;
                     const redact = (source: string) => `${REDACTED}(${source.length} letters)`;
+                    const toSchemeOnly = (uri: string) => {
+                        try {
+                            return `${new URL(uri).protocol}//`;
+                        } catch {
+                            const matched = uri.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\//);
+                            return matched?.[0] ?? REDACTED;
+                        }
+                    };
+                    pluginConfig.remoteConfigurations = Object.fromEntries(
+                        Object.entries(pluginConfig.remoteConfigurations || {}).map(([id, config]) => [
+                            id,
+                            {
+                                ...config,
+                                uri: toSchemeOnly(config.uri),
+                            },
+                        ])
+                    );
                     pluginConfig.region = redact(pluginConfig.region);
                     pluginConfig.bucket = redact(pluginConfig.bucket);
                     pluginConfig.pluginSyncExtendedSetting = {};

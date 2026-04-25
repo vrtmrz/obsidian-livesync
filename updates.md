@@ -11,6 +11,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Fixed a worker-side recursion issue that could raise `Maximum call stack size exceeded` during chunk splitting (related: #855).
 - Improved background worker crash cleanup so pending split/encryption tasks are released cleanly instead of being left in a waiting state (related: #855).
 - On start-up, the selected remote configuration is now applied to runtime connection fields as well, reducing intermittent authentication failures caused by stale runtime settings (related: #855).
+- Issue report generation now redacts `remoteConfigurations` connection strings and keeps only the scheme (e.g. `sls+https://`), so credentials are not exposed in reports.
 
 ## 0.25.57
 
