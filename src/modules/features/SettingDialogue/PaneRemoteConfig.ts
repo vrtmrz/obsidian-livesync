@@ -32,6 +32,7 @@ import SetupRemote from "../SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "../SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "../SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "../SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
     const workObj = { ...editingSettings } as ObsidianLiveSyncSettings;
@@ -183,6 +184,11 @@ export function paneRemoteConfig(
                 }, true);
 
                 if (synchroniseActiveRemote) {
+                    // Keep both buffers aligned with the newly activated remote before saving any remaining dirty keys.
+                    syncActivatedRemoteSettings(this.editingSettings, this.core.settings);
+                    if (this.initialSettings) {
+                        syncActivatedRemoteSettings(this.initialSettings, this.core.settings);
+                    }
                     await this.saveAllDirtySettings();
                 }
 
