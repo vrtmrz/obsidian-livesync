@@ -30,7 +30,8 @@
     type JSONData = Record<string | number | symbol, any> | [any];
 
     const docsArray = $derived.by(() => {
-        if (docs && docs.length >= 1) {
+        // The merge pane compares two revisions, so guard against incomplete input before reading docs[1].
+        if (docs && docs.length >= 2) {
             if (keepOrder || docs[0].mtime < docs[1].mtime) {
                 return { a: docs[0], b: docs[1] } as const;
             } else {
