@@ -138,7 +138,7 @@ export const _requestToCouchDBFetch = async (
         authorization: authHeader,
         "content-type": "application/json",
     };
-    const uri = `${baseUri}/${path}`;
+    const uri = `${baseUri.replace(/\/+$/, "")}/${path}`;
     const requestParam = {
         url: uri,
         method: method || (body ? "PUT" : "GET"),
@@ -162,7 +162,7 @@ export const _requestToCouchDB = async (
     const authHeaderGen = new AuthorizationHeaderGenerator();
     const authHeader = await authHeaderGen.getAuthorizationHeader(credentials);
     const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin, ...customHeaders };
-    const uri = `${baseUri}/${path}`;
+    const uri = `${baseUri.replace(/\/+$/, "")}/${path}`;
     const requestParam: RequestUrlParam = {
         url: uri,
         method: method || (body ? "PUT" : "GET"),
