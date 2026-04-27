@@ -781,7 +781,8 @@ Success: ${successCount}, Errored: ${errored}`;
         const credential = generateCredentialObject(this.settings);
         const request = async (path: string, method: string = "GET", body: any = undefined) => {
             const req = await _requestToCouchDB(
-                this.settings.couchDB_URI + (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
+                this.settings.couchDB_URI.replace(/\/+$/, "") +
+                    (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
                 credential,
                 window.origin,
                 path,
