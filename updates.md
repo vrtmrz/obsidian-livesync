@@ -3,7 +3,18 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Untagged (29th April, 2026)
+## 0.25.60
+
+29th April, 2026
+
+### Fixed
+
+- Now larger settings can be exported and imported via QR code without issues. (#595)
+  - When the settings data exceeds the QR code capacity, it is now split into multiple QR codes.
+    - These QR codes are reassembled by the aggregator page, which collects the split data and reconstructs the original settings.
+    - Aggregator page is available at `https://vrtmrz.github.io/obsidian-livesync/aggregator.html`, and this file is also included in the repository.
+  - We will not send the settings data to any server. The QR code data is generated and processed entirely on the client side, ensuring that your settings remain private and secure. HOWEVER, please be careful your network environment.
+- Fixed some errors during serialisation and deserialisation of the settings, which caused issues in some cases when importing/exporting settings via QR code.
 
 ### Fixed (CLI)
 
