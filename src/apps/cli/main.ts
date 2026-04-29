@@ -36,14 +36,15 @@ function printHelp(): void {
 Self-hosted LiveSync CLI
 
 Usage:
-  livesync-cli [database-path] [options] [command] [command-args]
+  livesync-cli <database-path> [options] <command> [command-args]
+  livesync-cli init-settings [path]
 
 Arguments:
-  database-path           Path to the local database directory (required)
+  database-path           Path to the local database directory
 
 Commands:
   sync                    Run one replication cycle and exit
-    p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
+    p2p-peers <timeout>     Show discovered peers as [peer]\t<peer-id>\t<peer-name>
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
     p2p-host                Start P2P host mode and wait until interrupted
@@ -54,29 +55,29 @@ Commands:
     put <dst>               Read UTF-8 content from stdin and write to local database path <dst>
     cat <src>               Read file <src> from local database and write to stdout
     cat-rev <src> <rev>     Read file <src> at specific revision <rev> and write to stdout
-    ls [prefix]             List DB files as path<TAB>size<TAB>mtime<TAB>revision[*]
+    ls [prefix]             List DB files as path\tsize\tmtime\trevision[*]
     info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
     mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
 Examples:
-    livesync-cli ./my-database sync
-    livesync-cli ./my-database p2p-peers 5
-    livesync-cli ./my-database p2p-sync my-peer-name 15
-    livesync-cli ./my-database p2p-host
-    livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
-    livesync-cli ./my-database pull folder/note.md ./exports/note.md
-    livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
-    livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
-    echo "Hello" | livesync-cli ./my-database put notes/hello.md
-    livesync-cli ./my-database cat notes/hello.md
-    livesync-cli ./my-database cat-rev notes/hello.md 3-abcdef
-    livesync-cli ./my-database ls notes/
-    livesync-cli ./my-database info notes/hello.md
-    livesync-cli ./my-database rm notes/hello.md
-    livesync-cli ./my-database resolve notes/hello.md 3-abcdef
-    livesync-cli init-settings ./data.json
-    livesync-cli ./my-database --verbose
+  livesync-cli ./my-database sync
+  livesync-cli ./my-database p2p-peers 5
+  livesync-cli ./my-database p2p-sync my-peer-name 15
+  livesync-cli ./my-database p2p-host
+  livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
+  livesync-cli ./my-database pull folder/note.md ./exports/note.md
+  livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
+  livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
+  echo "Hello" | livesync-cli ./my-database put notes/hello.md
+  livesync-cli ./my-database cat notes/hello.md
+  livesync-cli ./my-database cat-rev notes/hello.md 3-abcdef
+  livesync-cli ./my-database ls notes/
+  livesync-cli ./my-database info notes/hello.md
+  livesync-cli ./my-database rm notes/hello.md
+  livesync-cli ./my-database resolve notes/hello.md 3-abcdef
+  livesync-cli init-settings ./data.json
+  livesync-cli ./my-database --verbose
         `);
 }
 

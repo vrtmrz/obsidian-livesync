@@ -61,8 +61,8 @@ lsync [database-path] [command] [args...]
 ### Commands
 
 - `sync`: Run one replication cycle with the remote CouchDB.
-- `mirror [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
-    - If `vault-path` is provided, the CLI will synchronise the database with files in that directory.
+- `mirror [database-path] [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
+    - If `vault-path` is provided, the CLI will synchronise the database with files in the vault directory.
     - If `vault-path` is omitted, it defaults to `database-path` (compatibility mode).
     - Use this command to keep your local `.md` files in sync with the database.
 - `ls [prefix]`: List files currently stored in the local database.
@@ -229,7 +229,8 @@ The CLI uses the same settings format as the Obsidian plugin. Create a `.livesyn
 
 ```
 Usage:
-  livesync-cli [database-path] [options] [command] [command-args]
+  livesync-cli <database-path> [options] <command> [command-args]
+  livesync-cli init-settings [path]
 
 Arguments:
   database-path           Path to the local database directory (required except for init-settings)
@@ -238,7 +239,8 @@ Options:
   --settings, -s <path>   Path to settings file (default: .livesync/settings.json in local database directory)
   --force, -f             Overwrite existing file on init-settings
   --verbose, -v           Enable verbose logging
-  --help, -h              Show this help message
+  --debug, -d             Enable debug logging (includes verbose)
+  --help, -h              Show help message
 
 Commands:
   init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
@@ -248,16 +250,16 @@ Commands:
   p2p-host                Start P2P host mode and wait until interrupted (Ctrl+C)
   push <src> <dst>        Push local file <src> into local database path <dst>
   pull <src> <dst>        Pull file <src> from local database into local file <dst>
-  pull-rev <src> <dst> <revision>   Pull specific revision into local file <dst>
+  pull-rev <src> <dst> <rev>   Pull specific revision <rev> into local file <dst>
   setup <setupURI>        Apply setup URI to settings file
-  put <vaultPath>         Read text from standard input and write to local database
-  cat <vaultPath>         Write latest file content from local database to standard output
-  cat-rev <vaultPath> <revision>   Write specific revision content from local database to standard output
+  put <dst>               Read text from standard input and write to local database path <dst>
+  cat <src>               Write latest file content from local database to standard output
+  cat-rev <src> <rev>     Write specific revision <rev> content from local database to standard output
   ls [prefix]             List files as path<TAB>size<TAB>mtime<TAB>revision[*]
-  info <vaultPath>        Show file metadata including current and past revisions, conflicts, and chunk list
-  rm <vaultPath>          Mark file as deleted in local database
-  resolve <vaultPath> <revision>   Resolve conflict by keeping the specified revision
-  mirror <storagePath> <vaultPath>   Mirror local file into local database.
+  info <path>             Show file metadata including current and past revisions, conflicts, and chunk list
+  rm <path>               Mark file as deleted in local database
+  resolve <path> <rev>    Resolve conflict by keeping the specified revision
+  mirror [vaultPath]      Mirror database contents to the local file system (vaultPath defaults to database-path)
 ```
 
 Run via npm script:
