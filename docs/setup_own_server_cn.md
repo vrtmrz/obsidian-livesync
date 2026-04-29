@@ -71,7 +71,6 @@ obsidian-livesync
 
 可以参照以下内容编辑 `docker-compose.yml`:
 ```yaml
-version: "2.1"
 services:
   couchdb:
     image: couchdb

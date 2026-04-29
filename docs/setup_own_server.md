@@ -230,7 +230,6 @@ And, be sure to check the server log and be careful of malicious access.
 If you are using Traefik, this [docker-compose.yml](https://github.com/vrtmrz/obsidian-livesync/blob/main/docker-compose.traefik.yml) file (also pasted below) has all the right CORS parameters set. It assumes you have an external network called `proxy`.
 
 ```yaml
-version: "2.1"
 services:
   couchdb:
     image: couchdb:latest
