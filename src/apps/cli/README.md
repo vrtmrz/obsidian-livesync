@@ -49,9 +49,13 @@ CLI Main
 
 The CLI operates on a **database directory** which contains PouchDB data and settings.
 
+> [!NOTE]
+> `livesync-cli` is the alias for the CLI executable. Please replace with the actual command of your installation (e.g. `npm run --silent cli --` or `docker run ...`).
+
 ```bash
-lsync [database-path] [command] [args...]
+livesync-cli [database-path] [command] [args...]
 ```
+
 
 ### Arguments
 
@@ -76,17 +80,38 @@ lsync [database-path] [command] [args...]
 
 ```bash
 # Basic sync with remote
-lsync ./my-db sync
+livesync-cli ./my-db sync
 
 # Mirroring to your actual Obsidian vault
-lsync ./my-db mirror /path/to/obsidian-vault
+livesync-cli ./my-db mirror /path/to/obsidian-vault
 
 # Manual file operations
-lsync ./my-db push ./note.md folder/note.md
-lsync ./my-db pull folder/note.md ./note.md
+livesync-cli ./my-db push ./note.md folder/note.md
+livesync-cli ./my-db pull folder/note.md ./note.md
 ```
 
-## Docker
+## Installation
+
+### Build from source
+
+```bash
+# Install dependencies (ensure you are in repository root directory, not src/apps/cli)
+# due to shared dependencies with webapp and main library
+npm install
+# Build the project (ensure you are in `src/apps/cli` directory)
+npm run build
+```
+
+Run the CLI:
+
+```bash
+# Run with npm script (from repository root)
+npm run --silent cli -- [database-path] [command] [args...]
+# Run the built executable directly
+node src/apps/cli/dist/index.cjs [database-path] [command] [args...]
+```
+
+### Docker
 
 A Docker image is provided for headless / server deployments. Build from the repository root:
 
@@ -109,7 +134,7 @@ docker run --rm -v /path/to/your/db:/data livesync-cli ls
 
 The database directory is mounted at `/data` by default. Override with `-e LIVESYNC_DB_PATH=/other/path`.
 
-### P2P (WebRTC) and Docker networking
+#### P2P (WebRTC) and Docker networking
 
 The P2P replicator (`p2p-host`, `p2p-sync`, `p2p-peers`) uses WebRTC and generates
 three kinds of ICE candidates. The default Docker bridge network affects which
@@ -128,6 +153,8 @@ advertised as the `host` candidate:
 docker run --rm --network host -v /path/to/your/vault:/data livesync-cli p2p-host
 ```
 
+Note: also fix the alias to include `--network host` if you want to use `livesync-cli` for P2P commands.
+
 > `--network host` is not available on Docker Desktop for macOS or Windows.
 
 **LAN P2P on macOS / Windows Docker Desktop** — configure a TURN server in the
@@ -140,15 +167,34 @@ candidate carries the host's public IP and peers can connect normally.
 
 **CouchDB sync only (no P2P)** — no special network configuration is required.
 
-## Installation
+
+### Adding `livesync-cli` alias
+
+To use the `livesync-cli` command globally, you can add an alias to your shell configuration file (e.g., `.zshrc` or `.bashrc`).
+
+If you are using `npm run`, add the following line:
 
 ```bash
-# Install dependencies (ensure you are in repository root directory, not src/apps/cli)
-# due to shared dependencies with webapp and main library
-npm install
-# Build the project (ensure you are in `src/apps/cli` directory)
-npm run build
+alias livesync-cli='npm run --silent --prefix /path/to/repository/src/apps/cli cli --'
+# or
+alias livesync-cli="npm run --silent --prefix $PWD cli --"
 ```
+
+Alternatively, if you want to use the built executable directly:
+
+```bash
+alias livesync-cli='node /path/to/repository/src/apps/cli/dist/index.cjs'
+or
+alias livesync-cli="node $PWD/dist/index.cjs"
+```
+
+If you prefer using Docker:
+
+```bash
+alias livesync-cli='docker run --rm -v /path/to/your/db:/data livesync-cli'
+```
+
+After adding the alias, restart your shell or run `source ~/.zshrc` (or `.bashrc`).
 
 ## Usage
 
@@ -158,43 +204,43 @@ As you know, the CLI is designed to be used in a headless environment. Hence all
 
 ```bash
 # Sync local database with CouchDB (no files will be changed).
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json sync
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json sync
 
 # Push files to local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json push /your/storage/file.md /vault/path/file.md
 
 # Pull files from local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json pull /vault/path/file.md /your/storage/file.md
 
 # Verbose logging
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json --verbose
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json --verbose
 
 # Apply setup URI to settings file (settings only; does not run synchronisation)
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json setup "obsidian://setuplivesync?settings=..."
 
 # Put text from stdin into local database
-echo "Hello from stdin" | npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
+echo "Hello from stdin" | livesync-cli /path/to/your-local-database --settings /path/to/settings.json put /vault/path/file.md
 
 # Output a file from local database to stdout
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json cat /vault/path/file.md
 
 # Output a specific revision of a file from local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json cat-rev /vault/path/file.md 3-abcdef
 
 # Pull a specific revision of a file from local database to local storage
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json pull-rev /vault/path/file.md /your/storage/file.old.md 3-abcdef
 
 # List files in local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json ls /vault/path/
 
 # Show metadata for a file in local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json info /vault/path/file.md
 
 # Mark a file as deleted in local database
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json rm /vault/path/file.md
 
 # Resolve conflict by keeping a specific revision
-npm run --silent cli -- /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
 ```
 
 ### Configuration
@@ -362,9 +408,9 @@ Note: `mirror` does not respect file deletions. If a file is deleted in storage,
 Create default settings, apply a setup URI, then run one sync cycle.
 
 ```bash
-npm run --silent cli -- init-settings /data/livesync-settings.json
-printf '%s\n' "$SETUP_PASSPHRASE" | npm run --silent cli -- /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json sync
+livesync-cli -- init-settings /data/livesync-settings.json
+printf '%s\n' "$SETUP_PASSPHRASE" | livesync-cli -- /data/vault --settings /data/livesync-settings.json setup "$SETUP_URI"
+livesync-cli -- /data/vault --settings /data/livesync-settings.json sync
 ```
 
 ### 2. Scripted import and export
@@ -372,8 +418,8 @@ npm run --silent cli -- /data/vault --settings /data/livesync-settings.json sync
 Push local files into the database from automation, and pull them back for export or backup.
 
 ```bash
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json push ./note.md notes/note.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json pull notes/note.md ./exports/note.md
 ```
 
 ### 3. Revision inspection and restore
@@ -381,9 +427,9 @@ npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull
 List metadata, find an older revision, then restore it by content (`cat-rev`) or file output (`pull-rev`).
 
 ```bash
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
+livesync-cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json cat-rev notes/note.md 3-abcdef
+livesync-cli -- /data/vault --settings /data/livesync-settings.json pull-rev notes/note.md ./restore/note.old.md 3-abcdef
 ```
 
 ### 4. Conflict and cleanup workflow
@@ -391,9 +437,9 @@ npm run --silent cli -- /data/vault --settings /data/livesync-settings.json pull
 Inspect conflicted revisions, resolve by keeping one revision, then delete obsolete files.
 
 ```bash
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json info notes/note.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json resolve notes/note.md 3-abcdef
+livesync-cli -- /data/vault --settings /data/livesync-settings.json rm notes/obsolete.md
 ```
 
 ### 5. CI smoke test for content round-trip
@@ -401,8 +447,8 @@ npm run --silent cli -- /data/vault --settings /data/livesync-settings.json rm n
 Validate that `put`/`cat` is behaving as expected in a pipeline.
 
 ```bash
-echo "hello-ci" | npm run --silent cli -- /data/vault --settings /data/livesync-settings.json put ci/test.md
-npm run --silent cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.md
+echo "hello-ci" | livesync-cli -- /data/vault --settings /data/livesync-settings.json put ci/test.md
+livesync-cli -- /data/vault --settings /data/livesync-settings.json cat ci/test.md
 ```
 
 ## Development
