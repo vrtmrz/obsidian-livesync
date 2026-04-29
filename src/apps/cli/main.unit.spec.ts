@@ -56,7 +56,7 @@ describe("CLI parseArgs", () => {
         expect(stdout).toHaveBeenCalled();
         const combined = stdout.mock.calls.flat().join("\n");
         expect(combined).toContain("Usage:");
-        expect(combined).toContain("livesync-cli [database-path]");
+        expect(combined).toContain("livesync-cli <database-path> [options] <command> [command-args]");
     });
 
     it("parses p2p-peers command and timeout", () => {
