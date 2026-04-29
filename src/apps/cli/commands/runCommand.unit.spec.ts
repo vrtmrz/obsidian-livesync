@@ -58,7 +58,7 @@ async function createSetupURI(passphrase: string): Promise<string> {
 
 describe("runCommand abnormal cases", () => {
     const context = {
-        vaultPath: "/tmp/vault",
+        databasePath: "/tmp/vault",
         settingsPath: "/tmp/vault/.livesync/settings.json",
     } as any;
 

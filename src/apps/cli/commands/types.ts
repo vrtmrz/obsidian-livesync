@@ -32,7 +32,7 @@ export interface CLIOptions {
 }
 
 export interface CLICommandContext {
-    vaultPath: string;
+    databasePath: string;
     core: LiveSyncBaseCore<ServiceContext, any>;
     settingsPath: string;
 }

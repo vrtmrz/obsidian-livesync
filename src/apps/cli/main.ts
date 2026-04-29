@@ -58,6 +58,7 @@ Commands:
     info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
+    mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
 Examples:
     livesync-cli ./my-database sync
     livesync-cli ./my-database p2p-peers 5
@@ -112,6 +113,7 @@ export function parseArgs(): CLIOptions {
             case "-d":
                 // debugging automatically enables verbose logging, as it is intended for debugging issues.
                 debug = true;
+            // falls through
             case "--verbose":
             case "-v":
                 verbose = true;
@@ -220,34 +222,34 @@ export async function main() {
         return;
     }
 
-    // Resolve vault path
-    const vaultPath = path.resolve(options.databasePath!);
-    // Check if vault directory exists
+    // Resolve database path
+    const databasePath = path.resolve(options.databasePath!);
+    // Check if database directory exists
     try {
-        const stat = await fs.stat(vaultPath);
+        const stat = await fs.stat(databasePath);
         if (!stat.isDirectory()) {
-            console.error(`Error: ${vaultPath} is not a directory`);
+            console.error(`Error: ${databasePath} is not a directory`);
             process.exit(1);
         }
     } catch (error) {
-        console.error(`Error: Vault directory ${vaultPath} does not exist`);
+        console.error(`Error: Database directory ${databasePath} does not exist`);
         process.exit(1);
     }
 
     // Resolve settings path
     const settingsPath = options.settingsPath
         ? path.resolve(options.settingsPath)
-        : path.join(vaultPath, SETTINGS_FILE);
-    configureNodeLocalStorage(path.join(vaultPath, ".livesync", "runtime", "local-storage.json"));
+        : path.join(databasePath, SETTINGS_FILE);
+    configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
 
     infoLog(`Self-hosted LiveSync CLI`);
-    infoLog(`Vault: ${vaultPath}`);
+    infoLog(`Database Path: ${databasePath}`);
     infoLog(`Settings: ${settingsPath}`);
     infoLog("");
 
     // Create service context and hub
-    const context = new NodeServiceContext(vaultPath);
-    const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(vaultPath, context);
+    const context = new NodeServiceContext(databasePath);
+    const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
     serviceHubInstance.API.addLog.setHandler((message: string, level: LOG_LEVEL) => {
         let levelStr = "";
         switch (level) {
@@ -321,7 +323,11 @@ export async function main() {
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
-            return initialiseServiceModulesCLI(vaultPath, core, serviceHub);
+            const mirrorVaultPath =
+                options.command === "mirror" && options.commandArgs[0]
+                    ? path.resolve(options.commandArgs[0])
+                    : databasePath;
+            return initialiseServiceModulesCLI(mirrorVaultPath, core, serviceHub);
         },
         (core) => [
             // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
@@ -331,8 +337,8 @@ export async function main() {
         (core) => {
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
-                const vaultPath = stripAllPrefixes(getPathFromUXFileInfo(target));
-                const parts = vaultPath.split(path.sep);
+                const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                const parts = targetPath.split(path.sep);
                 // if some part of the path starts with dot, treat it as internal file and ignore.
                 if (parts.some((part) => part.startsWith("."))) {
                     return await Promise.resolve(false);
@@ -393,7 +399,7 @@ export async function main() {
             infoLog("");
         }
 
-        const result = await runCommand(options, { vaultPath, core, settingsPath });
+        const result = await runCommand(options, { databasePath, core, settingsPath });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;

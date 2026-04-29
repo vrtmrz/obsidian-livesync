@@ -5,19 +5,19 @@ export function toArrayBuffer(data: Buffer): ArrayBuffer {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 }
 
-export function toVaultRelativePath(inputPath: string, vaultPath: string): string {
+export function toDatabaseRelativePath(inputPath: string, databasePath: string): string {
     const stripped = inputPath.replace(/^[/\\]+/, "");
     if (!path.isAbsolute(inputPath)) {
         const normalized = stripped.replace(/\\/g, "/");
-        const resolved = path.resolve(vaultPath, normalized);
-        const rel = path.relative(vaultPath, resolved);
+        const resolved = path.resolve(databasePath, normalized);
+        const rel = path.relative(databasePath, resolved);
         if (rel.startsWith("..") || path.isAbsolute(rel)) {
             throw new Error(`Path ${inputPath} is outside of the local database directory`);
         }
         return rel.replace(/\\/g, "/");
     }
     const resolved = path.resolve(inputPath);
-    const rel = path.relative(vaultPath, resolved);
+    const rel = path.relative(databasePath, resolved);
     if (rel.startsWith("..") || path.isAbsolute(rel)) {
         throw new Error(`Path ${inputPath} is outside of the local database directory`);
     }
@@ -25,15 +25,15 @@ export function toVaultRelativePath(inputPath: string, vaultPath: string): strin
 }
 
 export async function readStdinAsUtf8(): Promise<string> {
-    const chunks: Buffer[] = [];
+    const chunks = [];
     for await (const chunk of process.stdin) {
         if (typeof chunk === "string") {
             chunks.push(Buffer.from(chunk, "utf-8"));
         } else {
-            chunks.push(chunk);
+            chunks.push(chunk as Buffer);
         }
     }
-    return Buffer.concat(chunks).toString("utf-8");
+    return Buffer.concat(chunks as Uint8Array[]).toString("utf-8");
 }
 
 export async function promptForPassphrase(prompt = "Enter setup URI passphrase: "): Promise<string> {

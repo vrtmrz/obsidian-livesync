@@ -45,9 +45,46 @@ CLI Main
     - Settings management (JSON file)
     - Graceful shutdown handling
 
-## Something I realised later that could lead to misunderstandings
+## Usage
 
-The term `vault` in this README refers to the directory containing your local database and settings file. Not the actual files you want to sync. I will fix this later, but please be mind this for now.
+The CLI operates on a **database directory** which contains PouchDB data and settings.
+
+```bash
+lsync [database-path] [command] [args...]
+```
+
+### Arguments
+
+- `database-path`: Path to the directory where `.livesync` folder and `settings.json` are (or will be) located.
+    - Note: In previous versions, this was referred to as the "vault" path. Now it is clearly distinguished from the actual vault (the directory containing your `.md` files).
+
+### Commands
+
+- `sync`: Run one replication cycle with the remote CouchDB.
+- `mirror [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
+    - If `vault-path` is provided, the CLI will synchronise the database with files in that directory.
+    - If `vault-path` is omitted, it defaults to `database-path` (compatibility mode).
+    - Use this command to keep your local `.md` files in sync with the database.
+- `ls [prefix]`: List files currently stored in the local database.
+- `push <src> <dst>`: Push a local file `<src>` into the database at path `<dst>`.
+- `pull <src> <dst>`: Pull a file `<src>` from the database into local file `<dst>`.
+- `cat <src>`: Read a file from the database and write to stdout.
+- `put <dst>`: Read from stdin and write to the database path `<dst>`.
+- `init-settings [file]`: Create a default settings file.
+
+### Examples
+
+```bash
+# Basic sync with remote
+lsync ./my-db sync
+
+# Mirroring to your actual Obsidian vault
+lsync ./my-db mirror /path/to/obsidian-vault
+
+# Manual file operations
+lsync ./my-db push ./note.md folder/note.md
+lsync ./my-db pull folder/note.md ./note.md
+```
 
 ## Docker
 
@@ -61,16 +98,16 @@ Run:
 
 ```bash
 # Sync with CouchDB
-docker run --rm -v /path/to/your/vault:/data livesync-cli sync
+docker run --rm -v /path/to/your/db:/data livesync-cli sync
+
+# Mirror to a specific vault directory
+docker run --rm -v /path/to/your/db:/data -v /path/to/your/vault:/vault livesync-cli mirror /vault
 
 # List files in the local database
-docker run --rm -v /path/to/your/vault:/data livesync-cli ls
-
-# Generate a default settings file
-docker run --rm -v /path/to/your/vault:/data livesync-cli init-settings
+docker run --rm -v /path/to/your/db:/data livesync-cli ls
 ```
 
-The vault directory is mounted at `/data` by default. Override with `-e LIVESYNC_DB_PATH=/other/path`.
+The database directory is mounted at `/data` by default. Override with `-e LIVESYNC_DB_PATH=/other/path`.
 
 ### P2P (WebRTC) and Docker networking
 
@@ -78,11 +115,11 @@ The P2P replicator (`p2p-host`, `p2p-sync`, `p2p-peers`) uses WebRTC and generat
 three kinds of ICE candidates. The default Docker bridge network affects which
 candidates are usable:
 
-| Candidate type | Description | Bridge network |
-|---|---|---|
-| `host` | Container bridge IP (`172.17.x.x`) | Unreachable from LAN peers |
-| `srflx` | Host public IP via STUN reflection | Works over the internet |
-| `relay` | Traffic relayed via TURN server | Always reachable |
+| Candidate type | Description                        | Bridge network             |
+| -------------- | ---------------------------------- | -------------------------- |
+| `host`         | Container bridge IP (`172.17.x.x`) | Unreachable from LAN peers |
+| `srflx`        | Host public IP via STUN reflection | Works over the internet    |
+| `relay`        | Traffic relayed via TURN server    | Always reachable           |
 
 **LAN P2P on Linux** — use `--network host` so that the real host IP is
 advertised as the `host` candidate:
@@ -300,11 +337,11 @@ In other words, it performs the following actions:
 
 5. **Categorisation and synchronisation** — The union of both file sets is split into three groups and processed concurrently (up to 10 files at a time):
 
-   | Group | Condition | Action |
-   |---|---|---|
-   | **UPDATE DATABASE** | File exists in storage only | Store the file into the local database. |
-   | **UPDATE STORAGE** | File exists in database only | If the entry is active (not deleted) and not conflicted, restore the file from the database to storage. Deleted entries and conflicted entries are skipped. |
-   | **SYNC DATABASE AND STORAGE** | File exists in both | Compare `mtime` freshness. If storage is newer → write to database (`STORAGE → DB`). If database is newer → restore to storage (`STORAGE ← DB`). If equal → do nothing. Conflicted documents and files exceeding the size limit are always skipped. |
+   | Group                         | Condition                    | Action                                                                                                                                                                                                                                              |
+   | ----------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | **UPDATE DATABASE**           | File exists in storage only  | Store the file into the local database.                                                                                                                                                                                                             |
+   | **UPDATE STORAGE**            | File exists in database only | If the entry is active (not deleted) and not conflicted, restore the file from the database to storage. Deleted entries and conflicted entries are skipped.                                                                                         |
+   | **SYNC DATABASE AND STORAGE** | File exists in both          | Compare `mtime` freshness. If storage is newer → write to database (`STORAGE → DB`). If database is newer → restore to storage (`STORAGE ← DB`). If equal → do nothing. Conflicted documents and files exceeding the size limit are always skipped. |
 
 6. **Initialisation flag** — On the very first successful run, writes `initialized = true` to the key-value database so that subsequent runs can restore state in step 2.
 

@@ -17,7 +17,7 @@ describe("CLI parseArgs", () => {
     });
 
     it("exits 1 when --settings has no value", () => {
-        process.argv = ["node", "livesync-cli", "./vault", "--settings"];
+        process.argv = ["node", "livesync-cli", "./databasePath", "--settings"];
         const exitMock = mockProcessExit();
         const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -37,7 +37,7 @@ describe("CLI parseArgs", () => {
     });
 
     it("exits 1 for unknown command after database-path", () => {
-        process.argv = ["node", "livesync-cli", "./vault", "unknown-cmd"];
+        process.argv = ["node", "livesync-cli", "./databasePath", "unknown-cmd"];
         const exitMock = mockProcessExit();
         const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -60,28 +60,28 @@ describe("CLI parseArgs", () => {
     });
 
     it("parses p2p-peers command and timeout", () => {
-        process.argv = ["node", "livesync-cli", "./vault", "p2p-peers", "5"];
+        process.argv = ["node", "livesync-cli", "./databasePath", "p2p-peers", "5"];
         const parsed = parseArgs();
 
-        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.databasePath).toBe("./databasePath");
         expect(parsed.command).toBe("p2p-peers");
         expect(parsed.commandArgs).toEqual(["5"]);
     });
 
     it("parses p2p-sync command with peer and timeout", () => {
-        process.argv = ["node", "livesync-cli", "./vault", "p2p-sync", "peer-1", "12"];
+        process.argv = ["node", "livesync-cli", "./databasePath", "p2p-sync", "peer-1", "12"];
         const parsed = parseArgs();
 
-        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.databasePath).toBe("./databasePath");
         expect(parsed.command).toBe("p2p-sync");
         expect(parsed.commandArgs).toEqual(["peer-1", "12"]);
     });
 
     it("parses p2p-host command", () => {
-        process.argv = ["node", "livesync-cli", "./vault", "p2p-host"];
+        process.argv = ["node", "livesync-cli", "./databasePath", "p2p-host"];
         const parsed = parseArgs();
 
-        expect(parsed.databasePath).toBe("./vault");
+        expect(parsed.databasePath).toBe("./databasePath");
         expect(parsed.command).toBe("p2p-host");
         expect(parsed.commandArgs).toEqual([]);
     });

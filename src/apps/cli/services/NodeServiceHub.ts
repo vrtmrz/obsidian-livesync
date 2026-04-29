@@ -27,10 +27,10 @@ import { DatabaseService } from "@lib/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@/lib/src/common/types";
 
 export class NodeServiceContext extends ServiceContext {
-    vaultPath: string;
-    constructor(vaultPath: string) {
+    databasePath: string;
+    constructor(databasePath: string) {
         super();
-        this.vaultPath = vaultPath;
+        this.databasePath = databasePath;
     }
 }
 
@@ -64,7 +64,7 @@ class NodeDatabaseService<T extends NodeServiceContext> extends DatabaseService<
     ): { name: string; options: PouchDB.Configuration.DatabaseConfiguration } {
         const optionPass = {
             ...options,
-            prefix: this.context.vaultPath + nodePath.sep,
+            prefix: this.context.databasePath + nodePath.sep,
         };
         const passSettings = { ...settings, useIndexedDBAdapter: false };
         return super.modifyDatabaseOptions(passSettings, name, optionPass);

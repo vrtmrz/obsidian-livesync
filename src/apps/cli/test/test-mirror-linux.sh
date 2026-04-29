@@ -28,7 +28,9 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 SETTINGS_FILE="$WORK_DIR/data.json"
 VAULT_DIR="$WORK_DIR/vault"
+DB_DIR="$WORK_DIR/db"
 mkdir -p "$VAULT_DIR/test"
+mkdir -p "$DB_DIR"
 
 if [[ "$RUN_BUILD" == "1" ]]; then
     echo "[INFO] building CLI..."
@@ -40,6 +42,20 @@ cli_test_init_settings_file "$SETTINGS_FILE"
 
 # isConfigured=true is required for mirror (canProceedScan checks this)
 cli_test_mark_settings_configured "$SETTINGS_FILE"
+
+# Preparation: Sync settings and files logic
+DB_SETTINGS="$DB_DIR/settings.json"
+cp "$SETTINGS_FILE" "$DB_SETTINGS"
+
+# Helper for standard run (Separated paths)
+run_mirror_test() {
+    run_cli "$DB_DIR" --settings "$DB_SETTINGS" mirror "$VAULT_DIR"
+}
+
+# Helper for compatibility run (Same path)
+run_mirror_compat() {
+    run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+}
 
 PASS=0
 FAIL=0
@@ -78,19 +94,27 @@ portable_touch_timestamp() {
 # Case 1: File exists only in storage → should be synced into DB after mirror
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Case 1: storage-only → DB ==="
+echo "=== Case 1: storage-only → DB (Separated Paths) ==="
 
 printf 'storage-only content\n' > "$VAULT_DIR/test/storage-only.md"
 
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+echo "[DEBUG] DB_DIR: $DB_DIR"
+echo "[DEBUG] VAULT_DIR: $VAULT_DIR"
+
+run_mirror_test
 
 RESULT_FILE="$WORK_DIR/case1-cat.txt"
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" pull test/storage-only.md "$RESULT_FILE"
+# Try 'ls' first to see what's in the DB
+echo "--- DB contents ---"
+run_cli "$DB_DIR" --settings "$DB_SETTINGS" ls
+echo "-------------------"
+
+run_cli "$DB_DIR" --settings "$DB_SETTINGS" pull test/storage-only.md "$RESULT_FILE"
 
 if cmp -s "$VAULT_DIR/test/storage-only.md" "$RESULT_FILE"; then
-    assert_pass "storage-only file was synced into DB"
+    assert_pass "storage-only file was synced into DB using separated paths"
 else
-    assert_fail "storage-only file NOT synced into DB"
+    assert_fail "storage-only file NOT synced into DB with separated paths"
     echo "--- storage ---" >&2; cat "$VAULT_DIR/test/storage-only.md" >&2
     echo "--- cat ---" >&2;     cat "$RESULT_FILE" >&2
 fi
@@ -99,9 +123,9 @@ fi
 # Case 2: File exists only in DB → should be restored to storage after mirror
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Case 2: DB-only → storage ==="
+echo "=== Case 2: DB-only → storage (Separated Paths) ==="
 
-printf 'db-only content\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/db-only.md
+printf 'db-only content\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put test/db-only.md
 
 if [[ -f "$VAULT_DIR/test/db-only.md" ]]; then
     assert_fail "db-only.md unexpectedly exists in storage before mirror"
@@ -109,7 +133,7 @@ else
     echo "[INFO] confirmed: test/db-only.md not in storage before mirror"
 fi
 
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+run_mirror_test
 
 if [[ -f "$VAULT_DIR/test/db-only.md" ]]; then
     STORAGE_CONTENT="$(cat "$VAULT_DIR/test/db-only.md")"
@@ -119,19 +143,19 @@ if [[ -f "$VAULT_DIR/test/db-only.md" ]]; then
         assert_fail "DB-only file restored but content mismatch (got: '${STORAGE_CONTENT}')"
     fi
 else
-    assert_fail "DB-only file was NOT restored to storage"
+    assert_fail "DB-only file NOT restored to storage after mirror"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Case 3: File deleted in DB → should NOT be created in storage
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Case 3: DB-deleted → storage untouched ==="
+echo "=== Case 3: DB-deleted → storage untouched (Separated Paths) ==="
 
-printf 'to-be-deleted\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/deleted.md
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" rm test/deleted.md
+printf 'to-be-deleted\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put test/deleted.md
+run_cli "$DB_DIR" --settings "$DB_SETTINGS" rm test/deleted.md
 
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+run_mirror_test
 
 if [[ ! -f "$VAULT_DIR/test/deleted.md" ]]; then
     assert_pass "deleted DB entry was not restored to storage"
@@ -143,19 +167,19 @@ fi
 # Case 4: Both exist, storage is newer → DB should be updated
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Case 4: storage newer → DB updated ==="
+echo "=== Case 4: storage newer → DB updated (Separated Paths) ==="
 
 # Seed DB with old content (mtime ≈ now)
-printf 'old content\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/sync-storage-newer.md
+printf 'old content\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put test/sync-storage-newer.md
 
 # Write new content to storage with a timestamp 1 hour in the future
 printf 'new content\n' > "$VAULT_DIR/test/sync-storage-newer.md"
 touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/test/sync-storage-newer.md"
 
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+run_mirror_test
 
 DB_RESULT_FILE="$WORK_DIR/case4-pull.txt"
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" pull test/sync-storage-newer.md "$DB_RESULT_FILE"
+run_cli "$DB_DIR" --settings "$DB_SETTINGS" pull test/sync-storage-newer.md "$DB_RESULT_FILE"
 if cmp -s "$VAULT_DIR/test/sync-storage-newer.md" "$DB_RESULT_FILE"; then
     assert_pass "DB updated to match newer storage file"
 else
@@ -168,22 +192,41 @@ fi
 # Case 5: Both exist, DB is newer → storage should be updated
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "=== Case 5: DB newer → storage updated ==="
+echo "=== Case 5: DB newer → storage updated (Separated Paths) ==="
 
 # Write old content to storage with a timestamp 1 hour in the past
 printf 'old storage content\n' > "$VAULT_DIR/test/sync-db-newer.md"
 touch -t "$(portable_touch_timestamp '-1 hour')" "$VAULT_DIR/test/sync-db-newer.md"
 
 # Write new content to DB only (mtime ≈ now, newer than the storage file)
-printf 'new db content\n' | run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" put test/sync-db-newer.md
+printf 'new db content\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put test/sync-db-newer.md
 
-run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+run_mirror_test
 
 STORAGE_CONTENT="$(cat "$VAULT_DIR/test/sync-db-newer.md")"
 if [[ "$STORAGE_CONTENT" == "new db content" ]]; then
     assert_pass "storage updated to match newer DB entry"
 else
     assert_fail "storage NOT updated to match newer DB entry (got: '${STORAGE_CONTENT}')"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Case 6: Compatibility test - omitted vault-path
+# ─────────────────────────────────────────────────────────────────────────────
+echo ""
+echo "=== Case 6: omitted vault-path (Compatibility Mode) ==="
+
+# We use VAULT_DIR as the "main" database path for this part.
+printf 'compat-content\n' > "$VAULT_DIR/compat.md"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" mirror
+
+# In compat mode, it should find it in the DB at root
+CAT_RESULT="$WORK_DIR/compat-cat.txt"
+run_cli "$VAULT_DIR" --settings "$SETTINGS_FILE" pull compat.md "$CAT_RESULT"
+if [[ "$(cat "$CAT_RESULT")" == "compat-content" ]]; then
+    assert_pass "Compatibility mode works (omitted vault-path)"
+else
+    assert_fail "Compatibility mode failed to sync file into DB"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
