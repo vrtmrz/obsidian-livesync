@@ -61,7 +61,7 @@ lsync [database-path] [command] [args...]
 ### Commands
 
 - `sync`: Run one replication cycle with the remote CouchDB.
-- `mirror [database-path] [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
+- `mirror [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
     - If `vault-path` is provided, the CLI will synchronise the database with files in the vault directory.
     - If `vault-path` is omitted, it defaults to `database-path` (compatibility mode).
     - Use this command to keep your local `.md` files in sync with the database.
