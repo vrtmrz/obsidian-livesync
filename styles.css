@@ -485,3 +485,44 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     word-break: break-all;
 
 }
+
+/* Diff navigation */
+.diff-options-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.diff-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.diff-nav-btn {
+    padding: 2px 8px;
+    font-size: 0.85em;
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+}
+
+.diff-nav-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.diff-nav-indicator {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    min-width: 3em;
+    text-align: center;
+}
+
+.diff-focused {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+    border-radius: 2px;
+}

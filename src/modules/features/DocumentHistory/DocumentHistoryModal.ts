@@ -66,6 +66,11 @@ export class DocumentHistoryModal extends Modal {
     currentDeleted = false;
     initialRev?: string;
 
+    // Diff navigation state
+    currentDiffIndex = -1;
+    diffNavContainer!: HTMLDivElement;
+    diffNavIndicator!: HTMLSpanElement;
+
     constructor(
         app: App,
         core: LiveSyncBaseCore,
@@ -216,6 +221,61 @@ export class DocumentHistoryModal extends Modal {
             this.contentView.innerHTML =
                 (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
         }
+        // Reset diff navigation after content changes
+        this.resetDiffNavigation();
+    }
+
+    /**
+     * Navigate to the previous or next diff block in the content view.
+     * Only effective when diff highlighting is enabled.
+     */
+    navigateDiff(direction: "prev" | "next") {
+        const diffElements = this.contentView.querySelectorAll(".history-added, .history-deleted");
+        if (diffElements.length === 0) return;
+
+        // Remove previous focus highlight
+        const prevFocused = this.contentView.querySelector(".diff-focused");
+        if (prevFocused) {
+            prevFocused.classList.remove("diff-focused");
+        }
+
+        if (direction === "next") {
+            this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
+        } else {
+            this.currentDiffIndex =
+                this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
+        }
+
+        const target = diffElements[this.currentDiffIndex];
+        target.classList.add("diff-focused");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        this.diffNavIndicator.textContent = `${this.currentDiffIndex + 1}/${diffElements.length}`;
+    }
+
+    /**
+     * Reset the diff navigation index and update the indicator.
+     */
+    resetDiffNavigation() {
+        this.currentDiffIndex = -1;
+        if (this.diffNavIndicator) {
+            if (this.showDiff) {
+                const diffElements = this.contentView.querySelectorAll(".history-added, .history-deleted");
+                this.diffNavIndicator.textContent = diffElements.length > 0 ? `0/${diffElements.length}` : "\u2014";
+            } else {
+                this.diffNavIndicator.textContent = "\u2014";
+            }
+        }
+        this.updateDiffNavVisibility();
+    }
+
+    /**
+     * Show or hide the diff navigation buttons based on the showDiff state.
+     */
+    updateDiffNavVisibility() {
+        if (this.diffNavContainer) {
+            this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
+        }
     }
 
     override onOpen() {
@@ -236,25 +296,47 @@ export class DocumentHistoryModal extends Modal {
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
             });
         });
-        contentEl
-            .createDiv("", (e) => {
-                e.createEl("label", {}, (label) => {
-                    label.appendChild(
-                        createEl("input", { type: "checkbox" }, (checkbox) => {
-                            if (this.showDiff) {
-                                checkbox.checked = true;
-                            }
-                            checkbox.addEventListener("input", (evt: any) => {
-                                this.showDiff = checkbox.checked;
-                                localStorage.setItem("ols-history-highlightdiff", this.showDiff == true ? "1" : "");
-                                void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
-                            });
-                        })
-                    );
-                    label.appendText("Highlight diff");
-                });
-            })
-            .addClass("op-info");
+        const diffOptionsRow = contentEl.createDiv("");
+        diffOptionsRow.addClass("op-info");
+        diffOptionsRow.addClass("diff-options-row");
+
+        diffOptionsRow.createEl("label", {}, (label) => {
+            label.appendChild(
+                createEl("input", { type: "checkbox" }, (checkbox) => {
+                    if (this.showDiff) {
+                        checkbox.checked = true;
+                    }
+                    checkbox.addEventListener("input", (evt: any) => {
+                        this.showDiff = checkbox.checked;
+                        localStorage.setItem("ols-history-highlightdiff", this.showDiff == true ? "1" : "");
+                        this.updateDiffNavVisibility();
+                        void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+                    });
+                })
+            );
+            label.appendText("Highlight diff");
+        });
+
+        // Diff navigation buttons
+        this.diffNavContainer = diffOptionsRow.createDiv("");
+        this.diffNavContainer.addClass("diff-nav");
+        this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
+
+        this.diffNavContainer.createEl("button", { text: "\u25B2 Prev" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => {
+                this.navigateDiff("prev");
+            });
+        });
+        this.diffNavContainer.createEl("button", { text: "\u25BC Next" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => {
+                this.navigateDiff("next");
+            });
+        });
+        this.diffNavIndicator = this.diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator.addClass("diff-nav-indicator");
+
         this.info = contentEl.createDiv("");
         this.info.addClass("op-info");
         fireAndForget(async () => await this.loadFile(this.initialRev));
