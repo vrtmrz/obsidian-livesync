@@ -95,12 +95,23 @@ livesync-cli ./my-db pull folder/note.md ./note.md
 ### Build from source
 
 ```bash
-# Install dependencies (ensure you are in repository root directory, not src/apps/cli)
-# due to shared dependencies with webapp and main library
+# Clone with submodules, because the shared core lives in src/lib
+git clone --recurse-submodules <repository-url>
+cd obsidian-livesync
+
+# If you already cloned without submodules, run this once instead
+git submodule update --init --recursive
+
+# Install dependencies from the repository root
 npm install
-# Build the project (ensure you are in `src/apps/cli` directory)
+
+# Build the CLI from its package directory
+cd src/apps/cli
 npm run build
 ```
+
+If `src/lib` is missing, `npm run build` now stops early with a targeted message
+instead of a low-level Vite `ENOENT` error.
 
 Run the CLI:
 

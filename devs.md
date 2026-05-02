@@ -63,6 +63,9 @@ npm test             # Run vitest tests (requires Docker services)
 
 ### Environment Setup
 
+- Clone with submodules: `git clone --recurse-submodules <repository-url>`
+- If you already cloned without them, run: `git submodule update --init --recursive`
+- The shared common library is provided by the `src/lib` submodule, and builds will fail if it is missing
 - Create `.env` file with `PATHS_TEST_INSTALL` pointing to test vault plug-in directories (`:` separated on Unix, `;` on Windows)
 - Development builds auto-copy to these paths on build
 
