@@ -10,7 +10,7 @@ import { Logger } from "../../../lib/src/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
+import { addSignalWord, visibleOnly } from "./SettingPane.ts";
 import { PouchDB } from "../../../lib/src/pouchdb/pouchdb-browser";
 import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
 import { migrateDatabases } from "./settingUtils.ts";
@@ -76,15 +76,14 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             }
         };
         {
-            const infoClass = this.editingSettings.useIndexedDBAdapter ? "op-warn" : "op-warn-info";
-            paneEl.createDiv({
+            const indexedDbWarning = paneEl.createDiv({
                 text: $msg("Ui.Settings.Patches.IndexedDbWarning"),
-                cls: infoClass,
             });
-            paneEl.createDiv({
+            addSignalWord(indexedDbWarning, this.editingSettings.useIndexedDBAdapter ? "warning" : "notice");
+            const migrationWarning = paneEl.createDiv({
                 text: $msg("Ui.Settings.Patches.MigrationWarning"),
-                cls: "op-warn-info",
             });
+            addSignalWord(migrationWarning, "notice");
             const setting = new Setting(paneEl)
                 .setName($msg("Ui.Settings.Patches.DatabaseAdapter"))
                 .setDesc($msg("Ui.Settings.Patches.DatabaseAdapterDesc"));

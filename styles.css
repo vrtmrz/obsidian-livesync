@@ -57,6 +57,51 @@
     display: block;
 }
 
+.sls-signal-note {
+    border: 1px solid var(--background-modifier-border);
+    border-left: 4px solid var(--interactive-accent);
+    padding: 8px 10px;
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    margin-top: 4px;
+    margin-bottom: 0.5lh;
+}
+
+.sls-signal-note-danger {
+    border-left-color: var(--text-error);
+}
+
+.sls-signal-note-warning,
+.sls-signal-note-caution {
+    border-left-color: var(--text-warning);
+}
+
+.sls-signal-note-notice {
+    border-left-color: var(--interactive-accent);
+}
+
+.sls-signal-word {
+    display: block;
+    margin-bottom: 0.35em;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+}
+
+.sls-signal-word-danger {
+    color: var(--text-error);
+}
+
+.sls-signal-word-warning,
+.sls-signal-word-caution {
+    color: var(--text-warning);
+}
+
+.sls-signal-word-notice {
+    color: var(--text-accent);
+}
+
 .syncstatusbar {
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);

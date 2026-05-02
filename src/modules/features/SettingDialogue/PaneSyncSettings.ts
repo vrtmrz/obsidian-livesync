@@ -10,16 +10,17 @@ import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "../../../common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
+import { addSignalWord, visibleOnly } from "./SettingPane.ts";
 export function paneSyncSettings(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
     { addPanel, addPane }: PageFunctions
 ): void {
-    this.createEl(paneEl, "div", {
+    const presetNotice = this.createEl(paneEl, "div", {
         text: $msg("obsidianLiveSyncSettingTab.msgSelectAndApplyPreset"),
         cls: "wizardOnly",
-    }).addClasses(["op-warn-info"]);
+    });
+    addSignalWord(presetNotice, "notice");
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationPreset")).then((paneEl) => {
         const options: Record<string, string> =

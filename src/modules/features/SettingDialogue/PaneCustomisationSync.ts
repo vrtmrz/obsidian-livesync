@@ -3,7 +3,7 @@ import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../../common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { enableOnly, visibleOnly } from "./SettingPane.ts";
+import { addSignalWord, enableOnly, visibleOnly } from "./SettingPane.ts";
 export function paneCustomisationSync(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -20,9 +20,8 @@ export function paneCustomisationSync(
             "div",
             {
                 text: $msg("Ui.Settings.CustomizationSync.WarnSetDeviceName"),
-                cls: "op-warn",
             },
-            (c) => {},
+            (c) => addSignalWord(c, "warning"),
             visibleOnly(() => this.isConfiguredAs("deviceAndVaultName", ""))
         );
         this.createEl(
@@ -30,9 +29,8 @@ export function paneCustomisationSync(
             "div",
             {
                 text: $msg("Ui.Settings.CustomizationSync.WarnChangeDeviceName"),
-                cls: "op-warn-info",
             },
-            (c) => {},
+            (c) => addSignalWord(c, "notice"),
             visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
         );
 

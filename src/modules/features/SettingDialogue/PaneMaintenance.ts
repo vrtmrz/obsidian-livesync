@@ -6,7 +6,7 @@ import { fireAndForget } from "../../../lib/src/common/utils.ts";
 import { LiveSyncCouchDBReplicator } from "../../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { visibleOnly, type PageFunctions } from "./SettingPane";
+import { addSignalWord, visibleOnly, type PageFunctions } from "./SettingPane";
 export function paneMaintenance(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -20,9 +20,9 @@ export function paneMaintenance(
         "div",
         {
             text: $msg("Ui.Settings.Maintenance.WarningLockedResolveText"),
-            cls: "op-warn",
         },
         (c) => {
+            addSignalWord(c, "warning");
             this.createEl(
                 c,
                 "button",
@@ -47,9 +47,9 @@ export function paneMaintenance(
         "div",
         {
             text: $msg("Ui.Settings.Maintenance.WarningLockedReadyText"),
-            cls: "op-warn",
         },
-        (c) =>
+        (c) => {
+            addSignalWord(c, "warning");
             this.createEl(
                 c,
                 "button",
@@ -65,7 +65,8 @@ export function paneMaintenance(
                         });
                     });
                 }
-            ),
+            );
+        },
         visibleOnly(isRemoteLocked)
     );
 

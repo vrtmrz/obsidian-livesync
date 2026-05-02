@@ -23,7 +23,7 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg, translateIfAvailable } from "src/lib/src/common/i18n.ts";
 import { findAttrFromParent, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
@@ -63,7 +63,7 @@ export class LiveSyncSetting extends Setting {
         DEV: {
             this._createDocStub("desc", desc);
         }
-        super.setDesc(desc);
+        super.setDesc(typeof desc == "string" ? translateIfAvailable(desc) : desc);
         return this;
     }
     override setName(name: string | DocumentFragment): this {
@@ -71,7 +71,7 @@ export class LiveSyncSetting extends Setting {
         DEV: {
             this._createDocStub("name", name);
         }
-        super.setName(name);
+        super.setName(typeof name == "string" ? translateIfAvailable(name) : name);
         return this;
     }
     setAuto(key: AllSettingItemKey, opt?: AutoWireOption) {
@@ -115,7 +115,7 @@ export class LiveSyncSetting extends Setting {
             this.settingEl.toggleClass("sls-setting-poweruser", true);
         }
         if (this.placeHolderBuf && component instanceof TextComponent) {
-            component.setPlaceholder(this.placeHolderBuf);
+            component.setPlaceholder(translateIfAvailable(this.placeHolderBuf));
         }
         if (opt?.onUpdate) this.addOnUpdate(opt.onUpdate);
     }

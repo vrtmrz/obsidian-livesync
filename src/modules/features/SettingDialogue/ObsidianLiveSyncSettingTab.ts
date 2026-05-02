@@ -31,7 +31,7 @@ import {
     type OnDialogSettings,
     getConfName,
 } from "./settingConstants.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { $msg, translateIfAvailable } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
@@ -726,9 +726,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             wizardHidden: boolean,
             level?: ConfigLevel
         ) => {
+            const displayTitle = translateIfAvailable(title);
             const el = this.createEl(parentEl, "div", { text: "" });
             DEV: {
-                const mdTitle = `${paneNo++}. ${title}${getLevelStr(level ?? "")}`;
+                const mdTitle = `${paneNo++}. ${displayTitle}${getLevelStr(level ?? "")}`;
                 el.setAttribute("data-pane", mdTitle);
                 toc.add(
                     `| ${icon} | [${mdTitle}](#${mdTitle
@@ -738,7 +739,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 );
             }
             setLevelClass(el, level);
-            el.createEl("h3", { text: title, cls: "sls-setting-pane-title" });
+            el.createEl("h3", { text: displayTitle, cls: "sls-setting-pane-title" });
             if (this.menuEl) {
                 this.menuEl.createEl(
                     "label",
@@ -754,7 +755,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         el.createEl("div", {
                             cls: "sls-setting-menu-btn",
                             text: icon,
-                            title: title,
+                            title: displayTitle,
                         });
                         inputEl.addEventListener("change", (evt) => this.selectPane(evt));
                         inputEl.addEventListener("click", (evt) => this.selectPane(evt));
@@ -777,6 +778,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             func?: OnUpdateFunc,
             level?: ConfigLevel
         ) => {
+            const displayTitle = translateIfAvailable(title);
             const el = this.createEl(parentEl, "div", { text: "" }, callback, func);
             DEV: {
                 const paneNo = findAttrFromParent(parentEl, "data-pane");
@@ -785,10 +787,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 }
                 panelNoMap[paneNo] += 1;
                 const panelNo = panelNoMap[paneNo];
-                el.setAttribute("data-panel", `${panelNo}. ${title}${getLevelStr(level ?? "")}`);
+                el.setAttribute("data-panel", `${panelNo}. ${displayTitle}${getLevelStr(level ?? "")}`);
             }
             setLevelClass(el, level);
-            this.createEl(el, "h4", { text: title, cls: "sls-setting-panel-title" });
+            this.createEl(el, "h4", { text: displayTitle, cls: "sls-setting-panel-title" });
             const p = Promise.resolve(el);
             // p.finally(() => {
             //     // Recap at the end.

@@ -1,4 +1,4 @@
-import { $msg } from "../../../lib/src/common/i18n";
+import { $msg, translateIfAvailable } from "../../../lib/src/common/i18n.ts";
 import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "../../../lib/src/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
 
@@ -31,6 +31,25 @@ export function setStyle(el: HTMLElement, styleHead: string, condition: () => bo
         el.addClass(`${styleHead}-disabled`);
         el.removeClass(`${styleHead}-enabled`);
     }
+}
+
+export type SignalWord = "danger" | "warning" | "caution" | "notice";
+
+const signalWordKeys: Record<SignalWord, string> = {
+    danger: "Ui.Common.Signal.Danger",
+    warning: "Ui.Common.Signal.Warning",
+    caution: "Ui.Common.Signal.Caution",
+    notice: "Ui.Common.Signal.Notice",
+};
+
+export function addSignalWord(el: HTMLElement, signalWord: SignalWord) {
+    el.addClass("sls-signal-note");
+    el.addClass(`sls-signal-note-${signalWord}`);
+    const signalWordEl = el.createDiv({
+        cls: `sls-signal-word sls-signal-word-${signalWord}`,
+        text: translateIfAvailable(signalWordKeys[signalWord]),
+    });
+    el.prepend(signalWordEl);
 }
 
 export function visibleOnly(cond: () => boolean): OnUpdateFunc {
