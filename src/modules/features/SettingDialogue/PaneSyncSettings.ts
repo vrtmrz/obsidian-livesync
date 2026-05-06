@@ -8,6 +8,7 @@ import { Logger } from "../../../lib/src/common/logger.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "../../../common/events.ts";
+import { triggerEnableAutoConfiguration } from "../../../lib/src/serviceFeatures/sharedConfig.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
@@ -189,6 +190,34 @@ export function paneSyncSettings(
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
+
+        new Setting(paneEl)
+            .setClass("wizardHidden")
+            .setName($msg("obsidianLiveSyncSettingTab.autoConfigByRemote"))
+            .setDesc($msg("obsidianLiveSyncSettingTab.autoConfigByRemoteDesc"))
+            .addToggle((toggle) => {
+                toggle.setValue(this.editingSettings.useAutoConfig);
+                toggle.onChange(async (val) => {
+                    if (val) {
+                        const enableRes = await triggerEnableAutoConfiguration(this.plugin.core as any);
+                        if (enableRes) {
+                            // Copy settings from service to editingSettings so dialogue is consistent
+                            this.editingSettings.useAutoConfig = true;
+                            const copiedSettings = this.services.setting.settings;
+                            this.editingSettings.hashAlg = copiedSettings.hashAlg;
+                            this.editingSettings.chunkSplitterVersion = copiedSettings.chunkSplitterVersion;
+                            this.editingSettings.enableChunkSplitterV2 = copiedSettings.enableChunkSplitterV2;
+                            this.editingSettings.useSegmenter = copiedSettings.useSegmenter;
+                            this.editingSettings.minimumChunkSize = copiedSettings.minimumChunkSize;
+                            this.editingSettings.customChunkSize = copiedSettings.customChunkSize;
+                        }
+                    } else {
+                        this.editingSettings.useAutoConfig = false;
+                        await this.saveSettings(["liveSync"]);
+                    }
+                    this.display(); // re-render
+                });
+            });
     });
 
     void addPanel(
