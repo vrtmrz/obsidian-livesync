@@ -1,6 +1,6 @@
 {
     "tasks": {
-        "test": "deno test -A --no-check .",
+        "test": "deno test -A --no-check test-*.ts",
         "test:local": "deno test -A --no-check test-setup-put-cat.ts test-mirror.ts",
         "test:push-pull": "deno test -A --no-check test-push-pull.ts",
         "test:setup-put-cat": "deno test -A --no-check test-setup-put-cat.ts",
