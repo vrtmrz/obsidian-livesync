@@ -8,7 +8,7 @@
  *   KEY='single quoted'
  *   KEY="double quoted"
  *   # comment lines are ignored
-  */
+ */
 export async function loadEnvFile(filePath: string): Promise<Record<string, string>> {
     const text = await Deno.readTextFile(filePath);
     const result: Record<string, string> = {};

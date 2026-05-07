@@ -21,6 +21,7 @@ import { assertEquals } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { runCliOrFail } from "./helpers/cli.ts";
 import { applyCouchdbSettings, initSettingsFile } from "./helpers/settings.ts";
+import { startCouchdb, stopCouchdb } from "./helpers/docker.ts";
 
 const REMOTE_PATH = Deno.env.get("REMOTE_PATH") ?? "test/push-pull.txt";
 
@@ -31,34 +32,47 @@ Deno.test("push/pull roundtrip", async () => {
     const vaultDir = workDir.join("vault");
     await Deno.mkdir(join(vaultDir, "test"), { recursive: true });
 
-    await initSettingsFile(settingsFile);
+    const uri = Deno.env.get("COUCHDB_URI") ?? "http://127.0.0.1:5989/";
+    const user = Deno.env.get("COUCHDB_USER") ?? "admin";
+    const password = Deno.env.get("COUCHDB_PASSWORD") ?? "testpassword";
+    const dbname = Deno.env.get("COUCHDB_DBNAME") ?? `push-pull-${Date.now()}`;
 
-    const uri = Deno.env.get("COUCHDB_URI") ?? "";
-    const user = Deno.env.get("COUCHDB_USER") ?? "";
-    const password = Deno.env.get("COUCHDB_PASSWORD") ?? "";
-    const dbname = Deno.env.get("COUCHDB_DBNAME") ?? "";
+    const shouldStartDocker = Deno.env.get("LIVESYNC_START_DOCKER") !== "0";
+    const keepDocker = Deno.env.get("LIVESYNC_DEBUG_KEEP_DOCKER") === "1";
 
-    if (uri && user && password && dbname) {
-        console.log("[INFO] applying CouchDB env vars to settings");
-        await applyCouchdbSettings(settingsFile, uri, user, password, dbname);
-    } else {
-        console.warn(
-            "[WARN] CouchDB env vars not fully set — push/pull may fail unless the generated settings already contain connection details"
-        );
+    if (shouldStartDocker) {
+        await startCouchdb(uri, user, password, dbname);
     }
 
-    const srcFile = workDir.join("push-source.txt");
-    const pulledFile = workDir.join("pull-result.txt");
-    const content = `push-pull-test ${new Date().toISOString()}\n`;
-    await Deno.writeTextFile(srcFile, content);
+    try {
+        await initSettingsFile(settingsFile);
 
-    console.log(`[INFO] push -> ${REMOTE_PATH}`);
-    await runCliOrFail(vaultDir, "--settings", settingsFile, "push", srcFile, REMOTE_PATH);
+        if (uri && user && password && dbname) {
+            console.log("[INFO] applying CouchDB env vars to settings");
+            await applyCouchdbSettings(settingsFile, uri, user, password, dbname);
+        } else {
+            console.warn(
+                "[WARN] CouchDB env vars not fully set — push/pull may fail unless the generated settings already contain connection details"
+            );
+        }
 
-    console.log(`[INFO] pull <- ${REMOTE_PATH}`);
-    await runCliOrFail(vaultDir, "--settings", settingsFile, "pull", REMOTE_PATH, pulledFile);
+        const srcFile = workDir.join("push-source.txt");
+        const pulledFile = workDir.join("pull-result.txt");
+        const content = `push-pull-test ${new Date().toISOString()}\n`;
+        await Deno.writeTextFile(srcFile, content);
 
-    const pulled = await Deno.readTextFile(pulledFile);
-    assertEquals(content, pulled, "push/pull roundtrip content mismatch");
-    console.log("[PASS] push/pull roundtrip matched");
+        console.log(`[INFO] push -> ${REMOTE_PATH}`);
+        await runCliOrFail(vaultDir, "--settings", settingsFile, "push", srcFile, REMOTE_PATH);
+
+        console.log(`[INFO] pull <- ${REMOTE_PATH}`);
+        await runCliOrFail(vaultDir, "--settings", settingsFile, "pull", REMOTE_PATH, pulledFile);
+
+        const pulled = await Deno.readTextFile(pulledFile);
+        assertEquals(content, pulled, "push/pull roundtrip content mismatch");
+        console.log("[PASS] push/pull roundtrip matched");
+    } finally {
+        if (shouldStartDocker && !keepDocker) {
+            await stopCouchdb().catch(() => {});
+        }
+    }
 });
