@@ -279,6 +279,12 @@ deno task test:sync-two-local
 
 ---
 
+## Continuous Integration
+
+The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` is used to run these tests automatically on push and pull requests affecting the CLI.
+
+---
+
 ## Current limitations
 
 - MinIO startup and matrix coverage are ported. Current limits are elsewhere, not setup URI generation.

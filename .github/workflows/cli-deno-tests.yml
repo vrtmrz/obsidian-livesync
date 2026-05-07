@@ -1,0 +1,75 @@
+name: cli-deno-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_task:
+        description: 'Deno test task to run'
+        type: choice
+        options:
+          - test
+          - test:local
+          - test:e2e-matrix
+          - test:p2p-sync
+        default: test
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: src/apps/cli
+        run: npm run build
+
+      - name: Create .test.env
+        working-directory: src/apps/cli
+        run: |
+          cat <<EOF > .test.env
+          hostname=http://127.0.0.1:5989/
+          dbname=livesync-test-db-ci
+          username=admin
+          password=testpassword
+          minioEndpoint=http://127.0.0.1:9000
+          accessKey=minioadmin
+          secretKey=minioadmin
+          bucketName=livesync-test-bucket-ci
+          EOF
+
+      - name: Run Deno tests
+        working-directory: src/apps/cli/testdeno
+        env:
+          LIVESYNC_DOCKER_MODE: native
+          LIVESYNC_CLI_RETRY: 3
+        run: |
+          TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test' }}"
+          echo "[INFO] Running Deno task: $TASK"
+          deno task "$TASK"
+
+      - name: Stop leftover containers
+        if: always()
+        run: |
+          docker stop couchdb-test minio-test relay-test >/dev/null 2>&1 || true
+          docker rm couchdb-test minio-test relay-test >/dev/null 2>&1 || true
