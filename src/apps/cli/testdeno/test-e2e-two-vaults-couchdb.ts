@@ -1,6 +1,5 @@
 import { assert } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
-import { loadEnvFile } from "./helpers/env.ts";
 import {
     runCli,
     runCliOrFail,
@@ -11,31 +10,29 @@ import {
 } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
 import { startCouchdb, startMinio, stopCouchdb, stopMinio } from "./helpers/docker.ts";
-import { join } from "@std/path";
-
-const TEST_ENV = join(import.meta.dirname!, "..", ".test.env");
 type RemoteType = "COUCHDB" | "MINIO";
 
-function requireEnv(env: Record<string, string>, key: string): string {
-    const value = env[key]?.trim();
-    if (!value) throw new Error(`Required env var is missing: ${key}`);
-    return value;
+function requireEnv(...keys: string[]): string {
+    for (const key of keys) {
+        const value = Deno.env.get(key)?.trim();
+        if (value) return value;
+    }
+    throw new Error(`Required env var is missing: ${keys.join(" or ")}`);
 }
 
 export async function runScenario(remoteType: RemoteType, encrypt: boolean): Promise<void> {
-    const env = await loadEnvFile(TEST_ENV);
     const dbSuffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
-    const couchdbUri = remoteType === "COUCHDB" ? requireEnv(env, "hostname").replace(/\/$/, "") : "";
-    const couchdbUser = remoteType === "COUCHDB" ? requireEnv(env, "username") : "";
-    const couchdbPassword = remoteType === "COUCHDB" ? requireEnv(env, "password") : "";
-    const dbPrefix = remoteType === "COUCHDB" ? requireEnv(env, "dbname") : "";
+    const couchdbUri = remoteType === "COUCHDB" ? requireEnv("COUCHDB_URI", "hostname").replace(/\/$/, "") : "";
+    const couchdbUser = remoteType === "COUCHDB" ? requireEnv("COUCHDB_USER", "username") : "";
+    const couchdbPassword = remoteType === "COUCHDB" ? requireEnv("COUCHDB_PASSWORD", "password") : "";
+    const dbPrefix = remoteType === "COUCHDB" ? requireEnv("COUCHDB_DBNAME", "dbname") : "";
     const dbname = remoteType === "COUCHDB" ? `${dbPrefix}-${dbSuffix}` : "";
 
-    const minioEndpoint = remoteType === "MINIO" ? requireEnv(env, "minioEndpoint").replace(/\/$/, "") : "";
-    const minioAccessKey = remoteType === "MINIO" ? requireEnv(env, "accessKey") : "";
-    const minioSecretKey = remoteType === "MINIO" ? requireEnv(env, "secretKey") : "";
-    const minioBucketBase = remoteType === "MINIO" ? requireEnv(env, "bucketName") : "";
+    const minioEndpoint = remoteType === "MINIO" ? requireEnv("MINIO_ENDPOINT", "minioEndpoint").replace(/\/$/, "") : "";
+    const minioAccessKey = remoteType === "MINIO" ? requireEnv("MINIO_ACCESS_KEY", "accessKey") : "";
+    const minioSecretKey = remoteType === "MINIO" ? requireEnv("MINIO_SECRET_KEY", "secretKey") : "";
+    const minioBucketBase = remoteType === "MINIO" ? requireEnv("MINIO_BUCKET_NAME", "bucketName") : "";
     const minioBucket = remoteType === "MINIO" ? `${minioBucketBase}-${dbSuffix}` : "";
 
     const passphrase = "e2e-passphrase";

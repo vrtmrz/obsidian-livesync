@@ -1,19 +1,19 @@
 {
     "tasks": {
-        "test": "deno test -A --no-check test-*.ts",
-        "test:local": "deno test -A --no-check test-setup-put-cat.ts test-mirror.ts",
-        "test:push-pull": "deno test -A --no-check test-push-pull.ts",
-        "test:setup-put-cat": "deno test -A --no-check test-setup-put-cat.ts",
-        "test:mirror": "deno test -A --no-check test-mirror.ts",
-        "test:sync-two-local": "deno test -A --no-check test-sync-two-local-databases.ts",
-        "test:sync-locked-remote": "deno test -A --no-check test-sync-locked-remote.ts",
-        "test:p2p-host": "deno test -A --no-check test-p2p-host.ts",
-        "test:p2p-peers": "deno test -A --no-check test-p2p-peers-local-relay.ts",
-        "test:p2p-sync": "deno test -A --no-check test-p2p-sync.ts",
-        "test:p2p-three-nodes": "deno test -A --no-check test-p2p-three-nodes-conflict.ts",
-        "test:p2p-upload-download": "deno test -A --no-check test-p2p-upload-download-repro.ts",
-        "test:e2e-couchdb": "deno test -A --no-check test-e2e-two-vaults-couchdb.ts",
-        "test:e2e-matrix": "deno test -A --no-check test-e2e-two-vaults-matrix.ts"
+        "test": "deno test --env-file=.test.env -A --no-check test-*.ts",
+        "test:local": "deno test --env-file=.test.env -A --no-check test-setup-put-cat.ts test-mirror.ts",
+        "test:push-pull": "deno test --env-file=.test.env -A --no-check test-push-pull.ts",
+        "test:setup-put-cat": "deno test --env-file=.test.env -A --no-check test-setup-put-cat.ts",
+        "test:mirror": "deno test --env-file=.test.env -A --no-check test-mirror.ts",
+        "test:sync-two-local": "deno test --env-file=.test.env -A --no-check test-sync-two-local-databases.ts",
+        "test:sync-locked-remote": "deno test --env-file=.test.env -A --no-check test-sync-locked-remote.ts",
+        "test:p2p-host": "deno test --env-file=.test.env -A --no-check test-p2p-host.ts",
+        "test:p2p-peers": "deno test --env-file=.test.env -A --no-check test-p2p-peers-local-relay.ts",
+        "test:p2p-sync": "deno test --env-file=.test.env -A --no-check test-p2p-sync.ts",
+        "test:p2p-three-nodes": "deno test --env-file=.test.env -A --no-check test-p2p-three-nodes-conflict.ts",
+        "test:p2p-upload-download": "deno test --env-file=.test.env -A --no-check test-p2p-upload-download-repro.ts",
+        "test:e2e-couchdb": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-couchdb.ts",
+        "test:e2e-matrix": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-matrix.ts"
     },
     "imports": {
         "@std/assert": "jsr:@std/assert@^1.0.13",

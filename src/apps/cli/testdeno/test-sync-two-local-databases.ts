@@ -23,13 +23,11 @@
  *   deno test -A test-sync-two-local-databases.ts
  */
 
-import { join } from "@std/path";
 import { assertEquals, assert } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
-import { CLI_DIR, runCliOrFail, jsonFieldIsNa } from "./helpers/cli.ts";
+import { runCliOrFail, jsonFieldIsNa } from "./helpers/cli.ts";
 import { applyCouchdbSettings, initSettingsFile } from "./helpers/settings.ts";
 import { startCouchdb, stopCouchdb } from "./helpers/docker.ts";
-import { loadEnvFile } from "./helpers/env.ts";
 
 // ---------------------------------------------------------------------------
 // Load configuration
@@ -41,20 +39,7 @@ async function resolveConfig(): Promise<{
     password: string;
     baseDbname: string;
 } | null> {
-    let env: Record<string, string> = {};
-
-    // 1. Explicit environment variables take priority
-    if (Deno.env.get("COUCHDB_URI")) {
-        env = Object.fromEntries(Deno.env.toObject());
-    } else {
-        // 2. TEST_ENV_FILE env var
-        const envFile = Deno.env.get("TEST_ENV_FILE") ?? join(CLI_DIR, ".test.env");
-        try {
-            env = await loadEnvFile(envFile);
-        } catch {
-            return null; // no config available — skip
-        }
-    }
+    const env = Deno.env.toObject();
 
     const uri = (env["COUCHDB_URI"] ?? env["hostname"] ?? "").replace(/\/$/, "");
     const user = env["COUCHDB_USER"] ?? env["username"] ?? "";
