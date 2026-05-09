@@ -1,6 +1,6 @@
 import { type App, type Plugin, Notice } from "@/deps";
 import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
-import { $msg } from "@/lib/src/common/i18n";
+import { $msg, translateIfAvailable } from "@/lib/src/common/i18n";
 import type { Confirm } from "@/lib/src/interfaces/Confirm";
 import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
 import {
@@ -23,10 +23,10 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         this._context = context;
     }
     askYesNo(message: string): Promise<"yes" | "no"> {
-        return askYesNo(this._app, message);
+        return askYesNo(this._app, translateIfAvailable(message));
     }
     askString(title: string, key: string, placeholder: string, isPassword: boolean = false): Promise<string | false> {
-        return askString(this._app, title, key, placeholder, isPassword);
+        return askString(this._app, translateIfAvailable(title), translateIfAvailable(key), translateIfAvailable(placeholder), isPassword);
     }
 
     async askYesNoDialog(
@@ -39,8 +39,8 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         const defaultOption = opt.defaultOption === "Yes" ? yesLabel : noLabel;
         const ret = await confirmWithMessageWithWideButton(
             this._plugin,
-            opt.title || defaultTitle,
-            message,
+            opt.title ? translateIfAvailable(opt.title) : defaultTitle,
+            translateIfAvailable(message),
             [yesLabel, noLabel],
             defaultOption,
             opt.timeout
@@ -49,23 +49,29 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
     }
 
     askSelectString(message: string, items: string[]): Promise<string> {
-        return askSelectString(this._app, message, items);
+        return askSelectString(this._app, translateIfAvailable(message), items);
     }
 
-    askSelectStringDialogue<T extends readonly string[]>(
+    async askSelectStringDialogue<T extends readonly string[]>(
         message: string,
         buttons: T,
         opt: { title?: string; defaultAction: T[number]; timeout?: number }
     ): Promise<T[number] | false> {
         const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
-        return confirmWithMessageWithWideButton(
+        const translatedButtons = buttons.map((b) => translateIfAvailable(b));
+        const translatedDefault = translateIfAvailable(opt.defaultAction);
+        const ret = await confirmWithMessageWithWideButton(
             this._plugin,
-            opt.title || defaultTitle,
-            message,
-            buttons,
-            opt.defaultAction,
+            opt.title ? translateIfAvailable(opt.title) : defaultTitle,
+            translateIfAvailable(message),
+            translatedButtons,
+            translatedDefault,
             opt.timeout
         );
+        if (ret === false) return false;
+        // Dialog callers expect the original typed values, not the translated labels.
+        const idx = translatedButtons.indexOf(ret);
+        return idx >= 0 ? buttons[idx] : (ret as T[number]);
     }
 
     askInPopup(key: string, dialogText: string, anchorCallback: (anchor: HTMLAnchorElement) => void) {
@@ -106,6 +112,21 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         defaultAction: (typeof buttons)[number],
         timeout?: number
     ): Promise<(typeof buttons)[number] | false> {
-        return confirmWithMessage(this._plugin, title, contentMd, buttons, defaultAction, timeout);
+        const translatedButtons = buttons.map((b) => translateIfAvailable(b));
+        const translatedDefault = translateIfAvailable(defaultAction);
+        const ret = confirmWithMessage(
+            this._plugin,
+            translateIfAvailable(title),
+            translateIfAvailable(contentMd),
+            translatedButtons,
+            translatedDefault,
+            timeout
+        );
+        return ret.then((r) => {
+            if (r === false) return false;
+            // Keep public confirm results stable even when button text is localised.
+            const idx = translatedButtons.indexOf(r);
+            return idx >= 0 ? buttons[idx] : r;
+        });
     }
 }

@@ -38,37 +38,37 @@ export class ModuleSetupObsidian extends AbstractModule {
             });
         } catch (e) {
             this._log(
-                "Failed to register protocol handler. This feature may not work in some environments.",
+                $msg("Setup.Log.ProtocolHandlerRegistrationFailed"),
                 LOG_LEVEL_NOTICE
             );
             this._log(e, LOG_LEVEL_VERBOSE);
         }
         this.addCommand({
             id: "livesync-setting-qr",
-            name: "Show settings as a QR code",
+            name: $msg("Setup.Command.ShowSettingsQrCode"),
             callback: () => fireAndForget(this.encodeQR()),
         });
 
         this.addCommand({
             id: "livesync-copysetupuri",
-            name: "Copy settings as a new setup URI",
+            name: $msg("Setup.Command.CopySetupUri"),
             callback: () => fireAndForget(this.command_copySetupURI()),
         });
         this.addCommand({
             id: "livesync-copysetupuri-short",
-            name: "Copy settings as a new setup URI (With customization sync)",
+            name: $msg("Setup.Command.CopySetupUriWithSync"),
             callback: () => fireAndForget(this.command_copySetupURIWithSync()),
         });
 
         this.addCommand({
             id: "livesync-copysetupurifull",
-            name: "Copy settings as a new setup URI (Full)",
+            name: $msg("Setup.Command.CopySetupUriFull"),
             callback: () => fireAndForget(this.command_copySetupURIFull()),
         });
 
         this.addCommand({
             id: "livesync-opensetupuri",
-            name: "Use the copied setup URI (Formerly Open setup URI)",
+            name: $msg("Setup.Command.OpenSetupUri"),
             callback: () => fireAndForget(this.command_openSetupURI()),
         });
 
@@ -85,18 +85,18 @@ export class ModuleSetupObsidian extends AbstractModule {
     async encodeQR() {
         const settingString = encodeSettingsToQRCodeData(this.settings);
         const codeSVG = encodeQR(settingString, OutputFormat.SVG);
-        if (codeSVG == "") {
+        if (typeof codeSVG !== "string" || codeSVG == "") {
             return "";
         }
         const msg = $msg("Setup.QRCode", { qr_image: codeSVG });
-        await this.core.confirm.confirmWithMessage("Settings QR Code", msg, ["OK"], "OK");
+        await this.core.confirm.confirmWithMessage($msg("Setup.QRCodeTitle"), msg, ["OK"], "OK");
         return await Promise.resolve(codeSVG);
     }
 
     async askEncryptingPassphrase(): Promise<string | false> {
         const encryptingPassphrase = await this.core.confirm.askString(
-            "Encrypt your settings",
-            "The passphrase to encrypt the setup URI",
+            $msg("Setup.EncryptSettingsTitle"),
+            $msg("Setup.EncryptSettingsPassphrase"),
             "",
             true
         );
@@ -112,8 +112,8 @@ export class ModuleSetupObsidian extends AbstractModule {
             [...((stripExtra ? ["pluginSyncExtendedSetting"] : []) as (keyof ObsidianLiveSyncSettings)[])],
             true
         );
-        if (await this.services.UI.promptCopyToClipboard("Setup URI", encryptedURI)) {
-            this._log("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
+        if (await this.services.UI.promptCopyToClipboard($msg("Setup.SetupUri"), encryptedURI)) {
+            this._log($msg("Setup.Log.SetupUriCopiedToClipboard"), LOG_LEVEL_NOTICE);
         }
         // await navigator.clipboard.writeText(encryptedURI);
     }
@@ -123,7 +123,7 @@ export class ModuleSetupObsidian extends AbstractModule {
         if (encryptingPassphrase === false) return;
         const encryptedURI = await encodeSettingsToSetupURI(this.settings, encryptingPassphrase, [], false);
         await navigator.clipboard.writeText(encryptedURI);
-        this._log("Setup URI copied to clipboard", LOG_LEVEL_NOTICE);
+        this._log($msg("Setup.Log.SetupUriCopiedToClipboard"), LOG_LEVEL_NOTICE);
     }
 
     async command_copySetupURIWithSync() {

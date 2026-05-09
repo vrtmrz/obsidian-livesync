@@ -20,6 +20,10 @@ import {
     TweakValuesTemplate,
 } from "@/lib/src/common/types";
 
+vi.mock("@/deps", () => ({
+    getLanguage: () => "en",
+}));
+
 // Mock types and functions
 const createLoggerMock = (): LogFunction => {
     return vi.fn();
@@ -594,7 +598,9 @@ describe("Red Flag Feature", () => {
             const config = { batchSave: true } as any;
 
             host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(null);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Skip and proceed");
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce(
+                "RedFlag.FetchRemoteConfig.Buttons.SkipAndProceed"
+            );
 
             await adjustSettingToRemote(host as any, log, config);
 
@@ -609,7 +615,7 @@ describe("Red Flag Feature", () => {
             host.mocks.tweakValue.fetchRemotePreferred
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({ batchSave: false } as any);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Retry (recommended)");
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("RedFlag.FetchRemoteConfig.Buttons.Retry");
 
             await adjustSettingToRemote(host as any, log, config);
 
@@ -636,7 +642,9 @@ describe("Red Flag Feature", () => {
             const config = { batchSave: true } as any;
 
             host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(null);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Skip and proceed");
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce(
+                "RedFlag.FetchRemoteConfig.Buttons.SkipAndProceed"
+            );
 
             await adjustSettingToRemoteIfNeeded(host as any, log, null as any, config);
 

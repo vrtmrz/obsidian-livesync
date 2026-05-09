@@ -14,13 +14,15 @@ export const enableI18nFeature = createServiceFeature(async ({ services: { setti
         ) {
             // Check if the current setting is not empty (Means migrated or installed).
             // settings.displayLanguage = obsidianLanguage as I18N_LANGS;
-            await setting.applyPartial({ displayLanguage: obsidianLanguage as I18N_LANGS });
+            const displayLanguage = obsidianLanguage as I18N_LANGS;
+            await setting.applyPartial({ displayLanguage });
             isChanged = true;
-            setLang(settings.displayLanguage);
+            setLang(displayLanguage);
         } else if (settings.displayLanguage == "") {
             // settings.displayLanguage = "def";
-            await setting.applyPartial({ displayLanguage: "def" });
-            setLang(settings.displayLanguage);
+            const displayLanguage = "def";
+            await setting.applyPartial({ displayLanguage });
+            setLang(displayLanguage);
             await setting.saveSettingData();
         }
     }
@@ -32,8 +34,9 @@ export const enableI18nFeature = createServiceFeature(async ({ services: { setti
                 title: $msg(`dialog.yourLanguageAvailable.Title`),
             })) == revert
         ) {
-            await setting.applyPartial({ displayLanguage: "def" });
-            setLang(settings.displayLanguage);
+            const displayLanguage = "def";
+            await setting.applyPartial({ displayLanguage });
+            setLang(displayLanguage);
         }
         await setting.saveSettingData();
     }

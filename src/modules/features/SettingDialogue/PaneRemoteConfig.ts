@@ -32,6 +32,15 @@ import SetupRemote from "../SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "../SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "../SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "../SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import type {
+    SetupRemoteBucketInitialData,
+    SetupRemoteBucketResult,
+    SetupRemoteCouchDBInitialData,
+    SetupRemoteCouchDBResult,
+    SetupRemoteP2PInitialData,
+    SetupRemoteP2PResult,
+    SetupRemoteResult,
+} from "../SetupWizard/resultTypes.ts";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
@@ -204,7 +213,9 @@ export function paneRemoteConfig(
                 let targetRemoteType = remoteType;
 
                 if (targetRemoteType === undefined) {
-                    const method = await dialogManager.openWithExplicitCancel(SetupRemote);
+                    const method = await dialogManager.openWithExplicitCancel<SetupRemoteResult, undefined>(
+                        SetupRemote
+                    );
                     if (method === "cancelled") {
                         return false;
                     }
@@ -213,7 +224,10 @@ export function paneRemoteConfig(
                 }
 
                 if (targetRemoteType === REMOTE_MINIO) {
-                    const bucketConf = await dialogManager.openWithExplicitCancel(SetupRemoteBucket, baseSettings);
+                    const bucketConf = await dialogManager.openWithExplicitCancel<
+                        SetupRemoteBucketResult,
+                        SetupRemoteBucketInitialData
+                    >(SetupRemoteBucket, baseSettings);
                     if (bucketConf === "cancelled" || typeof bucketConf !== "object") {
                         return false;
                     }
@@ -221,14 +235,20 @@ export function paneRemoteConfig(
                 }
 
                 if (targetRemoteType === REMOTE_P2P) {
-                    const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, baseSettings);
+                    const p2pConf = await dialogManager.openWithExplicitCancel<
+                        SetupRemoteP2PResult,
+                        SetupRemoteP2PInitialData
+                    >(SetupRemoteP2P, baseSettings);
                     if (p2pConf === "cancelled" || typeof p2pConf !== "object") {
                         return false;
                     }
                     return { ...baseSettings, ...p2pConf, remoteType: REMOTE_P2P };
                 }
 
-                const couchConf = await dialogManager.openWithExplicitCancel(SetupRemoteCouchDB, baseSettings);
+                const couchConf = await dialogManager.openWithExplicitCancel<
+                    SetupRemoteCouchDBResult,
+                    SetupRemoteCouchDBInitialData
+                >(SetupRemoteCouchDB, baseSettings);
                 if (couchConf === "cancelled" || typeof couchConf !== "object") {
                     return false;
                 }

@@ -1,6 +1,7 @@
 import { ButtonComponent } from "@/deps.ts";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
+import { $msg, translateIfAvailable } from "../../../lib/src/common/i18n.ts";
 
 class AutoClosableModal extends Modal {
     _closeByUnload() {
@@ -58,7 +59,7 @@ export class InputStringDialog extends AutoClosableModal {
         new Setting(formEl)
             .addButton((btn) =>
                 btn
-                    .setButtonText("Ok")
+                    .setButtonText(translateIfAvailable("Ok"))
                     .setCta()
                     .onClick(() => {
                         this.isManuallyClosed = true;
@@ -67,7 +68,7 @@ export class InputStringDialog extends AutoClosableModal {
             )
             .addButton((btn) =>
                 btn
-                    .setButtonText("Cancel")
+                    .setButtonText(translateIfAvailable("Cancel"))
                     .setCta()
                     .onClick(() => {
                         this.close();

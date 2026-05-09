@@ -10,33 +10,19 @@
     import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
     import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
     import Check from "@/lib/src/UI/components/Check.svelte";
+    import type { BackupDecisionResult, RebuildEverythingResult } from "../resultTypes";
     const TYPE_CANCEL = "cancelled";
 
     const TYPE_BACKUP_DONE = "backup_done";
     const TYPE_BACKUP_SKIPPED = "backup_skipped";
     const TYPE_UNABLE_TO_BACKUP = "unable_to_backup";
 
-    type ResultTypeBackup =
-        | typeof TYPE_BACKUP_DONE
-        | typeof TYPE_BACKUP_SKIPPED
-        | typeof TYPE_UNABLE_TO_BACKUP
-        | typeof TYPE_CANCEL;
-
-    type ResultTypeExtra = {
-        preventFetchingConfig: boolean;
-    };
-    type ResultType =
-        | {
-              backup: ResultTypeBackup;
-              extra: ResultTypeExtra;
-          }
-        | typeof TYPE_CANCEL;
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: RebuildEverythingResult) => void;
     };
     const { setResult }: Props = $props();
 
-    let backupType = $state<ResultTypeBackup>(TYPE_CANCEL);
+    let backupType = $state<BackupDecisionResult>(TYPE_CANCEL);
     let confirmationCheck1 = $state(false);
     let confirmationCheck2 = $state(false);
     let confirmationCheck3 = $state(false);
@@ -73,19 +59,19 @@
 </InfoNote>
 <Guidance important title="⚠️ Please Confirm the Following">
     <Check
-        title="I understand that all changes made on other smartphones or computers possibly could be lost."
+        title="Ui.SetupWizard.Rebuild.ConfirmDataLoss"
         bind:value={confirmationCheck1}
     >
         <InfoNote>There is a way to resolve this on other devices.</InfoNote>
         <InfoNote>Of course, we can back up the data before proceeding.</InfoNote>
     </Check>
     <Check
-        title="I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information."
+        title="Ui.SetupWizard.Rebuild.ConfirmSyncDisabled"
         bind:value={confirmationCheck2}
     >
         <InfoNote>by resetting the remote, you will be informed on other devices.</InfoNote>
     </Check>
-    <Check title="I understand that this action is irreversible once performed." bind:value={confirmationCheck3} />
+    <Check title="Ui.SetupWizard.Rebuild.ConfirmIrreversible" bind:value={confirmationCheck3} />
 </Guidance>
 <hr />
 <Instruction>
@@ -116,8 +102,8 @@
     </Options>
 </Instruction>
 <Instruction>
-    <ExtraItems title="Advanced">
-        <Check title="Prevent fetching configuration from server" bind:value={preventFetchingConfig} />
+    <ExtraItems title="Ui.SetupWizard.Common.AdvancedSettings">
+        <Check title="Ui.SetupWizard.Rebuild.PreventFetchConfig" bind:value={preventFetchingConfig} />
     </ExtraItems>
 </Instruction>
 <UserDecisions>

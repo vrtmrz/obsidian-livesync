@@ -15,7 +15,7 @@
     // let userType = $state<ResultType>(TYPE_CANCELLED);
 </script>
 
-<DialogHeader title="Setup Complete: Preparing to Initialise Server" />
+<DialogHeader title="Ui.SetupWizard.OutroNewUser.Title" />
 <Guidance>
     <p>
         The connection to the server has been configured successfully. As the next step, <strong
@@ -33,6 +33,6 @@
     <Question>Please select the button below to restart and proceed to the final confirmation.</Question>
 </Instruction>
 <UserDecisions>
-    <Decision title="Restart and Initialise Server" important={true} commit={() => setResult(TYPE_APPLY)} />
-    <Decision title="No, please take me back" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title="Ui.SetupWizard.OutroNewUser.Proceed" important={true} commit={() => setResult(TYPE_APPLY)} />
+    <Decision title="Ui.SetupWizard.Common.Back" commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

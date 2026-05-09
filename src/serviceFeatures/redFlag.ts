@@ -8,6 +8,8 @@ import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
+import type { FetchEverythingResult, RebuildEverythingResult } from "../modules/features/SetupWizard/resultTypes";
+import { $msg } from "@lib/common/i18n";
 
 /**
  * Flag file handler interface, similar to target filter pattern.
@@ -65,9 +67,9 @@ export function createFetchAllFlagHandler(
 
     // Handle the fetch all scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(FetchEverything);
+        const method = await host.services.UI.dialogManager.openWithExplicitCancel<FetchEverythingResult, undefined>(FetchEverything);
         if (method === "cancelled") {
-            log("Fetch everything cancelled by user.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.Log.FetchEverythingCancelled"), LOG_LEVEL_NOTICE);
             await cleanupFlag();
             host.services.appLifecycle.performRestart();
             return false;
@@ -106,7 +108,7 @@ export function createFetchAllFlagHandler(
             );
             await host.serviceModules.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, !makeLocalFilesBeforeSync);
             await cleanupFlag();
-            log("Fetch everything operation completed. Vault files will be gradually synced.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.Log.FetchEverythingCompleted"), LOG_LEVEL_NOTICE);
             return true;
         });
     };
@@ -135,19 +137,19 @@ export async function adjustSettingToRemote(
     config: ObsidianLiveSyncSettings
 ) {
     // Fetch remote configuration unless prevented.
-    const SKIP_FETCH = "Skip and proceed";
-    const RETRY_FETCH = "Retry (recommended)";
+    const SKIP_FETCH = "RedFlag.FetchRemoteConfig.Buttons.SkipAndProceed";
+    const RETRY_FETCH = "RedFlag.FetchRemoteConfig.Buttons.Retry";
     let canProceed = false;
     do {
         const remoteTweaks = await host.services.tweakValue.fetchRemotePreferred(config);
         if (!remoteTweaks) {
             const choice = await host.services.UI.confirm.askSelectStringDialogue(
-                "Could not fetch configuration from remote. If you are new to the Self-hosted LiveSync, this might be expected. If not, you should check your network or server settings.",
+                $msg("RedFlag.FetchRemoteConfig.FailedMessage"),
                 [SKIP_FETCH, RETRY_FETCH] as const,
                 {
                     defaultAction: RETRY_FETCH,
                     timeout: 0,
-                    title: "Fetch Remote Configuration Failed",
+                    title: $msg("RedFlag.FetchRemoteConfig.FailedTitle"),
                 }
             );
             if (choice === SKIP_FETCH) {
@@ -160,10 +162,10 @@ export async function adjustSettingToRemote(
                 return (config as any)[key] !== value;
             });
             if (differentItems.length === 0) {
-                log("Remote configuration matches local configuration. No changes applied.", LOG_LEVEL_NOTICE);
+                log($msg("RedFlag.FetchRemoteConfig.MatchesLocal"), LOG_LEVEL_NOTICE);
             } else {
                 await host.services.UI.confirm.askSelectStringDialogue(
-                    "Your settings differed slightly from the server's. The plug-in has supplemented the incompatible parts with the server settings!",
+                    $msg("RedFlag.FetchRemoteConfig.SettingsDiffered"),
                     ["OK"] as const,
                     {
                         defaultAction: "OK",
@@ -177,7 +179,7 @@ export async function adjustSettingToRemote(
                 ...Object.fromEntries(differentItems),
             } satisfies ObsidianLiveSyncSettings;
             await host.services.setting.applyExternalSettings(config, true);
-            log("Remote configuration applied.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.FetchRemoteConfig.Applied"), LOG_LEVEL_NOTICE);
             canProceed = true;
             const updatedConfig = host.services.setting.currentSettings();
             return updatedConfig;
@@ -204,7 +206,7 @@ export async function adjustSettingToRemoteIfNeeded(
     if (await adjustSettingToRemote(host, log, config)) {
         config = host.services.setting.currentSettings();
     } else {
-        log("Remote configuration not applied.", LOG_LEVEL_NOTICE);
+        log($msg("RedFlag.FetchRemoteConfig.NotApplied"), LOG_LEVEL_NOTICE);
     }
     // log(JSON.stringify(config), LOG_LEVEL_VERBOSE);
 }
@@ -231,12 +233,12 @@ export async function processVaultInitialisation(
             const result = await proc();
             return result;
         } catch (ex) {
-            log("Error during vault initialisation process.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.Log.VaultInitialisationProcessError"), LOG_LEVEL_NOTICE);
             log(ex, LOG_LEVEL_VERBOSE);
             return false;
         }
     } catch (ex) {
-        log("Error during vault initialisation.", LOG_LEVEL_NOTICE);
+        log($msg("RedFlag.Log.VaultInitialisationError"), LOG_LEVEL_NOTICE);
         log(ex, LOG_LEVEL_VERBOSE);
         return false;
     } finally {
@@ -256,7 +258,7 @@ export async function verifyAndUnlockSuspension(
     }
     if (
         (await host.services.UI.confirm.askYesNoDialog(
-            "Do you want to resume file and database processing, and restart obsidian now?",
+            $msg("RedFlag.ResumeProcessingPrompt"),
             { defaultOption: "Yes", timeout: 15 }
         )) != "yes"
     ) {
@@ -289,9 +291,9 @@ export function createRebuildFlagHandler(
 
     // Handle the rebuild everything scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(RebuildEverything);
+        const method = await host.services.UI.dialogManager.openWithExplicitCancel<RebuildEverythingResult, undefined>(RebuildEverything);
         if (method === "cancelled") {
-            log("Rebuild everything cancelled by user.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.Log.RebuildEverythingCancelled"), LOG_LEVEL_NOTICE);
             await cleanupFlag();
             host.services.appLifecycle.performRestart();
             return false;
@@ -302,7 +304,7 @@ export function createRebuildFlagHandler(
         return await processVaultInitialisation(host, log, async () => {
             await host.serviceModules.rebuilder.$rebuildEverything();
             await cleanupFlag();
-            log("Rebuild everything operation completed.", LOG_LEVEL_NOTICE);
+            log($msg("RedFlag.Log.RebuildEverythingCompleted"), LOG_LEVEL_NOTICE);
             return true;
         });
     };
