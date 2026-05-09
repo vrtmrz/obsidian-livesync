@@ -35,7 +35,8 @@ import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "../../../common/events.ts";
+import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_AUTO_CONFIG_KEYS_CHANGED, eventHub } from "../../../common/events.ts";
+import { AutoConfigEfficiencyKeys } from "@lib/common/models/tweak.definition.ts";
 import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
@@ -175,6 +176,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         if (hasChanged) {
             await this.services.setting.saveSettingData();
+        }
+
+        // Notify autoConfig when efficiency-affecting tweak keys are changed.
+        const changedEfficiencyKeys = appliedKeys.filter((k) =>
+            (AutoConfigEfficiencyKeys as string[]).includes(k)
+        ) as (keyof ObsidianLiveSyncSettings)[];
+        if (changedEfficiencyKeys.length > 0) {
+            eventHub.emitEvent(EVENT_AUTO_CONFIG_KEYS_CHANGED, changedEfficiencyKeys);
         }
 
         // if (runOnSaved) {

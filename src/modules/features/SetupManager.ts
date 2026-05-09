@@ -23,6 +23,8 @@ import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "../../lib/src/API/processSetting.ts";
 import { AbstractModule } from "../AbstractModule.ts";
+import { EVENT_SETTINGS_IMPORTED } from "../../lib/src/events/coreEvents.ts";
+import { eventHub } from "../../lib/src/hub/hub.ts";
 
 /**
  * User modes for onboarding and setup
@@ -374,6 +376,7 @@ export class SetupManager extends AbstractModule {
     async applySetting(newConf: ObsidianLiveSyncSettings, userMode: UserMode) {
         this.services.setting.clearUsedPassphrase();
         await this.services.setting.applyExternalSettings(newConf, true);
+        eventHub.emitEvent(EVENT_SETTINGS_IMPORTED);
         return true;
     }
 }

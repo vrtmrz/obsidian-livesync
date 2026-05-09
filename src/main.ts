@@ -35,6 +35,7 @@ import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
 import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
+import { useAutoConfig } from "@lib/serviceFeatures/autoConfig.ts";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
 import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
@@ -185,6 +186,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                useAutoConfig(core);
                 // p2pReplicatorResult = useP2PReplicator(core, [
                 //     VIEW_TYPE_P2P,
                 //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
