@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { $msg as msg } from "@/lib/src/common/i18n";
     // import { delay } from "octagonal-wheels/promises";
     import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
     import Guidance from "@/lib/src/UI/components/Guidance.svelte";
@@ -26,6 +27,7 @@
     import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../../lib/src/common/types";
     import ExtraItems from "../../../../lib/src/UI/components/ExtraItems.svelte";
+    import type { SetupRemoteP2PInitialData, SetupRemoteP2PResult } from "../resultTypes";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -33,9 +35,7 @@
     const context = getDialogContext();
     let error = $state("");
     const TYPE_CANCELLED = "cancelled";
-    type SettingInfo = P2PConnectionInfo;
-    type ResultType = typeof TYPE_CANCELLED | SettingInfo;
-    type Props = GuestDialogProps<ResultType, P2PSyncSetting>;
+    type Props = GuestDialogProps<SetupRemoteP2PResult, SetupRemoteP2PInitialData>;
 
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
@@ -125,11 +125,11 @@
                 // context.holdingSettings = trialRemoteSetting;
 
                 if (replicator.knownAdvertisements.length === 0) {
-                    return "Your settings seem correct, but no other peers were found.";
+                    return msg("Ui.SetupWizard.P2P.NoPeersFound");
                 }
                 return "";
             } catch (e) {
-                return `Failed to connect to other peers: ${e}`;
+                return msg("Ui.SetupWizard.P2P.ErrorConnectPeers", { error: `${e}` });
             } finally {
                 try {
                     replicator.close();
@@ -171,7 +171,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = msg("Ui.SetupWizard.Common.ErrorConnectionTest", { error: `${e}` });
             return;
         }
     }
@@ -192,16 +192,16 @@
     });
 </script>
 
-<DialogHeader title="P2P Configuration" />
-<Guidance>Please enter the Peer-to-Peer Synchronisation information below.</Guidance>
-<InputRow label="Enabled">
+<DialogHeader title="Ui.SetupWizard.P2P.Title" />
+<Guidance message="Ui.P2P.Guidance" />
+<InputRow label="Ui.SetupWizard.P2P.Enabled">
     <input type="checkbox" name="p2p-enabled" bind:checked={syncSetting.P2P_Enabled} />
 </InputRow>
-<InputRow label="Relay URL">
+<InputRow label="Ui.SetupWizard.P2P.RelayUrl">
     <input
         type="text"
         name="p2p-relay-url"
-        placeholder="Enter the Relay URL)"
+        placeholder={msg("Ui.SetupWizard.P2P.PlaceholderRelayUrl")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -209,7 +209,7 @@
     />
     <button class="button" onclick={() => setDefaultRelay()}>Use vrtmrz's relay</button>
 </InputRow>
-<InputRow label="Group ID">
+<InputRow label="Ui.SetupWizard.P2P.GroupId">
     <input
         type="text"
         name="p2p-room-id"
@@ -219,17 +219,17 @@
         spellcheck="false"
         bind:value={syncSetting.P2P_roomID}
     />
-    <button class="button" onclick={() => generateDefaultGroupId()}>Generate Random ID</button>
+    <button class="button" onclick={() => generateDefaultGroupId()}>{msg("Ui.SetupWizard.P2P.GenerateRandomId")}</button>
 </InputRow>
-<InputRow label="Passphrase">
-    <Password name="p2p-password" placeholder="Enter your passphrase" bind:value={syncSetting.P2P_passphrase} />
+<InputRow label="Ui.UseSetupURI.LabelPassphrase">
+    <Password
+        name="p2p-password"
+        placeholder="Ui.UseSetupURI.PlaceholderPassphrase"
+        bind:value={syncSetting.P2P_passphrase}
+    />
 </InputRow>
-<InfoNote>
-    The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and
-    passphrase on all devices you want to synchronise.<br />
-    Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.
-</InfoNote>
-<InputRow label="Device Peer ID">
+<InfoNote message="Ui.SetupWizard.P2P.GroupPassphraseDesc" />
+<InputRow label="Ui.SetupWizard.P2P.DevicePeerId">
     <input
         type="text"
         name="p2p-device-peer-id"
@@ -240,32 +240,18 @@
         bind:value={syncSetting.P2P_DevicePeerName}
     />
 </InputRow>
-<InputRow label="Auto Start P2P Connection">
+<InputRow label="Ui.SetupWizard.P2P.AutoStart">
     <input type="checkbox" name="p2p-auto-start" bind:checked={syncSetting.P2P_AutoStart} />
 </InputRow>
-<InfoNote>
-    If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in
-    launches.
-</InfoNote>
-<InputRow label="Auto Broadcast Changes">
+<InfoNote message="Ui.SetupWizard.P2P.AutoStartDesc" />
+<InputRow label="Ui.SetupWizard.P2P.AutoBroadcast">
     <input type="checkbox" name="p2p-auto-broadcast" bind:checked={syncSetting.P2P_AutoBroadcast} />
 </InputRow>
-<InfoNote>
-    If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without
-    requiring manual intervention. This requests peers to fetch this device's changes.
-</InfoNote>
-<ExtraItems title="Advanced Settings">
-    <InfoNote>
-        TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P
-        connections. In most cases, you can leave these fields blank.
-    </InfoNote>
-    <InfoNote warning>
-        Using public TURN servers may have privacy implications, as your data will be relayed through third-party
-        servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN
-        server provider before using their services. Also your `network administrator` too. You should consider setting
-        up your own TURN server for your FQDN, if possible.
-    </InfoNote>
-    <InputRow label="TURN Server URLs (comma-separated)">
+<InfoNote message="Ui.SetupWizard.P2P.AutoBroadcastDesc" />
+<ExtraItems title="Ui.SetupWizard.Common.AdvancedSettings">
+    <InfoNote message="Ui.SetupWizard.P2P.TurnServerDesc" />
+    <InfoNote warning message="Ui.SetupWizard.P2P.PublicTurnWarning" />
+    <InputRow label="Ui.SetupWizard.P2P.TurnServerUrls">
         <textarea
             name="p2p-turn-servers"
             placeholder="turn:turn.example.com:3478,turn:turn.example.com:443"
@@ -275,21 +261,21 @@
             rows="5"
         ></textarea>
     </InputRow>
-    <InputRow label="TURN Username">
+    <InputRow label="Ui.SetupWizard.P2P.TurnUsername">
         <input
             type="text"
             name="p2p-turn-username"
-            placeholder="Enter TURN username"
+            placeholder={msg("Ui.SetupWizard.P2P.PlaceholderTurnUsername")}
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
             bind:value={syncSetting.P2P_turnUsername}
         />
     </InputRow>
-    <InputRow label="TURN Credential">
+    <InputRow label="Ui.SetupWizard.P2P.TurnCredential">
         <Password
             name="p2p-turn-credential"
-            placeholder="Enter TURN credential"
+            placeholder="Ui.SetupWizard.P2P.PlaceholderTurnCredential"
             bind:value={syncSetting.P2P_turnCredential}
         />
     </InputRow>
@@ -298,7 +284,7 @@
     {error}
 </InfoNote>
 {#if processing}
-    Checking connection... Please wait.
+    {msg("Ui.SetupWizard.Common.CheckingConnection")}
 {:else}
     <UserDecisions>
         <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />

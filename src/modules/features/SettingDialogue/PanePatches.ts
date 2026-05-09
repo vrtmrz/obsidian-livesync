@@ -13,6 +13,7 @@ import { visibleOnly } from "./SettingPane.ts";
 import { PouchDB } from "../../../lib/src/pouchdb/pouchdb-browser";
 import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
 import { migrateDatabases } from "./settingUtils.ts";
+import { $msg } from "../../../lib/src/common/i18n.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
@@ -216,17 +217,21 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             .addApplyButton(["maxMTimeForReflectEvents"]);
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
-            const buttons = ["Restart Now", "Later"] as const;
+            const RESTART_NOW = "Ui.Settings.Patches.RemediationRestartNow";
+            const RESTART_LATER = "Ui.Settings.Patches.RemediationRestartLater";
+            const RESTART_NOW_TEXT = $msg(RESTART_NOW);
+            const RESTART_LATER_TEXT = $msg(RESTART_LATER);
+            const buttons = [RESTART_NOW_TEXT, RESTART_LATER_TEXT] as const;
             const reboot = await this.core.confirm.askSelectStringDialogue(
                 "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?",
                 buttons,
                 {
-                    title: "Remediation Setting Changed",
-                    defaultAction: "Restart Now",
+                    title: $msg("Ui.Settings.Patches.RemediationChanged"),
+                    defaultAction: RESTART_NOW_TEXT,
                 }
             );
-            if (reboot !== "Later") {
-                Logger("Remediation setting changed. Restarting Obsidian...", LOG_LEVEL_NOTICE);
+            if (reboot !== RESTART_LATER_TEXT) {
+                Logger($msg("Ui.Settings.Patches.RemediationRestarting"), LOG_LEVEL_NOTICE);
                 this.services.appLifecycle.performRestart();
             }
         });

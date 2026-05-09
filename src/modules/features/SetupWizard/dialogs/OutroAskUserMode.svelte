@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { $msg as msg } from "@/lib/src/common/i18n";
     import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
     import Guidance from "@/lib/src/UI/components/Guidance.svelte";
     import Decision from "@/lib/src/UI/components/Decision.svelte";
@@ -22,33 +23,29 @@
     });
     const proceedMessage = $derived.by(() => {
         if (userType === TYPE_NEW) {
-            return "Proceed to the next step.";
+            return "Ui.SetupWizard.OutroAskUserMode.ProceedNext";
         } else if (userType === TYPE_EXISTING) {
-            return "Proceed to the next step.";
+            return "Ui.SetupWizard.OutroAskUserMode.ProceedNext";
         } else if (userType === TYPE_COMPATIBLE_EXISTING) {
-            return "Apply the settings";
+            return "Ui.SetupWizard.OutroAskUserMode.ProceedApplySettings";
         } else {
-            return "Please select an option to proceed";
+            return "Ui.SetupWizard.Common.ProceedSelectOption";
         }
     });
 </script>
 
-<DialogHeader title="Mostly Complete: Decision Required" />
-<Guidance>
-    The connection to the server has been configured successfully. As the next step, <strong
-        >the local database, that is to say the synchronisation information, must be reconstituted.</strong
-    >
-</Guidance>
+<DialogHeader title="Ui.SetupWizard.OutroAskUserMode.Title" />
+<Guidance>{msg("Ui.SetupWizard.OutroAskUserMode.Guidance")}</Guidance>
 <Instruction>
-    <Question>Please select your situation.</Question>
-    <Option title="I am setting up a new server for the first time / I want to reset my existing server." bind:value={userType} selectedValue={TYPE_NEW}>
+    <Question>{msg("Ui.SetupWizard.OutroAskUserMode.Question")}</Question>
+    <Option title="Ui.SetupWizard.OutroAskUserMode.NewOption" bind:value={userType} selectedValue={TYPE_NEW}>
         <InfoNote>
             Selecting this option will result in the current data on this device being used to initialise the server.
             Any existing data on the server will be completely overwritten.
         </InfoNote>
     </Option>
     <Option
-        title="My remote server is already set up. I want to join this device."
+        title="Ui.SetupWizard.OutroAskUserMode.ExistingOption"
         bind:value={userType}
         selectedValue={TYPE_EXISTING}
     >
@@ -58,7 +55,7 @@
         </InfoNote>
     </Option>
     <Option
-        title="The remote is already set up, and the configuration is compatible (or got compatible by this operation)."
+        title="Ui.SetupWizard.OutroAskUserMode.CompatibleOption"
         bind:value={userType}
         selectedValue={TYPE_COMPATIBLE_EXISTING}
     >
@@ -71,5 +68,5 @@
 </Instruction>
 <UserDecisions>
     <Decision title={proceedMessage} important={true} disabled={!canProceed} commit={() => setResult(userType)} />
-    <Decision title="No, please take me back" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title="Ui.SetupWizard.Common.Back" commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

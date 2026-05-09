@@ -64,7 +64,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
                     await this.core.services.control.applySettings();
                     const lang = this.core.services.setting.currentSettings()?.displayLanguage ?? undefined;
                     if (lang !== undefined) {
-                        setLang(this.core.services.setting.currentSettings()?.displayLanguage);
+                        setLang(lang);
                     }
                     eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
                 } catch (e) {

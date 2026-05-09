@@ -23,7 +23,7 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg, translateIfAvailable } from "src/lib/src/common/i18n.ts";
 import { findAttrFromParent, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
@@ -257,6 +257,9 @@ export class LiveSyncSetting extends Setting {
 
             this.invalidateValue = () => setValue(LiveSyncSetting.env.editingSettings[key] || "");
             this.invalidateValue();
+            for (const optionEl of Array.from(dropdown.selectEl.options)) {
+                optionEl.text = translateIfAvailable(optionEl.text);
+            }
             dropdown.onChange(async (value) => {
                 await this.commitValue(value);
             });

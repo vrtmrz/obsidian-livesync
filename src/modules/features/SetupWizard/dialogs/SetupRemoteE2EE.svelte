@@ -7,6 +7,7 @@
     import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
     import InputRow from "@/lib/src/UI/components/InputRow.svelte";
     import Password from "@/lib/src/UI/components/Password.svelte";
+    import { $msg as msg } from "@/lib/src/common/i18n";
     import {
         DEFAULT_SETTINGS,
         E2EEAlgorithmNames,
@@ -16,9 +17,9 @@
     import { onMount } from "svelte";
     import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { copyTo, pickEncryptionSettings } from "../../../../lib/src/common/utils";
+    import type { SetupRemoteE2EEInitialData, SetupRemoteE2EEResult } from "../resultTypes";
     const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_CANCELLED | EncryptionSettings;
-    type Props = GuestDialogProps<ResultType, EncryptionSettings>;
+    type Props = GuestDialogProps<SetupRemoteE2EEResult, SetupRemoteE2EEInitialData>;
     const { setResult, getInitialData }: Props = $props();
     let default_encryption: EncryptionSettings = {
         encrypt: true,
@@ -53,7 +54,7 @@
     <input type="checkbox" bind:checked={encryptionSettings.encrypt} />
     <Password
         name="e2ee-passphrase"
-        placeholder="Enter your passphrase"
+        placeholder="Ui.UseSetupURI.PlaceholderPassphrase"
         bind:value={encryptionSettings.passphrase}
         disabled={!encryptionSettings.encrypt}
         required={encryptionSettings.encrypt}
@@ -78,15 +79,8 @@
     />
 </InputRow>
 
-<InfoNote>
-    Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of
-    security by making it harder to identify the structure and names of your files and folders on the remote server.
-    This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your
-    data.
-</InfoNote>
-
-<ExtraItems title="Advanced">
-    <InputRow label="Encryption Algorithm">
+<ExtraItems title="Ui.RemoteE2EE.AdvancedTitle">
+    <InputRow label="Ui.SetupWizard.E2EE.EncryptionAlgorithm">
         <select bind:value={encryptionSettings.E2EEAlgorithm} disabled={!encryptionSettings.encrypt}>
             {#each Object.values(E2EEAlgorithms) as alg}
                 <option value={alg}>{E2EEAlgorithmNames[alg] ?? alg}</option>
@@ -94,15 +88,11 @@
         </select>
     </InputRow>
     <InfoNote>
-        In most cases, you should stick with the default algorithm ({E2EEAlgorithmNames[
-            DEFAULT_SETTINGS.E2EEAlgorithm
-        ]}), This setting is only required if you have an existing Vault encrypted in a different format.
+        {msg("Ui.SetupWizard.E2EE.AlgorithmGuidance", {
+            algorithm: E2EEAlgorithmNames[DEFAULT_SETTINGS.E2EEAlgorithm],
+        })}
     </InfoNote>
-    <InfoNote warning>
-        Changing the encryption algorithm will prevent access to any data previously encrypted with a different
-        algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your
-        data.
-    </InfoNote>
+    <InfoNote warning message="Ui.SetupWizard.E2EE.AlgorithmWarning" />
 </ExtraItems>
 
 <InfoNote warning>

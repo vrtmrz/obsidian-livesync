@@ -1,5 +1,6 @@
 <script lang="ts">
     import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
+    import { $msg as msg } from "@/lib/src/common/i18n";
     import Guidance from "@/lib/src/UI/components/Guidance.svelte";
     import Decision from "@/lib/src/UI/components/Decision.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
@@ -21,13 +22,13 @@
     import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
     import { copyTo, pickCouchDBSyncSettings } from "../../../../lib/src/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
+    import type { SetupRemoteCouchDBInitialData, SetupRemoteCouchDBResult } from "../resultTypes";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
     let syncSetting = $state<CouchDBConnection>({ ...default_setting });
-    type ResultType = typeof TYPE_CANCELLED | CouchDBConnection;
     const TYPE_CANCELLED = "cancelled";
-    type Props = GuestDialogProps<ResultType, CouchDBConnection>;
+    type Props = GuestDialogProps<SetupRemoteCouchDBResult, SetupRemoteCouchDBInitialData>;
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
         if (getInitialData) {
@@ -67,17 +68,17 @@
             const trialRemoteSetting = generateSetting();
             const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
             if (!replicator) {
-                return "Failed to create replicator instance.";
+                return msg("Ui.SetupWizard.Common.ErrorCreateReplicator");
             }
             try {
                 const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
                 if (result) {
                     return "";
                 } else {
-                    return "Failed to connect to the server. Please check your settings.";
+                    return msg("Ui.SetupWizard.Common.ErrorConnectServer");
                 }
             } catch (e) {
-                return `Failed to connect to the server: ${e}`;
+                return msg("Ui.SetupWizard.Common.ErrorConnectServerDetail", { error: `${e}` });
             }
         } finally {
             processing = false;
@@ -94,7 +95,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = msg("Ui.SetupWizard.Common.ErrorConnectionTest", { error: `${e}` });
             return;
         }
     }
@@ -135,9 +136,9 @@
     });
 </script>
 
-<DialogHeader title="CouchDB Configuration" />
-<Guidance>Please enter the CouchDB server information below.</Guidance>
-<InputRow label="URL">
+<DialogHeader title="Ui.SetupWizard.CouchDB.Title" />
+<Guidance message="Ui.CouchDB.Guidance" />
+<InputRow label="Ui.SetupWizard.CouchDB.Url">
     <input
         type="text"
         name="couchdb-url"
@@ -150,12 +151,12 @@
         pattern="^https?://.+"
     />
 </InputRow>
-<InfoNote warning visible={isURIInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
-<InputRow label="Username">
+<InfoNote warning visible={isURIInsecure} message="Ui.SetupWizard.Common.HttpsOnlyMobile" />
+<InputRow label="Ui.SetupWizard.CouchDB.Username">
     <input
         type="text"
         name="couchdb-username"
-        placeholder="Enter your username"
+        placeholder={msg("Ui.SetupWizard.CouchDB.PlaceholderUsername")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -163,20 +164,20 @@
         bind:value={syncSetting.couchDB_USER}
     />
 </InputRow>
-<InputRow label="Password">
+<InputRow label="Ui.SetupWizard.CouchDB.Password">
     <Password
         name="couchdb-password"
-        placeholder="Enter your password"
+        placeholder="Ui.SetupWizard.CouchDB.PlaceholderPassword"
         bind:value={syncSetting.couchDB_PASSWORD}
         required
     />
 </InputRow>
 
-<InputRow label="Database Name">
+<InputRow label="Ui.SetupWizard.CouchDB.DatabaseName">
     <input
         type="text"
         name="couchdb-database"
-        placeholder="Enter your database name"
+        placeholder={msg("Ui.SetupWizard.CouchDB.PlaceholderDatabaseName")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -185,21 +186,14 @@
         bind:value={syncSetting.couchDB_DBNAME}
     />
 </InputRow>
-<InfoNote>
-    You cannot use capital letters, spaces, or special characters in the database name. And not allowed to start with an
-    underscore (_).
-</InfoNote>
-<InputRow label="Use Internal API">
+<InfoNote message="Ui.SetupWizard.CouchDB.DatabaseNameDesc" />
+<InputRow label="Ui.SetupWizard.CouchDB.UseInternalApi">
     <input type="checkbox" name="couchdb-use-internal-api" bind:checked={syncSetting.useRequestAPI} />
 </InputRow>
-<InfoNote>
-    If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate
-    with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian
-    versions.
-</InfoNote>
+<InfoNote message="Ui.SetupWizard.CouchDB.InternalApiDesc" />
 
-<ExtraItems title="Advanced Settings">
-    <InputRow label="Custom Headers">
+<ExtraItems title="Ui.SetupWizard.Common.AdvancedSettings">
+    <InputRow label="Ui.SetupWizard.Common.CustomHeaders">
         <textarea
             name="couchdb-custom-headers"
             placeholder="e.g., x-example-header: value\n another-header: value2"
@@ -210,11 +204,11 @@
         ></textarea>
     </InputRow>
 </ExtraItems>
-<ExtraItems title="Experimental Settings">
-    <InputRow label="Use JWT Authentication">
+<ExtraItems title="Ui.SetupWizard.Common.ExperimentalSettings">
+    <InputRow label="Ui.SetupWizard.CouchDB.UseJwtAuthentication">
         <input type="checkbox" name="couchdb-use-jwt" bind:checked={syncSetting.useJWT} />
     </InputRow>
-    <InputRow label="JWT Algorithm">
+    <InputRow label="Ui.SetupWizard.CouchDB.JwtAlgorithm">
         <select bind:value={syncSetting.jwtAlgorithm} disabled={!isUseJWT}>
             <option value="HS256">HS256</option>
             <option value="HS512">HS512</option>
@@ -222,7 +216,7 @@
             <option value="ES512">ES512</option>
         </select>
     </InputRow>
-    <InputRow label="JWT Expiration Duration (minutes)">
+    <InputRow label="Ui.SetupWizard.CouchDB.JwtExpirationDuration">
         <input
             type="text"
             name="couchdb-jwt-exp-duration"
@@ -231,44 +225,37 @@
             disabled={!isUseJWT}
         />
     </InputRow>
-    <InputRow label="JWT Key">
+    <InputRow label="Ui.SetupWizard.CouchDB.JwtKey">
         <textarea
             name="couchdb-jwt-key"
             rows="5"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="Enter your JWT secret or private key"
+            placeholder={msg("Ui.SetupWizard.CouchDB.PlaceholderJwtKey")}
             bind:value={syncSetting.jwtKey}
             disabled={!isUseJWT}
         ></textarea>
     </InputRow>
-    <InfoNote>
-        For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8
-        PEM-formatted private key.
-    </InfoNote>
-    <InputRow label="JWT Key ID (kid)">
+    <InfoNote message="Ui.SetupWizard.CouchDB.JwtKeyDesc" />
+    <InputRow label="Ui.SetupWizard.CouchDB.JwtKeyId">
         <input
             type="text"
             name="couchdb-jwt-kid"
-            placeholder="Enter your JWT Key ID"
+            placeholder={msg("Ui.SetupWizard.CouchDB.PlaceholderJwtKeyId")}
             bind:value={syncSetting.jwtKid}
             disabled={!isUseJWT}
         />
     </InputRow>
-    <InputRow label="JWT Subject (sub)">
+    <InputRow label="Ui.SetupWizard.CouchDB.JwtSubject">
         <input
             type="text"
             name="couchdb-jwt-sub"
-            placeholder="Enter your JWT Subject (CouchDB Username)"
+            placeholder={msg("Ui.SetupWizard.CouchDB.PlaceholderJwtSubject")}
             bind:value={syncSetting.jwtSub}
             disabled={!isUseJWT}
         />
     </InputRow>
-    <InfoNote warning>
-        JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens.
-        Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the
-        server's configuration. Incidentally, I have not verified it very thoroughly.
-    </InfoNote>
+    <InfoNote warning message="Ui.SetupWizard.CouchDB.JwtWarning" />
 </ExtraItems>
 
 <PanelCouchDBCheck trialRemoteSetting={testSettings}></PanelCouchDBCheck>
@@ -279,7 +266,7 @@
 </InfoNote>
 
 {#if processing}
-    Checking connection... Please wait.
+    {msg("Ui.SetupWizard.Common.CheckingConnection")}
 {:else}
     <UserDecisions>
         <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />

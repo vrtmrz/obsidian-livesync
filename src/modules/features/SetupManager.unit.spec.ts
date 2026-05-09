@@ -3,6 +3,10 @@ import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from 
 import { SettingService } from "../../lib/src/services/base/SettingService";
 import { ServiceContext } from "../../lib/src/services/base/ServiceBase";
 
+vi.mock("@/deps", () => ({
+    getLanguage: () => "en",
+}));
+
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodExisting.svelte", () => ({ default: {} }));
@@ -123,6 +127,20 @@ describe("SetupManager", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.restoreAllMocks();
+    });
+
+    it("startOnBoarding should return true when new user setup is applied", async () => {
+        const { manager, dialogManager, core } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce("new-user")
+            .mockResolvedValueOnce("use-setup-uri")
+            .mockResolvedValueOnce(createLegacyRemoteSetting())
+            .mockResolvedValueOnce("apply");
+
+        const result = await manager.startOnBoarding();
+
+        expect(result).toBe(true);
+        expect(core.rebuilder.scheduleRebuild).toHaveBeenCalled();
     });
 
     it("onUseSetupURI should normalise imported legacy remote settings before applying", async () => {

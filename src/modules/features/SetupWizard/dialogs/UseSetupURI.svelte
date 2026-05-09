@@ -1,5 +1,6 @@
 <script lang="ts">
     import { configURIBase } from "../../../../common/types";
+    import { $msg as msg } from "@/lib/src/common/i18n";
     import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
     import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
     import Guidance from "@/lib/src/UI/components/Guidance.svelte";
@@ -12,9 +13,9 @@
     import { onMount } from "svelte";
     import { decryptString } from "../../../../lib/src/encryption/stringEncryption.ts";
     import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog.ts";
+    import type { UseSetupURIResult } from "../resultTypes";
     const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_CANCELLED | ObsidianLiveSyncSettings;
-    type Props = GuestDialogProps<ResultType, string>;
+    type Props = GuestDialogProps<UseSetupURIResult, string>;
     const { setResult, getInitialData }: Props = $props();
 
     let setupURI = $state("");
@@ -34,7 +35,7 @@
         error = "";
         if (!seemsValid) return;
         if (!passphrase) {
-            error = "Passphrase is required.";
+            error = "Ui.UseSetupURI.ErrorPassphraseRequired";
             return;
         }
         try {
@@ -47,7 +48,7 @@
             // Logger("Settings imported successfully", LOG_LEVEL_NOTICE);
             return;
         } catch (e) {
-            error = "Failed to parse Setup-URI.";
+            error = "Ui.UseSetupURI.ErrorFailedToParse";
             return;
         }
     }
@@ -76,14 +77,12 @@
 </InputRow>
 <InfoNote visible={seemsValid}>The Setup-URI is valid and ready to use.</InfoNote>
 <InfoNote warning visible={!seemsValid && setupURI.trim() != ""}>
-    The Setup-URI does not appear to be valid. Please check that you have copied it correctly.
+    {msg("Ui.UseSetupURI.InvalidInfo")}
 </InfoNote>
-<InputRow label="Passphrase">
-    <Password placeholder="Enter your passphrase" bind:value={passphrase} required />
+<InputRow label="Ui.UseSetupURI.LabelPassphrase">
+    <Password placeholder="Ui.UseSetupURI.PlaceholderPassphrase" bind:value={passphrase} required />
 </InputRow>
-<InfoNote error visible={error.trim() != ""}>
-    {error}
-</InfoNote>
+<InfoNote error visible={error.trim() != ""} message={error} />
 
 <UserDecisions>
     <Decision

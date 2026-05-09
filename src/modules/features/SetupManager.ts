@@ -8,6 +8,7 @@ import {
     REMOTE_P2P,
 } from "../../lib/src/common/types.ts";
 import { generatePatchObj, isObjectDifferent } from "../../lib/src/common/utils.ts";
+import { $msg } from "../../lib/src/common/i18n.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -23,6 +24,23 @@ import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "../../lib/src/API/processSetting.ts";
 import { AbstractModule } from "../AbstractModule.ts";
+import type {
+    IntroResult,
+    OutroAskUserModeResult,
+    OutroResult,
+    SelectMethodExistingResult,
+    SelectMethodNewUserResult,
+    SetupRemoteBucketInitialData,
+    SetupRemoteBucketResult,
+    SetupRemoteCouchDBInitialData,
+    SetupRemoteCouchDBResult,
+    SetupRemoteE2EEInitialData,
+    SetupRemoteE2EEResult,
+    SetupRemoteP2PInitialData,
+    SetupRemoteP2PResult,
+    SetupRemoteResult,
+    UseSetupURIResult,
+} from "./SetupWizard/resultTypes";
 
 /**
  * User modes for onboarding and setup
@@ -64,13 +82,14 @@ export class SetupManager extends AbstractModule {
      * @returns Promise that resolves to true if onboarding completed successfully, false otherwise
      */
     async startOnBoarding(): Promise<boolean> {
-        const isUserNewOrExisting = await this.dialogManager.openWithExplicitCancel(Intro);
+        // Keep Svelte dialog result types explicit so setup flow branches stay typed.
+        const isUserNewOrExisting = await this.dialogManager.openWithExplicitCancel<IntroResult, undefined>(Intro);
         if (isUserNewOrExisting === "new-user") {
-            await this.onOnboard(UserMode.NewUser);
+            return await this.onOnboard(UserMode.NewUser);
         } else if (isUserNewOrExisting === "existing-user") {
-            await this.onOnboard(UserMode.ExistingUser);
+            return await this.onOnboard(UserMode.ExistingUser);
         } else if (isUserNewOrExisting === "cancelled") {
-            this._log("Onboarding cancelled by user.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.OnboardingCancelled"), LOG_LEVEL_NOTICE);
             return false;
         }
         return false;
@@ -85,25 +104,29 @@ export class SetupManager extends AbstractModule {
         const originalSetting = userMode === UserMode.NewUser ? DEFAULT_SETTINGS : this.core.settings;
         if (userMode === UserMode.NewUser) {
             //Ask how to apply initial setup
-            const method = await this.dialogManager.openWithExplicitCancel(SelectMethodNewUser);
+            const method = await this.dialogManager.openWithExplicitCancel<SelectMethodNewUserResult, undefined>(
+                SelectMethodNewUser
+            );
             if (method === "use-setup-uri") {
-                await this.onUseSetupURI(userMode);
+                return await this.onUseSetupURI(userMode);
             } else if (method === "configure-manually") {
-                await this.onConfigureManually(originalSetting, userMode);
+                return await this.onConfigureManually(originalSetting, userMode);
             } else if (method === "cancelled") {
-                this._log("Onboarding cancelled by user.", LOG_LEVEL_NOTICE);
+                this._log($msg("Ui.SetupWizard.Log.OnboardingCancelled"), LOG_LEVEL_NOTICE);
                 return false;
             }
         } else if (userMode === UserMode.ExistingUser) {
-            const method = await this.dialogManager.openWithExplicitCancel(SelectMethodExisting);
+            const method = await this.dialogManager.openWithExplicitCancel<SelectMethodExistingResult, undefined>(
+                SelectMethodExisting
+            );
             if (method === "use-setup-uri") {
-                await this.onUseSetupURI(userMode);
+                return await this.onUseSetupURI(userMode);
             } else if (method === "configure-manually") {
-                await this.onConfigureManually(originalSetting, userMode);
+                return await this.onConfigureManually(originalSetting, userMode);
             } else if (method === "scan-qr-code") {
-                await this.onPromptQRCodeInstruction();
+                return await this.onPromptQRCodeInstruction();
             } else if (method === "cancelled") {
-                this._log("Onboarding cancelled by user.", LOG_LEVEL_NOTICE);
+                this._log($msg("Ui.SetupWizard.Log.OnboardingCancelled"), LOG_LEVEL_NOTICE);
                 return false;
             }
         }
@@ -117,12 +140,15 @@ export class SetupManager extends AbstractModule {
      * @returns Promise that resolves to true if onboarding completed successfully, false otherwise
      */
     async onUseSetupURI(userMode: UserMode, setupURI: string = ""): Promise<boolean> {
-        const newSetting = await this.dialogManager.openWithExplicitCancel(UseSetupURI, setupURI);
+        const newSetting = await this.dialogManager.openWithExplicitCancel<UseSetupURIResult, string>(
+            UseSetupURI,
+            setupURI
+        );
         if (newSetting === "cancelled") {
-            this._log("Setup URI dialog cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.SetupUriDialogCancelled"), LOG_LEVEL_NOTICE);
             return false;
         }
-        this._log("Setup URI dialog closed.", LOG_LEVEL_VERBOSE);
+        this._log($msg("Ui.SetupWizard.Log.SetupUriDialogClosed"), LOG_LEVEL_VERBOSE);
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode);
     }
 
@@ -140,9 +166,12 @@ export class SetupManager extends AbstractModule {
     ): Promise<boolean> {
         const originalSetting = JSON.parse(JSON.stringify(currentSetting)) as ObsidianLiveSyncSettings;
         const baseSetting = JSON.parse(JSON.stringify(originalSetting)) as ObsidianLiveSyncSettings;
-        const couchConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteCouchDB, originalSetting);
+        const couchConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteCouchDBResult,
+            SetupRemoteCouchDBInitialData
+        >(SetupRemoteCouchDB, originalSetting);
         if (couchConf === "cancelled") {
-            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.ManualConfigurationCancelled"), LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
         const newSetting = { ...baseSetting, ...couchConf } as ObsidianLiveSyncSettings;
@@ -164,9 +193,12 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const bucketConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteBucket, currentSetting);
+        const bucketConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteBucketResult,
+            SetupRemoteBucketInitialData
+        >(SetupRemoteBucket, currentSetting);
         if (bucketConf === "cancelled") {
-            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.ManualConfigurationCancelled"), LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
         const newSetting = { ...currentSetting, ...bucketConf } as ObsidianLiveSyncSettings;
@@ -188,9 +220,12 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const p2pConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteP2P, currentSetting);
+        const p2pConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteP2PResult,
+            SetupRemoteP2PInitialData
+        >(SetupRemoteP2P, currentSetting);
         if (p2pConf === "cancelled") {
-            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.ManualConfigurationCancelled"), LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
         const newSetting = { ...currentSetting, ...p2pConf } as ObsidianLiveSyncSettings;
@@ -207,9 +242,12 @@ export class SetupManager extends AbstractModule {
      * @returns
      */
     async onlyE2EEConfiguration(userMode: UserMode, currentSetting: ObsidianLiveSyncSettings): Promise<boolean> {
-        const e2eeConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteE2EE, currentSetting);
+        const e2eeConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteE2EEResult,
+            SetupRemoteE2EEInitialData
+        >(SetupRemoteE2EE, currentSetting);
         if (e2eeConf === "cancelled") {
-            this._log("E2EE configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.E2EEConfigurationCancelled"), LOG_LEVEL_NOTICE);
             return await false;
         }
         const newSetting = {
@@ -226,9 +264,12 @@ export class SetupManager extends AbstractModule {
      * @returns
      */
     async onConfigureManually(originalSetting: ObsidianLiveSyncSettings, userMode: UserMode): Promise<boolean> {
-        const e2eeConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteE2EE, originalSetting);
+        const e2eeConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteE2EEResult,
+            SetupRemoteE2EEInitialData
+        >(SetupRemoteE2EE, originalSetting);
         if (e2eeConf === "cancelled") {
-            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.ManualConfigurationCancelled"), LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
         const currentSetting = {
@@ -245,7 +286,7 @@ export class SetupManager extends AbstractModule {
      * @returns
      */
     async onSelectServer(currentSetting: ObsidianLiveSyncSettings, userMode: UserMode): Promise<boolean> {
-        const method = await this.dialogManager.openWithExplicitCancel(SetupRemote);
+        const method = await this.dialogManager.openWithExplicitCancel<SetupRemoteResult, undefined>(SetupRemote);
         if (method === "couchdb") {
             return await this.onCouchDBManualSetup(userMode, currentSetting, true);
         } else if (method === "bucket") {
@@ -253,7 +294,7 @@ export class SetupManager extends AbstractModule {
         } else if (method === "p2p") {
             return await this.onP2PManualSetup(userMode, currentSetting, true);
         } else if (method === "cancelled") {
-            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.ManualConfigurationCancelled"), LOG_LEVEL_NOTICE);
             if (userMode !== UserMode.Unknown) {
                 return await this.onOnboard(userMode);
             }
@@ -282,7 +323,7 @@ export class SetupManager extends AbstractModule {
         let userMode = _userMode;
         if (userMode === UserMode.Unknown) {
             if (isObjectDifferent(this.settings, newConf, true) === false) {
-                this._log("No changes in settings detected. Skipping applying settings from wizard.", LOG_LEVEL_NOTICE);
+                this._log($msg("Ui.SetupWizard.Log.NoSettingsChanges"), LOG_LEVEL_NOTICE);
                 return true;
             }
             const patch = generatePatchObj(this.settings, newConf);
@@ -291,7 +332,7 @@ export class SetupManager extends AbstractModule {
             if (!activate) {
                 extra();
                 await this.applySetting(newConf, UserMode.ExistingUser);
-                this._log("Setting Applied", LOG_LEVEL_NOTICE);
+                this._log($msg("Ui.SetupWizard.Log.SettingApplied"), LOG_LEVEL_NOTICE);
                 return true;
             }
             // Check virtual changes
@@ -301,10 +342,13 @@ export class SetupManager extends AbstractModule {
             if (isOnlyVirtualChange) {
                 extra();
                 await this.applySetting(newConf, UserMode.ExistingUser);
-                this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
+                this._log($msg("Ui.SetupWizard.Log.SettingsApplied"), LOG_LEVEL_NOTICE);
                 return true;
             } else {
-                const userModeResult = await this.dialogManager.openWithExplicitCancel(OutroAskUserMode);
+                const userModeResult = await this.dialogManager.openWithExplicitCancel<
+                    OutroAskUserModeResult,
+                    undefined
+                >(OutroAskUserMode);
                 if (userModeResult === "new-user") {
                     userMode = UserMode.NewUser;
                 } else if (userModeResult === "existing-user") {
@@ -312,18 +356,18 @@ export class SetupManager extends AbstractModule {
                 } else if (userModeResult === "compatible-existing-user") {
                     extra();
                     await this.applySetting(newConf, UserMode.ExistingUser);
-                    this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
+                    this._log($msg("Ui.SetupWizard.Log.SettingsApplied"), LOG_LEVEL_NOTICE);
                     return true;
                 } else if (userModeResult === "cancelled") {
-                    this._log("User cancelled applying settings from wizard.", LOG_LEVEL_NOTICE);
+                    this._log($msg("Ui.SetupWizard.Log.UserCancelledApplyingSettings"), LOG_LEVEL_NOTICE);
                     return false;
                 }
             }
         }
         const component = userMode === UserMode.NewUser ? OutroNewUser : OutroExistingUser;
-        const confirm = await this.dialogManager.openWithExplicitCancel(component);
+        const confirm = await this.dialogManager.openWithExplicitCancel<OutroResult, undefined>(component);
         if (confirm === "cancelled") {
-            this._log("User cancelled applying settings from wizard..", LOG_LEVEL_NOTICE);
+            this._log($msg("Ui.SetupWizard.Log.UserCancelledApplyingSettings"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (confirm) {
@@ -336,6 +380,7 @@ export class SetupManager extends AbstractModule {
                 // For existing users, schedule a fetch.
                 await this.core.rebuilder.scheduleFetch();
             }
+            return true;
         }
         // Settings applied, but may require rebuild to take effect.
         return false;
@@ -348,9 +393,9 @@ export class SetupManager extends AbstractModule {
 
     async onPromptQRCodeInstruction(): Promise<boolean> {
         const qrResult = await this.dialogManager.open(ScanQRCode);
-        this._log("QR Code dialog closed.", LOG_LEVEL_VERBOSE);
+        this._log($msg("Ui.SetupWizard.Log.QrCodeDialogClosed"), LOG_LEVEL_VERBOSE);
         // Result is not used, but log it for debugging.
-        this._log(`QR Code result: ${qrResult}`, LOG_LEVEL_VERBOSE);
+        this._log($msg("Ui.SetupWizard.Log.QrCodeResult", { result: String(qrResult) }), LOG_LEVEL_VERBOSE);
         // QR Code instruction dialog never yields settings directly.
         return false;
     }
