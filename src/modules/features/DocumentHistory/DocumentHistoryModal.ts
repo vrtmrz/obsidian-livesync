@@ -223,6 +223,9 @@ export class DocumentHistoryModal extends Modal {
         }
         // Reset diff navigation after content changes
         this.resetDiffNavigation();
+        if (this.showDiff) {
+            this.navigateDiff("next");
+        }
     }
 
     /**
