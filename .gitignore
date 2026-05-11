@@ -29,3 +29,7 @@ cov_profile/**
 
 coverage
 src/apps/cli/dist/*
+
+# Obsidian E2E test artefacts
+test_e2e/playwright-report/
+test_e2e/test-results/
