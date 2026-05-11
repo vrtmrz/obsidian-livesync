@@ -473,8 +473,18 @@ export class DocumentHistoryModal extends Modal {
         const diffOptionsRow = contentEl.createDiv("");
         diffOptionsRow.addClass("op-info");
         diffOptionsRow.addClass("diff-options-row");
+        diffOptionsRow.style.display = "flex";
+        diffOptionsRow.style.justifyContent = "space-between";
+        diffOptionsRow.style.alignItems = "center";
 
-        diffOptionsRow.createEl("label", {}, (label) => {
+        const highlightDiffContainer = diffOptionsRow.createDiv("");
+        highlightDiffContainer.style.display = "flex";
+        highlightDiffContainer.style.alignItems = "center";
+
+        highlightDiffContainer.createEl("label", {}, (label) => {
+            label.style.display = "flex";
+            label.style.alignItems = "center";
+            label.style.gap = "4px";
             label.appendChild(
                 createEl("input", { type: "checkbox" }, (checkbox) => {
                     if (this.showDiff) {
@@ -495,6 +505,7 @@ export class DocumentHistoryModal extends Modal {
         this.diffNavContainer = diffOptionsRow.createDiv("");
         this.diffNavContainer.addClass("diff-nav");
         this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
+        this.diffNavContainer.style.marginLeft = "auto";
 
         this.diffNavContainer.createEl("button", { text: "\u25B2 Prev" }, (e) => {
             e.addClass("diff-nav-btn");
