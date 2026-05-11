@@ -56,6 +56,7 @@ export class DocumentHistoryModal extends Modal {
     info!: HTMLDivElement;
     fileInfo!: HTMLDivElement;
     showDiff = false;
+    diffOnly = false;
     id?: DocumentID;
 
     file: FilePathWithPrefix;
@@ -70,6 +71,7 @@ export class DocumentHistoryModal extends Modal {
     currentDiffIndex = -1;
     diffNavContainer!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
+    diffOnlyLabel!: HTMLLabelElement;
 
     constructor(
         app: App,
@@ -90,6 +92,9 @@ export class DocumentHistoryModal extends Modal {
         }
         if (localStorage.getItem("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
+        }
+        if (localStorage.getItem("ols-history-diffonly") == "1") {
+            this.diffOnly = true;
         }
     }
 
@@ -173,15 +178,25 @@ export class DocumentHistoryModal extends Modal {
                             const w2data = readDocument(w2) as string;
                             const diff = dmp.diff_main(w2data, w1data);
                             dmp.diff_cleanupSemantic(diff);
+                            let hasOmitted = false;
                             for (const v of diff) {
                                 const x1 = v[0];
                                 const x2 = v[1];
                                 if (x1 == DIFF_DELETE) {
                                     result += "<span class='history-deleted'>" + escapeStringToHTML(x2) + "</span>";
+                                    hasOmitted = false;
                                 } else if (x1 == DIFF_EQUAL) {
-                                    result += "<span class='history-normal'>" + escapeStringToHTML(x2) + "</span>";
+                                    if (!this.diffOnly) {
+                                        result += "<span class='history-normal'>" + escapeStringToHTML(x2) + "</span>";
+                                    } else {
+                                        if (!hasOmitted) {
+                                            result += "\n...\n";
+                                            hasOmitted = true;
+                                        }
+                                    }
                                 } else if (x1 == DIFF_INSERT) {
                                     result += "<span class='history-added'>" + escapeStringToHTML(x2) + "</span>";
+                                    hasOmitted = false;
                                 }
                             }
                             result = result.replace(/\n/g, "<br>");
@@ -279,6 +294,9 @@ export class DocumentHistoryModal extends Modal {
         if (this.diffNavContainer) {
             this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
         }
+        if (this.diffOnlyLabel) {
+            this.diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+        }
     }
 
     override onOpen() {
@@ -319,6 +337,24 @@ export class DocumentHistoryModal extends Modal {
             );
             label.appendText("Highlight diff");
         });
+
+        const diffOnlyLabel = diffOptionsRow.createEl("label", {});
+        diffOnlyLabel.appendChild(
+            createEl("input", { type: "checkbox" }, (checkbox) => {
+                if (this.diffOnly) {
+                    checkbox.checked = true;
+                }
+                checkbox.addEventListener("input", (evt: any) => {
+                    this.diffOnly = checkbox.checked;
+                    localStorage.setItem("ols-history-diffonly", this.diffOnly == true ? "1" : "");
+                    void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+                });
+            })
+        );
+        diffOnlyLabel.appendText("Diff only");
+        diffOnlyLabel.style.marginLeft = "10px";
+        diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+        this.diffOnlyLabel = diffOnlyLabel;
 
         // Diff navigation buttons
         this.diffNavContainer = diffOptionsRow.createDiv("");
