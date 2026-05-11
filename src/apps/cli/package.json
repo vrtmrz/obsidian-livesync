@@ -6,6 +6,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "prebuild": "node scripts/check-submodule.mjs",
         "build": "vite build",
         "preview": "vite preview",
         "cli": "node dist/index.cjs",
