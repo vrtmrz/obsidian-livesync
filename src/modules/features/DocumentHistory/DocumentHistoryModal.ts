@@ -71,6 +71,14 @@ export class DocumentHistoryModal extends Modal {
     diffNavContainer!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
 
+    // Search state
+    searchKeyword = "";
+    searchResults: { rev: string; index: number; matchType: "Content" | "Diff" }[] = [];
+    currentSearchIndex = -1;
+    searchResultIndicator!: HTMLSpanElement;
+    searchProgressIndicator!: HTMLSpanElement;
+    searchTimeout: number | null = null;
+
     constructor(
         app: App,
         core: LiveSyncBaseCore,
@@ -176,12 +184,20 @@ export class DocumentHistoryModal extends Modal {
                             for (const v of diff) {
                                 const x1 = v[0];
                                 const x2 = v[1];
+                                let text = escapeStringToHTML(x2);
+                                if (this.searchKeyword) {
+                                    const regex = new RegExp(
+                                        `(${this.searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+                                        "gi"
+                                    );
+                                    text = text.replace(regex, "<mark>$1</mark>");
+                                }
                                 if (x1 == DIFF_DELETE) {
-                                    result += "<span class='history-deleted'>" + escapeStringToHTML(x2) + "</span>";
+                                    result += "<span class='history-deleted'>" + text + "</span>";
                                 } else if (x1 == DIFF_EQUAL) {
-                                    result += "<span class='history-normal'>" + escapeStringToHTML(x2) + "</span>";
+                                    result += "<span class='history-normal'>" + text + "</span>";
                                 } else if (x1 == DIFF_INSERT) {
-                                    result += "<span class='history-added'>" + escapeStringToHTML(x2) + "</span>";
+                                    result += "<span class='history-added'>" + text + "</span>";
                                 }
                             }
                             result = result.replace(/\n/g, "<br>");
@@ -218,6 +234,12 @@ export class DocumentHistoryModal extends Modal {
                 }
             }
             if (result == undefined) result = typeof w1data == "string" ? escapeStringToHTML(w1data) : "Binary file";
+
+            if (this.searchKeyword && typeof result == "string" && !this.showDiff) {
+                const regex = new RegExp(`(${this.searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+                result = result.replace(regex, "<mark>$1</mark>");
+            }
+
             this.contentView.innerHTML =
                 (this.currentDeleted ? "(At this revision, the file has been deleted)\n" : "") + result;
         }
@@ -225,6 +247,11 @@ export class DocumentHistoryModal extends Modal {
         this.resetDiffNavigation();
         if (this.showDiff) {
             this.navigateDiff("next");
+        } else if (this.searchKeyword) {
+            const firstMark = this.contentView.querySelector("mark");
+            if (firstMark) {
+                firstMark.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
         }
     }
 
@@ -281,12 +308,156 @@ export class DocumentHistoryModal extends Modal {
         }
     }
 
+    /**
+     * Search through the last 100 revisions for the given keyword.
+     */
+    async performSearch(keyword: string) {
+        this.searchKeyword = keyword;
+        this.searchResults = [];
+        this.currentSearchIndex = -1;
+
+        if (!keyword) {
+            this.searchResultIndicator.textContent = "";
+            this.searchProgressIndicator.textContent = "";
+            return;
+        }
+
+        const db = this.core.localDatabase;
+        const limit = 100;
+        const totalRevs = this.revs_info.length;
+        const end = Math.min(totalRevs, limit);
+
+        this.searchProgressIndicator.textContent = "Searching...";
+
+        const dmp = new diff_match_patch();
+
+        // 0 is the newest, higher index is older.
+        for (let i = 0; i < end; i++) {
+            const revInfo = this.revs_info[i];
+            const rev = revInfo.rev;
+
+            this.searchProgressIndicator.textContent = `Searching ${i + 1}/${end}...`;
+
+            const doc = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
+            if (doc === false) continue;
+
+            const content = readDocument(doc);
+            if (typeof content !== "string") continue;
+
+            const keywordLower = keyword.toLocaleLowerCase();
+
+            // Search in content
+            if (content.toLocaleLowerCase().includes(keywordLower)) {
+                this.searchResults.push({ rev, index: i, matchType: "Content" });
+                this.updateSearchUI();
+                continue;
+            }
+
+            // Search in diff (from older version to this version)
+            // Older version is at i + 1
+            if (i < totalRevs - 1) {
+                const olderRev = this.revs_info[i + 1].rev;
+                const olderDoc = await db.getDBEntry(this.file, { rev: olderRev }, false, false, true);
+                if (olderDoc !== false) {
+                    const olderContent = readDocument(olderDoc);
+                    if (typeof olderContent === "string") {
+                        const diffs = dmp.diff_main(olderContent, content);
+                        let foundInDiff = false;
+                        for (const d of diffs) {
+                            if ((d[0] === DIFF_INSERT || d[0] === DIFF_DELETE) && 
+                                d[1].toLocaleLowerCase().includes(keywordLower)) {
+                                foundInDiff = true;
+                                break;
+                            }
+                        }
+                        if (foundInDiff) {
+                            this.searchResults.push({ rev, index: i, matchType: "Diff" });
+                            this.updateSearchUI();
+                        }
+                    }
+                }
+            }
+        }
+
+        this.searchProgressIndicator.textContent = "Done";
+        this.updateSearchUI();
+    }
+
+    updateSearchUI() {
+        if (this.searchResults.length === 0) {
+            this.searchResultIndicator.textContent = this.searchKeyword ? "No matches found" : "";
+        } else {
+            const current = this.currentSearchIndex >= 0 ? this.currentSearchIndex + 1 : 0;
+            this.searchResultIndicator.textContent = `${current}/${this.searchResults.length} matches`;
+        }
+    }
+
+    navigateSearch(direction: "prev" | "next") {
+        if (this.searchResults.length === 0) return;
+
+        if (direction === "next") {
+            this.currentSearchIndex = (this.currentSearchIndex + 1) % this.searchResults.length;
+        } else {
+            this.currentSearchIndex =
+                this.currentSearchIndex <= 0 ? this.searchResults.length - 1 : this.currentSearchIndex - 1;
+        }
+
+        const match = this.searchResults[this.currentSearchIndex];
+        this.range.value = `${this.revs_info.length - 1 - match.index}`;
+        void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+        this.updateSearchUI();
+        
+        // If it's a diff match, make sure Highlight diff is on
+        if (match.matchType === "Diff" && !this.showDiff) {
+            // We could auto-enable it, but maybe just notify the user?
+            // For now, let's just let the user toggle it if they want to see the diff.
+        }
+    }
+
     override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText("Document History");
         contentEl.empty();
         this.fileInfo = contentEl.createDiv("");
         this.fileInfo.addClass("op-info");
+
+        // Search Row
+        const searchRow = contentEl.createDiv("");
+        searchRow.addClass("op-info");
+        searchRow.addClass("search-row");
+        searchRow.style.display = "flex";
+        searchRow.style.gap = "5px";
+        searchRow.style.alignItems = "center";
+        searchRow.style.marginBottom = "10px";
+
+        const searchInput = searchRow.createEl("input", { type: "text", placeholder: "Search in history (last 100)..." });
+        searchInput.style.flexGrow = "1";
+        searchInput.addEventListener("input", () => {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            this.searchTimeout = window.setTimeout(() => {
+                void this.performSearch(searchInput.value);
+            }, 500);
+        });
+
+        searchRow.createEl("button", { text: "\u25B2" }, (e) => {
+            e.title = "Previous match";
+            e.addEventListener("click", () => this.navigateSearch("prev"));
+        });
+        searchRow.createEl("button", { text: "\u25BC" }, (e) => {
+            e.title = "Next match";
+            e.addEventListener("click", () => this.navigateSearch("next"));
+        });
+
+        this.searchResultIndicator = searchRow.createEl("span", { text: "" });
+        this.searchResultIndicator.style.fontSize = "0.8em";
+        this.searchResultIndicator.style.minWidth = "80px";
+
+        this.searchProgressIndicator = searchRow.createEl("span", { text: "" });
+        this.searchProgressIndicator.style.fontSize = "0.8em";
+        this.searchProgressIndicator.style.color = "var(--text-muted)";
+
         const divView = contentEl.createDiv("");
         divView.addClass("op-flex");
 
