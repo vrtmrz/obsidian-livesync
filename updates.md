@@ -3,6 +3,13 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### P2P Synchronisation
+
+Now the foundation for P2P synchronisation has been rewritten, and the unit tests have been added. The foundation has been separated into the transport layer, signalling-and-connection layer, and, an RPC layers. And each layer has been unit-tested. As the result, the P2P synchronisation now uses the robust shim that uses RPC-ed PouchDB synchronisation in contrast to previous implementation.
+This P2P synchronisation is not compatible with previous versions in terms of connectivity. All devices must be updated.
+
 ## 0.25.60
 
 29th April, 2026
