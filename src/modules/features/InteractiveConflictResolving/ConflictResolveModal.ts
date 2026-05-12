@@ -28,6 +28,9 @@ export class ConflictResolveModal extends Modal {
     localName: string = "Base";
     remoteName: string = "Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
+    currentDiffIndex = -1;
+    diffView!: HTMLDivElement;
+    diffNavIndicator!: HTMLSpanElement;
 
     constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
         super(app);
@@ -42,6 +45,34 @@ export class ConflictResolveModal extends Modal {
         // Send cancel signal for the previous merge dialogue
         // if not there, simply be ignored.
         // sendValue("close-resolve-conflict:" + this.filename, false);
+    }
+
+    navigateDiff(direction: "prev" | "next") {
+        const diffElements = this.diffView.querySelectorAll(".added, .deleted");
+        if (diffElements.length === 0) return;
+
+        const prevFocused = this.diffView.querySelector(".diff-focused");
+        if (prevFocused) {
+            prevFocused.classList.remove("diff-focused");
+        }
+
+        if (direction === "next") {
+            this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
+        } else {
+            this.currentDiffIndex =
+                this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
+        }
+
+        const target = diffElements[this.currentDiffIndex];
+        target.classList.add("diff-focused");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        this.diffNavIndicator.textContent = `${this.currentDiffIndex + 1}/${diffElements.length}`;
+    }
+
+    resetDiffNavigation() {
+        this.currentDiffIndex = -1;
+        const diffElements = this.diffView.querySelectorAll(".added, .deleted");
+        this.diffNavIndicator.textContent = diffElements.length > 0 ? `0/${diffElements.length}` : "\u2014";
     }
 
     override onOpen() {
@@ -60,10 +91,26 @@ export class ConflictResolveModal extends Modal {
         // sendValue("close-resolve-conflict:" + this.filename, false);
         this.titleEl.setText(this.title);
         contentEl.empty();
-        contentEl.createEl("span", { text: this.filename });
-        const div = contentEl.createDiv("");
-        div.addClass("op-scrollable");
-        div.addClass("ls-dialog");
+        const diffOptionsRow = contentEl.createDiv("");
+        diffOptionsRow.addClass("diff-options-row");
+        diffOptionsRow.createEl("span", { text: this.filename });
+
+        const diffNavContainer = diffOptionsRow.createDiv("");
+        diffNavContainer.addClass("diff-nav");
+        diffNavContainer.createEl("button", { text: "\u25B2 Prev" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => this.navigateDiff("prev"));
+        });
+        diffNavContainer.createEl("button", { text: "\u25BC Next" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => this.navigateDiff("next"));
+        });
+        this.diffNavIndicator = diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator.addClass("diff-nav-indicator");
+
+        this.diffView = contentEl.createDiv("");
+        this.diffView.addClass("op-scrollable");
+        this.diffView.addClass("ls-dialog");
         let diff = "";
         for (const v of this.result.diff) {
             const x1 = v[0];
@@ -110,10 +157,12 @@ export class ConflictResolveModal extends Modal {
         ).style.marginRight = "4px";
         diff = diff.replace(/\n/g, "<br>");
         if (diff.length > 100 * 1024) {
-            div.innerText = "(Too large diff to display)";
+            this.diffView.innerText = "(Too large diff to display)";
         } else {
-            div.innerHTML = diff;
+            this.diffView.innerHTML = diff;
         }
+        this.resetDiffNavigation();
+        this.navigateDiff("next");
     }
 
     sendResponse(result: MergeDialogResult) {
