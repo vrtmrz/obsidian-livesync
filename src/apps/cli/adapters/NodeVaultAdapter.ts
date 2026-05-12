@@ -66,8 +66,8 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
             path: p as any,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };
@@ -89,8 +89,8 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
             path: p as any,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };

@@ -83,8 +83,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         console.log(`[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
 
         await core.serviceModules.storageAccess.writeFileAuto(destinationDatabasePath, toArrayBuffer(sourceData), {
-            mtime: sourceStat.mtimeMs,
-            ctime: sourceStat.ctimeMs,
+            mtime: Math.floor(sourceStat.mtimeMs),
+            ctime: Math.floor(sourceStat.ctimeMs),
         });
         const destinationPathWithPrefix = destinationDatabasePath as FilePathWithPrefix;
         const stored = await core.serviceModules.fileHandler.storeFileToDB(destinationPathWithPrefix, true);

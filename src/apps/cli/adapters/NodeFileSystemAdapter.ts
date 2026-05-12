@@ -104,8 +104,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                 path: pathStr as FilePath,
                 stat: {
                     size: stat.size,
-                    mtime: stat.mtimeMs,
-                    ctime: stat.ctimeMs,
+                    mtime: Math.floor(stat.mtimeMs),
+                    ctime: Math.floor(stat.ctimeMs),
                     type: "file",
                 },
             };
@@ -137,8 +137,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                         path: entryRelativePath as FilePath,
                         stat: {
                             size: stat.size,
-                            mtime: stat.mtimeMs,
-                            ctime: stat.ctimeMs,
+                            mtime: Math.floor(stat.mtimeMs),
+                            ctime: Math.floor(stat.ctimeMs),
                             type: "file",
                         },
                     };
