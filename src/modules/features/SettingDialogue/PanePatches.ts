@@ -6,6 +6,7 @@ import {
     SuffixDatabaseName,
 } from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
+import { generateUserHashSalt } from "../../../lib/src/common/utils.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -156,6 +157,42 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             await this.core.localDatabase._prepareHashFunctions();
         });
     });
+
+    void addPanel(paneEl, "Chunk ID Namespace").then((paneEl) => {
+        paneEl.createDiv({
+            text: "Manage the Chunk ID Namespace Salt (userHashSalt). This value is used as a seed for generating chunk IDs. If you change this value, chunk IDs will be regenerated and you must rebuild the database.",
+            cls: "op-warn-info",
+        });
+
+        new Setting(paneEl)
+            .autoWireText("userHashSalt", { holdValue: true })
+            .setClass("wizardHidden")
+            .addApplyButton(["userHashSalt"]);
+
+        new Setting(paneEl)
+            .setName("Generate New Salt")
+            .setDesc(
+                "Generate a new random salt for the Chunk ID namespace. After generating, a database rebuild is strongly recommended."
+            )
+            .addButton((button) => {
+                button
+                    .setButtonText("Generate New Salt")
+                    .setCta()
+                    .onClick(async () => {
+                        const confirmed = await this.core.confirm.askYesNo(
+                            "Generating a new salt will invalidate existing chunk IDs. Until you rebuild the database, deduplication will be inefficient. Are you sure to generate a new salt now?"
+                        );
+                        if (confirmed) {
+                            const newSalt = generateUserHashSalt();
+                            this.editingSettings.userHashSalt = newSalt;
+                            await this.saveSettings(["userHashSalt"]);
+                            Logger(`New Chunk ID Namespace Salt generated.`, LOG_LEVEL_NOTICE);
+                            this.requestUpdate();
+                        }
+                    });
+            });
+    });
+
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");

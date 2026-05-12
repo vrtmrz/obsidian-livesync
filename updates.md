@@ -3,6 +3,30 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### Improved
+
+- Chunk ID namespace is now separated from the E2EE passphrase by introducing `userHashSalt`.
+  - Chunk ID hashing now prefers `userHashSalt` when present, and falls back to the legacy passphrase-derived seed for compatibility.
+  - New setup now generates `userHashSalt` automatically if it is missing.
+  - `rebuildEverything` now generates `userHashSalt` only when it is missing, as a migration path for existing vaults.
+  - Setup URI / QR settings round-trip now preserves `userHashSalt`.
+
+### Behaviour and safety
+
+- `userHashSalt` has been added to tweak-value mismatch detection so devices can notice and resolve mismatched chunk-ID namespace settings.
+- `userHashSalt` mismatch is treated as compatible but potentially lossy (inefficient), not hard-incompatible.
+- Mismatch dialogues now mask `userHashSalt` values to avoid exposing the raw value in UI.
+
+### Tests
+
+- Added and updated unit tests for:
+  - `HashManager` (`userHashSalt` priority and differing-salt behaviour).
+  - `SetupManager` (generation only when missing, preserving existing value).
+  - `Rebuilder` (generation only when missing, no regeneration when present).
+  - `processSetting` setup URI round-trip and secure-field handling.
+
 ## 0.25.60
 
 29th April, 2026

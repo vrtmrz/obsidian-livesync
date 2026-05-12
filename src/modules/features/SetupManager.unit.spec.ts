@@ -154,4 +154,47 @@ describe("SetupManager", () => {
         );
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
     });
+
+    it("onConfirmApplySettingsFromWizard should generate userHashSalt for NewUser when absent", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        const randomSpy = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((array) => {
+            const target = array as Uint8Array;
+            for (let i = 0; i < target.length; i++) {
+                target[i] = 0xab;
+            }
+            return array;
+        });
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(true);
+
+        await manager.onConfirmApplySettingsFromWizard(
+            {
+                ...setting.currentSettings(),
+                userHashSalt: "",
+            },
+            UserMode.NewUser
+        );
+
+        expect(setting.currentSettings().userHashSalt).toBe("abababababababababababababababab");
+        expect(core.rebuilder.scheduleRebuild).toHaveBeenCalledTimes(1);
+        randomSpy.mockRestore();
+    });
+
+    it("onConfirmApplySettingsFromWizard should keep existing userHashSalt for NewUser", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        const randomSpy = vi.spyOn(globalThis.crypto, "getRandomValues");
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(true);
+
+        await manager.onConfirmApplySettingsFromWizard(
+            {
+                ...setting.currentSettings(),
+                userHashSalt: "00112233445566778899aabbccddeeff",
+            },
+            UserMode.NewUser
+        );
+
+        expect(setting.currentSettings().userHashSalt).toBe("00112233445566778899aabbccddeeff");
+        expect(randomSpy).not.toHaveBeenCalled();
+        expect(core.rebuilder.scheduleRebuild).toHaveBeenCalledTimes(1);
+        randomSpy.mockRestore();
+    });
 });

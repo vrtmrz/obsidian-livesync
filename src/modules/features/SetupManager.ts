@@ -7,7 +7,7 @@ import {
     REMOTE_MINIO,
     REMOTE_P2P,
 } from "../../lib/src/common/types.ts";
-import { generatePatchObj, isObjectDifferent } from "../../lib/src/common/utils.ts";
+import { generatePatchObj, isObjectDifferent, generateUserHashSalt } from "../../lib/src/common/utils.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -328,6 +328,9 @@ export class SetupManager extends AbstractModule {
         }
         if (confirm) {
             extra();
+            if (userMode === UserMode.NewUser && !newConf.userHashSalt) {
+                newConf.userHashSalt = generateUserHashSalt();
+            }
             await this.applySetting(newConf, userMode);
             if (userMode === UserMode.NewUser) {
                 // For new users, schedule a rebuild everything.
