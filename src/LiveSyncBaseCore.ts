@@ -1,4 +1,5 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
+import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "./lib/src/common/types";
 import { __$checkInstanceBinding } from "./lib/src/dev/checks";
@@ -34,12 +35,11 @@ export class LiveSyncBaseCore<
     TCommands extends IMinimumLiveSyncCommands = IMinimumLiveSyncCommands,
 >
     implements
-        LiveSyncLocalDBEnv,
-        LiveSyncReplicatorEnv,
-        LiveSyncJournalReplicatorEnv,
-        LiveSyncCouchDBReplicatorEnv,
-        HasSettings<ObsidianLiveSyncSettings>
-{
+    LiveSyncLocalDBEnv,
+    LiveSyncReplicatorEnv,
+    LiveSyncJournalReplicatorEnv,
+    LiveSyncCouchDBReplicatorEnv,
+    HasSettings<ObsidianLiveSyncSettings> {
     addOns = [] as TCommands[];
 
     /**
@@ -123,7 +123,7 @@ export class LiveSyncBaseCore<
         for (const module of this.modules) {
             if (module.constructor === constructor) return module as T;
         }
-        throw new Error(`Module ${constructor} not found or not loaded.`);
+        throw new Error(`Module ${constructor.name} not found or not loaded.`);
     }
 
     /**
@@ -160,8 +160,10 @@ export class LiveSyncBaseCore<
                 module.onBindFunction(this, this.services);
                 __$checkInstanceBinding(module); // Check if all functions are properly bound, and log warnings if not.
             } else {
+                // module should not be never.
+                const moduleName = (module as unknown)?.constructor?.name ?? "unknown";
                 this.services.API.addLog(
-                    `Module ${(module as any)?.constructor?.name ?? "unknown"} does not have onBindFunction, skipping binding.`,
+                    `Module ${moduleName} does not have onBindFunction, skipping binding.`,
                     LOG_LEVEL_INFO
                 );
             }
