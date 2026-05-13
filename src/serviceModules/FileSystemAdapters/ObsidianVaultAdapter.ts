@@ -7,7 +7,7 @@ import type { TFile, App, TFolder } from "obsidian";
  * Vault adapter implementation for Obsidian
  */
 export class ObsidianVaultAdapter implements IVaultAdapter<TFile> {
-    constructor(private app: App) { }
+    constructor(private app: App) {}
 
     async read(file: TFile): Promise<string> {
         return await this.app.vault.read(file);

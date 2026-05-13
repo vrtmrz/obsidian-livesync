@@ -35,11 +35,12 @@ export class LiveSyncBaseCore<
     TCommands extends IMinimumLiveSyncCommands = IMinimumLiveSyncCommands,
 >
     implements
-    LiveSyncLocalDBEnv,
-    LiveSyncReplicatorEnv,
-    LiveSyncJournalReplicatorEnv,
-    LiveSyncCouchDBReplicatorEnv,
-    HasSettings<ObsidianLiveSyncSettings> {
+        LiveSyncLocalDBEnv,
+        LiveSyncReplicatorEnv,
+        LiveSyncJournalReplicatorEnv,
+        LiveSyncCouchDBReplicatorEnv,
+        HasSettings<ObsidianLiveSyncSettings>
+{
     addOns = [] as TCommands[];
 
     /**

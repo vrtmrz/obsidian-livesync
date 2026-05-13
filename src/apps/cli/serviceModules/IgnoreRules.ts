@@ -55,7 +55,9 @@ export class IgnoreRules {
                 continue;
             }
             if (trimmed.startsWith("import:")) {
-                console.error(`[IgnoreRules] Warning: unrecognised directive '${trimmed}' — only 'import: .gitignore' is supported`);
+                console.error(
+                    `[IgnoreRules] Warning: unrecognised directive '${trimmed}' — only 'import: .gitignore' is supported`
+                );
                 continue;
             }
             this._addPattern(trimmed);
@@ -105,7 +107,7 @@ export class IgnoreRules {
         if (raw.startsWith("!")) {
             throw new Error(
                 `[IgnoreRules] Negation pattern '${raw}' is not supported. ` +
-                `Remove it from .livesync/ignore or use a separate include/exclude file.`
+                    `Remove it from .livesync/ignore or use a separate include/exclude file.`
             );
         }
         this.patterns.push(this._normalisePattern(raw));
