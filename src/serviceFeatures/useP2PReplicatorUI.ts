@@ -5,6 +5,7 @@ import { type UseP2PReplicatorResult } from "@/lib/src/replication/trystero/UseP
 import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector";
 import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView";
 import type { LiveSyncCore } from "@/main";
+import type { WorkspaceLeaf } from "@/deps";
 
 /**
  * ServiceFeature: P2P Replicator lifecycle management.
@@ -43,7 +44,7 @@ export function useP2PReplicatorUI(
 
     // Register view, commands and ribbon if a view factory is provided
     const viewType = VIEW_TYPE_P2P;
-    const factory = (leaf: any) => {
+    const factory = (leaf: WorkspaceLeaf) => {
         return new P2PReplicatorPaneView(leaf, core, {
             replicator: getReplicator(),
             p2pLogCollector,
