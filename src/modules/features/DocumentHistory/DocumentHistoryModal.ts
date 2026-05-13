@@ -286,8 +286,7 @@ export class DocumentHistoryModal extends Modal {
         if (direction === "next") {
             this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
         } else {
-            this.currentDiffIndex =
-                this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
+            this.currentDiffIndex = this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
         }
 
         const target = diffElements[this.currentDiffIndex];
