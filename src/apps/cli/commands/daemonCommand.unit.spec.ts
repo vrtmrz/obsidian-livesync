@@ -257,12 +257,12 @@ describe("daemon command", () => {
         // failure 1: 30000*2=60000, failure 2: 30000*4=120000,
         // failure 3: 30000*8=240000, failure 4: 30000*16=480000→capped, 5→cap, 6→cap
         const expectedIntervals = [
-            baseMs * 2,   // after failure 1: 60000
-            baseMs * 4,   // after failure 2: 120000
-            baseMs * 8,   // after failure 3: 240000
-            300_000,      // after failure 4 (would be 480000, capped)
-            300_000,      // after failure 5 (cap)
-            300_000,      // after failure 6 (cap)
+            baseMs * 2, // after failure 1: 60000
+            baseMs * 4, // after failure 2: 120000
+            baseMs * 8, // after failure 3: 240000
+            300_000, // after failure 4 (would be 480000, capped)
+            300_000, // after failure 5 (cap)
+            300_000, // after failure 6 (cap)
         ];
 
         for (const expected of expectedIntervals) {

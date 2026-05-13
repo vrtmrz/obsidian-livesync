@@ -122,10 +122,7 @@ describe("IgnoreRules", () => {
     describe("load() with comments and blank lines", () => {
         it("skips # comment lines and blank lines", async () => {
             const vaultPath = await createVault();
-            await writeIgnoreFile(
-                vaultPath,
-                "# This is a comment\n\n  \n*.tmp\n# another comment\nbuild/\n"
-            );
+            await writeIgnoreFile(vaultPath, "# This is a comment\n\n  \n*.tmp\n# another comment\nbuild/\n");
             const rules = new IgnoreRules(vaultPath);
             await rules.load();
             expect(rules.shouldIgnore("scratch.tmp")).toBe(true);

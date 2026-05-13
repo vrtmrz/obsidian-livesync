@@ -43,10 +43,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         // 3. Re-enable sync.
         const restoreSyncSettings = async () => {
-            await core.services.setting.applyPartial({
-                ...context.originalSyncSettings,
-                suspendFileWatching: false,
-            }, true);
+            await core.services.setting.applyPartial(
+                {
+                    ...context.originalSyncSettings,
+                    suspendFileWatching: false,
+                },
+                true
+            );
             // applySettings fires the full lifecycle: onSuspending → onResumed.
             // ModuleReplicatorCouchDB starts continuous replication on onResumed
             // via fireAndForget.
@@ -54,10 +57,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             // Lifecycle events (onSuspending) may re-enable suspension flags.
             // Clear them explicitly after the lifecycle completes. applyPartial
             // with true is a direct store write — it does not re-trigger lifecycle.
-            await core.services.setting.applyPartial({
-                suspendFileWatching: false,
-                suspendParseReplicationResult: false,
-            }, true);
+            await core.services.setting.applyPartial(
+                {
+                    suspendFileWatching: false,
+                    suspendParseReplicationResult: false,
+                },
+                true
+            );
         };
         if (options.interval) {
             log(`Polling mode: syncing every ${options.interval}s`);
@@ -80,7 +86,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                     currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, consecutiveFailures), maxIntervalMs);
                     console.error(`[Daemon] Poll error (${consecutiveFailures} consecutive):`, err);
                     if (consecutiveFailures >= 5) {
-                        console.error(`[Daemon] Warning: ${consecutiveFailures} consecutive failures, backing off to ${Math.round(currentIntervalMs / 1000)}s`);
+                        console.error(
+                            `[Daemon] Warning: ${consecutiveFailures} consecutive failures, backing off to ${Math.round(currentIntervalMs / 1000)}s`
+                        );
                     }
                 }
                 pollTimer = setTimeout(poll, currentIntervalMs);
@@ -99,9 +107,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             log("LiveSync active");
             const currentSettings = core.services.setting.currentSettings();
             if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
-                console.error("[Daemon] Warning: liveSync and syncOnStart are both disabled in settings. " +
-                    "No sync will occur. Set liveSync=true in your settings file for continuous sync, " +
-                    "or use --interval for polling mode.");
+                console.error(
+                    "[Daemon] Warning: liveSync and syncOnStart are both disabled in settings. " +
+                        "No sync will occur. Set liveSync=true in your settings file for continuous sync, " +
+                        "or use --interval for polling mode."
+                );
             }
         }
 

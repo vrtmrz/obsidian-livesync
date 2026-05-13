@@ -37,7 +37,16 @@ export interface CLICommandContext {
     databasePath: string;
     core: LiveSyncBaseCore<ServiceContext, any>;
     settingsPath: string;
-    originalSyncSettings: Pick<ObsidianLiveSyncSettings, "liveSync" | "syncOnStart" | "periodicReplication" | "syncOnSave" | "syncOnEditorSave" | "syncOnFileOpen" | "syncAfterMerge">;
+    originalSyncSettings: Pick<
+        ObsidianLiveSyncSettings,
+        | "liveSync"
+        | "syncOnStart"
+        | "periodicReplication"
+        | "syncOnSave"
+        | "syncOnEditorSave"
+        | "syncOnFileOpen"
+        | "syncAfterMerge"
+    >;
 }
 
 export const VALID_COMMANDS = new Set([
