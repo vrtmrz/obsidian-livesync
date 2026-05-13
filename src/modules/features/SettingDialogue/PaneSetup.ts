@@ -125,8 +125,13 @@ export function paneSetup(
             paneEl,
             "div",
             "",
-            (el) =>
-                (el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">${$msg("obsidianLiveSyncSettingTab.linkOpenInBrowser")}</a>`)
+            (el) => {
+                el.createEl("a", { text: $msg("obsidianLiveSyncSettingTab.linkOpenInBrowser") }, (anchor) => {
+                    anchor.href = `https://github.com/${repo}/blob/main${topPath}`;
+                    anchor.target = "_blank";
+                    anchor.rel = "noopener";
+                });
+            }
         );
         const troubleShootEl = this.createEl(paneEl, "div", {
             text: "",
