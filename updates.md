@@ -5,7 +5,14 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Improved
+
+- P2P synchronisation has been made more robust
+  Now the foundation for P2P synchronisation has been rewritten, and the unit tests have been added. The foundation has been separated into the transport layer, signalling-and-connection layer, and, an RPC layers. And each layer has been unit-tested. As the result, the P2P synchronisation now uses the robust shim that uses RPC-ed PouchDB synchronisation in contrast to previous implementation.
+This P2P synchronisation is not compatible with previous versions in terms of connectivity. All devices must be updated.
+
 ### Fixed
+
 - No longer baffling errors occur when setting-update is triggered during the early stage of initialisation.
 
 ## 0.25.60
