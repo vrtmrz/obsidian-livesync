@@ -38,6 +38,7 @@ export default [
             "modules/octagonal-wheels/rollup.config.js",
             "modules/octagonal-wheels/dist/**/*",
             "src/lib/test",
+            "src/lib/_tools",
             "src/lib/src/cli",
             "**/main.js",
             "src/apps/**/*",

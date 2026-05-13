@@ -17,9 +17,48 @@ permissions:
   contents: read
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      task_matrix: ${{ steps.select.outputs.task_matrix }}
+    steps:
+      - name: Select task matrix
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          SELECTED_TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test' }}"
+          echo "[INFO] Selected task set: $SELECTED_TASK"
+
+          case "$SELECTED_TASK" in
+            test)
+              TASK_MATRIX='["test:setup-put-cat","test:mirror","test:push-pull","test:sync-two-local","test:sync-locked-remote","test:p2p-host","test:p2p-peers","test:p2p-sync","test:p2p-three-nodes","test:p2p-upload-download","test:e2e-couchdb","test:e2e-matrix"]'
+              ;;
+            test:local)
+              TASK_MATRIX='["test:setup-put-cat","test:mirror"]'
+              ;;
+            test:e2e-matrix)
+              TASK_MATRIX='["test:e2e-matrix"]'
+              ;;
+            test:p2p-sync)
+              TASK_MATRIX='["test:p2p-sync"]'
+              ;;
+            *)
+              echo "[ERROR] Unknown task set: $SELECTED_TASK" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "task_matrix=$TASK_MATRIX" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ${{ fromJson(needs.prepare.outputs.task_matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +103,7 @@ jobs:
           LIVESYNC_DOCKER_MODE: native
           LIVESYNC_CLI_RETRY: 3
         run: |
-          TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test' }}"
+          TASK="${{ matrix.task }}"
           echo "[INFO] Running Deno task: $TASK"
           deno task "$TASK"
 

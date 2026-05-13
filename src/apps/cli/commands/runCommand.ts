@@ -15,6 +15,96 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     await core.services.control.activated;
     if (options.command === "daemon") {
+        const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
+
+        // Skip the config mismatch dialog — the daemon cannot resolve it interactively
+        // and the default "Dismiss" action would block replication. The daemon should
+        // accept whatever configuration the remote has.
+        await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
+
+        // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
+        log("Replicating from CouchDB...");
+        const replResult = await core.services.replication.replicate(true);
+        if (!replResult) {
+            console.error("[Daemon] Initial CouchDB replication failed, cannot continue");
+            return false;
+        }
+        log("CouchDB replication complete");
+
+        // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
+        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
+        log("Running mirror scan...");
+        const scanOk = await performFullScan(core as any, log, errorManager, false, true);
+        if (!scanOk) {
+            console.error("[Daemon] Mirror scan failed, cannot continue");
+            return false;
+        }
+        log("Mirror scan complete");
+
+        // 3. Re-enable sync.
+        const restoreSyncSettings = async () => {
+            await core.services.setting.applyPartial({
+                ...context.originalSyncSettings,
+                suspendFileWatching: false,
+            }, true);
+            // applySettings fires the full lifecycle: onSuspending → onResumed.
+            // ModuleReplicatorCouchDB starts continuous replication on onResumed
+            // via fireAndForget.
+            await core.services.control.applySettings();
+            // Lifecycle events (onSuspending) may re-enable suspension flags.
+            // Clear them explicitly after the lifecycle completes. applyPartial
+            // with true is a direct store write — it does not re-trigger lifecycle.
+            await core.services.setting.applyPartial({
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            }, true);
+        };
+        if (options.interval) {
+            log(`Polling mode: syncing every ${options.interval}s`);
+            await restoreSyncSettings();
+            const baseIntervalMs = options.interval * 1000;
+            let currentIntervalMs = baseIntervalMs;
+            let consecutiveFailures = 0;
+            const maxIntervalMs = 5 * 60 * 1000; // 5 minutes cap
+
+            const poll = async () => {
+                try {
+                    await core.services.replication.replicate(true);
+                    if (consecutiveFailures > 0) {
+                        consecutiveFailures--;
+                        currentIntervalMs = Math.max(currentIntervalMs / 2, baseIntervalMs);
+                        log(`Replication recovered`);
+                    }
+                } catch (err) {
+                    consecutiveFailures++;
+                    currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, consecutiveFailures), maxIntervalMs);
+                    console.error(`[Daemon] Poll error (${consecutiveFailures} consecutive):`, err);
+                    if (consecutiveFailures >= 5) {
+                        console.error(`[Daemon] Warning: ${consecutiveFailures} consecutive failures, backing off to ${Math.round(currentIntervalMs / 1000)}s`);
+                    }
+                }
+                pollTimer = setTimeout(poll, currentIntervalMs);
+            };
+            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll, currentIntervalMs);
+            core.services.appLifecycle.onUnload.addHandler(async () => {
+                clearTimeout(pollTimer);
+                return true;
+            });
+        } else {
+            log("LiveSync mode: restoring sync settings and starting _changes feed");
+            await restoreSyncSettings();
+            // The applySettings() lifecycle fires onResumed → ModuleReplicatorCouchDB which
+            // starts continuous replication via fireAndForget(openReplication). Don't call
+            // openReplication directly — it races with the handler and causes dedup/termination.
+            log("LiveSync active");
+            const currentSettings = core.services.setting.currentSettings();
+            if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
+                console.error("[Daemon] Warning: liveSync and syncOnStart are both disabled in settings. " +
+                    "No sync will occur. Set liveSync=true in your settings file for continuous sync, " +
+                    "or use --interval for polling mode.");
+            }
+        }
+
         return true;
     }
 
@@ -83,8 +173,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         console.log(`[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
 
         await core.serviceModules.storageAccess.writeFileAuto(destinationDatabasePath, toArrayBuffer(sourceData), {
-            mtime: sourceStat.mtimeMs,
-            ctime: sourceStat.ctimeMs,
+            mtime: Math.floor(sourceStat.mtimeMs),
+            ctime: Math.floor(sourceStat.ctimeMs),
         });
         const destinationPathWithPrefix = destinationDatabasePath as FilePathWithPrefix;
         const stored = await core.serviceModules.fileHandler.storeFileToDB(destinationPathWithPrefix, true);

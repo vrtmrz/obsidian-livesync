@@ -15,7 +15,12 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
     }
 
     async read(file: NodeFile): Promise<string> {
-        return await fs.readFile(this.resolvePath(file.path), "utf-8");
+        const content = await fs.readFile(this.resolvePath(file.path), "utf-8");
+        // Correct stale stat.size — chokidar stats may be from a poll before the final write.
+        // The downstream document integrity check compares stat.size to content length, so
+        // they must agree or other clients reject the file as corrupted.
+        file.stat.size = Buffer.byteLength(content, "utf-8");
+        return content;
     }
 
     async cachedRead(file: NodeFile): Promise<string> {
@@ -25,6 +30,8 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
     async readBinary(file: NodeFile): Promise<ArrayBuffer> {
         const buffer = await fs.readFile(this.resolvePath(file.path));
+        // Same correction as read() — ensure stat.size matches actual byte length.
+        file.stat.size = buffer.length;
         return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     }
 
@@ -66,8 +73,8 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
             path: p as any,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };
@@ -89,8 +96,8 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
             path: p as any,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };

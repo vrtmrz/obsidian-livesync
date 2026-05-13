@@ -6,30 +6,26 @@
  */
 
 import { assert, assertStringIncludes } from "@std/assert";
-import { join } from "@std/path";
-import { loadEnvFile } from "./helpers/env.ts";
 import { TempDir } from "./helpers/temp.ts";
 import { runCli } from "./helpers/cli.ts";
 import { applyCouchdbSettings, initSettingsFile } from "./helpers/settings.ts";
 import { createCouchdbDatabase, startCouchdb, stopCouchdb, updateCouchdbDoc } from "./helpers/docker.ts";
 
-const TEST_ENV = join(import.meta.dirname!, "..", ".test.env");
 const MILESTONE_DOC = "_local/obsydian_livesync_milestone";
 
-function requireEnv(env: Record<string, string>, key: string): string {
-    const value = env[key]?.trim();
-    if (!value) {
-        throw new Error(`Required env var is missing: ${key}`);
+function requireEnv(...keys: string[]): string {
+    for (const key of keys) {
+        const value = Deno.env.get(key)?.trim();
+        if (value) return value;
     }
-    return value;
+    throw new Error(`Required env var is missing: ${keys.join(" or ")}`);
 }
 
 Deno.test("sync: actionable error against locked remote DB", async () => {
-    const env = await loadEnvFile(TEST_ENV);
-    const couchdbUri = requireEnv(env, "hostname").replace(/\/$/, "");
-    const couchdbUser = requireEnv(env, "username");
-    const couchdbPassword = requireEnv(env, "password");
-    const dbPrefix = requireEnv(env, "dbname");
+    const couchdbUri = requireEnv("COUCHDB_URI", "hostname").replace(/\/$/, "");
+    const couchdbUser = requireEnv("COUCHDB_USER", "username");
+    const couchdbPassword = requireEnv("COUCHDB_PASSWORD", "password");
+    const dbPrefix = requireEnv("COUCHDB_DBNAME", "dbname");
     const dbname = `${dbPrefix}-locked-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
     await using workDir = await TempDir.create("livesync-cli-locked-test");

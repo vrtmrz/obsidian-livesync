@@ -13,7 +13,7 @@ const prettierConfig = {
     tabWidth: 4,
     printWidth: 120,
     semi: true,
-    endOfLine: "cr",
+    endOfLine: "lf",
     ...localPrettierConfig,
 };
 
