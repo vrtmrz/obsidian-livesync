@@ -39,12 +39,6 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
 
     async getAbstractFileByPath(p: FilePath | string): Promise<NodeFile | null> {
         const pathStr = this.normalisePath(p);
-
-        const cached = this.fileCache.get(pathStr);
-        if (cached) {
-            return cached;
-        }
-
         return await this.refreshFile(pathStr);
     }
 
@@ -112,6 +106,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             this.fileCache.set(pathStr, file);
             return file;
         } catch {
+            // Evict so a deleted file is not returned by subsequent cache scans.
             this.fileCache.delete(pathStr);
             return null;
         }

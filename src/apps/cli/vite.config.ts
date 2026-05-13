@@ -11,11 +11,54 @@ const defaultExternal = [
     "crypto",
     "pouchdb-adapter-leveldb",
     "commander",
+    "chokidar",
     "punycode",
     "werift",
 ];
+// Polyfill FileReader at the very top of the CJS bundle. octagonal-wheels uses
+// FileReader for base64 conversion when Uint8Array.toBase64 (TC39 proposal) is
+// unavailable. Node.js has neither, so we inject a minimal FileReader shim before
+// any module-scope code evaluates.
+const fileReaderPolyfillBanner = `
+if (typeof globalThis.FileReader === "undefined") {
+    globalThis.FileReader = class FileReader {
+        constructor() { this.result = null; this.onload = null; this.onerror = null; }
+        readAsDataURL(blob) {
+            blob.arrayBuffer().then((buf) => {
+                var b64 = require("buffer").Buffer.from(buf).toString("base64");
+                this.result = "data:" + (blob.type || "application/octet-stream") + ";base64," + b64;
+                if (this.onload) this.onload({ target: this });
+            }).catch((err) => { if (this.onerror) this.onerror({ target: this, error: err }); });
+        }
+        readAsArrayBuffer() { throw new Error("FileReader.readAsArrayBuffer is not implemented in this polyfill"); }
+        readAsBinaryString() { throw new Error("FileReader.readAsBinaryString is not implemented in this polyfill"); }
+        readAsText() { throw new Error("FileReader.readAsText is not implemented in this polyfill"); }
+        abort() { throw new Error("FileReader.abort is not implemented in this polyfill"); }
+    };
+}
+`;
+
+function injectBanner(): import("vite").Plugin {
+    return {
+        name: "inject-banner",
+        generateBundle(_options, bundle) {
+            for (const chunk of Object.values(bundle)) {
+                if (chunk.type === "chunk" && chunk.fileName.startsWith("entrypoint")) {
+                    // Insert after the shebang line if present, otherwise at the top.
+                    if (chunk.code.startsWith("#!")) {
+                        const newline = chunk.code.indexOf("\n");
+                        chunk.code = chunk.code.slice(0, newline + 1) + fileReaderPolyfillBanner + chunk.code.slice(newline + 1);
+                    } else {
+                        chunk.code = fileReaderPolyfillBanner + chunk.code;
+                    }
+                }
+            }
+        },
+    };
+}
+
 export default defineConfig({
-    plugins: [svelte()],
+    plugins: [svelte(), injectBanner()],
     resolve: {
         alias: {
             "@lib/worker/bgWorker.ts": "../../lib/src/worker/bgWorker.mock.ts",
