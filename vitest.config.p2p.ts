@@ -2,7 +2,8 @@ import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";
 import path from "path";
-import dotenv from "dotenv";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { grantClipboardPermissions, writeHandoffFile, readHandoffFile } from "./test/lib/commands";
 
 // P2P test environment variables
@@ -22,8 +23,9 @@ import { grantClipboardPermissions, writeHandoffFile, readHandoffFile } from "./
 // General test options (also read from env):
 //   ENABLE_DEBUGGER          - Set to "true" to attach a debugger and pause before tests
 //   ENABLE_UI                - Set to "true" to open a visible browser window during tests
-const defEnv = dotenv.config({ path: ".env" }).parsed;
-const testEnv = dotenv.config({ path: ".test.env" }).parsed;
+const loadEnvFile = (path: string) => (existsSync(path) ? parseEnv(readFileSync(path, "utf-8")) : undefined);
+const defEnv = loadEnvFile(".env");
+const testEnv = loadEnvFile(".test.env");
 // Merge: dotenv files < process.env (so shell-injected vars like P2P_TEST_* take precedence)
 const p2pEnv: Record<string, string> = {};
 if (process.env.P2P_TEST_ROOM_ID) p2pEnv.P2P_TEST_ROOM_ID = process.env.P2P_TEST_ROOM_ID;
