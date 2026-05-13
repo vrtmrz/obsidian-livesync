@@ -13,7 +13,7 @@ export const checkConfig = async (
     Logger($msg("obsidianLiveSyncSettingTab.logCheckingDbConfig"), LOG_LEVEL_INFO);
     let isSuccessful = true;
     const emptyDiv = createDiv();
-    emptyDiv.innerHTML = "<span></span>";
+    emptyDiv.createSpan();
     checkResultDiv?.replaceChildren(...[emptyDiv]);
     const addResult = (msg: string, classes?: string[]) => {
         const tmpDiv = createDiv();
@@ -21,7 +21,7 @@ export const checkConfig = async (
         if (classes) {
             tmpDiv.addClasses(classes);
         }
-        tmpDiv.innerHTML = `${msg}`;
+        tmpDiv.textContent = msg;
         checkResultDiv?.appendChild(tmpDiv);
     };
     try {
@@ -47,9 +47,10 @@ export const checkConfig = async (
             if (!checkResultDiv) return;
             const tmpDiv = createDiv();
             tmpDiv.addClass("ob-btn-config-fix");
-            tmpDiv.innerHTML = `<label>${title}</label><button>${$msg("obsidianLiveSyncSettingTab.btnFix")}</button>`;
+            tmpDiv.createEl("label", { text: title });
+            const fixButton = tmpDiv.createEl("button", { text: $msg("obsidianLiveSyncSettingTab.btnFix") });
             const x = checkResultDiv.appendChild(tmpDiv);
-            x.querySelector("button")?.addEventListener("click", () => {
+            fixButton.addEventListener("click", () => {
                 fireAndForget(async () => {
                     Logger($msg("obsidianLiveSyncSettingTab.logCouchDbConfigSet", { title, key, value }));
                     const res = await requestToCouchDBWithCredentials(

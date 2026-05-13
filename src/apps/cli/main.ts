@@ -280,15 +280,12 @@ export async function main() {
     // chokidar's ignored option is populated when beginWatch() fires during onLoad().
     const watchEnabled = options.command === "daemon";
     const vaultPath =
-        options.command === "mirror" && options.commandArgs[0]
-            ? path.resolve(options.commandArgs[0])
-            : databasePath;
+        options.command === "mirror" && options.commandArgs[0] ? path.resolve(options.commandArgs[0]) : databasePath;
     let ignoreRules: IgnoreRules | undefined;
     if (options.command === "daemon" || options.command === "mirror") {
         ignoreRules = new IgnoreRules(vaultPath);
         await ignoreRules.load();
     }
-
 
     // Create service context and hub
     const context = new NodeServiceContext(databasePath);

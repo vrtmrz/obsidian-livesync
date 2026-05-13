@@ -29,7 +29,8 @@ export async function runScenario(remoteType: RemoteType, encrypt: boolean): Pro
     const dbPrefix = remoteType === "COUCHDB" ? requireEnv("COUCHDB_DBNAME", "dbname") : "";
     const dbname = remoteType === "COUCHDB" ? `${dbPrefix}-${dbSuffix}` : "";
 
-    const minioEndpoint = remoteType === "MINIO" ? requireEnv("MINIO_ENDPOINT", "minioEndpoint").replace(/\/$/, "") : "";
+    const minioEndpoint =
+        remoteType === "MINIO" ? requireEnv("MINIO_ENDPOINT", "minioEndpoint").replace(/\/$/, "") : "";
     const minioAccessKey = remoteType === "MINIO" ? requireEnv("MINIO_ACCESS_KEY", "accessKey") : "";
     const minioSecretKey = remoteType === "MINIO" ? requireEnv("MINIO_SECRET_KEY", "secretKey") : "";
     const minioBucketBase = remoteType === "MINIO" ? requireEnv("MINIO_BUCKET_NAME", "bucketName") : "";

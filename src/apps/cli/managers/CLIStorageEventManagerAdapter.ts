@@ -97,7 +97,11 @@ class CLIConverterAdapter implements IStorageEventConverterAdapter<NodeFile> {
 class CLIWatchAdapter implements IStorageEventWatchAdapter {
     private _watcher: FSWatcher | undefined;
 
-    constructor(private basePath: string, private ignoreRules?: IgnoreRules, private watchEnabled: boolean = false) {}
+    constructor(
+        private basePath: string,
+        private ignoreRules?: IgnoreRules,
+        private watchEnabled: boolean = false
+    ) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {

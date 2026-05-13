@@ -47,7 +47,8 @@ function injectBanner(): import("vite").Plugin {
                     // Insert after the shebang line if present, otherwise at the top.
                     if (chunk.code.startsWith("#!")) {
                         const newline = chunk.code.indexOf("\n");
-                        chunk.code = chunk.code.slice(0, newline + 1) + fileReaderPolyfillBanner + chunk.code.slice(newline + 1);
+                        chunk.code =
+                            chunk.code.slice(0, newline + 1) + fileReaderPolyfillBanner + chunk.code.slice(newline + 1);
                     } else {
                         chunk.code = fileReaderPolyfillBanner + chunk.code;
                     }

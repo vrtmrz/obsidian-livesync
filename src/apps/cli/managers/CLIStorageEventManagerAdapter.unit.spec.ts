@@ -60,10 +60,7 @@ describe("CLIStorageEventManagerAdapter", () => {
         await adapter.watch.beginWatch(handlers);
 
         expect(chokidar.watch).toHaveBeenCalledTimes(1);
-        expect(chokidar.watch).toHaveBeenCalledWith(
-            "/base",
-            expect.objectContaining({ ignoreInitial: true })
-        );
+        expect(chokidar.watch).toHaveBeenCalledWith("/base", expect.objectContaining({ ignoreInitial: true }));
     });
 
     it("add event produces NodeFile with correct relative path via onCreate", async () => {
