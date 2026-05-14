@@ -3,6 +3,49 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.61
+
+13th May, 2026
+
+Reviews have started on the Obsidian Community, haven't they? It was quite a struggle, what with having to fix the outdated ESLint.
+I am a bit nervous, but it is far better than just plodding along aimlessly, so let us get on with it. If you spot any issues, please let me know straight away.
+
+From now on, I am avoiding committing directly to the main branch. This is because you lots have all been sending so much PRs. I wanted to keep things harmonious.
+That said, I am still not used to rebasing, so there are some parts where the commit history is a right mess. I will work on improving that.
+
+### Improved
+
+- P2P synchronisation has been made more robust
+  Now the foundation for P2P synchronisation has been rewritten, and the unit tests have been added. The foundation has been separated into the transport layer, signalling-and-connection layer, and, an RPC layers. And each layer has been unit-tested. As the result, the P2P synchronisation now uses the robust shim that uses RPC-ed PouchDB synchronisation in contrast to previous implementation.
+This P2P synchronisation is not compatible with previous versions in terms of connectivity. All devices must be updated.
+
+### Fixed
+
+- No longer baffling errors occur when setting-update is triggered during the early stage of initialisation.
+- Network error notice pop-ups are now suppressed when 'NetworkWarningStyle' is set to 'Hidden'. (Thank you so much @SeleiXi!)
+
+### New features
+
+- Diff navigation buttons have been added to the diff view, making it easier to move between differences. (Thank you so much @SeleiXi! #871)
+
+### Translations
+
+- Chinese (Simplified) translations for settings and the Setup Wizard have been added. (Thank you so much @zombiek731!)
+- Common UI controls and signal words are now localised into Chinese (Simplified). (Thank you so much @zombiek731!)
+- i18n runtime behaviour and locale coverage have been improved. (Thank you so much @52sanmao!)
+
+### CLI
+
+#### New features
+
+- Daemon synchronisation is now supported. (Thank you so much @andrewleech! #843)
+- `HeadlessConfirm` has been implemented with sensible defaults, enabling unattended operation in headless environments. (Thank you so much @andrewleech!)
+- The CLI onboarding experience has been improved. (Thank you so much @OriBoharon! #872)
+
+#### Fixed
+
+- Sub-millisecond CLI mtimes are now truncated to prevent mobile crash. (Thank you so much @brian-spackman! #893)
+
 ## 0.25.60
 
 29th April, 2026
