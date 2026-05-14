@@ -15,7 +15,6 @@ export default defineConfig({
     retries: 0,
 
     reporter: [["list"], ["html", { open: "never", outputFolder: path.join(__dirname, "playwright-report") }]],
-
     use: {
         // Artefacts are kept only when a test fails.
         screenshot: "only-on-failure",

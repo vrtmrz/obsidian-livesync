@@ -1,3 +1,6 @@
+/* eslint-disable obsidianmd/prefer-window-timers */
+/* eslint-disable import/no-nodejs-modules */
+/* eslint-disable import/no-extraneous-dependencies */
 /**
  * helpers/obsidian.ts
  *
@@ -22,7 +25,8 @@ import os from "node:os";
 
 import type { Browser, Page } from "playwright";
 import type { ChildProcess } from "node:child_process";
-
+import process from "node:process";
+import { enablePlugin, isPluginEnabled } from "./obsidianFunctions";
 // ---------------------------------------------------------------------------
 // Executable path resolution
 // ---------------------------------------------------------------------------
@@ -67,7 +71,7 @@ async function waitForCDP(port: number, timeoutMs: number): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const ready = await new Promise<boolean>((resolve) => {
-            const req = http.get(`http://127.0.0.1:${port}/json/version`, (res: any) => {
+            const req = http.get(`http://127.0.0.1:${port}/json/version`, (res: http.IncomingMessage) => {
                 res.resume();
                 resolve(res.statusCode === 200);
             });
@@ -111,6 +115,29 @@ export async function launchObsidian(fakeAppData: string, vaultDir: string): Pro
     await waitForCDP(CDP_PORT, 60_000);
 
     const browser: Browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
+    const waitForProcessExit = async (): Promise<void> => {
+        if (proc.exitCode !== null || proc.killed) {
+            return;
+        }
+
+        await new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                proc.removeListener("exit", onExit);
+                proc.removeListener("close", onExit);
+                resolve();
+            }, 5_000);
+
+            const onExit = () => {
+                clearTimeout(timer);
+                proc.removeListener("exit", onExit);
+                proc.removeListener("close", onExit);
+                resolve();
+            };
+
+            proc.once("exit", onExit);
+            proc.once("close", onExit);
+        });
+    };
 
     return {
         close: async () => {
@@ -124,6 +151,7 @@ export async function launchObsidian(fakeAppData: string, vaultDir: string): Pro
             } catch {
                 /* ignore */
             }
+            await waitForProcessExit();
         },
         firstWindow: async (): Promise<Page> => {
             const deadline = Date.now() + 30_000;
@@ -169,17 +197,29 @@ export async function waitForVaultReady(page: Page): Promise<void> {
         // Not shown — vault already trusted or safe mode off.
     }
 
+    // Once the trust prompt is handled, then the plugin dialogues may appear. Wait a bit for them to show up and log them if they do, to help diagnose blocked flows.
+
+    // await page.waitForTimeout(100);
     // Community-plugins modal — dismiss with Escape.
     try {
         const modal = page.locator(".modal-container").filter({ hasText: /community plugins/i });
         await modal.waitFor({ state: "visible", timeout: 5_000 });
+
         await page.keyboard.press("Escape");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(10);
     } catch {
         // Modal not shown.
     }
-
     await page.waitForSelector(".workspace-ribbon", { timeout: 60_000 });
+}
+
+export async function enablePluginInObsidian(page: Page, pluginName: string) {
+    const handled = await page.evaluateHandle(enablePlugin, pluginName);
+    return handled;
+}
+export function isPluginEnabledInObsidian(page: Page, pluginName: string): Promise<boolean> {
+    const handled = page.evaluate(isPluginEnabled, pluginName);
+    return handled;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,12 +252,43 @@ export async function openLiveSyncSettings(page: Page): Promise<void> {
     await clickSettingsTab(page, "Self-hosted LiveSync");
 }
 
-// ---------------------------------------------------------------------------
-// Selectors
-// ---------------------------------------------------------------------------
+/**
+ * Logs visible modal/dialog-like UI elements to help diagnose blocked flows.
+ */
+export async function logVisibleDialogs(page: Page, label = "dialogs"): Promise<void> {
+    const summaries = await page
+        .locator(".modal-container, [role='dialog'], .notice-container .notice")
+        .evaluateAll((nodes) => {
+            return nodes
+                .map((node) => {
+                    const element = node as HTMLElement;
+                    const style = window.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    const visible =
+                        style.display !== "none" &&
+                        style.visibility !== "hidden" &&
+                        rect.width > 0 &&
+                        rect.height > 0 &&
+                        !!element.textContent?.trim();
 
-/** CSS selector for the settings-tab content area. */
-export const SELECTOR_SETTINGS_CONTENT = ".vertical-tab-content-container";
+                    if (!visible) {
+                        return undefined;
+                    }
 
-/** CSS selector for Obsidian notice toasts. */
-export const SELECTOR_NOTICE = ".notice-container .notice";
+                    return {
+                        classes: element.className,
+                        text: element.textContent?.replace(/\s+/g, " ").trim().slice(0, 240) ?? "",
+                    };
+                })
+                .filter((item): item is { classes: string; text: string } => !!item);
+        });
+
+    if (summaries.length === 0) {
+        console.log(`[obsidian:${label}] no visible dialogs`);
+        return;
+    }
+
+    for (const [index, summary] of summaries.entries()) {
+        console.log(`[obsidian:${label}] #${index + 1} class=${summary.classes} text=${summary.text}`);
+    }
+}
