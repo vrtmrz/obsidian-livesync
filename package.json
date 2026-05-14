@@ -55,6 +55,9 @@
         "test:docker-all:stop": "npm run test:docker-all:down",
         "test:full": "npm run test:docker-all:start && vitest run --coverage && npm run test:docker-all:stop",
         "test:p2p": "bash test/suitep2p/run-p2p-tests.sh",
+        "test:obsidian:e2e": "npx playwright test --config test_e2e/playwright.config.ts",
+        "test:obsidian:e2e:headed": "npx playwright test --config test_e2e/playwright.config.ts --headed",
+        "test:obsidian:build-and-e2e": "npm run buildDev && npm run test:obsidian:e2e",
         "version": "node version-bump.mjs && git add manifest.json versions.json"
     },
     "keywords": [],
