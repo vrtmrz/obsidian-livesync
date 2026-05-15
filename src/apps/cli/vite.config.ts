@@ -14,6 +14,7 @@ const defaultExternal = [
     "chokidar",
     "punycode",
     "werift",
+    "@smithy/util-retry",
 ];
 // Polyfill FileReader at the very top of the CJS bundle. octagonal-wheels uses
 // FileReader for base64 conversion when Uint8Array.toBase64 (TC39 proposal) is
