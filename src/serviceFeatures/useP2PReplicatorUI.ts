@@ -4,6 +4,10 @@ import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { type UseP2PReplicatorResult } from "@/lib/src/replication/trystero/UseP2PReplicatorResult";
 import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector";
 import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView";
+import {
+    P2PServerStatusPaneView,
+    VIEW_TYPE_P2P_SERVER_STATUS,
+} from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView";
 import type { LiveSyncCore } from "@/main";
 import type { WorkspaceLeaf } from "@/deps";
 
@@ -34,6 +38,19 @@ export function useP2PReplicatorUI(
     core: LiveSyncCore,
     replicator: UseP2PReplicatorResult
 ) {
+    const api = host.services.API as {
+        showWindow: (type: string) => Promise<void>;
+        showWindowOnRight?: (type: string) => Promise<void>;
+        registerWindow: (type: string, factory: (leaf: WorkspaceLeaf) => unknown) => void;
+        addCommand: (command: { id: string; name: string; callback: () => void }) => unknown;
+        addRibbonIcon: (
+            icon: string,
+            title: string,
+            callback: () => void
+        ) => { addClass?: (name: string) => unknown } | undefined;
+        getPlatform: () => string;
+    };
+
     // const env: LiveSyncTrysteroReplicatorEnv = { services: host.services as any };
     const getReplicator = () => replicator.replicator;
     const p2pLogCollector = new P2PLogCollector();
@@ -51,26 +68,64 @@ export function useP2PReplicatorUI(
             storeP2PStatusLine,
         });
     };
-    const openPane = () => host.services.API.showWindow(viewType);
-    host.services.API.registerWindow(viewType, factory);
+    const statusFactory = (leaf: WorkspaceLeaf) => {
+        return new P2PServerStatusPaneView(leaf, core, {
+            replicator: getReplicator(),
+            p2pLogCollector,
+            storeP2PStatusLine,
+        });
+    };
+    const openPane = () => api.showWindow(viewType);
+    const openStatusPane = () => {
+        if (api.showWindowOnRight) {
+            return api.showWindowOnRight(VIEW_TYPE_P2P_SERVER_STATUS);
+        }
+        return api.showWindow(VIEW_TYPE_P2P_SERVER_STATUS);
+    };
+    api.registerWindow(viewType, factory);
+    api.registerWindow(VIEW_TYPE_P2P_SERVER_STATUS, statusFactory);
 
     host.services.appLifecycle.onInitialise.addHandler(() => {
         eventHub.onEvent(EVENT_REQUEST_OPEN_P2P, () => {
             void openPane();
         });
 
-        host.services.API.addCommand({
+        api.addCommand({
             id: "open-p2p-replicator",
-            name: "P2P Sync : Open P2P Replicator",
+            name: "P2P Sync : Open P2P Replicator (Old UI)",
             callback: () => {
                 void openPane();
             },
         });
 
-        host.services.API.addRibbonIcon("waypoints", "P2P Replicator", () => {
-            void openPane();
-        })?.addClass?.("livesync-ribbon-replicate-p2p");
+        api.addCommand({
+            id: "open-p2p-server-status",
+            name: "P2P Sync : Open P2P Server Status",
+            callback: () => {
+                void openStatusPane();
+            },
+        });
 
+        // api.addRibbonIcon("waypoints", "P2P Replicator", () => {
+        //     void openPane();
+        // })?.addClass?.("livesync-ribbon-replicate-p2p");
+
+        api.addRibbonIcon("waypoints", "P2P Server Status", () => {
+            void openStatusPane();
+        })?.addClass?.("livesync-ribbon-p2p-server-status");
+
+        return Promise.resolve(true);
+    });
+
+    host.services.appLifecycle.onLayoutReady.addHandler(() => {
+        if (api.getPlatform() !== "obsidian") {
+            return Promise.resolve(true);
+        }
+        if (api.showWindowOnRight) {
+            void api.showWindowOnRight(VIEW_TYPE_P2P_SERVER_STATUS);
+        } else {
+            void api.showWindow(VIEW_TYPE_P2P_SERVER_STATUS);
+        }
         return Promise.resolve(true);
     });
     return { replicator: getReplicator(), p2pLogCollector, storeP2PStatusLine };
