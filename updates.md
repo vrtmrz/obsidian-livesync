@@ -3,6 +3,18 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+15th May, 2026
+
+
+### Fixed
+- The issue which cannot synchronise in Only-P2P mode has been fixed.
+
+### P2P Replication UI Improvements
+- Brand-new P2P Server Status pane has been added to provide real-time visibility into your connection status and peer network.
+- Now `Replicate` button or ribbon icon opens a redesigned interactive replication dialogue that performs smart bidirectional sync with a single click.
+
 ## 0.25.62
 
 14th May, 2026
