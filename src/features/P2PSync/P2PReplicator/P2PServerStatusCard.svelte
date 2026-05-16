@@ -21,7 +21,7 @@
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
 
     async function requestServerStatus() {
-        await liveSyncReplicator.requestStatus();
+        await Promise.resolve(liveSyncReplicator.requestStatus());
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 

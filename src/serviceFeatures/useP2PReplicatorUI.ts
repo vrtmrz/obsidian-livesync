@@ -100,7 +100,7 @@ export function useP2PReplicatorUI(
 
         api.addCommand({
             id: "open-p2p-server-status",
-            name: "P2P Sync : Open P2P Server Status",
+            name: "P2P Sync : Open P2P Status",
             callback: () => {
                 void openStatusPane();
             },
@@ -110,7 +110,7 @@ export function useP2PReplicatorUI(
         //     void openPane();
         // })?.addClass?.("livesync-ribbon-replicate-p2p");
 
-        api.addRibbonIcon("waypoints", "P2P Server Status", () => {
+        api.addRibbonIcon("waypoints", "P2P Status", () => {
             void openStatusPane();
         })?.addClass?.("livesync-ribbon-p2p-server-status");
 

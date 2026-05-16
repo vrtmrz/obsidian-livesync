@@ -149,7 +149,7 @@
 
 <div class="p2p-container">
     <div class="pane-header">
-        <h2>P2P Host</h2>
+        <h2>P2P Status</h2>
         <button
             class="icon-button"
             onclick={openConnectionSettings}
@@ -164,7 +164,7 @@
 
     <div class="peers-section">
         <div class="peers-header">
-            <h3>Known Devices</h3>
+            <h3>Detected Peers</h3>
             <button class="refresh" onclick={requestServerStatus}>Refresh</button>
         </div>
 

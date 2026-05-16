@@ -6,11 +6,11 @@ Peer-to-Peer (P2P) synchronisation has evolved significantly. This guide covers 
 P2P synchronisation allows your devices to talk directly to each other using WebRTC. A central server is not required for data storage, ensuring maximum privacy and "freedom."
 
 ## 2. Setting Up via P2P Status Pane
-You no longer need to navigate through complex menus. Simply open the **P2P Server Status** (via the ribbon icon or command palette) and click the **⚙ (Cog)** icon.
+You no longer need to navigate through complex menus. Simply open the **P2P Status** (via the ribbon icon or command palette) and click the **⚙ (Cog)** icon.
 
 This opens the **P2P Setup** dialogue where you can configure the essentials:
 - **Room ID:** A unique identifier for your synchronisation group.
-- **Password:** Your encryption key. Ensure all your devices use the exact same password. 
+- **Passphrase:** Your encryption key. Ensure all your devices use the exact same passphrase. 
 - **Device Name:** A recognisable name for the current device (e.g., `iphone-16`).
 
 Once you have saved the settings, return to the **P2P Status Pane** and click the **Connect** button to join the network. 

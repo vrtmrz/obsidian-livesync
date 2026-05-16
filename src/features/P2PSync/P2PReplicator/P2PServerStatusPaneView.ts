@@ -28,7 +28,7 @@ export class P2PServerStatusPaneView extends SvelteItemView {
     }
 
     getDisplayText() {
-        return "P2P Server Status";
+        return "P2P Status";
     }
 
     instantiateComponent(target: HTMLElement) {
