@@ -57,16 +57,16 @@
     }
 
     async function handleSyncAndClose(peerId: string) {
-        try {
-            syncingPeerId = peerId;
-            Logger(`Starting sync and close with ${peerId}`, logLevel);
-            await onSyncAndClose(peerId);
-            Logger(`Sync and close completed with ${peerId}`, logLevel);
-        } catch (e) {
-            Logger(`Error during sync and close: ${e instanceof Error ? e.message : String(e)}`, logLevel);
-        } finally {
-            syncingPeerId = null;
-        }
+        fireAndForget(async () => {
+            try {
+                Logger(`Starting sync with ${peerId}`, logLevel);
+                await onSync(peerId);
+                Logger(`Sync completed with ${peerId}`, logLevel);
+            } catch (e) {
+                Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
+            }
+        });
+        onClose();
     }
     async function disconnect(){
         try {
@@ -103,7 +103,7 @@
     />
 
     <div class="peers-section">
-        <h3>Available Devices</h3>
+        <h3>Available Peers</h3>
         {#if serverInfo && serverInfo.knownAdvertisements.length > 0}
             <div class="peers-list">
                 {#each serverInfo.knownAdvertisements as peer (peer.peerId)}
@@ -133,7 +133,7 @@
                                 disabled={syncingPeerId !== null}
                                 onclick={() => handleSyncAndClose(peer.peerId)}
                             >
-                                {syncingPeerId === peer.peerId ? "Syncing..." : "Sync & Close"}
+                                Start Sync &amp; Close
                             </button>
                         </div>
                     </div>
@@ -181,6 +181,7 @@
     .peer-item {
         display: flex;
         justify-content: space-between;
+        flex-wrap: wrap;
         align-items: center;
         padding: 0.75rem;
         background-color: var(--background-secondary);
@@ -234,9 +235,9 @@
     }
 
     .peer-actions {
+        flex-wrap: wrap;
         display: flex;
         gap: 0.5rem;
-        flex-shrink: 0;
     }
 
     .btn {

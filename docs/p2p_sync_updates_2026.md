@@ -13,7 +13,7 @@ This opens the **P2P Setup** dialogue where you can configure the essentials:
 - **Passphrase:** Your encryption key. Ensure all your devices use the exact same passphrase. 
 - **Device Name:** A recognisable name for the current device (e.g., `iphone-16`).
 
-Once you have saved the settings, return to the **P2P Status Pane** and click the **Connect** button to join the network. 
+Once you have saved the settings, return to the **P2P Status Pane** and click the **Connect** button to join the network.
 
 *Tip: You can also toggle **Auto Connect** in the setup dialogue to automatically join the network whenever Obsidian starts.*
 
@@ -23,19 +23,30 @@ The status pane in the right sidebar provides granular control over your synchro
 - **Signalling Status:** Shows if you are connected to the relay (🟢 Online).
 - **Live-push (Broadcast):** Toggle "Broadcast changes" to notify other peers whenever you make an edit.
 - **Watch:** Enable "Watch" on specific peers to automatically pull changes when they broadcast. This creates a "LiveSync-like" experience.
+- **Sync (🔄/🔁):** Mark specific peers as **sync targets**. Peers marked here will be included when you run the **"P2P: Sync with targets"** command (see section 5). Click the button next to a peer to toggle it on (🔄, highlighted) or off (🔁). This setting is persisted in your configuration.
 
-## 4. Enhanced Replication Dialogue (Bidirectional Sync)
-If you want to synchronise manually, click the **🔄 (Replicate)** button next to a peer in the device list. This opens the **Replication Dialogue**.
+## 4. Replication Dialogue
+If you want to synchronise with a specific peer manually, use the **Replication** command or button. This opens the **Replication Dialogue** listing available devices.
 
-Inside the dialogue, you can still see the **Server Status** at the top, so you will know if you are still connected while performing manual synchronisations.
+Inside the dialogue, the **Server Status** card at the top confirms you are still connected while performing the sync.
 
-When you trigger a synchronisation this way, the system now performs a **Bidirectional Synchronisation**:
-1. **Pull:** It first fetches changes from the peer.
-2. **Push:** If the pull is successful, it immediately pushes your local changes to that peer.
+Two actions are available per peer:
 
-This "one-click" approach ensures both devices are perfectly in synchronisation without manual back-and-forth.
+- **Sync** — Starts a bidirectional synchronisation (Pull then Push) and keeps the dialogue open so you can monitor progress or sync with additional peers.
+- **Start Sync & Close** — Starts the same bidirectional sync in the background and **immediately closes the dialogue**, so you can continue working without waiting.
 
-## 5. Technical Improvements in 2026
+## 5. Syncing with Registered Targets via Command Palette
+
+You can now trigger a synchronisation with all your pre-registered target peers in one step, without opening any UI.
+
+1. Open the **Command Palette** (`Ctrl/Cmd + P`).
+2. Run **"P2P: Sync with targets"**.
+
+This command synchronises with every peer whose **SYNC** toggle is enabled in the **Detected Peers** list. If no targets are registered, or if the P2P server is not running, the command will notify you accordingly.
+
+*Tip: Pair this command with a hotkey for a quick, keyboard-driven sync workflow.*
+
+## 6. Technical Improvements in 2026
 - **Decoupled Architecture:** The UI is now strictly separated from the core logic, making the plugin more stable across different platforms (Mobile, Desktop, and Web).
 - **Svelte 5 UI:** The interface has been rebuilt for better responsiveness and clearer status indicators.
 - **Security:** All data remains end-to-end encrypted. Even the signalling relay never sees your actual notes.

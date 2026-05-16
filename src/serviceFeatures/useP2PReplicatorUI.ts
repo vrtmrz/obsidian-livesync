@@ -10,6 +10,7 @@ import {
 } from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView";
 import type { LiveSyncCore } from "@/main";
 import type { WorkspaceLeaf } from "@/deps";
+import { REMOTE_P2P } from "@lib/common/models/setting.const";
 
 /**
  * ServiceFeature: P2P Replicator lifecycle management.
@@ -103,6 +104,41 @@ export function useP2PReplicatorUI(
             name: "P2P Sync : Open P2P Status",
             callback: () => {
                 void openStatusPane();
+            },
+        });
+        host.services.API.addCommand({
+            id: "replicate-now-by-p2p-default-peer",
+            name: "Replicate P2P to default peer",
+            checkCallback: (isChecking: boolean) => {
+                const settings = host.services.setting.currentSettings();
+                if (isChecking) {
+                    if (settings.remoteType == REMOTE_P2P) return false;
+                    return replicator.replicator?.server?.isServing ?? false;
+                }
+                void replicator.replicator?.openReplication(settings, false, true, false);
+            },
+        });
+        host.services.API.addCommand({
+            id: "replicate-now-by-p2p",
+            name: "Replicate now by P2P",
+            checkCallback: (isChecking: boolean) => {
+                const settings = host.services.setting.currentSettings();
+                if (isChecking) {
+                    if (settings.remoteType == REMOTE_P2P) return false;
+                    return replicator.replicator?.server?.isServing ?? false;
+                }
+                void replicator.replicator?.openReplication(settings, false, true, false);
+            },
+        });
+
+        host.services.API.addCommand({
+            id: "p2p-sync-targets",
+            name: "P2P: Sync with targets",
+            checkCallback: (isChecking: boolean) => {
+                if (isChecking) {
+                    return replicator.replicator?.server?.isServing ?? false;
+                }
+                void replicator.replicator?.replicateFromCommand(true);
             },
         });
 

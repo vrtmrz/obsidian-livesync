@@ -12,17 +12,32 @@
     import type { P2PReplicatorStatus, P2PReplicationReport } from "@/lib/src/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
+    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
         liveSyncReplicator: LiveSyncTrysteroReplicator;
+        core: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator }: Props = $props();
+    let { liveSyncReplicator, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
     const COMMUNICATION_HOLD_MS = 2500;
+    let syncOnReplicationSetting = $state(
+        core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? ""
+    );
+
+    function addToList(item: string, list: string): string {
+        const items = list.split(",").map((e) => e.trim()).filter((e) => e);
+        if (!items.includes(item)) items.push(item);
+        return items.join(",");
+    }
+    function removeFromList(item: string, list: string): string {
+        return list.split(",").map((e) => e.trim()).filter((e) => e && e !== item).join(",");
+    }
 
     function markCommunicating(peerId: string) {
         const expiry = Date.now() + COMMUNICATION_HOLD_MS;
@@ -60,6 +75,10 @@
             }
         });
 
+        const unsubscribeSettings = eventHub.onEvent(EVENT_SETTING_SAVED, (settings) => {
+            syncOnReplicationSetting = settings?.P2P_SyncOnReplication ?? "";
+        });
+
         fireAndForget(async () => {
             await delay(100);
             await requestServerStatus();
@@ -69,6 +88,7 @@
             unsubscribe();
             unsubscribeReplicatorStatus();
             unsubscribeReplicatorProgress();
+            unsubscribeSettings();
         };
     });
 
@@ -145,6 +165,22 @@
         const isHeldCommunicating = (communicatingUntil[peerId] ?? 0) > Date.now();
         return isLiveCommunicating || isHeldCommunicating;
     }
+
+    function isSyncTarget(peerName: string) {
+        return syncOnReplicationSetting
+            .split(",")
+            .map((e) => e.trim())
+            .filter((e) => e)
+            .includes(peerName);
+    }
+
+    async function toggleSyncTarget(peer: P2PServerInfo["knownAdvertisements"][number]) {
+        const currentValue = core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "";
+        const newValue = isSyncTarget(peer.name)
+            ? removeFromList(peer.name, currentValue)
+            : addToList(peer.name, currentValue);
+        await core.services.setting.applyPartial({ P2P_SyncOnReplication: newValue }, true);
+    }
 </script>
 
 <div class="p2p-container">
@@ -207,8 +243,17 @@
                                     >
                                         {isWatching(peer.peerId) ? '👁' : '👁‍🗨'}
                                     </button>
-                                </div>
-                            {:else}
+                                </div>                                <div class="decision-row watch-row">
+                                    <span class="decision-label">SYNC</span>
+                                    <button
+                                        class="emoji-button {isSyncTarget(peer.name) ? 'is-watching' : ''}"
+                                        title={isSyncTarget(peer.name) ? 'Sync target \u2014 click to remove' : 'Set as sync target'}
+                                        aria-label={isSyncTarget(peer.name) ? 'Remove sync target' : 'Set sync target'}
+                                        onclick={() => toggleSyncTarget(peer)}
+                                    >
+                                        {isSyncTarget(peer.name) ? '🔄' : '🔁'}
+                                    </button>
+                                </div>                            {:else}
                                 <div class="decision-status">
                                     <span class="badge status-chip {getAcceptanceStatusClass(peer)}">
                                         {getAcceptanceStatus(peer)}
