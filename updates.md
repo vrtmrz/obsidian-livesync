@@ -3,17 +3,25 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.63
+
+17th May, 2026
+
+### Fixed
+- The issue which cannot synchronise in Only-P2P mode has been fixed.
+- Fixed an issue where "Failed to connect to the remote server" was shown during the redFlag rebuild flow when P2P was the primary remote type. Remote configuration fetch is now skipped for P2P.
+
+### P2P Replication UI Improvements
+- Brand-new P2P Server Status pane has been added to provide real-time visibility into your connection status and peer network.
+  - For detailed instructions on using the new P2P features, please refer to the updated [User Guide: Peer-to-Peer Synchronisation (2026 Edition)](./docs/p2p_sync_updates_2026.md).
+- Now `Replicate` button or ribbon icon opens a redesigned interactive replication dialogue that performs smart bidirectional sync with a single click.
+- The vault rebuild flow (`replicateAllFromServer`) now opens the redesigned P2P Replication modal instead of a plain text selection dialogue, providing a consistent UI experience.
+
+
 ## Unreleased
 
 15th May, 2026
 
-
-### Fixed
-- The issue which cannot synchronise in Only-P2P mode has been fixed.
-
-### P2P Replication UI Improvements
-- Brand-new P2P Server Status pane has been added to provide real-time visibility into your connection status and peer network.
-- Now `Replicate` button or ribbon icon opens a redesigned interactive replication dialogue that performs smart bidirectional sync with a single click.
 
 ## 0.25.62
 
