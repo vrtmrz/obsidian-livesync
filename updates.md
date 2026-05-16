@@ -17,12 +17,6 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Now `Replicate` button or ribbon icon opens a redesigned interactive replication dialogue that performs smart bidirectional sync with a single click.
 - The vault rebuild flow (`replicateAllFromServer`) now opens the redesigned P2P Replication modal instead of a plain text selection dialogue, providing a consistent UI experience.
 
-
-## Unreleased
-
-15th May, 2026
-
-
 ## 0.25.62
 
 14th May, 2026
