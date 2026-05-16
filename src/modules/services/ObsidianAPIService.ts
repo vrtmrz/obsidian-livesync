@@ -38,6 +38,25 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         }
     }
 
+    override async showWindowOnRight(viewType: string): Promise<void> {
+        const existing = this.app.workspace.getLeavesOfType(viewType);
+        if (existing.length > 0) {
+            await this.app.workspace.revealLeaf(existing[0]);
+            return;
+        }
+        const rightLeaf = this.app.workspace.getRightLeaf(false);
+        if (rightLeaf) {
+            await rightLeaf.setViewState({
+                type: viewType,
+                active: false,
+            });
+            await this.app.workspace.revealLeaf(rightLeaf);
+            return;
+        }
+
+        await this.showWindow(viewType);
+    }
+
     private get app() {
         return this.context.app;
     }

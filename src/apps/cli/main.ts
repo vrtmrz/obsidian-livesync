@@ -8,7 +8,6 @@ import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
-import { ModuleReplicatorP2P } from "../../modules/core/ModuleReplicatorP2P";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
@@ -27,6 +26,7 @@ import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
+import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -368,12 +368,11 @@ export async function main() {
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
             return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
-        (core) => [
-            // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
-            // new ModuleReplicatorP2P(core),
-        ],
+        (core) => [],
         () => [], // No add-ons
         (core) => {
+            // Register P2P replicator feature.
+            const _replicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -424,7 +423,7 @@ export async function main() {
     // Save the settings file before any lifecycle events can mutate and persist them.
     // suspendAllSync and other lifecycle hooks clobber sync settings in memory, and
     // various code paths persist the clobbered state to disk. We restore on shutdown.
-    const settingsBackup = await fs.readFile(settingsPath, "utf-8").catch(() => null);
+    const settingsBackup = await fs.readFile(settingsPath, "utf-8").catch(() => null!);
 
     // Restore settings file on any exit to undo lifecycle mutations.
     // Write to a temp path first so a crash mid-write doesn't leave a truncated file.

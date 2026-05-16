@@ -5,7 +5,7 @@ import { FlagFilesHumanReadable, FlagFilesOriginal } from "@lib/common/models/re
 import FetchEverything from "../modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "../modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { REMOTE_MINIO } from "@lib/common/models/setting.const";
+import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
 
@@ -197,6 +197,13 @@ export async function adjustSettingToRemoteIfNeeded(
     config: ObsidianLiveSyncSettings
 ) {
     if (extra && extra.preventFetchingConfig) {
+        return;
+    }
+
+    // P2P has no centralised remote configuration; skip to avoid a spurious
+    // "Failed to connect to the remote server" error dialog.
+    if (config.remoteType === REMOTE_P2P) {
+        log("Remote configuration fetch skipped (P2P mode).", LOG_LEVEL_INFO);
         return;
     }
 

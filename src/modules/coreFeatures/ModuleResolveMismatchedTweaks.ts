@@ -14,6 +14,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import { $msg } from "../../lib/src/common/i18n.ts";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     async _anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
@@ -186,6 +187,9 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     async _checkAndAskUseRemoteConfiguration(
         trialSetting: RemoteDBSettings
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        if (trialSetting.remoteType === REMOTE_P2P) {
+            return { result: false, requireFetch: false };
+        }
         const preferred = await this.services.tweakValue.fetchRemotePreferred(trialSetting);
         if (preferred) {
             return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred);

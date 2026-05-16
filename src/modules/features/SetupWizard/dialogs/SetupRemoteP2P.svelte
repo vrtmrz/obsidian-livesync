@@ -39,18 +39,20 @@
 
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
+        let initialData: P2PSyncSetting | undefined = undefined;
         if (getInitialData) {
-            const initialData = getInitialData();
+            initialData = getInitialData();
             if (initialData) {
                 copyTo(initialData, syncSetting);
             }
-            if (context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME)) {
-                syncSetting.P2P_DevicePeerName = context.services.config.getSmallConfig(
-                    SETTING_KEY_P2P_DEVICE_NAME
-                ) as string;
-            } else {
-                syncSetting.P2P_DevicePeerName = "";
-            }
+        }
+        const initialPeerName = (initialData?.P2P_DevicePeerName ?? "").trim();
+        if (initialPeerName !== "") {
+            return;
+        }
+        const cachedPeerName = context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME);
+        if (cachedPeerName) {
+            syncSetting.P2P_DevicePeerName = cachedPeerName as string;
         }
     });
     function generateSetting() {
@@ -100,7 +102,7 @@
             const dummyPouch = new PouchDB<EntryDoc>("dummy");
             const env: ReplicatorHostEnv = {
                 settings: trialRemoteSetting,
-                processReplicatedDocs: async (docs: any[]) => {
+                processReplicatedDocs: async (_docs: any[]) => {
                     return;
                 },
                 confirm: context.services.confirm,
@@ -116,7 +118,7 @@
                 await replicator.open();
                 for (let i = 0; i < 10; i++) {
                     // await delay(1000);
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    await new Promise((resolve) => window.setTimeout(resolve, 1000));
                     // Logger(`Checking known advertisements... (${i})`, LOG_LEVEL_INFO);
                     if (replicator.knownAdvertisements.length > 0) {
                         break;
