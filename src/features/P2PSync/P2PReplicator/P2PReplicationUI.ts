@@ -1,7 +1,7 @@
 import { App } from "@/deps.ts";
 import { Logger } from "@lib/common/logger";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
-import type { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 
 /**
@@ -66,6 +66,64 @@ export function createOpenReplicationUI(
                         },
                     },
                     showResult
+                );
+                modal.open();
+            });
+        };
+}
+
+/**
+ * Creates an openRebuildUI factory for Obsidian environments.
+ * Opens the P2P Replication modal in "rebuild" mode — one-way pull only,
+ * with setOnSetup / clearOnSetup bracketing the replicateFrom call.
+ *
+ * Usage:
+ *   const factory = createOpenRebuildUI(app);
+ *   useP2PReplicatorFeature(core, createOpenReplicationUI(app), factory);
+ */
+export function createOpenRebuildUI(
+    app: App
+): (replicator: LiveSyncTrysteroReplicator) => (showResult: boolean) => Promise<boolean | void> {
+    return (replicator: LiveSyncTrysteroReplicator) =>
+        (showResult: boolean): Promise<boolean | void> => {
+            const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+            return new Promise<boolean | void>((resolve) => {
+                let resolved = false;
+                const safeResolve = (val: boolean) => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(val);
+                    }
+                };
+
+                const doRebuild = async (peerId: string) => {
+                    replicator.setOnSetup();
+                    try {
+                        Logger(`Rebuilding from peer ${peerId}`, logLevel);
+                        const result = await replicator.replicateFrom(peerId, showResult);
+                        safeResolve(result?.ok ?? false);
+                    } catch (e) {
+                        Logger(
+                            `Error in rebuild from ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
+                            logLevel
+                        );
+                        safeResolve(false);
+                    } finally {
+                        replicator.clearOnSetup();
+                    }
+                };
+
+                const modal = new P2POpenReplicationModal(
+                    app,
+                    replicator,
+                    {
+                        onSync: doRebuild,
+                        onSyncAndClose: doRebuild,
+                    },
+                    showResult,
+                    "P2P Rebuild",
+                    () => safeResolve(false),
+                    true
                 );
                 modal.open();
             });

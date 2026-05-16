@@ -44,7 +44,7 @@ import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
-import { createOpenReplicationUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
+import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -177,7 +177,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
                 const setupManager = core.getModule(SetupManager);
-                const replicator = useP2PReplicatorFeature(core, createOpenReplicationUI(this.app));
+                const replicator = useP2PReplicatorFeature(
+                    core,
+                    createOpenReplicationUI(this.app),
+                    createOpenRebuildUI(this.app)
+                );
                 useP2PReplicatorCommands(core, replicator);
                 useP2PReplicatorUI(core, core, replicator);
                 useRemoteConfiguration(core);

@@ -13,17 +13,26 @@ export class P2POpenReplicationModal extends Modal {
     callback?: P2POpenReplicationModalCallback;
     component?: ReturnType<typeof mount>;
     showResult: boolean;
+    title: string;
+    onClosed?: () => void;
+    rebuildMode: boolean;
 
     constructor(
         app: App,
         liveSyncReplicator: LiveSyncTrysteroReplicator,
         callback?: P2POpenReplicationModalCallback,
-        showResult: boolean = false
+        showResult: boolean = false,
+        title: string = "P2P Replication",
+        onClosed?: () => void,
+        rebuildMode: boolean = false
     ) {
         super(app);
         this.liveSyncReplicator = liveSyncReplicator;
         this.callback = callback;
         this.showResult = showResult;
+        this.title = title;
+        this.onClosed = onClosed;
+        this.rebuildMode = rebuildMode;
     }
 
     async onSync(peerId: string) {
@@ -41,7 +50,7 @@ export class P2POpenReplicationModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        this.titleEl.setText("P2P Replication");
+        this.titleEl.setText(this.title);
         contentEl.empty();
 
         if (this.component === undefined) {
@@ -53,6 +62,7 @@ export class P2POpenReplicationModal extends Modal {
                     onSyncAndClose: (peerId: string) => this.onSyncAndClose(peerId),
                     onClose: () => this.close(),
                     showResult: this.showResult,
+                    rebuildMode: this.rebuildMode,
                 },
             });
         }
@@ -65,5 +75,6 @@ export class P2POpenReplicationModal extends Modal {
             void unmount(this.component);
             this.component = undefined;
         }
+        this.onClosed?.();
     }
 }

@@ -19,9 +19,10 @@
         onSyncAndClose: (_peerId: string) => Promise<void>;
         onClose: () => void;
         showResult: boolean;
+        rebuildMode?: boolean;
     }
 
-    let { onSync, onSyncAndClose, onClose, showResult, liveSyncReplicator }: Props = $props();
+    let { onSync, onSyncAndClose, onClose, showResult, liveSyncReplicator, rebuildMode = false }: Props = $props();
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
@@ -36,10 +37,10 @@
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
         });
-        fireAndForget(async ()=>{
+        fireAndForget(async () => {
             await delay(100);
             await requestServerStatus();
-        })
+        });
         return unsubscribe;
     });
 
@@ -48,6 +49,18 @@
             syncingPeerId = peerId;
             Logger(`Starting sync with ${peerId}`, logLevel);
             await onSync(peerId);
+            Logger(`Sync completed with ${peerId}`, logLevel);
+        } catch (e) {
+            Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
+        } finally {
+            syncingPeerId = null;
+        }
+    }
+    async function handleSyncThenClose(peerId: string) {
+        try {
+            syncingPeerId = peerId;
+            Logger(`Starting sync with ${peerId}`, logLevel);
+            await onSyncAndClose(peerId);
             Logger(`Sync completed with ${peerId}`, logLevel);
         } catch (e) {
             Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
@@ -68,7 +81,7 @@
         });
         onClose();
     }
-    async function disconnect(){
+    async function disconnect() {
         try {
             await liveSyncReplicator.close();
             Logger("Signalling connection closed.", logLevel);
@@ -76,7 +89,7 @@
             Logger(`Failed to close signalling connection: ${e instanceof Error ? e.message : String(e)}`, logLevel);
         }
     }
-    async function onCloseAndDisconnect(){
+    async function onCloseAndDisconnect() {
         await disconnect();
         onClose();
     }
@@ -97,10 +110,7 @@
 </script>
 
 <div class="p2p-container">
-    <P2PServerStatusCard
-        {liveSyncReplicator}
-        showBroadcastToggle={false}
-    />
+    <P2PServerStatusCard {liveSyncReplicator} showBroadcastToggle={false} />
 
     <div class="peers-section">
         <h3>Available Peers</h3>
@@ -121,20 +131,30 @@
                             </div>
                         </div>
                         <div class="peer-actions">
-                            <button
-                                class="btn btn-primary"
-                                disabled={syncingPeerId !== null}
-                                onclick={() => handleSync(peer.peerId)}
-                            >
-                                {syncingPeerId === peer.peerId ? "Syncing..." : "Sync"}
-                            </button>
-                            <button
-                                class="btn btn-secondary"
-                                disabled={syncingPeerId !== null}
-                                onclick={() => handleSyncAndClose(peer.peerId)}
-                            >
-                                Start Sync &amp; Close
-                            </button>
+                            {#if !rebuildMode}
+                                <button
+                                    class="btn btn-primary"
+                                    disabled={syncingPeerId !== null}
+                                    onclick={() => handleSync(peer.peerId)}
+                                >
+                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Sync"}
+                                </button>
+                                <button
+                                    class="btn {rebuildMode ? 'btn-primary' : 'btn-secondary'}"
+                                    disabled={syncingPeerId !== null}
+                                    onclick={() => handleSyncAndClose(peer.peerId)}
+                                >
+                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Start Sync & Close"}
+                                </button>
+                            {:else}
+                                <button
+                                    class="btn {rebuildMode ? 'btn-primary' : 'btn-secondary'}"
+                                    disabled={syncingPeerId !== null}
+                                    onclick={() => handleSyncThenClose(peer.peerId)}
+                                >
+                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Sync"}
+                                </button>
+                            {/if}
                         </div>
                     </div>
                 {/each}
@@ -145,8 +165,12 @@
     </div>
 
     <div class="footer">
-        <button class="btn btn-cancel" onclick={onClose}>Close</button>
-        <button class="btn btn-cancel" onclick={onCloseAndDisconnect}>Close & Disconnect</button>
+        {#if rebuildMode}
+            <button class="btn btn-cancel" onclick={onClose} disabled={syncingPeerId !== null}>Skip and close</button>
+        {:else}
+            <button class="btn btn-cancel" onclick={onClose}>Close</button>
+            <button class="btn btn-cancel" onclick={onCloseAndDisconnect}>Close & Disconnect</button>
+        {/if}
     </div>
 </div>
 
