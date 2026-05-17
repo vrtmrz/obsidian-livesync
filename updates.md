@@ -3,6 +3,35 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### P2P Status Pane
+
+- Added active P2P remote selector (combo box) and `+` action to create/select a P2P remote from the P2P setup dialogue.
+- Added per-peer immediate replication action on accepted peers.
+- Updated status control icons for clarity:
+  - Replicate now: `🔄` (`⏳` while running)
+  - Watch: `🔔` / `🔕`
+  - Sync target: `🔗` / `⛓️‍💥`
+- Added warning state when no active P2P remote is selected.
+
+### P2P Status Card
+
+- Added stable Room ID suffix display and placed it above Peer ID for better identification.
+
+### Non behavioural internal changes
+
+#### P2P
+
+- Added `P2P_ActiveRemoteConfigurationId` as a dedicated active remote selection for P2P features, separate from the normal active remote.
+- Added activation logic for P2P dedicated remote configuration that reflects P2P settings while keeping `remoteType` unchanged.
+- Added migration support to carry over P2P active remote selection when appropriate.
+- Added shared Room ID utility functions and applied them across P2P setup and P2P panes.
+
+#### Tests
+
+- Added/updated unit test coverage around settings load behaviour for P2P active remote application.
+
 ## 0.25.63
 
 17th May, 2026

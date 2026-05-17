@@ -8,17 +8,22 @@
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
     } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
     import type { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
     import type { P2PReplicatorStatus } from "@/lib/src/replication/trystero/TrysteroReplicator";
+    import { extractP2PRoomSuffix } from "@/lib/src/common/utils";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
         liveSyncReplicator: LiveSyncTrysteroReplicator;
         showBroadcastToggle?: boolean;
+        core?: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, showBroadcastToggle = true }: Props = $props();
+    let { liveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
+    let roomSuffix = $state<string>(extractP2PRoomSuffix(core?.services.setting.currentSettings()?.P2P_roomID ?? ""));
 
     async function requestServerStatus() {
         await Promise.resolve(liveSyncReplicator.requestStatus());
@@ -46,9 +51,13 @@
     onMount(() => {
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
+            roomSuffix = extractP2PRoomSuffix(status?.roomId ?? "");
         });
         const unsubscribeStatus = eventHub.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
             replicatorStatus = status;
+        });
+        const unsubscribeSettings = eventHub.onEvent(EVENT_SETTING_SAVED, (settings) => {
+            roomSuffix = extractP2PRoomSuffix(settings?.P2P_roomID ?? "");
         });
 
         fireAndForget(async () => {
@@ -59,6 +68,7 @@
         return () => {
             unsubscribe();
             unsubscribeStatus();
+            unsubscribeSettings();
         };
     });
 
@@ -85,6 +95,13 @@
     </div>
 
     {#if serverInfo}
+        <div class="status-item">
+            <span>Room ID suffix:</span>
+            <span class="room-suffix-display" title={roomSuffix || "Not configured"}>
+                {roomSuffix || "-"}
+            </span>
+        </div>
+
         <div class="status-item">
             <span>Peer ID:</span>
             <span class="peer-id-display" title={serverInfo.serverPeerId}>
@@ -160,6 +177,12 @@
         max-width: 150px;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .room-suffix-display {
+        font-family: monospace;
+        font-size: 0.85rem;
+        font-weight: 600;
     }
 
     .broadcast-row {

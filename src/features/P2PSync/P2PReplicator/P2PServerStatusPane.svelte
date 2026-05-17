@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { EVENT_REQUEST_OPEN_P2P_SETTINGS, eventHub } from "@/common/events";
+    import { EVENT_LAYOUT_READY, EVENT_REQUEST_OPEN_P2P_SETTINGS, eventHub } from "@/common/events";
     import {
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
@@ -8,12 +8,21 @@
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
     } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus, P2PReplicationReport } from "@/lib/src/replication/trystero/TrysteroReplicator";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus, P2PReplicationReport } from "@lib/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
     import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    import { ConnectionStringParser } from "@lib/common/ConnectionString";
+    import type { P2PSyncSetting, RemoteConfiguration } from "@lib/common/models/setting.type";
+    import {
+        activateP2PRemoteConfiguration,
+        createRemoteConfigurationId,
+    } from "@lib/serviceFeatures/remoteConfig";
+    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    import { SetupManager } from "@/modules/features/SetupManager";
+    import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 
     interface Props {
         liveSyncReplicator: LiveSyncTrysteroReplicator;
@@ -24,11 +33,22 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
+    let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
     const COMMUNICATION_HOLD_MS = 2500;
     let syncOnReplicationSetting = $state(
         core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? ""
     );
+    type P2PRemoteOption = {
+        id: string;
+        name: string;
+        roomSuffix: string;
+    };
+    let p2pRemoteOptions = $state<P2PRemoteOption[]>([]);
+    let selectedP2PRemoteConfigurationId = $state(
+        core.services.setting.currentSettings()?.P2P_ActiveRemoteConfigurationId ?? ""
+    );
+    let selectingP2PRemote = $state(false);
 
     function addToList(item: string, list: string): string {
         const items = list.split(",").map((e) => e.trim()).filter((e) => e);
@@ -48,6 +68,57 @@
                 communicatingUntil = rest;
             }
         }, COMMUNICATION_HOLD_MS + 100);
+    }
+
+    function listP2PRemoteOptions(
+        remoteConfigurations: Record<string, RemoteConfiguration> | undefined
+    ): P2PRemoteOption[] {
+        return Object.values(remoteConfigurations ?? {})
+            .map((config) => {
+                try {
+                    const parsed = ConnectionStringParser.parse(config.uri);
+                    if (parsed.type !== "p2p") {
+                        return undefined;
+                    }
+                    return {
+                        id: config.id,
+                        name: config.name,
+                        roomSuffix: extractP2PRoomSuffix(parsed.settings.P2P_roomID ?? ""),
+                    } as P2PRemoteOption;
+                } catch {
+                    return undefined;
+                }
+            })
+            .filter((e): e is P2PRemoteOption => !!e);
+    }
+
+    function refreshP2PRemoteOptions() {
+        const settings = core.services.setting.currentSettings();
+        const options = listP2PRemoteOptions(settings.remoteConfigurations);
+        p2pRemoteOptions = options;
+        const currentSelected = settings.P2P_ActiveRemoteConfigurationId ?? "";
+        const isCurrentSelectedValid = options.some((option) => option.id === currentSelected);
+        if (options.length === 0) {
+            selectedP2PRemoteConfigurationId = "";
+            return;
+        }
+        if (currentSelected.trim() === "" || !isCurrentSelectedValid) {
+            const fallbackId = options[0].id;
+            selectedP2PRemoteConfigurationId = fallbackId;
+            if (currentSelected !== fallbackId) {
+                fireAndForget(() => applyP2PActiveRemoteSelection(fallbackId));
+            }
+            return;
+        }
+        selectedP2PRemoteConfigurationId = currentSelected;
+    }
+
+    function canEditP2PSettings() {
+        const selected = selectedP2PRemoteConfigurationId.trim();
+        if (selected === "") {
+            return false;
+        }
+        return p2pRemoteOptions.some((e) => e.id === selected);
     }
 
     async function requestServerStatus() {
@@ -77,10 +148,16 @@
 
         const unsubscribeSettings = eventHub.onEvent(EVENT_SETTING_SAVED, (settings) => {
             syncOnReplicationSetting = settings?.P2P_SyncOnReplication ?? "";
+            refreshP2PRemoteOptions();
+        });
+        const unsubscribeLayoutReady = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
+            refreshP2PRemoteOptions();
+            void requestServerStatus();
         });
 
         fireAndForget(async () => {
             await delay(100);
+            refreshP2PRemoteOptions();
             await requestServerStatus();
         });
 
@@ -89,6 +166,7 @@
             unsubscribeReplicatorStatus();
             unsubscribeReplicatorProgress();
             unsubscribeSettings();
+            unsubscribeLayoutReady();
         };
     });
 
@@ -108,6 +186,113 @@
 
     function openConnectionSettings() {
         eventHub.emitEvent(EVENT_REQUEST_OPEN_P2P_SETTINGS);
+    }
+
+    async function applyP2PActiveRemoteSelection(id: string) {
+        selectingP2PRemote = true;
+        try {
+            await core.services.setting.updateSettings((settings) => {
+                settings.P2P_ActiveRemoteConfigurationId = id;
+                if (id.trim() === "") {
+                    return settings;
+                }
+                const activated = activateP2PRemoteConfiguration(settings, id);
+                return activated || settings;
+            }, true);
+            const latest = core.services.setting.currentSettings();
+            syncOnReplicationSetting = latest.P2P_SyncOnReplication ?? "";
+            refreshP2PRemoteOptions();
+        } finally {
+            selectingP2PRemote = false;
+        }
+    }
+
+    async function onP2PRemoteSelected(event: Event) {
+        const target = event.currentTarget as HTMLSelectElement;
+        const id = target.value;
+        selectedP2PRemoteConfigurationId = id;
+        await applyP2PActiveRemoteSelection(id);
+    }
+
+    async function createAndSelectP2PRemote() {
+        const setupManager = core.getModule(SetupManager);
+        const dialogManager = setupManager.dialogManager;
+        const currentSettings = core.services.setting.currentSettings();
+        const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, currentSettings);
+        if (p2pConf === "cancelled" || typeof p2pConf !== "object" || !p2pConf) {
+            return;
+        }
+        const p2pSettings = p2pConf as Partial<P2PSyncSetting>;
+        const id = createRemoteConfigurationId();
+        const roomSuffix = extractP2PRoomSuffix(p2pSettings.P2P_roomID ?? "");
+        const name = roomSuffix ? `P2P Remote (${roomSuffix})` : "P2P Remote";
+        await core.services.setting.updateSettings((settings) => {
+            const merged = {
+                ...settings,
+                ...p2pSettings,
+            };
+            const uri = ConnectionStringParser.serialize({ type: "p2p", settings: merged });
+            settings.remoteConfigurations = {
+                ...(settings.remoteConfigurations ?? {}),
+                [id]: {
+                    id,
+                    name,
+                    uri,
+                    isEncrypted: false,
+                },
+            };
+            settings.P2P_ActiveRemoteConfigurationId = id;
+            const activated = activateP2PRemoteConfiguration(settings, id);
+            return activated || settings;
+        }, true);
+        const latest = core.services.setting.currentSettings();
+        syncOnReplicationSetting = latest.P2P_SyncOnReplication ?? "";
+        refreshP2PRemoteOptions();
+    }
+
+    async function updateSelectedP2PRemote(partial: Partial<P2PSyncSetting>) {
+        const selectedId = core.services.setting.currentSettings().P2P_ActiveRemoteConfigurationId?.trim() ?? "";
+        if (selectedId === "") {
+            return;
+        }
+        await core.services.setting.updateSettings((settings) => {
+            const config = settings.remoteConfigurations?.[selectedId];
+            if (!config) {
+                return settings;
+            }
+            let parsed;
+            try {
+                parsed = ConnectionStringParser.parse(config.uri);
+            } catch {
+                return settings;
+            }
+            if (parsed.type !== "p2p") {
+                return settings;
+            }
+            const mergedP2P = {
+                ...parsed.settings,
+                ...partial,
+            };
+            const uri = ConnectionStringParser.serialize({
+                type: "p2p",
+                settings: {
+                    ...settings,
+                    ...mergedP2P,
+                },
+            });
+            settings.remoteConfigurations = {
+                ...(settings.remoteConfigurations ?? {}),
+                [selectedId]: {
+                    ...config,
+                    uri,
+                    isEncrypted: false,
+                },
+            };
+            Object.assign(settings, partial);
+            const activated = activateP2PRemoteConfiguration(settings, selectedId);
+            return activated || settings;
+        }, true);
+        syncOnReplicationSetting = core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "";
     }
 
     async function makeDecision(
@@ -142,6 +327,19 @@
         }
     }
 
+    async function startReplication(peer: P2PServerInfo["knownAdvertisements"][number]) {
+        replicatingPeerId = peer.peerId;
+        try {
+            const pullResult = await liveSyncReplicator.replicateFrom(peer.peerId, true);
+            if (pullResult?.ok) {
+                await liveSyncReplicator.requestSynchroniseToPeer(peer.peerId);
+            }
+            await requestServerStatus();
+        } finally {
+            replicatingPeerId = null;
+        }
+    }
+
     function isAccepted(peer: P2PServerInfo["knownAdvertisements"][number]) {
         return peer.isTemporaryAccepted === true || peer.isAccepted === true;
     }
@@ -151,6 +349,9 @@
     }
 
     function toggleWatch(peerId: string) {
+        if (!canEditP2PSettings()) {
+            return;
+        }
         if (isWatching(peerId)) {
             liveSyncReplicator.unwatchPeer(peerId);
         } else {
@@ -175,28 +376,59 @@
     }
 
     async function toggleSyncTarget(peer: P2PServerInfo["knownAdvertisements"][number]) {
+        if (!canEditP2PSettings()) {
+            return;
+        }
         const currentValue = core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "";
         const newValue = isSyncTarget(peer.name)
             ? removeFromList(peer.name, currentValue)
             : addToList(peer.name, currentValue);
-        await core.services.setting.applyPartial({ P2P_SyncOnReplication: newValue }, true);
+        await updateSelectedP2PRemote({ P2P_SyncOnReplication: newValue });
     }
 </script>
 
 <div class="p2p-container">
     <div class="pane-header">
         <h2>P2P Status</h2>
-        <button
-            class="icon-button"
-            onclick={openConnectionSettings}
-            title="Open P2P Setup..."
-            aria-label="Open P2P Setup..."
-        >
-            ⚙
-        </button>
+        <div class="pane-header-actions">
+            <div class="remote-picker-wrap">
+                <select
+                    class="remote-picker"
+                    value={selectedP2PRemoteConfigurationId}
+                    onchange={onP2PRemoteSelected}
+                    disabled={selectingP2PRemote}
+                    aria-label="Select active P2P remote"
+                    title="Select active P2P remote"
+                >
+                    {#if p2pRemoteOptions.length === 0}
+                        <option value="">Select P2P remote...</option>
+                    {/if}
+                    {#each p2pRemoteOptions as option}
+                        <option value={option.id}>
+                            {option.name}{option.roomSuffix ? ` (${option.roomSuffix})` : ""}
+                        </option>
+                    {/each}
+                </select>
+                <button class="icon-button" onclick={() => createAndSelectP2PRemote()} title="Create P2P remote" aria-label="Create P2P remote">
+                    +
+                </button>
+            </div>
+            <button
+                class="icon-button"
+                onclick={openConnectionSettings}
+                title="Open P2P Setup..."
+                aria-label="Open P2P Setup..."
+            >
+                ⚙
+            </button>
+        </div>
     </div>
 
-    <P2PServerStatusCard {liveSyncReplicator} />
+    {#if !canEditP2PSettings()}
+        <p class="warning-line">Please select an active P2P remote configuration to change P2P sync targets.</p>
+    {/if}
+
+    <P2PServerStatusCard {liveSyncReplicator} {core} />
 
     <div class="peers-section">
         <div class="peers-header">
@@ -226,6 +458,15 @@
                                         {getAcceptanceStatus(peer)}
                                     </span>
                                     <button
+                                        class="emoji-button"
+                                        disabled={replicatingPeerId !== null}
+                                        title={replicatingPeerId === peer.peerId ? 'Replicating...' : 'Replicate now'}
+                                        aria-label={replicatingPeerId === peer.peerId ? 'Replicating' : 'Replicate now'}
+                                        onclick={() => startReplication(peer)}
+                                    >
+                                        {replicatingPeerId === peer.peerId ? '⏳' : '🔄'}
+                                    </button>
+                                    <button
                                         class="action-button"
                                         disabled={decidingPeerId !== null}
                                         onclick={() => revokeDecision(peer)}
@@ -239,9 +480,10 @@
                                         class="emoji-button {isWatching(peer.peerId) ? 'is-watching' : ''}"
                                         title={isWatching(peer.peerId) ? 'Watching this peer \u2014 click to stop' : 'Watch this peer\'s changes'}
                                         aria-label={isWatching(peer.peerId) ? 'Stop watching' : 'Watch peer'}
+                                        disabled={!canEditP2PSettings()}
                                         onclick={() => toggleWatch(peer.peerId)}
                                     >
-                                        {isWatching(peer.peerId) ? '👁' : '👁‍🗨'}
+                                        {isWatching(peer.peerId) ? '🔔' : '🔕'}
                                     </button>
                                 </div>                                <div class="decision-row watch-row">
                                     <span class="decision-label">SYNC</span>
@@ -249,9 +491,10 @@
                                         class="emoji-button {isSyncTarget(peer.name) ? 'is-watching' : ''}"
                                         title={isSyncTarget(peer.name) ? 'Sync target \u2014 click to remove' : 'Set as sync target'}
                                         aria-label={isSyncTarget(peer.name) ? 'Remove sync target' : 'Set sync target'}
+                                        disabled={!canEditP2PSettings()}
                                         onclick={() => toggleSyncTarget(peer)}
                                     >
-                                        {isSyncTarget(peer.name) ? '🔄' : '🔁'}
+                                        {isSyncTarget(peer.name) ? '🔗' : '⛓️‍💥'}
                                     </button>
                                 </div>                            {:else}
                                 <div class="decision-status">
@@ -343,6 +586,37 @@
         align-items: center;
         flex-wrap: nowrap;
         gap: 0.5rem;
+    }
+
+    .pane-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+
+    .remote-picker-wrap {
+        display: inline-flex;
+        gap: 0.3rem;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .remote-picker {
+        max-width: 14rem;
+        min-width: 8rem;
+        height: 1.9rem;
+        border: 1px solid var(--divider-color);
+        border-radius: 0.4rem;
+        background-color: var(--interactive-normal);
+        color: var(--text-normal);
+        padding: 0 0.45rem;
+    }
+
+    .warning-line {
+        margin: -0.2rem 0 0;
+        font-size: 0.82rem;
+        color: var(--text-warning);
     }
 
     .pane-header h2 {
@@ -511,7 +785,7 @@
     }
 
     .accepted-row {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr auto auto;
     }
 
     .decision-label {
