@@ -4,11 +4,14 @@ import { decodeBinary, readString } from "../../../lib/src/string_and_binary/con
 import ObsidianLiveSyncPlugin from "../../../main.ts";
 import {
     type DocumentID,
+    type EntryDoc,
     type FilePathWithPrefix,
     type LoadedEntry,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
+    REMOTE_COUCHDB,
+    type RemoteDBSettings,
 } from "../../../lib/src/common/types.ts";
 import { Logger } from "../../../lib/src/common/logger.ts";
 import { isErrorOfMissingDoc } from "../../../lib/src/pouchdb/utils_couchdb.ts";
@@ -45,6 +48,18 @@ function readDocument(w: LoadedEntry) {
     }
     return getDocData(w.data);
 }
+
+type RemoteHistoryCapableReplicator = {
+    connectRemoteCouchDBWithSetting?: (
+        settings: RemoteDBSettings,
+        isMobile: boolean,
+        performSetup?: boolean,
+        skipInfo?: boolean
+    ) => Promise<string | { db: PouchDB.Database<EntryDoc> }>;
+};
+
+const HISTORY_BACKFILL_BATCH_SIZE = 100;
+
 export class DocumentHistoryModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncBaseCore;
@@ -99,6 +114,7 @@ export class DocumentHistoryModal extends Modal {
         }
         const db = this.core.localDatabase;
         try {
+            await this.backfillRemoteHistory();
             const w = await db.getRaw(this.id, { revs_info: true });
             this.revs_info = w._revs_info?.filter((e) => e?.status == "available") ?? [];
             this.range.max = `${Math.max(this.revs_info.length - 1, 0)}`;
@@ -117,6 +133,80 @@ export class DocumentHistoryModal extends Modal {
             }
         }
     }
+
+    async backfillRemoteHistory(): Promise<void> {
+        if (!this.id) return;
+
+        const settings = this.services.setting.currentSettings();
+        if (settings.remoteType !== REMOTE_COUCHDB || !settings.isConfigured) return;
+
+        const replicator = this.services.replicator.getActiveReplicator() as RemoteHistoryCapableReplicator | undefined;
+        if (!replicator?.connectRemoteCouchDBWithSetting) return;
+
+        try {
+            const localDoc = await this.core.localDatabase.getRaw<EntryDoc>(this.id, {
+                revs_info: true,
+                conflicts: true,
+            });
+            const localAvailable = new Set(
+                (localDoc._revs_info ?? []).filter((e) => e.status == "available").map((e) => e.rev)
+            );
+
+            const connection = await replicator.connectRemoteCouchDBWithSetting(
+                settings,
+                this.services.API.isMobile(),
+                false,
+                true
+            );
+            if (typeof connection === "string") {
+                Logger(`Could not connect remote database for history backfill: ${connection}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+
+            const remoteDoc = await connection.db.get(this.id, { revs_info: true, conflicts: true });
+            const remoteCurrentRev = remoteDoc._rev;
+            if (!remoteCurrentRev || !localAvailable.has(remoteCurrentRev)) {
+                Logger(
+                    `Skipped remote history backfill for ${this.file}; local and remote heads differ.`,
+                    LOG_LEVEL_VERBOSE
+                );
+                return;
+            }
+
+            const remoteAvailableRevs = (remoteDoc._revs_info ?? [])
+                .filter((e) => e.status == "available")
+                .map((e) => e.rev);
+            const missingRevs = remoteAvailableRevs.filter((rev) => !localAvailable.has(rev));
+            if (missingRevs.length == 0) return;
+
+            this.fileInfo.setText(`${this.file} / loading ${missingRevs.length} remote revisions...`);
+            let restored = 0;
+            for (let i = 0; i < missingRevs.length; i += HISTORY_BACKFILL_BATCH_SIZE) {
+                const batch = missingRevs.slice(i, i + HISTORY_BACKFILL_BATCH_SIZE);
+                const fetched = await connection.db.bulkGet({
+                    docs: batch.map((rev) => ({ id: this.id!, rev })),
+                    revs: true,
+                });
+                const docs = fetched.results
+                    .flatMap((result) => result.docs)
+                    .filter((result): result is { ok: EntryDoc & PouchDB.Core.IdMeta & PouchDB.Core.GetMeta } => {
+                        return "ok" in result;
+                    })
+                    .map((result) => result.ok);
+                if (docs.length == 0) continue;
+
+                await this.core.localDatabase.bulkDocsRaw(docs, { new_edits: false });
+                restored += docs.length;
+            }
+            if (restored > 0) {
+                Logger(`Backfilled ${restored} remote history revision(s) for ${this.file}`, LOG_LEVEL_INFO);
+            }
+        } catch (ex) {
+            Logger(`Could not backfill remote history for ${this.file}`, LOG_LEVEL_VERBOSE);
+            Logger(ex, LOG_LEVEL_VERBOSE);
+        }
+    }
+
     async loadRevs(initialRev?: string) {
         if (this.revs_info.length == 0) return;
         if (initialRev) {
