@@ -721,13 +721,11 @@ Offline Changed files: ${processFiles.length}`;
 
                 if (path.endsWith(".json")) {
                     const conflictedRev = conflicts[0];
-                    const conflictedRevNo = Number(conflictedRev.split("-")[0]);
-                    //Search
-                    const revFrom = await this.localDatabase.getRaw<MetaEntry>(id, { revs_info: true });
-                    const commonBase =
-                        revFrom._revs_info
-                            ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
-                            .first()?.rev ?? "";
+                    const commonBase = await this.localDatabase.managers.conflictManager.findCommonAncestorRevById(
+                        id,
+                        doc._rev,
+                        conflictedRev
+                    );
                     const result = await this.localDatabase.managers.conflictManager.mergeObject(
                         doc.path,
                         commonBase,
