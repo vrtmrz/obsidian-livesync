@@ -1,13 +1,13 @@
 <script lang="ts">
     // import { delay } from "octagonal-wheels/promises";
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import InputRow from "@/lib/src/UI/components/InputRow.svelte";
-    import Password from "@/lib/src/UI/components/Password.svelte";
-    import { PouchDB } from "../../../../lib/src/pouchdb/pouchdb-browser";
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import InfoNote from "@lib/UI/components/InfoNote.svelte";
+    import InputRow from "@lib/UI/components/InputRow.svelte";
+    import Password from "@lib/UI/components/Password.svelte";
+    import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
     import {
         DEFAULT_SETTINGS,
         P2P_DEFAULT_SETTINGS,
@@ -17,15 +17,15 @@
         type ObsidianLiveSyncSettings,
         type P2PConnectionInfo,
         type P2PSyncSetting,
-    } from "../../../../lib/src/common/types";
+    } from "@lib/common/types";
 
-    import { TrysteroReplicator } from "../../../../lib/src/replication/trystero/TrysteroReplicator";
-    import type { ReplicatorHostEnv } from "../../../../lib/src/replication/trystero/types";
-    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "../../../../lib/src/common/utils";
+    import { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
+    import type { ReplicatorHostEnv } from "@lib/replication/trystero/types";
+    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "@lib/common/utils";
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../../lib/src/common/types";
-    import ExtraItems from "../../../../lib/src/UI/components/ExtraItems.svelte";
+    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
+    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });

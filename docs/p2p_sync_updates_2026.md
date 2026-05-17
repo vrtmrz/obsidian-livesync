@@ -20,15 +20,21 @@ Once you have saved the settings, return to the **P2P Status Pane** and click th
 ## 3. Real-time Control
 The status pane in the right sidebar provides granular control over your synchronisation:
 
+- **Active P2P Remote (new):** P2P now has its own active remote selection, separate from the normal active remote for database replication. Use the combo box next to the cog icon to choose which P2P remote configuration is active for P2P features.
+- **Create P2P Remote (new):** Use the **+** button to open the P2P setup dialogue and create a dedicated P2P remote configuration. This is recommended when no P2P active remote has been selected yet.
+- **Selection required (new):** If no P2P active remote is selected, the pane asks for selection before P2P target-related changes are saved.
+
 - **Signalling Status:** Shows if you are connected to the relay (🟢 Online).
 - **Live-push (Broadcast):** Toggle "Broadcast changes" to notify other peers whenever you make an edit.
-- **Watch:** Enable "Watch" on specific peers to automatically pull changes when they broadcast. This creates a "LiveSync-like" experience.
-- **Sync (🔄/🔁):** Mark specific peers as **sync targets**. Peers marked here will be included when you run the **"P2P: Sync with targets"** command (see section 5). Click the button next to a peer to toggle it on (🔄, highlighted) or off (🔁). This setting is persisted in your configuration.
+- **Replicate now (🔄):** Start immediate bidirectional replication with a visible peer (Pull, then Push).
+- **Watch (🔔/🔕):** Enable "Watch" on specific peers to automatically pull changes when they broadcast. This creates a "LiveSync-like" experience.
+- **Sync target (🔗/⛓️‍💥):** Mark specific peers as **sync targets**. Peers marked here will be included when you run the **"P2P: Sync with targets"** command (see section 5). Click the button next to a peer to toggle it on (🔗, highlighted) or off (⛓️‍💥). This setting is persisted in your configuration.
 
 ## 4. Replication Dialogue
 If you want to synchronise with a specific peer manually, use the **Replication** command or button. This opens the **Replication Dialogue** listing available devices.
 
 Inside the dialogue, the **Server Status** card at the top confirms you are still connected while performing the sync.
+The status card now shows a stable **Room ID suffix** above **Peer ID**. The Room ID suffix is better for identifying your P2P group, while Peer ID may change between connections.
 
 Two actions are available per peer:
 
