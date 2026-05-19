@@ -29,3 +29,5 @@ cov_profile/**
 
 coverage
 src/apps/cli/dist/*
+_testdata/**
+utils/bench/splitResults.csv
