@@ -9,12 +9,11 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 18th May, 2026
 
 ### Improved
-- Improved an error verbosity on concurrent processing on start-up process.
+- Improved the error verbosity on concurrent processing during the start-up process.
 
 ### Fixed
 
 - Fix an issue about resuming from background on iOS (#888).
-
 
 ## 0.25.64
 
