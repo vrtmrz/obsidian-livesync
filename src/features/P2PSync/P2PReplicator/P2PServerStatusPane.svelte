@@ -16,10 +16,7 @@
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
     import { ConnectionStringParser } from "@lib/common/ConnectionString";
     import type { P2PSyncSetting, RemoteConfiguration } from "@lib/common/models/setting.type";
-    import {
-        activateP2PRemoteConfiguration,
-        createRemoteConfigurationId,
-    } from "@lib/serviceFeatures/remoteConfig";
+    import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
     import { extractP2PRoomSuffix } from "@lib/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
@@ -36,9 +33,7 @@
     let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
     const COMMUNICATION_HOLD_MS = 2500;
-    let syncOnReplicationSetting = $state(
-        core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? ""
-    );
+    let syncOnReplicationSetting = $state(core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "");
     type P2PRemoteOption = {
         id: string;
         name: string;
@@ -51,12 +46,19 @@
     let selectingP2PRemote = $state(false);
 
     function addToList(item: string, list: string): string {
-        const items = list.split(",").map((e) => e.trim()).filter((e) => e);
+        const items = list
+            .split(",")
+            .map((e) => e.trim())
+            .filter((e) => e);
         if (!items.includes(item)) items.push(item);
         return items.join(",");
     }
     function removeFromList(item: string, list: string): string {
-        return list.split(",").map((e) => e.trim()).filter((e) => e && e !== item).join(",");
+        return list
+            .split(",")
+            .map((e) => e.trim())
+            .filter((e) => e && e !== item)
+            .join(",");
     }
 
     function markCommunicating(peerId: string) {
@@ -409,7 +411,12 @@
                         </option>
                     {/each}
                 </select>
-                <button class="icon-button" onclick={() => createAndSelectP2PRemote()} title="Create P2P remote" aria-label="Create P2P remote">
+                <button
+                    class="icon-button"
+                    onclick={() => createAndSelectP2PRemote()}
+                    title="Create P2P remote"
+                    aria-label="Create P2P remote"
+                >
                     +
                 </button>
             </div>
@@ -442,7 +449,8 @@
                     <div class="peer-item">
                         <div class="peer-info">
                             <div class="peer-name">
-                                {peer.name} : <span class="peer-id-mini" title={peer.peerId}>({peer.peerId.slice(0, 8)})</span>
+                                {peer.name} :
+                                <span class="peer-id-mini" title={peer.peerId}>({peer.peerId.slice(0, 8)})</span>
                                 {#if isCommunicating(peer.peerId)}
                                     <span class="comm-icon" title="Communicating" aria-label="Communicating">📡</span>
                                 {/if}
@@ -460,11 +468,11 @@
                                     <button
                                         class="emoji-button"
                                         disabled={replicatingPeerId !== null}
-                                        title={replicatingPeerId === peer.peerId ? 'Replicating...' : 'Replicate now'}
-                                        aria-label={replicatingPeerId === peer.peerId ? 'Replicating' : 'Replicate now'}
+                                        title={replicatingPeerId === peer.peerId ? "Replicating..." : "Replicate now"}
+                                        aria-label={replicatingPeerId === peer.peerId ? "Replicating" : "Replicate now"}
                                         onclick={() => startReplication(peer)}
                                     >
-                                        {replicatingPeerId === peer.peerId ? '⏳' : '🔄'}
+                                        {replicatingPeerId === peer.peerId ? "⏳" : "🔄"}
                                     </button>
                                     <button
                                         class="action-button"
@@ -478,25 +486,31 @@
                                     <span class="decision-label">WATCH</span>
                                     <button
                                         class="emoji-button {isWatching(peer.peerId) ? 'is-watching' : ''}"
-                                        title={isWatching(peer.peerId) ? 'Watching this peer \u2014 click to stop' : 'Watch this peer\'s changes'}
-                                        aria-label={isWatching(peer.peerId) ? 'Stop watching' : 'Watch peer'}
+                                        title={isWatching(peer.peerId)
+                                            ? "Watching this peer \u2014 click to stop"
+                                            : "Watch this peer's changes"}
+                                        aria-label={isWatching(peer.peerId) ? "Stop watching" : "Watch peer"}
                                         disabled={!canEditP2PSettings()}
                                         onclick={() => toggleWatch(peer.peerId)}
                                     >
-                                        {isWatching(peer.peerId) ? '🔔' : '🔕'}
+                                        {isWatching(peer.peerId) ? "🔔" : "🔕"}
                                     </button>
-                                </div>                                <div class="decision-row watch-row">
+                                </div>
+                                <div class="decision-row watch-row">
                                     <span class="decision-label">SYNC</span>
                                     <button
                                         class="emoji-button {isSyncTarget(peer.name) ? 'is-watching' : ''}"
-                                        title={isSyncTarget(peer.name) ? 'Sync target \u2014 click to remove' : 'Set as sync target'}
-                                        aria-label={isSyncTarget(peer.name) ? 'Remove sync target' : 'Set sync target'}
+                                        title={isSyncTarget(peer.name)
+                                            ? "Sync target \u2014 click to remove"
+                                            : "Set as sync target"}
+                                        aria-label={isSyncTarget(peer.name) ? "Remove sync target" : "Set sync target"}
                                         disabled={!canEditP2PSettings()}
                                         onclick={() => toggleSyncTarget(peer)}
                                     >
-                                        {isSyncTarget(peer.name) ? '🔗' : '⛓️‍💥'}
+                                        {isSyncTarget(peer.name) ? "🔗" : "⛓️‍💥"}
                                     </button>
-                                </div>                            {:else}
+                                </div>
+                            {:else}
                                 <div class="decision-status">
                                     <span class="badge status-chip {getAcceptanceStatusClass(peer)}">
                                         {getAcceptanceStatus(peer)}
@@ -571,7 +585,6 @@
         display: flex;
         flex-direction: column;
         gap: 1rem;
-        padding: 0.75rem;
     }
 
     .peers-section {
@@ -584,7 +597,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 0.5rem;
     }
 
@@ -603,8 +616,9 @@
     }
 
     .remote-picker {
-        max-width: 14rem;
-        min-width: 8rem;
+        max-width: 10rem;
+        min-width: 1em;
+        flex-shrink: 1;
         height: 1.9rem;
         border: 1px solid var(--divider-color);
         border-radius: 0.4rem;
@@ -648,6 +662,7 @@
 
     .peers-header {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         gap: 0.5rem;
@@ -873,5 +888,4 @@
         font-size: 0.9rem;
         padding: 1rem;
     }
-
 </style>
