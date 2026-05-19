@@ -8,8 +8,15 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 19th May, 2026
 
 ### Fixed
+- Fix an issue about resuming from background on iOS (#888).
 - Now Chunk Splitter: `V3: Fine Deduplication` is working fine again (#866).
   - It has some drawbacks, such as fewer chunks are generated. However, it makes less transfer and storage when the files are modified but not completely changed.
+
+### Improved
+- Improved the error verbosity on concurrent processing during the start-up process.
+- Now the `report` includes recent logs (of verbosity `verbose` even settings is not set to `verbose`).
+- Updating logs is now debounced to avoid excessive updates during rapid log generation.
+- Added a `Generate full report for opening the issue with debug info` command to the command palette, which generates a report without opening the settings dialogue.
 
 
 ## 0.25.64

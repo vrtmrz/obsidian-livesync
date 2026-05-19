@@ -121,7 +121,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
 
-        const isHidden = document.hidden;
+        const isHidden = activeWindow.document.hidden;
         if (this.isLastHidden === isHidden) {
             return;
         }
@@ -134,7 +134,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
-            if (!this.hasFocus) return;
+            // Do not block resume by focus state here; visibility recovery should be enough.
             await this.services.appLifecycle.onResuming();
             await this.services.appLifecycle.onResumed();
         }
