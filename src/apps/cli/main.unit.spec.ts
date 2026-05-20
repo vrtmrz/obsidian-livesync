@@ -86,6 +86,56 @@ describe("CLI parseArgs", () => {
         expect(parsed.commandArgs).toEqual([]);
     });
 
+    it("parses remote-add command", () => {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            "./databasePath",
+            "remote-add",
+            "my-remote",
+            "sls+https://user:pass@example.com/db",
+        ];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-add");
+        expect(parsed.commandArgs).toEqual(["my-remote", "sls+https://user:pass@example.com/db"]);
+    });
+
+    it("parses remote-activate command", () => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "remote-activate", "remote-abc"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-activate");
+        expect(parsed.commandArgs).toEqual(["remote-abc"]);
+    });
+
+    it("parses remote-export command", () => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "remote-export", "remote-abc"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-export");
+        expect(parsed.commandArgs).toEqual(["remote-abc"]);
+    });
+
+    it("parses remote-set command", () => {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            "./databasePath",
+            "remote-set",
+            "remote-abc",
+            "sls+p2p://room-1?passphrase=abc",
+        ];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-set");
+        expect(parsed.commandArgs).toEqual(["remote-abc", "sls+p2p://room-1?passphrase=abc"]);
+    });
+
     it("parses --interval flag with valid integer", () => {
         process.argv = ["node", "livesync-cli", "./vault", "--interval", "30"];
         const parsed = parseArgs();

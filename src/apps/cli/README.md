@@ -74,6 +74,12 @@ livesync-cli [database-path] [command] [args...]
 - `pull <src> <dst>`: Pull a file `<src>` from the database into local file `<dst>`.
 - `cat <src>`: Read a file from the database and write to stdout.
 - `put <dst>`: Read from stdin and write to the database path `<dst>`.
+- `remote-add <name> <connstr>`: Add a remote configuration from a connection string.
+- `remote-rm <remote-id>`: Remove a remote configuration by ID.
+- `remote-ls`: List remote configurations (`id`, `name`, `active/inactive`, redacted URI).
+- `remote-export <remote-id>`: Export the stored connection string by remote ID.
+- `remote-set <remote-id> <connstr>`: Replace the stored connection string by remote ID.
+- `remote-activate <remote-id>`: Activate a remote configuration by ID.
 - `init-settings [file]`: Create a default settings file.
 
 ### Examples
@@ -252,6 +258,14 @@ livesync-cli /path/to/your-local-database --settings /path/to/settings.json rm /
 
 # Resolve conflict by keeping a specific revision
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
+
+# Add/list/activate/remove remote configurations
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-add main "sls+https://user:pass@example.com/db"
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-ls
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-export remote-abc123
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-set remote-abc123 "sls+p2p://room-abc?passphrase=secret"
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-activate remote-abc123
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-rm remote-abc123
 ```
 
 ### Configuration
