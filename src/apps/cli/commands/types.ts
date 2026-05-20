@@ -20,6 +20,12 @@ export type CLICommand =
     | "rm"
     | "resolve"
     | "mirror"
+    | "remote-add"
+    | "remote-rm"
+    | "remote-ls"
+    | "remote-export"
+    | "remote-set"
+    | "remote-activate"
     | "init-settings";
 
 export interface CLIOptions {
@@ -67,5 +73,11 @@ export const VALID_COMMANDS = new Set([
     "rm",
     "resolve",
     "mirror",
+    "remote-add",
+    "remote-rm",
+    "remote-ls",
+    "remote-export",
+    "remote-set",
+    "remote-activate",
     "init-settings",
 ] as const);

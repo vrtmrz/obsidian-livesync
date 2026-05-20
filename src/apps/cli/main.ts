@@ -62,6 +62,16 @@ Commands:
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
     mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
+    remote-add <name> <connstr>
+                            Add a remote configuration from a connection string
+    remote-rm <remote-id>    Remove a remote configuration by ID
+    remote-ls                List stored remote configurations
+    remote-export <remote-id>
+                            Export a remote connection string by ID
+    remote-set <remote-id> <connstr>
+                            Replace a stored remote connection string by ID
+    remote-activate <remote-id>
+                            Activate a stored remote configuration by ID
 
 Options:
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
@@ -84,6 +94,12 @@ Examples:
     livesync-cli ./my-database info notes/hello.md
     livesync-cli ./my-database rm notes/hello.md
     livesync-cli ./my-database resolve notes/hello.md 3-abcdef
+    livesync-cli ./my-database remote-add my-remote "sls+https://user:pass@example.com/db"
+    livesync-cli ./my-database remote-ls
+    livesync-cli ./my-database remote-export remote-abc123
+    livesync-cli ./my-database remote-set remote-abc123 "sls+s3://ak:sk@example.com/?endpoint=https%3A%2F%2Fs3.example.com&bucket=mybucket"
+    livesync-cli ./my-database remote-activate remote-abc123
+    livesync-cli ./my-database remote-rm remote-abc123
     livesync-cli init-settings ./data.json
     livesync-cli ./my-database --verbose
         `);
@@ -229,6 +245,9 @@ export async function main() {
         options.command === "cat" ||
         options.command === "cat-rev" ||
         options.command === "ls" ||
+        options.command === "remote-add" ||
+        options.command === "remote-ls" ||
+        options.command === "remote-export" ||
         options.command === "p2p-peers" ||
         options.command === "info" ||
         options.command === "rm" ||

@@ -3,12 +3,18 @@ import * as path from "path";
 import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
 import { configURIBase } from "@lib/common/models/shared.const";
 import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { ConnectionStringParser } from "@lib/common/ConnectionString";
+import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+
+function redactConnectionString(uri: string): string {
+    return uri.replace(/\/\/([^@/]+)@/u, "//***@");
+}
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
     const { databasePath, core, settingsPath } = context;
@@ -467,6 +473,207 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         const log = (msg: unknown) => console.error(`[Mirror] ${msg}`);
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
         return await performFullScan(core as any, log, errorManager, false, true);
+    }
+
+    if (options.command === "remote-add") {
+        if (options.commandArgs.length < 2) {
+            throw new Error("remote-add requires two arguments: <name> <connstr>");
+        }
+        const name = options.commandArgs[0].trim();
+        const connectionString = options.commandArgs[1].trim();
+        if (!name) {
+            throw new Error("remote-add requires a non-empty name");
+        }
+        if (!connectionString) {
+            throw new Error("remote-add requires a non-empty connection string");
+        }
+
+        const parsed = ConnectionStringParser.parse(connectionString);
+        const canonicalUri = ConnectionStringParser.serialize(parsed);
+        const id = createRemoteConfigurationId();
+        let activated = false;
+
+        await core.services.setting.updateSettings((currentSettings) => {
+            currentSettings.remoteConfigurations ||= {};
+            currentSettings.remoteConfigurations[id] = {
+                id,
+                name,
+                uri: canonicalUri,
+                isEncrypted: false,
+            };
+            if (!currentSettings.activeConfigurationId) {
+                currentSettings.activeConfigurationId = id;
+                const applied = activateRemoteConfiguration(currentSettings, id);
+                activated = applied !== false;
+            }
+            return currentSettings;
+        }, true);
+
+        if (activated) {
+            await core.services.control.applySettings();
+        }
+
+        process.stdout.write(`${id}\t${name}\t${redactConnectionString(canonicalUri)}\n`);
+        return true;
+    }
+
+    if (options.command === "remote-rm") {
+        if (options.commandArgs.length < 1) {
+            throw new Error("remote-rm requires one argument: <remote-id>");
+        }
+        const id = options.commandArgs[0].trim();
+        if (!id) {
+            throw new Error("remote-rm requires a non-empty remote-id");
+        }
+
+        const current = core.services.setting.currentSettings();
+        if (!current.remoteConfigurations?.[id]) {
+            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            return false;
+        }
+
+        let switchedActive = false;
+        await core.services.setting.updateSettings((currentSettings) => {
+            const configs = currentSettings.remoteConfigurations || {};
+            delete configs[id];
+            currentSettings.remoteConfigurations = configs;
+
+            if (currentSettings.activeConfigurationId === id) {
+                const nextActiveId = Object.keys(configs)[0] || "";
+                currentSettings.activeConfigurationId = nextActiveId;
+                switchedActive = nextActiveId !== "";
+                if (nextActiveId !== "") {
+                    activateRemoteConfiguration(currentSettings, nextActiveId);
+                }
+            }
+
+            if (currentSettings.P2P_ActiveRemoteConfigurationId === id) {
+                currentSettings.P2P_ActiveRemoteConfigurationId = "";
+            }
+
+            return currentSettings;
+        }, true);
+
+        if (switchedActive) {
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] remote-rm ${id}`);
+        return true;
+    }
+
+    if (options.command === "remote-ls") {
+        const settings = core.services.setting.currentSettings();
+        const configs = Object.values(settings.remoteConfigurations || {});
+        configs.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (configs.length === 0) {
+            process.stderr.write("[Info] No remote configurations found.\n");
+            return true;
+        }
+
+        const lines = configs.map((config) => {
+            const status = config.id === settings.activeConfigurationId ? "active" : "inactive";
+            return `${config.id}\t${config.name}\t${status}\t${redactConnectionString(config.uri)}`;
+        });
+        process.stdout.write(lines.join("\n") + "\n");
+        return true;
+    }
+
+    if (options.command === "remote-export") {
+        if (options.commandArgs.length < 1) {
+            throw new Error("remote-export requires one argument: <remote-id>");
+        }
+        const id = options.commandArgs[0].trim();
+        if (!id) {
+            throw new Error("remote-export requires a non-empty remote-id");
+        }
+
+        const config = core.services.setting.currentSettings().remoteConfigurations?.[id];
+        if (!config) {
+            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            return false;
+        }
+
+        process.stdout.write(`${config.uri}\n`);
+        return true;
+    }
+
+    if (options.command === "remote-set") {
+        if (options.commandArgs.length < 2) {
+            throw new Error("remote-set requires two arguments: <remote-id> <connstr>");
+        }
+        const id = options.commandArgs[0].trim();
+        const connectionString = options.commandArgs[1].trim();
+        if (!id) {
+            throw new Error("remote-set requires a non-empty remote-id");
+        }
+        if (!connectionString) {
+            throw new Error("remote-set requires a non-empty connection string");
+        }
+
+        const parsed = ConnectionStringParser.parse(connectionString);
+        const canonicalUri = ConnectionStringParser.serialize(parsed);
+        let switchedActive = false;
+
+        await core.services.setting.updateSettings((currentSettings) => {
+            const config = currentSettings.remoteConfigurations?.[id];
+            if (!config) {
+                return currentSettings;
+            }
+            config.uri = canonicalUri;
+
+            if (currentSettings.activeConfigurationId === id) {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                switchedActive = activated !== false;
+                if (activated) {
+                    return activated;
+                }
+            }
+            return currentSettings;
+        }, true);
+
+        const updated = core.services.setting.currentSettings().remoteConfigurations?.[id];
+        if (!updated) {
+            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            return false;
+        }
+
+        if (switchedActive) {
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] remote-set ${id}`);
+        return true;
+    }
+
+    if (options.command === "remote-activate") {
+        if (options.commandArgs.length < 1) {
+            throw new Error("remote-activate requires one argument: <remote-id>");
+        }
+        const id = options.commandArgs[0].trim();
+        if (!id) {
+            throw new Error("remote-activate requires a non-empty remote-id");
+        }
+
+        let switched = false;
+        await core.services.setting.updateSettings((currentSettings) => {
+            const activated = activateRemoteConfiguration(currentSettings, id);
+            if (activated) {
+                switched = true;
+                return activated;
+            }
+            return currentSettings;
+        }, true);
+
+        if (!switched) {
+            process.stderr.write(`[Info] Failed to activate remote configuration: ${id}\n`);
+            return false;
+        }
+
+        await core.services.control.applySettings();
+        console.error(`[Command] remote-activate ${id}`);
+        return true;
     }
 
     throw new Error(`Unsupported command: ${options.command}`);
