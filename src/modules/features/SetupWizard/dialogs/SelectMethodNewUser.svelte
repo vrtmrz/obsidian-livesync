@@ -48,6 +48,8 @@
             bind:value={userType}
         >
             This is an advanced option for users who do not have a URI or who wish to configure detailed settings.
+            You can also select this option if you intend to use <strong>P2P (Peer-to-Peer) synchronisation</strong>
+            instead of a CouchDB/S3 server — P2P requires no server setup at all.
         </Option>
     </Options>
 </Instruction>

@@ -3,6 +3,69 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.65
+
+19th May, 2026
+
+### Fixed
+- Fix an issue about resuming from background on iOS (#888).
+- Now Chunk Splitter: `V3: Fine Deduplication` is working fine again (#866).
+  - It has some drawbacks, such as fewer chunks are generated. However, it makes less transfer and storage when the files are modified but not completely changed.
+- Unsynchronised local changes (which means changes that have not been sent) are now correctly preserved as a conflict (Thank you so much for @SeleiXi!).
+- Avoid creating a new revision when the current and conflicted revisions have identical content (Thank you so much for @daichi-629).
+
+### Improved
+- Improved the error verbosity on concurrent processing during the start-up process.
+- Now the `report` includes recent logs (of verbosity `verbose` even settings is not set to `verbose`).
+- Updating logs is now debounced to avoid excessive updates during rapid log generation.
+- Added a `Generate full report for opening the issue with debug info` command to the command palette, which generates a report without opening the settings dialogue.
+
+
+## 0.25.64
+
+17th May, 2026
+
+### P2P Status Pane
+
+- Added active P2P remote selector (combo box) and `+` action to create/select a P2P remote from the P2P setup dialogue.
+- Added per-peer immediate replication action on accepted peers.
+- Updated status control icons for clarity:
+  - Replicate now: `🔄` (`⏳` while running)
+  - Watch: `🔔` / `🔕`
+  - Sync target: `🔗` / `⛓️‍💥`
+- Added warning state when no active P2P remote is selected.
+
+### P2P Status Card
+
+- Added stable Room ID suffix display and placed it above Peer ID for better identification.
+
+### Non behavioural internal changes
+
+#### P2P
+
+- Added `P2P_ActiveRemoteConfigurationId` as a dedicated active remote selection for P2P features, separate from the normal active remote.
+- Added activation logic for P2P dedicated remote configuration that reflects P2P settings while keeping `remoteType` unchanged.
+- Added migration support to carry over P2P active remote selection when appropriate.
+- Added shared Room ID utility functions and applied them across P2P setup and P2P panes.
+
+#### Tests
+
+- Added/updated unit test coverage around settings load behaviour for P2P active remote application.
+
+## 0.25.63
+
+17th May, 2026
+
+### Fixed
+- The issue which cannot synchronise in Only-P2P mode has been fixed.
+- Fixed an issue where "Failed to connect to the remote server" was shown during the redFlag rebuild flow when P2P was the primary remote type. Remote configuration fetch is now skipped for P2P.
+
+### P2P Replication UI Improvements
+- Brand-new P2P Server Status pane has been added to provide real-time visibility into your connection status and peer network.
+  - For detailed instructions on using the new P2P features, please refer to the updated [User Guide: Peer-to-Peer Synchronisation (2026 Edition)](./docs/p2p_sync_updates_2026.md).
+- Now `Replicate` button or ribbon icon opens a redesigned interactive replication dialogue that performs smart bidirectional sync with a single click.
+- The vault rebuild flow (`replicateAllFromServer`) now opens the redesigned P2P Replication modal instead of a plain text selection dialogue, providing a consistent UI experience.
+
 ## 0.25.62
 
 14th May, 2026
@@ -163,171 +226,6 @@ This P2P synchronisation is not compatible with previous versions in terms of co
 - Pop-ups are now shown.
 - Add coverage for the test.
 - Pop-ups are now shown in the web app as well.
-
-## 0.25.53
-
-17th March, 2026
-
-I did wonder whether I should have released a minor version update, but when I actually tested it, compatibility seemed to be intact, so I didn’t. Hmm.
-
-### Fixed
-
-#### P2P Synchronisation
-
-- Fixed flaky timing issues in P2P synchronisation.
-- No longer unexpected `Unhandled Rejections` during P2P operations (waiting for acceptance).
-
-#### Journal Sync
-
-- Fixed an issue where some conflicts cannot be resolved in Journal Sync.
-- Many minor fixes have been made for better stability and reliability.
-
-### Tests
-
-- Rewrite P2P end-to-end tests to use the CLI as a host.
-
-### CLI
-
-We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
-- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
-- P2P sync and Object Storage are also supported in the CLI.
-  - Yes, we have finally managed to 'get one file'.
-  - Also, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can do it.
-
-- Now binary files are also supported in the CLI.
-
-### Refactored or internal changes
-
-- ServiceFileAccessBase now correctly handles the reading of binary files.
-- HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
-- Non-worker version of bgWorker now correctly handles some functions.
-- Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
-- Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
-- Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
-- Offline change scanner and the local database preparation have been separated.
-- Set default priority for processFileEvent and processSynchroniseResult for the place to add hooks.
-- ControlService now provides the readiness for processing operations.
-- DatabaseService is now able to modify database opening options on derived classes.
-- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
-- Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
-- Journal Replicator now yields true after the replication is done.
-
-### R&D
-
-- Browser-version of Self-hosted LiveSync is now in development. This is not intended for public use now, but I will eventually make it available for testing.
-- We can see the code in `src/apps/webapp` for the browser version.
-
-## 0.25.52
-
-9th March, 2026
-
-Excuses: Too much `I`.
-Whilst I had a fever, I could not figure it out at all, but once I felt better, I spotted the problem in about thirty seconds. I apologise for causing you concern. I am grateful for your patience.
-I would like to devise a mechanism for running simple test scenarios. Now that we have got the Obsidian CLI up and running, it seems the perfect opportunity.
-
-To improve the bus factor, we really need to organise the source code more thoroughly. Your cooperation and contributions would be greatly appreciated.
-
-### Fixed
-
-- No longer unexpected deletion-propagation occurs when the parent directory is not empty (#813).
-
-### Revert reversions
-
-- Reverted the reversion of ModuleCheckRemoteSize. Now it is back to the service feature.
-
-## 0.25.51
-
-7th March, 2026
-
-### Reverted
-
-- Reverted to ModuleRedFlag and ModuleInitializerFile to the previous version because of some unexpected issues. (#813)
-    - I will re-implement them in the future with better design and tests.
-
-## 0.25.50
-
-3rd March, 2026
-
-Note: 0.25.49 has been skipped because of too verbose logging (credentials are logged in verbose level, but I realised that could lead to unexpected exposure on issue reporting). Please bump to 0.25.50 to get the fix if you are on 0.25.49. (No expected behaviour changes except the logging).
-
-### Fixed
-
-- No longer deleted files are not clickable in the Global History pane.
-- Diff view now uses more specific classes (#803).
-- A message of configuration mismatching slightly added for better understanding.
-    - Now it says `When replication is initiated manually via the command palette or ribbon, a dialogue box will open to address this.` to make it clear that the user can fix the issue by themselves.
-
-### Refactored
-
-- `ModuleRedFlag` has been refactored to `serviceFeatures/redFlag` and also tested.
-- `ModuleInitializerFile` has been refactored to `lib/serviceFeatures/offlineScanner` and also tested.
-
-## 0.25.48
-
-2nd March, 2026
-
-No behavioural changes except unidentified faults. Please report if you find any unexpected behaviour after this update.
-
-### Refactored
-
-- Many storage-related functions have been refactored for better maintainability and testability.
-    - Now all platform-specific logics are supplied as adapters, and the core logic has become platform-agnostic.
-    - Quite a number of tests have been added for the core logic, and the platform-specific logics are also tested with mocked adapters.
-
-## 0.25.47
-
-27th February, 2026
-
-Phew, the financial year is still not over yet, but I have got some time to work on the plug-in again!
-
-### Fixed and refactored
-
-- Fixed the inexplicable behaviour when retrieving chunks from the network.
-    - The chunk manager has been layered to be responsible for its own areas and duties. e.g., `DatabaseWriteLayer`, `DatabaseReadLayer`, `NetworkLayer`, `CacheLayer`, and `ArrivalWaitLayer`.
-        - All layers have been tested now!
-        - `LayeredChunkManager` has been implemented to manage these layers. Also tested.
-    - `EntryManager` has been mostly rewritten and also tested.
-
-- Now we can configure `Never warn` for remote storage size notification again.
-
-### Tests
-
-- The following test has been added:
-    - `ConflictManager`.
-
-## 0.25.46
-
-26th February, 2026
-
-### Fixed
-
-- Unexpected errors no longer occurred when the plug-in was unloaded.
-- Hidden File Sync now respects selectors.
-- Registering protocol-handlers now works safely without causing unexpected errors.
-
-### Refactored
-
-- `ModuleCheckRemoteSize` has been ported to a serviceFeature, and tests have also been added.
-- Some unnecessary things have been removed.
-- LiveSyncManagers has now explicit dependencies.
-- LiveSyncLocalDB is now responsible for LiveSyncManagers, not accepting the managers as dependencies.
-    - This is to avoid circular dependencies and clarify the ownership of the managers.
-- ChangeManager has been refactored. This had a potential issue, so something had been fixed, possibly.
-- Some tests have been ported from Deno's test runner to Vitest to accumulate coverage.
-
-## 0.25.45
-
-25th February, 2026
-
-As a result of recent refactoring, we are able to write tests more easily now!
-
-### Refactored
-
-- `ModuleTargetFilter`, which was responsible for checking if a file is a target file, has been ported to a serviceFeature.
-    - And also tests have been added. The middleware-style-power.
-- `ModuleObsidianAPI` has been removed and implemented in `APIService` and `RemoteService`.
-- Now `APIService` is responsible for the network-online-status, not `databaseService.managers.networkManager`.
-
 
 Full notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
