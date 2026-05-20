@@ -128,7 +128,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     }
 
     async _checkAndAskResolvingMismatchedTweaks(preferred: TweakValues): Promise<[TweakValues | boolean, boolean]> {
-        const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings) as TweakValues;
+        const mine = extractObject(TweakValuesTemplate, this.settings) as TweakValues;
         const mismatchedKeys = this._collectMismatchedTweakKeys(mine, preferred);
         const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(mine, preferred, mismatchedKeys);
         if (autoAcceptSide === "REMOTE") {
