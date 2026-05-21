@@ -10,7 +10,18 @@ on:
     paths:
       - 'src/**'
       - 'test/**'
-      - 'lib/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vitest.config*.ts'
+      - 'esbuild.config.mjs'
+      - 'eslint.config.mjs'
+      - '.github/workflows/unit-ci.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
