@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.25.67",
+    "version": "0.25.68",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -130,7 +130,7 @@
         "@smithy/middleware-apply-body-checksum": "^4.3.9",
         "@smithy/protocol-http": "^5.3.9",
         "@smithy/querystring-builder": "^4.2.9",
-        "@trystero-p2p/nostr": "^0.23.0",
+        "@trystero-p2p/nostr": "^0.24.0",
         "chokidar": "^4.0.0",
         "commander": "^14.0.3",
         "obsidian": "^1.12.3",
@@ -143,7 +143,7 @@
         "octagonal-wheels": "^0.1.45",
         "pouchdb-adapter-leveldb": "^9.0.0",
         "qrcode-generator": "^1.4.4",
-        "werift": "^0.22.9",
+        "werift": "^0.23.0",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     }
 }
