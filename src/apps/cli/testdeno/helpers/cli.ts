@@ -123,7 +123,9 @@ async function runNodeCommand(args: string[], stdinData?: Uint8Array): Promise<C
     }).spawn();
 
     if (TEE_ENABLED) {
-        Deno.stdout.writeSync(new TextEncoder().encode(`[CLI tee pid=${child.pid}] process: ${formatTeeCommand(cliArgs)}\n`));
+        Deno.stdout.writeSync(
+            new TextEncoder().encode(`[CLI tee pid=${child.pid}] process: ${formatTeeCommand(cliArgs)}\n`)
+        );
     }
 
     const stdoutPromise = collectStream(

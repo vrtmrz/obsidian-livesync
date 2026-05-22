@@ -14,6 +14,10 @@ type DockerInvoker = {
 
 let dockerInvokerPromise: Promise<DockerInvoker> | null = null;
 const DOCKER_TEE = Deno.env.get("LIVESYNC_DOCKER_TEE") === "1" || Deno.env.get("LIVESYNC_TEST_TEE") === "1";
+const trackedContainers = new Set<string>();
+const CLEANUP_SIGNALS: Deno.Signal[] = ["SIGINT", "SIGTERM"];
+let signalCleanupHandlersInstalled = false;
+let signalCleanupInProgress = false;
 
 // ---------------------------------------------------------------------------
 // Low-level docker wrapper
@@ -183,6 +187,55 @@ async function dockerOrFail(...args: string[]): Promise<string> {
     return r.stdout;
 }
 
+async function stopAndRemoveContainer(container: string): Promise<void> {
+    await docker("stop", container).catch(() => {});
+    await docker("rm", container).catch(() => {});
+}
+
+async function cleanupTrackedContainers(reason: string): Promise<void> {
+    const names = [...trackedContainers];
+    if (names.length === 0) return;
+
+    console.warn(`[WARN] cleaning up tracked containers on ${reason}: ${names.join(", ")}`);
+    for (const container of names.reverse()) {
+        await stopAndRemoveContainer(container);
+        trackedContainers.delete(container);
+    }
+}
+
+async function handleSignalCleanup(signal: Deno.Signal): Promise<void> {
+    if (signalCleanupInProgress) return;
+    signalCleanupInProgress = true;
+    try {
+        await cleanupTrackedContainers(`signal ${signal}`);
+    } finally {
+        Deno.exit(signal === "SIGINT" ? 130 : 143);
+    }
+}
+
+function ensureSignalCleanupHandlers(): void {
+    if (signalCleanupHandlersInstalled) return;
+    signalCleanupHandlersInstalled = true;
+    for (const signal of CLEANUP_SIGNALS) {
+        try {
+            Deno.addSignalListener(signal, () => {
+                void handleSignalCleanup(signal);
+            });
+        } catch {
+            // Unsupported signal on this platform.
+        }
+    }
+}
+
+function trackContainer(container: string): void {
+    ensureSignalCleanupHandlers();
+    trackedContainers.add(container);
+}
+
+function untrackContainer(container: string): void {
+    trackedContainers.delete(container);
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -259,8 +312,8 @@ const MINIO_IMAGE = "minio/minio";
 const MINIO_MC_IMAGE = "minio/mc";
 
 export async function stopCouchdb(): Promise<void> {
-    await docker("stop", COUCHDB_CONTAINER);
-    await docker("rm", COUCHDB_CONTAINER);
+    await stopAndRemoveContainer(COUCHDB_CONTAINER);
+    untrackContainer(COUCHDB_CONTAINER);
 }
 
 /**
@@ -289,6 +342,7 @@ export async function startCouchdb(couchdbUri: string, user: string, password: s
         "COUCHDB_SINGLE_NODE=y",
         COUCHDB_IMAGE
     );
+    trackContainer(COUCHDB_CONTAINER);
 
     console.log("[INFO] initialising CouchDB");
     await initCouchdb(couchdbUri, user, password);
@@ -389,8 +443,8 @@ function shQuote(value: string): string {
 }
 
 export async function stopMinio(): Promise<void> {
-    await docker("stop", MINIO_CONTAINER);
-    await docker("rm", MINIO_CONTAINER);
+    await stopAndRemoveContainer(MINIO_CONTAINER);
+    untrackContainer(MINIO_CONTAINER);
 }
 
 async function initMinioBucket(
@@ -470,6 +524,7 @@ export async function startMinio(
         "--console-address",
         ":9001"
     );
+    trackContainer(MINIO_CONTAINER);
 
     console.log(`[INFO] initialising MinIO test bucket: ${bucket}`);
     let initialised = false;
@@ -517,8 +572,8 @@ EOF
 exec /app/strfry --config /tmp/strfry.conf relay`;
 
 export async function stopP2pRelay(): Promise<void> {
-    await docker("stop", P2P_RELAY_CONTAINER);
-    await docker("rm", P2P_RELAY_CONTAINER);
+    await stopAndRemoveContainer(P2P_RELAY_CONTAINER);
+    untrackContainer(P2P_RELAY_CONTAINER);
 }
 
 /**
@@ -547,6 +602,7 @@ export async function startP2pRelay(): Promise<void> {
         "-lc",
         STRFRY_BOOTSTRAP_SH
     );
+    trackContainer(P2P_RELAY_CONTAINER);
 }
 
 export function isLocalP2pRelay(relayUrl: string): boolean {
