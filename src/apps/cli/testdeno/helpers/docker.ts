@@ -18,6 +18,7 @@ const trackedContainers = new Set<string>();
 const CLEANUP_SIGNALS: Deno.Signal[] = ["SIGINT", "SIGTERM"];
 let signalCleanupHandlersInstalled = false;
 let signalCleanupInProgress = false;
+const signalCleanupHandlers = new Map<Deno.Signal, () => void>();
 
 // ---------------------------------------------------------------------------
 // Low-level docker wrapper
@@ -217,14 +218,29 @@ function ensureSignalCleanupHandlers(): void {
     if (signalCleanupHandlersInstalled) return;
     signalCleanupHandlersInstalled = true;
     for (const signal of CLEANUP_SIGNALS) {
+        const listener = () => {
+            void handleSignalCleanup(signal);
+        };
         try {
-            Deno.addSignalListener(signal, () => {
-                void handleSignalCleanup(signal);
-            });
+            Deno.addSignalListener(signal, listener);
+            signalCleanupHandlers.set(signal, listener);
         } catch {
             // Unsupported signal on this platform.
         }
     }
+}
+
+function removeSignalCleanupHandlers(): void {
+    if (!signalCleanupHandlersInstalled) return;
+    for (const [signal, listener] of signalCleanupHandlers) {
+        try {
+            Deno.removeSignalListener(signal, listener);
+        } catch {
+            // Ignore if already removed or unsupported.
+        }
+    }
+    signalCleanupHandlers.clear();
+    signalCleanupHandlersInstalled = false;
 }
 
 function trackContainer(container: string): void {
@@ -234,6 +250,9 @@ function trackContainer(container: string): void {
 
 function untrackContainer(container: string): void {
     trackedContainers.delete(container);
+    if (trackedContainers.size === 0) {
+        removeSignalCleanupHandlers();
+    }
 }
 
 function sleep(ms: number): Promise<void> {
