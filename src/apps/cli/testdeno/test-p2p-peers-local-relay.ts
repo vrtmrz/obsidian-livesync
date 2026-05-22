@@ -9,6 +9,9 @@ Deno.test("p2p-peers: discovers host through local relay", async () => {
     const roomId = Deno.env.get("ROOM_ID") ?? `room-${Date.now()}`;
     const passphrase = Deno.env.get("PASSPHRASE") ?? "test";
     const timeoutSeconds = Number(Deno.env.get("TIMEOUT_SECONDS") ?? "8");
+    const nonce = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    const hostPeerName = Deno.env.get("HOST_PEER_NAME") ?? `p2p-host-${nonce}`;
+    const clientPeerName = Deno.env.get("CLIENT_PEER_NAME") ?? `p2p-client-${nonce}`;
 
     await using workDir = await TempDir.create("livesync-cli-p2p-peers-local-relay");
     const hostVault = workDir.join("vault-host");
@@ -24,15 +27,16 @@ Deno.test("p2p-peers: discovers host through local relay", async () => {
         await initSettingsFile(clientSettings);
         await applyP2pSettings(hostSettings, roomId, passphrase, "self-hosted-livesync-cli-tests", relay);
         await applyP2pSettings(clientSettings, roomId, passphrase, "self-hosted-livesync-cli-tests", relay);
-        await applyP2pTestTweaks(hostSettings, "p2p-host", passphrase);
-        await applyP2pTestTweaks(clientSettings, "p2p-client", passphrase);
+        await applyP2pTestTweaks(hostSettings, hostPeerName, passphrase);
+        await applyP2pTestTweaks(clientSettings, clientPeerName, passphrase);
 
         const host = startCliInBackground(hostVault, "--settings", hostSettings, "p2p-host");
         try {
             await host.waitUntilContains("P2P host is running", 20000);
-            const peer = await discoverPeer(clientVault, clientSettings, timeoutSeconds);
+            const peer = await discoverPeer(clientVault, clientSettings, timeoutSeconds, hostPeerName);
             assert(peer.id.length > 0);
             assert(peer.name.length > 0);
+            assert(peer.name === hostPeerName, `expected peer '${hostPeerName}', got '${peer.name}'`);
         } finally {
             await host.stop();
         }
