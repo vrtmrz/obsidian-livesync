@@ -53,11 +53,12 @@ The hatch report (below) includes version information. If you cannot provide the
 
 - Self-hosted LiveSync version: <!-- e.g. 0.23.0 — find it in Obsidian Settings → Community Plugins -->
 
-### Report from LiveSync
-Open the `Hatch` pane in LiveSync settings and press `Make report`. Paste here or upload to [Gist](https://gist.github.com/) and share the link.
+### Report and Logs from LiveSync
+Perform a `Generate full report for opening the issue with debug info` command and provide the generated report. This contains detailed information and recent 1000 log lines, which is very helpful for debugging. **PLEASE AMEND THE REPORT TO REMOVE ANY SENSITIVE INFORMATION BEFORE PASTING.**
+If too large to paste here, upload to [Gist](https://gist.github.com/) and share the link.
 
 <details>
-<summary>Report from hatch (primary)</summary>
+<summary>Report and Logs (primary)</summary>
 
 ```
 <!-- paste here or link to Gist -->
@@ -65,29 +66,7 @@ Open the `Hatch` pane in LiveSync settings and press `Make report`. Paste here o
 </details>
 
 <details>
-<summary>Report from hatch (if applicable)</summary>
-
-```
-<!-- paste here or link to Gist -->
-```
-</details>
-
-
-### Plug-in log
-Enable `Verbose Log` in General Settings first, then reproduce the issue and copy the log (tap the document box icon in the ribbon).
-Paste here or upload to [Gist](https://gist.github.com/) and share the link.
-
-<details>
-<summary>Plug-in log (primary)</summary>
-
-```
-<!-- paste here or link to Gist -->
-```
-</details>
-
-
-<details>
-<summary>Plug-in log (if applicable)</summary>
+<summary>Report and Logs (if applicable)</summary>
 
 ```
 <!-- paste here or link to Gist -->

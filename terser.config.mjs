@@ -34,11 +34,11 @@ const terserOption = {
         inline: false,
         join_vars: true,
         loops: true,
-        passes: 4,
+        passes: 1,
         reduce_vars: true,
         reduce_funcs: false,
         arrows: true,
-        collapse_vars: true,
+        collapse_vars: false,
         comparisons: true,
         //@ts-ignore
         lhs_constants: true,

@@ -85,4 +85,117 @@ describe("CLI parseArgs", () => {
         expect(parsed.command).toBe("p2p-host");
         expect(parsed.commandArgs).toEqual([]);
     });
+
+    it("parses remote-add command", () => {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            "./databasePath",
+            "remote-add",
+            "my-remote",
+            "sls+https://user:pass@example.com/db",
+        ];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-add");
+        expect(parsed.commandArgs).toEqual(["my-remote", "sls+https://user:pass@example.com/db"]);
+    });
+
+    it("parses remote-activate command", () => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "remote-activate", "remote-abc"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-activate");
+        expect(parsed.commandArgs).toEqual(["remote-abc"]);
+    });
+
+    it("parses remote-export command", () => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "remote-export", "remote-abc"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-export");
+        expect(parsed.commandArgs).toEqual(["remote-abc"]);
+    });
+
+    it("parses remote-set command", () => {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            "./databasePath",
+            "remote-set",
+            "remote-abc",
+            "sls+p2p://room-1?passphrase=abc",
+        ];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("remote-set");
+        expect(parsed.commandArgs).toEqual(["remote-abc", "sls+p2p://room-1?passphrase=abc"]);
+    });
+
+    it("parses --interval flag with valid integer", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--interval", "30"];
+        const parsed = parseArgs();
+        expect(parsed.command).toBe("daemon");
+        expect(parsed.interval).toBe(30);
+    });
+
+    it("parses -i shorthand for --interval", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "-i", "10"];
+        const parsed = parseArgs();
+        expect(parsed.interval).toBe(10);
+    });
+
+    it("exits 1 when --interval has no value", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--interval"];
+        const exitMock = mockProcessExit();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        expect(() => parseArgs()).toThrowError("__EXIT__:1");
+        expect(exitMock).toHaveBeenCalledWith(1);
+    });
+
+    it("exits 1 when --interval is not a positive integer", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--interval", "0"];
+        const exitMock = mockProcessExit();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        expect(() => parseArgs()).toThrowError("__EXIT__:1");
+        expect(exitMock).toHaveBeenCalledWith(1);
+    });
+
+    it("exits 1 when --interval is negative", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--interval", "-5"];
+        const exitMock = mockProcessExit();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        expect(() => parseArgs()).toThrowError("__EXIT__:1");
+    });
+
+    it("exits 1 when --interval is not numeric", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--interval", "abc"];
+        const exitMock = mockProcessExit();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        expect(() => parseArgs()).toThrowError("__EXIT__:1");
+    });
+
+    it("parses explicit daemon command", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "daemon"];
+        const parsed = parseArgs();
+        expect(parsed.command).toBe("daemon");
+        expect(parsed.databasePath).toBe("./vault");
+    });
+
+    it("defaults to daemon when no command specified", () => {
+        process.argv = ["node", "livesync-cli", "./vault"];
+        const parsed = parseArgs();
+        expect(parsed.command).toBe("daemon");
+    });
+
+    it("parses explicit daemon command with --interval", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "daemon", "--interval", "30"];
+        const parsed = parseArgs();
+        expect(parsed.command).toBe("daemon");
+        expect(parsed.interval).toBe(30);
+    });
 });

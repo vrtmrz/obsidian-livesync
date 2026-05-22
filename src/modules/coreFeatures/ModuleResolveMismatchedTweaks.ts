@@ -2,9 +2,11 @@ import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
 import {
     TweakValuesShouldMatchedTemplate,
+    TweakValuesTemplate,
     IncompatibleChanges,
     confName,
     type TweakValues,
+    type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
     IncompatibleChangesInSpecificPattern,
     CompatibleButLossyChanges,
@@ -14,8 +16,107 @@ import { AbstractModule } from "../AbstractModule.ts";
 import { $msg } from "../../lib/src/common/i18n.ts";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
+
+function valueToString(value: any) {
+    if (typeof value === "boolean") {
+        return value ? "true" : "false";
+    }
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+    return `${value}`;
+}
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule {
+    private _hasNotifiedAutoAcceptCompatibleUndefined = false;
+
+    private _collectMismatchedTweakKeys(current: TweakValues, preferred: Partial<TweakValues>) {
+        const items = Object.keys(
+            TweakValuesShouldMatchedTemplate
+        ) as (keyof typeof TweakValuesShouldMatchedTemplate)[];
+        return items.filter((key) => current[key] !== preferred[key]);
+    }
+
+    private _selectNewerTweakSide(current: TweakValues, preferred: Partial<TweakValues>): "REMOTE" | "CURRENT" {
+        Logger(`Modified: ${current.tweakModified} (current) vs ${preferred.tweakModified} (preferred)`);
+        const currentModified = current.tweakModified;
+        const preferredModified = preferred.tweakModified;
+        // debugger;
+        const hasCurrentModified = typeof currentModified === "number" && currentModified > 0;
+        const hasPreferredModified = typeof preferredModified === "number" && preferredModified > 0;
+
+        if (!hasCurrentModified && !hasPreferredModified) return "REMOTE";
+        if (!hasCurrentModified) return "REMOTE";
+        if (!hasPreferredModified) return "CURRENT";
+        if (preferredModified >= currentModified) return "REMOTE";
+        return "CURRENT";
+    }
+
+    private async _shouldAutoAcceptCompatibleLossy(
+        current: TweakValues,
+        preferred: Partial<TweakValues>,
+        mismatchedKeys: (keyof typeof TweakValuesShouldMatchedTemplate)[]
+    ): Promise<"REMOTE" | "CURRENT" | undefined> {
+        if (mismatchedKeys.length === 0) return undefined;
+        const hasOnlyCompatibleLossyMismatches = mismatchedKeys.every(
+            (key) => CompatibleButLossyChanges.indexOf(key) !== -1
+        );
+        if (!hasOnlyCompatibleLossyMismatches) return undefined;
+
+        if (this.settings.autoAcceptCompatibleTweak === undefined) {
+            if (this._hasNotifiedAutoAcceptCompatibleUndefined) {
+                return undefined;
+            }
+            this._hasNotifiedAutoAcceptCompatibleUndefined = true;
+            const CHOICE_ENABLE = $msg("TweakMismatchResolve.Action.EnableAutoAcceptCompatible");
+            const CHOICE_DISABLE = $msg("TweakMismatchResolve.Action.DisableAutoAcceptCompatible");
+            const CHOICES = [CHOICE_ENABLE, CHOICE_DISABLE] as const;
+            const message = $msg("TweakMismatchResolve.Message.AutoAcceptCompatibleUndefined");
+            const ret = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
+                title: $msg("TweakMismatchResolve.Title.AutoAcceptCompatible"),
+                timeout: 0,
+                defaultAction: CHOICE_ENABLE,
+            });
+            if (ret !== CHOICE_ENABLE) {
+                return undefined;
+            }
+            await this.services.setting.applyPartial(
+                {
+                    autoAcceptCompatibleTweak: true,
+                },
+                true
+            );
+            Logger("Auto-accept for compatible tweak mismatch has been enabled.");
+        }
+
+        if (this.settings.autoAcceptCompatibleTweak !== true) return undefined;
+        return this._selectNewerTweakSide(current, preferred);
+    }
+
+    /**
+     * Hook before saving settings, to check if there are changes in tweak values, and if so,
+     * update the tweakModified timestamp to current time.
+     * This allows other devices to know that the tweak values have been changed and decide whether to accept the new values based on the modification time.
+     * @param next
+     * @param previous
+     * @returns
+     */
+    async _onBeforeSaveSettingData(next: ObsidianLiveSyncSettings, previous: ObsidianLiveSyncSettings) {
+        const tweakKeys = Object.keys(TweakValuesTemplate) as (keyof TweakValues)[];
+        const tweakKeysForUpdate = tweakKeys.filter((key) => key !== "tweakModified");
+        const hasChangedTweak = tweakKeysForUpdate.some((key) => next[key] !== previous[key]);
+        if (!hasChangedTweak) return;
+        Logger(
+            `Some tweak values have been changed. ${tweakKeysForUpdate.filter((key) => next[key] !== previous[key]).join(", ")}`
+        );
+        const modified = Date.now();
+        Logger(`Modified: ${modified}`);
+        return await Promise.resolve({
+            tweakModified: modified,
+        });
+    }
+
     async _anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
         if (!this.core.replicator.tweakSettingsMismatched && !this.core.replicator.preferredTweakValue) return false;
         const preferred = this.core.replicator.preferredTweakValue;
@@ -26,10 +127,16 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         if (ret == "IGNORE") return true;
     }
 
-    async _checkAndAskResolvingMismatchedTweaks(
-        preferred: Partial<TweakValues>
-    ): Promise<[TweakValues | boolean, boolean]> {
-        const mine = extractObject(TweakValuesShouldMatchedTemplate, this.settings);
+    async _checkAndAskResolvingMismatchedTweaks(preferred: TweakValues): Promise<[TweakValues | boolean, boolean]> {
+        const mine = extractObject(TweakValuesTemplate, this.settings) as TweakValues;
+        const mismatchedKeys = this._collectMismatchedTweakKeys(mine, preferred);
+        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(mine, preferred, mismatchedKeys);
+        if (autoAcceptSide === "REMOTE") {
+            return [{ ...mine, ...preferred }, false];
+        }
+        if (autoAcceptSide === "CURRENT") {
+            return [true, false];
+        }
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         let rebuildRequired = false;
         let rebuildRecommended = false;
@@ -68,8 +175,8 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             tableRows.push(
                 $msg("TweakMismatchResolve.Table.Row", {
                     name: confName(key),
-                    self: valueMine,
-                    remote: valuePreferred,
+                    self: valueToString(valueMine),
+                    remote: valueToString(valuePreferred),
                 })
             );
         }
@@ -136,9 +243,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         if (!tweaks) {
             return "IGNORE";
         }
-        const preferred = extractObject(TweakValuesShouldMatchedTemplate, tweaks);
-
-        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(preferred);
+        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(tweaks);
         if (!conf) return "IGNORE";
 
         if (conf === true) {
@@ -146,10 +251,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             if (rebuildRequired) {
                 await this.core.rebuilder.$rebuildRemote();
             }
-            Logger(
-                `Tweak values on the remote server have been updated. Your other device will see this message.`,
-                LOG_LEVEL_NOTICE
-            );
+            Logger($msg("TweakMismatchResolve.Message.remoteUpdated"), LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
         if (conf) {
@@ -159,7 +261,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }
-            Logger(`Configuration has been updated as configured by the other device.`, LOG_LEVEL_NOTICE);
+            Logger($msg("TweakMismatchResolve.Message.mineUpdated"), LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
         return "IGNORE";
@@ -186,6 +288,9 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     async _checkAndAskUseRemoteConfiguration(
         trialSetting: RemoteDBSettings
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        if (trialSetting.remoteType === REMOTE_P2P) {
+            return { result: false, requireFetch: false };
+        }
         const preferred = await this.services.tweakValue.fetchRemotePreferred(trialSetting);
         if (preferred) {
             return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred);
@@ -197,6 +302,16 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         trialSetting: RemoteDBSettings,
         preferred: TweakValues
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
+        const localTweaks = extractObject(TweakValuesTemplate, this.settings) as TweakValues;
+        const mismatchedKeys = this._collectMismatchedTweakKeys(localTweaks, preferred);
+        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(localTweaks, preferred, mismatchedKeys);
+        if (autoAcceptSide === "REMOTE") {
+            return { result: { ...trialSetting, ...preferred }, requireFetch: false };
+        }
+        if (autoAcceptSide === "CURRENT") {
+            return { result: false, requireFetch: false };
+        }
+
         const items = Object.entries(TweakValuesShouldMatchedTemplate);
         let rebuildRequired = false;
         let rebuildRecommended = false;
@@ -207,8 +322,8 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         // const items = [mine,preferred]
         for (const v of items) {
             const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-            const remoteValueForDisplay = escapeMarkdownValue(preferred[key]);
-            const currentValueForDisplay = `${escapeMarkdownValue((trialSetting as TweakValues)?.[key])}`;
+            const remoteValueForDisplay = escapeMarkdownValue(valueToString(preferred[key]));
+            const currentValueForDisplay = escapeMarkdownValue(valueToString((trialSetting as TweakValues)?.[key]));
             if ((trialSetting as TweakValues)?.[key] !== preferred[key]) {
                 if (IncompatibleChanges.indexOf(key) !== -1) {
                     rebuildRequired = true;
@@ -285,6 +400,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     }
 
     override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        services.setting.onBeforeSaveSettingData.addHandler(this._onBeforeSaveSettingData.bind(this));
         services.tweakValue.fetchRemotePreferred.setHandler(this._fetchRemotePreferredTweakValues.bind(this));
         services.tweakValue.checkAndAskResolvingMismatched.setHandler(
             this._checkAndAskResolvingMismatchedTweaks.bind(this)

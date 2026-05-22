@@ -7,7 +7,7 @@ import {
     REMOTE_MINIO,
     REMOTE_P2P,
 } from "../../lib/src/common/types.ts";
-import { generatePatchObj, isObjectDifferent } from "../../lib/src/common/utils.ts";
+import { isObjectDifferent } from "@lib/common/utils.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -23,6 +23,7 @@ import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "../../lib/src/API/processSetting.ts";
 import { AbstractModule } from "../AbstractModule.ts";
+import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
 
 /**
  * User modes for onboarding and setup
@@ -194,8 +195,24 @@ export class SetupManager extends AbstractModule {
             return await this.onOnboard(userMode);
         }
         const newSetting = { ...currentSetting, ...p2pConf } as ObsidianLiveSyncSettings;
+        // Apply remoteConfigurations
+        if (newSetting.P2P_ActiveRemoteConfigurationId) {
+            const id = newSetting.P2P_ActiveRemoteConfigurationId;
+            const merged = {
+                ...newSetting,
+                ...p2pConf,
+            } as ObsidianLiveSyncSettings;
+            const uri = ConnectionStringParser.serialize({ type: "p2p", settings: merged });
+            newSetting.remoteConfigurations[id] = {
+                ...newSetting.remoteConfigurations[id],
+                uri,
+                isEncrypted: false,
+            };
+            newSetting.P2P_ActiveRemoteConfigurationId = id;
+        }
         if (activate) {
             newSetting.remoteType = REMOTE_P2P;
+            newSetting.activeConfigurationId = newSetting.P2P_ActiveRemoteConfigurationId;
         }
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
     }
@@ -285,9 +302,9 @@ export class SetupManager extends AbstractModule {
                 this._log("No changes in settings detected. Skipping applying settings from wizard.", LOG_LEVEL_NOTICE);
                 return true;
             }
-            const patch = generatePatchObj(this.settings, newConf);
-            console.log(`Changes:`);
-            console.dir(patch);
+            // const patch = generatePatchObj(this.settings, newConf);
+            // console.log(`Changes:`);
+            // console.dir(patch);
             if (!activate) {
                 extra();
                 await this.applySetting(newConf, UserMode.ExistingUser);
