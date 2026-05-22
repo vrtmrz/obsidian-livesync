@@ -1,7 +1,6 @@
 import { App, Modal } from "../../../deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
 import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "../../../lib/src/common/types.ts";
-import { escapeStringToHTML } from "../../../lib/src/string_and_binary/convert.ts";
 import { delay } from "../../../lib/src/common/utils.ts";
 import { eventHub } from "../../../common/events.ts";
 import { globalSlipBoard } from "../../../lib/src/bureau/bureau.ts";
@@ -44,6 +43,25 @@ export class ConflictResolveModal extends Modal {
         // sendValue("close-resolve-conflict:" + this.filename, false);
     }
 
+    appendDiffFragment(container: HTMLDivElement, text: string, cls: string) {
+        const lines = text.split("\n");
+        lines.forEach((line, index) => {
+            const span = container.createSpan({ cls });
+            span.textContent = line;
+            if (index < lines.length - 1) {
+                container.createSpan({ cls: "ls-mark-cr" });
+                container.createEl("br");
+            }
+        });
+    }
+
+    appendVersionInfo(container: HTMLDivElement, cls: string, name: string, date: string) {
+        const line = container.createSpan({ cls });
+        line.createSpan({ text: name, cls: "conflict-dev-name" });
+        line.appendText(`: ${date}`);
+        container.createEl("br");
+    }
+
     override onOpen() {
         const { contentEl } = this;
         // Send cancel signal for the previous merge dialogue
@@ -64,25 +82,21 @@ export class ConflictResolveModal extends Modal {
         const div = contentEl.createDiv("");
         div.addClass("op-scrollable");
         div.addClass("ls-dialog");
-        let diff = "";
+        let diffLength = 0;
         for (const v of this.result.diff) {
             const x1 = v[0];
             const x2 = v[1];
+            diffLength += x2.length;
+            if (diffLength > 100 * 1024) {
+                continue;
+            }
             if (x1 == DIFF_DELETE) {
-                diff +=
-                    "<span class='deleted'>" +
-                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
-                    "</span>";
+                this.appendDiffFragment(div, x2, "deleted");
+                div.createEl("span", { text: x2, cls: "deleted normal conflict-dev-name" });
             } else if (x1 == DIFF_EQUAL) {
-                diff +=
-                    "<span class='normal'>" +
-                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
-                    "</span>";
+                this.appendDiffFragment(div, x2, "normal");
             } else if (x1 == DIFF_INSERT) {
-                diff +=
-                    "<span class='added'>" +
-                    escapeStringToHTML(x2).replace(/\n/g, "<span class='ls-mark-cr'></span>\n") +
-                    "</span>";
+                this.appendDiffFragment(div, x2, "added");
             }
         }
 
@@ -92,8 +106,8 @@ export class ConflictResolveModal extends Modal {
             new Date(this.result.left.mtime).toLocaleString() + (this.result.left.deleted ? " (Deleted)" : "");
         const date2 =
             new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
-        div2.innerHTML = `<span class='deleted'><span class='conflict-dev-name'>${this.localName}</span>: ${date1}</span><br>
-<span class='added'><span class='conflict-dev-name'>${this.remoteName}</span>: ${date2}</span><br>`;
+        this.appendVersionInfo(div2, "deleted", this.localName, date1);
+        this.appendVersionInfo(div2, "added", this.remoteName, date2);
         contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) =>
             e.addEventListener("click", () => this.sendResponse(this.result.right.rev))
         ).style.marginRight = "4px";
@@ -108,11 +122,9 @@ export class ConflictResolveModal extends Modal {
         contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) =>
             e.addEventListener("click", () => this.sendResponse(CANCELLED))
         ).style.marginRight = "4px";
-        diff = diff.replace(/\n/g, "<br>");
-        if (diff.length > 100 * 1024) {
+        if (diffLength > 100 * 1024) {
+            div.empty();
             div.innerText = "(Too large diff to display)";
-        } else {
-            div.innerHTML = diff;
         }
     }
 

@@ -521,6 +521,10 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     text-align: center;
 }
 
+.diff-only-label {
+    margin-left: 10px;
+}
+
 .diff-focused {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 1px;

@@ -8,7 +8,6 @@ import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
-import { ModuleReplicatorP2P } from "../../modules/core/ModuleReplicatorP2P";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
@@ -26,6 +25,8 @@ import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { IgnoreRules } from "./serviceModules/IgnoreRules";
+import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -43,7 +44,8 @@ Arguments:
   database-path           Path to the local database directory
 
 Commands:
-  sync                    Run one replication cycle and exit
+    daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
+    sync                    Run one replication cycle and exit
     p2p-peers <timeout>     Show discovered peers as [peer]\t<peer-id>\t<peer-name>
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
@@ -60,24 +62,46 @@ Commands:
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
     mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
+    remote-add <name> <connstr>
+                            Add a remote configuration from a connection string
+    remote-rm <remote-id>    Remove a remote configuration by ID
+    remote-ls                List stored remote configurations
+    remote-export <remote-id>
+                            Export a remote connection string by ID
+    remote-set <remote-id> <connstr>
+                            Replace a stored remote connection string by ID
+    remote-activate <remote-id>
+                            Activate a stored remote configuration by ID
+
+Options:
+  --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
+
 Examples:
-  livesync-cli ./my-database sync
-  livesync-cli ./my-database p2p-peers 5
-  livesync-cli ./my-database p2p-sync my-peer-name 15
-  livesync-cli ./my-database p2p-host
-  livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
-  livesync-cli ./my-database pull folder/note.md ./exports/note.md
-  livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
-  livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
-  echo "Hello" | livesync-cli ./my-database put notes/hello.md
-  livesync-cli ./my-database cat notes/hello.md
-  livesync-cli ./my-database cat-rev notes/hello.md 3-abcdef
-  livesync-cli ./my-database ls notes/
-  livesync-cli ./my-database info notes/hello.md
-  livesync-cli ./my-database rm notes/hello.md
-  livesync-cli ./my-database resolve notes/hello.md 3-abcdef
-  livesync-cli init-settings ./data.json
-  livesync-cli ./my-database --verbose
+    livesync-cli ./my-database                        Run daemon (LiveSync mode)
+    livesync-cli ./my-database --interval 30          Run daemon (polling every 30s)
+    livesync-cli ./my-database sync
+    livesync-cli ./my-database p2p-peers 5
+    livesync-cli ./my-database p2p-sync my-peer-name 15
+    livesync-cli ./my-database p2p-host
+    livesync-cli ./my-database --settings ./custom-settings.json push ./note.md folder/note.md
+    livesync-cli ./my-database pull folder/note.md ./exports/note.md
+    livesync-cli ./my-database pull-rev folder/note.md ./exports/note.old.md 3-abcdef
+    livesync-cli ./my-database setup "obsidian://setuplivesync?settings=..."
+    echo "Hello" | livesync-cli ./my-database put notes/hello.md
+    livesync-cli ./my-database cat notes/hello.md
+    livesync-cli ./my-database cat-rev notes/hello.md 3-abcdef
+    livesync-cli ./my-database ls notes/
+    livesync-cli ./my-database info notes/hello.md
+    livesync-cli ./my-database rm notes/hello.md
+    livesync-cli ./my-database resolve notes/hello.md 3-abcdef
+    livesync-cli ./my-database remote-add my-remote "sls+https://user:pass@example.com/db"
+    livesync-cli ./my-database remote-ls
+    livesync-cli ./my-database remote-export remote-abc123
+    livesync-cli ./my-database remote-set remote-abc123 "sls+s3://ak:sk@example.com/?endpoint=https%3A%2F%2Fs3.example.com&bucket=mybucket"
+    livesync-cli ./my-database remote-activate remote-abc123
+    livesync-cli ./my-database remote-rm remote-abc123
+    livesync-cli init-settings ./data.json
+    livesync-cli ./my-database --verbose
         `);
 }
 
@@ -94,6 +118,7 @@ export function parseArgs(): CLIOptions {
     let verbose = false;
     let debug = false;
     let force = false;
+    let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
 
@@ -108,6 +133,21 @@ export function parseArgs(): CLIOptions {
                     process.exit(1);
                 }
                 settingsPath = args[i];
+                break;
+            }
+            case "--interval":
+            case "-i": {
+                i++;
+                if (!args[i]) {
+                    console.error(`Error: Missing value for ${token}`);
+                    process.exit(1);
+                }
+                const n = parseInt(args[i], 10);
+                if (!Number.isInteger(n) || n <= 0) {
+                    console.error(`Error: --interval requires a positive integer, got '${args[i]}'`);
+                    process.exit(1);
+                }
+                interval = n;
                 break;
             }
             case "--debug":
@@ -164,6 +204,7 @@ export function parseArgs(): CLIOptions {
         force,
         command,
         commandArgs,
+        interval,
     };
 }
 
@@ -197,10 +238,16 @@ async function createDefaultSettingsFile(options: CLIOptions) {
 
 export async function main() {
     const options = parseArgs();
+    if (options.interval && options.command !== "daemon") {
+        console.error(`Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+    }
     const avoidStdoutNoise =
         options.command === "cat" ||
         options.command === "cat-rev" ||
         options.command === "ls" ||
+        options.command === "remote-add" ||
+        options.command === "remote-ls" ||
+        options.command === "remote-export" ||
         options.command === "p2p-peers" ||
         options.command === "info" ||
         options.command === "rm" ||
@@ -248,6 +295,17 @@ export async function main() {
     infoLog(`Settings: ${settingsPath}`);
     infoLog("");
 
+    // For daemon and mirror mode, load ignore rules before the core is constructed so that
+    // chokidar's ignored option is populated when beginWatch() fires during onLoad().
+    const watchEnabled = options.command === "daemon";
+    const vaultPath =
+        options.command === "mirror" && options.commandArgs[0] ? path.resolve(options.commandArgs[0]) : databasePath;
+    let ignoreRules: IgnoreRules | undefined;
+    if (options.command === "daemon" || options.command === "mirror") {
+        ignoreRules = new IgnoreRules(vaultPath);
+        await ignoreRules.load();
+    }
+
     // Create service context and hub
     const context = new NodeServiceContext(databasePath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
@@ -278,11 +336,14 @@ export async function main() {
         }
         console.error(`${prefix} ${message}`);
     });
-    // Prevent replication result to be processed automatically.
-    serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-        console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
-        return await Promise.resolve(true);
-    }, -100);
+    // Prevent replication result from being processed automatically in non-daemon commands.
+    // In daemon mode the default handler must run so changes are applied to the filesystem.
+    if (options.command !== "daemon") {
+        serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
+            console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
+            return await Promise.resolve(true);
+        }, -100);
+    }
 
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
@@ -324,18 +385,13 @@ export async function main() {
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
-            const mirrorVaultPath =
-                options.command === "mirror" && options.commandArgs[0]
-                    ? path.resolve(options.commandArgs[0])
-                    : databasePath;
-            return initialiseServiceModulesCLI(mirrorVaultPath, core, serviceHub);
+            return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
-        (core) => [
-            // No modules need to be registered for P2P replication in CLI. Directly using Replicators in p2p.ts
-            // new ModuleReplicatorP2P(core),
-        ],
+        (core) => [],
         () => [], // No add-ons
         (core) => {
+            // Register P2P replicator feature.
+            const _replicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -344,8 +400,25 @@ export async function main() {
                 if (parts.some((part) => part.startsWith("."))) {
                     return await Promise.resolve(false);
                 }
+                // PouchDB LevelDB database directory lives in the vault directory.
+                if (parts[0]?.endsWith("-livesync-v2")) {
+                    return await Promise.resolve(false);
+                }
                 return await Promise.resolve(true);
             }, -1 /* highest priority */);
+
+            // Apply user-defined ignore rules for daemon mode (lower priority, runs after dotfile check).
+            if (ignoreRules) {
+                const rules = ignoreRules;
+                core.services.vault.isTargetFile.addHandler(async (target) => {
+                    const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
+                    if (rules.shouldIgnore(targetPath)) {
+                        return false;
+                    }
+                    // undefined = pass through to next handler in chain
+                    return undefined;
+                }, 0);
+            }
         }
     );
 
@@ -366,6 +439,25 @@ export async function main() {
     process.on("SIGINT", () => shutdown("SIGINT"));
     process.on("SIGTERM", () => shutdown("SIGTERM"));
 
+    // Save the settings file before any lifecycle events can mutate and persist them.
+    // suspendAllSync and other lifecycle hooks clobber sync settings in memory, and
+    // various code paths persist the clobbered state to disk. We restore on shutdown.
+    const settingsBackup = await fs.readFile(settingsPath, "utf-8").catch(() => null!);
+
+    // Restore settings file on any exit to undo lifecycle mutations.
+    // Write to a temp path first so a crash mid-write doesn't leave a truncated file.
+    process.on("exit", () => {
+        if (settingsBackup) {
+            const tmpPath = settingsPath + ".tmp";
+            try {
+                require("fs").writeFileSync(tmpPath, settingsBackup, "utf-8");
+                require("fs").renameSync(tmpPath, settingsPath);
+            } catch (err) {
+                console.error("[Settings] Failed to restore settings on exit:", err);
+            }
+        }
+    });
+
     // Start the core
     try {
         infoLog(`[Starting] Initializing LiveSync...`);
@@ -375,6 +467,18 @@ export async function main() {
             console.error(`[Error] Failed to initialize LiveSync`);
             process.exit(1);
         }
+        // Capture sync settings before suspendAllSync() clobbers them.
+        // Used by daemon mode to restore the correct sync behaviour after the mirror scan.
+        const settingsBeforeSuspend = core.services.setting.currentSettings();
+        const originalSyncSettings = {
+            liveSync: settingsBeforeSuspend.liveSync,
+            syncOnStart: settingsBeforeSuspend.syncOnStart,
+            periodicReplication: settingsBeforeSuspend.periodicReplication,
+            syncOnSave: settingsBeforeSuspend.syncOnSave,
+            syncOnEditorSave: settingsBeforeSuspend.syncOnEditorSave,
+            syncOnFileOpen: settingsBeforeSuspend.syncOnFileOpen,
+            syncAfterMerge: settingsBeforeSuspend.syncAfterMerge,
+        };
         await core.services.setting.suspendAllSync();
         await core.services.control.onReady();
 
@@ -400,7 +504,7 @@ export async function main() {
             infoLog("");
         }
 
-        const result = await runCommand(options, { databasePath, core, settingsPath });
+        const result = await runCommand(options, { databasePath, core, settingsPath, originalSyncSettings });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
@@ -408,7 +512,7 @@ export async function main() {
             infoLog(`[Done] Command '${options.command}' completed`);
         }
 
-        if (options.command === "daemon") {
+        if (options.command === "daemon" && result) {
             // Keep the process running
             await new Promise(() => {});
         } else {

@@ -5,20 +5,21 @@
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
-    } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "../../../lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
     import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
-    import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
+    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
     import {
         type PeerInfo,
         type P2PServerInfo,
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "../../../lib/src/replication/trystero/TrysteroReplicatorP2PServer";
-    import { type P2PReplicatorStatus } from "../../../lib/src/replication/trystero/TrysteroReplicator";
-    import { $msg as _msg } from "../../../lib/src/common/i18n";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../lib/src/common/types";
+    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import { type P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
+    import { $msg as _msg } from "@lib/common/i18n";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
+    import { generateP2PRoomId } from "@lib/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
@@ -148,6 +149,7 @@
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
         return () => {
             r();
+            rx();
             r2();
             r3();
         };
@@ -216,18 +218,8 @@
     function useDefaultRelay() {
         eRelay = DEFAULT_SETTINGS.P2P_relays;
     }
-    function _generateRandom() {
-        return (Math.floor(Math.random() * 1000) + 1000).toString().substring(1);
-    }
-    function generateRandom(length: number) {
-        let buf = "";
-        while (buf.length < length) {
-            buf += "-" + _generateRandom();
-        }
-        return buf.substring(1, length);
-    }
     function chooseRandom() {
-        eRoomId = generateRandom(12) + "-" + Math.random().toString(36).substring(2, 5);
+        eRoomId = generateP2PRoomId();
     }
 
     async function openServer() {
@@ -251,7 +243,7 @@
                 setting?: boolean;
             };
             return initialDialogStatus;
-        } catch (e) {
+        } catch {
             return {};
         }
     };

@@ -43,10 +43,13 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
     // tmpDiv.addClass("sls-header-button");
     tmpDiv.addClass("op-warn-info");
 
-    tmpDiv.innerHTML = `<p>${$msg("obsidianLiveSyncSettingTab.msgNewVersionNote")}</p><button>${$msg("obsidianLiveSyncSettingTab.optionOkReadEverything")}</button>`;
+    tmpDiv.createEl("p", { text: $msg("obsidianLiveSyncSettingTab.msgNewVersionNote") });
+    const readEverythingButton = tmpDiv.createEl("button", {
+        text: $msg("obsidianLiveSyncSettingTab.optionOkReadEverything"),
+    });
     if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
         const informationButtonDiv = informationDivEl.appendChild(tmpDiv);
-        informationButtonDiv.querySelector("button")?.addEventListener("click", () => {
+        readEverythingButton.addEventListener("click", () => {
             fireAndForget(async () => {
                 this.editingSettings.lastReadUpdates = lastVersion;
                 await this.saveAllDirtySettings();

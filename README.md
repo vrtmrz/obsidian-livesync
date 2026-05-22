@@ -4,7 +4,7 @@
 
 Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.
 
-Additionally, it supports peer-to-peer synchronisation using WebRTC now (experimental), enabling you to synchronise your notes directly between devices without relying on a server.
+Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling you to synchronise your notes directly between devices without relying on a server. Documentations is available for [Peer-to-Peer Synchronisation](./docs/p2p_sync_updates_2026.md).
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
