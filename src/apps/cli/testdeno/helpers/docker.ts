@@ -27,29 +27,53 @@ function parseCommand(command: string): { bin: string; prefix: string[] } {
     return { bin: parts[0], prefix: parts.slice(1) };
 }
 
-async function runCommand(bin: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-    const cmd = new Deno.Command(bin, {
-        args,
-        stdin: "null",
-        stdout: "piped",
-        stderr: "piped",
-    });
+async function collectStream(
+    stream: ReadableStream<Uint8Array>,
+    teeTarget: ((chunk: Uint8Array) => void) | null
+): Promise<Uint8Array> {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
     try {
-        const { code, stdout, stderr } = await cmd.output();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            if (teeTarget) {
+                teeTarget(value);
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        out.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return out;
+}
+
+async function runCommand(bin: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+    try {
+        const child = new Deno.Command(bin, {
+            args,
+            stdin: "null",
+            stdout: "piped",
+            stderr: "piped",
+        }).spawn();
+        const stdoutPromise = collectStream(child.stdout, DOCKER_TEE ? (chunk) => Deno.stdout.writeSync(chunk) : null);
+        const stderrPromise = collectStream(child.stderr, DOCKER_TEE ? (chunk) => Deno.stderr.writeSync(chunk) : null);
+        const [status, stdout, stderr] = await Promise.all([child.status, stdoutPromise, stderrPromise]);
         const dec = new TextDecoder();
         const result = {
-            code,
+            code: status.code,
             stdout: dec.decode(stdout),
             stderr: dec.decode(stderr),
         };
-        if (DOCKER_TEE) {
-            if (result.stdout.trim().length > 0) {
-                console.log(`[docker:${bin}] ${result.stdout.trimEnd()}`);
-            }
-            if (result.stderr.trim().length > 0) {
-                console.error(`[docker:${bin}] ${result.stderr.trimEnd()}`);
-            }
-        }
         return result;
     } catch (err) {
         if (err instanceof Deno.errors.NotFound) {
