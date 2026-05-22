@@ -8,12 +8,12 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 22nd May, 2026
 
 ### Fixed
-- No longer the P2P passphrase mismatch causes a server shutdown.
+- No longer does the P2P passphrase mismatch cause a server shutdown.
 - Settings related to P2P synchronisation are now correctly applied on start-up and no longer reverted.
 
 ### New features
 - Diagnostic P2P connection stats are now available.
-  - These stats indicate the number of connection trials, successes, and, failures.
+  - These stats indicate the number of connection trials, successes, and failures.
 
 ## 0.25.68
 
