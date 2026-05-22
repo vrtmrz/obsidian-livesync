@@ -24,6 +24,7 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
     let roomSuffix = $state<string>(extractP2PRoomSuffix(core?.services.setting.currentSettings()?.P2P_roomID ?? ""));
+    let useDiagRTC = $state<boolean>(core?.services.setting.currentSettings()?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
         await Promise.resolve(liveSyncReplicator.requestStatus());
@@ -48,6 +49,18 @@
         }
     }
 
+    async function toggleDiagRTC() {
+        if (!core) {
+            return;
+        }
+        const next = !useDiagRTC;
+        await core.services.setting.updateSettings((settings) => {
+            settings.P2P_useDiagRTC = next;
+            return settings;
+        }, true);
+        useDiagRTC = next;
+    }
+
     onMount(() => {
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
@@ -58,6 +71,7 @@
         });
         const unsubscribeSettings = eventHub.onEvent(EVENT_SETTING_SAVED, (settings) => {
             roomSuffix = extractP2PRoomSuffix(settings?.P2P_roomID ?? "");
+            useDiagRTC = settings?.P2P_useDiagRTC ?? false;
         });
 
         fireAndForget(async () => {
@@ -131,6 +145,48 @@
         </button>
     </div>
     {/if}
+
+    {#if core}
+    <div class="status-item status-action diag-toggle-row">
+        <label class="broadcast-label" for="diag-toggle">
+            🕵️ Diag
+        </label>
+        <button
+            id="diag-toggle"
+            class="broadcast-button {useDiagRTC ? 'is-on' : 'is-off'}"
+            onclick={toggleDiagRTC}
+            title={useDiagRTC
+                ? 'Diagnostic RTCPeerConnection is enabled'
+                : 'Use Diagnostic RTCPeerConnection for statistics'}
+        >
+            {useDiagRTC ? 'On' : 'Off'}
+        </button>
+    </div>
+    {/if}
+
+    {#if serverInfo}
+        <div class="diag-section">
+            <h4>Stats</h4>
+            <div class="diag-grid">
+                <div class="diag-item">
+                    <span>Incoming:</span>
+                    <span>{serverInfo.diag.totalNewConnections}</span>
+                </div>
+                <div class="diag-item">
+                    <span>Connected:</span>
+                    <span>{serverInfo.diag.totalSuccessfulConnections}</span>
+                </div>
+                <div class="diag-item">
+                    <span>Failed:</span>
+                    <span>{serverInfo.diag.totalFailedConnections}</span>
+                </div>
+                <div class="diag-item">
+                    <span>Closed:</span>
+                    <span>{serverInfo.diag.totalClosedConnections}</span>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -190,6 +246,11 @@
         margin-top: 0.25rem;
     }
 
+    .diag-toggle-row {
+        align-items: center;
+        margin-top: 0.25rem;
+    }
+
     .broadcast-label {
         font-size: 0.9rem;
         color: var(--text-normal);
@@ -220,5 +281,30 @@
     .broadcast-button.is-off:hover {
         background-color: var(--interactive-hover);
         color: var(--text-normal);
+    }
+
+    .diag-section {
+        border-top: 1px solid var(--divider-color);
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+    }
+
+    .diag-section h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .diag-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.35rem 0.75rem;
+    }
+
+    .diag-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        gap: 0.5rem;
     }
 </style>
