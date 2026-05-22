@@ -171,7 +171,11 @@ async function main(): Promise<void> {
         for (const sample of sampleFiles) {
             const pulledPath = workDir.join(`pulled-${sample.relativePath.replaceAll("/", "_")}`);
             await runCliOrFail(clientVault, "--settings", clientSettings, "pull", sample.relativePath, pulledPath);
-            await assertFilesEqual(sample.absolutePath, pulledPath, `sample file mismatch after sync: ${sample.relativePath}`);
+            await assertFilesEqual(
+                sample.absolutePath,
+                pulledPath,
+                `sample file mismatch after sync: ${sample.relativePath}`
+            );
         }
 
         const result = {

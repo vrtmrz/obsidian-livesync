@@ -120,11 +120,7 @@ type ProxyHandle = {
     note: string;
 };
 
-function startCouchdbProxy(options: {
-    backendUri: string;
-    proxyUri: string;
-    requestedRttMs: number;
-}): ProxyHandle {
+function startCouchdbProxy(options: { backendUri: string; proxyUri: string; requestedRttMs: number }): ProxyHandle {
     const backend = new URL(options.backendUri);
     const proxy = new URL(options.proxyUri);
     const halfDelayMs = Math.max(1, Math.floor(options.requestedRttMs / 2));
@@ -261,7 +257,11 @@ async function main(): Promise<void> {
         for (const sample of sampleFiles) {
             const pulledPath = workDir.join(`pulled-${sample.relativePath.split("/").join("_")}`);
             await runCliOrFail(vaultB, "--settings", settingsB, "pull", sample.relativePath, pulledPath);
-            await assertFilesEqual(sample.absolutePath, pulledPath, `sample file mismatch after CouchDB sync: ${sample.relativePath}`);
+            await assertFilesEqual(
+                sample.absolutePath,
+                pulledPath,
+                `sample file mismatch after CouchDB sync: ${sample.relativePath}`
+            );
         }
 
         const result = {
@@ -283,7 +283,9 @@ async function main(): Promise<void> {
             syncBElapsedMs: Number(syncBElapsed.toFixed(1)),
             totalSyncElapsedMs: Number((syncAElapsed + syncBElapsed).toFixed(1)),
             throughputBytesPerSec: Number((seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000)).toFixed(2)),
-            throughputMiBPerSec: Number((seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000) / 1024 / 1024).toFixed(4)),
+            throughputMiBPerSec: Number(
+                (seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000) / 1024 / 1024).toFixed(4)
+            ),
         };
 
         if (resultPath) {
