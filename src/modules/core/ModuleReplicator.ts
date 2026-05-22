@@ -1,3 +1,4 @@
+import type PouchDB from "pouchdb-core";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "../AbstractModule";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";

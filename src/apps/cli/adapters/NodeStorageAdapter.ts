@@ -28,8 +28,8 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
             const stat = await fs.stat(this.resolvePath(p));
             return {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: stat.isDirectory() ? "folder" : "file",
             };
         } catch {

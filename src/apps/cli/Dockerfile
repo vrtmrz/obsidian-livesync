@@ -60,7 +60,7 @@ RUN apt-get update \
 WORKDIR /build
 
 # Install workspace dependencies first (layer-cache friendly)
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm install
 
 # Copy the full source tree and build the CLI bundle

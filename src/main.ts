@@ -1,5 +1,6 @@
-import { Notice, Plugin, type App, type PluginManifest } from "./deps";
-
+import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
+import { setGetLanguage } from "./lib/src/common/coreEnvFunctions.ts";
+setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
@@ -43,6 +44,7 @@ import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
+import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -175,7 +177,13 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
                 const setupManager = core.getModule(SetupManager);
-
+                const replicator = useP2PReplicatorFeature(
+                    core,
+                    createOpenReplicationUI(this.app),
+                    createOpenRebuildUI(this.app)
+                );
+                useP2PReplicatorCommands(core, replicator);
+                useP2PReplicatorUI(core, core, replicator);
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);
@@ -189,9 +197,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 //     VIEW_TYPE_P2P,
                 //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
                 // ]);
-                const replicator = useP2PReplicatorFeature(core);
-                useP2PReplicatorCommands(core, replicator);
-                useP2PReplicatorUI(core, core, replicator);
             }
         );
     }

@@ -255,14 +255,20 @@ It depends on Obsidian detects. May toggling `Detect all extensions` of
 
 ### I hope to report the issue, but you said you needs `Report`. How to make it?
 
-We can copy the report to the clipboard, by pressing the `Make report` button on
-the `Hatch` pane. ![Screenshot](../images/hatch.png)
+We can copy the report to the clipboard, by performing 
+`Generate full report for opening the issue with debug info` command!
 
 ### Where can I check the log?
 
 We can launch the log pane by `Show log` on the command palette. And if you have
 troubled something, please enable the `Verbose Log` on the `General Setting`
 pane.
+`Generate full report for opening the issue with debug info` command also contains 
+the recent 1000 log lines, which is very helpful for debugging. Full-report is 
+already set to the verbose level, so it contains all the logs without enabling the 
+`Verbose Log` toggle.
+
+Let me note that please be sure to remove any sensitive information before sharing the report.
 
 However, the logs would not be kept so long and cleared when restarted. If you
 want to check the logs, please enable `Write logs into the file` temporarily.

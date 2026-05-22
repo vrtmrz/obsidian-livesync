@@ -41,7 +41,7 @@ async function renderHistoryList(): Promise<VaultHistoryItem[]> {
 
     const [items, lastUsedId] = await Promise.all([historyStore.getVaultHistory(), historyStore.getLastUsedVaultId()]);
 
-    listEl.innerHTML = "";
+    listEl.replaceChildren();
     emptyEl.classList.toggle("is-hidden", items.length > 0);
 
     for (const item of items) {

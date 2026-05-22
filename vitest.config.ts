@@ -2,10 +2,13 @@ import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";
 import path from "path";
-import dotenv from "dotenv";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { grantClipboardPermissions, openWebPeer, closeWebPeer, acceptWebPeer } from "./test/lib/commands";
-const defEnv = dotenv.config({ path: ".env" }).parsed;
-const testEnv = dotenv.config({ path: ".test.env" }).parsed;
+
+const loadEnvFile = (path: string) => (existsSync(path) ? parseEnv(readFileSync(path, "utf-8")) : undefined);
+const defEnv = loadEnvFile(".env");
+const testEnv = loadEnvFile(".test.env");
 const env = Object.assign({}, defEnv, testEnv);
 const debuggerEnabled = env?.ENABLE_DEBUGGER === "true";
 const enableUI = env?.ENABLE_UI === "true";
