@@ -12,6 +12,10 @@
         "test:p2p-sync": "deno test --env-file=.test.env -A --no-check test-p2p-sync.ts",
         "test:p2p-three-nodes": "deno test --env-file=.test.env -A --no-check test-p2p-three-nodes-conflict.ts",
         "test:p2p-upload-download": "deno test --env-file=.test.env -A --no-check test-p2p-upload-download-repro.ts",
+        "bench:p2p": "deno run --env-file=.test.env -A --no-check bench-p2p.ts",
+        "bench:couchdb": "deno run --env-file=.test.env -A --no-check bench-couchdb.ts",
+        "bench:item1": "bash ./bench-run-item1.sh",
+        "bench:item1:full": "BENCH_MD_FILE_COUNT=1500 BENCH_MD_MIN_SIZE_BYTES=1024 BENCH_MD_MAX_SIZE_BYTES=20480 BENCH_BIN_FILE_COUNT=500 BENCH_BIN_SIZE_BYTES=102400 BENCH_COUCHDB_RTT_MS=50 bash ./bench-run-item1.sh",
         "test:e2e-couchdb": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-couchdb.ts",
         "test:e2e-matrix": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-matrix.ts"
     },

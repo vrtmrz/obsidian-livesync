@@ -6,3 +6,4 @@ node_modules
 .*.json
 *.env
 !.test.env
+bench-results
