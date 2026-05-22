@@ -55,6 +55,8 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      DENO_DIR: ~/.cache/deno
     strategy:
       fail-fast: false
       matrix:
@@ -70,11 +72,20 @@ jobs:
         with:
           node-version: '24.x'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('src/apps/cli/testdeno/deno.lock', 'src/apps/cli/testdeno/deno.json') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
 
       - name: Install dependencies
         run: npm ci
