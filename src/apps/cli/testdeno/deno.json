@@ -17,7 +17,11 @@
         "bench:item1": "bash ./bench-run-item1.sh",
         "bench:item1:full": "BENCH_MD_FILE_COUNT=1500 BENCH_MD_MIN_SIZE_BYTES=1024 BENCH_MD_MAX_SIZE_BYTES=20480 BENCH_BIN_FILE_COUNT=500 BENCH_BIN_SIZE_BYTES=102400 BENCH_COUCHDB_RTT_MS=50 bash ./bench-run-item1.sh",
         "test:e2e-couchdb": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-couchdb.ts",
-        "test:e2e-matrix": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-matrix.ts"
+        "test:e2e-matrix": "deno test --env-file=.test.env -A --no-check test-e2e-two-vaults-matrix.ts",
+        "test:e2e-matrix:couchdb-enc0": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: COUCHDB-enc0' test-e2e-two-vaults-matrix.ts",
+        "test:e2e-matrix:couchdb-enc1": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: COUCHDB-enc1' test-e2e-two-vaults-matrix.ts",
+        "test:e2e-matrix:minio-enc0": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: MINIO-enc0' test-e2e-two-vaults-matrix.ts",
+        "test:e2e-matrix:minio-enc1": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: MINIO-enc1' test-e2e-two-vaults-matrix.ts"
     },
     "imports": {
         "@std/assert": "jsr:@std/assert@^1.0.13",
