@@ -56,6 +56,7 @@ export class DocumentHistoryModal extends Modal {
     info!: HTMLDivElement;
     fileInfo!: HTMLDivElement;
     showDiff = false;
+    diffOnly = false;
     id?: DocumentID;
 
     file: FilePathWithPrefix;
@@ -70,6 +71,7 @@ export class DocumentHistoryModal extends Modal {
     currentDiffIndex = -1;
     diffNavContainer!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
+    diffOnlyLabel!: HTMLLabelElement;
 
     // Search state
     searchKeyword = "";
@@ -98,6 +100,9 @@ export class DocumentHistoryModal extends Modal {
         }
         if (this.app.loadLocalStorage("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
+        }
+        if (this.app.loadLocalStorage("ols-history-diffonly") == "1") {
+            this.diffOnly = true;
         }
     }
 
@@ -159,13 +164,23 @@ export class DocumentHistoryModal extends Modal {
     }
 
     appendTextDiff(diff: [number, string][]) {
+        let hasOmitted = false;
         for (const [operation, text] of diff) {
             if (operation == DIFF_DELETE) {
                 this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-deleted" }), text);
+                hasOmitted = false;
             } else if (operation == DIFF_EQUAL) {
-                this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-normal" }), text);
+                if (this.diffOnly) {
+                    if (!hasOmitted) {
+                        this.contentView.appendText("\n...\n");
+                        hasOmitted = true;
+                    }
+                } else {
+                    this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-normal" }), text);
+                }
             } else if (operation == DIFF_INSERT) {
                 this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-added" }), text);
+                hasOmitted = false;
             }
         }
     }
@@ -353,6 +368,9 @@ export class DocumentHistoryModal extends Modal {
         if (this.diffNavContainer) {
             this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
         }
+        if (this.diffOnlyLabel) {
+            this.diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+        }
     }
 
     /**
@@ -476,7 +494,10 @@ export class DocumentHistoryModal extends Modal {
         searchRow.addClass("search-row");
         searchRow.addClass("history-search-row");
 
-        const searchInput = searchRow.createEl("input", { type: "text", placeholder: "Search in history (last 100)..." });
+        const searchInput = searchRow.createEl("input", {
+            type: "text",
+            placeholder: "Search in history (last 100)...",
+        });
         searchInput.addClass("history-search-input");
         searchInput.addEventListener("input", () => {
             if (this.searchTimeout) {
@@ -537,6 +558,22 @@ export class DocumentHistoryModal extends Modal {
             });
             label.appendText("Highlight diff");
         });
+
+        const diffOnlyLabel = diffOptionsRow.createEl("label", {});
+        diffOnlyLabel.createEl("input", { type: "checkbox" }, (checkbox) => {
+            if (this.diffOnly) {
+                checkbox.checked = true;
+            }
+            checkbox.addEventListener("input", (evt: any) => {
+                this.diffOnly = checkbox.checked;
+                this.app.saveLocalStorage("ols-history-diffonly", this.diffOnly == true ? "1" : null);
+                void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+            });
+        });
+        diffOnlyLabel.appendText("Diff only");
+        diffOnlyLabel.addClass("diff-only-label");
+        diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+        this.diffOnlyLabel = diffOnlyLabel;
 
         // Diff navigation buttons
         this.diffNavContainer = diffOptionsRow.createDiv("");

@@ -521,6 +521,10 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     text-align: center;
 }
 
+.diff-only-label {
+    margin-left: 10px;
+}
+
 .history-search-row {
     display: flex;
     gap: 5px;
@@ -561,3 +565,4 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     outline-offset: 1px;
     border-radius: 2px;
 }
+
