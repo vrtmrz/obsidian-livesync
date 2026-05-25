@@ -71,6 +71,14 @@ export class DocumentHistoryModal extends Modal {
     diffNavContainer!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
 
+    // Search state
+    searchKeyword = "";
+    searchResults: { rev: string; index: number; matchType: "Content" | "Diff" }[] = [];
+    currentSearchIndex = -1;
+    searchResultIndicator!: HTMLSpanElement;
+    searchProgressIndicator!: HTMLSpanElement;
+    searchTimeout: number | null = null;
+
     constructor(
         app: App,
         core: LiveSyncBaseCore,
@@ -88,7 +96,7 @@ export class DocumentHistoryModal extends Modal {
         if (!file && id) {
             this.file = this.services.path.id2path(id);
         }
-        if (localStorage.getItem("ols-history-highlightdiff") == "1") {
+        if (this.app.loadLocalStorage("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
         }
     }
@@ -153,12 +161,33 @@ export class DocumentHistoryModal extends Modal {
     appendTextDiff(diff: [number, string][]) {
         for (const [operation, text] of diff) {
             if (operation == DIFF_DELETE) {
-                this.contentView.createSpan({ text, cls: "history-deleted" });
+                this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-deleted" }), text);
             } else if (operation == DIFF_EQUAL) {
-                this.contentView.createSpan({ text, cls: "history-normal" });
+                this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-normal" }), text);
             } else if (operation == DIFF_INSERT) {
-                this.contentView.createSpan({ text, cls: "history-added" });
+                this.appendSearchHighlightedText(this.contentView.createSpan({ cls: "history-added" }), text);
             }
+        }
+    }
+
+    appendSearchHighlightedText(container: HTMLElement, text: string) {
+        if (!this.searchKeyword) {
+            container.appendText(text);
+            return;
+        }
+        const escapedKeyword = this.searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(escapedKeyword, "gi");
+        let lastIndex = 0;
+        for (const match of text.matchAll(regex)) {
+            const index = match.index ?? 0;
+            if (index > lastIndex) {
+                container.appendText(text.slice(lastIndex, index));
+            }
+            container.createEl("mark", { text: match[0] });
+            lastIndex = index + match[0].length;
+        }
+        if (lastIndex < text.length) {
+            container.appendText(text.slice(lastIndex));
         }
     }
 
@@ -258,7 +287,7 @@ export class DocumentHistoryModal extends Modal {
                     if (this.currentDeleted) {
                         this.appendDeletedNotice();
                     }
-                    this.contentView.appendText(w1data);
+                    this.appendSearchHighlightedText(this.contentView, w1data);
                 }
             }
         }
@@ -266,6 +295,11 @@ export class DocumentHistoryModal extends Modal {
         this.resetDiffNavigation();
         if (this.showDiff) {
             this.navigateDiff("next");
+        } else if (this.searchKeyword) {
+            const firstMark = this.contentView.querySelector("mark");
+            if (firstMark) {
+                firstMark.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
         }
     }
 
@@ -293,7 +327,7 @@ export class DocumentHistoryModal extends Modal {
         target.classList.add("diff-focused");
         target.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        this.diffNavIndicator.textContent = `${this.currentDiffIndex + 1}/${diffElements.length}`;
+        this.diffNavIndicator.setText(`${this.currentDiffIndex + 1}/${diffElements.length}`);
     }
 
     /**
@@ -304,9 +338,9 @@ export class DocumentHistoryModal extends Modal {
         if (this.diffNavIndicator) {
             if (this.showDiff) {
                 const diffElements = this.contentView.querySelectorAll(".history-added, .history-deleted");
-                this.diffNavIndicator.textContent = diffElements.length > 0 ? `0/${diffElements.length}` : "\u2014";
+                this.diffNavIndicator.setText(diffElements.length > 0 ? `0/${diffElements.length}` : "\u2014");
             } else {
-                this.diffNavIndicator.textContent = "\u2014";
+                this.diffNavIndicator.setText("\u2014");
             }
         }
         this.updateDiffNavVisibility();
@@ -321,12 +355,153 @@ export class DocumentHistoryModal extends Modal {
         }
     }
 
+    /**
+     * Search through the last 100 revisions for the given keyword.
+     */
+    async performSearch(keyword: string) {
+        this.searchKeyword = keyword;
+        this.searchResults = [];
+        this.currentSearchIndex = -1;
+
+        if (!keyword) {
+            this.searchResultIndicator.setText("");
+            this.searchProgressIndicator.setText("");
+            return;
+        }
+
+        const db = this.core.localDatabase;
+        const limit = 100;
+        const totalRevs = this.revs_info.length;
+        const end = Math.min(totalRevs, limit);
+
+        this.searchProgressIndicator.setText("Searching...");
+
+        const dmp = new diff_match_patch();
+
+        // 0 is the newest, higher index is older.
+        for (let i = 0; i < end; i++) {
+            const revInfo = this.revs_info[i];
+            const rev = revInfo.rev;
+
+            this.searchProgressIndicator.setText(`Searching ${i + 1}/${end}...`);
+
+            const doc = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
+            if (doc === false) continue;
+
+            const content = readDocument(doc);
+            if (typeof content !== "string") continue;
+
+            const keywordLower = keyword.toLocaleLowerCase();
+
+            // Search in content
+            if (content.toLocaleLowerCase().includes(keywordLower)) {
+                this.searchResults.push({ rev, index: i, matchType: "Content" });
+                this.updateSearchUI();
+                continue;
+            }
+
+            // Search in diff (from older version to this version)
+            // Older version is at i + 1
+            if (i < totalRevs - 1) {
+                const olderRev = this.revs_info[i + 1].rev;
+                const olderDoc = await db.getDBEntry(this.file, { rev: olderRev }, false, false, true);
+                if (olderDoc !== false) {
+                    const olderContent = readDocument(olderDoc);
+                    if (typeof olderContent === "string") {
+                        const diffs = dmp.diff_main(olderContent, content);
+                        let foundInDiff = false;
+                        for (const d of diffs) {
+                            if (
+                                (d[0] === DIFF_INSERT || d[0] === DIFF_DELETE) &&
+                                d[1].toLocaleLowerCase().includes(keywordLower)
+                            ) {
+                                foundInDiff = true;
+                                break;
+                            }
+                        }
+                        if (foundInDiff) {
+                            this.searchResults.push({ rev, index: i, matchType: "Diff" });
+                            this.updateSearchUI();
+                        }
+                    }
+                }
+            }
+        }
+
+        this.searchProgressIndicator.setText("Done");
+        this.updateSearchUI();
+    }
+
+    updateSearchUI() {
+        if (this.searchResults.length === 0) {
+            this.searchResultIndicator.setText(this.searchKeyword ? "No matches found" : "");
+        } else {
+            const current = this.currentSearchIndex >= 0 ? this.currentSearchIndex + 1 : 0;
+            this.searchResultIndicator.setText(`${current}/${this.searchResults.length} matches`);
+        }
+    }
+
+    navigateSearch(direction: "prev" | "next") {
+        if (this.searchResults.length === 0) return;
+
+        if (direction === "next") {
+            this.currentSearchIndex = (this.currentSearchIndex + 1) % this.searchResults.length;
+        } else {
+            this.currentSearchIndex =
+                this.currentSearchIndex <= 0 ? this.searchResults.length - 1 : this.currentSearchIndex - 1;
+        }
+
+        const match = this.searchResults[this.currentSearchIndex];
+        this.range.value = `${this.revs_info.length - 1 - match.index}`;
+        void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+        this.updateSearchUI();
+
+        // If it's a diff match, make sure Highlight diff is on
+        if (match.matchType === "Diff" && !this.showDiff) {
+            // We could auto-enable it, but maybe just notify the user?
+            // For now, let's just let the user toggle it if they want to see the diff.
+        }
+    }
+
     override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText("Document History");
         contentEl.empty();
         this.fileInfo = contentEl.createDiv("");
         this.fileInfo.addClass("op-info");
+
+        // Search Row
+        const searchRow = contentEl.createDiv("");
+        searchRow.addClass("op-info");
+        searchRow.addClass("search-row");
+        searchRow.addClass("history-search-row");
+
+        const searchInput = searchRow.createEl("input", { type: "text", placeholder: "Search in history (last 100)..." });
+        searchInput.addClass("history-search-input");
+        searchInput.addEventListener("input", () => {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            this.searchTimeout = window.setTimeout(() => {
+                void this.performSearch(searchInput.value);
+            }, 500);
+        });
+
+        searchRow.createEl("button", { text: "\u25B2" }, (e) => {
+            e.title = "Previous match";
+            e.addEventListener("click", () => this.navigateSearch("prev"));
+        });
+        searchRow.createEl("button", { text: "\u25BC" }, (e) => {
+            e.title = "Next match";
+            e.addEventListener("click", () => this.navigateSearch("next"));
+        });
+
+        this.searchResultIndicator = searchRow.createEl("span", { text: "" });
+        this.searchResultIndicator.addClass("history-search-result-indicator");
+
+        this.searchProgressIndicator = searchRow.createEl("span", { text: "" });
+        this.searchProgressIndicator.addClass("history-search-progress-indicator");
+
         const divView = contentEl.createDiv("");
         divView.addClass("op-flex");
 
@@ -342,21 +517,24 @@ export class DocumentHistoryModal extends Modal {
         const diffOptionsRow = contentEl.createDiv("");
         diffOptionsRow.addClass("op-info");
         diffOptionsRow.addClass("diff-options-row");
+        diffOptionsRow.addClass("history-diff-options-row");
 
-        diffOptionsRow.createEl("label", {}, (label) => {
-            label.appendChild(
-                createEl("input", { type: "checkbox" }, (checkbox) => {
-                    if (this.showDiff) {
-                        checkbox.checked = true;
-                    }
-                    checkbox.addEventListener("input", (evt: any) => {
-                        this.showDiff = checkbox.checked;
-                        localStorage.setItem("ols-history-highlightdiff", this.showDiff == true ? "1" : "");
-                        this.updateDiffNavVisibility();
-                        void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
-                    });
-                })
-            );
+        const highlightDiffContainer = diffOptionsRow.createDiv("");
+        highlightDiffContainer.addClass("history-highlight-diff-container");
+
+        highlightDiffContainer.createEl("label", {}, (label) => {
+            label.addClass("history-highlight-diff-label");
+            label.createEl("input", { type: "checkbox" }, (checkbox) => {
+                if (this.showDiff) {
+                    checkbox.checked = true;
+                }
+                checkbox.addEventListener("input", (evt: any) => {
+                    this.showDiff = checkbox.checked;
+                    this.app.saveLocalStorage("ols-history-highlightdiff", this.showDiff == true ? "1" : null);
+                    this.updateDiffNavVisibility();
+                    void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+                });
+            });
             label.appendText("Highlight diff");
         });
 
