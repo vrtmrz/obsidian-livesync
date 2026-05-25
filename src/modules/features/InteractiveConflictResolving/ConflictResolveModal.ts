@@ -27,6 +27,9 @@ export class ConflictResolveModal extends Modal {
     localName: string = "Base";
     remoteName: string = "Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
+    currentDiffIndex = -1;
+    diffView!: HTMLDivElement;
+    diffNavIndicator!: HTMLSpanElement;
 
     constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
         super(app);
@@ -47,7 +50,7 @@ export class ConflictResolveModal extends Modal {
         const lines = text.split("\n");
         lines.forEach((line, index) => {
             const span = container.createSpan({ cls });
-            span.textContent = line;
+            span.setText(line);
             if (index < lines.length - 1) {
                 container.createSpan({ cls: "ls-mark-cr" });
                 container.createEl("br");
@@ -60,6 +63,33 @@ export class ConflictResolveModal extends Modal {
         line.createSpan({ text: name, cls: "conflict-dev-name" });
         line.appendText(`: ${date}`);
         container.createEl("br");
+    }
+
+    navigateDiff(direction: "prev" | "next") {
+        const diffElements = this.diffView.querySelectorAll(".added, .deleted");
+        if (diffElements.length === 0) return;
+
+        const prevFocused = this.diffView.querySelector(".diff-focused");
+        if (prevFocused) {
+            prevFocused.classList.remove("diff-focused");
+        }
+
+        if (direction === "next") {
+            this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
+        } else {
+            this.currentDiffIndex = this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
+        }
+
+        const target = diffElements[this.currentDiffIndex];
+        target.classList.add("diff-focused");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        this.diffNavIndicator.setText(`${this.currentDiffIndex + 1}/${diffElements.length}`);
+    }
+
+    resetDiffNavigation() {
+        this.currentDiffIndex = -1;
+        const diffElements = this.diffView.querySelectorAll(".added, .deleted");
+        this.diffNavIndicator.setText(diffElements.length > 0 ? `0/${diffElements.length}` : "\u2014");
     }
 
     override onOpen() {
@@ -78,10 +108,26 @@ export class ConflictResolveModal extends Modal {
         // sendValue("close-resolve-conflict:" + this.filename, false);
         this.titleEl.setText(this.title);
         contentEl.empty();
-        contentEl.createEl("span", { text: this.filename });
-        const div = contentEl.createDiv("");
-        div.addClass("op-scrollable");
-        div.addClass("ls-dialog");
+        const diffOptionsRow = contentEl.createDiv("");
+        diffOptionsRow.addClass("diff-options-row");
+        diffOptionsRow.createEl("span", { text: this.filename });
+
+        const diffNavContainer = diffOptionsRow.createDiv("");
+        diffNavContainer.addClass("diff-nav");
+        diffNavContainer.createEl("button", { text: "\u25B2 Prev" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => this.navigateDiff("prev"));
+        });
+        diffNavContainer.createEl("button", { text: "\u25BC Next" }, (e) => {
+            e.addClass("diff-nav-btn");
+            e.addEventListener("click", () => this.navigateDiff("next"));
+        });
+        this.diffNavIndicator = diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator.addClass("diff-nav-indicator");
+
+        this.diffView = contentEl.createDiv("");
+        this.diffView.addClass("op-scrollable");
+        this.diffView.addClass("ls-dialog");
         let diffLength = 0;
         for (const v of this.result.diff) {
             const x1 = v[0];
@@ -91,12 +137,11 @@ export class ConflictResolveModal extends Modal {
                 continue;
             }
             if (x1 == DIFF_DELETE) {
-                this.appendDiffFragment(div, x2, "deleted");
-                div.createEl("span", { text: x2, cls: "deleted normal conflict-dev-name" });
+                this.appendDiffFragment(this.diffView, x2, "deleted");
             } else if (x1 == DIFF_EQUAL) {
-                this.appendDiffFragment(div, x2, "normal");
+                this.appendDiffFragment(this.diffView, x2, "normal");
             } else if (x1 == DIFF_INSERT) {
-                this.appendDiffFragment(div, x2, "added");
+                this.appendDiffFragment(this.diffView, x2, "added");
             }
         }
 
@@ -108,24 +153,30 @@ export class ConflictResolveModal extends Modal {
             new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
         this.appendVersionInfo(div2, "deleted", this.localName, date1);
         this.appendVersionInfo(div2, "added", this.remoteName, date2);
-        contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) =>
-            e.addEventListener("click", () => this.sendResponse(this.result.right.rev))
-        ).style.marginRight = "4px";
-        contentEl.createEl("button", { text: `Use ${this.remoteName}` }, (e) =>
-            e.addEventListener("click", () => this.sendResponse(this.result.left.rev))
-        ).style.marginRight = "4px";
+        contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) => {
+            e.addClass("conflict-action-button");
+            e.addEventListener("click", () => this.sendResponse(this.result.right.rev));
+        });
+        contentEl.createEl("button", { text: `Use ${this.remoteName}` }, (e) => {
+            e.addClass("conflict-action-button");
+            e.addEventListener("click", () => this.sendResponse(this.result.left.rev));
+        });
         if (!this.pluginPickMode) {
-            contentEl.createEl("button", { text: "Concat both" }, (e) =>
-                e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT))
-            ).style.marginRight = "4px";
+            contentEl.createEl("button", { text: "Concat both" }, (e) => {
+                e.addClass("conflict-action-button");
+                e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT));
+            });
         }
-        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) =>
-            e.addEventListener("click", () => this.sendResponse(CANCELLED))
-        ).style.marginRight = "4px";
+        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
+            e.addClass("conflict-action-button");
+            e.addEventListener("click", () => this.sendResponse(CANCELLED));
+        });
         if (diffLength > 100 * 1024) {
-            div.empty();
-            div.innerText = "(Too large diff to display)";
+            this.diffView.empty();
+            this.diffView.setText("(Too large diff to display)");
         }
+        this.resetDiffNavigation();
+        this.navigateDiff("next");
     }
 
     sendResponse(result: MergeDialogResult) {

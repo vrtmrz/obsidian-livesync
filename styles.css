@@ -17,6 +17,10 @@
     min-width: 5em;
 }
 
+.conflict-action-button {
+    margin-right: 4px;
+}
+
 .op-scrollable {
     overflow-y: scroll;
     /* min-height: 280px; */
