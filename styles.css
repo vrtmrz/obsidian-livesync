@@ -525,8 +525,48 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     text-align: center;
 }
 
+.diff-only-label {
+    margin-left: 10px;
+}
+
+.history-search-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.history-search-input {
+    flex-grow: 1;
+}
+
+.history-search-result-indicator {
+    font-size: 0.8em;
+    min-width: 80px;
+}
+
+.history-search-progress-indicator {
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+.history-diff-options-row {
+    justify-content: space-between;
+}
+
+.history-highlight-diff-container,
+.history-highlight-diff-label {
+    display: flex;
+    align-items: center;
+}
+
+.history-highlight-diff-label {
+    gap: 4px;
+}
+
 .diff-focused {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 1px;
     border-radius: 2px;
 }
+
