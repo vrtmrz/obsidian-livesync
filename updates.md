@@ -3,14 +3,22 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Unreleased
+## 0.25.70
 
 25th May, 2026
+
+### New features
+- Diff dialogue now has great tools to navigate and understand the differences, including:
+  - A checkbox to toggle the visibility of collapsed identical sections, making it easier to focus on the actual differences (PR #889).
+  - A search feature to find specific text in past revisions, and navigate revisions with search results highlighted in the dialogue (PR #890).
+
+- Conflict resolution dialogue now has a navigation feature to jump between conflicts (PR #891).
+
+Thank you so much for @SeleiXi for implementing these features!
 
 ### Improved
 
 - More diagnostic information for P2P connections is now shown, including why a connection failure occurred and the current connection status.
-
 
 ## 0.25.69
 
