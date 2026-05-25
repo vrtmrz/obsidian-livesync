@@ -14,7 +14,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 - Conflict resolution dialogue now has a navigation feature to jump between conflicts (PR #891).
 
-Thank you so much for @SeleiXi for implementing these features!
+Thank you so much to @SeleiXi for implementing these features!
 
 ### Improved
 
