@@ -17,7 +17,7 @@ The plugin uses a dynamic module system to reduce coupling and improve maintaina
     - `coreObsidian/` - Obsidian-specific core (e.g., `ModuleFileAccessObsidian`)
     - `essential/` - Required modules (e.g., `ModuleMigration`, `ModuleKeyValueDB`)
     - `features/` - Optional features (e.g., `ModuleLog`, `ModuleObsidianSettings`)
-    - `extras/` - Development/testing tools (e.g., `ModuleDev`, `ModuleIntegratedTest`)
+    - `extras/` - Development/testing tools (e.g., `ModuleDev`, ~~`ModuleIntegratedTest`~~)
 - **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
     - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
 - **ServiceModule**: A new type of module that directly depends on services.
