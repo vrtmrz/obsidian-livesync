@@ -19,7 +19,7 @@
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
         "buildViteOriginal": "npx dotenv-cli -e .env  -- vite build --mode original",
         "buildDev": "node esbuild.config.mjs dev",
-        "lint": "eslint src",
+        "lint": "eslint --cache --concurrency auto src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
         "tsc-check": "tsc --noEmit",
         "pretty": "npm run prettyNoWrite -- --write --log-level error",

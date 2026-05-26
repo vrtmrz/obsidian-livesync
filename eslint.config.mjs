@@ -43,7 +43,7 @@ export default defineConfig([
     {
         files: ["**/*.ts"],
         languageOptions: {
-            globals: { ...globals.browser },
+            globals: { ...globals.browser, "PouchDB": "readonly" },
             parser: tsParser,
             parserOptions: {
                 project: "./tsconfig.json",
@@ -79,5 +79,5 @@ export default defineConfig([
             "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
             "obsidianmd/no-plugin-as-component": "off", // Temporary
         },
-    },
+    }
 ]);
