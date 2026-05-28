@@ -30,6 +30,7 @@ export type CLICommand =
 
 export interface CLIOptions {
     databasePath?: string;
+    vaultPath?: string;
     settingsPath?: string;
     verbose?: boolean;
     debug?: boolean;

@@ -61,7 +61,7 @@ Commands:
     info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
-    mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
+    mirror [vault-path]     Mirror database contents to the local file system (vault-path takes precedence over --vault; defaults to vault from --vault / database-path)
     remote-add <name> <connstr>
                             Add a remote configuration from a connection string
     remote-rm <remote-id>    Remove a remote configuration by ID
@@ -74,6 +74,8 @@ Commands:
                             Activate a stored remote configuration by ID
 
 Options:
+  --vault <path>, -V <path>  (daemon/mirror) Path to the vault directory containing .md files
+                              (defaults to database-path; allows separate PouchDB and vault dirs)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
 
 Examples:
@@ -114,6 +116,7 @@ export function parseArgs(): CLIOptions {
     }
 
     let databasePath: string | undefined;
+    let vaultPath: string | undefined;
     let settingsPath: string | undefined;
     let verbose = false;
     let debug = false;
@@ -125,6 +128,16 @@ export function parseArgs(): CLIOptions {
     for (let i = 0; i < args.length; i++) {
         const token = args[i];
         switch (token) {
+            case "--vault":
+            case "-V": {
+                i++;
+                if (!args[i]) {
+                    console.error(`Error: Missing value for ${token}`);
+                    process.exit(1);
+                }
+                vaultPath = args[i];
+                break;
+            }
             case "--settings":
             case "-s": {
                 i++;
@@ -198,6 +211,7 @@ export function parseArgs(): CLIOptions {
 
     return {
         databasePath,
+        vaultPath,
         settingsPath,
         verbose,
         debug,
@@ -290,16 +304,17 @@ export async function main() {
         : path.join(databasePath, SETTINGS_FILE);
     configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
 
+    // Resolve vault path: --vault flag takes priority, otherwise fall back to databasePath
+    // For daemon mode, enable chokidar file watching so the _changes feed picks up events.
+    // mirror runs a single full scan and doesn't need continuous watching.
+    const watchEnabled = options.command === "daemon";
+    const vaultPath = options.vaultPath ? path.resolve(options.vaultPath) : databasePath!;
+
     infoLog(`Self-hosted LiveSync CLI`);
     infoLog(`Database Path: ${databasePath}`);
+    infoLog(`Vault Path:    ${vaultPath}`);
     infoLog(`Settings: ${settingsPath}`);
     infoLog("");
-
-    // For daemon and mirror mode, load ignore rules before the core is constructed so that
-    // chokidar's ignored option is populated when beginWatch() fires during onLoad().
-    const watchEnabled = options.command === "daemon";
-    const vaultPath =
-        options.command === "mirror" && options.commandArgs[0] ? path.resolve(options.commandArgs[0]) : databasePath;
     let ignoreRules: IgnoreRules | undefined;
     if (options.command === "daemon" || options.command === "mirror") {
         ignoreRules = new IgnoreRules(vaultPath);
