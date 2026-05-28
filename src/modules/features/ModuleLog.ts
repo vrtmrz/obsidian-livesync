@@ -29,7 +29,7 @@ import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type Workspace
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";

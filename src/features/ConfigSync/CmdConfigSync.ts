@@ -68,7 +68,7 @@ import { ConflictResolveModal } from "../../modules/features/InteractiveConflict
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg } from "@/lib/src/common/i18n.ts";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
 

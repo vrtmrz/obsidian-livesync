@@ -6,37 +6,41 @@ import * as sveltePlugin from "eslint-plugin-svelte";
 
 export default defineConfig([
     globalIgnores([
-        "**/node_modules/*",
-        "**/jest.config.js",
+        // Build outputs and legacy files
+        "**/build",
+        "**/main.js",
+        "**/.eslintrc.js.bak",
+        // Files from linked dependencies (those files should not exist for most people).
+        "modules/octagonal-wheels/dist/**/*",
+
+        // Sub-projects (Exclude from root linting as they have different environments)
+        "src/apps/**/*",
+
+        // Specific exclusions from common library (src/lib)
         "src/lib/coverage",
         "src/lib/browsertest",
-        "**/test.ts",
-        "**/tests.ts",
-        "**/**test.ts",
-        "**/**.test.ts",
-        "**/*.unit.spec.ts",
-        "**/esbuild.*.mjs",
-        "**/terser.*.mjs",
-        "**/node_modules",
-        "**/build",
-        "**/.eslintrc.js.bak",
-        "src/lib/src/patches/pouchdb-utils",
-        "**/esbuild.config.mjs",
-        "**/rollup.config.js",
-        "modules/octagonal-wheels/rollup.config.js",
-        "modules/octagonal-wheels/dist/**/*",
         "src/lib/test",
         "src/lib/_tools",
+        "src/lib/src/patches/pouchdb-utils",
         "src/lib/src/cli",
-        "**/main.js",
-        "src/apps/**/*",
-        ".prettierrc.*.mjs",
-        ".prettierrc.mjs",
-        "*.config.mjs",
-        "src/apps/**/*",
         "src/lib/src/services/implements/browser/**",
         "src/lib/src/services/implements/headless/**",
         "src/lib/src/API",
+
+        // Config files and build scripts
+        "**/jest.config.js",
+        "**/rollup.config.js",
+        "**/esbuild.config.mjs",
+        "**/terser.*.mjs",
+        ".prettierrc.*.mjs",
+        ".prettierrc.mjs",
+        "*.config.mjs",
+
+        // Testing files (Simplified patterns)
+        "**/*.test.ts",
+        "**/*.unit.spec.ts",
+        "**/test.ts",
+        "**/tests.ts",
     ]),
     ...sveltePlugin.configs["flat/base"],
     ...obsidianmd.configs.recommended,
@@ -50,22 +54,29 @@ export default defineConfig([
             },
         },
         rules: {
+            // Base rules (turned off in favour of TS specific versions or explicitly disabled).
             "no-unused-vars": "off",
-            "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
             "no-unused-labels": "off",
-            "@typescript-eslint/ban-ts-comment": "off",
             "no-prototype-builtins": "off",
+            "require-await": "off",
+
+            // TypeScript specific rules
+            "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
+            "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-empty-function": "off",
-            "require-await": "error",
-            "obsidianmd/rule-custom-message": "off", // Temporary
-            "obsidianmd/ui/sentence-case": "off", // Temporary
             "@typescript-eslint/require-await": "warn",
             "@typescript-eslint/no-misused-promises": "warn",
             "@typescript-eslint/no-floating-promises": "warn",
-            "no-async-promise-executor": "warn",
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-unnecessary-type-assertion": "error",
+
+            // General rules
+            "no-async-promise-executor": "warn",
             "no-constant-condition": ["error", { checkLoops: false }],
+
+            // Plugin specific overrides (Pending review)
+            "obsidianmd/rule-custom-message": "off",
+            "obsidianmd/ui/sentence-case": "off",
         },
     },
     {
@@ -77,7 +88,7 @@ export default defineConfig([
         },
         rules: {
             "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
-            "obsidianmd/no-plugin-as-component": "off", // Temporary
+            "obsidianmd/no-plugin-as-component": "off",
         },
     }
 ]);
