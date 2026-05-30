@@ -111,7 +111,7 @@ export class ModuleDev extends AbstractObsidianModule {
                 const filename = "test-create-conflict.md";
                 const content = `# Test create conflict\n\n`;
                 const w = await this.core.databaseFileAccess.store({
-                    name: filename as FilePathWithPrefix,
+                    name: filename,
                     path: filename as FilePathWithPrefix,
                     body: new Blob([content], { type: "text/markdown" }),
                     stat: {

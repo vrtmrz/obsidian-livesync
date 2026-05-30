@@ -564,7 +564,7 @@ export class ConfigSync extends LiveSyncCommands {
                 ...data,
                 documentPath: this.getPath(wx),
                 files: xFiles,
-            } as PluginDataExDisplay;
+            } satisfies PluginDataExDisplay;
         }
         return false;
     }
