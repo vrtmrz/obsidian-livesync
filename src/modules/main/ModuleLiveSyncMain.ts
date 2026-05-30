@@ -13,6 +13,7 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
+import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -89,11 +90,6 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         // this.addUIs();
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
         this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
         await this.services.setting.loadSettings();
         if (!(await this.services.appLifecycle.onSettingLoaded())) {

@@ -42,7 +42,8 @@ export default defineConfig([
         ".prettierrc.*.mjs",
         ".prettierrc.mjs",
         "*.config.mjs",
-
+        "vite.*",
+        "vitest.*",
         // Testing files (Simplified patterns)
         "test/**",
         "**/*.test.ts",
