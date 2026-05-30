@@ -8,13 +8,20 @@ export default defineConfig([
     globalIgnores([
         // Build outputs and legacy files
         "**/build",
+        "coverage",
         "**/main.js",
+        "main_org.js",
+        "pouchdb-browser.js",
+        "version-bump.mjs",
+        "package.json",
+        "**/*.json",
         "**/.eslintrc.js.bak",
         // Files from linked dependencies (those files should not exist for most people).
         "modules/octagonal-wheels/dist/**/*",
 
         // Sub-projects (Exclude from root linting as they have different environments)
         "src/apps/**/*",
+        "utils/**/*",
 
         // Specific exclusions from common library (src/lib)
         "src/lib/coverage",
