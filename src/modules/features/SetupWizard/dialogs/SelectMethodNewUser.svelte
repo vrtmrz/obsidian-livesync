@@ -7,9 +7,6 @@
     import Options from "@/lib/src/UI/components/Options.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
-    import Check from "@/lib/src/UI/components/Check.svelte";
     const TYPE_USE_SETUP_URI = "use-setup-uri";
     const TYPE_CONFIGURE_MANUALLY = "configure-manually";
     const TYPE_CANCELLED = "cancelled";
