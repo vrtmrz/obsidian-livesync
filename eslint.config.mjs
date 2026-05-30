@@ -44,6 +44,7 @@ export default defineConfig([
         "*.config.mjs",
 
         // Testing files (Simplified patterns)
+        "test/**",
         "**/*.test.ts",
         "**/*.unit.spec.ts",
         "**/test.ts",
