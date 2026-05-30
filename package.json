@@ -140,7 +140,7 @@
         "markdown-it": "^14.1.1",
         "micromatch": "^4.0.0",
         "minimatch": "^10.2.2",
-        "octagonal-wheels": "^0.1.45",
+        "octagonal-wheels": "^0.1.46",
         "pouchdb-adapter-leveldb": "^9.0.0",
         "qrcode-generator": "^1.4.4",
         "werift": "^0.23.0",

@@ -67,8 +67,8 @@ export default defineConfig([
             "no-unused-labels": "off",
             "no-prototype-builtins": "off",
             "require-await": "off",
-
             // TypeScript specific rules
+            "@typescript-eslint/no-deprecated": "warn",
             "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-empty-function": "off",
