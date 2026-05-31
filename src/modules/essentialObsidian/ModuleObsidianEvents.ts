@@ -13,6 +13,7 @@ import {
     hiddenFilesProcessingCount,
 } from "../../lib/src/mock_and_interop/stores.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -222,9 +223,9 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 );
             });
             this.plugin.registerInterval(
-                setInterval(() => {
+                compatGlobal.setInterval(() => {
                     __tick.value++;
-                }, 1000) as unknown as number
+                }, 1000)
             );
 
             let stableCheck = 3;
