@@ -3,6 +3,13 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### Under development
+
+- Bulk database fetching is now work in progress. This feature is expected to speed up rebuilds and setups.
+  Another feature that is needed is the ability to enforce a specific order during the initial comparison between the storage and the local database.
+
 ## 0.25.70
 
 25th May, 2026
