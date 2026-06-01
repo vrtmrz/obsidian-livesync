@@ -71,6 +71,7 @@ import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "@/lib/src/common/i18n.ts";
 import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
 import type { LiveSyncCore } from "../../main.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -1069,10 +1070,10 @@ export class ConfigSync extends LiveSyncCommands {
         }
         const baseDir = this.configDir;
         try {
-            if (!data.documentPath) throw "InternalError: Document path not exist";
+            if (!data.documentPath) throw new LiveSyncError("InternalError: Document path not exist");
             const dx = await this.localDatabase.getDBEntry(data.documentPath);
             if (dx == false) {
-                throw "Not found on database";
+                throw new LiveSyncError("Not found on database");
             }
             const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
@@ -1317,7 +1318,7 @@ export class ConfigSync extends LiveSyncCommands {
                     }
                     const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (docXDoc == false) {
-                        throw "Could not load the document";
+                        throw new LiveSyncError("Could not load the document");
                     }
                     const dataSrc = getDocData(docXDoc.data);
                     const dataStart = dataSrc.indexOf(DUMMY_END);

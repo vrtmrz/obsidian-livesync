@@ -181,7 +181,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // if (runOnSaved) {
         const handlers = this.onSavedHandlers
             .filter((e) => appliedKeys.indexOf(e.key) !== -1)
-            .map((e) => e.handler(this.editingSettings[e.key as AllSettingItemKey]));
+            .map((e) => Promise.resolve(e.handler(this.editingSettings[e.key as AllSettingItemKey])));
         await Promise.all(handlers);
         // }
         keys.forEach((e) => this.refreshSetting(e));
@@ -648,7 +648,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.editingSettings.passphrase = "";
         }
         await this.saveAllDirtySettings();
-        await this.applyAllSettings();
+        await Promise.resolve(this.applyAllSettings());
         if (result == OPTION_FETCH) {
             await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
             this.services.appLifecycle.scheduleRestart();
@@ -739,6 +739,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 );
             }
             setLevelClass(el, level);
+            // TODO: Refactor to use Obsidian's recommended way to create heading.
+            // eslint-disable-next-line obsidianmd/settings-tab/no-manual-html-headings
             el.createEl("h3", { text: title, cls: "sls-setting-pane-title" });
             if (this.menuEl) {
                 this.menuEl.createEl(

@@ -248,7 +248,7 @@
                     </td>
                     <td class="path">
                         <div class="filenames">
-                            <span class="path">/{entry.dirname.split("/").join(`​/`)}</span>
+                            <span class="path">/{entry.dirname.split("/").join(`\u200b/`)}</span>
                             <!-- svelte-ignore a11y-click-events-have-key-events -->
                             <!-- svelte-ignore a11y-no-static-element-interactions -->
                             <!-- svelte-ignore a11y-missing-attribute -->

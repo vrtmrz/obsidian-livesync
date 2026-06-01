@@ -73,7 +73,7 @@ export function createFetchAllFlagHandler(
             return false;
         }
         const { vault, extra } = method;
-        const settings = await host.services.setting.currentSettings();
+        const settings = await Promise.resolve(host.services.setting.currentSettings());
         // If remote is MinIO, makeLocalChunkBeforeSync is not available. (because no-deduplication on sending).
         const makeLocalChunkBeforeSyncAvailable = settings.remoteType !== REMOTE_MINIO;
         const mapVaultStateToAction = {

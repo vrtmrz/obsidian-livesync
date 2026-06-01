@@ -1,10 +1,11 @@
 import { ButtonComponent } from "@/deps.ts";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal, type CompatIntervalHandle } from "@lib/common/coreEnvFunctions.ts";
 
 class AutoClosableModal extends Modal {
     _closeByUnload() {
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
         this.close();
     }
@@ -12,9 +13,11 @@ class AutoClosableModal extends Modal {
     constructor(app: App) {
         super(app);
         this._closeByUnload = this._closeByUnload.bind(this);
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
     override onClose() {
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }
@@ -140,7 +143,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     isManuallyClosed = false;
     defaultAction: string | undefined;
     timeout: number | undefined;
-    timer: ReturnType<typeof compatGlobal.setInterval> | undefined = undefined;
+    timer: CompatIntervalHandle | undefined = undefined;
     defaultButtonComponent: ButtonComponent | undefined;
     wideButton: boolean;
 

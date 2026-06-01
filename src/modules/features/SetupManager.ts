@@ -227,7 +227,7 @@ export class SetupManager extends AbstractModule {
         const e2eeConf = await this.dialogManager.openWithExplicitCancel(SetupRemoteE2EE, currentSetting);
         if (e2eeConf === "cancelled") {
             this._log("E2EE configuration cancelled.", LOG_LEVEL_NOTICE);
-            return await false;
+            return false;
         }
         const newSetting = {
             ...currentSetting,
@@ -367,7 +367,7 @@ export class SetupManager extends AbstractModule {
         const qrResult = await this.dialogManager.open(ScanQRCode);
         this._log("QR Code dialog closed.", LOG_LEVEL_VERBOSE);
         // Result is not used, but log it for debugging.
-        this._log(`QR Code result: ${qrResult}`, LOG_LEVEL_VERBOSE);
+        this._log(qrResult, LOG_LEVEL_VERBOSE);
         // QR Code instruction dialog never yields settings directly.
         return false;
     }

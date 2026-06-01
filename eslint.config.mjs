@@ -4,7 +4,7 @@ import globals from "globals";
 import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
 import svelteParser from "svelte-eslint-parser";
-
+const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
 export default defineConfig([
     globalIgnores([
         // Build outputs and legacy files
@@ -64,6 +64,9 @@ export default defineConfig([
                 project: "./tsconfig.json",
             },
         },
+        linterOptions:{
+            reportUnusedDisableDirectives: false,
+        },
         rules: {
             // -- Base rules (turned off in favour of TS specific versions or explicitly disabled).
             "no-unused-vars": "off",
@@ -81,29 +84,33 @@ export default defineConfig([
             "@typescript-eslint/no-unsafe-return": "off",
             "@typescript-eslint/no-unsafe-assignment": "off",
             // -- Reasonable rules.
-            "@typescript-eslint/no-deprecated": "warn",
+            "@typescript-eslint/no-deprecated": warnWhileDev,
             "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-empty-function": "off",
-            "@typescript-eslint/require-await": "warn",
+            "@typescript-eslint/require-await": "error",
             "@typescript-eslint/no-misused-promises": "error",
             "@typescript-eslint/no-floating-promises": "error",
             "@typescript-eslint/no-unnecessary-type-assertion": "error",
 
             // -- Obsidian rules
             // obsidianmd/no-unsupported-api: usually this project checks for API support at runtime, so this rule is not critical but can be helpful to catch potential issues.
-            "obsidianmd/no-unsupported-api": "warn",
+            "obsidianmd/no-unsupported-api": warnWhileDev,
 
             // -- General rules
-            "no-async-promise-executor": "warn",
+            "no-async-promise-executor": warnWhileDev,
             "no-constant-condition": ["error", { checkLoops: false }],
-            // -- Disabled rules (Pending review)
+            // -- Disabled rules
             // no-undef: This option breaks the global declarations for the library files and is not worth the effort to fix at this time.
             "no-undef": "off",
 
-            // -- Plugin specific overrides (Pending review)
+            // -- Plugin specific overrides
             "obsidianmd/rule-custom-message": "off",
             "obsidianmd/ui/sentence-case": "off",
+            "obsidianmd/no-plugin-as-component": "off",
+
+            // -- Temporary overrides for migration
+            "obsidianmd/no-static-styles-assignment": "off",
         },
     },
     {
