@@ -7,15 +7,18 @@
     import Options from "@/lib/src/UI/components/Options.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    const TYPE_USE_SETUP_URI = "use-setup-uri";
-    const TYPE_CONFIGURE_MANUALLY = "configure-manually";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_USE_SETUP_URI | typeof TYPE_CONFIGURE_MANUALLY | typeof TYPE_CANCELLED;
+    import {
+        TYPE_USE_SETUP_URI,
+        TYPE_CONFIGURE_MANUALLY,
+        TYPE_CANCELLED,
+        type SelectMethodNewUserResultType,
+    } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: SelectMethodNewUserResultType) => void;
     };
     const { setResult }: Props = $props();
-    let userType = $state<ResultType>(TYPE_CANCELLED);
+    let userType = $state<SelectMethodNewUserResultType>(TYPE_CANCELLED);
     let proceedTitle = $derived.by(() => {
         if (userType === TYPE_USE_SETUP_URI) {
             return "Proceed with Setup URI";

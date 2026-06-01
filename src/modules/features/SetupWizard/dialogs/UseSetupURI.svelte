@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { configURIBase } from "../../../../common/types";
-    import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
+    import { configURIBase } from "@/common/types";
+    import type { ObsidianLiveSyncSettings } from "@lib/common/types";
     import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
     import Guidance from "@/lib/src/UI/components/Guidance.svelte";
     import Decision from "@/lib/src/UI/components/Decision.svelte";
@@ -10,11 +10,11 @@
     import Password from "@/lib/src/UI/components/Password.svelte";
 
     import { onMount } from "svelte";
-    import { decryptString } from "../../../../lib/src/encryption/stringEncryption.ts";
-    import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog.ts";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_CANCELLED | ObsidianLiveSyncSettings;
-    type Props = GuestDialogProps<ResultType, string>;
+    import { decryptString } from "@lib/encryption/stringEncryption.ts";
+    import type { GuestDialogProps } from "@lib/UI/svelteDialog.ts";
+    import { TYPE_CANCELLED, type UseSetupURIResultType } from "./setupDialogTypes";
+
+    type Props = GuestDialogProps<UseSetupURIResultType, string>;
     const { setResult, getInitialData }: Props = $props();
 
     let setupURI = $state("");

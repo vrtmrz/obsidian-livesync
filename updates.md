@@ -10,6 +10,21 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Bulk database fetching is now work in progress. This feature is expected to speed up rebuilds and setups.
   Another feature that is needed is the ability to enforce a specific order during the initial comparison between the storage and the local database.
 
+## 0.25.70-patch1
+
+1st June, 2026
+
+This release does not include any changes to behaviour (if everything is as intended).
+However, this release had addressed a large number of errors and potential issues caused by the switch to a modern ESLint configuration, as well as unintended log output.
+I have also separated out some parts where the type definitions were a bit loose.
+
+As the diff has become too large, I am releasing it as a beta.
+To anyone who has submitted a pull request, please bear with me for a little while.
+
+### Refactored
+
+- Many 
+
 ## 0.25.70
 
 25th May, 2026

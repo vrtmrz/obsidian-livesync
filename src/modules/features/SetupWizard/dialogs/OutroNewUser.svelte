@@ -5,14 +5,13 @@
     import Question from "@/lib/src/UI/components/Question.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-        const TYPE_APPLY = "apply";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_APPLY | typeof TYPE_CANCELLED;
+    import { TYPE_APPLY, TYPE_CANCELLED, type OutroNewUserResultType } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: OutroNewUserResultType) => void;
     };
     const { setResult }: Props = $props();
-    // let userType = $state<ResultType>(TYPE_CANCELLED);
+    // let userType = $state<OutroNewUserResultType>(TYPE_CANCELLED);
 </script>
 
 <DialogHeader title="Setup Complete: Preparing to Initialise Server" />
