@@ -411,10 +411,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
     }
 
-    async updateLastProcessedAsActualDatabase(
-        file: FilePath,
-        doc?: MetaEntry | LoadedEntry | null | false
-    ) {
+    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: MetaEntry | LoadedEntry | null | false) {
         const dbPath = addPrefix(file, ICHeader);
         if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
         if (!doc) return;

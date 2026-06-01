@@ -188,7 +188,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = document.createElement("span")));
+                text.inputEl.before((dateEl = activeDocument.createElement("span")));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);

@@ -80,11 +80,19 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.watchWindowVisibility = this.watchWindowVisibility.bind(this);
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
         this.watchOnline = this.watchOnline.bind(this);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
-        this.plugin.registerDomEvent(document, "visibilitychange", this.watchWindowVisibility);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
         this.plugin.registerDomEvent(window, "focus", () => this.setHasFocus(true));
         this.plugin.registerDomEvent(window, "blur", () => this.setHasFocus(false));
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerDomEvent(window, "online", this.watchOnline);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerDomEvent(window, "offline", this.watchOnline);
     }
 

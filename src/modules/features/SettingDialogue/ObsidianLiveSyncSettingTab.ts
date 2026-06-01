@@ -62,6 +62,7 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // For creating a document
 const toc = new Set<string>();
@@ -141,7 +142,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     async saveLocalSetting(key: keyof typeof OnDialogSettingsDefault) {
         if (key == "configPassphrase") {
-            localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
+            compatGlobal.localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
             return await Promise.resolve();
         }
         if (key == "deviceAndVaultName") {
@@ -214,7 +215,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     reloadAllLocalSettings() {
         const ret = { ...OnDialogSettingsDefault };
-        ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
+        ret.configPassphrase = compatGlobal.localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = "";
         ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
         return ret;
