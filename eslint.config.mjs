@@ -3,6 +3,7 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 import globals from "globals";
 import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
+import svelteParser from "svelte-eslint-parser";
 
 export default defineConfig([
     globalIgnores([
@@ -55,35 +56,52 @@ export default defineConfig([
     ...obsidianmd.configs.recommended,
     {
         files: ["**/*.ts"],
+        // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
         languageOptions: {
-            globals: { ...globals.browser, "PouchDB": "readonly" },
+            globals: { ...globals.browser, PouchDB: "readonly" },
             parser: tsParser,
             parserOptions: {
                 project: "./tsconfig.json",
             },
         },
         rules: {
-            // Base rules (turned off in favour of TS specific versions or explicitly disabled).
+            // -- Base rules (turned off in favour of TS specific versions or explicitly disabled).
             "no-unused-vars": "off",
             "no-unused-labels": "off",
             "no-prototype-builtins": "off",
             "require-await": "off",
-            // TypeScript specific rules
+            // -- TypeScript specific rules
+            //  @typescript-eslint/no-unsafe-* rules and @typescript-eslint/no-explicit-any:
+            //  This project contains a lot of library-sh code where the use of `any` is often necessary and justified.
+            //  Rules is now set to 'off' for a while.
+            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-unsafe-argument": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/no-unsafe-return": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            // -- Reasonable rules.
             "@typescript-eslint/no-deprecated": "warn",
             "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-empty-function": "off",
             "@typescript-eslint/require-await": "warn",
-            "@typescript-eslint/no-misused-promises": "warn",
-            "@typescript-eslint/no-floating-promises": "warn",
-            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/no-floating-promises": "error",
             "@typescript-eslint/no-unnecessary-type-assertion": "error",
 
-            // General rules
+            // -- Obsidian rules
+            // obsidianmd/no-unsupported-api: usually this project checks for API support at runtime, so this rule is not critical but can be helpful to catch potential issues.
+            "obsidianmd/no-unsupported-api": "warn",
+
+            // -- General rules
             "no-async-promise-executor": "warn",
             "no-constant-condition": ["error", { checkLoops: false }],
+            // -- Disabled rules (Pending review)
+            // no-undef: This option breaks the global declarations for the library files and is not worth the effort to fix at this time.
+            "no-undef": "off",
 
-            // Plugin specific overrides (Pending review)
+            // -- Plugin specific overrides (Pending review)
             "obsidianmd/rule-custom-message": "off",
             "obsidianmd/ui/sentence-case": "off",
         },
@@ -91,13 +109,19 @@ export default defineConfig([
     {
         files: ["**/*.svelte"],
         languageOptions: {
+            parser: svelteParser,
             parserOptions: {
                 parser: tsParser,
+                extraFileExtensions: [".svelte"],
             },
         },
         rules: {
-            "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+            // no-unused-vars:
+            // Svelte template's declarations have a lot of false positives and the rule is not worth the effort to fix at this time.
+            // it may improve in the future with some options as like   ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],]
+            "no-unused-vars": "off",
             "obsidianmd/no-plugin-as-component": "off",
+            "obsidianmd/ui/sentence-case": "off",
         },
-    }
+    },
 ]);
