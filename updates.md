@@ -8,7 +8,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 1st June, 2026
 
 ### Fixed
-- No longer the status element breaks other plugins' interaction (#930).
+- No longer does the status element break other plugins' interaction (#930).
 
 ## 0.25.70-patch1
 
