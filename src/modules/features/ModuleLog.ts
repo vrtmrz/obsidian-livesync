@@ -516,7 +516,12 @@ ${stringifyYaml(info)}
         let errorInfo = "";
         if (message instanceof Error) {
             if (message instanceof LiveSyncError) {
-                errorInfo = `${message.cause?.name}:${message.cause?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${message.cause?.stack}`;
+                if (message.cause && message.cause instanceof Error) {
+                    const causedError = message.cause;
+                    errorInfo = `${causedError?.name}:${causedError?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${causedError?.stack}`;
+                } else {
+                    errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}`;
+                }
             } else {
                 const thisStack = new Error().stack;
                 errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}\n[LogCallStack]: ${thisStack}`;
