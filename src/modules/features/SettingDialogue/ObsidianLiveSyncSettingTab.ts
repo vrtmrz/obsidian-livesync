@@ -349,7 +349,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     createEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {
@@ -361,7 +361,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     addEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {

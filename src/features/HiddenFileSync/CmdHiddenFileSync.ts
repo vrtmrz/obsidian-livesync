@@ -317,7 +317,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         this._fileInfoLastProcessed.set(file, key);
     }
 
-    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null | undefined) {
+    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null) {
         if (!stat) stat = await this.core.storageAccess.statHidden(file);
         this._fileInfoLastProcessed.set(file, this.statToKey(stat));
     }
@@ -413,7 +413,7 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     async updateLastProcessedAsActualDatabase(
         file: FilePath,
-        doc?: MetaEntry | LoadedEntry | null | undefined | false
+        doc?: MetaEntry | LoadedEntry | null | false
     ) {
         const dbPath = addPrefix(file, ICHeader);
         if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
