@@ -1500,7 +1500,7 @@ Offline Changed files: ${files.length}`;
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
-        const storeFilePath = stripAllPrefixes(file.path as FilePath);
+        const storeFilePath = stripAllPrefixes(file.path);
         const storageFilePath = file.path;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;

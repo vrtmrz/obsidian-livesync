@@ -391,7 +391,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                             .map((revInfo) => db.get(doc._id, { rev: revInfo.rev }))
                     ).then((docs) => docs.filter((doc) => doc));
                     for (const oldDoc of oldDocs) {
-                        await processDoc(oldDoc as EntryDoc, false);
+                        await processDoc(oldDoc, false);
                     }
                 }
             } catch (ex) {
@@ -560,7 +560,7 @@ Success: ${successCount}, Errored: ${errored}`;
                         });
                         docMap.set(id, set);
                     } else if (doc.type === EntryTypes.CHUNK) {
-                        const id = doc._id as DocumentID;
+                        const id = doc._id;
                         if (chunkMap.has(id)) {
                             return;
                         }
@@ -929,7 +929,7 @@ This may indicate that some devices have not completed synchronisation, which co
                     usedChunks.add(chunkId);
                 }
             } else if (doc.type === EntryTypes.CHUNK) {
-                allChunks.set(doc._id as DocumentID, doc._rev);
+                allChunks.set(doc._id, doc._rev);
             }
         }
         this._notice(

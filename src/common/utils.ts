@@ -128,7 +128,7 @@ export const _requestToCouchDBFetch = async (
     username: string,
     password: string,
     path?: string,
-    body?: string | any,
+    body?: any,
     method?: string
 ) => {
     const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
