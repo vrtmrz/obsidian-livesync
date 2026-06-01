@@ -29,10 +29,16 @@ import { decodeSettingsFromQRCodeData } from "@lib/API/processSetting.ts";
 import { AbstractModule } from "../AbstractModule.ts";
 import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
 import type {
-    OutroAskUserModeResultType, OutroExistingUserResultType, OutroNewUserResultType,
-    ScanQRCodeResultType, SetupRemoteBucketResultType, SetupRemoteCouchDBResultType,
-    SetupRemoteE2EEResultType, SetupRemoteP2PResultType,
-    SetupRemoteResultType, UseSetupURIResultType
+    OutroAskUserModeResultType,
+    OutroExistingUserResultType,
+    OutroNewUserResultType,
+    ScanQRCodeResultType,
+    SetupRemoteBucketResultType,
+    SetupRemoteCouchDBResultType,
+    SetupRemoteE2EEResultType,
+    SetupRemoteP2PResultType,
+    SetupRemoteResultType,
+    UseSetupURIResultType,
 } from "./SetupWizard/dialogs/setupDialogTypes.ts";
 
 /**
@@ -128,7 +134,10 @@ export class SetupManager extends AbstractModule {
      * @returns Promise that resolves to true if onboarding completed successfully, false otherwise
      */
     async onUseSetupURI(userMode: UserMode, setupURI: string = ""): Promise<boolean> {
-        const newSetting = await this.dialogManager.openWithExplicitCancel<UseSetupURIResultType, string>(UseSetupURI, setupURI);
+        const newSetting = await this.dialogManager.openWithExplicitCancel<UseSetupURIResultType, string>(
+            UseSetupURI,
+            setupURI
+        );
         if (newSetting === "cancelled") {
             this._log("Setup URI dialog cancelled.", LOG_LEVEL_NOTICE);
             return false;
@@ -151,7 +160,10 @@ export class SetupManager extends AbstractModule {
     ): Promise<boolean> {
         const originalSetting = JSON.parse(JSON.stringify(currentSetting)) as ObsidianLiveSyncSettings;
         const baseSetting = JSON.parse(JSON.stringify(originalSetting)) as ObsidianLiveSyncSettings;
-        const couchConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteCouchDBResultType, CouchDBConnection>(SetupRemoteCouchDB, originalSetting);
+        const couchConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteCouchDBResultType,
+            CouchDBConnection
+        >(SetupRemoteCouchDB, originalSetting);
         if (couchConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
@@ -175,7 +187,10 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const bucketConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteBucketResultType, BucketSyncSetting>(SetupRemoteBucket, currentSetting);
+        const bucketConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteBucketResultType,
+            BucketSyncSetting
+        >(SetupRemoteBucket, currentSetting);
         if (bucketConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
@@ -199,7 +214,10 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const p2pConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteP2PResultType, P2PSyncSetting>(SetupRemoteP2P, currentSetting);
+        const p2pConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteP2PResultType, P2PSyncSetting>(
+            SetupRemoteP2P,
+            currentSetting
+        );
         if (p2pConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
@@ -234,7 +252,10 @@ export class SetupManager extends AbstractModule {
      * @returns
      */
     async onlyE2EEConfiguration(userMode: UserMode, currentSetting: ObsidianLiveSyncSettings): Promise<boolean> {
-        const e2eeConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteE2EEResultType, EncryptionSettings>(SetupRemoteE2EE, currentSetting);
+        const e2eeConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteE2EEResultType, EncryptionSettings>(
+            SetupRemoteE2EE,
+            currentSetting
+        );
         if (e2eeConf === "cancelled") {
             this._log("E2EE configuration cancelled.", LOG_LEVEL_NOTICE);
             return false;
@@ -253,7 +274,10 @@ export class SetupManager extends AbstractModule {
      * @returns
      */
     async onConfigureManually(originalSetting: ObsidianLiveSyncSettings, userMode: UserMode): Promise<boolean> {
-        const e2eeConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteE2EEResultType, EncryptionSettings>(SetupRemoteE2EE, originalSetting);
+        const e2eeConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteE2EEResultType, EncryptionSettings>(
+            SetupRemoteE2EE,
+            originalSetting
+        );
         if (e2eeConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
@@ -300,7 +324,7 @@ export class SetupManager extends AbstractModule {
         newConf: ObsidianLiveSyncSettings,
         _userMode: UserMode,
         activate: boolean = true,
-        extra: () => void = () => { }
+        extra: () => void = () => {}
     ): Promise<boolean> {
         newConf = await this.services.setting.adjustSettings({
             ...this.settings,
@@ -331,7 +355,8 @@ export class SetupManager extends AbstractModule {
                 this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
                 return true;
             } else {
-                const userModeResult = await this.dialogManager.openWithExplicitCancel<OutroAskUserModeResultType>(OutroAskUserMode);
+                const userModeResult =
+                    await this.dialogManager.openWithExplicitCancel<OutroAskUserModeResultType>(OutroAskUserMode);
                 if (userModeResult === "new-user") {
                     userMode = UserMode.NewUser;
                 } else if (userModeResult === "existing-user") {
@@ -348,7 +373,9 @@ export class SetupManager extends AbstractModule {
             }
         }
         const component = userMode === UserMode.NewUser ? OutroNewUser : OutroExistingUser;
-        const confirm = await this.dialogManager.openWithExplicitCancel<OutroNewUserResultType | OutroExistingUserResultType>(component);
+        const confirm = await this.dialogManager.openWithExplicitCancel<
+            OutroNewUserResultType | OutroExistingUserResultType
+        >(component);
         if (confirm === "cancelled") {
             this._log("User cancelled applying settings from wizard..", LOG_LEVEL_NOTICE);
             return false;
