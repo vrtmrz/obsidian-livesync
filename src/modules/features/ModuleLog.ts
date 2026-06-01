@@ -262,7 +262,7 @@ export class ModuleLog extends AbstractObsidianModule {
             this.statusDiv.remove();
             // this.statusDiv.pa();
             const container = mdv.view.containerEl;
-            container.insertBefore(this.statusDiv, container.lastChild);
+            container.appendChild(this.statusDiv);
         }
     }
 
@@ -466,12 +466,14 @@ ${stringifyYaml(info)}
 
         this.observeForLogs();
 
-        this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
-        this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
-        this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
-        this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
-        this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
-        this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+        if (this.settings.showStatusOnEditor) {
+            this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
+            this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
+            this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
+            this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
+            this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
+            this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+        }
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
