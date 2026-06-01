@@ -12,13 +12,13 @@
         E2EEAlgorithmNames,
         E2EEAlgorithms,
         type EncryptionSettings,
-    } from "../../../../lib/src/common/types";
+    } from "@lib/common/types";
     import { onMount } from "svelte";
-    import type { GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { copyTo, pickEncryptionSettings } from "../../../../lib/src/common/utils";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_CANCELLED | EncryptionSettings;
-    type Props = GuestDialogProps<ResultType, EncryptionSettings>;
+    import type { GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { copyTo, pickEncryptionSettings } from "@lib/common/utils";
+    import { TYPE_CANCELLED, type SetupRemoteE2EEResultType } from "./setupDialogTypes";
+
+    type Props = GuestDialogProps<SetupRemoteE2EEResultType, EncryptionSettings>;
     const { setResult, getInitialData }: Props = $props();
     let default_encryption: EncryptionSettings = {
         encrypt: true,

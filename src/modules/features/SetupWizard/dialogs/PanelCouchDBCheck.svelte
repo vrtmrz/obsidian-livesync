@@ -2,9 +2,9 @@
     /**
      * Panel to check and fix CouchDB configuration issues
      */
-    import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
-    import Decision from "../../../../lib/src/UI/components/Decision.svelte";
-    import UserDecisions from "../../../../lib/src/UI/components/UserDecisions.svelte";
+    import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
     import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;

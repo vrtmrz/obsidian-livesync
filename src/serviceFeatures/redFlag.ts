@@ -8,6 +8,7 @@ import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
+import type { FetchEverythingResult, RebuildEverythingResult } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 
 /**
  * Flag file handler interface, similar to target filter pattern.
@@ -65,7 +66,7 @@ export function createFetchAllFlagHandler(
 
     // Handle the fetch all scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(FetchEverything);
+        const method = await host.services.UI.dialogManager.openWithExplicitCancel<FetchEverythingResult>(FetchEverything);
         if (method === "cancelled") {
             log("Fetch everything cancelled by user.", LOG_LEVEL_NOTICE);
             await cleanupFlag();
@@ -296,7 +297,7 @@ export function createRebuildFlagHandler(
 
     // Handle the rebuild everything scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(RebuildEverything);
+        const method = await host.services.UI.dialogManager.openWithExplicitCancel<RebuildEverythingResult>(RebuildEverything);
         if (method === "cancelled") {
             log("Rebuild everything cancelled by user.", LOG_LEVEL_NOTICE);
             await cleanupFlag();

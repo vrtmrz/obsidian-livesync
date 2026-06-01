@@ -13,19 +13,18 @@
         DEFAULT_SETTINGS,
         PREFERRED_JOURNAL_SYNC,
         RemoteTypes,
-    } from "../../../../lib/src/common/types";
+    } from "@lib/common/types";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { copyTo, pickBucketSyncSettings } from "../../../../lib/src/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { copyTo, pickBucketSyncSettings } from "@lib/common/utils";
+    import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
 
     let syncSetting = $state<BucketSyncSetting>({ ...default_setting });
 
-    type ResultType = typeof TYPE_CANCELLED | BucketSyncSetting;
-    type Props = GuestDialogProps<ResultType, BucketSyncSetting>;
-    const TYPE_CANCELLED = "cancelled";
+    type Props = GuestDialogProps<SetupRemoteBucketResultType, BucketSyncSetting>;
 
     const { setResult, getInitialData }: Props = $props();
 
