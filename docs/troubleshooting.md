@@ -382,11 +382,11 @@ This file is in Markdown format so that it can be placed in the Vault externally
 
 There are some options to use `redflag.md`.
 
-| Filename      | Human-Friendly Name | Description                                                                          |
-| ------------- | ------------------- | ------------------------------------------------------------------------------------ |
-| `redflag.md`  | -                   | Suspends all processes.                                                              |
-| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuild both local and remote databases by local files.  |
-| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discard the local database, and fetch from the remote again. |
+| Filename      | Human-Friendly Name | Description                                                                             |
+| ------------- | ------------------- | --------------------------------------------------------------------------------------- |
+| `redflag.md`  | -                   | Suspends all processes.                                                                 |
+| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuilds both local and remote databases from local files.  |
+| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and fetches from the remote again. |
 
 When fetching everything remotely or performing a rebuild, restarting Obsidian
 is performed once for safety reasons. At that time, Self-hosted LiveSync uses
@@ -398,6 +398,16 @@ these files are also not subject to synchronisation.
 
 However, occasionally the deletion of files may fail. This should generally work
 normally after restarting Obsidian. (As far as I can observe).
+
+>[!IMPORTANT]
+> When a flag file is detected, all synchronisation is disabled, and `Suspend file watching` and
+> `Suspend database reflecting` are enabled automatically. Therefore, please follow the steps below to
+> resolve the issue.
+> 1. Delete the flag file.
+> 2. Shutdown Obsidian.
+> 3. Check your vault folder and ensure it is no longer there.
+> 4. Launch Obsidian.
+> 5. Disable `Suspend file watching` and `Suspend database reflecting` in the settings dialogue (if you have not been asked).
 
 ### Old tips
 
