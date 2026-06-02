@@ -5,10 +5,12 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
-### Under development
+### Improved
 
-- Bulk database fetching is now work in progress. This feature is expected to speed up rebuilds and setups.
-  Another feature that is needed is the ability to enforce a specific order during the initial comparison between the storage and the local database.
+- Database fetching (a.k.a. Reset Synchronisation on This Device) on the initialisation now supports streaming and is faster (CouchDB only)
+- The database fetching process has been streamlined, and database operations are now suspended until it has been completed
+- The initial synchronisation process has been simplified, making it easier to synchronise files with the remote server
+- We can select the remote database to fetch from during the initialisation, when there are multiple remote databases configured (e.g. multiple CouchDBs or S3 remotes)
 
 ## 0.25.70-patch1
 
@@ -20,10 +22,6 @@ I have also separated out some parts where the type definitions were a bit loose
 
 As the diff has become too large, I am releasing it as a beta.
 To anyone who has submitted a pull request, please bear with me for a little while.
-
-### Refactored
-
-- Many 
 
 ## 0.25.70
 
