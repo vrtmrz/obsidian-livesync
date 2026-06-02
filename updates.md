@@ -12,6 +12,13 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - The initial synchronisation process has been simplified, making it easier to synchronise files with the remote server
 - We can select the remote database to fetch from during the initialisation, when there are multiple remote databases configured (e.g. multiple CouchDBs or S3 remotes)
 
+## 0.25.70-patch2
+
+1st June, 2026
+
+### Fixed
+- No longer does the status element break other plugins' interaction (#930).
+
 ## 0.25.70-patch1
 
 1st June, 2026
