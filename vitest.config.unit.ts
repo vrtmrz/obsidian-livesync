@@ -15,7 +15,7 @@ export default mergeConfig(
             // maxConcurrency: 2,
             name: "unit-tests",
             include: ["**/*unit.test.ts", "**/*.unit.spec.ts"],
-            exclude: ["test/**", "src/apps/**"],
+            exclude: ["test/**", "src/apps/**/testdeno/**"],
             coverage: {
                 include: ["src/**/*.ts"],
                 exclude: [
@@ -25,7 +25,8 @@ export default mergeConfig(
                     "test/**",
                     "src/lib/**/*.test.ts",
                     "**/_*",
-                    "src/apps/**",
+                    "src/apps/**/testdeno/**",
+                    // "src/apps/**",
                     // "src/cli/**",
                     "src/lib/src/cli/**",
                     "**/*_obsolete.ts",
