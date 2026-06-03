@@ -16,6 +16,7 @@ import { fireAndForget, getDocData, readContent } from "../../../lib/src/common/
 import { isPlainText, stripPrefix } from "../../../lib/src/string_and_binary/path.ts";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
@@ -501,9 +502,9 @@ export class DocumentHistoryModal extends Modal {
         searchInput.addClass("history-search-input");
         searchInput.addEventListener("input", () => {
             if (this.searchTimeout) {
-                clearTimeout(this.searchTimeout);
+                compatGlobal.clearTimeout(this.searchTimeout);
             }
-            this.searchTimeout = window.setTimeout(() => {
+            this.searchTimeout = compatGlobal.setTimeout(() => {
                 void this.performSearch(searchInput.value);
             }, 500);
         });

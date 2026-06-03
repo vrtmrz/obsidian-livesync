@@ -26,16 +26,14 @@
     import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
     import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
+    import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
 
     const context = getDialogContext();
     let error = $state("");
-    const TYPE_CANCELLED = "cancelled";
-    type SettingInfo = P2PConnectionInfo;
-    type ResultType = typeof TYPE_CANCELLED | SettingInfo;
-    type Props = GuestDialogProps<ResultType, P2PSyncSetting>;
+    type Props = GuestDialogProps<SetupRemoteP2PResultType, P2PSyncSetting>;
 
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {

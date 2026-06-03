@@ -75,7 +75,7 @@ export function getSummaryFromPartialSettings(setting: Partial<ObsidianLiveSyncS
         if (config.isAdvanced && !showAdvanced) continue;
         const value =
             key != "E2EEAlgorithm"
-                ? `${setting[key]}`
+                ? `${setting[key] as string}`
                 : E2EEAlgorithmNames[`${setting[key]}` as keyof typeof E2EEAlgorithmNames];
         const displayValue = config.isHidden ? "•".repeat(value.length) : escapeStringToHTML(value);
         outputSummary[config.name] = displayValue;

@@ -8,7 +8,6 @@ import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
 import type { FilePathWithPrefix } from "../../lib/src/common/types.ts";
 import type { LiveSyncCore } from "../../main.ts";
-
 export class ModuleDev extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
         __onMissingTranslation(() => {});
@@ -98,6 +97,7 @@ export class ModuleDev extends AbstractObsidianModule {
         });
         return Promise.resolve(true);
     }
+
     async _everyOnLayoutReady(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
         // if (await this.core.storageAccess.isExistsIncludeHidden("_SHOWDIALOGAUTO.md")) {
@@ -111,7 +111,7 @@ export class ModuleDev extends AbstractObsidianModule {
                 const filename = "test-create-conflict.md";
                 const content = `# Test create conflict\n\n`;
                 const w = await this.core.databaseFileAccess.store({
-                    name: filename as FilePathWithPrefix,
+                    name: filename,
                     path: filename as FilePathWithPrefix,
                     body: new Blob([content], { type: "text/markdown" }),
                     stat: {

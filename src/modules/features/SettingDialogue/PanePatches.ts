@@ -150,7 +150,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 xxhash64: "xxhash64 (Fastest)",
                 "mixed-purejs": "PureJS fallback  (Fast, W/O WebAssembly)",
                 sha1: "Older fallback (Slow, W/O WebAssembly)",
-            } as Record<HashAlgorithm, string>,
+            } satisfies Record<HashAlgorithm, string>,
         });
         this.addOnSaved("hashAlg", async () => {
             await this.core.localDatabase._prepareHashFunctions();
@@ -188,7 +188,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = document.createElement("span")));
+                text.inputEl.before((dateEl = activeDocument.createElement("span")));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);

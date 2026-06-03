@@ -13,6 +13,8 @@ import { AbstractModule } from "../AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
+import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -89,11 +91,6 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         // this.addUIs();
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
         this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
         await this.services.setting.loadSettings();
         if (!(await this.services.appLifecycle.onSettingLoaded())) {
@@ -101,7 +98,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         const lsKey = "obsidian-live-sync-ver" + this.services.vault.getVaultName();
-        const last_version = localStorage.getItem(lsKey);
+        const last_version = compatGlobal.localStorage.getItem(lsKey);
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
@@ -123,7 +120,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
             await this.saveSettings();
         }
-        localStorage.setItem(lsKey, `${VER}`);
+        compatGlobal.localStorage.setItem(lsKey, `${VER}`);
         await this.services.database.openDatabase({
             databaseEvents: this.services.databaseEvents,
             replicator: this.services.replicator,
@@ -133,7 +130,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         // this.$$replicate = this.$$replicate.bind(this);
         // this.core.$$onLiveSyncReady = this.core.$$onLiveSyncReady.bind(this);
         await this.core.services.appLifecycle.onLoaded();
-        await Promise.all(this.core.addOns.map((e) => e.onload()));
+        await Promise.all(this.core.addOns.map((e) => Promise.resolve(e.onload())));
         return true;
     }
 

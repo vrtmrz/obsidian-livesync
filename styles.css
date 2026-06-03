@@ -171,7 +171,7 @@ body {
 
 .sls-setting-menu-buttons {
     border: 1px solid var(--sls-col-warn);
-    padding: 2px;
+    /* padding: 2px; */
     margin: 1px;
     border-radius: 4px;
     background-image: linear-gradient(-45deg,
@@ -180,7 +180,7 @@ body {
     background-size: 30px 30px;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
+    /* justify-content: flex-end; */
     padding: 0.5em 0.25em;
     justify-content: center;
     align-items: center;
@@ -315,9 +315,9 @@ body {
 
 
 .sls-setting-obsolete {
-    background-image: linear-gradient(-45deg,
+    /* background-image: linear-gradient(-45deg,
             var(--sls-col-warn-stripe1) 25%, var(--sls-col-warn-stripe2) 25%, var(--sls-col-warn-stripe2) 50%,
-            var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2));
+            var(--sls-col-warn-stripe1) 50%, var(--sls-col-warn-stripe1) 75%, var(--sls-col-warn-stripe2) 75%, var(--sls-col-warn-stripe2)); */
     background-image: linear-gradient(-45deg,
             transparent 25%, rgba(var(--background-secondary), 0.1) 25%, rgba(var(--background-secondary), 0.1) 50%, transparent 50%, transparent 75%, rgba(var(--background-secondary), 0.1) 75%, rgba(var(--background-secondary), 0.1));
     background-size: 60px 60px;

@@ -7,16 +7,19 @@
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
     import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    const TYPE_EXISTING = "existing-user";
-    const TYPE_NEW = "new-user";
-    const TYPE_COMPATIBLE_EXISTING = "compatible-existing-user";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_EXISTING | typeof TYPE_NEW | typeof TYPE_COMPATIBLE_EXISTING | typeof TYPE_CANCELLED;
+    import {
+        type OutroAskUserModeResultType,
+        TYPE_CANCELLED,
+        TYPE_EXISTING,
+        TYPE_NEW,
+        TYPE_COMPATIBLE_EXISTING,
+    } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: OutroAskUserModeResultType) => void;
     };
     const { setResult }: Props = $props();
-    let userType = $state<ResultType>(TYPE_CANCELLED);
+    let userType = $state<OutroAskUserModeResultType>(TYPE_CANCELLED);
     const canProceed = $derived.by(() => {
         return userType === TYPE_EXISTING || userType === TYPE_NEW || userType === TYPE_COMPATIBLE_EXISTING;
     });
@@ -41,7 +44,11 @@
 </Guidance>
 <Instruction>
     <Question>Please select your situation.</Question>
-    <Option title="I am setting up a new server for the first time / I want to reset my existing server." bind:value={userType} selectedValue={TYPE_NEW}>
+    <Option
+        title="I am setting up a new server for the first time / I want to reset my existing server."
+        bind:value={userType}
+        selectedValue={TYPE_NEW}
+    >
         <InfoNote>
             Selecting this option will result in the current data on this device being used to initialise the server.
             Any existing data on the server will be completely overwritten.
