@@ -50,6 +50,7 @@ import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src
 import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "../../main.ts";
+import { tryGetFilePath } from "@lib/common/utils.doc.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 declare global {
@@ -317,7 +318,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         this._fileInfoLastProcessed.set(file, key);
     }
 
-    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null | undefined) {
+    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null) {
         if (!stat) stat = await this.core.storageAccess.statHidden(file);
         this._fileInfoLastProcessed.set(file, this.statToKey(stat));
     }
@@ -411,10 +412,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
     }
 
-    async updateLastProcessedAsActualDatabase(
-        file: FilePath,
-        doc?: MetaEntry | LoadedEntry | null | undefined | false
-    ) {
+    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: MetaEntry | LoadedEntry | null | false) {
         const dbPath = addPrefix(file, ICHeader);
         if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
         if (!doc) return;
@@ -1050,7 +1048,7 @@ Offline Changed files: ${processFiles.length}`;
                 }
                 notifyProgress();
             } catch (ex) {
-                this._log(`Failed to process storage change file:${file}`, logLevel);
+                this._log(`Failed to process storage change file:${tryGetFilePath(file)}`, logLevel);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
         });
@@ -1162,7 +1160,7 @@ Offline Changed files: ${files.length}`;
                 await this.trackDatabaseFileModification(path, "[Scanning]", true, onlyNew, file);
                 notifyProgress();
             } catch (ex) {
-                this._log(`Failed to process database changes:${file}`);
+                this._log(`Failed to process database changes:${tryGetFilePath(file)}`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
             return;
@@ -1500,7 +1498,7 @@ Offline Changed files: ${files.length}`;
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
-        const storeFilePath = stripAllPrefixes(file.path as FilePath);
+        const storeFilePath = stripAllPrefixes(file.path);
         const storageFilePath = file.path;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;

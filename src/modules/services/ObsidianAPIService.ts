@@ -5,8 +5,16 @@ import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
+import { compatGlobal } from "@/lib/src/common/coreEnvFunctions";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
+
+declare module "obsidian" {
+    interface App {
+        appId?: string;
+        isMobile?: boolean;
+    }
+}
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
     _customHandler: ObsHttpHandler | undefined;
@@ -83,8 +91,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         }
     }
     override isMobile(): boolean {
-        //@ts-ignore : internal API
-        return this.app.isMobile;
+        return "isMobile" in this.app ? !!this.app.isMobile : false;
     }
     override getAppID(): string {
         return `${"appId" in this.app ? this.app.appId : ""}`;
@@ -95,7 +102,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     }
 
     override getAppVersion(): string {
-        const navigatorString = globalThis.navigator?.userAgent ?? "";
+        const navigatorString = compatGlobal.navigator?.userAgent ?? "";
         const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
         if (match && match.length >= 2) {
             return match[1];
@@ -196,7 +203,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     }
 
     override setInterval(handler: () => void, timeout: number): number {
-        const timerId = globalThis.setInterval(handler, timeout) as unknown as number;
+        const timerId = compatGlobal.setInterval(handler, timeout);
         this.context.plugin.registerInterval(timerId);
         return timerId;
     }

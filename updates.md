@@ -3,6 +3,30 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## ~~0.25.71~~ 0.25.72
+
+0.25.71 was cancelled due to the fixes needed (Object Storage related)
+
+3rd June, 2026
+
+### Improved
+
+- Database fetching (a.k.a. Reset Synchronisation on This Device) on the initialisation now supports streaming and is faster (CouchDB only)
+- The database fetching process has been streamlined, and database operations are now suspended until it has been completed
+- The initial synchronisation process has been simplified, making it easier to synchronise files with the remote server
+- We can select the remote database to fetch from during the initialisation, when there are multiple remote databases configured (e.g. multiple CouchDBs or S3 remotes)
+- Hebrew (he) Translation has been added (Thank you so much, @MusiCode1)!
+- Translation loading time has been reduced (Thank you so much, @bmcyver)!
+  
+### Fixed
+
+- No longer does the status element break other plugins' interaction (#930).
+- No longer does file events occured during initial database fetching using Object Storage. 
+
+### Refactored
+
+To support the new Community automated tests, we fixed numerous lint warnings. This may have also resolved potential issues.
+
 ## 0.25.70
 
 25th May, 2026

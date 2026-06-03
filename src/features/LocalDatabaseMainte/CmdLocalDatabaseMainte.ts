@@ -16,9 +16,8 @@ import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/LiveSyncReplicator";
-import { delay, parseHeaderValues } from "@/lib/src/common/utils";
-import { generateCredentialObject } from "@/lib/src/replication/httplib";
-import { _requestToCouchDB } from "@/common/utils";
+import { delay } from "@/lib/src/common/utils";
+// import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
 const DB_KEY_DOC_USAGE_MAP = "doc-usage-map";
@@ -391,7 +390,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                             .map((revInfo) => db.get(doc._id, { rev: revInfo.rev }))
                     ).then((docs) => docs.filter((doc) => doc));
                     for (const oldDoc of oldDocs) {
-                        await processDoc(oldDoc as EntryDoc, false);
+                        await processDoc(oldDoc, false);
                     }
                 }
             } catch (ex) {
@@ -533,7 +532,7 @@ Success: ${successCount}, Errored: ${errored}`;
         const docMap = new Map<DocumentID, Set<DocumentInfo>>();
         const info = await db.info();
         // Total number of revisions to process (approximate)
-        const maxSeq = new Number(info.update_seq);
+        const maxSeq = Number.parseInt(`${info.update_seq ?? 0}`, 10);
         let processed = 0;
         let read = 0;
         let errored = 0;
@@ -560,7 +559,7 @@ Success: ${successCount}, Errored: ${errored}`;
                         });
                         docMap.set(id, set);
                     } else if (doc.type === EntryTypes.CHUNK) {
-                        const id = doc._id as DocumentID;
+                        const id = doc._id;
                         if (chunkMap.has(id)) {
                             return;
                         }
@@ -759,68 +758,68 @@ Success: ${successCount}, Errored: ${errored}`;
         }
     }
 
-    /**
-     * Compact the database by temporarily setting the revision limit to 1.
-     * @returns
-     */
-    async compactDatabaseWithRevLimit() {
-        // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
-        // Very dangerous operation, so now suppressed.
-        return false;
-        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
-        const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
-        if (!remote) {
-            this._notice("Failed to connect to remote for compaction.");
-            return;
-        }
-        if (typeof remote == "string") {
-            this._notice(`Failed to connect to remote for compaction. ${remote}`);
-            return;
-        }
-        const customHeaders = parseHeaderValues(this.settings.couchDB_CustomHeaders);
-        const credential = generateCredentialObject(this.settings);
-        const request = async (path: string, method: string = "GET", body: any = undefined) => {
-            const req = await _requestToCouchDB(
-                this.settings.couchDB_URI.replace(/\/+$/, "") +
-                    (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
-                credential,
-                window.origin,
-                path,
-                body,
-                method,
-                customHeaders
-            );
-            return req;
-        };
-        let revsLimit = "";
-        const req = await request(`_revs_limit`, "GET");
-        if (req.status == 200) {
-            revsLimit = req.text.trim();
-            this._info(`Remote database _revs_limit: ${revsLimit}`);
-        } else {
-            this._notice(`Failed to get remote database _revs_limit. Status: ${req.status}`);
-            return;
-        }
-        const req2 = await request(`_revs_limit`, "PUT", 1);
-        if (req2.status == 200) {
-            this._info(`Set remote database _revs_limit to 1 for compaction.`);
-        }
-        try {
-            await this.compactDatabase();
-        } finally {
-            // Restore revs_limit
-            if (revsLimit) {
-                const req3 = await request(`_revs_limit`, "PUT", parseInt(revsLimit));
-                if (req3.status == 200) {
-                    this._info(`Restored remote database _revs_limit to ${revsLimit}.`);
-                } else {
-                    this._notice(
-                        `Failed to restore remote database _revs_limit. Status: ${req3.status} / ${req3.text}`
-                    );
-                }
-            }
-        }
-    }
+    // /**
+    //  * Compact the database by temporarily setting the revision limit to 1.
+    //  * @returns
+    //  */
+    // async compactDatabaseWithRevLimit() {
+    //     // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
+    //     // Very dangerous operation, so now suppressed.
+    //     return Promise.resolve(false);
+    //     const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+    //     const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
+    //     if (!remote) {
+    //         this._notice("Failed to connect to remote for compaction.");
+    //         return;
+    //     }
+    //     if (typeof remote == "string") {
+    //         this._notice(`Failed to connect to remote for compaction. ${remote}`);
+    //         return;
+    //     }
+    //     const customHeaders = parseHeaderValues(this.settings.couchDB_CustomHeaders);
+    //     const credential = generateCredentialObject(this.settings);
+    //     const request = async (path: string, method: string = "GET", body: any = undefined) => {
+    //         const req = await _requestToCouchDB(
+    //             this.settings.couchDB_URI.replace(/\/+$/, "") +
+    //             (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
+    //             credential,
+    //             window.origin,
+    //             path,
+    //             body,
+    //             method,
+    //             customHeaders
+    //         );
+    //         return req;
+    //     };
+    //     let revsLimit = "";
+    //     const req = await request(`_revs_limit`, "GET");
+    //     if (req.status == 200) {
+    //         revsLimit = req.text.trim();
+    //         this._info(`Remote database _revs_limit: ${revsLimit}`);
+    //     } else {
+    //         this._notice(`Failed to get remote database _revs_limit. Status: ${req.status}`);
+    //         return;
+    //     }
+    //     const req2 = await request(`_revs_limit`, "PUT", 1);
+    //     if (req2.status == 200) {
+    //         this._info(`Set remote database _revs_limit to 1 for compaction.`);
+    //     }
+    //     try {
+    //         await this.compactDatabase();
+    //     } finally {
+    //         // Restore revs_limit
+    //         if (revsLimit) {
+    //             const req3 = await request(`_revs_limit`, "PUT", parseInt(revsLimit));
+    //             if (req3.status == 200) {
+    //                 this._info(`Restored remote database _revs_limit to ${revsLimit}.`);
+    //             } else {
+    //                 this._notice(
+    //                     `Failed to restore remote database _revs_limit. Status: ${req3.status} / ${req3.text}`
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
     async gcv3() {
         if (!this.isAvailable()) return;
         const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
@@ -929,7 +928,7 @@ This may indicate that some devices have not completed synchronisation, which co
                     usedChunks.add(chunkId);
                 }
             } else if (doc.type === EntryTypes.CHUNK) {
-                allChunks.set(doc._id as DocumentID, doc._rev);
+                allChunks.set(doc._id, doc._rev);
             }
         }
         this._notice(

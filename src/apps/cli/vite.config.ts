@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import path from "node:path";
 import { readFileSync } from "node:fs";
+const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const packageJson = JSON.parse(readFileSync("../../../package.json", "utf-8"));
 const manifestJson = JSON.parse(readFileSync("../../../manifest.json", "utf-8"));
 // https://vite.dev/config/
@@ -63,17 +64,14 @@ export default defineConfig({
     resolve: {
         alias: {
             "@lib/worker/bgWorker.ts": "../../lib/src/worker/bgWorker.mock.ts",
-            "@lib/pouchdb/pouchdb-browser.ts": path.resolve(__dirname, "lib/pouchdb-node.ts"),
+            "@lib/pouchdb/pouchdb-browser.ts": resolve(__dirname, "lib/pouchdb-node.ts"),
             // The CLI runs on Node.js; force AWS XML builder to its CJS Node entry
             // so Vite does not resolve the browser DOMParser-based XML parser.
-            "@aws-sdk/xml-builder": path.resolve(
-                __dirname,
-                "../../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js"
-            ),
+            "@aws-sdk/xml-builder": resolve(__dirname, "../../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js"),
             // Force fflate to the Node CJS entry; browser entry expects Web Worker globals.
-            fflate: path.resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
-            "@": path.resolve(__dirname, "../../"),
-            "@lib": path.resolve(__dirname, "../../lib/src"),
+            fflate: resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
+            "@": resolve(__dirname, "../../"),
+            "@lib": resolve(__dirname, "../../lib/src"),
             "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
         },
     },
@@ -85,7 +83,7 @@ export default defineConfig({
         minify: false,
         rollupOptions: {
             input: {
-                index: path.resolve(__dirname, "entrypoint.ts"),
+                index: resolve(__dirname, "entrypoint.ts"),
             },
             external: (id) => {
                 if (defaultExternal.includes(id)) return true;
@@ -101,7 +99,7 @@ export default defineConfig({
             },
         },
         lib: {
-            entry: path.resolve(__dirname, "entrypoint.ts"),
+            entry: resolve(__dirname, "entrypoint.ts"),
             formats: ["cjs"],
             fileName: "index",
         },

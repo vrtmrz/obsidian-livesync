@@ -8,6 +8,13 @@ import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
+import type {
+    FetchEverythingResult,
+    RebuildEverythingResult,
+} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
+import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
+import { ConnectionStringParser } from "@lib/common/ConnectionString";
+import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
 
 /**
  * Flag file handler interface, similar to target filter pattern.
@@ -41,14 +48,79 @@ export async function deleteFlagFile(host: NecessaryServices<never, "storageAcce
         log(ex, LOG_LEVEL_VERBOSE);
     }
 }
+const REMOTE_KEEP_CURRENT = "Use active remote";
+const REMOTE_CANCEL = "Cancel";
+async function askAndActivateRemoteDatabase(host: NecessaryServices<"UI" | "setting", any>, log: LogFunction) {
+    const settings = host.services.setting.currentSettings();
+    if (settings.remoteConfigurations && Object.keys(settings.remoteConfigurations).length > 1) {
+        const message =
+            "Multiple remote configurations detected. Please select the remote configuration you want to fetch from.";
+        const options = Object.entries(settings.remoteConfigurations).map(([id, config]) => {
+            const parsed = ConnectionStringParser.parse(config.uri);
+            const displayURI = (config.uri.split("@").pop() || "").substring(0, 20) + "..."; // Show only the last part of URI for better readability and privacy.
+            return {
+                name: `${config.name} - ${parsed.type} (${displayURI})`,
+                id: id,
+            };
+        });
+        options.push({
+            name: REMOTE_KEEP_CURRENT,
+            id: "keep_current",
+        });
+        options.push({
+            name: REMOTE_CANCEL,
+            id: "cancel",
+        });
+
+        const selections = options.map((option) => option.name);
+        // const defaultAction =
+        //     options.find((option) => option.id === settings.activeConfigurationId)?.name || selections[0];
+        const selectedId = await host.services.UI.confirm.askSelectStringDialogue(message, selections, {
+            title: "Select Remote Configuration",
+            defaultAction: REMOTE_KEEP_CURRENT,
+        });
+        const selectedConfig = options.find((option) => option.name === selectedId);
+        if (selectedConfig) {
+            if (selectedConfig.id === "keep_current") {
+                log(`Keeping current remote configuration.`, LOG_LEVEL_INFO);
+                return true;
+            }
+            if (selectedConfig.id === "cancel") {
+                log(`Remote configuration selection cancelled.`, LOG_LEVEL_NOTICE);
+                return false;
+            }
+            const activated = activateRemoteConfiguration(settings, selectedConfig.id);
+            if (activated) {
+                await host.services.setting.applyPartial(activated);
+                log(`Activated remote configuration: ${selectedConfig.name}`, LOG_LEVEL_INFO);
+                return true;
+            } else {
+                log(`Failed to activate remote configuration: ${selectedConfig.name}`, LOG_LEVEL_NOTICE);
+                return false;
+            }
+        } else {
+            log(`No remote configuration selected.`, LOG_LEVEL_NOTICE);
+            return false;
+        }
+    }
+    return true; // If there is only one or no remote configuration, proceed without asking.
+}
 /**
  * Factory function to create a fetch all flag handler.
  * All logic related to fetch all flag is encapsulated here.
  */
 export function createFetchAllFlagHandler(
     host: NecessaryServices<
-        "vault" | "fileProcessing" | "tweakValue" | "UI" | "setting" | "appLifecycle",
-        "storageAccess" | "rebuilder"
+        | "vault"
+        | "fileProcessing"
+        | "tweakValue"
+        | "UI"
+        | "setting"
+        | "appLifecycle"
+        | "path"
+        | "keyValueDB"
+        | "database",
+        "storageAccess" | "rebuilder" | "fileHandler"
     >,
     log: LogFunction
 ): FlagFileHandler {
@@ -65,7 +137,21 @@ export function createFetchAllFlagHandler(
 
     // Handle the fetch all scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(FetchEverything);
+        // Select the remote database if there are multiple remotes configured.
+        const isRemoteActivated = await askAndActivateRemoteDatabase(host, log);
+        if (!isRemoteActivated) {
+            return false;
+        }
+
+        // Ask user for use Fast Setup
+        const useFastSetup = await askAndPerformFastSetupOnScheduledFetchAll(host, log, cleanupFlag);
+        if (useFastSetup !== undefined) {
+            return useFastSetup;
+        }
+        // if useFastSetup is undefined, it means user choose to proceed with normal fetch process, so continue to ask for fetch method.
+
+        const method =
+            await host.services.UI.dialogManager.openWithExplicitCancel<FetchEverythingResult>(FetchEverything);
         if (method === "cancelled") {
             log("Fetch everything cancelled by user.", LOG_LEVEL_NOTICE);
             await cleanupFlag();
@@ -73,7 +159,7 @@ export function createFetchAllFlagHandler(
             return false;
         }
         const { vault, extra } = method;
-        const settings = await host.services.setting.currentSettings();
+        const settings = await Promise.resolve(host.services.setting.currentSettings());
         // If remote is MinIO, makeLocalChunkBeforeSync is not available. (because no-deduplication on sending).
         const makeLocalChunkBeforeSyncAvailable = settings.remoteType !== REMOTE_MINIO;
         const mapVaultStateToAction = {
@@ -296,7 +382,8 @@ export function createRebuildFlagHandler(
 
     // Handle the rebuild everything scheduled operation
     const onScheduled = async () => {
-        const method = await host.services.UI.dialogManager.openWithExplicitCancel(RebuildEverything);
+        const method =
+            await host.services.UI.dialogManager.openWithExplicitCancel<RebuildEverythingResult>(RebuildEverything);
         if (method === "cancelled") {
             log("Rebuild everything cancelled by user.", LOG_LEVEL_NOTICE);
             await cleanupFlag();
@@ -374,8 +461,17 @@ export function flagHandlerToEventHandler(flagHandler: FlagFileHandler) {
 
 export function useRedFlagFeatures(
     host: NecessaryServices<
-        "API" | "appLifecycle" | "UI" | "setting" | "tweakValue" | "fileProcessing" | "vault",
-        "storageAccess" | "rebuilder"
+        | "API"
+        | "appLifecycle"
+        | "UI"
+        | "setting"
+        | "tweakValue"
+        | "fileProcessing"
+        | "vault"
+        | "path"
+        | "keyValueDB"
+        | "database",
+        "storageAccess" | "rebuilder" | "fileHandler"
     >
 ) {
     const log = createInstanceLogFunction("SF:RedFlag", host.services.API);

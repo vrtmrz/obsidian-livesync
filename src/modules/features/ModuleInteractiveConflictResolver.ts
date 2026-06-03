@@ -88,7 +88,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     return false;
                 }
             } else {
-                this._log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
+                this._log(`Merge: Something went wrong: ${filename}, (${toDelete as string})`, LOG_LEVEL_NOTICE);
                 return false;
             }
             // In here, some merge has been processed.
@@ -163,7 +163,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                 this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
             }
         } catch (e) {
-            this._log(`Error while scanning conflicted files: ${e}`, LOG_LEVEL_NOTICE);
+            this._log(`Error while scanning conflicted files...`, LOG_LEVEL_NOTICE);
             this._log(e, LOG_LEVEL_VERBOSE);
             return false;
         }

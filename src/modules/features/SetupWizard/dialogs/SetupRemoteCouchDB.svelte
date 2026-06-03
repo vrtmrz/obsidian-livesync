@@ -14,20 +14,19 @@
         RemoteTypes,
         type CouchDBConnection,
         type ObsidianLiveSyncSettings,
-    } from "../../../../lib/src/common/types";
-    import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
+    } from "@lib/common/types";
+    import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { copyTo, pickCouchDBSyncSettings } from "../../../../lib/src/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { copyTo, pickCouchDBSyncSettings } from "@lib/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
+    import { TYPE_CANCELLED, type SetupRemoteCouchDBResultType } from "./setupDialogTypes";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
     let syncSetting = $state<CouchDBConnection>({ ...default_setting });
-    type ResultType = typeof TYPE_CANCELLED | CouchDBConnection;
-    const TYPE_CANCELLED = "cancelled";
-    type Props = GuestDialogProps<ResultType, CouchDBConnection>;
+    type Props = GuestDialogProps<SetupRemoteCouchDBResultType, CouchDBConnection>;
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
         if (getInitialData) {
