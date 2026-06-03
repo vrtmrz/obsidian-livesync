@@ -3,7 +3,9 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## 0.25.71
+## ~~0.25.71~~ 0.25.72
+
+0.25.71 was cancelled due to the fixes needed (Object Storage related)
 
 3rd June, 2026
 
@@ -19,6 +21,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Fixed
 
 - No longer does the status element break other plugins' interaction (#930).
+- No longer does file events occured during initial database fetching using Object Storage. 
 
 ### Refactored
 
