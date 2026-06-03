@@ -3,6 +3,76 @@
 
 Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devices using CouchDB, MinIO/S3, or peer-to-peer WebRTC. The codebase uses a modular architecture with TypeScript, Svelte, and PouchDB.
 
+## Build & Development Workflow
+
+### Environment Setup
+
+#### First-time Setup
+
+This repository uses submodules by convention. Therefore, you must use the `--recursive` flag when cloning it.
+```bash
+git clone --recursive https://github.com/vrtmrz/obsidian-livesync
+npm ci
+npm run build
+```
+
+Note: if you already cloned without submodules, run: `git submodule update --init --recursive`
+
+#### Branch switching
+When switching branches, please make sure to update submodules as well, since they may be updated in the new branch.
+```bash
+git checkout --recurse-submodules 0.25.70-patch1 # tag or branch name
+npm ci
+npm run build
+```
+
+### Commands
+
+```bash
+npm run test:unit    # Run unit tests with vitest (or `npm run test:unit:coverage` for coverage)
+npm run check        # TypeScript and svelte type checking
+npm run dev          # Development build with auto-rebuild (uses .env for test vault paths)
+npm run build        # Production build
+npm run buildDev     # Development build (one-time)
+npm run bakei18n     # Pre-build step: compile i18n resources (YAML → JSON → TS)
+npm run test:unit    # Run unit tests only (no Docker services required)
+npm test             # Run Harness based vitest tests (requires Docker services), not recommended, unstable.
+```
+
+### Tips
+
+We can use CLI's E2E test command instead of `npm test`.
+
+### Auto-copy to test vaults
+
+To facilitate development and testing, the build process can automatically copy the built plugin to specified test vault
+
+- Create `.env` file with `PATHS_TEST_INSTALL` pointing to test vault plug-in directories (`:` separated on Unix, `;` on Windows)
+- Development builds auto-copy to these paths on build whilst `npm run dev` is running (watch mode)
+
+### Testing Infrastructure
+
+- ~~**Deno Tests**: Unit tests for platform-independent code (e.g., `HashManager.test.ts`)~~
+    - This is now obsolete, migrated to vitest.
+- **Vitest** (`vitest.config.ts`): E2E test by Browser-based-harness using Playwright, unit tests.
+    - Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`).
+
+- **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
+    ```bash
+    npm run test:docker-all:start  # Start all test services
+    npm run test:full              # Run tests with coverage
+    npm run test:docker-all:stop   # Stop services
+    ```
+    If some services are not needed, start only required ones (e.g., `test:docker-couchdb:start`)
+    Note that if services are already running, starting script will fail. Please stop them first.
+
+- **Test Structure**:
+    - `test/suite/` - Integration tests for sync operations
+    - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
+    - `test/harness/` - Mock implementations (e.g., `obsidian-mock.ts`)
+
+
+
 ## Architecture
 
 ### Module System
@@ -46,48 +116,6 @@ Hence, the new feature should be implemented as follows:
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
 - **Development code**: Use `.dev.ts` suffix (replaced with `.prod.ts` in production)
 - **Path aliases**: `@/*` maps to `src/*`, `@lib/*` maps to `src/lib/src/*`
-
-## Build & Development Workflow
-
-### Commands
-
-```bash
-npm run test:unit    # Run unit tests with vitest (or `npm run test:unit:coverage` for coverage)
-npm run check        # TypeScript and svelte type checking
-npm run dev          # Development build with auto-rebuild (uses .env for test vault paths)
-npm run build        # Production build
-npm run buildDev     # Development build (one-time)
-npm run bakei18n     # Pre-build step: compile i18n resources (YAML → JSON → TS)
-npm test             # Run vitest tests (requires Docker services)
-```
-
-### Environment Setup
-
-- Clone with submodules: `git clone --recurse-submodules <repository-url>`
-- If you already cloned without them, run: `git submodule update --init --recursive`
-- The shared common library is provided by the `src/lib` submodule, and builds will fail if it is missing
-- Create `.env` file with `PATHS_TEST_INSTALL` pointing to test vault plug-in directories (`:` separated on Unix, `;` on Windows)
-- Development builds auto-copy to these paths on build
-
-### Testing Infrastructure
-
-- ~~**Deno Tests**: Unit tests for platform-independent code (e.g., `HashManager.test.ts`)~~
-    - This is now obsolete, migrated to vitest.
-- **Vitest** (`vitest.config.ts`): E2E test by Browser-based-harness using Playwright, unit tests.
-    - Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`).
-
-- **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
-    ```bash
-    npm run test:docker-all:start  # Start all test services
-    npm run test:full              # Run tests with coverage
-    npm run test:docker-all:stop   # Stop services
-    ```
-    If some services are not needed, start only required ones (e.g., `test:docker-couchdb:start`)
-    Note that if services are already running, starting script will fail. Please stop them first.
-- **Test Structure**:
-    - `test/suite/` - Integration tests for sync operations
-    - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
-    - `test/harness/` - Mock implementations (e.g., `obsidian-mock.ts`)
 
 ## Code Conventions
 
@@ -156,17 +184,17 @@ export class ModuleExample extends AbstractObsidianModule {
 
 ## Beta Policy
 
-- Beta versions are denoted by appending `+patchedN` to the base version number.
+- Beta versions are denoted by appending `-patchedN` to the base version number.
     - `The base version` mostly corresponds to the stable release version.
-        - e.g., v0.25.41+patched1 is equivalent to v0.25.42-beta1.
+        - e.g., v0.25.41-patched1 is equivalent to v0.25.42-beta1.
     - This notation is due to SemVer incompatibility of Obsidian's plugin system.
-    - Hence, this release is `0.25.41+patched1`.
+    - Hence, this release is `0.25.41-patched1`.
 - Each beta version may include larger changes, but bug fixes will often not be included.
     - I think that in most cases, bug fixes will cause the stable releases.
     - They will not be released per branch or backported; they will simply be released.
     - Bug fixes for previous versions will be applied to the latest beta version.
-      This means, if xx.yy.02+patched1 exists and there is a defect in xx.yy.01, a fix is applied to xx.yy.02+patched1 and yields xx.yy.02+patched2.
-      If the fix is required immediately, it is released as xx.yy.02 (with xx.yy.01+patched1).
+      This means, if xx.yy.02-patched1 exists and there is a defect in xx.yy.01, a fix is applied to xx.yy.02-patched1 and yields xx.yy.02-patched2.
+      If the fix is required immediately, it is released as xx.yy.02 (with xx.yy.01-patched1).
     - This procedure remains unchanged from the current one.
 - At the very least, I am using the latest beta.
     - However, I will not be using a beta continuously for a week after it has been released. It is probably closer to an RC in nature.
