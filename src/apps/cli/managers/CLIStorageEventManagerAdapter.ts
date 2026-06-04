@@ -105,7 +105,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {
-            path: path.relative(this.basePath, filePath) as FilePath,
+            path: path.relative(this.basePath, filePath).replace(/\\/g, "/") as FilePath,
             stat: {
                 ctime: stats?.ctimeMs ?? Date.now(),
                 mtime: stats?.mtimeMs ?? Date.now(),
@@ -117,7 +117,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
     private _toNodeFolder(dirPath: string): NodeFolder {
         return {
-            path: path.relative(this.basePath, dirPath) as FilePath,
+            path: path.relative(this.basePath, dirPath).replace(/\\/g, "/") as FilePath,
             isFolder: true,
         };
     }

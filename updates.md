@@ -5,9 +5,12 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+4th June, 2026
+
 ### Fixed
 
 - Adjust CouchDB's database name checking to its specification (#926).
+- `Reset Syncronisation on This Device` for minio and P2P is now working properly. 
 
 ## ~~0.25.71~~ 0.25.72
 
