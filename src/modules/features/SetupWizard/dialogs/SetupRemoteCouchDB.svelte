@@ -180,7 +180,7 @@
         autocapitalize="off"
         spellcheck="false"
         required
-        pattern="^[a-z0-9][a-z0-9_]*$"
+        pattern="^[a-z][a-z0-9_$()+/-]*$"
         bind:value={syncSetting.couchDB_DBNAME}
     />
 </InputRow>
