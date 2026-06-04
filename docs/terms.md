@@ -2,7 +2,13 @@
 
 ## Spelling and Vocabulary conventions
 
-1. Almost all of the english words are written in British English. For example, "organisation" instead of "organization", "synchronisation" instead of "synchronization", etc. This convention originated from the author's personal preference but is now maintained for consistency.
+All guidelines and conventions listed below are disclosed and maintained solely for the sake of documentation `consistency`.
+
+1. Almost all of the English words are written in British English. This convention originated from the author's personal preference.
+   - **Traditional Spelling (Trad-spelling)**: We prefer traditional British English spellings. In particular, we use `-ise` and `-isation` suffixes rather than the Oxford spelling `-ize` and `-ization` (for example, 'initialisation', 'synchronisation', and 'organisation').
+   - **Oxford Comma**: We use the serial (Oxford) comma to separate items in lists of three or more (for example, 'settings, snippets, and themes' instead of 'settings, snippets and themes').
+   - **Logical Punctuation**: We place punctuation marks (such as commas and full stops) outside quotation marks, unless the punctuation mark is part of the quoted text itself. For example, we write 'dialogue', not 'dialogue,'.
+   - **BBC News Styleguide**: If in wonder, the BBC News Styleguide may be useful as a reference.
 
 2. Idiomatic terms, such as those used in HTML, CSS, and JavaScript, are usually aligned with the language used in the technology. For example, "color" instead of "colour", "program" instead of "programme", etc. Especially, terms which are used for attributes, properties, and methods are notable.
 
@@ -14,8 +20,14 @@
 5. However, try using affirmative forms, `Discard` instead of `Do not keep`, `Continue` instead of `Do not stop`, etc.
     - Some languages, such as Japanese, have a different meaning for `yes` and `no` between affirmative and negative questions.
 
+6. Single quotation marks (`'`) are preferred over double quotation marks (`"`) in general documentation text, unless the context requires double quotes (for example, inside JSON code blocks).
+
 ### Terminology
 
+- Boot-up sequence (boot-sequence)
+    - The initialisation process of the plug-in when Obsidian starts. It starts with the loading of the plug-in, setting up core services, loading saved settings, and opening the local database. Once the layout is ready, the plug-in checks for the presence of flag files, runs configuration diagnostics, connects to the remote database, and begins file watching. The sequence finishes once the plug-in is fully ready and operational.
+- Broken files (Size mismatch)
+    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be detected and resolved by running validation tools such as `Verify and repair all files` on the Hatch pane.
 - Chunk / Chunks
     - Divided units of data stored in the database or object storage to facilitate efficient synchronisation.
 - Compaction
@@ -34,20 +46,26 @@
     - The cryptographic algorithm version used for end-to-end encryption. All devices in the synchronisation group must be configured with a compatible version (such as `V2` or `V1`).
 - Eden (Eden Chunks)
     - A performance optimisation where newly created chunks are held within the document until they stabilise, before graduating to independent chunks.
+- Fast Setup (Simple Fetch)
+    - A simplified, automated initial synchronisation flow triggered when setting up subsequent devices or recovering a database. It bypasses the detailed step-by-step setup wizard dialogues, prompting the user with high-level data processing decisions and completing the initial download and local file scan in one continuous process.
 - Flag files (redflag.md, redflag2.md, redflag3.md)
     - Special Markdown files (or directories) placed at the root of the vault to stop the boot-up sequence or trigger recovery tasks. For instance, `redflag.md` suspends all processes, while `redflag2.md` (`flag_rebuild.md`) triggers a full database rebuild and `redflag3.md` (`flag_fetch.md`) discards the local database to fetch it again from the remote.
 - Garbage Collection (GC)
     - The process of identifying and purging unreferenced chunks (unused data) from local and remote databases to reclaim storage space.
+- Hatch (Hatch pane)
+    - A dedicated troubleshooting and maintenance section in the plug-in settings, typically hidden behind a warning-labeled collapsible panel to prevent accidental misconfiguration. It contains diagnostic utilities, database reset controls, status reports, and advanced edge-case patches.
 - Hidden File Sync
     - The feature that synchronises files located in hidden directories (like `.obsidian`).
+- JWT Authentication
+    - An experimental authentication option for CouchDB allowing secure token-based authentication instead of standard credentials. It requires a configured private key/secret, algorithm, expiration duration, subject, and key ID.
 - LiveSync
     - A very confusing term.
         - As a shortened form of `Self-hosted LiveSync`.
         - As the name of a synchronisation mode. This should be changed to `Continuous`, in contrast to `Periodic`.
 - livesync-serverpeer / webpeer
     - Pseudo-clients that assist in WebRTC peer-to-peer communication.
-- JWT Authentication
-    - An experimental authentication option for CouchDB allowing secure token-based authentication instead of standard credentials. It requires a configured private key/secret, algorithm, expiration duration, subject, and key ID.
+- Metadata (File metadata)
+    - A database document that stores properties of a file, including its filename, path, size, modification time, conflict history, and references (hashes) of the chunks that comprise the file's content. In Self-hosted LiveSync, metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
 - OneShot Sync
     - A single, immediate bidirectional synchronisation (pull then push) triggered on demand or on specific events, as opposed to continuous (live) replication.
 - Overwrite Server Data with This Device's Files
@@ -72,6 +90,8 @@
     - A diagnostic utility that checks for mismatches or suboptimal configurations, presenting users with ideal values and recommendation reasons to easily resolve issues during migration, configuration import, or general troubleshooting.
 - Setup URI
     - An encrypted representation of the plug-in's settings containing server configuration, which allows users to clone their configuration across devices securely using a passphrase.
+- Streaming replication (Stream-based replication)
+    - A data transfer method that downloads database documents as a continuous stream of events. It is significantly faster than traditional chunk-by-chunk HTTP requests and is used during Fast Setup to retrieve remote metadata quickly.
 - Sync Mode
     - The replication trigger mechanism. Users can select from `On Events` (synchronising on local file changes), `Periodic and Events` (synchronising at fixed intervals as well as on events), or `LiveSync` (continuous, real-time synchronisation).
 - TURN Server (WebRTC P2P)

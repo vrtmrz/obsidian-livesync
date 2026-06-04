@@ -446,6 +446,12 @@ Apply preset configuration
 
 Setting key: syncMode
 
+The trigger mechanism for synchronisation.
+- **LiveSync** (`LIVESYNC`): Real-time, continuous, bidirectional synchronisation.
+  Note: This requires a CouchDB or WebRTC P2P remote server. It is not supported for S3-compatible Object Storage.
+- **Periodic Sync** (`PERIODIC`): Synchronisation is performed at regular intervals specified by the **Periodic Sync interval** setting.
+- **On Events** (`ONEVENTS`): Synchronisation is triggered by specific events (such as save, file open, or startup) configured via the toggles below.
+
 #### Periodic Sync interval
 
 Setting key: periodicReplicationInterval
@@ -648,14 +654,18 @@ Warning! This will have a serious impact on performance. And the logs will not b
 
 ### 2. Scram Switches
 
+Emergency controls to suspend synchronisation processes in order to prevent database corruption. If a critical mismatch or sync error occurs, the plug-in may automatically enter a Scram state and suspend operations.
+
 #### Suspend file watching
 
 Setting key: suspendFileWatching
-Stop watching for file changes.
+
+Stop watching for local file changes.
 
 #### Suspend database reflecting
 
 Setting key: suspendParseReplicationResult
+
 Stop reflecting database changes to storage files.
 
 ### 3. Recovery and Repair

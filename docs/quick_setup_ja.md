@@ -87,3 +87,7 @@ Presetsから、いずれかの同期方法を選び`Apply`を行うと、必要
 - `How would you like to set it up?` に `Set it up as secondary or subsequent device`
 
 これで設定が反映され、レプリケーションが開始されます。
+
+> [!TIP]
+> **ファストセットアップ (Fast Setup)**
+> 近年のバージョンでは、セットアップURIの読み込みやデータの全取得（Fetch All）を実行した際、より簡単に同期戦略を選択して即座に初期同期を完了できる **ファストセットアップ (Simple Fetch)** フローが利用できます。詳細は [ファストセットアップガイド](./tips/fast-setup_ja.md) をご参照ください。

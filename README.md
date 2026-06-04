@@ -87,7 +87,8 @@ Synchronisation status is shown in the status bar with the following icons.
 To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.
 
 ## Tips and Troubleshooting
-If you are having problems getting the plug-in working, see [Tips and Troubleshooting](docs/troubleshooting.md).
+- If you want a faster and simpler initial replication when setting up subsequent devices, see the [Fast Setup Guide](docs/tips/fast-setup.md).
+- If you are having problems getting the plug-in working, see [Tips and Troubleshooting](docs/troubleshooting.md).
 
 ## Acknowledgements
 The project has been in continual progress and harmony thanks to the following:  

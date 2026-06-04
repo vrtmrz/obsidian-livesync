@@ -127,3 +127,7 @@ And, please copy the setup URI by running the "Copy settings as a new setup URI"
 After installing Self-hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
 
 It is completely same as [Using setup URIs on the first device](#1-using-setup-uris). Please refer it.
+
+> [!TIP]
+> **Fast Setup (Simple Fetch)**
+> In recent versions, when you import a Setup URI or trigger a Fetch All, the plug-in boots in scheduled fetch mode and runs a simplified **Fast Setup** process. This allows you to choose your sync strategy with a single dialogue and performs initial synchronisation in one step. Refer to the [Fast Setup Guide](./tips/fast-setup.md) for more details.

@@ -373,41 +373,49 @@ without Obsidian.
 For example, if there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
 processes.
 
-### Flag Files
+### Scram State and Flag Files (SCRAM Warning Loop)
 
-The flag file is a simple Markdown file designed to prevent storage events and database events in self-hosted LiveSync.
-Its very existence is significant; it may be left blank, or it may contain text; either is acceptable.
+The plug-in uses a **Scram state** (emergency suspension of all synchronisation processes) to prevent database corruption when severe errors or conflicts are detected. This state is often triggered or persisted by **flag files** placed at the root of the vault.
 
-This file is in Markdown format so that it can be placed in the Vault externally, even if Obsidian fails to launch.
+If you encounter a warning saying **"Scram detected, all sync operations are suspended per SCRAM"** or get caught in an infinite loop where the warning persists even after clicking "Resume", it is likely due to a flag file in your vault.
 
-There are some options to use `redflag.md`.
+#### Flag Files
+
+A flag file is a simple Markdown file located at the root of your vault. Its very existence is significant; it may be left blank or contain any text. These files are used so they can be easily placed or deleted from outside Obsidian (e.g., when Obsidian fails to launch).
 
 | Filename      | Human-Friendly Name | Description                                                                             |
 | ------------- | ------------------- | --------------------------------------------------------------------------------------- |
-| `redflag.md`  | -                   | Suspends all processes.                                                                 |
+| `redflag.md`  | -                   | Suspends all processes (activates Scram).                                               |
 | `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and overwrites server data with this device's files.           |
 | `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and resets synchronisation on this device. |
 
-When resetting synchronisation on this device or overwriting server data, restarting Obsidian
-is performed once for safety reasons. At that time, Self-hosted LiveSync uses
-these files to determine whether the process should be carried out. (The use of
-normal markdown files is a trick to externally force cancellation in the event
-of faults in the overwrite or reset function itself, especially on mobile
-devices). This mechanism is also used for set-up. And just for information,
-these files are also not subject to synchronisation.
+When resetting synchronisation on this device or overwriting server data, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out. (This mechanism is especially useful on mobile devices to force cancellation if the database rebuilding fails). These files are not subject to synchronisation.
 
-However, occasionally the deletion of files may fail. This should generally work
-normally after restarting Obsidian. (As far as I can observe).
+#### How to Resolve the Scram Loop
 
->[!IMPORTANT]
-> When a flag file is detected, all synchronisation is disabled, and `Suspend file watching` and
-> `Suspend database reflecting` are enabled automatically. Therefore, please follow the steps below to
-> resolve the issue.
-> 1. Delete the flag file.
-> 2. Shutdown Obsidian.
-> 3. Check your vault folder and ensure it is no longer there.
-> 4. Launch Obsidian.
-> 5. Disable `Suspend file watching` and `Suspend database reflecting` in the settings dialogue (if you have not been asked).
+If you cannot disable Scram, please follow these steps:
+1. Close Obsidian completely.
+2. Open your system's file manager and check the root directory of your vault.
+3. Locate and delete any flag files (such as `redflag.md`, `redflag2.md`, or `redflag3.md`).
+4. Launch Obsidian.
+5. Go to the settings dialogue -> **Hatch** -> **Scram Switches**, and manually toggle **Suspend file watching** and **Suspend database reflecting** to `false` (disabled) if they have not been reset automatically.
+
+> [!TIP]
+> This is the reason why flag files are standard `.md` files: it allows you to manage them externally. On mobile devices, you can use system file manager applications (such as the native **Files** app on iOS/iPadOS or **Files by Google** on Android) to find and delete these files to resolve a lock, or conversely, create/place a new `redflag.md` file (or directory) at the root of your vault to force-suspend synchronisation and stop Obsidian's boot-up sequence if you need to fix a database issue.
+
+### JWT Authentication Errors
+
+#### DataError when configuring JWT authentication
+
+If you encounter a `DataError:` with no additional information in the logs when configuring JWT authentication, this usually indicates a private key formatting issue.
+
+Self-hosted LiveSync requires the private key (for ES256/ES512 algorithms) to be in the **PKCS#8 PEM** format. Standard SEC1 EC private keys (which begin with `-----BEGIN EC PRIVATE KEY-----`) will trigger this error.
+
+To resolve this, convert your private key to PKCS#8 format using the following `openssl` command:
+```bash
+openssl pkcs8 -topk8 -inform PEM -nocrypt -in private.key -out pkcs8.key
+```
+Then paste the contents of `pkcs8.key` (which begins with `-----BEGIN PRIVATE KEY-----`) into the JWT Key field.
 
 ### Old tips
 
