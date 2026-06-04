@@ -80,9 +80,7 @@ describe("CLIStorageEventManagerAdapter", () => {
 
         expect(handlers.onCreate).toHaveBeenCalledTimes(1);
         const created = (handlers.onCreate as ReturnType<typeof vi.fn>).mock.calls[0][0] as NodeFile;
-        if (process.platform !== "win32") {
-            expect(created.path).toBe("subdir/note.md");
-        }
+        expect(created.path).toBe("subdir/note.md");
         expect(created.stat?.size).toBe(42);
     });
 
