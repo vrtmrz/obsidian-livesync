@@ -224,7 +224,7 @@ There are many cases where this is really unclear. One possibility is that the c
     - If you know when the files were deleted, set the time a bit before that.
     - If not, bisecting may help us.
 6. Delete `redflag.md`.
-7. Perform `Reset synchronisation on This Device` on the `🎛️ Maintenance` pane.
+7. Perform `Reset Synchronisation on This Device` on the `🎛️ Maintenance` pane.
 
 This mode is very fragile. Please be careful.
 
@@ -236,16 +236,16 @@ not been stable. The new adapter has better performance and has a new feature
 like purging. Therefore, we should use new adapters and current default is so.
 
 However, when switching from an old adapter to a new adapter, some converting or
-local database rebuilding is required, and it takes a few time. It was a long
+local database rebuilding is required, and it takes some time. It was a long
 time ago now, but we once inconvenienced everyone in a hurry when we changed the
 format of our database. For these reasons, this toggle is automatically on if we
 have upgraded from vault which using an old adapter.
 
-When you rebuild everything or fetch from the remote again, you will be asked to
+When you overwrite server data with this device's files or reset synchronisation on this device again, you will be asked to
 switch this.
 
 Therefore, experienced users (especially those stable enough not to have to
-rebuild the database) may have this toggle enabled in their Vault. Please
+overwrite server data) may have this toggle enabled in their Vault. Please
 disable it when you have enough time.
 
 ### ZIP (or any extensions) files were not synchronised. Why?
@@ -303,9 +303,9 @@ happened on other devices. This means that conflicts will happen in the past,
 after the time we have synchronised. Hence we cannot collect and delete the
 unused chunks even though if we are not currently referenced.
 
-To shrink the database size, `Rebuild everything` only reliably and effectively.
+To shrink the database size, `Overwrite Server Data with This Device's Files` is the only reliable and effective way.
 But do not worry, if we have synchronised well. We have the actual and real
-files. Only it takes a bit of time and traffics.
+files. Only it takes a bit of time and traffic.
 
 ### How to launch the DevTools
 
@@ -385,14 +385,14 @@ There are some options to use `redflag.md`.
 | Filename      | Human-Friendly Name | Description                                                                             |
 | ------------- | ------------------- | --------------------------------------------------------------------------------------- |
 | `redflag.md`  | -                   | Suspends all processes.                                                                 |
-| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuilds both local and remote databases from local files.  |
-| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and fetches from the remote again. |
+| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and overwrites server data with this device's files.           |
+| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and resets synchronisation on this device. |
 
-When fetching everything remotely or performing a rebuild, restarting Obsidian
+When resetting synchronisation on this device or overwriting server data, restarting Obsidian
 is performed once for safety reasons. At that time, Self-hosted LiveSync uses
 these files to determine whether the process should be carried out. (The use of
 normal markdown files is a trick to externally force cancellation in the event
-of faults in the rebuild or fetch function itself, especially on mobile
+of faults in the overwrite or reset function itself, especially on mobile
 devices). This mechanism is also used for set-up. And just for information,
 these files are also not subject to synchronisation.
 
@@ -411,19 +411,18 @@ normally after restarting Obsidian. (As far as I can observe).
 
 ### Old tips
 
-- Rarely, a file in the database could be corrupted. The plugin will not write
+- Rarely, a file in the database could be corrupted. The plug-in will not write
   to local storage when a file looks corrupted. If a local version of the file
   is on your device, the corruption could be fixed by editing the local file and
-  synchronizing it. But if the file does not exist on any of your devices, then
+  synchronising it. But if the file does not exist on any of your devices, then
   it can not be rescued. In this case, you can delete these items from the
-  settings dialog.
+  settings dialogue.
 - To stop the boot-up sequence (eg. for fixing problems on databases), you can
   put a `redflag.md` file (or directory) at the root of your vault. Tip for iOS:
   a redflag directory can be created at the root of the vault using the File
   application.
-- Also, with `redflag2.md` placed, we can automatically rebuild both the local
-  and the remote databases during the boot-up sequence. With `redflag3.md`, we
-  can discard only the local database and fetch from the remote again.
+- Also, with `redflag2.md` placed, we can automatically overwrite server data with this device's files during the boot-up sequence. With `redflag3.md`, we
+  can discard only the local database and reset synchronisation on this device.
 - Q: The database is growing, how can I shrink it down? A: each of the docs is
   saved with their past 100 revisions for detecting and resolving conflicts.
   Picturing that one device has been offline for a while, and comes online
@@ -435,7 +434,7 @@ normally after restarting Obsidian. (As far as I can observe).
   So, We have to make the database again like an enlarged git repo if you want
   to solve the root of the problem.
 - And more technical Information is in the [Technical Information](tech_info.md)
-- If you want to synchronize files without obsidian, you can use
+- If you want to synchronise files without obsidian, you can use
   [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
 - WebClipper is also available on Chrome Web
   Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)

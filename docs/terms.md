@@ -46,6 +46,8 @@
         - As the name of a synchronisation mode. This should be changed to `Continuous`, in contrast to `Periodic`.
 - livesync-serverpeer / webpeer
     - Pseudo-clients that assist in WebRTC peer-to-peer communication.
+- JWT Authentication
+    - An experimental authentication option for CouchDB allowing secure token-based authentication instead of standard credentials. It requires a configured private key/secret, algorithm, expiration duration, subject, and key ID.
 - OneShot Sync
     - A single, immediate bidirectional synchronisation (pull then push) triggered on demand or on specific events, as opposed to continuous (live) replication.
 - Overwrite Server Data with This Device's Files
@@ -54,6 +56,8 @@
     - A privacy option that encrypts file paths and folder names on the remote server.
 - plug-in
     - We use the hyphenated form `plug-in` in user-facing messages and general documentation, while `plugin` may appear in codebase files, configuration settings, or technical contexts.
+- Relay Server (P2P relays)
+    - A WebSocket-based coordination server used to establish direct WebRTC peer-to-peer connections. The default relay is provided by the plug-in author.
 - Remediation (maxMTimeForReflectEvents)
     - A recovery setting that restricts the propagation of changes from the database to local storage, ignoring any file events (such as accidental mass deletions) that occurred after a specified date and time.
 - Reset Synchronisation on This Device
@@ -70,6 +74,8 @@
     - An encrypted representation of the plug-in's settings containing server configuration, which allows users to clone their configuration across devices securely using a passphrase.
 - Sync Mode
     - The replication trigger mechanism. Users can select from `On Events` (synchronising on local file changes), `Periodic and Events` (synchronising at fixed intervals as well as on events), or `LiveSync` (continuous, real-time synchronisation).
+- TURN Server (WebRTC P2P)
+    - A server type (Traversal Using Relays around NAT) used as a fallback to relay traffic when direct WebRTC peer-to-peer connection is blocked by strict NAT or firewalls.
 - Update Thinning (Batch database update)
     - An optimisation that groups multiple local file edits together over a short delay before committing them to the local database, reducing the number of database write operations.
 - WebRTC P2P (Peer-to-Peer)
