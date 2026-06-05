@@ -627,3 +627,42 @@ export async function startP2pRelay(): Promise<void> {
 export function isLocalP2pRelay(relayUrl: string): boolean {
     return relayUrl === "ws://localhost:4000" || relayUrl === "ws://localhost:4000/";
 }
+
+// ---------------------------------------------------------------------------
+// Coturn (STUN/TURN)
+// ---------------------------------------------------------------------------
+const COTURN_CONTAINER = "coturn-test";
+const COTURN_IMAGE = "coturn/coturn:latest";
+
+export async function stopCoturn(): Promise<void> {
+    await stopAndRemoveContainer(COTURN_CONTAINER);
+    untrackContainer(COTURN_CONTAINER);
+}
+
+export async function startCoturn(
+    port = 3478,
+    user = "testuser",
+    pass = "testpass",
+    realm = "livesync.test"
+): Promise<void> {
+    console.log("[INFO] stopping leftover Coturn container if present");
+    await stopCoturn().catch(() => {});
+
+    console.log("[INFO] starting local Coturn container");
+    await dockerOrFail(
+        "run",
+        "-d",
+        "--name",
+        COTURN_CONTAINER,
+        "-p",
+        `${port}:${port}`,
+        "-p",
+        `${port}:${port}/udp`,
+        COTURN_IMAGE,
+        "--log-file=stdout",
+        "--external-ip=127.0.0.1",
+        `--user=${user}:${pass}`,
+        `--realm=${realm}`
+    );
+    trackContainer(COTURN_CONTAINER);
+}

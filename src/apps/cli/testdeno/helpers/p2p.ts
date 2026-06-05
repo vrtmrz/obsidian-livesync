@@ -1,5 +1,5 @@
 import { runCli } from "./cli.ts";
-import { isLocalP2pRelay, startP2pRelay, stopP2pRelay } from "./docker.ts";
+import { isLocalP2pRelay, startP2pRelay, stopP2pRelay, startCoturn, stopCoturn } from "./docker.ts";
 import { waitForPort } from "./net.ts";
 
 export type PeerEntry = {
@@ -93,5 +93,19 @@ export async function maybeStartLocalRelay(relay: string): Promise<boolean> {
 export async function stopLocalRelayIfStarted(started: boolean): Promise<void> {
     if (started) {
         await stopP2pRelay().catch(() => {});
+    }
+}
+
+export async function maybeStartCoturn(turnServers: string): Promise<boolean> {
+    if (turnServers.includes("localhost") || turnServers.includes("127.0.0.1")) {
+        await startCoturn();
+        return true;
+    }
+    return false;
+}
+
+export async function stopCoturnIfStarted(started: boolean): Promise<void> {
+    if (started) {
+        await stopCoturn().catch(() => {});
     }
 }

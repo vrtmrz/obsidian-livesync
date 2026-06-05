@@ -148,5 +148,5 @@ jobs:
       - name: Stop leftover containers
         if: always()
         run: |
-          docker stop couchdb-test minio-test relay-test >/dev/null 2>&1 || true
-          docker rm couchdb-test minio-test relay-test >/dev/null 2>&1 || true
+          docker stop couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
+          docker rm couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true

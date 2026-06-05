@@ -2,7 +2,13 @@ import { assert } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { applyP2pSettings, applyP2pTestTweaks, initSettingsFile } from "./helpers/settings.ts";
 import { startCliInBackground } from "./helpers/backgroundCli.ts";
-import { discoverPeer, maybeStartLocalRelay, stopLocalRelayIfStarted } from "./helpers/p2p.ts";
+import {
+    discoverPeer,
+    maybeStartLocalRelay,
+    stopLocalRelayIfStarted,
+    maybeStartCoturn,
+    stopCoturnIfStarted,
+} from "./helpers/p2p.ts";
 import { jsonStringField, runCliOrFail, runCliWithInputOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
 
 Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
@@ -16,6 +22,7 @@ Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
     const hostPeerName = Deno.env.get("HOST_PEER_NAME") ?? `p2p-host-${nonce}`;
     const peerNameB = Deno.env.get("PEER_NAME_B") ?? `p2p-client-b-${nonce}`;
     const peerNameC = Deno.env.get("PEER_NAME_C") ?? `p2p-client-c-${nonce}`;
+    const turnServers = Deno.env.get("TURN_SERVERS") ?? "turn:127.0.0.1:3478";
 
     await using workDir = await TempDir.create("livesync-cli-p2p-3nodes");
     const vaultA = workDir.join("vault-a");
@@ -29,13 +36,14 @@ Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
     await Deno.mkdir(vaultC, { recursive: true });
 
     const relayStarted = await maybeStartLocalRelay(relay);
+    const coturnStarted = await maybeStartCoturn(turnServers);
     try {
         await initSettingsFile(settingsA);
         await initSettingsFile(settingsB);
         await initSettingsFile(settingsC);
-        await applyP2pSettings(settingsA, roomId, passphrase, appId, relay);
-        await applyP2pSettings(settingsB, roomId, passphrase, appId, relay);
-        await applyP2pSettings(settingsC, roomId, passphrase, appId, relay);
+        await applyP2pSettings(settingsA, roomId, passphrase, appId, relay, "~.*", turnServers);
+        await applyP2pSettings(settingsB, roomId, passphrase, appId, relay, "~.*", turnServers);
+        await applyP2pSettings(settingsC, roomId, passphrase, appId, relay, "~.*", turnServers);
         await applyP2pTestTweaks(settingsA, hostPeerName, passphrase);
         await applyP2pTestTweaks(settingsB, peerNameB, passphrase);
         await applyP2pTestTweaks(settingsC, peerNameC, passphrase);
@@ -123,5 +131,6 @@ Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
         }
     } finally {
         await stopLocalRelayIfStarted(relayStarted);
+        await stopCoturnIfStarted(coturnStarted);
     }
 });

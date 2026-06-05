@@ -172,7 +172,8 @@ export async function applyP2pSettings(
     passphrase: string,
     appId = "self-hosted-livesync-cli-tests",
     relays = "ws://localhost:4000/",
-    autoAccept = "~.*"
+    autoAccept = "~.*",
+    turnServers = "turn:127.0.0.1:3478"
 ): Promise<void> {
     const data = JSON.parse(await Deno.readTextFile(settingsFile));
     data.P2P_Enabled = true;
@@ -184,7 +185,9 @@ export async function applyP2pSettings(
     data.P2P_relays = relays;
     data.P2P_AutoAcceptingPeers = autoAccept;
     data.P2P_AutoDenyingPeers = "";
-    data.P2P_turnServers = "none";
+    data.P2P_turnServers = turnServers;
+    data.P2P_turnUsername = "testuser";
+    data.P2P_turnCredential = "testpass";
     data.P2P_IsHeadless = true;
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));

@@ -2,7 +2,13 @@ import { assert } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { initSettingsFile, applyP2pSettings, applyP2pTestTweaks } from "./helpers/settings.ts";
 import { startCliInBackground } from "./helpers/backgroundCli.ts";
-import { discoverPeer, maybeStartLocalRelay, stopLocalRelayIfStarted } from "./helpers/p2p.ts";
+import {
+    discoverPeer,
+    maybeStartLocalRelay,
+    stopLocalRelayIfStarted,
+    maybeStartCoturn,
+    stopCoturnIfStarted,
+} from "./helpers/p2p.ts";
 import { runCli } from "./helpers/cli.ts";
 
 Deno.test("p2p-sync: discovers peer and completes sync", async () => {
@@ -14,6 +20,7 @@ Deno.test("p2p-sync: discovers peer and completes sync", async () => {
     const nonce = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const hostPeerName = Deno.env.get("HOST_PEER_NAME") ?? `p2p-host-${nonce}`;
     const clientPeerName = Deno.env.get("CLIENT_PEER_NAME") ?? `p2p-client-${nonce}`;
+    const turnServers = Deno.env.get("TURN_SERVERS") ?? "turn:127.0.0.1:3478";
 
     await using workDir = await TempDir.create("livesync-cli-p2p-sync");
     const hostVault = workDir.join("vault-host");
@@ -24,11 +31,28 @@ Deno.test("p2p-sync: discovers peer and completes sync", async () => {
     await Deno.mkdir(clientVault, { recursive: true });
 
     const relayStarted = await maybeStartLocalRelay(relay);
+    const coturnStarted = await maybeStartCoturn(turnServers);
     try {
         await initSettingsFile(hostSettings);
         await initSettingsFile(clientSettings);
-        await applyP2pSettings(hostSettings, roomId, passphrase, "self-hosted-livesync-cli-tests", relay);
-        await applyP2pSettings(clientSettings, roomId, passphrase, "self-hosted-livesync-cli-tests", relay);
+        await applyP2pSettings(
+            hostSettings,
+            roomId,
+            passphrase,
+            "self-hosted-livesync-cli-tests",
+            relay,
+            "~.*",
+            turnServers
+        );
+        await applyP2pSettings(
+            clientSettings,
+            roomId,
+            passphrase,
+            "self-hosted-livesync-cli-tests",
+            relay,
+            "~.*",
+            turnServers
+        );
         await applyP2pTestTweaks(hostSettings, hostPeerName, passphrase);
         await applyP2pTestTweaks(clientSettings, clientPeerName, passphrase);
 
@@ -58,5 +82,6 @@ Deno.test("p2p-sync: discovers peer and completes sync", async () => {
         }
     } finally {
         await stopLocalRelayIfStarted(relayStarted);
+        await stopCoturnIfStarted(coturnStarted);
     }
 });
