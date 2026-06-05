@@ -304,11 +304,17 @@ export async function main() {
         : path.join(databasePath, SETTINGS_FILE);
     configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
 
-    // Resolve vault path: --vault flag takes priority, otherwise fall back to databasePath
+    // Resolve vault path: mirror positional argument takes priority,
+    // then --vault flag, otherwise fall back to databasePath.
     // For daemon mode, enable chokidar file watching so the _changes feed picks up events.
     // mirror runs a single full scan and doesn't need continuous watching.
     const watchEnabled = options.command === "daemon";
-    const vaultPath = options.vaultPath ? path.resolve(options.vaultPath) : databasePath!;
+    const vaultPath =
+        options.command === "mirror" && options.commandArgs[0]
+            ? path.resolve(options.commandArgs[0])
+            : options.vaultPath
+                ? path.resolve(options.vaultPath)
+                : databasePath!;
 
     infoLog(`Self-hosted LiveSync CLI`);
     infoLog(`Database Path: ${databasePath}`);
