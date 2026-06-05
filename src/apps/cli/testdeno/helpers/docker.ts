@@ -625,7 +625,7 @@ export async function startP2pRelay(): Promise<void> {
 }
 
 export function isLocalP2pRelay(relayUrl: string): boolean {
-    return relayUrl === "ws://localhost:4000" || relayUrl === "ws://localhost:4000/";
+    return relayUrl.includes("localhost") || relayUrl.includes("127.0.0.1") || relayUrl.includes("[::1]");
 }
 
 // ---------------------------------------------------------------------------
@@ -648,7 +648,10 @@ export async function startCoturn(
     console.log("[INFO] stopping leftover Coturn container if present");
     await stopCoturn().catch(() => {});
 
-    console.log("[INFO] starting local Coturn container");
+    const { getOptimalLoopbackIp } = await import("./net.ts");
+    const externalIp = await getOptimalLoopbackIp();
+
+    console.log(`[INFO] starting local Coturn container with external-ip ${externalIp}`);
     await dockerOrFail(
         "run",
         "-d",
@@ -660,7 +663,7 @@ export async function startCoturn(
         `${port}:${port}/udp`,
         COTURN_IMAGE,
         "--log-file=stdout",
-        "--external-ip=127.0.0.1",
+        `--external-ip=${externalIp}`,
         `--user=${user}:${pass}`,
         `--realm=${realm}`
     );

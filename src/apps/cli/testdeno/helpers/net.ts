@@ -47,3 +47,22 @@ export async function waitForPort(hostname: string, port: number, options: WaitF
             (lastError ? ` (last error: ${String(lastError)})` : "")
     );
 }
+
+export async function getOptimalLoopbackIp(): Promise<string> {
+    const ipv4 = "127.0.0.1";
+    const ipv6 = "::1";
+
+    try {
+        const l = Deno.listen({ hostname: ipv4, port: 0 });
+        l.close();
+        return ipv4;
+    } catch {
+        try {
+            const l = Deno.listen({ hostname: ipv6, port: 0 });
+            l.close();
+            return ipv6;
+        } catch {
+            return ipv4; // fallback to default
+        }
+    }
+}

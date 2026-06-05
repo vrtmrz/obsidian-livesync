@@ -10,9 +10,13 @@ import {
     stopCoturnIfStarted,
 } from "./helpers/p2p.ts";
 import { runCli } from "./helpers/cli.ts";
+import { getOptimalLoopbackIp } from "./helpers/net.ts";
 
 Deno.test("p2p-sync: discovers peer and completes sync", async () => {
-    const relay = Deno.env.get("RELAY") ?? "ws://localhost:4000/";
+    const loopbackIp = await getOptimalLoopbackIp();
+    const loopbackHost = loopbackIp === "::1" ? "[::1]" : loopbackIp;
+    
+    const relay = Deno.env.get("RELAY") ?? `ws://${loopbackHost}:4000/`;
     const roomId = Deno.env.get("ROOM_ID") ?? `room-${Date.now()}`;
     const passphrase = Deno.env.get("PASSPHRASE") ?? "test";
     const peersTimeout = Number(Deno.env.get("PEERS_TIMEOUT") ?? "12");
@@ -20,7 +24,8 @@ Deno.test("p2p-sync: discovers peer and completes sync", async () => {
     const nonce = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const hostPeerName = Deno.env.get("HOST_PEER_NAME") ?? `p2p-host-${nonce}`;
     const clientPeerName = Deno.env.get("CLIENT_PEER_NAME") ?? `p2p-client-${nonce}`;
-    const turnServers = Deno.env.get("TURN_SERVERS") ?? "turn:127.0.0.1:3478";
+    const useCoturn = Deno.env.get("LIVESYNC_USE_COTURN") !== "0";
+    const turnServers = Deno.env.get("TURN_SERVERS") ?? (useCoturn ? `turn:${loopbackHost}:3478` : "none");
 
     await using workDir = await TempDir.create("livesync-cli-p2p-sync");
     const hostVault = workDir.join("vault-host");

@@ -34,6 +34,10 @@ on:
         description: 'Enable verbose and debug logging'
         type: boolean
         default: false
+      use_coturn:
+        description: 'Enable local coturn container for P2P tests'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -140,6 +144,7 @@ jobs:
           LIVESYNC_CLI_RETRY: 3
           LIVESYNC_CLI_DEBUG: ${{ inputs.enable_debug == true && '1' || '0' }}
           LIVESYNC_CLI_VERBOSE: ${{ inputs.enable_debug == true && '1' || '0' }}
+          LIVESYNC_USE_COTURN: ${{ inputs.use_coturn == true && '1' || '0' }}
         run: |
           TASK="${{ matrix.task }}"
           echo "[INFO] Running Deno task: $TASK"

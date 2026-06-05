@@ -97,7 +97,7 @@ export async function stopLocalRelayIfStarted(started: boolean): Promise<void> {
 }
 
 export async function maybeStartCoturn(turnServers: string): Promise<boolean> {
-    if (turnServers.includes("localhost") || turnServers.includes("127.0.0.1")) {
+    if (turnServers.includes("localhost") || turnServers.includes("127.0.0.1") || turnServers.includes("[::1]")) {
         await startCoturn();
         return true;
     }
