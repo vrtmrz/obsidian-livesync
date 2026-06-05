@@ -184,6 +184,7 @@ export async function applyP2pSettings(
     data.P2P_relays = relays;
     data.P2P_AutoAcceptingPeers = autoAccept;
     data.P2P_AutoDenyingPeers = "";
+    data.P2P_turnServers = "none";
     data.P2P_IsHeadless = true;
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));

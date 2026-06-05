@@ -1,4 +1,4 @@
-import { CLI_DIR } from "./cli.ts";
+import { CLI_DIR, TEE_ENABLED, formatTeeCommand, createLineTeeWriter } from "./cli.ts";
 import { join } from "@std/path";
 
 const CLI_DIST = join(CLI_DIR, "dist", "index.cjs");
@@ -12,10 +12,9 @@ function decorateArgs(args: string[]): string[] {
 async function pump(
     stream: ReadableStream<Uint8Array>,
     sink: (text: string) => void,
-    teeTarget: WritableStream<Uint8Array> | null
+    teeTarget: { write: (chunk: Uint8Array) => void; close: () => void } | null
 ): Promise<void> {
     const reader = stream.getReader();
-    const writer = teeTarget?.getWriter();
     const dec = new TextDecoder();
     try {
         while (true) {
@@ -23,12 +22,12 @@ async function pump(
             if (done) break;
             if (!value) continue;
             sink(dec.decode(value, { stream: true }));
-            if (writer) {
-                await writer.write(value);
+            if (teeTarget) {
+                teeTarget.write(value);
             }
         }
     } finally {
-        if (writer) writer.releaseLock();
+        if (teeTarget) teeTarget.close();
         reader.releaseLock();
     }
 }
@@ -43,19 +42,20 @@ export class BackgroundCliProcess {
         readonly child: Deno.ChildProcess,
         readonly args: string[]
     ) {
+        const cliArgs = decorateArgs(args);
         this.#stdoutDone = pump(
             child.stdout,
             (text) => {
                 this.#stdout += text;
             },
-            null
+            TEE_ENABLED ? createLineTeeWriter(child.pid, "stdout", (chunk) => Deno.stdout.writeSync(chunk)) : null
         );
         this.#stderrDone = pump(
             child.stderr,
             (text) => {
                 this.#stderr += text;
             },
-            null
+            TEE_ENABLED ? createLineTeeWriter(child.pid, "stderr", (chunk) => Deno.stderr.writeSync(chunk)) : null
         );
     }
 
@@ -101,12 +101,20 @@ export class BackgroundCliProcess {
 }
 
 export function startCliInBackground(...args: string[]): BackgroundCliProcess {
+    const cliArgs = decorateArgs(args);
     const child = new Deno.Command("node", {
-        args: [CLI_DIST, ...decorateArgs(args)],
+        args: [CLI_DIST, ...cliArgs],
         cwd: CLI_DIR,
         stdin: "null",
         stdout: "piped",
         stderr: "piped",
     }).spawn();
+
+    if (TEE_ENABLED) {
+        Deno.stdout.writeSync(
+            new TextEncoder().encode(`[CLI tee pid=${child.pid}] process(bg): ${formatTeeCommand(cliArgs)}\n`)
+        );
+    }
+
     return new BackgroundCliProcess(child, args);
 }

@@ -20,7 +20,7 @@ export interface CliResult {
     code: number;
 }
 
-const TEE_ENABLED = Deno.env.get("LIVESYNC_TEST_TEE") === "1";
+export const TEE_ENABLED = Deno.env.get("LIVESYNC_TEST_TEE") === "1";
 const VERBOSE_ENABLED = Deno.env.get("LIVESYNC_CLI_VERBOSE") === "1";
 const DEBUG_ENABLED = Deno.env.get("LIVESYNC_CLI_DEBUG") === "1";
 
@@ -39,11 +39,11 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
     return out;
 }
 
-function formatTeeCommand(args: string[]): string {
+export function formatTeeCommand(args: string[]): string {
     return ["node", CLI_DIST, ...args].map((part) => JSON.stringify(part)).join(" ");
 }
 
-function createLineTeeWriter(
+export function createLineTeeWriter(
     pid: number,
     streamName: "stdout" | "stderr",
     writer: (chunk: Uint8Array) => void
