@@ -12,23 +12,6 @@ on:
           - two-vaults-couchdb
           - two-vaults-minio
         default: two-vaults-matrix
-  push:
-    branches:
-      - main
-      - beta
-    paths:
-      - '.github/workflows/cli-e2e.yml'
-      - 'src/apps/cli/**'
-      - 'src/lib/src/API/processSetting.ts'
-      - 'package.json'
-      - 'package-lock.json'
-  pull_request:
-    paths:
-      - '.github/workflows/cli-e2e.yml'
-      - 'src/apps/cli/**'
-      - 'src/lib/src/API/processSetting.ts'
-      - 'package.json'
-      - 'package-lock.json'
 
 permissions:
   contents: read

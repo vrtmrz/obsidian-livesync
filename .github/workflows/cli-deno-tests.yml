@@ -1,17 +1,39 @@
 name: cli-deno-tests
 
 on:
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - '.github/workflows/cli-deno-tests.yml'
+      - 'src/apps/cli/**'
+      - 'src/lib/src/API/processSetting.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/cli-deno-tests.yml'
+      - 'src/apps/cli/**'
+      - 'src/lib/src/API/processSetting.ts'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       test_task:
         description: 'Deno test task to run'
         type: choice
         options:
-          - test
+          - test:ci
+          - test:p2p
+          - test:all
           - test:local
           - test:e2e-matrix
-          - test:p2p-sync
-        default: test
+        default: test:ci
+      enable_debug:
+        description: 'Enable verbose and debug logging'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,11 +49,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SELECTED_TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test' }}"
+          SELECTED_TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test:ci' }}"
           echo "[INFO] Selected task set: $SELECTED_TASK"
 
           case "$SELECTED_TASK" in
-            test)
+            test:ci)
+              TASK_MATRIX='["test:setup-put-cat","test:mirror","test:push-pull","test:sync-two-local","test:sync-locked-remote","test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
+              ;;
+            test:p2p)
+              TASK_MATRIX='["test:p2p-host","test:p2p-peers","test:p2p-sync","test:p2p-three-nodes","test:p2p-upload-download"]'
+              ;;
+            test:all)
               TASK_MATRIX='["test:setup-put-cat","test:mirror","test:push-pull","test:sync-two-local","test:sync-locked-remote","test:p2p-host","test:p2p-peers","test:p2p-sync","test:p2p-three-nodes","test:p2p-upload-download","test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
               ;;
             test:local)
@@ -39,9 +67,6 @@ jobs:
               ;;
             test:e2e-matrix)
               TASK_MATRIX='["test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
-              ;;
-            test:p2p-sync)
-              TASK_MATRIX='["test:p2p-sync"]'
               ;;
             *)
               echo "[ERROR] Unknown task set: $SELECTED_TASK" >&2
@@ -113,6 +138,8 @@ jobs:
         env:
           LIVESYNC_DOCKER_MODE: native
           LIVESYNC_CLI_RETRY: 3
+          LIVESYNC_CLI_DEBUG: ${{ inputs.enable_debug == true && '1' || '0' }}
+          LIVESYNC_CLI_VERBOSE: ${{ inputs.enable_debug == true && '1' || '0' }}
         run: |
           TASK="${{ matrix.task }}"
           echo "[INFO] Running Deno task: $TASK"

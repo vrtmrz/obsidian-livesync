@@ -281,7 +281,7 @@ deno task test:sync-two-local
 
 ## Continuous Integration
 
-The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` is used to run these tests automatically on push and pull requests affecting the CLI.
+The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` runs automatically on pushes and pull requests affecting the CLI, executing the non-P2P test suite (`test:ci`). P2P tests (`test:p2p`) are excluded from automatic execution and must be run via manual dispatch (`workflow_dispatch`). You can optionally check the "Enable verbose and debug logging" checkbox during a manual dispatch to produce detailed trace logs for troubleshooting.
 
 ---
 

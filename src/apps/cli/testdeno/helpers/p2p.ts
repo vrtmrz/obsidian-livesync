@@ -84,6 +84,9 @@ export async function maybeStartLocalRelay(relay: string): Promise<boolean> {
         intervalMs: Number(Deno.env.get("LIVESYNC_P2P_RELAY_READY_INTERVAL_MS") ?? "250"),
         connectTimeoutMs: Number(Deno.env.get("LIVESYNC_P2P_RELAY_CONNECT_TIMEOUT_MS") ?? "1000"),
     });
+    // Docker proxy accepts TCP connections instantly before the container's internal process is fully ready.
+    // Wait an additional few seconds to ensure strfry is actually accepting WebSockets.
+    await sleep(3000);
     return true;
 }
 
