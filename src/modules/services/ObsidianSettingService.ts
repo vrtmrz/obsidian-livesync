@@ -1,3 +1,4 @@
+import { compatGlobal } from "@/lib/src/common/coreEnvFunctions";
 import { type ObsidianLiveSyncSettings } from "@lib/common/types";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
 import { eventHub } from "@lib/hub/hub";
@@ -17,13 +18,16 @@ export class ObsidianSettingService<T extends ObsidianServiceContext> extends Se
         });
     }
     protected setItem(key: string, value: string) {
-        return localStorage.setItem(key, value);
+        // TODO: Implement nativeLocalStorage.
+        return compatGlobal.localStorage.setItem(key, value);
     }
     protected getItem(key: string): string {
-        return localStorage.getItem(key) ?? "";
+        // TODO: Implement nativeLocalStorage.
+        return compatGlobal.localStorage.getItem(key) ?? "";
     }
     protected deleteItem(key: string): void {
-        localStorage.removeItem(key);
+        // TODO: Implement nativeLocalStorage.
+        compatGlobal.localStorage.removeItem(key);
     }
 
     protected override async saveData(data: ObsidianLiveSyncSettings): Promise<void> {

@@ -4,10 +4,10 @@
     import Decision from "@/lib/src/UI/components/Decision.svelte";
     import Instruction from "@/lib/src/UI/components/Instruction.svelte";
     import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    const TYPE_CLOSE = "close";
-    type ResultType = typeof TYPE_CLOSE;
+    import { TYPE_CLOSE, type ScanQRCodeResultType } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (_result: ResultType) => void;
+        setResult: (_result: ScanQRCodeResultType) => void;
     };
     const { setResult }: Props = $props();
 </script>

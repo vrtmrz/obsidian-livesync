@@ -13,7 +13,7 @@ In these instructions, create IBM Cloudant Instance for trial.
 1. You can choose "Lite plan" for free.  
    ![step 3](../instruction_images/cloudant_3.png)
 
-1. Select Multitenant(it's the default) and the region as you like.  
+1. Select Multitenant (it is the default) and the region as you like.  
    ![step 4](../instruction_images/cloudant_4.png)
 
 1. Be sure to select "IAM and Legacy credentials" for "Authentication Method".  
@@ -28,20 +28,20 @@ In these instructions, create IBM Cloudant Instance for trial.
 1. When all of the above steps have been done, open "Resource list" on the left pane. you can see the Cloudant instance in the "Service and software". Click it.  
    ![step 8](../instruction_images/cloudant_8.png)
 
-1. In resource details, there's information to connect from Self-hosted LiveSync.  
-   Copy the "External Endpoint(preferred)" address. <sup>(\*1)</sup>. We use this address later, with the database name.  
+1. In resource details, there is information to connect from Self-hosted LiveSync.  
+   Copy the "External Endpoint (preferred)" address. <sup>(\*1)</sup>. We use this address later, with the database name.  
    ![step 9](../instruction_images/cloudant_9.png)
 
 ## Database setup
 
 1.  Hit the "Launch Dashboard" button, Cloudant dashboard will be shown.  
-    Yes, it's almost CouchDB's fauxton.  
+    Yes, it is almost CouchDB's fauxton.  
     ![step 1](../instruction_images/couchdb_1.png)
 
 1.  First, you have to enable the CORS option.  
     Hit the Account menu and open the "CORS" tab.  
     Initially, "Origin Domains" is set to "Restrict to specific domains"., so set to "All domains(\*)"  
-    _NOTE: of course We want to set "app://obsidian.md" but it's not acceptable on Cloudant._
+    _NOTE: of course We want to set "app://obsidian.md" but it is not acceptable on Cloudant._
     ![step 2](../instruction_images/couchdb_2.png)
 
 1.  Next, Open the "Databases" tab and hit the "Create Database" button.  
@@ -55,10 +55,10 @@ In these instructions, create IBM Cloudant Instance for trial.
 
 ### Credentials Setup
 
-1.  Back into IBM Cloud, Open the "Service credentials". You'll get an empty list, hit the "New credential" button.  
+1.  Back into IBM Cloud, Open the "Service credentials". You will get an empty list, hit the "New credential" button.  
     ![step 1](../instruction_images/credentials_1.png)
 
-1.  The dialog to create a credential will be shown.  
+1.  The dialogue to create a credential will be shown.  
     type any name or leave it default, hit the "Add" button.  
     ![step 2](../instruction_images/credentials_2.png)  
     _NOTE: This "name" is not related to your username that uses in Self-hosted LiveSync._
@@ -68,14 +68,14 @@ In these instructions, create IBM Cloudant Instance for trial.
     ![step 3](../instruction_images/credentials_3.png)  
     The username and password pair is inside this JSON.  
     "username" and "password" are so.  
-    follow the figure, it's  
+    follow the figure, it is  
     "apikey-v2-2unu15184f7o8emr90xlqgkm2ncwhbltml6tgnjl9sd5"<sup>(\*3)</sup> and "c2c11651d75497fa3d3c486e4c8bdf27"<sup>(\*4)</sup>
 
 ## Self-hosted LiveSync settings
 
 ![Setting](../images/remote_db_setting.png)
 
-The Setting should be as below:
+The settings should be as follows:
 
 | Items         | Value | example                                                           |
 | ------------- | ----- | ----------------------------------------------------------------- |

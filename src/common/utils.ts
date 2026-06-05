@@ -128,7 +128,7 @@ export const _requestToCouchDBFetch = async (
     username: string,
     password: string,
     path?: string,
-    body?: string | any,
+    body?: any,
     method?: string
 ) => {
     const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
@@ -146,7 +146,7 @@ export const _requestToCouchDBFetch = async (
         contentType: "application/json",
         body: JSON.stringify(body),
     };
-    return await fetch(uri, requestParam);
+    return await _fetch(uri, requestParam);
 };
 
 export const _requestToCouchDB = async (
@@ -214,6 +214,7 @@ import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@lib/common/models/shared.cons
 export { BASE_IS_NEW, EVEN, TARGET_IS_NEW };
 // Why 2000? : ZIP FILE Does not have enough resolution.
 import { compareMTime } from "@lib/common/utils.ts";
+import { _fetch } from "@/lib/src/common/coreEnvFunctions.ts";
 export { compareMTime };
 function getKey(file: AnyEntry | string | UXFileInfoStub) {
     const key = typeof file == "string" ? file : stripAllPrefixes(file.path);

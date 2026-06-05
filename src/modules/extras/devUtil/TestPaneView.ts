@@ -3,6 +3,11 @@ import TestPaneComponent from "./TestPane.svelte";
 import type ObsidianLiveSyncPlugin from "../../../main.ts";
 import type { ModuleDev } from "../ModuleDev.ts";
 export const VIEW_TYPE_TEST = "ols-pane-test";
+declare global {
+    interface LSEvents {
+        "debug-sync-status": string[];
+    }
+}
 //Log view
 export class TestPaneView extends ItemView {
     component?: TestPaneComponent;

@@ -5,6 +5,7 @@ import {
     DEFAULT_SETTINGS,
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
+    LOG_LEVEL_VERBOSE,
 } from "../../../lib/src/common/types.ts";
 import { Menu } from "@/deps.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
@@ -288,7 +289,8 @@ export function paneRemoteConfig(
                 try {
                     parsed = ConnectionStringParser.parse(trimmedURI);
                 } catch (ex) {
-                    this.services.API.addLog(`Failed to import remote configuration: ${ex}`, LOG_LEVEL_NOTICE);
+                    this.services.API.addLog(`Failed to import remote configuration!`, LOG_LEVEL_NOTICE);
+                    this.services.API.addLog(ex, LOG_LEVEL_VERBOSE);
                     return;
                 }
 
@@ -343,9 +345,10 @@ export function paneRemoteConfig(
                                 parsed = ConnectionStringParser.parse(config.uri);
                             } catch (ex) {
                                 this.services.API.addLog(
-                                    `Failed to parse remote configuration '${config.id}' for editing: ${ex}`,
+                                    `Failed to parse remote configuration '${config.id}' for editing!`,
                                     LOG_LEVEL_NOTICE
                                 );
+                                this.services.API.addLog(ex, LOG_LEVEL_VERBOSE);
                                 return;
                             }
                             const workSettings = createBaseRemoteSettings();
@@ -452,9 +455,10 @@ export function paneRemoteConfig(
                                             parsed = ConnectionStringParser.parse(config.uri);
                                         } catch (ex) {
                                             this.services.API.addLog(
-                                                `Failed to parse remote configuration '${config.id}': ${ex}`,
+                                                `Failed to parse remote configuration '${config.id}' for fetching settings!`,
                                                 LOG_LEVEL_NOTICE
                                             );
+                                            this.services.API.addLog(ex, LOG_LEVEL_VERBOSE);
                                             return;
                                         }
                                         const workSettings = createBaseRemoteSettings();

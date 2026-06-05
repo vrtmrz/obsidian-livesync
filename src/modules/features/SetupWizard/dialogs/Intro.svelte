@@ -1,21 +1,19 @@
 <script lang="ts">
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import Question from "@/lib/src/UI/components/Question.svelte";
-    import Option from "@/lib/src/UI/components/Option.svelte";
-    import Options from "@/lib/src/UI/components/Options.svelte";
-    import Instruction from "@/lib/src/UI/components/Instruction.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    const TYPE_NEW_USER = "new-user";
-    const TYPE_EXISTING_USER = "existing-user";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_NEW_USER | typeof TYPE_EXISTING_USER | typeof TYPE_CANCELLED;
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import Question from "@lib/UI/components/Question.svelte";
+    import Option from "@lib/UI/components/Option.svelte";
+    import Options from "@lib/UI/components/Options.svelte";
+    import Instruction from "@lib/UI/components/Instruction.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import { TYPE_NEW_USER, TYPE_EXISTING_USER, TYPE_CANCELLED, type IntroResultType } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: IntroResultType) => void;
     };
     const { setResult }: Props = $props();
-    let userType = $state<ResultType>(TYPE_CANCELLED);
+    let userType = $state<IntroResultType>(TYPE_CANCELLED);
     let proceedTitle = $derived.by(() => {
         if (userType === TYPE_NEW_USER) {
             return "Yes, I want to set up a new synchronisation";

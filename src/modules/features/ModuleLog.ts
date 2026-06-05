@@ -29,7 +29,7 @@ import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type Workspace
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector.ts";
 import type { LiveSyncCore } from "../../main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
@@ -262,7 +262,7 @@ export class ModuleLog extends AbstractObsidianModule {
             this.statusDiv.remove();
             // this.statusDiv.pa();
             const container = mdv.view.containerEl;
-            container.insertBefore(this.statusDiv, container.lastChild);
+            container.appendChild(this.statusDiv);
         }
     }
 
@@ -466,12 +466,14 @@ ${stringifyYaml(info)}
 
         this.observeForLogs();
 
-        this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
-        this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
-        this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
-        this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
-        this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
-        this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+        if (this.settings.showStatusOnEditor) {
+            this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
+            this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
+            this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
+            this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
+            this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
+            this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+        }
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
@@ -516,7 +518,12 @@ ${stringifyYaml(info)}
         let errorInfo = "";
         if (message instanceof Error) {
             if (message instanceof LiveSyncError) {
-                errorInfo = `${message.cause?.name}:${message.cause?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${message.cause?.stack}`;
+                if (message.cause && message.cause instanceof Error) {
+                    const causedError = message.cause;
+                    errorInfo = `${causedError?.name}:${causedError?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${causedError?.stack}`;
+                } else {
+                    errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}`;
+                }
             } else {
                 const thisStack = new Error().stack;
                 errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}\n[LogCallStack]: ${thisStack}`;

@@ -62,6 +62,7 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // For creating a document
 const toc = new Set<string>();
@@ -141,7 +142,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     async saveLocalSetting(key: keyof typeof OnDialogSettingsDefault) {
         if (key == "configPassphrase") {
-            localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
+            compatGlobal.localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
             return await Promise.resolve();
         }
         if (key == "deviceAndVaultName") {
@@ -180,7 +181,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // if (runOnSaved) {
         const handlers = this.onSavedHandlers
             .filter((e) => appliedKeys.indexOf(e.key) !== -1)
-            .map((e) => e.handler(this.editingSettings[e.key as AllSettingItemKey]));
+            .map((e) => Promise.resolve(e.handler(this.editingSettings[e.key as AllSettingItemKey])));
         await Promise.all(handlers);
         // }
         keys.forEach((e) => this.refreshSetting(e));
@@ -214,7 +215,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     reloadAllLocalSettings() {
         const ret = { ...OnDialogSettingsDefault };
-        ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
+        ret.configPassphrase = compatGlobal.localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = "";
         ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
         return ret;
@@ -349,7 +350,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     createEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {
@@ -361,7 +362,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     addEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {
@@ -647,7 +648,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.editingSettings.passphrase = "";
         }
         await this.saveAllDirtySettings();
-        await this.applyAllSettings();
+        await Promise.resolve(this.applyAllSettings());
         if (result == OPTION_FETCH) {
             await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
             this.services.appLifecycle.scheduleRestart();
@@ -738,6 +739,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 );
             }
             setLevelClass(el, level);
+            // TODO: Refactor to use Obsidian's recommended way to create heading.
+            // eslint-disable-next-line obsidianmd/settings-tab/no-manual-html-headings
             el.createEl("h3", { text: title, cls: "sls-setting-pane-title" });
             if (this.menuEl) {
                 this.menuEl.createEl(

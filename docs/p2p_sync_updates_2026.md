@@ -53,7 +53,7 @@ This command synchronises with every peer whose **SYNC** toggle is enabled in th
 *Tip: Pair this command with a hotkey for a quick, keyboard-driven sync workflow.*
 
 ## 6. Technical Improvements in 2026
-- **Decoupled Architecture:** The UI is now strictly separated from the core logic, making the plugin more stable across different platforms (Mobile, Desktop, and Web).
+- **Decoupled Architecture:** The UI is now strictly separated from the core logic, making the plug-in more stable across different platforms (Mobile, Desktop, and Web).
 - **Svelte 5 UI:** The interface has been rebuilt for better responsiveness and clearer status indicators.
 - **Security:** All data remains end-to-end encrypted. Even the signalling relay never sees your actual notes.
 

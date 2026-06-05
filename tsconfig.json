@@ -2,7 +2,6 @@
     "extends": "@tsconfig/svelte/tsconfig.json",
     "inlineSourceMap": true,
     "compilerOptions": {
-        "baseUrl": ".",
         "module": "ESNext",
         "target": "ES2018",
         "allowJs": true,
@@ -20,8 +19,8 @@
         "strictBindCallApply": true,
         "strictFunctionTypes": true,
         "paths": {
-            "@/*": ["src/*"],
-            "@lib/*": ["src/lib/src/*"]
+            "@/*": ["./src/*"],
+            "@lib/*": ["./src/lib/src/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts"],

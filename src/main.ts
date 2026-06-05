@@ -12,8 +12,6 @@ import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidian
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
-import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
-import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
@@ -156,8 +154,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleInteractiveConflictResolver(this, core),
                     new ModuleObsidianGlobalHistory(this, core),
                     new ModuleDev(this, core),
-                    new ModuleReplicateTest(this, core),
-                    new ModuleIntegratedTest(this, core),
                     new SetupManager(core), // this should be moved to core?
                     new ModuleMigration(core),
                 ];
