@@ -296,8 +296,9 @@ body {
     content: " ❓";
 }
 
-.sls-item-invalid-value {
-    background-color: rgba(var(--background-modifier-error-rgb), 0.3) !important;
+.sls-setting .setting-item-control input.sls-item-invalid-value,
+.sls-setting .setting-item-control textarea.sls-item-invalid-value {
+    background-color: rgba(var(--background-modifier-error-rgb), 0.3);
 }
 
 .sls-setting-disabled input[type=text],
