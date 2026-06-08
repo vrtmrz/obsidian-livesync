@@ -3,7 +3,7 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Unreleased
+## 0.25.74
 
 8th June, 2026
 
@@ -11,6 +11,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 - Fixed an issue where disabling hidden file synchronisation did not take effect, allowing non-target hidden files to continue to be processed and synchronised by replication or boot-sequence scan (#941).
 - Prevented the automatic merging of conflicted revisions when one of the revisions has been deleted, which was causing deleted files to reappear (#911).
+- The startup sequence now saves the state more effectively (Thank you so much for @bmcyver)!
 
 ## Only CLI
 
