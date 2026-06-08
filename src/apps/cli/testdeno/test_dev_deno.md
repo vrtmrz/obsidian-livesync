@@ -39,6 +39,9 @@ src/apps/cli/testdeno/
   test-mirror.ts
   test-sync-two-local-databases.ts
   test-sync-locked-remote.ts
+  test-daemon.ts
+  test-decoupled-vault.ts
+  test-remote-commands.ts
 ```
 
 ---
@@ -54,6 +57,9 @@ Main tasks:
 
 - `deno task test`
 - `deno task test:local`
+- `deno task test:daemon`
+- `deno task test:decoupled-vault`
+- `deno task test:remote-commands`
 - `deno task test:push-pull`
 - `deno task test:setup-put-cat`
 - `deno task test:mirror`
@@ -183,6 +189,19 @@ Both CouchDB and P2P relay flows are bash-independent.
   - `MINIO-enc0`
   - `MINIO-enc1`
 
+### `test-daemon.ts`
+
+- Verifies daemon-related ignore rules behaviour.
+- Exercises scenarios with `.livesync/ignore` wildcard rules, missing ignore rules, and imported `.gitignore` rules.
+
+### `test-decoupled-vault.ts`
+
+- Verifies push, pull, and mirror command behaviour when the vault directory is decoupled from the database directory.
+
+### `test-remote-commands.ts`
+
+- Verifies remote database management commands: `remote-status`, `lock-remote`, `unlock-remote`, and `mark-resolved`.
+
 ---
 
 ## Running tests (PowerShell)
@@ -198,11 +217,14 @@ deno task test:local
 # Individual tests
 deno task test:setup-put-cat
 deno task test:mirror
+deno task test:daemon
 deno task test:push-pull
 deno task test:sync-locked-remote
 
 # CouchDB-based tests
 deno task test:sync-two-local
+deno task test:decoupled-vault
+deno task test:remote-commands
 deno task test:e2e-couchdb
 
 # P2P-based tests
