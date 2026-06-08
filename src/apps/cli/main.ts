@@ -72,6 +72,14 @@ Commands:
                             Replace a stored remote connection string by ID
     remote-activate <remote-id>
                             Activate a stored remote configuration by ID
+    mark-resolved [remote-id]
+                            Resolve remote synchronisation status
+    unlock-remote [remote-id]
+                            Unlock remote database
+    lock-remote [remote-id]
+                            Lock remote database
+    remote-status [remote-id]
+                            Show remote database status
 
 Options:
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
@@ -100,6 +108,10 @@ Examples:
     livesync-cli ./my-database remote-set remote-abc123 "sls+s3://ak:sk@example.com/?endpoint=https%3A%2F%2Fs3.example.com&bucket=mybucket"
     livesync-cli ./my-database remote-activate remote-abc123
     livesync-cli ./my-database remote-rm remote-abc123
+    livesync-cli ./my-database mark-resolved remote-abc123
+    livesync-cli ./my-database unlock-remote remote-abc123
+    livesync-cli ./my-database lock-remote remote-abc123
+    livesync-cli ./my-database remote-status remote-abc123
     livesync-cli init-settings ./data.json
     livesync-cli ./my-database --verbose
         `);
@@ -251,7 +263,11 @@ export async function main() {
         options.command === "p2p-peers" ||
         options.command === "info" ||
         options.command === "rm" ||
-        options.command === "resolve";
+        options.command === "resolve" ||
+        options.command === "mark-resolved" ||
+        options.command === "unlock-remote" ||
+        options.command === "lock-remote" ||
+        options.command === "remote-status";
     const infoLog = avoidStdoutNoise ? console.error : console.log;
     if (options.debug) {
         setGlobalLogFunction((msg, level) => {
