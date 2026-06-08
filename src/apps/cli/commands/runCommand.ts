@@ -2,7 +2,14 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
 import { configURIBase } from "@lib/common/models/shared.const";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import {
+    DEFAULT_SETTINGS,
+    MILESTONE_DOCID,
+    type FilePathWithPrefix,
+    type ObsidianLiveSyncSettings,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+} from "@lib/common/types";
 import { ConnectionStringParser } from "@lib/common/ConnectionString";
 import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
@@ -16,8 +23,54 @@ function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
 }
 
+async function verifyRemoteState(
+    core: CLICommandContext["core"],
+    settings: ObsidianLiveSyncSettings
+): Promise<boolean> {
+    const replicator = core.services.replicator.getActiveReplicator();
+    if (!replicator) {
+        process.stderr.write("[Verification] No active replicator found\n");
+        return false;
+    }
+
+    if (!replicator.nodeid) {
+        await replicator.initializeDatabaseForReplication();
+    }
+
+    try {
+        let milestone: any;
+        if (settings.remoteType === REMOTE_COUCHDB) {
+            const dbRet = await (replicator as any).connectRemoteCouchDBWithSetting(settings, false, true);
+            if (typeof dbRet === "string") {
+                process.stderr.write(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
+                return false;
+            }
+            milestone = await dbRet.db.get(MILESTONE_DOCID);
+        } else if (settings.remoteType === REMOTE_MINIO) {
+            milestone = await (replicator as any).client.downloadJson("_00000000-milestone.json");
+        }
+
+        if (milestone) {
+            const isLocked = !!milestone.locked;
+            const isAccepted = !!milestone.accepted_nodes?.includes(replicator.nodeid);
+            process.stderr.write(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
+            process.stderr.write(
+                `[Verification] Current Device Node ID (${replicator.nodeid}): ${isAccepted ? "ACCEPTED" : "NOT ACCEPTED"}\n`
+            );
+            return true;
+        } else {
+            process.stderr.write("[Verification] Milestone document not found on remote.\n");
+            return false;
+        }
+    } catch (e: any) {
+        process.stderr.write(`[Verification] Failed to fetch milestone document: ${e?.message || e}\n`);
+        return false;
+    }
+}
+
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
     const { databasePath, core, settingsPath } = context;
+    const vaultPath = context.vaultPath || databasePath;
 
     await core.services.control.activated;
     if (options.command === "daemon") {
@@ -183,7 +236,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("push requires two arguments: <src> <dst>");
         }
         const sourcePath = path.resolve(options.commandArgs[0]);
-        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[1], databasePath);
+        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[1], vaultPath);
         const sourceData = await fs.readFile(sourcePath);
         const sourceStat = await fs.stat(sourcePath);
         console.log(`[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
@@ -201,7 +254,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("pull requires two arguments: <src> <dst>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const destinationPath = path.resolve(options.commandArgs[1]);
         console.log(`[Command] pull ${sourceDatabasePath} -> ${destinationPath}`);
 
@@ -224,7 +277,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 3) {
             throw new Error("pull-rev requires three arguments: <src> <dst> <rev>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const destinationPath = path.resolve(options.commandArgs[1]);
         const rev = options.commandArgs[2].trim();
         if (!rev) {
@@ -281,7 +334,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("put requires one argument: <dst>");
         }
-        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const content = await readStdinAsUtf8();
         console.log(`[Command] put stdin -> ${destinationDatabasePath}`);
         return await core.serviceModules.databaseFileAccess.storeContent(
@@ -294,7 +347,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("cat requires one argument: <src>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         console.error(`[Command] cat ${sourceDatabasePath}`);
         const source = await core.serviceModules.databaseFileAccess.fetch(
             sourceDatabasePath as FilePathWithPrefix,
@@ -318,7 +371,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("cat-rev requires two arguments: <src> <rev>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const rev = options.commandArgs[1].trim();
         if (!rev) {
             throw new Error("cat-rev requires a non-empty revision");
@@ -345,7 +398,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "ls") {
         const prefix =
             options.commandArgs.length > 0 && options.commandArgs[0].trim() !== ""
-                ? toDatabaseRelativePath(options.commandArgs[0], databasePath)
+                ? toDatabaseRelativePath(options.commandArgs[0], vaultPath)
                 : "";
         const rows: { path: string; line: string }[] = [];
 
@@ -377,7 +430,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("info requires one argument: <path>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
 
         for await (const doc of core.services.database.localDatabase.findAllNormalDocs({ conflicts: true })) {
             if (doc._deleted || doc.deleted) continue;
@@ -421,7 +474,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("rm requires one argument: <path>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         console.error(`[Command] rm ${targetPath}`);
         return await core.serviceModules.databaseFileAccess.delete(targetPath as FilePathWithPrefix);
     }
@@ -430,7 +483,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("resolve requires two arguments: <path> <revision-to-keep>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath) as FilePathWithPrefix;
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath) as FilePathWithPrefix;
         const revisionToKeep = options.commandArgs[1].trim();
         if (revisionToKeep === "") {
             throw new Error("resolve requires a non-empty revision-to-keep");
@@ -646,7 +699,6 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         console.error(`[Command] remote-set ${id}`);
         return true;
     }
-
     if (options.command === "remote-activate") {
         if (options.commandArgs.length < 1) {
             throw new Error("remote-activate requires one argument: <remote-id>");
@@ -673,6 +725,127 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         await core.services.control.applySettings();
         console.error(`[Command] remote-activate ${id}`);
+        return true;
+    }
+
+    if (options.command === "mark-resolved") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] mark-resolved${id ? ` ${id}` : ""}`);
+        await core.services.replication.markResolved();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "unlock-remote") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] unlock-remote${id ? ` ${id}` : ""}`);
+        await core.services.replication.markUnlocked();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "lock-remote") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] lock-remote${id ? ` ${id}` : ""}`);
+        await core.services.replication.markLocked();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "remote-status") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] remote-status${id ? ` ${id}` : ""}`);
+        const replicator = core.services.replicator.getActiveReplicator();
+        if (!replicator) {
+            process.stderr.write("[Error] No active replicator found\n");
+            return false;
+        }
+        const settings = core.services.setting.currentSettings();
+        const status = await replicator.getRemoteStatus(settings);
+        if (status === false) {
+            process.stderr.write("[Error] Failed to fetch remote status\n");
+            return false;
+        }
+        process.stdout.write(JSON.stringify(status, null, 2) + "\n");
         return true;
     }
 

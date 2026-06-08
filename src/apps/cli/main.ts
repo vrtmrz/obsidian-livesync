@@ -61,7 +61,7 @@ Commands:
     info <path>             Show detailed metadata for a file (ID, revision, conflicts, chunks)
     rm <path>               Mark a file as deleted in local database
     resolve <path> <rev>    Resolve conflicts by keeping <rev> and deleting others
-    mirror [vault-path]     Mirror database contents to the local file system (vault-path defaults to database-path)
+    mirror [vault-path]     Mirror database contents to the local file system (vault-path takes precedence over --vault; defaults to vault from --vault / database-path)
     remote-add <name> <connstr>
                             Add a remote configuration from a connection string
     remote-rm <remote-id>    Remove a remote configuration by ID
@@ -72,8 +72,18 @@ Commands:
                             Replace a stored remote connection string by ID
     remote-activate <remote-id>
                             Activate a stored remote configuration by ID
+    mark-resolved [remote-id]
+                            Resolve remote synchronisation status
+    unlock-remote [remote-id]
+                            Unlock remote database
+    lock-remote [remote-id]
+                            Lock remote database
+    remote-status [remote-id]
+                            Show remote database status
 
 Options:
+  --vault <path>, -V <path>  (daemon/mirror) Path to the vault directory containing .md files
+                              (defaults to database-path; allows separate PouchDB and vault dirs)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
 
 Examples:
@@ -100,6 +110,10 @@ Examples:
     livesync-cli ./my-database remote-set remote-abc123 "sls+s3://ak:sk@example.com/?endpoint=https%3A%2F%2Fs3.example.com&bucket=mybucket"
     livesync-cli ./my-database remote-activate remote-abc123
     livesync-cli ./my-database remote-rm remote-abc123
+    livesync-cli ./my-database mark-resolved remote-abc123
+    livesync-cli ./my-database unlock-remote remote-abc123
+    livesync-cli ./my-database lock-remote remote-abc123
+    livesync-cli ./my-database remote-status remote-abc123
     livesync-cli init-settings ./data.json
     livesync-cli ./my-database --verbose
         `);
@@ -114,6 +128,7 @@ export function parseArgs(): CLIOptions {
     }
 
     let databasePath: string | undefined;
+    let vaultPath: string | undefined;
     let settingsPath: string | undefined;
     let verbose = false;
     let debug = false;
@@ -125,6 +140,16 @@ export function parseArgs(): CLIOptions {
     for (let i = 0; i < args.length; i++) {
         const token = args[i];
         switch (token) {
+            case "--vault":
+            case "-V": {
+                i++;
+                if (!args[i]) {
+                    console.error(`Error: Missing value for ${token}`);
+                    process.exit(1);
+                }
+                vaultPath = args[i];
+                break;
+            }
             case "--settings":
             case "-s": {
                 i++;
@@ -198,6 +223,7 @@ export function parseArgs(): CLIOptions {
 
     return {
         databasePath,
+        vaultPath,
         settingsPath,
         verbose,
         debug,
@@ -251,7 +277,11 @@ export async function main() {
         options.command === "p2p-peers" ||
         options.command === "info" ||
         options.command === "rm" ||
-        options.command === "resolve";
+        options.command === "resolve" ||
+        options.command === "mark-resolved" ||
+        options.command === "unlock-remote" ||
+        options.command === "lock-remote" ||
+        options.command === "remote-status";
     const infoLog = avoidStdoutNoise ? console.error : console.log;
     if (options.debug) {
         setGlobalLogFunction((msg, level) => {
@@ -290,16 +320,35 @@ export async function main() {
         : path.join(databasePath, SETTINGS_FILE);
     configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
 
-    infoLog(`Self-hosted LiveSync CLI`);
-    infoLog(`Database Path: ${databasePath}`);
-    infoLog(`Settings: ${settingsPath}`);
-    infoLog("");
-
-    // For daemon and mirror mode, load ignore rules before the core is constructed so that
-    // chokidar's ignored option is populated when beginWatch() fires during onLoad().
+    // Resolve vault path: mirror positional argument takes priority,
+    // then --vault flag, otherwise fall back to databasePath.
+    // For daemon mode, enable chokidar file watching so the _changes feed picks up events.
+    // mirror runs a single full scan and doesn't need continuous watching.
     const watchEnabled = options.command === "daemon";
     const vaultPath =
-        options.command === "mirror" && options.commandArgs[0] ? path.resolve(options.commandArgs[0]) : databasePath;
+        options.command === "mirror" && options.commandArgs[0]
+            ? path.resolve(options.commandArgs[0])
+            : options.vaultPath
+              ? path.resolve(options.vaultPath)
+              : databasePath!;
+
+    // Check if vault directory exists
+    try {
+        const stat = await fs.stat(vaultPath);
+        if (!stat.isDirectory()) {
+            console.error(`Error: Vault path ${vaultPath} is not a directory`);
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error(`Error: Vault directory ${vaultPath} does not exist`);
+        process.exit(1);
+    }
+
+    infoLog(`Self-hosted LiveSync CLI`);
+    infoLog(`Database Path: ${databasePath}`);
+    infoLog(`Vault Path:    ${vaultPath}`);
+    infoLog(`Settings: ${settingsPath}`);
+    infoLog("");
     let ignoreRules: IgnoreRules | undefined;
     if (options.command === "daemon" || options.command === "mirror") {
         ignoreRules = new IgnoreRules(vaultPath);
@@ -504,7 +553,7 @@ export async function main() {
             infoLog("");
         }
 
-        const result = await runCommand(options, { databasePath, core, settingsPath, originalSyncSettings });
+        const result = await runCommand(options, { databasePath, vaultPath, core, settingsPath, originalSyncSettings });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;

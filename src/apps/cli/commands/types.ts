@@ -26,10 +26,15 @@ export type CLICommand =
     | "remote-export"
     | "remote-set"
     | "remote-activate"
+    | "mark-resolved"
+    | "unlock-remote"
+    | "lock-remote"
+    | "remote-status"
     | "init-settings";
 
 export interface CLIOptions {
     databasePath?: string;
+    vaultPath?: string;
     settingsPath?: string;
     verbose?: boolean;
     debug?: boolean;
@@ -41,6 +46,7 @@ export interface CLIOptions {
 
 export interface CLICommandContext {
     databasePath: string;
+    vaultPath: string;
     core: LiveSyncBaseCore<ServiceContext, any>;
     settingsPath: string;
     originalSyncSettings: Pick<
@@ -79,5 +85,9 @@ export const VALID_COMMANDS = new Set([
     "remote-export",
     "remote-set",
     "remote-activate",
+    "mark-resolved",
+    "unlock-remote",
+    "lock-remote",
+    "remote-status",
     "init-settings",
 ] as const);

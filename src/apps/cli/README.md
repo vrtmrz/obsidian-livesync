@@ -61,6 +61,9 @@ livesync-cli [database-path] [command] [args...]
 
 - `database-path`: Path to the directory where `.livesync` folder and `settings.json` are (or will be) located.
     - Note: In previous versions, this was referred to as the "vault" path. Now it is clearly distinguished from the actual vault (the directory containing your `.md` files).
+- `--vault <path>` / `-V <path>`: (daemon/mirror only) Path to the vault directory containing `.md` files.
+    - Allows the PouchDB database directory and the actual vault directory to be different locations.
+    - For `mirror` command, the positional `[vault-path]` argument takes precedence over `--vault`.
 
 ### Commands
 
@@ -80,6 +83,10 @@ livesync-cli [database-path] [command] [args...]
 - `remote-export <remote-id>`: Export the stored connection string by remote ID.
 - `remote-set <remote-id> <connstr>`: Replace the stored connection string by remote ID.
 - `remote-activate <remote-id>`: Activate a remote configuration by ID.
+- `mark-resolved [remote-id]`: Resolve remote synchronisation status.
+- `unlock-remote [remote-id]`: Unlock the remote database.
+- `lock-remote [remote-id]`: Lock the remote database.
+- `remote-status [remote-id]`: Show remote database status.
 - `init-settings [file]`: Create a default settings file.
 
 ### Examples
@@ -259,13 +266,19 @@ livesync-cli /path/to/your-local-database --settings /path/to/settings.json rm /
 # Resolve conflict by keeping a specific revision
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json resolve /vault/path/file.md 3-abcdef
 
-# Add/list/activate/remove remote configurations
+# Add, list, activate, and remove remote configurations
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-add main "sls+https://user:pass@example.com/db"
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-ls
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-export remote-abc123
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-set remote-abc123 "sls+p2p://room-abc?passphrase=secret"
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-activate remote-abc123
 livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-rm remote-abc123
+
+# Lock, unlock, resolve, and view status of remote database
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json remote-status remote-abc123
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json lock-remote remote-abc123
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json mark-resolved remote-abc123
+livesync-cli /path/to/your-local-database --settings /path/to/settings.json unlock-remote remote-abc123
 ```
 
 ### Configuration
@@ -312,6 +325,7 @@ Options:
   --verbose, -v           Enable verbose logging
   --debug, -d             Enable debug logging (includes verbose)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
+  --vault <path>, -V <path>  (daemon/mirror) Path to vault directory, decoupled from database-path
   --help, -h              Show this help message
 
 Commands:
@@ -332,7 +346,8 @@ Commands:
   info <path>             Show file metadata including current and past revisions, conflicts, and chunk list
   rm <path>               Mark file as deleted in local database
   resolve <path> <rev>    Resolve conflict by keeping the specified revision
-  mirror [vaultPath]      Mirror database contents to the local file system (vaultPath defaults to database-path)
+  mirror [vaultPath]      Mirror database contents to the local file system
+                           (vaultPath positional arg > --vault flag > database-path)
 ```
 
 Run via npm script:
