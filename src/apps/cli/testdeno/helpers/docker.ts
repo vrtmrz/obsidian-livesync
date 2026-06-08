@@ -14,6 +14,11 @@ type DockerInvoker = {
 
 let dockerInvokerPromise: Promise<DockerInvoker> | null = null;
 const DOCKER_TEE = Deno.env.get("LIVESYNC_DOCKER_TEE") === "1" || Deno.env.get("LIVESYNC_TEST_TEE") === "1";
+const trackedContainers = new Set<string>();
+const CLEANUP_SIGNALS: Deno.Signal[] = ["SIGINT", "SIGTERM"];
+let signalCleanupHandlersInstalled = false;
+let signalCleanupInProgress = false;
+const signalCleanupHandlers = new Map<Deno.Signal, () => void>();
 
 // ---------------------------------------------------------------------------
 // Low-level docker wrapper
@@ -27,29 +32,53 @@ function parseCommand(command: string): { bin: string; prefix: string[] } {
     return { bin: parts[0], prefix: parts.slice(1) };
 }
 
-async function runCommand(bin: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-    const cmd = new Deno.Command(bin, {
-        args,
-        stdin: "null",
-        stdout: "piped",
-        stderr: "piped",
-    });
+async function collectStream(
+    stream: ReadableStream<Uint8Array>,
+    teeTarget: ((chunk: Uint8Array) => void) | null
+): Promise<Uint8Array> {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
     try {
-        const { code, stdout, stderr } = await cmd.output();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            if (teeTarget) {
+                teeTarget(value);
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+        out.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return out;
+}
+
+async function runCommand(bin: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+    try {
+        const child = new Deno.Command(bin, {
+            args,
+            stdin: "null",
+            stdout: "piped",
+            stderr: "piped",
+        }).spawn();
+        const stdoutPromise = collectStream(child.stdout, DOCKER_TEE ? (chunk) => Deno.stdout.writeSync(chunk) : null);
+        const stderrPromise = collectStream(child.stderr, DOCKER_TEE ? (chunk) => Deno.stderr.writeSync(chunk) : null);
+        const [status, stdout, stderr] = await Promise.all([child.status, stdoutPromise, stderrPromise]);
         const dec = new TextDecoder();
         const result = {
-            code,
+            code: status.code,
             stdout: dec.decode(stdout),
             stderr: dec.decode(stderr),
         };
-        if (DOCKER_TEE) {
-            if (result.stdout.trim().length > 0) {
-                console.log(`[docker:${bin}] ${result.stdout.trimEnd()}`);
-            }
-            if (result.stderr.trim().length > 0) {
-                console.error(`[docker:${bin}] ${result.stderr.trimEnd()}`);
-            }
-        }
         return result;
     } catch (err) {
         if (err instanceof Deno.errors.NotFound) {
@@ -159,6 +188,73 @@ async function dockerOrFail(...args: string[]): Promise<string> {
     return r.stdout;
 }
 
+async function stopAndRemoveContainer(container: string): Promise<void> {
+    await docker("stop", container).catch(() => {});
+    await docker("rm", container).catch(() => {});
+}
+
+async function cleanupTrackedContainers(reason: string): Promise<void> {
+    const names = [...trackedContainers];
+    if (names.length === 0) return;
+
+    console.warn(`[WARN] cleaning up tracked containers on ${reason}: ${names.join(", ")}`);
+    for (const container of names.reverse()) {
+        await stopAndRemoveContainer(container);
+        trackedContainers.delete(container);
+    }
+}
+
+async function handleSignalCleanup(signal: Deno.Signal): Promise<void> {
+    if (signalCleanupInProgress) return;
+    signalCleanupInProgress = true;
+    try {
+        await cleanupTrackedContainers(`signal ${signal}`);
+    } finally {
+        Deno.exit(signal === "SIGINT" ? 130 : 143);
+    }
+}
+
+function ensureSignalCleanupHandlers(): void {
+    if (signalCleanupHandlersInstalled) return;
+    signalCleanupHandlersInstalled = true;
+    for (const signal of CLEANUP_SIGNALS) {
+        const listener = () => {
+            void handleSignalCleanup(signal);
+        };
+        try {
+            Deno.addSignalListener(signal, listener);
+            signalCleanupHandlers.set(signal, listener);
+        } catch {
+            // Unsupported signal on this platform.
+        }
+    }
+}
+
+function removeSignalCleanupHandlers(): void {
+    if (!signalCleanupHandlersInstalled) return;
+    for (const [signal, listener] of signalCleanupHandlers) {
+        try {
+            Deno.removeSignalListener(signal, listener);
+        } catch {
+            // Ignore if already removed or unsupported.
+        }
+    }
+    signalCleanupHandlers.clear();
+    signalCleanupHandlersInstalled = false;
+}
+
+function trackContainer(container: string): void {
+    ensureSignalCleanupHandlers();
+    trackedContainers.add(container);
+}
+
+function untrackContainer(container: string): void {
+    trackedContainers.delete(container);
+    if (trackedContainers.size === 0) {
+        removeSignalCleanupHandlers();
+    }
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -235,8 +331,8 @@ const MINIO_IMAGE = "minio/minio";
 const MINIO_MC_IMAGE = "minio/mc";
 
 export async function stopCouchdb(): Promise<void> {
-    await docker("stop", COUCHDB_CONTAINER);
-    await docker("rm", COUCHDB_CONTAINER);
+    await stopAndRemoveContainer(COUCHDB_CONTAINER);
+    untrackContainer(COUCHDB_CONTAINER);
 }
 
 /**
@@ -265,6 +361,7 @@ export async function startCouchdb(couchdbUri: string, user: string, password: s
         "COUCHDB_SINGLE_NODE=y",
         COUCHDB_IMAGE
     );
+    trackContainer(COUCHDB_CONTAINER);
 
     console.log("[INFO] initialising CouchDB");
     await initCouchdb(couchdbUri, user, password);
@@ -365,8 +462,8 @@ function shQuote(value: string): string {
 }
 
 export async function stopMinio(): Promise<void> {
-    await docker("stop", MINIO_CONTAINER);
-    await docker("rm", MINIO_CONTAINER);
+    await stopAndRemoveContainer(MINIO_CONTAINER);
+    untrackContainer(MINIO_CONTAINER);
 }
 
 async function initMinioBucket(
@@ -446,6 +543,7 @@ export async function startMinio(
         "--console-address",
         ":9001"
     );
+    trackContainer(MINIO_CONTAINER);
 
     console.log(`[INFO] initialising MinIO test bucket: ${bucket}`);
     let initialised = false;
@@ -493,8 +591,8 @@ EOF
 exec /app/strfry --config /tmp/strfry.conf relay`;
 
 export async function stopP2pRelay(): Promise<void> {
-    await docker("stop", P2P_RELAY_CONTAINER);
-    await docker("rm", P2P_RELAY_CONTAINER);
+    await stopAndRemoveContainer(P2P_RELAY_CONTAINER);
+    untrackContainer(P2P_RELAY_CONTAINER);
 }
 
 /**
@@ -523,8 +621,51 @@ export async function startP2pRelay(): Promise<void> {
         "-lc",
         STRFRY_BOOTSTRAP_SH
     );
+    trackContainer(P2P_RELAY_CONTAINER);
 }
 
 export function isLocalP2pRelay(relayUrl: string): boolean {
-    return relayUrl === "ws://localhost:4000" || relayUrl === "ws://localhost:4000/";
+    return relayUrl.includes("localhost") || relayUrl.includes("127.0.0.1") || relayUrl.includes("[::1]");
+}
+
+// ---------------------------------------------------------------------------
+// Coturn (STUN/TURN)
+// ---------------------------------------------------------------------------
+const COTURN_CONTAINER = "coturn-test";
+const COTURN_IMAGE = "coturn/coturn:latest";
+
+export async function stopCoturn(): Promise<void> {
+    await stopAndRemoveContainer(COTURN_CONTAINER);
+    untrackContainer(COTURN_CONTAINER);
+}
+
+export async function startCoturn(
+    port = 3478,
+    user = "testuser",
+    pass = "testpass",
+    realm = "livesync.test"
+): Promise<void> {
+    console.log("[INFO] stopping leftover Coturn container if present");
+    await stopCoturn().catch(() => {});
+
+    const { getOptimalLoopbackIp } = await import("./net.ts");
+    const externalIp = await getOptimalLoopbackIp();
+
+    console.log(`[INFO] starting local Coturn container with external-ip ${externalIp}`);
+    await dockerOrFail(
+        "run",
+        "-d",
+        "--name",
+        COTURN_CONTAINER,
+        "-p",
+        `${port}:${port}`,
+        "-p",
+        `${port}:${port}/udp`,
+        COTURN_IMAGE,
+        "--log-file=stdout",
+        `--external-ip=${externalIp}`,
+        `--user=${user}:${pass}`,
+        `--realm=${realm}`
+    );
+    trackContainer(COTURN_CONTAINER);
 }

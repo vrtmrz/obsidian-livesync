@@ -1,17 +1,33 @@
 import { assert } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
-import { applyP2pSettings, initSettingsFile } from "./helpers/settings.ts";
+import { applyP2pSettings, applyP2pTestTweaks, initSettingsFile } from "./helpers/settings.ts";
 import { startCliInBackground } from "./helpers/backgroundCli.ts";
-import { discoverPeer, maybeStartLocalRelay, stopLocalRelayIfStarted } from "./helpers/p2p.ts";
+import {
+    discoverPeer,
+    maybeStartLocalRelay,
+    stopLocalRelayIfStarted,
+    maybeStartCoturn,
+    stopCoturnIfStarted,
+} from "./helpers/p2p.ts";
 import { jsonStringField, runCliOrFail, runCliWithInputOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
+import { getOptimalLoopbackIp } from "./helpers/net.ts";
 
 Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
-    const relay = Deno.env.get("RELAY") ?? "ws://localhost:4000/";
-    const roomId = `${Deno.env.get("ROOM_ID_PREFIX") ?? "p2p-room"}-${Date.now()}`;
-    const passphrase = `${Deno.env.get("PASSPHRASE_PREFIX") ?? "p2p-pass"}-${Date.now()}`;
-    const appId = Deno.env.get("APP_ID") ?? "self-hosted-livesync-cli-tests";
+    const loopbackIp = await getOptimalLoopbackIp();
+    const loopbackHost = loopbackIp === "::1" ? "[::1]" : loopbackIp;
+    
+    const relay = Deno.env.get("RELAY") ?? `ws://${loopbackHost}:4000/`;
+    const roomId = Deno.env.get("ROOM_ID") ?? `room-${Date.now()}`;
+    const passphrase = Deno.env.get("PASSPHRASE") ?? "test";
+    const appId = "self-hosted-livesync-cli-tests";
     const peersTimeout = Number(Deno.env.get("PEERS_TIMEOUT") ?? "10");
     const syncTimeout = Number(Deno.env.get("SYNC_TIMEOUT") ?? "15");
+    const nonce = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    const hostPeerName = Deno.env.get("HOST_PEER_NAME") ?? `p2p-host-${nonce}`;
+    const peerNameB = Deno.env.get("PEER_NAME_B") ?? `p2p-client-b-${nonce}`;
+    const peerNameC = Deno.env.get("PEER_NAME_C") ?? `p2p-client-c-${nonce}`;
+    const useCoturn = Deno.env.get("LIVESYNC_USE_COTURN") !== "0";
+    const turnServers = Deno.env.get("TURN_SERVERS") ?? (useCoturn ? `turn:${loopbackHost}:3478` : "none");
 
     await using workDir = await TempDir.create("livesync-cli-p2p-3nodes");
     const vaultA = workDir.join("vault-a");
@@ -25,17 +41,23 @@ Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
     await Deno.mkdir(vaultC, { recursive: true });
 
     const relayStarted = await maybeStartLocalRelay(relay);
+    const coturnStarted = await maybeStartCoturn(turnServers);
     try {
-        for (const settings of [settingsA, settingsB, settingsC]) {
-            await initSettingsFile(settings);
-            await applyP2pSettings(settings, roomId, passphrase, appId, relay);
-        }
+        await initSettingsFile(settingsA);
+        await initSettingsFile(settingsB);
+        await initSettingsFile(settingsC);
+        await applyP2pSettings(settingsA, roomId, passphrase, appId, relay, "~.*", turnServers);
+        await applyP2pSettings(settingsB, roomId, passphrase, appId, relay, "~.*", turnServers);
+        await applyP2pSettings(settingsC, roomId, passphrase, appId, relay, "~.*", turnServers);
+        await applyP2pTestTweaks(settingsA, hostPeerName, passphrase);
+        await applyP2pTestTweaks(settingsB, peerNameB, passphrase);
+        await applyP2pTestTweaks(settingsC, peerNameC, passphrase);
 
         const host = startCliInBackground(vaultA, "--settings", settingsA, "p2p-host");
         try {
             await host.waitUntilContains("P2P host is running", 20000);
-            const peerFromB = await discoverPeer(vaultB, settingsB, peersTimeout);
-            const peerFromC = await discoverPeer(vaultC, settingsC, peersTimeout);
+            const peerFromB = await discoverPeer(vaultB, settingsB, peersTimeout, hostPeerName);
+            const peerFromC = await discoverPeer(vaultC, settingsC, peersTimeout, hostPeerName);
             const targetPath = "p2p/conflicted-from-two-clients.txt";
 
             await runCliWithInputOrFail("from-client-b-v1\n", vaultB, "--settings", settingsB, "put", targetPath);
@@ -114,5 +136,6 @@ Deno.test("p2p: three nodes detect and resolve conflicts", async () => {
         }
     } finally {
         await stopLocalRelayIfStarted(relayStarted);
+        await stopCoturnIfStarted(coturnStarted);
     }
 });

@@ -20,7 +20,7 @@ export interface CliResult {
     code: number;
 }
 
-const TEE_ENABLED = Deno.env.get("LIVESYNC_TEST_TEE") === "1";
+export const TEE_ENABLED = Deno.env.get("LIVESYNC_TEST_TEE") === "1";
 const VERBOSE_ENABLED = Deno.env.get("LIVESYNC_CLI_VERBOSE") === "1";
 const DEBUG_ENABLED = Deno.env.get("LIVESYNC_CLI_DEBUG") === "1";
 
@@ -39,27 +39,73 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
     return out;
 }
 
+export function formatTeeCommand(args: string[]): string {
+    return ["node", CLI_DIST, ...args].map((part) => JSON.stringify(part)).join(" ");
+}
+
+export function createLineTeeWriter(
+    pid: number,
+    streamName: "stdout" | "stderr",
+    writer: (chunk: Uint8Array) => void
+): { write: (chunk: Uint8Array) => void; close: () => void } {
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    let pending = "";
+    let headerWritten = false;
+    const emitLine = (line: string) => {
+        if (!headerWritten) {
+            writer(enc.encode(`[CLI tee pid=${pid}:${streamName}]\n`));
+            headerWritten = true;
+        }
+        writer(enc.encode(`[CLI tee pid=${pid}:${streamName}] ${line}\n`));
+    };
+
+    const flush = (final = false) => {
+        let index = pending.indexOf("\n");
+        while (index >= 0) {
+            const line = pending.slice(0, index).replace(/\r$/, "");
+            pending = pending.slice(index + 1);
+            emitLine(line);
+            index = pending.indexOf("\n");
+        }
+        if (final && pending.length > 0) {
+            emitLine(pending.replace(/\r$/, ""));
+            pending = "";
+        }
+    };
+
+    return {
+        write(chunk: Uint8Array) {
+            pending += dec.decode(chunk, { stream: true });
+            flush(false);
+        },
+        close() {
+            pending += dec.decode();
+            flush(true);
+        },
+    };
+}
+
 async function collectStream(
     stream: ReadableStream<Uint8Array>,
-    teeTarget: WritableStream<Uint8Array> | null
+    teeTarget: { write: (chunk: Uint8Array) => void; close: () => void } | null
 ): Promise<Uint8Array> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
-    const writer = teeTarget?.getWriter();
     try {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             if (value) {
                 chunks.push(value);
-                if (writer) {
-                    await writer.write(value);
+                if (teeTarget) {
+                    teeTarget.write(value);
                 }
             }
         }
     } finally {
-        if (writer) {
-            writer.releaseLock();
+        if (teeTarget) {
+            teeTarget.close();
         }
         reader.releaseLock();
     }
@@ -76,8 +122,20 @@ async function runNodeCommand(args: string[], stdinData?: Uint8Array): Promise<C
         stderr: "piped",
     }).spawn();
 
-    const stdoutPromise = collectStream(child.stdout, TEE_ENABLED ? Deno.stdout.writable : null);
-    const stderrPromise = collectStream(child.stderr, TEE_ENABLED ? Deno.stderr.writable : null);
+    if (TEE_ENABLED) {
+        Deno.stdout.writeSync(
+            new TextEncoder().encode(`[CLI tee pid=${child.pid}] process: ${formatTeeCommand(cliArgs)}\n`)
+        );
+    }
+
+    const stdoutPromise = collectStream(
+        child.stdout,
+        TEE_ENABLED ? createLineTeeWriter(child.pid, "stdout", (chunk) => Deno.stdout.writeSync(chunk)) : null
+    );
+    const stderrPromise = collectStream(
+        child.stderr,
+        TEE_ENABLED ? createLineTeeWriter(child.pid, "stderr", (chunk) => Deno.stderr.writeSync(chunk)) : null
+    );
 
     if (stdinData) {
         const w = child.stdin.getWriter();

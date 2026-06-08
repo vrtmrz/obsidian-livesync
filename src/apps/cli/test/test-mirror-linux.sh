@@ -43,6 +43,15 @@ cli_test_init_settings_file "$SETTINGS_FILE"
 # isConfigured=true is required for mirror (canProceedScan checks this)
 cli_test_mark_settings_configured "$SETTINGS_FILE"
 
+# Enable writeDocumentsIfConflicted to resolve unsynced conflicts during mirror
+node -e '
+const fs = require("fs");
+const file = process.argv[1];
+const data = JSON.parse(fs.readFileSync(file, "utf-8"));
+data.writeDocumentsIfConflicted = true;
+fs.writeFileSync(file, JSON.stringify(data, null, 2));
+' "$SETTINGS_FILE"
+
 # Preparation: Sync settings and files logic
 DB_SETTINGS="$DB_DIR/settings.json"
 cp "$SETTINGS_FILE" "$DB_SETTINGS"
