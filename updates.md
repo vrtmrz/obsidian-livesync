@@ -18,7 +18,15 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 I should also consider the version numbering for the CLI...
 
+### Improved
+
 - Added new remote database management commands: `remote-status`, `unlock-remote`, `lock-remote`, and `mark-resolved`.
+- Decoupled the database directory path from the actual vault directory path using the `--vault` (or `-V`) option.
+
+### Fixed (preventive)
+
+- Validated that the specified vault path exists and is indeed a directory before starting the CLI.
+- Integrated path resolution and validations for one-off commands (such as `'push'`, `'pull'`, `'cat'`, `'rm'`, `'info'`, and `'resolve'`) against the decoupled vault path instead of the database path.
 
 ## 0.25.73
 

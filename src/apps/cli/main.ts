@@ -329,8 +329,20 @@ export async function main() {
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
-                ? path.resolve(options.vaultPath)
-                : databasePath!;
+              ? path.resolve(options.vaultPath)
+              : databasePath!;
+
+    // Check if vault directory exists
+    try {
+        const stat = await fs.stat(vaultPath);
+        if (!stat.isDirectory()) {
+            console.error(`Error: Vault path ${vaultPath} is not a directory`);
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error(`Error: Vault directory ${vaultPath} does not exist`);
+        process.exit(1);
+    }
 
     infoLog(`Self-hosted LiveSync CLI`);
     infoLog(`Database Path: ${databasePath}`);
@@ -541,7 +553,7 @@ export async function main() {
             infoLog("");
         }
 
-        const result = await runCommand(options, { databasePath, core, settingsPath, originalSyncSettings });
+        const result = await runCommand(options, { databasePath, vaultPath, core, settingsPath, originalSyncSettings });
         if (!result) {
             console.error(`[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
