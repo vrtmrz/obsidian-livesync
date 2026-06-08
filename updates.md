@@ -11,6 +11,12 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 - Prevented the automatic merging of conflicted revisions when one of the revisions has been deleted, which was causing deleted files to reappear (#911).
 
+## Only CLI
+
+8th June, 2026
+
+- Added new remote database management commands: `remote-status`, `unlock-remote`, `lock-remote`, and `mark-resolved`.
+
 ## 0.25.73
 
 4th June, 2026
