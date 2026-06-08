@@ -39,6 +39,10 @@ Deno.test("mirror: storage <-> DB synchronisation", async (t) => {
     // isConfigured=true is required for canProceedScan in the mirror command.
     await markSettingsConfigured(settingsFile);
 
+    const data = JSON.parse(await Deno.readTextFile(settingsFile));
+    data.writeDocumentsIfConflicted = true;
+    await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));
+
     // Copy settings to the DB directory (separated-path mode)
     const dbSettings = workDir.join("db", "settings.json");
     await Deno.copyFile(settingsFile, dbSettings);
