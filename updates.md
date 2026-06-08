@@ -3,6 +3,14 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+8th June, 2026
+
+### Fixed
+
+- Fixed an issue where disabling hidden file synchronisation did not take effect, allowing non-target hidden files to continue to be processed and synchronised by replication.
+
 ## 0.25.73
 
 4th June, 2026
