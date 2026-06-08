@@ -640,6 +640,9 @@ describe("runCommand abnormal cases", () => {
             } finally {
                 await fs.rm(tempDir, { recursive: true, force: true });
             }
+        });
+    });
+
     describe("mark-resolved and unlock-remote commands", () => {
         it("mark-resolved without args runs on active database", async () => {
             const core = createCoreMock();
