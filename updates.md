@@ -32,6 +32,7 @@ I should also consider the version numbering for the CLI...
 ### Improved
 
 - Added new remote database management commands: `remote-status`, `unlock-remote`, `lock-remote`, and `mark-resolved`.
+- --vault option is now available for daemon and mirror commands! (Thank you so much for @starskyzheng)!
 - Decoupled the database directory path from the actual vault directory path using the `--vault` (or `-V`) option.
 
 ### Fixed (preventive)
