@@ -31,6 +31,34 @@ function createCoreMock() {
                     updater(liveSettings);
                 }),
             },
+            replication: {
+                markResolved: vi.fn(async () => {}),
+                markUnlocked: vi.fn(async () => {}),
+                markLocked: vi.fn(async () => {}),
+            },
+            replicator: {
+                getActiveReplicator: vi.fn(() => ({
+                    nodeid: "test-node-id",
+                    initializeDatabaseForReplication: vi.fn(async () => {}),
+                    connectRemoteCouchDBWithSetting: vi.fn(async () => ({
+                        db: {
+                            get: vi.fn(async (id) => {
+                                if (id.includes("milestone")) {
+                                    return {
+                                        locked: false,
+                                        accepted_nodes: ["test-node-id"],
+                                    };
+                                }
+                                throw new Error("not found");
+                            }),
+                        },
+                    })),
+                    getRemoteStatus: vi.fn(async () => ({
+                        db_name: "test-db",
+                        doc_count: 42,
+                    })),
+                })),
+            },
         },
         serviceModules: {
             fileHandler: {
@@ -612,6 +640,138 @@ describe("runCommand abnormal cases", () => {
             } finally {
                 await fs.rm(tempDir, { recursive: true, force: true });
             }
+    describe("mark-resolved and unlock-remote commands", () => {
+        it("mark-resolved without args runs on active database", async () => {
+            const core = createCoreMock();
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).not.toHaveBeenCalled();
+        });
+
+        it("mark-resolved with remote-id temporarily activates it and runs markResolved", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteConfigurations.r1 = {
+                id: "r1",
+                name: "R1",
+                uri: "sls+https://example.com/db1",
+                isEncrypted: false,
+            };
+
+            const result = await runCommand(makeOptions("mark-resolved", ["r1"]), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
+            expect(settings.activeConfigurationId).toBe("r1");
+            expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
+        });
+
+        it("unlock-remote without args runs on active database", async () => {
+            const core = createCoreMock();
+            const result = await runCommand(makeOptions("unlock-remote", []), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markUnlocked).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).not.toHaveBeenCalled();
+        });
+
+        it("unlock-remote with remote-id temporarily activates it and runs markUnlocked", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteConfigurations.r1 = {
+                id: "r1",
+                name: "R1",
+                uri: "sls+https://example.com/db1",
+                isEncrypted: false,
+            };
+
+            const result = await runCommand(makeOptions("unlock-remote", ["r1"]), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markUnlocked).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
+            expect(settings.activeConfigurationId).toBe("r1");
+            expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
+        });
+
+        it("lock-remote without args runs on active database", async () => {
+            const core = createCoreMock();
+            const result = await runCommand(makeOptions("lock-remote", []), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markLocked).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).not.toHaveBeenCalled();
+        });
+
+        it("lock-remote with remote-id temporarily activates it and runs markLocked", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteConfigurations.r1 = {
+                id: "r1",
+                name: "R1",
+                uri: "sls+https://example.com/db1",
+                isEncrypted: false,
+            };
+
+            const result = await runCommand(makeOptions("lock-remote", ["r1"]), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            expect(core.services.replication.markLocked).toHaveBeenCalledTimes(1);
+            expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
+            expect(settings.activeConfigurationId).toBe("r1");
+            expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
+        });
+
+        it("remote-status without args outputs status of active remote configuration", async () => {
+            const core = createCoreMock();
+            const stdout = captureStdout();
+            const result = await runCommand(makeOptions("remote-status", []), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            const fullOutput = stdout.spy.mock.calls.map((c) => c[0]).join("");
+            const parsedStatus = JSON.parse(fullOutput);
+            expect(parsedStatus.db_name).toBe("test-db");
+            expect(parsedStatus.doc_count).toBe(42);
+        });
+
+        it("remote-status with remote-id temporarily activates it and outputs status", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteConfigurations.r1 = {
+                id: "r1",
+                name: "R1",
+                uri: "sls+https://example.com/db1",
+                isEncrypted: false,
+            };
+            const stdout = captureStdout();
+            const result = await runCommand(makeOptions("remote-status", ["r1"]), {
+                ...context,
+                core,
+            });
+            expect(result).toBe(true);
+            const fullOutput = stdout.spy.mock.calls.map((c) => c[0]).join("");
+            const parsedStatus = JSON.parse(fullOutput);
+            expect(parsedStatus.db_name).toBe("test-db");
+            expect(parsedStatus.doc_count).toBe(42);
+            expect(settings.activeConfigurationId).toBe("r1");
+            expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
         });
     });
 });

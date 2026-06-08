@@ -2,7 +2,14 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
 import { configURIBase } from "@lib/common/models/shared.const";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import {
+    DEFAULT_SETTINGS,
+    MILESTONE_DOCID,
+    type FilePathWithPrefix,
+    type ObsidianLiveSyncSettings,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+} from "@lib/common/types";
 import { ConnectionStringParser } from "@lib/common/ConnectionString";
 import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
@@ -14,6 +21,51 @@ import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManage
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
+}
+
+async function verifyRemoteState(
+    core: CLICommandContext["core"],
+    settings: ObsidianLiveSyncSettings
+): Promise<boolean> {
+    const replicator = core.services.replicator.getActiveReplicator();
+    if (!replicator) {
+        process.stderr.write("[Verification] No active replicator found\n");
+        return false;
+    }
+
+    if (!replicator.nodeid) {
+        await replicator.initializeDatabaseForReplication();
+    }
+
+    try {
+        let milestone: any;
+        if (settings.remoteType === REMOTE_COUCHDB) {
+            const dbRet = await (replicator as any).connectRemoteCouchDBWithSetting(settings, false, true);
+            if (typeof dbRet === "string") {
+                process.stderr.write(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
+                return false;
+            }
+            milestone = await dbRet.db.get(MILESTONE_DOCID);
+        } else if (settings.remoteType === REMOTE_MINIO) {
+            milestone = await (replicator as any).client.downloadJson("_00000000-milestone.json");
+        }
+
+        if (milestone) {
+            const isLocked = !!milestone.locked;
+            const isAccepted = !!milestone.accepted_nodes?.includes(replicator.nodeid);
+            process.stderr.write(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
+            process.stderr.write(
+                `[Verification] Current Device Node ID (${replicator.nodeid}): ${isAccepted ? "ACCEPTED" : "NOT ACCEPTED"}\n`
+            );
+            return true;
+        } else {
+            process.stderr.write("[Verification] Milestone document not found on remote.\n");
+            return false;
+        }
+    } catch (e: any) {
+        process.stderr.write(`[Verification] Failed to fetch milestone document: ${e?.message || e}\n`);
+        return false;
+    }
 }
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
@@ -647,7 +699,6 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         console.error(`[Command] remote-set ${id}`);
         return true;
     }
-
     if (options.command === "remote-activate") {
         if (options.commandArgs.length < 1) {
             throw new Error("remote-activate requires one argument: <remote-id>");
@@ -674,6 +725,127 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         await core.services.control.applySettings();
         console.error(`[Command] remote-activate ${id}`);
+        return true;
+    }
+
+    if (options.command === "mark-resolved") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] mark-resolved${id ? ` ${id}` : ""}`);
+        await core.services.replication.markResolved();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "unlock-remote") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] unlock-remote${id ? ` ${id}` : ""}`);
+        await core.services.replication.markUnlocked();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "lock-remote") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] lock-remote${id ? ` ${id}` : ""}`);
+        await core.services.replication.markLocked();
+        const settings = core.services.setting.currentSettings();
+        await verifyRemoteState(core, settings);
+        return true;
+    }
+
+    if (options.command === "remote-status") {
+        const id = options.commandArgs[0]?.trim();
+        if (id) {
+            let switched = false;
+            await core.services.setting.updateSettings((currentSettings) => {
+                const activated = activateRemoteConfiguration(currentSettings, id);
+                if (activated) {
+                    switched = true;
+                    return activated;
+                }
+                return currentSettings;
+            }, false);
+
+            if (!switched) {
+                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                return false;
+            }
+
+            await core.services.control.applySettings();
+        }
+
+        console.error(`[Command] remote-status${id ? ` ${id}` : ""}`);
+        const replicator = core.services.replicator.getActiveReplicator();
+        if (!replicator) {
+            process.stderr.write("[Error] No active replicator found\n");
+            return false;
+        }
+        const settings = core.services.setting.currentSettings();
+        const status = await replicator.getRemoteStatus(settings);
+        if (status === false) {
+            process.stderr.write("[Error] Failed to fetch remote status\n");
+            return false;
+        }
+        process.stdout.write(JSON.stringify(status, null, 2) + "\n");
         return true;
     }
 
