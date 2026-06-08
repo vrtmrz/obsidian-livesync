@@ -42,6 +42,7 @@ export interface CLIOptions {
 
 export interface CLICommandContext {
     databasePath: string;
+    vaultPath: string;
     core: LiveSyncBaseCore<ServiceContext, any>;
     settingsPath: string;
     originalSyncSettings: Pick<

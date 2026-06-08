@@ -1,3 +1,6 @@
+import * as path from "path";
+import * as fs from "fs/promises";
+import * as os from "os";
 import * as processSetting from "@lib/API/processSetting";
 import { ConnectionStringParser } from "@lib/common/ConnectionString";
 import { configURIBase } from "@lib/common/models/shared.const";
@@ -571,5 +574,44 @@ describe("runCommand abnormal cases", () => {
         const export2Lines = export2Out.lines();
         const exported2 = export2Lines.length > 0 ? export2Lines[export2Lines.length - 1] : "";
         expect(exported2).toBe(roundTripInput);
+    });
+
+    describe("runCommand with decoupled vault path", () => {
+        it("push resolves target path relative to vaultPath, not databasePath", async () => {
+            const core = createCoreMock();
+            const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "livesync-test-"));
+            const localVaultPath = path.join(tempDir, "vault");
+            const localDatabasePath = path.join(tempDir, "db");
+            await fs.mkdir(localVaultPath);
+            await fs.mkdir(localDatabasePath);
+
+            const fileInVault = path.join(localVaultPath, "existing.md");
+            await fs.writeFile(fileInVault, "hello", "utf-8");
+
+            const decoupledContext = {
+                databasePath: localDatabasePath,
+                vaultPath: localVaultPath,
+                settingsPath: path.join(localDatabasePath, ".livesync/settings.json"),
+            } as any;
+
+            const options = {
+                command: "push" as const,
+                commandArgs: [fileInVault, fileInVault],
+                databasePath: localDatabasePath,
+                vaultPath: localVaultPath,
+            };
+
+            try {
+                const result = await runCommand(options, { ...decoupledContext, core });
+                expect(result).toBe(true);
+                expect(core.serviceModules.storageAccess.writeFileAuto).toHaveBeenCalledWith(
+                    "existing.md",
+                    expect.any(ArrayBuffer),
+                    expect.any(Object)
+                );
+            } finally {
+                await fs.rm(tempDir, { recursive: true, force: true });
+            }
+        });
     });
 });

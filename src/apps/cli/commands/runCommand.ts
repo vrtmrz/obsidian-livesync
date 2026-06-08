@@ -18,6 +18,7 @@ function redactConnectionString(uri: string): string {
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
     const { databasePath, core, settingsPath } = context;
+    const vaultPath = context.vaultPath || databasePath;
 
     await core.services.control.activated;
     if (options.command === "daemon") {
@@ -183,7 +184,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("push requires two arguments: <src> <dst>");
         }
         const sourcePath = path.resolve(options.commandArgs[0]);
-        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[1], databasePath);
+        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[1], vaultPath);
         const sourceData = await fs.readFile(sourcePath);
         const sourceStat = await fs.stat(sourcePath);
         console.log(`[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
@@ -201,7 +202,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("pull requires two arguments: <src> <dst>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const destinationPath = path.resolve(options.commandArgs[1]);
         console.log(`[Command] pull ${sourceDatabasePath} -> ${destinationPath}`);
 
@@ -224,7 +225,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 3) {
             throw new Error("pull-rev requires three arguments: <src> <dst> <rev>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const destinationPath = path.resolve(options.commandArgs[1]);
         const rev = options.commandArgs[2].trim();
         if (!rev) {
@@ -281,7 +282,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("put requires one argument: <dst>");
         }
-        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const content = await readStdinAsUtf8();
         console.log(`[Command] put stdin -> ${destinationDatabasePath}`);
         return await core.serviceModules.databaseFileAccess.storeContent(
@@ -294,7 +295,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("cat requires one argument: <src>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         console.error(`[Command] cat ${sourceDatabasePath}`);
         const source = await core.serviceModules.databaseFileAccess.fetch(
             sourceDatabasePath as FilePathWithPrefix,
@@ -318,7 +319,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("cat-rev requires two arguments: <src> <rev>");
         }
-        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const rev = options.commandArgs[1].trim();
         if (!rev) {
             throw new Error("cat-rev requires a non-empty revision");
@@ -345,7 +346,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "ls") {
         const prefix =
             options.commandArgs.length > 0 && options.commandArgs[0].trim() !== ""
-                ? toDatabaseRelativePath(options.commandArgs[0], databasePath)
+                ? toDatabaseRelativePath(options.commandArgs[0], vaultPath)
                 : "";
         const rows: { path: string; line: string }[] = [];
 
@@ -377,7 +378,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("info requires one argument: <path>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
 
         for await (const doc of core.services.database.localDatabase.findAllNormalDocs({ conflicts: true })) {
             if (doc._deleted || doc.deleted) continue;
@@ -421,7 +422,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 1) {
             throw new Error("rm requires one argument: <path>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath);
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         console.error(`[Command] rm ${targetPath}`);
         return await core.serviceModules.databaseFileAccess.delete(targetPath as FilePathWithPrefix);
     }
@@ -430,7 +431,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (options.commandArgs.length < 2) {
             throw new Error("resolve requires two arguments: <path> <revision-to-keep>");
         }
-        const targetPath = toDatabaseRelativePath(options.commandArgs[0], databasePath) as FilePathWithPrefix;
+        const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath) as FilePathWithPrefix;
         const revisionToKeep = options.commandArgs[1].trim();
         if (revisionToKeep === "") {
             throw new Error("resolve requires a non-empty revision-to-keep");
