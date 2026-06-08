@@ -26,6 +26,10 @@ export type CLICommand =
     | "remote-export"
     | "remote-set"
     | "remote-activate"
+    | "mark-resolved"
+    | "unlock-remote"
+    | "lock-remote"
+    | "remote-status"
     | "init-settings";
 
 export interface CLIOptions {
@@ -80,5 +84,9 @@ export const VALID_COMMANDS = new Set([
     "remote-export",
     "remote-set",
     "remote-activate",
+    "mark-resolved",
+    "unlock-remote",
+    "lock-remote",
+    "remote-status",
     "init-settings",
 ] as const);
