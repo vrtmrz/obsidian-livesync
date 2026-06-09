@@ -145,8 +145,8 @@ export function paneSetup(
             let remoteTroubleShootMDSrc = "";
             try {
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
-            } catch (ex: any) {
-                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${ex.toString()}`;
+            } catch (ex) {
+                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${String(ex)}`;
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                 /\((.*?(.png)|(.jpg))\)/g,

@@ -50,7 +50,7 @@ export async function deleteFlagFile(host: NecessaryServices<never, "storageAcce
 }
 const REMOTE_KEEP_CURRENT = "Use active remote";
 const REMOTE_CANCEL = "Cancel";
-async function askAndActivateRemoteDatabase(host: NecessaryServices<"UI" | "setting", any>, log: LogFunction) {
+async function askAndActivateRemoteDatabase(host: NecessaryServices<"UI" | "setting", never>, log: LogFunction) {
     const settings = host.services.setting.currentSettings();
     if (settings.remoteConfigurations && Object.keys(settings.remoteConfigurations).length > 1) {
         const message =
@@ -216,7 +216,7 @@ export function createFetchAllFlagHandler(
  * @returns updated configuration if applied, otherwise null.
  */
 export async function adjustSettingToRemote(
-    host: NecessaryServices<"tweakValue" | "UI" | "setting", any>,
+    host: NecessaryServices<"tweakValue" | "UI" | "setting", never>,
     log: LogFunction,
     config: ObsidianLiveSyncSettings
 ) {
@@ -243,7 +243,7 @@ export async function adjustSettingToRemote(
             const necessary = extractObject(TweakValuesShouldMatchedTemplate, remoteTweaks);
             // Check if any necessary tweak value is different from current config.
             const differentItems = Object.entries(necessary).filter(([key, value]) => {
-                return (config as any)[key] !== value;
+                return config[key as keyof ObsidianLiveSyncSettings] !== value;
             });
             if (differentItems.length === 0) {
                 log("Remote configuration matches local configuration. No changes applied.", LOG_LEVEL_NOTICE);
@@ -261,7 +261,7 @@ export async function adjustSettingToRemote(
             config = {
                 ...config,
                 ...Object.fromEntries(differentItems),
-            } satisfies ObsidianLiveSyncSettings;
+            };
             await host.services.setting.applyExternalSettings(config, true);
             log("Remote configuration applied.", LOG_LEVEL_NOTICE);
             canProceed = true;
@@ -277,7 +277,7 @@ export async function adjustSettingToRemote(
  * @param config current configuration to retrieve remote preferred config
  */
 export async function adjustSettingToRemoteIfNeeded(
-    host: NecessaryServices<"tweakValue" | "UI" | "setting", any>,
+    host: NecessaryServices<"tweakValue" | "UI" | "setting", never>,
     log: LogFunction,
     extra: { preventFetchingConfig: boolean },
     config: ObsidianLiveSyncSettings
@@ -309,7 +309,7 @@ export async function adjustSettingToRemoteIfNeeded(
  * @returns result of the process, or false if error occurs.
  */
 export async function processVaultInitialisation(
-    host: NecessaryServices<"setting", any>,
+    host: NecessaryServices<"setting", never>,
     log: LogFunction,
     proc: () => Promise<boolean>,
     keepSuspending = false
@@ -341,7 +341,7 @@ export async function processVaultInitialisation(
 }
 
 export async function verifyAndUnlockSuspension(
-    host: NecessaryServices<"setting" | "appLifecycle" | "UI", any>,
+    host: NecessaryServices<"setting" | "appLifecycle" | "UI", never>,
     log: LogFunction
 ) {
     if (!host.services.setting.currentSettings().suspendFileWatching) {

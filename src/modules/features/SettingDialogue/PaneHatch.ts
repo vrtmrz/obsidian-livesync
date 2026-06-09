@@ -442,7 +442,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         ...e.doc,
                         _deleted: true,
                     }));
-                    const r = await this.core.localDatabase.bulkDocsRaw(newData as any[]);
+                    const r = await this.core.localDatabase.bulkDocsRaw(
+                        newData as Parameters<typeof this.core.localDatabase.bulkDocsRaw>[0]
+                    );
                     // Do not care about the result.
                     Logger(
                         `${r.length} items have been removed, to confirm how many items are left, please perform it again.`,

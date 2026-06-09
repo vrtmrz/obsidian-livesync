@@ -18,14 +18,14 @@ import type { InjectableServiceHub } from "../../lib/src/services/InjectableServ
 import type { LiveSyncCore } from "../../main.ts";
 import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
 
-function valueToString(value: any) {
+function valueToString(value: unknown) {
     if (typeof value === "boolean") {
         return value ? "true" : "false";
     }
-    if (typeof value === "object") {
+    if (typeof value === "object" && value !== null) {
         return JSON.stringify(value);
     }
-    return `${value}`;
+    return String(value);
 }
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule {

@@ -125,11 +125,11 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     registerWindow(type: string, factory: ViewCreator): void {
         return this.context.plugin.registerView(type, factory);
     }
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement {
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => void): HTMLElement {
         return this.context.plugin.addRibbonIcon(icon, title, callback);
     }
 
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void {
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => void): void {
         return this.context.plugin.registerObsidianProtocolHandler(action, handler);
     }
 

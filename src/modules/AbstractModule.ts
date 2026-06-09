@@ -61,18 +61,19 @@ export abstract class AbstractModule<
         return this.testDone(false);
     }
 
-    async _test(key: string, process: () => Promise<any>) {
+    async _test(key: string, process: () => Promise<unknown>) {
         this._log(`Testing ${key}`, LOG_LEVEL_VERBOSE);
         try {
             const ret = await process();
             if (ret !== true) {
-                this.addTestResult(key, false, ret.toString());
-                return this.testFail(`${key} failed: ${ret}`);
+                this.addTestResult(key, false, String(ret));
+                return this.testFail(`${key} failed: ${String(ret)}`);
             }
             this.addTestResult(key, true, "");
-        } catch (ex: any) {
-            this.addTestResult(key, false, "Failed by Exception", ex.toString());
-            return this.testFail(`${key} failed: ${ex}`);
+        } catch (ex) {
+            const exStr = String(ex);
+            this.addTestResult(key, false, "Failed by Exception", exStr);
+            return this.testFail(`${key} failed: ${exStr}`);
         }
         return this.testDone();
     }

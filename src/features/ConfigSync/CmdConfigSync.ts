@@ -1100,10 +1100,16 @@ export class ConfigSync extends LiveSyncCommands {
             await delay(100);
             this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
-                //@ts-ignore
-                const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
-                //@ts-ignore
-                const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
+                const appWithPlugins = this.app as unknown as {
+                    plugins: {
+                        manifests: Record<string, PluginManifest>;
+                        enabledPlugins: Set<string>;
+                        unloadPlugin(id: string): Promise<void>;
+                        loadPlugin(id: string): Promise<void>;
+                    };
+                };
+                const manifests = Object.values(appWithPlugins.plugins.manifests);
+                const enabledPlugins = appWithPlugins.plugins.enabledPlugins;
                 const pluginManifest = manifests.find(
                     (manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`
                 );
@@ -1113,10 +1119,8 @@ export class ConfigSync extends LiveSyncCommands {
                         LOG_LEVEL_NOTICE,
                         "plugin-reload-" + pluginManifest.id
                     );
-                    // @ts-ignore
-                    await this.app.plugins.unloadPlugin(pluginManifest.id);
-                    // @ts-ignore
-                    await this.app.plugins.loadPlugin(pluginManifest.id);
+                    await appWithPlugins.plugins.unloadPlugin(pluginManifest.id);
+                    await appWithPlugins.plugins.loadPlugin(pluginManifest.id);
                     this._log(
                         `Plugin reloaded: ${pluginManifest.name}`,
                         LOG_LEVEL_NOTICE,

@@ -1224,10 +1224,16 @@ Offline Changed files: ${files.length}`;
         const updatedFolders = [...this.queuedNotificationFiles];
         this.queuedNotificationFiles.clear();
         try {
-            //@ts-ignore
-            const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
-            //@ts-ignore
-            const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
+            const appWithPlugins = this.app as unknown as {
+                plugins: {
+                    manifests: Record<string, PluginManifest>;
+                    enabledPlugins: Set<string>;
+                    unloadPlugin(id: string): Promise<void>;
+                    loadPlugin(id: string): Promise<void>;
+                };
+            };
+            const manifests = Object.values(appWithPlugins.plugins.manifests);
+            const enabledPlugins = appWithPlugins.plugins.enabledPlugins;
             const enabledPluginManifests = manifests.filter((e) => enabledPlugins.has(e.id));
             const modifiedManifests = enabledPluginManifests.filter((e) => updatedFolders.indexOf(e?.dir ?? "") >= 0);
             for (const manifest of modifiedManifests) {
@@ -1246,10 +1252,8 @@ Offline Changed files: ${files.length}`;
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
-                                // @ts-ignore
-                                await this.app.plugins.unloadPlugin(updatePluginId);
-                                // @ts-ignore
-                                await this.app.plugins.loadPlugin(updatePluginId);
+                                await appWithPlugins.plugins.unloadPlugin(updatePluginId);
+                                await appWithPlugins.plugins.loadPlugin(updatePluginId);
                                 this._log(
                                     `Plugin reloaded: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,

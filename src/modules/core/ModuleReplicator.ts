@@ -21,7 +21,7 @@ import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
-    host: NecessaryServices<"API", any>,
+    host: NecessaryServices<"API", never>,
     showMessage: boolean
 ): Promise<boolean> {
     const errorMessage = "Network is offline";
@@ -34,7 +34,7 @@ function isOnlineAndCanReplicate(
 }
 async function canReplicateWithPBKDF2(
     errorManager: UnresolvedErrorManager,
-    host: NecessaryServices<"replicator" | "setting", any>,
+    host: NecessaryServices<"replicator" | "setting", never>,
     showMessage: boolean
 ): Promise<boolean> {
     const currentSettings = host.services.setting.currentSettings();

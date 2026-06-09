@@ -73,11 +73,12 @@ export default defineConfig([
             "no-unused-labels": "off",
             "no-prototype-builtins": "off",
             "require-await": "off",
+            // -- TypeScript specific rules (Gradual adoption of stricter rules, currently set to 'warn' for a while).
+            "@typescript-eslint/no-explicit-any": "warn",
             // -- TypeScript specific rules
             //  @typescript-eslint/no-unsafe-* rules and @typescript-eslint/no-explicit-any:
             //  This project contains a lot of library-sh code where the use of `any` is often necessary and justified.
             //  Rules is now set to 'off' for a while.
-            "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-unsafe-argument": "off",
             "@typescript-eslint/no-unsafe-call": "off",
             "@typescript-eslint/no-unsafe-member-access": "off",

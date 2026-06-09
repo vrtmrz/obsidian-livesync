@@ -68,9 +68,13 @@ export class ObsHttpHandler extends FetchHttpHandler {
             contentType = transformedHeaders["content-type"];
         }
 
-        let transformedBody: any = body;
-        if (ArrayBuffer.isView(body)) {
-            transformedBody = new Uint8Array(body.buffer).buffer;
+        let transformedBody: string | ArrayBuffer | undefined = undefined;
+        if (typeof body === "string" || body instanceof ArrayBuffer) {
+            transformedBody = body;
+        } else if (ArrayBuffer.isView(body)) {
+            transformedBody = body.buffer as ArrayBuffer;
+        } else if (body != null) {
+            transformedBody = body as string | ArrayBuffer;
         }
 
         const param: RequestUrlParam = {

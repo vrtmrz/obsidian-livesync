@@ -55,6 +55,7 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile> {
         return await this.app.vault.trash(file, force);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     trigger(name: string, ...data: any[]): any {
         return this.app.vault.trigger(name, ...data);
     }

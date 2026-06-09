@@ -9,16 +9,15 @@ import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 import { compatGlobal } from "@lib/common/coreEnvFunctions";
 import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-function redactObject(obj: Record<string, any>, dotted: string, redactedValue = "REDACTED") {
+function redactObject(obj: Record<string, unknown>, dotted: string, redactedValue = "REDACTED") {
     const keys = dotted.split(".");
     let current = obj;
     for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         if (!(key in current)) {
-            current[key] = {} as Record<string, any>;
+            current[key] = {};
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        current = current[key];
+        current = current[key] as Record<string, unknown>;
     }
     const lastKey = keys[keys.length - 1];
     if (lastKey in current) {
@@ -27,7 +26,7 @@ function redactObject(obj: Record<string, any>, dotted: string, redactedValue = 
     return obj;
 }
 export async function generateReport(settings: ObsidianLiveSyncSettings, core: LiveSyncBaseCore) {
-    let responseConfig: Record<string, any> = {};
+    let responseConfig: Record<string, unknown> = {};
     const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
     if (settings.remoteType == REMOTE_COUCHDB) {
         try {
@@ -42,7 +41,7 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
                 undefined,
                 customHeaders
             );
-            responseConfig = r.json as Record<string, any>;
+            responseConfig = r.json as Record<string, unknown>;
             redactObject(responseConfig, "couch_httpd_auth.secret");
             redactObject(responseConfig, "couch_httpd_auth.authentication_db");
             redactObject(responseConfig, "couch_httpd_auth.authentication_redirect");

@@ -18,6 +18,7 @@ import {
     type LOG_LEVEL,
 } from "@lib/common/logger";
 import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
+import { isNotFoundError } from "@lib/common/utils.doc.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
@@ -39,7 +40,7 @@ export class ReplicateResultProcessor {
     private log(message: string, level: LOG_LEVEL = LOG_LEVEL_INFO) {
         Logger(`[ReplicateResultProcessor] ${message}`, level);
     }
-    private logError(e: any) {
+    private logError(e: unknown) {
         Logger(e, LOG_LEVEL_VERBOSE);
     }
     private replicator: ModuleReplicator;
@@ -466,8 +467,8 @@ export class ReplicateResultProcessor {
                 return false; // This means that the document already processed (While no conflict existed).
             }
             return true; // This mostly should not happen, but we have to process it just in case.
-        } catch (e: any) {
-            if ("status" in e && e.status == 404) {
+        } catch (e: unknown) {
+            if (e && typeof e === "object" && isNotFoundError(e)) {
                 // getRaw failed due to not existing, it may not be happened normally especially on replication.
                 // If the process caused by some other reason, we **probably** have to process it.
                 // Note that this is not a common case.

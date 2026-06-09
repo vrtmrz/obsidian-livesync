@@ -287,6 +287,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     // UI Element Wrapper -->
     settingComponents = [] as Setting[];
     controlledElementFunc = [] as UpdateFunction[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSavedHandlers = [] as OnSavedHandler<any>[];
 
     inWizard: boolean = false;

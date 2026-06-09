@@ -2,7 +2,7 @@ import { deleteDB, type IDBPDatabase, openDB } from "idb";
 import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
-const databaseCache: { [key: string]: IDBPDatabase<any> } = {};
+const databaseCache: { [key: string]: IDBPDatabase<unknown> } = {};
 export { OpenKeyValueDatabase } from "./KeyValueDBv2.ts";
 
 export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueDatabase> => {
@@ -11,7 +11,7 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
         delete databaseCache[dbKey];
     }
     const storeKey = dbKey;
-    let db: IDBPDatabase<any> | null = null;
+    let db: IDBPDatabase<unknown> | null = null;
     const _openDB = () => {
         return serialized("keyvaluedb-" + dbKey, async () => {
             const dbInstance = await openDB(dbKey, 1, {

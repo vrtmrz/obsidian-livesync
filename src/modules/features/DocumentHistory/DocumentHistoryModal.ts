@@ -139,7 +139,7 @@ export class DocumentHistoryModal extends Modal {
                 this.range.value = `${this.revs_info.length - 1 - rIndex}`;
             }
         }
-        const index = this.revs_info.length - 1 - (this.range.value as any) / 1;
+        const index = this.revs_info.length - 1 - Number(this.range.value);
         const rev = this.revs_info[index];
         await this.showExactRev(rev.rev);
     }
@@ -251,7 +251,7 @@ export class DocumentHistoryModal extends Modal {
             }
             let rendered = false;
             if (this.showDiff) {
-                const prevRevIdx = this.revs_info.length - 1 - ((this.range.value as any) / 1 - 1);
+                const prevRevIdx = this.revs_info.length - 1 - (Number(this.range.value) - 1);
                 if (prevRevIdx >= 0 && prevRevIdx < this.revs_info.length) {
                     const oldRev = this.revs_info[prevRevIdx].rev;
                     const w2 = await db.getDBEntry(this.file, { rev: oldRev }, false, false, true);
@@ -550,7 +550,7 @@ export class DocumentHistoryModal extends Modal {
                 if (this.showDiff) {
                     checkbox.checked = true;
                 }
-                checkbox.addEventListener("input", (evt: any) => {
+                checkbox.addEventListener("input", (evt) => {
                     this.showDiff = checkbox.checked;
                     this.app.saveLocalStorage("ols-history-highlightdiff", this.showDiff == true ? "1" : null);
                     this.updateDiffNavVisibility();
@@ -565,7 +565,7 @@ export class DocumentHistoryModal extends Modal {
             if (this.diffOnly) {
                 checkbox.checked = true;
             }
-            checkbox.addEventListener("input", (evt: any) => {
+            checkbox.addEventListener("input", (evt) => {
                 this.diffOnly = checkbox.checked;
                 this.app.saveLocalStorage("ols-history-diffonly", this.diffOnly == true ? "1" : null);
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());

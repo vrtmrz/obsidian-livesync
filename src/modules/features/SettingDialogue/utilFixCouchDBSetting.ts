@@ -259,8 +259,8 @@ export const checkConfig = async (
         addResult($msg("obsidianLiveSyncSettingTab.msgDone"), ["ob-btn-config-head"]);
         addResult($msg("obsidianLiveSyncSettingTab.msgConnectionProxyNote"), ["ob-btn-config-info"]);
         Logger($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"), LOG_LEVEL_INFO);
-    } catch (ex: any) {
-        if (ex?.status == 401) {
+    } catch (ex) {
+        if (ex && typeof ex === "object" && "status" in ex && ex.status == 401) {
             isSuccessful = false;
             addResult($msg("obsidianLiveSyncSettingTab.errAccessForbidden"));
             addResult($msg("obsidianLiveSyncSettingTab.errCannotContinueTest"));

@@ -36,13 +36,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.services.appLifecycle.performRestart();
     }
 
-    initialCallback: any;
+    initialCallback: (() => unknown) | undefined;
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
-        const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
+        const app = this.app as unknown as { commands?: { commands?: Record<string, { callback?: () => unknown }> } };
+        const saveCommandDefinition = app.commands?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
-        if (typeof save === "function") {
+        if (typeof save === "function" && saveCommandDefinition) {
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {

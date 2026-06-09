@@ -67,25 +67,25 @@ export abstract class LiveSyncCommands {
 
     _log: ReturnType<typeof createInstanceLogFunction>;
 
-    _verbose = (msg: any, key?: string) => {
+    _verbose = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);
     };
 
-    _info = (msg: any, key?: string) => {
+    _info = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_INFO, key);
     };
 
-    _notice = (msg: any, key?: string) => {
+    _notice = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_NOTICE, key);
     };
     _progress = (prefix: string = "", level: LOG_LEVEL = LOG_LEVEL_NOTICE) => {
         const key = `keepalive-progress-${noticeIndex++}`;
         return {
-            log: (msg: any) => {
-                this._log(prefix + msg, level, key);
+            log: (msg: unknown) => {
+                this._log(prefix + String(msg), level, key);
             },
-            once: (msg: any) => {
-                this._log(prefix + msg, level);
+            once: (msg: unknown) => {
+                this._log(prefix + String(msg), level);
             },
             done: (msg: string = "Done") => {
                 this._log(prefix + msg + MARK_DONE, level, key);
@@ -93,7 +93,7 @@ export abstract class LiveSyncCommands {
         };
     };
 
-    _debug = (msg: any, key?: string) => {
+    _debug = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);
     };
 

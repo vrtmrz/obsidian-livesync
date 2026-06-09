@@ -28,7 +28,7 @@ export async function OpenKeyValueDatabase(dbKey: string): Promise<KeyValueDatab
 }
 
 export class IDBKeyValueDatabase implements KeyValueDatabase {
-    protected _dbPromise: Promise<IDBPDatabase<any>> | null = null;
+    protected _dbPromise: Promise<IDBPDatabase<unknown>> | null = null;
     protected dbKey: string;
     protected storeKey: string;
     protected _isDestroyed: boolean = false;
@@ -104,7 +104,7 @@ export class IDBKeyValueDatabase implements KeyValueDatabase {
             this.destroyedPromise = Promise.resolve();
         }
     }
-    get DB(): Promise<IDBPDatabase<any>> {
+    get DB(): Promise<IDBPDatabase<unknown>> {
         if (this._isDestroyed) {
             return Promise.reject(new Error("Database is destroyed"));
         }

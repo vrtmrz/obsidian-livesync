@@ -48,7 +48,7 @@ import { generateReport } from "@/common/reportTool.ts";
 
 // DI the log again.
 const recentLogEntries = reactiveSource<LogEntry[]>([]);
-const globalLogFunction = (message: any, level?: number, key?: string) => {
+const globalLogFunction = (message: unknown, level?: number, key?: string) => {
     const messageX =
         message instanceof Error
             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
@@ -501,7 +501,7 @@ ${stringifyYaml(info)}
             })
         );
     }
-    __addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
+    __addLog(message: unknown, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
         if (level == LOG_LEVEL_DEBUG && !showDebugLog) {
             return;
         }

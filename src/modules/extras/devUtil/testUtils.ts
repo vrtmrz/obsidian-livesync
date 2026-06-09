@@ -6,7 +6,7 @@ let plugin: ObsidianLiveSyncPlugin;
 export function enableTestFunction(plugin_: ObsidianLiveSyncPlugin) {
     plugin = plugin_;
 }
-export function addDebugFileLog(message: any, stackLog = false) {
+export function addDebugFileLog(message: unknown, stackLog = false) {
     fireAndForget(
         serialized("debug-log", async () => {
             const now = new Date();
@@ -16,7 +16,7 @@ export function addDebugFileLog(message: any, stackLog = false) {
             // const messageContent = typeof message == "string" ? message : message instanceof Error ? `${message.name}:${message.message}` : JSON.stringify(message, null, 2);
             const timestamp = now.toLocaleString();
             const timestampEpoch = now;
-            let out = { timestamp: timestamp, epoch: timestampEpoch } as Record<string, any>;
+            let out = { timestamp: timestamp, epoch: timestampEpoch } as Record<string, unknown>;
             if (message instanceof Error) {
                 // debugger;
                 // console.dir(message.stack);

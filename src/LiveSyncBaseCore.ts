@@ -120,6 +120,7 @@ export class LiveSyncBaseCore<
      * @param constructor
      * @returns
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getModule<T extends AbstractModule>(constructor: new (...args: any[]) => T): T {
         for (const module of this.modules) {
             if (module.constructor === constructor) return module as T;

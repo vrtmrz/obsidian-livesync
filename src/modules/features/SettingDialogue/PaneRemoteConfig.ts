@@ -7,7 +7,7 @@ import {
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
 } from "../../../lib/src/common/types.ts";
-import { Menu } from "@/deps.ts";
+import { Menu, ButtonComponent } from "@/deps.ts";
 import { $msg } from "../../../lib/src/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -39,7 +39,7 @@ function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianL
     const workObj = { ...editingSettings } as ObsidianLiveSyncSettings;
     const keys = Object.keys(OnDialogSettingsDefault);
     for (const k of keys) {
-        delete (workObj as any)[k];
+        delete (workObj as unknown as Record<string, unknown>)[k];
     }
     return workObj;
 }
@@ -72,7 +72,7 @@ function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): strin
     return ConnectionStringParser.serialize({ type: "couchdb", settings });
 }
 
-function setEmojiButton(button: any, emoji: string, tooltip: string) {
+function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string) {
     button.setButtonText(emoji);
     button.setTooltip(tooltip, { delay: 10, placement: "top" });
     // button.buttonEl.addClass("clickable-icon");

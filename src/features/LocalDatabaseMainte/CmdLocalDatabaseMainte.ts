@@ -17,6 +17,7 @@ import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/LiveSyncReplicator";
 import { delay } from "@/lib/src/common/utils";
+import { isNotFoundError } from "@lib/common/utils.doc.ts";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
@@ -393,8 +394,8 @@ Note: **Make sure to synchronise all devices before deletion.**
                         await processDoc(oldDoc, false);
                     }
                 }
-            } catch (ex) {
-                if ((ex as any)?.status == 404) {
+            } catch (ex: unknown) {
+                if (ex && typeof ex === "object" && isNotFoundError(ex)) {
                     this._log(`No revisions found for ${doc._id}`, LOG_LEVEL_VERBOSE);
                 } else {
                     this._log(`Error finding revisions for ${doc._id}`);
@@ -473,15 +474,23 @@ Are you ready to delete unused chunks?`;
             keys: [...unusedSet],
             include_docs: true,
         });
+        interface PouchDBRow {
+            id: string;
+            key: string;
+            value: { rev: string; deleted?: boolean };
+            doc?: EntryDoc;
+        }
         for (const chunk of deleteChunks.rows) {
-            if ((chunk as any)?.value?.deleted) {
-                chunkSet.delete(chunk.key as DocumentID);
+            const c = chunk as unknown as PouchDBRow;
+            if (c.value?.deleted) {
+                chunkSet.delete(c.key as DocumentID);
             }
         }
         const deleteDocs = deleteChunks.rows
-            .filter((e) => "doc" in e)
+            .map((e) => e as unknown as PouchDBRow)
+            .filter((e) => e.doc != null)
             .map((e) => ({
-                ...(e as any).doc!,
+                ...e.doc!,
                 _deleted: true,
             }));
 
@@ -625,8 +634,19 @@ Success: ${successCount}, Errored: ${errored}`;
                 }
             }
         }
+        interface DatabaseAnalysisResultItem {
+            title: string;
+            path: string;
+            rev: string;
+            revHash: string;
+            id?: string;
+            uniqueChunkCount: number;
+            sharedChunkCount: number;
+            uniqueChunkSize: number;
+            sharedChunkSize: number;
+        }
         // Prepare results
-        const result = [];
+        const result: DatabaseAnalysisResultItem[] = [];
         // Calculate total size of chunks in the given set.
         const getTotalSize = (ids: Set<DocumentID>) => {
             return [...ids].reduce((acc, chunkId) => {
@@ -698,7 +718,7 @@ Success: ${successCount}, Errored: ${errored}`;
             sharedChunkCount: 0,
             uniqueChunkSize: orphanChunkSize,
             sharedChunkSize: 0,
-        } as any);
+        });
 
         const csvSrc = result.map((e) => {
             return [

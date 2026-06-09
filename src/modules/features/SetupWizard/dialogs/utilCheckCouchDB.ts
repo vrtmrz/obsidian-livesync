@@ -7,8 +7,14 @@ import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "../../../../lib/src/replication/httplib";
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
-export type ResultOk = { message: string; result: "ok"; value?: any };
-export type ResultError = { message: string; result: "error"; value: any; fixMessage: string; fix(): Promise<void> };
+export type ResultOk = { message: string; result: "ok"; value?: unknown };
+export type ResultError = {
+    message: string;
+    result: "error";
+    value?: string;
+    fixMessage: string;
+    fix(): Promise<void>;
+};
 export type ConfigCheckResult = ResultOk | ResultError | ResultMessage | ResultErrorMessage;
 /**
  * Compares two version strings to determine if the baseVersion is greater than or equal to the version.
@@ -35,7 +41,7 @@ function isGreaterThanOrEqual(baseVersion: string, version: string) {
  * @param value setting value to update
  * @returns true if the update was successful, false otherwise
  */
-async function updateRemoteSetting(setting: ObsidianLiveSyncSettings, key: string, value: any) {
+async function updateRemoteSetting(setting: ObsidianLiveSyncSettings, key: string, value: string) {
     const customHeaders = parseHeaderValues(setting.couchDB_CustomHeaders);
     const credential = generateCredentialObject(setting);
     const res = await requestToCouchDBWithCredentials(
@@ -64,17 +70,17 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
     const addMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, classes });
     };
-    const addSuccess = (msg: string, value?: any) => {
+    const addSuccess = (msg: string, value?: unknown) => {
         result.push({ message: msg, result: "ok", value });
     };
-    const _addError = (message: string, fixMessage: string, fix: () => Promise<void>, value?: any) => {
+    const _addError = (message: string, fixMessage: string, fix: () => Promise<void>, value?: string) => {
         result.push({ message, result: "error", fixMessage, fix, value });
     };
     const addErrorMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, result: "error", classes });
     };
 
-    const addError = (message: string, fixMessage: string, key: string, expected: any) => {
+    const addError = (message: string, fixMessage: string, key: string, expected: string) => {
         _addError(message, fixMessage, async () => {
             await updateRemoteSetting(editingSettings, key, expected);
         });
@@ -279,8 +285,8 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         addMessage($msg("obsidianLiveSyncSettingTab.msgDone"), ["ob-btn-config-head"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgConnectionProxyNote"), ["ob-btn-config-info"]);
         addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));
-    } catch (ex: any) {
-        if (ex?.status == 401) {
+    } catch (ex) {
+        if (ex && typeof ex === "object" && "status" in ex && ex.status == 401) {
             addErrorMessage($msg("obsidianLiveSyncSettingTab.errAccessForbidden"));
             addErrorMessage($msg("obsidianLiveSyncSettingTab.errCannotContinueTest"));
             addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));

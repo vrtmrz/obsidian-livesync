@@ -35,7 +35,7 @@ export class LiveSyncSetting extends Setting {
     hasPassword: boolean = false;
 
     invalidateValue?: () => void;
-    setValue?: (value: any) => void;
+    setValue?: (value: unknown) => void;
     constructor(containerEl: HTMLElement) {
         super(containerEl);
         LiveSyncSetting.env.settingComponents.push(this);
@@ -102,6 +102,7 @@ export class LiveSyncSetting extends Setting {
         }
         return conf;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     autoWireComponent(component: ValueComponent<any>, conf?: ConfigurationItem, opt?: AutoWireOption) {
         this.placeHolderBuf = conf?.placeHolder || opt?.placeHolder || "";
         if (conf?.level == LEVEL_ADVANCED) {
