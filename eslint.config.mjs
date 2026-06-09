@@ -18,11 +18,11 @@ export default defineConfig([
         "**/*.json",
         "**/.eslintrc.js.bak",
         // Files from linked dependencies (those files should not exist for most people).
-        "modules/octagonal-wheels/dist/**/*",
+        "modules/octagonal-wheels/dist",
 
         // Sub-projects (Exclude from root linting as they have different environments)
-        "src/apps/**/*",
-        "utils/**/*",
+        "src/apps",
+        "utils",
 
         // Specific exclusions from common library (src/lib)
         "src/lib/coverage",
@@ -75,6 +75,7 @@ export default defineConfig([
             "require-await": "off",
             // -- TypeScript specific rules (Gradual adoption of stricter rules, currently set to 'warn' for a while).
             "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-redundant-type-constituents": "warn",
             // -- TypeScript specific rules
             //  @typescript-eslint/no-unsafe-* rules and @typescript-eslint/no-explicit-any:
             //  This project contains a lot of library-sh code where the use of `any` is often necessary and justified.
