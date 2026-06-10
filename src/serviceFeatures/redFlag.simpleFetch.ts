@@ -10,7 +10,7 @@ import {
     synchroniseAllFilesBetweenDBandStorage,
     type FullScanOptions,
 } from "@lib/serviceFeatures/offlineScanner";
-import { adjustSettingToRemoteIfNeeded, processVaultInitialisation } from "./redFlag";
+import { adjustSettingToRemoteIfNeeded, processVaultInitialisation } from "./redFlag.utils";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";

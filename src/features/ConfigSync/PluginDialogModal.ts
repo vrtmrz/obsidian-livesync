@@ -1,6 +1,6 @@
 import { mount, unmount } from "svelte";
 import { App, Modal } from "@/deps.ts";
-import ObsidianLiveSyncPlugin from "@/main.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 import PluginPane from "./PluginPane.svelte";
 export class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;

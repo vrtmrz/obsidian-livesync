@@ -6,14 +6,16 @@ import {
     createFetchAllFlagHandler,
     createRebuildFlagHandler,
     createSuspendFlagHandler,
+    flagHandlerToEventHandler,
+} from "./redFlag";
+import {
     isFlagFileExist,
     deleteFlagFile,
     adjustSettingToRemote,
     adjustSettingToRemoteIfNeeded,
     processVaultInitialisation,
     verifyAndUnlockSuspension,
-    flagHandlerToEventHandler,
-} from "./redFlag";
+} from "./redFlag.utils";
 import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,

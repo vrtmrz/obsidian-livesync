@@ -1,5 +1,5 @@
 <script lang="ts">
-    import ObsidianLiveSyncPlugin from "@/main.ts";
+    import type ObsidianLiveSyncPlugin from "@/main.ts";
     import { onDestroy, onMount } from "svelte";
     import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types.ts";
     import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";

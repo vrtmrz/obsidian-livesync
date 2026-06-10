@@ -10,7 +10,7 @@ import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
-import ObsidianLiveSyncPlugin from "@/main.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { scheduleTask } from "@/common/utils.ts";
 import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
 import {
@@ -32,8 +32,6 @@ import { JournalSyncMinio } from "@lib/replication/journal/objectstore/JournalSy
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
     enableOnly,
-    findAttrFromParent,
-    getLevelStr,
     setLevelClass,
     setStyle,
     visibleOnly,
@@ -55,27 +53,6 @@ import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-
-// For creating a document
-const toc = new Set<string>();
-const stubs = {} as {
-    [key: string]: { [key: string]: Map<string, Record<string, string>> };
-};
-export function createStub(name: string, key: string, value: string, panel: string, pane: string) {
-    DEV: {
-        if (!(pane in stubs)) {
-            stubs[pane] = {};
-        }
-        if (!(panel in stubs[pane])) {
-            stubs[pane][panel] = new Map<string, Record<string, string>>();
-        }
-        const old = stubs[pane][panel].get(name) ?? {};
-        stubs[pane][panel].set(name, { ...old, [key]: value });
-        scheduleTask("update-stub", 100, () => {
-            eventHub.emitEvent("document-stub-created", { toc: toc, stub: stubs });
-        });
-    }
-}
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
@@ -711,7 +688,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             visibleOnly(() => this.isNeedRebuildLocal() || this.isNeedRebuildRemote())
         );
 
-        let paneNo = 0;
         const addPane = (
             parentEl: HTMLElement,
             title: string,
@@ -721,16 +697,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             level?: ConfigLevel
         ) => {
             const el = this.createEl(parentEl, "div", { text: "" });
-            DEV: {
-                const mdTitle = `${paneNo++}. ${title}${getLevelStr(level ?? "")}`;
-                el.setAttribute("data-pane", mdTitle);
-                toc.add(
-                    `| ${icon} | [${mdTitle}](#${mdTitle
-                        .toLowerCase()
-                        .replace(/ /g, "-")
-                        .replace(/[^\w\s-]/g, "")}) | `
-                );
-            }
             setLevelClass(el, level);
             // TODO: Refactor to use Obsidian's recommended way to create heading.
             // eslint-disable-next-line obsidianmd/settings-tab/no-manual-html-headings
@@ -765,7 +731,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             // });
             return p;
         };
-        const panelNoMap = {} as { [key: string]: number };
         const addPanel = (
             parentEl: HTMLElement,
             title: string,
@@ -774,15 +739,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             level?: ConfigLevel
         ) => {
             const el = this.createEl(parentEl, "div", { text: "" }, callback, func);
-            DEV: {
-                const paneNo = findAttrFromParent(parentEl, "data-pane");
-                if (!(paneNo in panelNoMap)) {
-                    panelNoMap[paneNo] = 0;
-                }
-                panelNoMap[paneNo] += 1;
-                const panelNo = panelNoMap[paneNo];
-                el.setAttribute("data-panel", `${panelNo}. ${title}${getLevelStr(level ?? "")}`);
-            }
             setLevelClass(el, level);
             this.createEl(el, "h4", { text: title, cls: "sls-setting-panel-title" });
             const p = Promise.resolve(el);

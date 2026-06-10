@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import ObsidianLiveSyncPlugin from "@/main";
+    import type ObsidianLiveSyncPlugin from "@/main";
     import {
         ConfigSync,
         type IPluginDataExDisplay,

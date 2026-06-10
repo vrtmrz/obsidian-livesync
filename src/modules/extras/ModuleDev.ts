@@ -1,8 +1,7 @@
-import { delay, fireAndForget } from "octagonal-wheels/promises";
+import { delay } from "octagonal-wheels/promises";
 import { __onMissingTranslation } from "@lib/common/i18n";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import { eventHub } from "@/common/events";
 import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
@@ -40,50 +39,6 @@ export class ModuleDev extends AbstractObsidianModule {
         this.onMissingTranslation = this.onMissingTranslation.bind(this);
         __onMissingTranslation((key) => {
             void this.onMissingTranslation(key);
-        });
-        type STUB = {
-            toc: Set<string>;
-            stub: { [key: string]: { [key: string]: Map<string, Record<string, string>> } };
-        };
-        eventHub.onEvent("document-stub-created", (detail: STUB) => {
-            fireAndForget(async () => {
-                const stub = detail.stub;
-                const toc = detail.toc;
-
-                const stubDocX = Object.entries(stub)
-                    .map(([key, value]) => {
-                        return [
-                            `## ${key}`,
-                            Object.entries(value)
-                                .map(([key2, value2]) => {
-                                    return [
-                                        `### ${key2}`,
-                                        [...value2.entries()].map(([key3, value3]) => {
-                                            // return `#### ${key3}` + "\n" + JSON.stringify(value3);
-                                            const isObsolete = value3["is_obsolete"] ? " (obsolete)" : "";
-                                            const desc = value3["desc"] ?? "";
-                                            const key = value3["key"] ? "Setting key: " + value3["key"] + "\n" : "";
-                                            return `#### ${key3}${isObsolete}\n${key}${desc}\n`;
-                                        }),
-                                    ].flat();
-                                })
-                                .flat(),
-                        ].flat();
-                    })
-                    .flat();
-                const stubDocMD =
-                    `
-| Icon  | Description                                                       |
-| :---: | ----------------------------------------------------------------- |
-` +
-                    [...toc.values()].map((e) => `${e}`).join("\n") +
-                    "\n\n" +
-                    stubDocX.join("\n");
-                await this.core.storageAccess.writeHiddenFileAuto(
-                    this.app.vault.configDir + "/ls-debug/stub-doc.md",
-                    stubDocMD
-                );
-            });
         });
 
         enableTestFunction(this.plugin);

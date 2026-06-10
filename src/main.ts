@@ -4,6 +4,7 @@ setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
+import { PluginDialogModal } from "./features/ConfigSync/PluginDialogModal.ts";
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
@@ -161,7 +162,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             },
             (core) => {
                 const addOns = [
-                    new ConfigSync(this, core),
+                    new ConfigSync(this, core, PluginDialogModal),
                     new HiddenFileSync(this, core),
                     new LocalDatabaseMaintenance(this, core),
                 ];
