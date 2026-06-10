@@ -4,6 +4,7 @@ import globals from "globals";
 import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
 import svelteParser from "svelte-eslint-parser";
+import importAlias from "@dword-design/eslint-plugin-import-alias";
 const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
 export default defineConfig([
     globalIgnores([
@@ -54,6 +55,7 @@ export default defineConfig([
     ]),
     ...sveltePlugin.configs["flat/base"],
     ...obsidianmd.configs.recommended,
+    importAlias.configs.recommended,
     {
         files: ["**/*.ts"],
         // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
@@ -64,7 +66,7 @@ export default defineConfig([
                 project: "./tsconfig.json",
             },
         },
-        linterOptions:{
+        linterOptions: {
             reportUnusedDisableDirectives: false,
         },
         rules: {
@@ -113,6 +115,18 @@ export default defineConfig([
 
             // -- Temporary overrides for migration
             "obsidianmd/no-static-styles-assignment": "off",
+
+            // -- Project specific rules
+            "@dword-design/import-alias/prefer-alias": [
+                "error",
+                {
+                    aliasForSubpaths: true,
+                    alias: {
+                        "@": "./src",
+                        "@lib": "./src/lib/src",
+                    },
+                },
+            ],
         },
     },
     {
@@ -131,6 +145,16 @@ export default defineConfig([
             "no-unused-vars": "off",
             "obsidianmd/no-plugin-as-component": "off",
             "obsidianmd/ui/sentence-case": "off",
+            "@dword-design/import-alias/prefer-alias": [
+                "error",
+                {
+                    aliasForSubpaths: true,
+                    alias: {
+                        "@": "./src",
+                        "@lib": "./src/lib/src",
+                    },
+                },
+            ],
         },
     },
 ]);
