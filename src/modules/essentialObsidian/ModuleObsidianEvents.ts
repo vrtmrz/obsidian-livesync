@@ -2,7 +2,7 @@ import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { Platform, type TFile } from "../../deps.ts";
+import type { TFile } from "../../deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
@@ -146,7 +146,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         const keepActiveInBackground =
             this.settings.keepReplicationActiveInBackground &&
             (this.settings.liveSync || this.settings.periodicReplication) &&
-            Platform.isDesktopApp;
+            !this.services.API.isMobile();
 
         if (isHidden) {
             if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();

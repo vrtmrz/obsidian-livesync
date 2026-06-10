@@ -1,11 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
-// Unit tests stub out `obsidian`, so deps.ts (which re-exports from it) can't be loaded for real.
-// ModuleObsidianEvents only needs `Platform` from deps at runtime; provide a mutable stub so each
-// test can choose desktop vs mobile.
-vi.mock("../../deps.ts", () => ({ Platform: { isDesktopApp: true } }));
-
-import { Platform } from "../../deps.ts";
 import { ModuleObsidianEvents } from "./ModuleObsidianEvents";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@lib/common/types";
 
@@ -15,6 +9,8 @@ type SetupOptions = {
     isLastHidden?: boolean;
     hasFocus?: boolean;
     isSuspended?: boolean;
+    // Platform is read via services.API.isMobile(); default desktop (false) so the feature applies.
+    isMobile?: boolean;
 };
 
 function setup(opts: SetupOptions) {
@@ -35,6 +31,7 @@ function setup(opts: SetupOptions) {
                 registerWindow: vi.fn(),
                 addRibbonIcon: vi.fn(),
                 registerProtocolHandler: vi.fn(),
+                isMobile: vi.fn(() => opts.isMobile ?? false),
             },
             setting: { saveSettingData: vi.fn(async () => undefined) },
             appLifecycle,
@@ -60,15 +57,10 @@ function setup(opts: SetupOptions) {
 }
 
 describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () => {
-    beforeEach(() => {
-        (Platform as any).isDesktopApp = true;
-    });
-
     afterEach(() => {
-        // The handler reads a global `activeWindow`; the Platform mock is module-scoped. Both would
-        // otherwise leak into sibling spec files running in the same worker, so reset them here.
+        // The handler reads a global `activeWindow`; clear it so it doesn't leak into sibling spec
+        // files running in the same worker.
         delete (globalThis as any).activeWindow;
-        (Platform as any).isDesktopApp = true;
     });
 
     it("does NOT suspend on hide when enabled in LiveSync mode on the desktop app", async () => {
@@ -162,11 +154,11 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
         expect(appLifecycle.onResumed).toHaveBeenCalledTimes(1);
     });
 
-    it("does not apply on a non-desktop app even if the flag is set", async () => {
-        (Platform as any).isDesktopApp = false;
+    it("does not apply on mobile even if the flag is set", async () => {
         const { module, appLifecycle } = setup({
             settings: { keepReplicationActiveInBackground: true, liveSync: true },
             hidden: true,
+            isMobile: true,
         });
         await module.watchWindowVisibilityAsync();
         expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
