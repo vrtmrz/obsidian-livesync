@@ -5,7 +5,7 @@ import {
     pickBucketSyncSettings,
     pickP2PSyncSettings,
     pickEncryptionSettings,
-} from "@lib/common/utils";
+} from "@lib/common/utils.settings";
 import { getConfig, type AllSettingItemKey } from "./settingConstants";
 import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 import { isNotFoundError } from "@lib/common/utils.doc.ts";

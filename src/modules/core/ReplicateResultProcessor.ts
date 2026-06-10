@@ -17,7 +17,8 @@ import {
     Logger,
     type LOG_LEVEL,
 } from "@lib/common/logger";
-import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
+import { isAnyNote } from "@lib/common/utils.database";
+import { fireAndForget, throttle } from "@lib/common/utils";
 import { isNotFoundError } from "@lib/common/utils.doc.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";

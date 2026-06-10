@@ -204,7 +204,7 @@ export function requestToCouchDBWithCredentials(
 import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
 export { BASE_IS_NEW, EVEN, TARGET_IS_NEW };
 // Why 2000? : ZIP FILE Does not have enough resolution.
-import { compareMTime } from "@lib/common/utils.ts";
+import { compareMTime } from "@lib/common/utils.database.ts";
 import { _fetch } from "@/lib/src/common/coreEnvFunctions.ts";
 export { compareMTime };
 function getKey(file: AnyEntry | string | UXFileInfoStub) {

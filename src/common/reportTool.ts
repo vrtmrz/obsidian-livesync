@@ -1,7 +1,7 @@
 import { REMOTE_COUCHDB, REMOTE_MINIO } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { generateCredentialObject } from "@lib/replication/httplib";
-import { parseHeaderValues } from "@lib/common/utils";
+import { parseHeaderValues } from "@lib/common/utils.misc";
 import { requestToCouchDBWithCredentials } from "./utils";
 import { LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
 import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";

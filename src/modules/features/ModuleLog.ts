@@ -4,7 +4,8 @@ import type { DatabaseConnectingStatus } from "@lib/common/models/shared.definit
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import type { LOG_LEVEL } from "@lib/common/logger";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
-import { fireAndForget, isDirty, throttle } from "@lib/common/utils.ts";
+import { isDirty } from "@lib/common/utils.misc.ts";
+import { fireAndForget, throttle } from "@lib/common/utils.ts";
 import {
     collectingChunks,
     pluginScanningCount,

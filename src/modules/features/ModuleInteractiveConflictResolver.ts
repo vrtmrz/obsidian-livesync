@@ -4,7 +4,7 @@ import type { diff_result } from "@lib/common/models/diff.definition";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
-import { displayRev } from "@/common/utils.ts";
+import { displayRev } from "@lib/common/utils.notations.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncCore } from "@/main.ts";

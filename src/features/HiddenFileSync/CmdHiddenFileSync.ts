@@ -1,22 +1,24 @@
 import { type PluginManifest, type ListedFiles } from "@/deps.ts";
-import type { LoadedEntry, FilePathWithPrefix, FilePath, SavingEntry, DocumentID, MetaEntry } from "@lib/common/models/db.type";
+import type {
+    LoadedEntry,
+    FilePathWithPrefix,
+    FilePath,
+    SavingEntry,
+    DocumentID,
+    MetaEntry,
+} from "@lib/common/models/db.type";
 import { MODE_SELECTIVE, MODE_PAUSED } from "@lib/common/models/setting.const";
 import type { UXFileInfo, UXStat, UXDataWriteOptions } from "@lib/common/models/fileaccess.type";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_DEBUG } from "@lib/common/logger";
 import { ICHeader, ICHeaderEnd } from "@lib/common/models/fileaccess.const";
 import { type InternalFileInfo } from "@/common/types.ts";
+import { readAsBlob, isDocContentSame, readContent, createBlob } from "@lib/common/utils.database.ts";
+import type { CustomRegExp } from "@lib/common/utils.regexp.ts";
+import { getFileRegExp } from "@lib/common/utils.regexp.ts";
+import { sendSignal, fireAndForget } from "@lib/common/utils.ts";
+import { compareMTime } from "@lib/common/utils.database.ts";
+import { displayRev } from "@lib/common/utils.notations.ts";
 import {
-    readAsBlob,
-    isDocContentSame,
-    sendSignal,
-    readContent,
-    createBlob,
-    fireAndForget,
-    type CustomRegExp,
-    getFileRegExp,
-} from "@lib/common/utils.ts";
-import {
-    compareMTime,
     isInternalMetadata,
     TARGET_IS_NEW,
     scheduleTask,
@@ -26,7 +28,6 @@ import {
     onlyInNTimes,
     BASE_IS_NEW,
     EVEN,
-    displayRev,
 } from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";

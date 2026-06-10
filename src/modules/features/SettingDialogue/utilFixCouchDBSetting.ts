@@ -2,7 +2,8 @@ import { requestToCouchDBWithCredentials } from "@/common/utils";
 import { $msg } from "@lib/common/i18n";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { fireAndForget, parseHeaderValues } from "@lib/common/utils";
+import { parseHeaderValues } from "@lib/common/utils.misc";
+import { fireAndForget } from "@lib/common/utils";
 import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "@lib/replication/httplib";
 

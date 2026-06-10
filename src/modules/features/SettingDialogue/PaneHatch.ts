@@ -1,6 +1,7 @@
 import type { FilePathWithPrefix, DocumentID, LoadedEntry, MetaEntry, FilePath } from "@lib/common/models/db.type";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
-import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
+import { createBlob, isDocContentSame, readAsBlob } from "@lib/common/utils.database.ts";
+import { getFileRegExp } from "@lib/common/utils.regexp.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
 import { $msg } from "@lib/common/i18n.ts";

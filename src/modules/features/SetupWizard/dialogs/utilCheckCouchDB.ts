@@ -2,7 +2,7 @@ import { requestToCouchDBWithCredentials } from "@/common/utils";
 import { $msg } from "@lib/common/i18n";
 import { Logger } from "@lib/common/logger";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { parseHeaderValues } from "@lib/common/utils";
+import { parseHeaderValues } from "@lib/common/utils.misc";
 import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "@lib/replication/httplib";
 export type ResultMessage = { message: string; classes: string[] };

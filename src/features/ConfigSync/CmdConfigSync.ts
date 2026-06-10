@@ -10,7 +10,14 @@ import {
     addIcon,
 } from "@/deps.ts";
 import type { EntryDoc } from "@lib/common/models/db.definition";
-import type { LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, AnyEntry, SavingEntry } from "@lib/common/models/db.type";
+import type {
+    LoadedEntry,
+    InternalFileEntry,
+    FilePathWithPrefix,
+    FilePath,
+    AnyEntry,
+    SavingEntry,
+} from "@lib/common/models/db.type";
 import type { diff_result } from "@lib/common/models/diff.definition";
 import { CANCELLED, LEAVE_TO_SUBSEQUENT } from "@lib/common/models/shared.const.symbols";
 import { MODE_SELECTIVE, MODE_SHINY } from "@lib/common/models/setting.const";
@@ -21,14 +28,12 @@ import {
     createBlob,
     createSavingEntryFromLoadedEntry,
     createTextBlob,
-    delay,
-    fireAndForget,
     getDocData,
     getDocDataAsArray,
     isDocContentSame,
     isLoadedEntry,
-    isObjectDifferent,
-} from "@lib/common/utils.ts";
+} from "@lib/common/utils.database.ts";
+import { delay, fireAndForget, isObjectDifferent } from "@lib/common/utils.ts";
 import { digestHash } from "@lib/string_and_binary/hash.ts";
 import { arrayBufferToBase64, decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";

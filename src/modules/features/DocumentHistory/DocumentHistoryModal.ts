@@ -6,7 +6,8 @@ import type { DocumentID, FilePathWithPrefix, LoadedEntry } from "@lib/common/mo
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { isErrorOfMissingDoc } from "@lib/pouchdb/utils_couchdb.ts";
-import { fireAndForget, getDocData, readContent } from "@lib/common/utils.ts";
+import { getDocData, readContent } from "@lib/common/utils.database.ts";
+import { fireAndForget } from "@lib/common/utils.ts";
 import { isPlainText, stripPrefix } from "@lib/string_and_binary/path.ts";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";

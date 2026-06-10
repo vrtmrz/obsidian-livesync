@@ -1,10 +1,16 @@
 import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
 import type { TweakValues } from "@lib/common/models/tweak.definition";
-import { TweakValuesShouldMatchedTemplate, TweakValuesTemplate, IncompatibleChanges, IncompatibleChangesInSpecificPattern, CompatibleButLossyChanges } from "@lib/common/models/tweak.definition";
+import {
+    TweakValuesShouldMatchedTemplate,
+    TweakValuesTemplate,
+    IncompatibleChanges,
+    IncompatibleChangesInSpecificPattern,
+    CompatibleButLossyChanges,
+} from "@lib/common/models/tweak.definition";
 import { confName } from "@lib/common/models/shared.definition.configNames";
 import type { ObsidianLiveSyncSettings, RemoteDBSettings } from "@lib/common/models/setting.type";
-import { escapeMarkdownValue } from "@lib/common/utils.ts";
+import { escapeMarkdownValue } from "@lib/common/utils.notations.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";

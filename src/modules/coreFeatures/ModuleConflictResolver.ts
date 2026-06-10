@@ -13,7 +13,8 @@ import {
 } from "@lib/common/types";
 import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
 import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
-import { compareMTime, displayRev } from "@lib/common/utils.ts";
+import { compareMTime } from "@lib/common/utils.database.ts";
+import { displayRev } from "@lib/common/utils.notations.ts";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
 import { eventHub } from "@/common/events.ts";

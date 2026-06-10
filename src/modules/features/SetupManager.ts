@@ -1,4 +1,10 @@
-import type { BucketSyncSetting, CouchDBConnection, EncryptionSettings, ObsidianLiveSyncSettings, P2PSyncSetting } from "@lib/common/models/setting.type";
+import type {
+    BucketSyncSetting,
+    CouchDBConnection,
+    EncryptionSettings,
+    ObsidianLiveSyncSettings,
+    P2PSyncSetting,
+} from "@lib/common/models/setting.type";
 import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
 import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
