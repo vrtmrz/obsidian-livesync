@@ -1,5 +1,5 @@
-import type { Prettify } from "../lib/src/common/types";
-import type { LiveSyncCore } from "../main";
+import type { Prettify } from "@lib/common/types";
+import type { LiveSyncCore } from "@/main";
 
 export type OverridableFunctionsKeys<T> = {
     [K in keyof T as K extends `$${string}` ? K : never]: T[K];

@@ -6,9 +6,9 @@ import {
     PREFIXMD_LOGFILE,
     type DatabaseConnectingStatus,
     type LOG_LEVEL,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
-import { fireAndForget, isDirty, throttle } from "../../lib/src/common/utils.ts";
+import { fireAndForget, isDirty, throttle } from "@lib/common/utils.ts";
 import {
     collectingChunks,
     pluginScanningCount,
@@ -16,22 +16,22 @@ import {
     hiddenFilesProcessingCount,
     type LogEntry,
     logMessages,
-} from "../../lib/src/mock_and_interop/stores.ts";
-import { eventHub } from "../../lib/src/hub/hub.ts";
+} from "@lib/mock_and_interop/stores.ts";
+import { eventHub } from "@lib/hub/hub.ts";
 import {
     EVENT_FILE_RENAMED,
     EVENT_LAYOUT_READY,
     EVENT_LEAF_ACTIVE_CHANGED,
     EVENT_ON_UNRESOLVED_ERROR,
-} from "../../common/events.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "../../deps.ts";
+} from "@/common/events.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@lib/common/i18n.ts";
 import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 import { isValidPath } from "@/common/utils.ts";
 import {

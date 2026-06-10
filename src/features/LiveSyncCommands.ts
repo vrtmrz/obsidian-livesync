@@ -7,11 +7,11 @@ import {
     type FilePath,
     type FilePathWithPrefix,
     type LOG_LEVEL,
-} from "../lib/src/common/types.ts";
-import type ObsidianLiveSyncPlugin from "../main.ts";
-import { MARK_DONE } from "../modules/features/ModuleLog.ts";
-import type { LiveSyncCore } from "../main.ts";
-import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
+} from "@lib/common/types.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
+import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { __$checkInstanceBinding } from "@lib/dev/checks.ts";
 import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils.ts";
 
 let noticeIndex = 0;

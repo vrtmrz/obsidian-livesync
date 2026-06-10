@@ -1,5 +1,5 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
-import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
+import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
 const databaseCache: { [key: string]: IDBPDatabase<unknown> } = {};

@@ -9,9 +9,9 @@ import {
     type EntryLeaf,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "../../lib/src/common/types";
-import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
-import { LiveSyncCommands } from "../LiveSyncCommands";
+} from "@lib/common/types";
+import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";

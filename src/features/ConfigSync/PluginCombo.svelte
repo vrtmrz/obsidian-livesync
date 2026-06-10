@@ -5,10 +5,10 @@
         type IPluginDataExDisplay,
         type PluginDataExFile,
     } from "./CmdConfigSync.ts";
-    import { Logger } from "../../lib/src/common/logger";
-    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types";
-    import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
-    import type ObsidianLiveSyncPlugin from "../../main";
+    import { Logger } from "@lib/common/logger";
+    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/types";
+    import { getDocData, timeDeltaToHumanReadable, unique } from "@lib/common/utils";
+    import type ObsidianLiveSyncPlugin from "@/main";
     // import { askString } from "../../common/utils";
     import { Menu } from "@/deps.ts";
 

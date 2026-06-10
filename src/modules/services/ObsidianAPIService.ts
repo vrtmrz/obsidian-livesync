@@ -1,7 +1,7 @@
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { Platform, type Command, type ViewCreator } from "obsidian";
-import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
+import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandler";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";

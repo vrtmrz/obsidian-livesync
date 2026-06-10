@@ -26,7 +26,7 @@ import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "@lib/API/processSetting.ts";
-import { AbstractModule } from "../AbstractModule.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
 import type {
     OutroAskUserModeResultType,

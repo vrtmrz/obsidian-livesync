@@ -1,18 +1,18 @@
 import type PouchDB from "pouchdb-core";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { AbstractModule } from "../AbstractModule";
+import { AbstractModule } from "@/modules/AbstractModule";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
-import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "../../lib/src/common/types";
+import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { type EntryDoc, type RemoteType } from "@lib/common/types";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
-import { $msg } from "../../lib/src/common/i18n";
-import type { LiveSyncCore } from "../../main";
+import { $msg } from "@lib/common/i18n";
+import type { LiveSyncCore } from "@/main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { clearHandlers } from "@lib/replication/SyncParamsHandler";

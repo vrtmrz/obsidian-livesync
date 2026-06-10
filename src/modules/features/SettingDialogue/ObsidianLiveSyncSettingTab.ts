@@ -1,4 +1,4 @@
-import { App, PluginSettingTab } from "../../../deps.ts";
+import { App, PluginSettingTab } from "@/deps.ts";
 import {
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
@@ -12,15 +12,15 @@ import {
     LEVEL_ADVANCED,
     LEVEL_EDGE_CASE,
     REMOTE_P2P,
-} from "../../../lib/src/common/types.ts";
-import { delay, isObjectDifferent, sizeToHumanReadable } from "../../../lib/src/common/utils.ts";
-import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
+} from "@lib/common/types.ts";
+import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { Logger } from "@lib/common/logger.ts";
 import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
-import ObsidianLiveSyncPlugin from "../../../main.ts";
-import { scheduleTask } from "../../../common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "../../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
+import ObsidianLiveSyncPlugin from "@/main.ts";
+import { scheduleTask } from "@/common/utils.ts";
+import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
 import {
     type AllSettingItemKey,
     type AllStringItemKey,
@@ -31,12 +31,12 @@ import {
     type OnDialogSettings,
     getConfName,
 } from "./settingConstants.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
-import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "../../../common/events.ts";
-import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
+import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
+import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
+import { JournalSyncMinio } from "@lib/replication/journal/objectstore/JournalSyncMinio.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
     enableOnly,

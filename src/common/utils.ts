@@ -1,4 +1,4 @@
-import { normalizePath, Platform, TAbstractFile, type RequestUrlParam, requestUrl } from "../deps.ts";
+import { normalizePath, Platform, TAbstractFile, type RequestUrlParam, requestUrl } from "@/deps.ts";
 import {
     path2id_base,
     id2path_base,
@@ -7,9 +7,9 @@ import {
     isValidFilenameInWidows,
     isValidFilenameInAndroid,
     stripAllPrefixes,
-} from "../lib/src/string_and_binary/path.ts";
+} from "@lib/string_and_binary/path.ts";
 
-import { Logger } from "../lib/src/common/logger.ts";
+import { Logger } from "@lib/common/logger.ts";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -22,14 +22,14 @@ import {
     type FilePathWithPrefix,
     type UXFileInfo,
     type UXFileInfoStub,
-} from "../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 export { ICHeader, ICXHeader } from "./types.ts";
-import { writeString } from "../lib/src/string_and_binary/convert.ts";
+import { writeString } from "@lib/string_and_binary/convert.ts";
 import { sameChangePairs } from "./stores.ts";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
-import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
+import { AuthorizationHeaderGenerator } from "@lib/replication/httplib.ts";
+import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase.ts";
 
 export { scheduleTask, cancelTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 

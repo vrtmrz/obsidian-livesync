@@ -1,18 +1,18 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "@/common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { type TFile } from "../../deps.ts";
+import { type TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import { type FilePathWithPrefix } from "@lib/common/types.ts";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "../../lib/src/mock_and_interop/stores.ts";
-import type { LiveSyncCore } from "../../main.ts";
+} from "@lib/mock_and_interop/stores.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {

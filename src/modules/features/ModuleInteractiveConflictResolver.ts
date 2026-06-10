@@ -8,13 +8,13 @@ import {
     type DocumentID,
     type FilePathWithPrefix,
     type diff_result,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { displayRev } from "../../common/utils.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { displayRev } from "@/common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {

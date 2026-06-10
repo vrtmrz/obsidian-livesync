@@ -1,5 +1,5 @@
-import { type PluginManifest, TFile } from "../deps.ts";
-import { type DatabaseEntry, type EntryBody, type FilePath } from "../lib/src/common/types.ts";
+import { type PluginManifest, TFile } from "@/deps.ts";
+import { type DatabaseEntry, type EntryBody, type FilePath } from "@lib/common/types.ts";
 export type { CacheData, FileEventItem } from "../lib/src/common/types.ts";
 
 export interface PluginDataEntry extends DatabaseEntry {

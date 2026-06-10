@@ -9,7 +9,7 @@ import {
     confirmWithMessageWithWideButton,
     askSelectString,
     confirmWithMessage,
-} from "../coreObsidian/UILib/dialogs";
+} from "@/modules/coreObsidian/UILib/dialogs";
 
 export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
     private _context: T;

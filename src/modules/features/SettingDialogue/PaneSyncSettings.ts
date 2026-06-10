@@ -1,13 +1,8 @@
-import {
-    type ObsidianLiveSyncSettings,
-    LOG_LEVEL_NOTICE,
-    REMOTE_COUCHDB,
-    LEVEL_ADVANCED,
-} from "../../../lib/src/common/types.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@lib/common/types.ts";
+import { Logger } from "@lib/common/logger.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "../../../common/events.ts";
+import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";

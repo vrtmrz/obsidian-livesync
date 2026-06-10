@@ -1,5 +1,5 @@
-import { MarkdownRenderer } from "../../../deps.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { MarkdownRenderer } from "@/deps.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
@@ -7,13 +7,13 @@ import {
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
-} from "../../../common/events.ts";
+} from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { DEFAULT_SETTINGS } from "../../../lib/src/common/types.ts";
+import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "../SetupManager.ts";
+import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

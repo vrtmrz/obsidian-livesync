@@ -2,8 +2,8 @@ import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-w
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
 import { FlagFilesHumanReadable, FlagFilesOriginal } from "@lib/common/models/redflag.const";
-import FetchEverything from "../modules/features/SetupWizard/dialogs/FetchEverything.svelte";
-import RebuildEverything from "../modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
+import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
+import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";

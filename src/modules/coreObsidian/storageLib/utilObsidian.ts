@@ -1,10 +1,10 @@
 // Obsidian to LiveSync Utils
 
-import { TFile, type TAbstractFile, type TFolder } from "../../../deps.ts";
-import { ICHeader } from "../../../common/types.ts";
-import { addPrefix, isPlainText } from "../../../lib/src/string_and_binary/path.ts";
+import { TFile, type TAbstractFile, type TFolder } from "@/deps.ts";
+import { ICHeader } from "@/common/types.ts";
+import { addPrefix, isPlainText } from "@lib/string_and_binary/path.ts";
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import { createBlob } from "../../../lib/src/common/utils.ts";
+import { createBlob } from "@lib/common/utils.ts";
 import type {
     FilePath,
     FilePathWithPrefix,
@@ -12,8 +12,8 @@ import type {
     UXFileInfoStub,
     UXFolderInfo,
     UXInternalFileInfoStub,
-} from "../../../lib/src/common/types.ts";
-import type { LiveSyncCore } from "../../../main.ts";
+} from "@lib/common/types.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import type { FileAccessObsidian } from "@/serviceModules/FileAccessObsidian.ts";
 
 export async function TFileToUXFileInfo(

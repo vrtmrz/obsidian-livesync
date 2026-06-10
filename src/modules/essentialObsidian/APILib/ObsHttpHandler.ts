@@ -8,7 +8,7 @@ import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/prot
 //@ts-ignore
 import { requestTimeout } from "@smithy/fetch-http-handler/dist-es/request-timeout";
 import { buildQueryString } from "@smithy/querystring-builder";
-import { requestUrl, type RequestUrlParam } from "../../../deps.ts";
+import { requestUrl, type RequestUrlParam } from "@/deps.ts";
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl
 ////////////////////////////////////////////////////////////////////////////////
