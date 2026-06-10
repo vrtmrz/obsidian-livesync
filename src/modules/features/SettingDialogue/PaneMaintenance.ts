@@ -1,6 +1,6 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "@lib/common/logger.ts";
-import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@lib/common/types.ts";
+import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@lib/common/models/redflag.const";
 import { fireAndForget } from "@lib/common/utils.ts";
 import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";

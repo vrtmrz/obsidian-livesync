@@ -9,28 +9,14 @@ import {
     Platform,
     addIcon,
 } from "@/deps.ts";
-
-import type {
-    EntryDoc,
-    LoadedEntry,
-    InternalFileEntry,
-    FilePathWithPrefix,
-    FilePath,
-    AnyEntry,
-    SavingEntry,
-    diff_result,
-} from "@lib/common/types.ts";
-import {
-    CANCELLED,
-    LEAVE_TO_SUBSEQUENT,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    MODE_SELECTIVE,
-    MODE_SHINY,
-} from "@lib/common/types.ts";
-import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
+import type { EntryDoc } from "@lib/common/models/db.definition";
+import type { LoadedEntry, InternalFileEntry, FilePathWithPrefix, FilePath, AnyEntry, SavingEntry } from "@lib/common/models/db.type";
+import type { diff_result } from "@lib/common/models/diff.definition";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT } from "@lib/common/models/shared.const.symbols";
+import { MODE_SELECTIVE, MODE_SHINY } from "@lib/common/models/setting.const";
+import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
+import { ICXHeader } from "@lib/common/models/fileaccess.const";
+import { PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
     createBlob,
     createSavingEntryFromLoadedEntry,

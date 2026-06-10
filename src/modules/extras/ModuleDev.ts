@@ -6,7 +6,7 @@ import { eventHub } from "@/common/events";
 import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
-import type { FilePathWithPrefix } from "@lib/common/types.ts";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import type { LiveSyncCore } from "@/main.ts";
 export class ModuleDev extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {

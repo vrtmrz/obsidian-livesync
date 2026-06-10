@@ -4,7 +4,7 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/log
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { type TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,

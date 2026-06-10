@@ -1,4 +1,7 @@
-import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@lib/common/types.ts";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { REMOTE_COUCHDB } from "@lib/common/models/setting.const";
+import { LEVEL_ADVANCED } from "@lib/common/models/shared.definition.configNames";
+import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";

@@ -1,12 +1,8 @@
 import { computed, reactive, reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
-import {
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_VERBOSE,
-    PREFIXMD_LOGFILE,
-    type DatabaseConnectingStatus,
-    type LOG_LEVEL,
-} from "@lib/common/types.ts";
+import { PREFIXMD_LOGFILE } from "@lib/common/models/redflag.const";
+import type { DatabaseConnectingStatus } from "@lib/common/models/shared.definition";
+import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
+import type { LOG_LEVEL } from "@lib/common/logger";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
 import { fireAndForget, isDirty, throttle } from "@lib/common/utils.ts";
 import {

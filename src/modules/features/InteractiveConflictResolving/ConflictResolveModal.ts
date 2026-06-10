@@ -1,6 +1,7 @@
 import { App, Modal } from "@/deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@lib/common/types.ts";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT } from "@lib/common/models/shared.const.symbols";
+import type { diff_result } from "@lib/common/models/diff.definition";
 import { delay } from "@lib/common/utils.ts";
 import { eventHub } from "@/common/events.ts";
 import { globalSlipBoard } from "@lib/bureau/bureau.ts";

@@ -8,7 +8,8 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@lib/common/types.ts";
+import type { ConfigurationItem } from "@lib/common/models/shared.definition.configNames";
+import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay } from "@lib/common/models/shared.definition.configNames";
 import { createStub, type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,

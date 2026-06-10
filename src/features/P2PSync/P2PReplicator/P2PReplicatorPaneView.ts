@@ -5,7 +5,8 @@ import { SvelteItemView } from "@/common/SvelteItemView.ts";
 import { eventHub } from "@/common/events.ts";
 
 import { unique } from "octagonal-wheels/collection";
-import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@lib/common/types.ts";
+import { REMOTE_P2P } from "@lib/common/models/setting.const";
+import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";

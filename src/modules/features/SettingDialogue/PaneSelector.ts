@@ -1,4 +1,5 @@
-import { LEVEL_ADVANCED, type CustomRegExpSource } from "@lib/common/types.ts";
+import { LEVEL_ADVANCED } from "@lib/common/models/shared.definition.configNames";
+import type { CustomRegExpSource } from "@lib/common/models/shared.type.util";
 import { constructCustomRegExpList, splitCustomRegExpList } from "@lib/common/utils.ts";
 import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";

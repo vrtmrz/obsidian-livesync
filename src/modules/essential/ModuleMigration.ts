@@ -11,7 +11,7 @@ import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { performDoctorConsultation, RebuildOptions } from "@lib/common/configForDoc.ts";
 import { isValidPath } from "@/common/utils.ts";
-import { isMetaEntry } from "@lib/common/types.ts";
+import { isMetaEntry } from "@lib/common/models/db.definition";
 import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@lib/common/utils.ts";
 import { countCompromisedChunks } from "@lib/pouchdb/negotiation.ts";
 import type { LiveSyncCore } from "@/main.ts";

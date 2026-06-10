@@ -1,12 +1,5 @@
-import {
-    type FilePathWithPrefix,
-    type DocumentID,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    type LoadedEntry,
-    type MetaEntry,
-    type FilePath,
-} from "@lib/common/types.ts";
+import type { FilePathWithPrefix, DocumentID, LoadedEntry, MetaEntry, FilePath } from "@lib/common/models/db.type";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
@@ -20,7 +13,7 @@ import {
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
 } from "@/common/events.ts";
-import { ICHeader, ICXHeader, PSCHeader } from "@/common/types.ts";
+import { ICHeader, ICXHeader, PSCHeader } from "@lib/common/models/fileaccess.const";
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";

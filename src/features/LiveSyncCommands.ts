@@ -1,13 +1,7 @@
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import {
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    type AnyEntry,
-    type DocumentID,
-    type FilePath,
-    type FilePathWithPrefix,
-    type LOG_LEVEL,
-} from "@lib/common/types.ts";
+import type { AnyEntry, DocumentID, FilePath, FilePathWithPrefix } from "@lib/common/models/db.type";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE } from "@lib/common/logger";
+import type { LOG_LEVEL } from "@lib/common/logger";
 import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "@/main.ts";

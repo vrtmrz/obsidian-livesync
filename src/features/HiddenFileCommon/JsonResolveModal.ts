@@ -1,5 +1,5 @@
 import { App, Modal } from "@/deps.ts";
-import { type FilePath, type LoadedEntry } from "@lib/common/types.ts";
+import type { FilePath, LoadedEntry } from "@lib/common/models/db.type";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 import { waitForSignal } from "@lib/common/utils.ts";
 import { mount, unmount } from "svelte";

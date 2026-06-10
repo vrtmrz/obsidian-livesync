@@ -1,18 +1,10 @@
 import { App, PluginSettingTab } from "@/deps.ts";
-import {
-    type ObsidianLiveSyncSettings,
-    type RemoteDBSettings,
-    LOG_LEVEL_NOTICE,
-    FLAGMD_REDFLAG2_HR,
-    FLAGMD_REDFLAG3_HR,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    type ConfigLevel,
-    LEVEL_POWER_USER,
-    LEVEL_ADVANCED,
-    LEVEL_EDGE_CASE,
-    REMOTE_P2P,
-} from "@lib/common/types.ts";
+import type { ObsidianLiveSyncSettings, RemoteDBSettings } from "@lib/common/models/setting.type";
+import { FLAGMD_REDFLAG2_HR, FLAGMD_REDFLAG3_HR } from "@lib/common/models/redflag.const";
+import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
+import type { ConfigLevel } from "@lib/common/models/shared.definition.configNames";
+import { LEVEL_POWER_USER, LEVEL_ADVANCED, LEVEL_EDGE_CASE } from "@lib/common/models/shared.definition.configNames";
+import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
 import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
 import { Logger } from "@lib/common/logger.ts";

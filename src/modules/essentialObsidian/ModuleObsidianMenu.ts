@@ -1,6 +1,6 @@
 import { type Editor, type MarkdownFileInfo, type MarkdownView } from "@/deps.ts";
 import { addIcon } from "@/deps.ts";
-import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import { $msg } from "@lib/common/i18n.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";

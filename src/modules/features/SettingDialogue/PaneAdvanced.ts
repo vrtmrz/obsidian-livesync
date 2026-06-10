@@ -1,4 +1,4 @@
-import { ChunkAlgorithmNames } from "@lib/common/types.ts";
+import { ChunkAlgorithmNames } from "@lib/common/models/setting.const";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";

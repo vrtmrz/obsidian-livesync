@@ -1,17 +1,14 @@
-import {
-    E2EEAlgorithmNames,
-    E2EEAlgorithms,
-    type HashAlgorithm,
-    LOG_LEVEL_NOTICE,
-    SuffixDatabaseName,
-} from "@lib/common/types.ts";
+import { E2EEAlgorithmNames, E2EEAlgorithms } from "@lib/common/models/setting.const";
+import type { HashAlgorithm } from "@lib/common/models/setting.type";
+import { SuffixDatabaseName } from "@lib/common/models/shared.const";
+import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
-import { ExtraSuffixIndexedDB } from "@lib/common/types.ts";
+import { ExtraSuffixIndexedDB } from "@lib/common/models/shared.const";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {

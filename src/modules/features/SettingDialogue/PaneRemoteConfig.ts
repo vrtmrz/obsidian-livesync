@@ -1,12 +1,7 @@
-import {
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    REMOTE_P2P,
-    DEFAULT_SETTINGS,
-    LOG_LEVEL_NOTICE,
-    type ObsidianLiveSyncSettings,
-    LOG_LEVEL_VERBOSE,
-} from "@lib/common/types.ts";
+import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { Menu, ButtonComponent } from "@/deps.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -22,7 +17,7 @@ import {
     getCouchDBConfigSummary,
     getE2EEConfigSummary,
 } from "./settingUtils.ts";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types.ts";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/models/shared.const";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
 import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";

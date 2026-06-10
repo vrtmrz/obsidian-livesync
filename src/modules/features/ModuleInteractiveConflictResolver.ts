@@ -1,14 +1,7 @@
-import {
-    CANCELLED,
-    LEAVE_TO_SUBSEQUENT,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    MISSING_OR_ERROR,
-    type DocumentID,
-    type FilePathWithPrefix,
-    type diff_result,
-} from "@lib/common/types.ts";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT, MISSING_OR_ERROR } from "@lib/common/models/shared.const.symbols";
+import type { DocumentID, FilePathWithPrefix } from "@lib/common/models/db.type";
+import type { diff_result } from "@lib/common/models/diff.definition";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { displayRev } from "@/common/utils.ts";

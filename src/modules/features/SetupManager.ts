@@ -1,16 +1,7 @@
-import {
-    type BucketSyncSetting,
-    type CouchDBConnection,
-    type EncryptionSettings,
-    type ObsidianLiveSyncSettings,
-    type P2PSyncSetting,
-    DEFAULT_SETTINGS,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    REMOTE_P2P,
-} from "@lib/common/types.ts";
+import type { BucketSyncSetting, CouchDBConnection, EncryptionSettings, ObsidianLiveSyncSettings, P2PSyncSetting } from "@lib/common/models/setting.type";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { isObjectDifferent } from "@lib/common/utils.ts";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";

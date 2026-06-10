@@ -1,22 +1,10 @@
 import { type PluginManifest, type ListedFiles } from "@/deps.ts";
-import {
-    type LoadedEntry,
-    type FilePathWithPrefix,
-    type FilePath,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    MODE_SELECTIVE,
-    MODE_PAUSED,
-    type SavingEntry,
-    type DocumentID,
-    type UXFileInfo,
-    type UXStat,
-    LOG_LEVEL_DEBUG,
-    type MetaEntry,
-    type UXDataWriteOptions,
-} from "@lib/common/types.ts";
-import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
+import type { LoadedEntry, FilePathWithPrefix, FilePath, SavingEntry, DocumentID, MetaEntry } from "@lib/common/models/db.type";
+import { MODE_SELECTIVE, MODE_PAUSED } from "@lib/common/models/setting.const";
+import type { UXFileInfo, UXStat, UXDataWriteOptions } from "@lib/common/models/fileaccess.type";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, LOG_LEVEL_DEBUG } from "@lib/common/logger";
+import { ICHeader, ICHeaderEnd } from "@lib/common/models/fileaccess.const";
+import { type InternalFileInfo } from "@/common/types.ts";
 import {
     readAsBlob,
     isDocContentSame,

@@ -2,14 +2,8 @@ import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_pat
 import { getPathFromTFile, isValidPath } from "@/common/utils.ts";
 import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
 import ObsidianLiveSyncPlugin from "@/main.ts";
-import {
-    type DocumentID,
-    type FilePathWithPrefix,
-    type LoadedEntry,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-} from "@lib/common/types.ts";
+import type { DocumentID, FilePathWithPrefix, LoadedEntry } from "@lib/common/models/db.type";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { isErrorOfMissingDoc } from "@lib/pouchdb/utils_couchdb.ts";
 import { fireAndForget, getDocData, readContent } from "@lib/common/utils.ts";

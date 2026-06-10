@@ -1,5 +1,4 @@
-import { type FilePath } from "./lib/src/common/types.ts";
-
+import type { FilePath } from "@lib/common/models/db.type";
 export {
     addIcon,
     App,

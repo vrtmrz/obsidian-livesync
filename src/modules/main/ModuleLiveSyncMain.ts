@@ -1,5 +1,7 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
+import { VER } from "@lib/common/models/shared.const.behabiour";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,

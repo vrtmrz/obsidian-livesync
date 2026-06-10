@@ -10,19 +10,10 @@ import {
 } from "@lib/string_and_binary/path.ts";
 
 import { Logger } from "@lib/common/logger.ts";
-import {
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    type AnyEntry,
-    type CouchDBCredentials,
-    type DocumentID,
-    type EntryHasPath,
-    type FilePath,
-    type FilePathWithPrefix,
-    type UXFileInfo,
-    type UXFileInfoStub,
-} from "@lib/common/types.ts";
+import type { AnyEntry, DocumentID, EntryHasPath, FilePath, FilePathWithPrefix } from "@lib/common/models/db.type";
+import type { CouchDBCredentials } from "@lib/common/models/auth.type";
+import type { UXFileInfo, UXFileInfoStub } from "@lib/common/models/fileaccess.type";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 export { ICHeader, ICXHeader } from "./types.ts";
 import { writeString } from "@lib/string_and_binary/convert.ts";
 import { sameChangePairs } from "./stores.ts";
