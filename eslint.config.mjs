@@ -132,10 +132,12 @@ export default defineConfig([
     {
         files: ["**/*.svelte"],
         languageOptions: {
+            globals: { ...globals.browser, PouchDB: "readonly" },
             parser: svelteParser,
             parserOptions: {
                 parser: tsParser,
                 extraFileExtensions: [".svelte"],
+                project: "./tsconfig.json",
             },
         },
         rules: {

@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
-
+import fs from "node:fs";
 try {
+    fs.rmSync("./_types", { recursive: true, force: true });
     console.log("[Postbuild] Generating type definitions for fallback...");
     execSync("npx tsc -p tsconfig.types.json", { stdio: "inherit" });
     console.log("[Postbuild] Type definitions generated successfully.");

@@ -93,7 +93,7 @@ export declare class TrysteroReplicatorP2PServer {
     _acceptablePeers: Computed<[settings: P2PSyncSetting], RegExp[]>;
     _shouldDenyPeers: Computed<[settings: P2PSyncSetting], RegExp[]>;
     isAcceptablePeer(peerId: string): Promise<boolean | undefined>;
-    __send(data: Payload, peerId: string): Promise<void[] | undefined>;
+    __send(data: Payload, peerId: string): Promise<any>;
     processArrivedRPC(data: Payload, peerId: string): Promise<void>;
     private _onPeerJoin;
     private _onPeerLeave;
