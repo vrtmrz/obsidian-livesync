@@ -10,7 +10,7 @@ import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { Logger } from "@lib/common/logger.ts";
 import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@/lib/src/replication/trystero/UseP2PReplicatorResult";
+import type { P2PPaneParams } from "@lib/replication/trystero/UseP2PReplicatorResult";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {

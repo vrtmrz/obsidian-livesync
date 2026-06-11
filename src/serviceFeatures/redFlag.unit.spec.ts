@@ -20,12 +20,12 @@ import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-} from "@/lib/src/common/types";
+} from "@lib/common/types";
 import {
     ExtraOnLocal,
     FullScanModes,
     synchroniseAllFilesBetweenDBandStorage,
-} from "@/lib/src/serviceFeatures/offlineScanner";
+} from "@lib/serviceFeatures/offlineScanner";
 import {
     SIMPLE_FETCH_STAGE1_LEGACY,
     SIMPLE_FETCH_STAGE1_NEWER_WINS,
@@ -40,7 +40,7 @@ import {
 } from "./redFlag.simpleFetch";
 import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
 //Mock synchroniseAllFilesBetweenDBandStorage
-vi.mock("@/lib/src/serviceFeatures/offlineScanner", async (importOriginal) => {
+vi.mock("@lib/serviceFeatures/offlineScanner", async (importOriginal) => {
     const originalModule = (await importOriginal()) as any;
     return {
         ...originalModule,

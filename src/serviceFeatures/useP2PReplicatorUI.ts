@@ -1,8 +1,8 @@
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { type UseP2PReplicatorResult } from "@/lib/src/replication/trystero/UseP2PReplicatorResult";
-import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector";
+import { type UseP2PReplicatorResult } from "@lib/replication/trystero/UseP2PReplicatorResult";
+import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector";
 import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView";
 import {
     P2PServerStatusPaneView,

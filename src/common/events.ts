@@ -43,5 +43,5 @@ declare global {
     }
 }
 
-export * from "../lib/src/events/coreEvents.ts";
+export * from "@lib/events/coreEvents.ts";
 export { eventHub };

@@ -1,10 +1,5 @@
-import { DoctorRegulation } from "@/lib/src/common/configForDoc";
-import {
-    DEFAULT_SETTINGS,
-    ChunkAlgorithms,
-    AutoAccepting,
-    type ObsidianLiveSyncSettings,
-} from "@/lib/src/common/types";
+import { DoctorRegulation } from "@lib/common/configForDoc";
+import { DEFAULT_SETTINGS, ChunkAlgorithms, AutoAccepting, type ObsidianLiveSyncSettings } from "@lib/common/types";
 export const env = (import.meta as any).env;
 export const settingBase = {
     ...DEFAULT_SETTINGS,

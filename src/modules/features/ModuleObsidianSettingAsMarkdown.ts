@@ -1,4 +1,3 @@
-// import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";

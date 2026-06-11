@@ -17,7 +17,7 @@ import {
     RemoteTypes,
     type ObsidianLiveSyncSettings,
     AutoAccepting,
-} from "@/lib/src/common/types";
+} from "@lib/common/types";
 import {
     DummyFileSourceInisialised,
     FILE_SIZE_BINS,
@@ -26,7 +26,7 @@ import {
     generateFile,
 } from "../utils/dummyfile";
 import { checkStoredFileInDB, defaultFileOption, testFileWrite } from "../suite/db_common";
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@lib/common/utils";
 import { closeReplication, performReplication } from "./sync_common_p2p";
 import { settingBase } from "../suite/variables";
 

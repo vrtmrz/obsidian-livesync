@@ -1,4 +1,4 @@
-import { compatGlobal } from "@/lib/src/common/coreEnvFunctions";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 import { type ObsidianLiveSyncSettings } from "@lib/common/types";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
 import { eventHub } from "@lib/hub/hub";

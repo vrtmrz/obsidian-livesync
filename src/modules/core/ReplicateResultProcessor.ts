@@ -8,7 +8,7 @@ import {
     type MetaEntry,
 } from "@lib/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
-import { isChunk } from "@/lib/src/common/typeUtils";
+import { isChunk } from "@lib/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,

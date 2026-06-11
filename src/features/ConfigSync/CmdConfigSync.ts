@@ -60,7 +60,7 @@ import { ConflictResolveModal } from "@/modules/features/InteractiveConflictReso
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import type { PluginDialogModal } from "./PluginDialogModal.ts";
-import { $msg } from "@/lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";

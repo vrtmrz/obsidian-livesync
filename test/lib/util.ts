@@ -1,4 +1,4 @@
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@lib/common/utils";
 
 export async function waitTaskWithFollowups<T>(
     task: Promise<T>,

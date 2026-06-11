@@ -1,7 +1,7 @@
 import { type PluginManifest, TFile } from "@/deps.ts";
 import type { DatabaseEntry, FilePath } from "@lib/common/models/db.type";
 import type { EntryBody } from "@lib/common/models/db.definition";
-export type { CacheData, FileEventItem } from "../lib/src/common/types.ts";
+export type { CacheData, FileEventItem } from "@lib/common/types.ts";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;
@@ -52,7 +52,7 @@ export type queueItem = {
 
 export const FileWatchEventQueueMax = 10;
 
-export { configURIBase, configURIBaseQR } from "../lib/src/common/types.ts";
+export { configURIBase, configURIBaseQR } from "@lib/common/types.ts";
 
 export {
     CHeader,
@@ -62,4 +62,4 @@ export {
     ICHeaderEnd,
     ICHeaderLength,
     ICXHeader,
-} from "../lib/src/common/models/fileaccess.const.ts";
+} from "@lib/common/models/fileaccess.const.ts";

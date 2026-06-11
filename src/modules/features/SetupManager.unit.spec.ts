@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "../../lib/src/common/types";
-import { SettingService } from "../../lib/src/services/base/SettingService";
-import { ServiceContext } from "../../lib/src/services/base/ServiceBase";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { SettingService } from "@lib/services/base/SettingService";
+import { ServiceContext } from "@lib/services/base/ServiceBase";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -17,11 +17,11 @@ vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }
 vi.mock("./SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 
-vi.mock("../../lib/src/API/processSetting.ts", () => ({
+vi.mock("@lib/API/processSetting.ts", () => ({
     decodeSettingsFromQRCodeData: vi.fn(),
 }));
 
-import { decodeSettingsFromQRCodeData } from "../../lib/src/API/processSetting.ts";
+import { decodeSettingsFromQRCodeData } from "@lib/API/processSetting.ts";
 import { SetupManager, UserMode } from "./SetupManager";
 
 class TestSettingService extends SettingService<ServiceContext> {

@@ -570,7 +570,7 @@ Offline Changed files: ${processFiles.length}`;
                     this._log(`Hidden file:${path} is changed.`, LOG_LEVEL_VERBOSE);
                     stat = cache.stat;
                 }
-                this.updateLastProcessedFile(path, stat!);
+                this.updateLastProcessedFile(path, stat ?? this.statToKey(null));
                 const lastIsNotFound = !lastKey || lastKey.endsWith("-0-0");
                 const nowIsNotFound = cache.deleted;
                 const type = lastIsNotFound && nowIsNotFound ? "invalid" : nowIsNotFound ? "delete" : "modified";

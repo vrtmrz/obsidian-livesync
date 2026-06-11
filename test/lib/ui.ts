@@ -1,5 +1,5 @@
 import { page } from "vitest/browser";
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@lib/common/utils";
 
 export async function waitForDialogShown(dialogText: string, timeout = 500) {
     const ttl = Date.now() + timeout;

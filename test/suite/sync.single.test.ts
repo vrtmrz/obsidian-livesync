@@ -7,7 +7,7 @@ import {
     PREFERRED_SETTING_SELF_HOSTED,
     RemoteTypes,
     type ObsidianLiveSyncSettings,
-} from "@/lib/src/common/types";
+} from "@lib/common/types";
 
 import { defaultFileOption } from "./db_common";
 import { syncBasicCase } from "./sync.senario.basic.ts";

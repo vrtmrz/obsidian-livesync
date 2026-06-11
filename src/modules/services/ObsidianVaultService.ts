@@ -1,7 +1,7 @@
 import { getPathFromTFile, isValidPath } from "@/common/utils";
-import { InjectableVaultService } from "@/lib/src/services/implements/injectable/InjectableVaultService";
-import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
-import type { FilePath } from "@/lib/src/common/types";
+import { InjectableVaultService } from "@lib/services/implements/injectable/InjectableVaultService";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import type { FilePath } from "@lib/common/types";
 
 declare module "obsidian" {
     interface DataAdapter {

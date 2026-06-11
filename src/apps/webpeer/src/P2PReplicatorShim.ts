@@ -28,8 +28,8 @@ import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices";
 import { Menu } from "@lib/services/implements/browser/Menu";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
-import type { BrowserAPIService } from "@/lib/src/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
+import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 
 function addToList(item: string, list: string) {

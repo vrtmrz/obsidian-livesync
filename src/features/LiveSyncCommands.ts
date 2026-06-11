@@ -6,7 +6,7 @@ import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { __$checkInstanceBinding } from "@lib/dev/checks.ts";
-import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils.ts";
+import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {

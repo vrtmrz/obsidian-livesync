@@ -1,6 +1,5 @@
 import { ObsidianLiveSyncSettingTab } from "./SettingDialogue/ObsidianLiveSyncSettingTab.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
-// import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { EVENT_REQUEST_OPEN_SETTING_WIZARD, EVENT_REQUEST_OPEN_SETTINGS, eventHub } from "@/common/events.ts";
 import type { LiveSyncCore } from "@/main.ts";
 

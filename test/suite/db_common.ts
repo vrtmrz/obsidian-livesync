@@ -1,7 +1,7 @@
 import { compareMTime } from "@lib/common/utils.database";
 import { EVEN } from "@/common/utils";
 import { TFile, type DataWriteOptions } from "@/deps";
-import type { FilePath } from "@/lib/src/common/types";
+import type { FilePath } from "@lib/common/types";
 import { isDocContentSame, readContent } from "@lib/common/utils.database";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
 import { expect } from "vitest";

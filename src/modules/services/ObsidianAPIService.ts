@@ -5,7 +5,7 @@ import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandle
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
-import { compatGlobal } from "@/lib/src/common/coreEnvFunctions";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
