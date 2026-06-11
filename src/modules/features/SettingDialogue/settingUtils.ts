@@ -1,5 +1,7 @@
 import { escapeStringToHTML } from "octagonal-wheels/string";
-import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { E2EEAlgorithmNames } from "@lib/common/models/setting.const";
+import { MILESTONE_DOCID, NODEINFO_DOCID } from "@lib/common/models/db.const";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import {
     pickCouchDBSyncSettings,
     pickBucketSyncSettings,

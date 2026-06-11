@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type RemoteDBSettings, type TweakValues } from "@lib/common/types";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import { REMOTE_COUCHDB } from "@lib/common/models/setting.const";
+import type { RemoteDBSettings } from "@lib/common/models/setting.type";
+import type { TweakValues } from "@lib/common/models/tweak.definition";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {

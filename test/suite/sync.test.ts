@@ -2,13 +2,9 @@
 // This test suite only covers main functional cases of synchronisation. Event handling, error cases,
 // and edge, resolving conflicts, etc. will be covered in separate test suites.
 import { describe } from "vitest";
-import {
-    PREFERRED_JOURNAL_SYNC,
-    PREFERRED_SETTING_SELF_HOSTED,
-    RemoteTypes,
-    type ObsidianLiveSyncSettings,
-} from "@lib/common/types";
-
+import { PREFERRED_JOURNAL_SYNC, PREFERRED_SETTING_SELF_HOSTED } from "@lib/common/models/setting.const.preferred";
+import { RemoteTypes } from "@lib/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { defaultFileOption } from "./db_common";
 import { syncBasicCase } from "./sync.senario.basic.ts";
 import { settingBase } from "./variables.ts";

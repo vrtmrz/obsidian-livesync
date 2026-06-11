@@ -1,7 +1,9 @@
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { parseYaml, stringifyYaml } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";

@@ -1,4 +1,5 @@
-import { REMOTE_MINIO, type RemoteDBSettings } from "@lib/common/types";
+import { REMOTE_MINIO } from "@lib/common/models/setting.const";
+import type { RemoteDBSettings } from "@lib/common/models/setting.type";
 import { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import type { LiveSyncCore } from "@/main";

@@ -1,5 +1,6 @@
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@lib/common/types";
+import { LOG_LEVEL_NOTICE } from "@lib/common/logger";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";

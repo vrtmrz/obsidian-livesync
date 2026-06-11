@@ -1,16 +1,9 @@
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import {
-    AUTO_MERGED,
-    CANCELLED,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    MISSING_OR_ERROR,
-    NOT_CONFLICTED,
-    type diff_check_result,
-    type FilePathWithPrefix,
-} from "@lib/common/types";
+import { AUTO_MERGED, CANCELLED, MISSING_OR_ERROR, NOT_CONFLICTED } from "@lib/common/models/shared.const.symbols";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
+import type { diff_check_result } from "@lib/common/models/diff.definition";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
 import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
 import { compareMTime } from "@lib/common/utils.database.ts";

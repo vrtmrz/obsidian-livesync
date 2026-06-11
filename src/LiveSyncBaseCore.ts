@@ -1,7 +1,8 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@lib/common/types";
+import type { HasSettings, ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import type { EntryDoc } from "@lib/common/models/db.definition";
 import { __$checkInstanceBinding } from "@lib/dev/checks";
 import type { Confirm } from "@lib/interfaces/Confirm";
 import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";

@@ -1,7 +1,7 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
 import { $msg } from "@lib/common/i18n";
 import { Logger } from "@lib/common/logger";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { parseHeaderValues } from "@lib/common/utils.misc";
 import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "@lib/replication/httplib";

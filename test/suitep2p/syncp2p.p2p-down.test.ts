@@ -9,13 +9,11 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, test } from "vitest";
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import {
-    PREFERRED_SETTING_SELF_HOSTED,
-    RemoteTypes,
-    type FilePath,
-    type ObsidianLiveSyncSettings,
-    AutoAccepting,
-} from "@lib/common/types";
+import { PREFERRED_SETTING_SELF_HOSTED } from "@lib/common/models/setting.const.preferred";
+import { RemoteTypes } from "@lib/common/models/setting.const";
+import type { FilePath } from "@lib/common/models/db.type";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { AutoAccepting } from "@lib/common/models/setting.type";
 import { DummyFileSourceInisialised, generateBinaryFile, generateFile } from "../utils/dummyfile";
 import { defaultFileOption, testFileRead } from "../suite/db_common";
 import { delay } from "@lib/common/utils";

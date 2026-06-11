@@ -1,5 +1,5 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
+import type { AnyEntry, FilePathWithPrefix } from "@lib/common/models/db.type";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";

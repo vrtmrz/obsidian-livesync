@@ -1,15 +1,8 @@
 import { sizeToHumanReadable } from "octagonal-wheels/number";
-import {
-    EntryTypes,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    type DocumentID,
-    type EntryDoc,
-    type EntryLeaf,
-    type FilePathWithPrefix,
-    type MetaEntry,
-} from "@lib/common/types";
+import type { DocumentID, EntryLeaf, FilePathWithPrefix, MetaEntry } from "@lib/common/models/db.type";
+import { EntryTypes } from "@lib/common/models/db.const";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
+import type { EntryDoc } from "@lib/common/models/db.definition";
 import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";

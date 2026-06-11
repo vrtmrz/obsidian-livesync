@@ -1,4 +1,4 @@
-import type { FilePath } from "@lib/common/types";
+import type { FilePath } from "@lib/common/models/db.type";
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { LiveSyncCore } from "@/main";
 import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@lib/managers/StorageEventManager";

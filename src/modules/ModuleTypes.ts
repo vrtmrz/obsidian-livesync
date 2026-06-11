@@ -1,4 +1,4 @@
-import type { Prettify } from "@lib/common/types";
+import type { Prettify } from "@lib/common/models/shared.type.util";
 import type { LiveSyncCore } from "@/main";
 
 export type OverridableFunctionsKeys<T> = {

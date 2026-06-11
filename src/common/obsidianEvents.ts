@@ -1,6 +1,5 @@
 import type { TFile } from "@/deps";
-import type { FilePathWithPrefix, LoadedEntry } from "@lib/common/types";
-
+import type { FilePathWithPrefix, LoadedEntry } from "@lib/common/models/db.type";
 export const EVENT_REQUEST_SHOW_HISTORY = "show-history";
 
 declare global {

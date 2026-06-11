@@ -1,6 +1,7 @@
 import { TFile, TFolder } from "@/deps";
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
-import type { FileEventItem } from "@lib/common/types";
+import type { FilePath } from "@lib/common/models/db.type";
+import type { UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/models/fileaccess.type";
+import type { FileEventItem } from "@lib/common/models/fileaccess.type";
 import type { IStorageEventManagerAdapter } from "@lib/managers/adapters";
 import type {
     IStorageEventTypeGuardAdapter,

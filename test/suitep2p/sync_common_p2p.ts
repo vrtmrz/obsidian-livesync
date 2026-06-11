@@ -7,7 +7,8 @@
  */
 import { expect } from "vitest";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
-import { RemoteTypes, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { RemoteTypes } from "@lib/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { delay } from "@lib/common/utils";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import { waitTaskWithFollowups } from "../lib/util";

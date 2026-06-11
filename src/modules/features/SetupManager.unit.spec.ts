@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import { REMOTE_COUCHDB } from "@lib/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { SettingService } from "@lib/services/base/SettingService";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 

@@ -1,12 +1,7 @@
-import {
-    SYNCINFO_ID,
-    VER,
-    type AnyEntry,
-    type EntryDoc,
-    type EntryLeaf,
-    type LoadedEntry,
-    type MetaEntry,
-} from "@lib/common/types";
+import { SYNCINFO_ID } from "@lib/common/models/db.const";
+import { VER } from "@lib/common/models/shared.const.behabiour";
+import type { AnyEntry, EntryLeaf, LoadedEntry, MetaEntry } from "@lib/common/models/db.type";
+import type { EntryDoc } from "@lib/common/models/db.definition";
 import type { ModuleReplicator } from "./ModuleReplicator";
 import { isChunk } from "@lib/common/typeUtils";
 import {

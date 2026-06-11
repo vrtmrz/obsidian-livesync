@@ -1,4 +1,4 @@
-import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
+import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/models/fileaccess.type";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import { TFileToUXFileInfoStub, TFolderToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian";
 import type { TFile, TFolder } from "obsidian";

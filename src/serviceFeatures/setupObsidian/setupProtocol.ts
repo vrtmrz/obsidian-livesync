@@ -1,4 +1,4 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/types";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import type { LogFunction } from "@lib/services/lib/logUtils";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
 import type { SetupFeatureHost } from "@lib/serviceFeatures/setupObsidian/types";

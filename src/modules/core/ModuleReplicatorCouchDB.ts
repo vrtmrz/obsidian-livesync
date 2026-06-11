@@ -1,5 +1,6 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@lib/common/types";
+import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
+import type { RemoteDBSettings } from "@lib/common/models/setting.type";
 import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "@/modules/AbstractModule";

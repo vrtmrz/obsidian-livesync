@@ -20,7 +20,7 @@ import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-} from "@lib/common/types";
+} from "@lib/common/models/tweak.definition";
 import {
     ExtraOnLocal,
     FullScanModes,

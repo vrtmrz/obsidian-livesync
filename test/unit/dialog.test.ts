@@ -3,8 +3,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { commands } from "vitest/browser";
 
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import { ChunkAlgorithms, DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@lib/common/types";
-
+import { ChunkAlgorithms } from "@lib/common/models/setting.const";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { DummyFileSourceInisialised } from "../utils/dummyfile";
 
 import { page } from "vitest/browser";

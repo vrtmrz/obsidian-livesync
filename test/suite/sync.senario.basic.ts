@@ -3,8 +3,9 @@
 // and edge, resolving conflicts, etc. will be covered in separate test suites.
 import { afterAll, beforeAll, describe, expect, it, test } from "vitest";
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import { RemoteTypes, type FilePath, type ObsidianLiveSyncSettings } from "@lib/common/types";
-
+import { RemoteTypes } from "@lib/common/models/setting.const";
+import type { FilePath } from "@lib/common/models/db.type";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import {
     DummyFileSourceInisialised,
     FILE_SIZE_BINS,

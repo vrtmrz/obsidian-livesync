@@ -6,8 +6,8 @@ import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "@lib/common/types";
-
+import type { EntryDoc } from "@lib/common/models/db.definition";
+import type { RemoteType } from "@lib/common/models/setting.type";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 

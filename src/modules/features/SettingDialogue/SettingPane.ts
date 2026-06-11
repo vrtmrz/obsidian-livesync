@@ -1,5 +1,6 @@
 import { $msg } from "@lib/common/i18n";
-import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "@lib/common/types";
+import type { ConfigLevel } from "@lib/common/models/shared.definition.configNames";
+import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER } from "@lib/common/models/shared.definition.configNames";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {

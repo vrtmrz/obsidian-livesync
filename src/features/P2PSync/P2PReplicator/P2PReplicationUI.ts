@@ -1,6 +1,6 @@
 import { App } from "@/deps.ts";
 import { Logger } from "@lib/common/logger";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/logger";
 import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 

@@ -11,7 +11,9 @@ import {
     compareFileFreshness,
     isMarkedAsSameChanges,
 } from "@/common/utils";
-import type { UXFileInfo, AnyEntry, UXFileInfoStub, FilePathWithPrefix } from "@lib/common/types";
+import type { UXFileInfo, UXFileInfoStub } from "@lib/common/models/fileaccess.type";
+import type { AnyEntry, FilePathWithPrefix } from "@lib/common/models/db.type";
+
 export class ObsidianPathService extends PathService<ObsidianServiceContext> {
     override markChangesAreSame(
         old: UXFileInfo | AnyEntry | FilePathWithPrefix,
