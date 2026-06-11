@@ -2,6 +2,15 @@
 // Use this script by running `deno run --allow-read --allow-write --allow-run refactor-imports.ts` from the utilsdeno directory. It will read all source files, find imports from types.ts, and replace them with the new paths based on the importMap. Make sure to review the changes before saving, as it will modify your source files.
 import { Project } from "npm:ts-morph";
 
+const isDryRun = !Deno.args.includes("--run");
+
+if (isDryRun) {
+    console.log("=== DRY RUN MODE ===");
+    console.log(
+        "To apply changes, run with: deno run --allow-read --allow-write --allow-run refactor-import-utils.ts --run\n"
+    );
+}
+
 const project = new Project({ tsConfigFilePath: "../tsconfig.json" });
 
 const importMap = new Map<string, string>();
@@ -18,7 +27,7 @@ for (const sourceFile of project.getSourceFiles()) {
                     // declaration.getKindName() === "EnumDeclaration" ||
                     true
                 ) {
-                    console.log(`Found type export in ${sourceFile.getFilePath()}:`, name);
+                    // console.log(`Found type export in ${sourceFile.getFilePath()}:`, name);
                     const relativePath = sourceFile.getFilePath().split("src/lib/src/")[1].replace(/\.ts$/, "");
                     importMap.set(name, `@lib/${relativePath}`);
                 }
@@ -36,21 +45,27 @@ importMap.set("LOG_LEVEL_URGENT", "@lib/common/logger");
 importMap.set("LOG_LEVEL", "@lib/common/logger");
 importMap.set("Logger", "@lib/common/logger");
 
-console.log("Import map:", importMap);
+// console.log("Import map:", importMap);
 
 // Loop through all files that import from types.ts.
 for (const sourceFile of project.getSourceFiles()) {
     const imports = sourceFile.getImportDeclarations();
+    // if import from types.ts and the file is pointing `/lib/src/common/types.ts` (resolved), then we will check if the imported names exist in the importMap, if yes, we will replace the import path with the new path from importMap.
 
     for (const imp of imports) {
-        if (
-            imp.getModuleSpecifierValue().includes("types.ts") &&
-            imp.getModuleSpecifierValue().startsWith("@lib/common/")
-        ) {
+        const moduleSpecifier = imp.getModuleSpecifierValue();
+        if (moduleSpecifier.endsWith("types") || moduleSpecifier.endsWith("types.ts")) {
+            const filePath = sourceFile.getFilePath();
+            const lineNumber = imp.getStartLineNumber();
+            const resolvedModule = imp.getModuleSpecifierSourceFile();
+            if (!resolvedModule || !resolvedModule.getFilePath().includes("/lib/src/common/types.ts")) {
+                continue;
+            }
+
             // Collect imports from types.ts.
             const namedImports = imp.getNamedImports();
             const defaultImport = imp.getDefaultImport();
-            console.log(`Found import in ${sourceFile.getFilePath()}:`, {
+            console.log(`Found import in ${filePath} at line ${lineNumber}:`, {
                 namedImports: namedImports.map((ni) => ni.getText()),
                 defaultImport: defaultImport ? defaultImport.getText() : null,
             });
@@ -61,7 +76,7 @@ for (const sourceFile of project.getSourceFiles()) {
                 const newPath = importMap.get(name);
                 if (newPath) {
                     console.log(
-                        `Will replace import of ${name} in ${sourceFile.getFilePath()} with new path:`,
+                        `Will replace import of ${name} in ${filePath} at line ${lineNumber} with new path:`,
                         newPath
                     );
                     if (!importsToReplace[newPath]) {
@@ -112,7 +127,7 @@ for (const sourceFile of project.getSourceFiles()) {
 
                 if (newPath) {
                     console.log(
-                        `Replacing default import of ${name} in ${sourceFile.getFilePath()} with new path:`,
+                        `Replacing default import of ${name} in ${filePath} at line ${lineNumber} with new path:`,
                         newPath
                     );
                     // Add the new import statement.
@@ -134,4 +149,6 @@ for (const sourceFile of project.getSourceFiles()) {
 }
 
 // Save everything at the end.
-project.saveSync();
+if (!isDryRun) {
+    project.saveSync();
+}
