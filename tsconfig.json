@@ -20,7 +20,7 @@
         "strictFunctionTypes": true,
         "paths": {
             "@/*": ["./src/*"],
-            "@lib/*": ["./src/lib/src/*", "./_types/src/lib/src/*"]
+            "@lib/*": ["./src/lib/src/*", "./_types/lib/src/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts"],
