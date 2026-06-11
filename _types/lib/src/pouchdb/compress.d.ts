@@ -1,0 +1,11 @@
+import * as fflate from "fflate";
+import type { EntryDoc } from "@lib/common/models/db.definition";
+export declare function _compressText(text: string): Promise<string>;
+export declare const wrappedInflate: (data: Uint8Array<ArrayBuffer>, opts: fflate.AsyncInflateOptions) => Promise<Uint8Array<ArrayBuffer>>;
+export declare const wrappedDeflate: (data: Uint8Array<ArrayBuffer>, opts: fflate.AsyncDeflateOptions) => Promise<Uint8Array<ArrayBuffer>>;
+export declare function _decompressText(compressed: string, _useUTF16?: boolean): Promise<string>;
+export declare function compressDoc(doc: EntryDoc): Promise<import("../common/types").NoteEntry | import("../common/types").NewEntry | import("../common/types").PlainEntry | import("../common/types").EntryLeaf | import("../common/types").EntryChunkPack | import("../common/types").EntryVersionInfo | import("@lib/common/models/db.definition").EntryMilestoneInfo | import("@lib/common/models/db.definition").EntryNodeInfo>;
+export declare function decompressDoc(doc: EntryDoc): Promise<import("../common/types").NoteEntry | import("../common/types").NewEntry | import("../common/types").PlainEntry | import("../common/types").EntryLeaf | import("../common/types").EntryChunkPack | import("../common/types").EntryVersionInfo | import("@lib/common/models/db.definition").EntryMilestoneInfo | import("@lib/common/models/db.definition").EntryNodeInfo>;
+export declare function wrapFflateFunc<T, U>(func: (data: T, opts: U, cb: fflate.FlateCallback) => any): (data: T, opts: U) => Promise<Uint8Array<ArrayBuffer>>;
+export declare const replicationFilter: (db: PouchDB.Database<EntryDoc>, compress: boolean) => void;
+export declare const MARK_SHIFT_COMPRESSED = "\u000ELZ\u001D";
