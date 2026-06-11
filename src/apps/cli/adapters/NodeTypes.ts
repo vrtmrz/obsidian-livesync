@@ -1,5 +1,5 @@
-import type { FilePath, UXStat } from "@lib/common/types";
-
+import type { FilePath } from "@lib/common/models/db.type";
+import type { UXStat } from "@lib/common/models/fileaccess.type";
 /**
  * Node.js file representation
  */

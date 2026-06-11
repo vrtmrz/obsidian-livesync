@@ -1,8 +1,8 @@
+import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
 import {
     ServiceDatabaseFileAccessBase,
     type ServiceDatabaseFileAccessDependencies,
 } from "@lib/serviceModules/ServiceDatabaseFileAccessBase";
-import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
 
 /**
  * CLI-specific implementation of ServiceDatabaseFileAccess

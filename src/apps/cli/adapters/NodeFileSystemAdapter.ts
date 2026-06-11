@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import type { FilePath, UXStat } from "@lib/common/types";
+import type { FilePath } from "@lib/common/models/db.type";
+import type { UXStat } from "@lib/common/models/fileaccess.type";
 import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
 import { NodePathAdapter } from "./NodePathAdapter";
 import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter";

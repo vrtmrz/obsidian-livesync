@@ -1,5 +1,5 @@
 import * as path from "path";
-import type { FilePath } from "@lib/common/types";
+import type { FilePath } from "@lib/common/models/db.type";
 import type { IPathAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile } from "./NodeTypes";
 

@@ -1,20 +1,20 @@
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
-import type { FileEventItem } from "@lib/common/types";
-import type { IStorageEventManagerAdapter } from "@lib/managers/adapters";
+import type { FilePath } from "@lib/common/models/db.type";
+import type { FileEventItem, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/models/fileaccess.type";
 import type {
-    IStorageEventTypeGuardAdapter,
-    IStorageEventPersistenceAdapter,
-    IStorageEventWatchAdapter,
-    IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
+    IStorageEventManagerAdapter,
+    IStorageEventPersistenceAdapter,
+    IStorageEventStatusAdapter,
+    IStorageEventTypeGuardAdapter,
+    IStorageEventWatchAdapter,
     IStorageEventWatchHandlers,
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
-import type { NodeFile, NodeFolder } from "../adapters/NodeTypes";
+import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { Stats } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { watch as chokidarWatch, type FSWatcher } from "chokidar";
+import type { NodeFile, NodeFolder } from "../adapters/NodeTypes";
 import type { IgnoreRules } from "../serviceModules/IgnoreRules";
 
 /**

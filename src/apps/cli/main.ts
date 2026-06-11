@@ -9,7 +9,10 @@ import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
-import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import type { LOG_LEVEL } from "@lib/common/logger";
+import { LOG_LEVEL_VERBOSE } from "@lib/common/logger";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import {

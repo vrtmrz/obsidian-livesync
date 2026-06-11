@@ -1,15 +1,15 @@
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
-import { ServiceFileHandler } from "../../../serviceModules/FileHandler";
-import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
-import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import { FileAccessCLI } from "./FileAccessCLI";
-import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
-import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
-import { StorageEventManagerCLI } from "../managers/StorageEventManagerCLI";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
+import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
+import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
+import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import { ServiceFileHandler } from "../../../serviceModules/FileHandler";
+import { StorageEventManagerCLI } from "../managers/StorageEventManagerCLI";
+import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
+import { FileAccessCLI } from "./FileAccessCLI";
 import type { IgnoreRules } from "./IgnoreRules";
+import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
 
 /**
  * Initialize service modules for CLI version

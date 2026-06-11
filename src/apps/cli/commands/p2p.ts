@@ -1,8 +1,7 @@
-import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
-import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import { P2P_DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { addP2PEventHandlers } from "@lib/replication/trystero/addP2PEventHandlers";
+import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
 type CLIP2PPeer = {
     peerId: string;
     name: string;

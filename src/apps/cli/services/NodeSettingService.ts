@@ -1,10 +1,10 @@
-import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
 import { eventHub } from "@lib/hub/hub";
-import { handlers } from "@lib/services/lib/HandlerUtils";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { SettingService, type SettingServiceDependencies } from "@lib/services/base/SettingService";
+import { handlers } from "@lib/services/lib/HandlerUtils";
 import {
     configureNodeLocalStorage,
     deleteNodeLocalStorageItem,

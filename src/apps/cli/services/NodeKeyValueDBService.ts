@@ -1,14 +1,13 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
 import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
-import type { IKeyValueDBService } from "@lib/services/base/IService";
+import type { IKeyValueDBService, IVaultService } from "@lib/services/base/IService";
 import { ServiceBase, type ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
 import type { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
-import type { IVaultService } from "@lib/services/base/IService";
-import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
 import * as nodeFs from "node:fs";
 import * as nodePath from "node:path";
+import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";

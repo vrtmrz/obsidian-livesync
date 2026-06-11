@@ -1,11 +1,12 @@
-import * as path from "path";
-import * as fs from "fs/promises";
-import * as os from "os";
 import * as processSetting from "@lib/API/processSetting";
 import { ConnectionStringParser } from "@lib/common/ConnectionString";
+import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
 import { configURIBase } from "@lib/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/types";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
 import * as commandUtils from "./utils";

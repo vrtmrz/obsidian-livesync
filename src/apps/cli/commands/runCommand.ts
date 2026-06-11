@@ -1,23 +1,20 @@
+import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
+import { ConnectionStringParser } from "@lib/common/ConnectionString";
+import { MILESTONE_DOCID } from "@lib/common/models/db.const";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
+import { REMOTE_COUCHDB, REMOTE_MINIO } from "@lib/common/models/setting.const";
+import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { configURIBase } from "@lib/common/models/shared.const";
+import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
+import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
+import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
-import { configURIBase } from "@lib/common/models/shared.const";
-import {
-    DEFAULT_SETTINGS,
-    MILESTONE_DOCID,
-    type FilePathWithPrefix,
-    type ObsidianLiveSyncSettings,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-} from "@lib/common/types";
-import { ConnectionStringParser } from "@lib/common/ConnectionString";
-import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
-import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
-import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
-import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");

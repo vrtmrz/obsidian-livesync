@@ -1,10 +1,11 @@
 import type { AppLifecycleService, AppLifecycleServiceDependencies } from "@lib/services/base/AppLifecycleService";
+import { ControlService } from "@lib/services/base/ControlService";
+import type { IControlService } from "@lib/services/base/IService";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
-import * as nodePath from "node:path";
-import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
 import { SvelteDialogManagerBase, type ComponentHasResult } from "@lib/services/implements/base/SvelteDialog";
 import { UIService } from "@lib/services/implements/base/UIService";
-import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
+import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
+import { HeadlessAPIService } from "@lib/services/implements/headless/HeadlessAPIService";
 import { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
 import { InjectableConflictService } from "@lib/services/implements/injectable/InjectableConflictService";
 import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
@@ -13,18 +14,17 @@ import { PathServiceCompat } from "@lib/services/implements/injectable/Injectabl
 import { InjectableRemoteService } from "@lib/services/implements/injectable/InjectableRemoteService";
 import { InjectableReplicationService } from "@lib/services/implements/injectable/InjectableReplicationService";
 import { InjectableReplicatorService } from "@lib/services/implements/injectable/InjectableReplicatorService";
+import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
 import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
 import { InjectableVaultServiceCompat } from "@lib/services/implements/injectable/InjectableVaultService";
-import { ControlService } from "@lib/services/base/ControlService";
-import type { IControlService } from "@lib/services/base/IService";
-import { HeadlessAPIService } from "@lib/services/implements/headless/HeadlessAPIService";
+import * as nodePath from "node:path";
 // import { HeadlessDatabaseService } from "@lib/services/implements/headless/HeadlessDatabaseService";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
+import { DatabaseService } from "@lib/services/base/DatabaseService";
 import type { ServiceInstances } from "@lib/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
-import { DatabaseService } from "@lib/services/base/DatabaseService";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 
 export class NodeServiceContext extends ServiceContext {
     databasePath: string;

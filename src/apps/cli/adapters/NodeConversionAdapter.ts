@@ -1,5 +1,5 @@
 import * as path from "path";
-import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
+import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/models/fileaccess.type";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
 

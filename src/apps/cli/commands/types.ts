@@ -1,7 +1,6 @@
-import { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-
+import { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
 export type CLICommand =
     | "daemon"
     | "sync"

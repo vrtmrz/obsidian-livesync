@@ -11,6 +11,7 @@ if (isDryRun) {
     );
 }
 
+// const project = new Project({ tsConfigFilePath: "../src/apps/cli/tsconfig.json" });
 const project = new Project({ tsConfigFilePath: "../tsconfig.json" });
 
 const importMap = new Map<string, string>();
