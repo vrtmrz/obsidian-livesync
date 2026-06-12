@@ -16,7 +16,7 @@
         "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
         "build": "node esbuild.config.mjs production",
-        "lib:build:types":"node generate-types.mjs",    
+        "lib:build:types": "node generate-types.mjs",
         "postbuild": "npm run lib:build:types",
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
         "buildViteOriginal": "npx dotenv-cli -e .env  -- vite build --mode original",
@@ -147,5 +147,10 @@
         "qrcode-generator": "^1.4.4",
         "werift": "^0.23.0",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
-    }
+    },
+    "workspaces": [
+        "src/apps/cli",
+        "src/apps/webpeer",
+        "src/apps/webapp"
+    ]
 }

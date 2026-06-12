@@ -633,7 +633,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
-    display(): void {
+    override display(): void {
         const changeDisplay = this.changeDisplay.bind(this);
         const { containerEl } = this;
         this.settingComponents.length = 0;

@@ -21,6 +21,6 @@
         "utilsdeno",
         "node_modules",
         "test/**/*.test.ts",
-        "**/*.unit.spec.ts",
+        "**/*.unit.spec.ts"
     ]
 }

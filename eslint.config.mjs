@@ -5,6 +5,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
 import svelteParser from "svelte-eslint-parser";
 import importAlias from "@dword-design/eslint-plugin-import-alias";
+import { tsBaseConfig, svelteBaseConfig } from "./eslint.config.common.mjs";
 const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
 export default defineConfig([
     globalIgnores([
@@ -57,63 +58,21 @@ export default defineConfig([
     ...obsidianmd.configs.recommended,
     importAlias.configs.recommended,
     {
-        files: ["**/*.ts"],
-        // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
+        ...tsBaseConfig,
         languageOptions: {
+            ...tsBaseConfig.languageOptions,
             globals: { ...globals.browser, PouchDB: "readonly" },
-            parser: tsParser,
-            parserOptions: {
-                project: "./tsconfig.json",
-            },
         },
-        linterOptions: {
-            reportUnusedDisableDirectives: false,
+        plugins: {
+            ...tsBaseConfig.plugins,
         },
         rules: {
-            // -- Base rules (turned off in favour of TS specific versions or explicitly disabled).
-            "no-unused-vars": "off",
-            "no-unused-labels": "off",
-            "no-prototype-builtins": "off",
-            "require-await": "off",
-            // -- TypeScript specific rules (Gradual adoption of stricter rules, currently set to 'warn' for a while).
-            "@typescript-eslint/no-explicit-any": "warn",
-            "@typescript-eslint/no-redundant-type-constituents": "warn",
-            // -- TypeScript specific rules
-            //  @typescript-eslint/no-unsafe-* rules and @typescript-eslint/no-explicit-any:
-            //  This project contains a lot of library-sh code where the use of `any` is often necessary and justified.
-            //  Rules is now set to 'off' for a while.
-            "@typescript-eslint/no-unsafe-argument": "off",
-            "@typescript-eslint/no-unsafe-call": "off",
-            "@typescript-eslint/no-unsafe-member-access": "off",
-            "@typescript-eslint/no-unsafe-return": "off",
-            "@typescript-eslint/no-unsafe-assignment": "off",
-            // -- Reasonable rules.
-            "@typescript-eslint/no-deprecated": warnWhileDev,
-            "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
-            "@typescript-eslint/ban-ts-comment": "off",
-            "@typescript-eslint/no-empty-function": "off",
-            "@typescript-eslint/require-await": "error",
-            "@typescript-eslint/no-misused-promises": "error",
-            "@typescript-eslint/no-floating-promises": "error",
-            "@typescript-eslint/no-unnecessary-type-assertion": "error",
-
+            ...tsBaseConfig.rules,
             // -- Obsidian rules
-            // obsidianmd/no-unsupported-api: usually this project checks for API support at runtime, so this rule is not critical but can be helpful to catch potential issues.
             "obsidianmd/no-unsupported-api": warnWhileDev,
-
-            // -- General rules
-            "no-async-promise-executor": warnWhileDev,
-            "no-constant-condition": ["error", { checkLoops: false }],
-            // -- Disabled rules
-            // no-undef: This option breaks the global declarations for the library files and is not worth the effort to fix at this time.
-            "no-undef": "off",
-
-            // -- Plugin specific overrides
             "obsidianmd/rule-custom-message": "off",
             "obsidianmd/ui/sentence-case": "off",
             "obsidianmd/no-plugin-as-component": "off",
-
-            // -- Temporary overrides for migration
             "obsidianmd/no-static-styles-assignment": "off",
 
             // -- Project specific rules
@@ -130,21 +89,16 @@ export default defineConfig([
         },
     },
     {
-        files: ["**/*.svelte"],
+        ...svelteBaseConfig,
         languageOptions: {
+            ...svelteBaseConfig.languageOptions,
             globals: { ...globals.browser, PouchDB: "readonly" },
-            parser: svelteParser,
-            parserOptions: {
-                parser: tsParser,
-                extraFileExtensions: [".svelte"],
-                project: "./tsconfig.json",
-            },
+        },
+        plugins: {
+            ...svelteBaseConfig.plugins,
         },
         rules: {
-            // no-unused-vars:
-            // Svelte template's declarations have a lot of false positives and the rule is not worth the effort to fix at this time.
-            // it may improve in the future with some options as like   ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],]
-            "no-unused-vars": "off",
+            ...svelteBaseConfig.rules,
             "obsidianmd/no-plugin-as-component": "off",
             "obsidianmd/ui/sentence-case": "off",
             "@dword-design/import-alias/prefer-alias": [

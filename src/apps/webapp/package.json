@@ -9,7 +9,9 @@
         "build": "vite build",
         "build:docker": "docker build -f Dockerfile -t livesync-webapp ../../..",
         "run:docker": "docker run -p 8002:80 livesync-webapp",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "check": "tsc --noEmit",
+        "lint": "eslint --cache ."
     },
     "dependencies": {},
     "devDependencies": {

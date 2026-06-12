@@ -1,7 +1,8 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:ts-morph@*": "28.0.0"
+    "npm:ts-morph@*": "28.0.0",
+    "npm:ts-morph@latest": "28.0.0"
   },
   "npm": {
     "@ts-morph/common@0.29.0": {
