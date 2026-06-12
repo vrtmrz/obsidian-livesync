@@ -1,3 +1,8 @@
+/**
+ * @file vitest.config.unit.ts
+ * @description Configuration for running unit tests in Node.js (excluding browser harnesses, E2E, and database integration tests).
+ * This is executed during local development via `npm run test:unit` (or with coverage via `npm run test:unit:coverage`), and automatically in the GitHub Actions `unit-ci` workflow.
+ */
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vitest.config.common";
 

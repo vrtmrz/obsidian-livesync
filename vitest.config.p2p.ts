@@ -1,3 +1,9 @@
+/**
+ * @file vitest.config.p2p.ts
+ * @description Configuration for running browser-based Peer-to-Peer (P2P) replication tests
+ * in Playwright (Chromium) using Trystero and Nostr relays.
+ * This is executed via the `npm run test:p2p` command (which runs `test/suitep2p/run-p2p-tests.sh` internally).
+ */
 import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";

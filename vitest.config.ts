@@ -1,3 +1,9 @@
+/**
+ * @file vitest.config.ts
+ * @description Configuration for running browser-based end-to-end (E2E) integration tests
+ * using Playwright (Chromium) to test replication and synchronisation scenarios.
+ * This is executed when running the full test suite via `npm run test` or `npm run test:full`.
+ */
 import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";
