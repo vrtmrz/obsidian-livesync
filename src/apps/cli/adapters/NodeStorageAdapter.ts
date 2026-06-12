@@ -1,5 +1,4 @@
-import * as fs from "fs/promises";
-import * as path from "path";
+import { nodePath as path, fs } from "@cli/lib/nodeModules";
 import type { UXDataWriteOptions } from "@lib/common/models/fileaccess.type";
 import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import type { NodeStat } from "./NodeTypes";

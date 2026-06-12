@@ -3,9 +3,8 @@
  * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
  */
 
-import * as fs from "fs/promises";
-import * as fsSync from "fs";
-import * as path from "path";
+import { nodePath as path, fs, nodeFs as fsSync } from "@cli/lib/nodeModules";
+
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";

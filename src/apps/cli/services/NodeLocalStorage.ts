@@ -1,5 +1,4 @@
-import * as nodeFs from "node:fs";
-import * as nodePath from "node:path";
+import { nodeFs, nodePath } from "@cli/lib/nodeModules";
 
 type LocalStorageShape = {
     getItem(key: string): string | null;

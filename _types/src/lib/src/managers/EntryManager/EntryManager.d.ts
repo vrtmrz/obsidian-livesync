@@ -25,7 +25,7 @@ export declare class EntryManager {
             setting: ISettingService;
             path: IPathService;
         };
-        serviceModules: {};
+        serviceModules: never;
     };
     get isOnDemandChunkEnabled(): boolean;
     isTargetFile(filenameSrc: string): boolean;

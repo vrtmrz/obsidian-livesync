@@ -34,6 +34,7 @@ import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
 import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -153,7 +154,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
 
         this._initP2PReplicator();
 
-        setTimeout(() => {
+        compatGlobal.setTimeout(() => {
             if (this.settings.P2P_AutoStart && this.settings.P2P_Enabled) {
                 void this.open();
             }

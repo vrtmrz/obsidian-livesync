@@ -2,13 +2,14 @@ import { P2P_DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults"
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 type CLIP2PPeer = {
     peerId: string;
     name: string;
 };
 
 function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 export function parseTimeoutSeconds(value: string, commandName: string): number {

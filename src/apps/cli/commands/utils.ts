@@ -1,6 +1,4 @@
-import * as path from "path";
-import * as readline from "node:readline/promises";
-
+import { nodePath as path, readline } from "@cli/lib/nodeModules";
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 }

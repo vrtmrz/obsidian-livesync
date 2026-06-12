@@ -35,7 +35,7 @@ function processFile(filePath: string) {
     return updatedSourceText;
 }
 
-const targetDir = `../_types/`;
+const targetDir = `./_types/`;
 
 async function processDir(dirPath: string) {
     for await (const entry of Deno.readDir(dirPath)) {

@@ -19,6 +19,7 @@ import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
@@ -103,7 +104,7 @@ class LiveSyncWebApp {
                 console.log("[AppLifecycle] Restart requested");
                 await this.shutdown();
                 await this.initialize();
-                setTimeout(() => {
+                compatGlobal.setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             })();

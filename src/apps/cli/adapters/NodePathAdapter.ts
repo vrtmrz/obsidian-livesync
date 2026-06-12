@@ -1,4 +1,4 @@
-import * as path from "path";
+import { nodePath as path } from "@cli/lib/nodeModules";
 import type { FilePath } from "@lib/common/models/db.type";
 import type { IPathAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile } from "./NodeTypes";

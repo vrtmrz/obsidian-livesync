@@ -18,13 +18,14 @@ import { InjectableServiceHub } from "@lib/services/implements/injectable/Inject
 import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
 import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
 import { InjectableVaultServiceCompat } from "@lib/services/implements/injectable/InjectableVaultService";
-import * as nodePath from "node:path";
+
 // import { HeadlessDatabaseService } from "@lib/services/implements/headless/HeadlessDatabaseService";
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { DatabaseService } from "@lib/services/base/DatabaseService";
 import type { ServiceInstances } from "@lib/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
+import { nodePath } from "@cli/lib/nodeModules";
 
 export class NodeServiceContext extends ServiceContext {
     databasePath: string;

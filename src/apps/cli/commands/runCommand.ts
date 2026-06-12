@@ -10,14 +10,14 @@ import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
 import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
-import * as fs from "fs/promises";
-import * as path from "path";
+import { nodePath as path, fs } from "@cli/lib/nodeModules";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import type { EntryMilestoneInfo } from "@lib/common/models/db.definition";
 import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -156,11 +156,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                         );
                     }
                 }
-                pollTimer = setTimeout(poll as unknown as () => void, currentIntervalMs);
+                pollTimer = compatGlobal.setTimeout(poll as unknown as () => void, currentIntervalMs);
             };
-            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll as unknown as () => void, currentIntervalMs);
+            let pollTimer: number = compatGlobal.setTimeout(poll as unknown as () => void, currentIntervalMs);
             core.services.appLifecycle.onUnload.addHandler(async () => {
-                clearTimeout(pollTimer);
+                compatGlobal.clearTimeout(pollTimer);
                 return await Promise.resolve(true);
             });
         } else {

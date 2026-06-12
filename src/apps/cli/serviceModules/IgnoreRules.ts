@@ -1,6 +1,4 @@
-import * as fs from "fs/promises";
-import * as path from "path";
-
+import { fs, nodePath as path } from "@cli/lib/nodeModules";
 import { minimatch } from "minimatch";
 
 /**

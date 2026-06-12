@@ -57,7 +57,6 @@ export type AllReplicationClientStatus = {
 export declare class TrysteroReplicator {
     _env: ReplicatorHostEnv;
     server?: P2PHost;
-    replicationStatus(): {};
     get settings(): import("@lib/common/models/setting.type").P2PSyncSetting;
     get db(): PouchDB.Database<EntryDoc>;
     get deviceName(): string;

@@ -1,4 +1,4 @@
-import * as path from "path";
+import { nodePath as path } from "@cli/lib/nodeModules";
 import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/models/fileaccess.type";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
