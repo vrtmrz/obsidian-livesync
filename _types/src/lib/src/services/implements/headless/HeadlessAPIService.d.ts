@@ -39,9 +39,9 @@ export declare class HeadlessAPIService<T extends ServiceContext> extends Inject
     getPlatform(): string;
     getCrypto(): Crypto;
     addCommand<TCommand extends ICommandCompat>(command: TCommand): TCommand;
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement;
-    registerWindow(type: string, factory: (leaf: any) => any): void;
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void;
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerWindow(type: string, factory: (leaf: any) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     addStatusBarItem(): HTMLElement | undefined;
     private toSafeKeyPart;
     private hash32;

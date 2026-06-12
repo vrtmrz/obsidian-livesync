@@ -25,7 +25,7 @@ export declare class BrowserAPIService<T extends ServiceContext> extends Injecta
     getCustomFetchHandler(): FetchHttpHandler;
     isMobile(): boolean;
     getAppID(): string;
-    getSystemVaultName: import("../../lib/HandlerUtils").HandlerFunction<() => string, any>;
+    getSystemVaultName: import("../../lib/HandlerUtils").HandlerFunction<() => string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     getAppVersion(): string;
     getPluginVersion(): string;
     getPlatform(): string;
@@ -44,8 +44,8 @@ export declare class BrowserAPIService<T extends ServiceContext> extends Injecta
     private executeCommand;
     private refreshCommandStates;
     addCommand<TCommand extends ICommandCompat>(command: TCommand): TCommand;
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement;
-    registerWindow(type: string, factory: (leaf: any) => any): void;
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void;
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerWindow(type: string, factory: (leaf: any) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     addStatusBarItem(): HTMLElement | undefined;
 }

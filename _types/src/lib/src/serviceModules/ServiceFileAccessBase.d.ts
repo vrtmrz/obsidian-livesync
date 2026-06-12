@@ -11,7 +11,7 @@ import type { VaultService } from "@lib/services/base/VaultService";
 import type { SettingService } from "@lib/services/base/SettingService";
 import type { FileAccessBase, ExtractFile, ExtractFolder } from "./FileAccessBase";
 import type { IFileSystemAdapter } from "./adapters";
-export interface StorageAccessBaseDependencies<TAdapter extends IFileSystemAdapter<any, any, any, any>> {
+export interface StorageAccessBaseDependencies<TAdapter extends IFileSystemAdapter<any, any, any, any>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     API: APIService;
     appLifecycle: AppLifecycleService;
     fileProcessing: FileProcessingService;

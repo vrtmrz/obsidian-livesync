@@ -43,5 +43,5 @@ export interface IVaultAdapter<TNativeFile = unknown> {
     /**
      * Trigger an event in the vault
      */
-    trigger(name: string, ...data: any[]): any;
+    trigger(name: string, ...data: any[]): any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

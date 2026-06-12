@@ -1,6 +1,6 @@
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import type { P2PPaneParams } from "./UseP2PReplicatorResult";
-export type P2PViewFactory = (leaf: any) => any;
+export type P2PViewFactory = (leaf: any) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * ServiceFeature: P2P Replicator lifecycle management.
  * Binds a LiveSyncTrysteroReplicator to the host's lifecycle events,

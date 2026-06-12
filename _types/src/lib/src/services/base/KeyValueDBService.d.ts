@@ -16,7 +16,7 @@ export interface KeyValueDBDependencies<T extends ServiceContext = ServiceContex
 export declare abstract class KeyValueDBService<T extends ServiceContext = ServiceContext> extends ServiceBase<T> implements IKeyValueDBService {
     private _kvDB;
     private _simpleStore;
-    get simpleStore(): SimpleStore<unknown, any>;
+    get simpleStore(): SimpleStore<unknown, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     get kvDB(): KeyValueDatabase;
     private databaseEvents;
     private vault;

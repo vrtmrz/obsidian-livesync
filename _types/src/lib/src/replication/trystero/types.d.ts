@@ -9,10 +9,10 @@ export type DIRECTION_RESPONSE = typeof DIRECTION_RESPONSE;
 export declare const DEFAULT_RPC_TIMEOUT = 30000;
 export declare const BULK_GET_RPC_TIMEOUT = 40000;
 export type NonPrivateMethodKeys<T> = {
-    [K in keyof T]: K extends `_${string}` ? never : K extends `constructor` ? never : T[K] extends (...args: any[]) => any ? K : never;
+    [K in keyof T]: K extends `_${string}` ? never : K extends `constructor` ? never : T[K] extends (...args: any[]) => any ? K : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 }[keyof T];
 export type BindableObject<T> = {
-    [k in NonPrivateMethodKeys<T>]: (...args: any[]) => any;
+    [k in NonPrivateMethodKeys<T>]: (...args: any[]) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export type ConnectionInfo = {
     relayURIs: string[];
@@ -27,14 +27,14 @@ export type Request = {
     type: string;
     direction: DIRECTION_REQUEST;
     seq: number;
-    args: any[];
+    args: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export type Response = {
     type: string;
     direction: DIRECTION_RESPONSE;
     seq: number;
-    data?: any;
-    error?: any;
+    data?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export type DeviceInfo = {
     currentPeerId: string;
@@ -75,7 +75,7 @@ export interface ReplicatorHost {
 export interface ReplicatorHostEnv extends ReplicatorHost {
     settings: P2PSyncSetting;
     db: PouchDB.Database<EntryDoc>;
-    simpleStore: SimpleStore<any>;
+    simpleStore: SimpleStore<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     processReplicatedDocs(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void | Promise<void>;
 }
 export type Advertisement = {

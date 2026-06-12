@@ -30,7 +30,7 @@ export declare class LiveSyncSetting extends Setting {
         isHidden?: boolean;
         isAdvanced?: boolean;
     } | undefined;
-    autoWireComponent(component: ValueComponent<any>, conf?: ConfigurationItem, opt?: AutoWireOption): void;
+    autoWireComponent(component: ValueComponent<any>, conf?: ConfigurationItem, opt?: AutoWireOption): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     commitValue<T extends AllSettingItemKey>(value: AllSettings[T]): Promise<void>;
     autoWireText(key: AllStringItemKey, opt?: AutoWireOption): this;
     autoWireTextArea(key: AllStringItemKey, opt?: AutoWireOption): this;

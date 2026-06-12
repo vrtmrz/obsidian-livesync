@@ -20,7 +20,7 @@ export declare class LayeredChunkManager {
         allocCount: number;
         derefCount: number;
     };
-    addListener<K extends keyof ChunkManagerEventMap>(type: K, listener: (this: LayeredChunkManager, ev: ChunkManagerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): () => void;
+    addListener<K extends keyof ChunkManagerEventMap>(type: K, listener: (this: LayeredChunkManager, ev: ChunkManagerEventMap[K]) => any, options?: boolean | AddEventListenerOptions): () => void; // eslint-disable-line @typescript-eslint/no-explicit-any
     emitEvent<K extends keyof ChunkManagerEventMap>(type: K, detail: ChunkManagerEventMap[K]): void;
     protected abort: AbortController;
     protected offChangeHandler: ReturnType<typeof this.changeManager.addCallback>;

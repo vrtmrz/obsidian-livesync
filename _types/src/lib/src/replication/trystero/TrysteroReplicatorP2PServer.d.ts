@@ -57,9 +57,9 @@ export declare class TrysteroReplicatorP2PServer {
     _serverPeerId: string;
     _activeRoomId: string;
     ___send?: ActionSender<Payload>;
-    assignedFunctions: Map<string, (...args: any[]) => any>;
+    assignedFunctions: Map<string, (...args: any[]) => any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     clients: Map<string, TrysteroReplicatorP2PClient>;
-    _bindingObjects: BindableObject<any>[];
+    _bindingObjects: BindableObject<any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     _rpcRoom?: RpcRoom;
     protected _peerStatusEventCleanup: (() => void) | undefined;
     protected _peerFailureAnalysisCleanup: (() => void) | undefined;
@@ -99,8 +99,8 @@ export declare class TrysteroReplicatorP2PServer {
     private _onPeerLeave;
     activePeer: Map<string, RTCPeerConnection>;
     onAfterJoinRoom(): void;
-    startService(bindings?: BindableObject<any>[]): Promise<void>;
-    start(bindings?: BindableObject<any>[]): Promise<void>;
+    startService(bindings?: BindableObject<any>[]): Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    start(bindings?: BindableObject<any>[]): Promise<void>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * @deprecated Use serveFunction or serveObject instead. This is only for backward compatibility and may be removed in the future.
      * @param type

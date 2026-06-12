@@ -91,7 +91,7 @@ export declare class ConfigSync extends LiveSyncCommands {
     showPluginSyncModal(): void;
     hidePluginSyncModal(): void;
     onunload(): void;
-    addRibbonIcon: (icon: string, title: string, callback: (evt: MouseEvent) => any) => HTMLElement;
+    addRibbonIcon: (icon: string, title: string, callback: (evt: MouseEvent) => any) => HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
     onload(): void;
     getFileCategory(filePath: string): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "";
     isTargetPath(filePath: string): boolean;

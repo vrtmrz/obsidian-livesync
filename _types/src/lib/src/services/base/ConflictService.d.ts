@@ -10,7 +10,7 @@ export declare abstract class ConflictService<T extends ServiceContext = Service
     /**
      * Get an optional conflict check method for a given file (virtual) path.
      */
-    readonly getOptionalConflictCheckMethod: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(path: FilePathWithPrefix) => Promise<boolean | undefined | "newer">, any>;
+    readonly getOptionalConflictCheckMethod: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(path: FilePathWithPrefix) => Promise<boolean | undefined | "newer">, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Queue a check for conflicts if the file is currently open in the editor.
      * @param path The file (virtual) path to check for conflicts.
@@ -31,7 +31,7 @@ export declare abstract class ConflictService<T extends ServiceContext = Service
      * @param conflictCheckResult The result of the conflict check.
      * @returns A promise that resolves to true if the conflict was resolved, false if not, or undefined if no action was taken.
      */
-    readonly resolveByUserInteraction: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(filename: FilePathWithPrefix, conflictCheckResult: import("../../common/types").diff_result) => Promise<boolean | undefined>, any>;
+    readonly resolveByUserInteraction: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(filename: FilePathWithPrefix, conflictCheckResult: import("../../common/types").diff_result) => Promise<boolean | undefined>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Resolve a conflict by deleting a specific revision.
      * @param path The file (virtual) path with conflict.

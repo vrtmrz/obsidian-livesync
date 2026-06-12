@@ -35,7 +35,7 @@ export declare abstract class ReplicatorService<T extends ServiceContext = Servi
     /**
      * Get a new replicator instance based on the provided settings.
      */
-    readonly getNewReplicator: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(settingOverride?: Partial<import("../../common/types").ObsidianLiveSyncSettings>) => Promise<LiveSyncAbstractReplicator | undefined | false>, any>;
+    readonly getNewReplicator: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<(settingOverride?: Partial<import("../../common/types").ObsidianLiveSyncSettings>) => Promise<LiveSyncAbstractReplicator | undefined | false>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     readonly onReplicatorInitialised: import("@lib/services/lib/HandlerUtils").BooleanMultipleHandlerFunction<() => Promise<boolean>>;
     /**
      * Get the currently active replicator instance.

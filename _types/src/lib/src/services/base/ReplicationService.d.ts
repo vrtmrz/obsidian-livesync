@@ -77,7 +77,7 @@ export declare abstract class ReplicationService<T extends ServiceContext = Serv
     /**
      * Check if there is a connection failure with the remote database.
      */
-    readonly checkConnectionFailure: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<() => Promise<boolean | "CHECKAGAIN" | undefined>, any>;
+    readonly checkConnectionFailure: import("@lib/services/lib/HandlerUtils").MultipleHandlerFunction<() => Promise<boolean | "CHECKAGAIN" | undefined>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     databaseQueueCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;
     storageApplyingCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;
     replicationResultCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;

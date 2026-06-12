@@ -10,7 +10,7 @@ export type RemoteConfigurationResult = {
     settings: P2PConnectionInfo;
 } | {
     type: "webdav";
-    settings: any;
+    settings: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export declare class ConnectionStringParser {
     /**

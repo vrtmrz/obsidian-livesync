@@ -6,9 +6,9 @@ export declare abstract class AbstractModule<T extends LiveSyncBaseCore<ServiceC
     _log: (msg: unknown, level?: import("octagonal-wheels/common/logger").LOG_LEVEL, key?: string) => void;
     get services(): import("../lib/src/services/InjectableServices").InjectableServiceHub<ServiceContext>;
     addCommand: <TCommand extends import("../lib/src/services/base/IService").ICommandCompat>(command: TCommand) => TCommand;
-    registerView: (type: string, factory: (leaf: any) => any) => void;
-    addRibbonIcon: (icon: string, title: string, callback: (evt: MouseEvent) => any) => HTMLElement;
-    registerObsidianProtocolHandler: (action: string, handler: (params: Record<string, string>) => any) => void;
+    registerView: (type: string, factory: (leaf: any) => any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    addRibbonIcon: (icon: string, title: string, callback: (evt: MouseEvent) => any) => HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerObsidianProtocolHandler: (action: string, handler: (params: Record<string, string>) => any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
     get localDatabase(): import("../lib/src/pouchdb/LiveSyncLocalDB").LiveSyncLocalDB;
     get settings(): import("../lib/src/common/types").ObsidianLiveSyncSettings;
     set settings(value: import("../lib/src/common/types").ObsidianLiveSyncSettings);

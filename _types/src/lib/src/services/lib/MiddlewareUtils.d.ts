@@ -17,9 +17,9 @@ export declare class MiddlewareManager<TArgs extends unknown[], TResult> {
     invoke(...args: TArgs): Promise<TResult>;
 }
 type FunctionKeys<T> = {
-    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 }[keyof T];
-export declare function middlewares<T extends Record<keyof T, (...args: any[]) => any>>(): {
+export declare function middlewares<T extends Record<keyof T, (...args: any[]) => any>>(): { // eslint-disable-line @typescript-eslint/no-explicit-any
     useMiddleware<K extends FunctionKeys<T>>(key: K): {
         use: (priority: number, func: MiddlewareFunc<Parameters<T[K]>, Awaited<ReturnType<T[K]>>>) => () => void;
         invoke: (...args: Parameters<T[K]>) => Promise<Awaited<ReturnType<T[K]>>>;

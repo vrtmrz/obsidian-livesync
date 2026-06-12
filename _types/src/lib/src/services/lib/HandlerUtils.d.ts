@@ -64,7 +64,7 @@ export interface DispatchHandler<T extends unknown[], U> extends DispatcherHandl
 /**
  * A binder that allows assigning and invoking a single handler function.
  */
-export declare class Binder<T extends HandlerFunc<any, any>> implements BinderHandler<Parameters<T>, ReturnType<T>>, InvokableHandler<Parameters<T>, ReturnType<T>> {
+export declare class Binder<T extends HandlerFunc<any, any>> implements BinderHandler<Parameters<T>, ReturnType<T>>, InvokableHandler<Parameters<T>, ReturnType<T>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     private _name;
     /**
      * Creates a new Binder instance.
@@ -89,7 +89,7 @@ export declare class Binder<T extends HandlerFunc<any, any>> implements BinderHa
  * A binder that allows assigning and invoking a single handler function asynchronously.
  * The invocation will wait until a handler is assigned.
  */
-export declare class LazyBinder<T extends HandlerFunc<any, any>> implements BinderHandler<Parameters<T>, ReturnType<T>>, InvokableHandler<Parameters<T>, Promise<Awaited<ReturnType<T>>>> {
+export declare class LazyBinder<T extends HandlerFunc<any, any>> implements BinderHandler<Parameters<T>, ReturnType<T>>, InvokableHandler<Parameters<T>, Promise<Awaited<ReturnType<T>>>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     private _name;
     private _callbackPromise;
     private _callback;
@@ -110,7 +110,7 @@ export declare class LazyBinder<T extends HandlerFunc<any, any>> implements Bind
 /**
  * A multi-binder that allows adding and removing multiple handler functions.
  */
-export declare class MultiBinder<T extends HandlerFunc<any, any>> implements MultiRegisterHandler<Parameters<T>, ReturnType<T>> {
+export declare class MultiBinder<T extends HandlerFunc<any, any>> implements MultiRegisterHandler<Parameters<T>, ReturnType<T>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     protected _name: string;
     /**
      * Creates a new MultiBinder instance.
@@ -218,7 +218,7 @@ export declare class FirstResultHandler<T extends unknown[], U> extends MultiBin
 /**
  * A function type that can be used as a handler with assignable functionality.
  */
-export interface HandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> {
+export interface HandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Invokes the handler function with the provided arguments.
      */
@@ -234,7 +234,7 @@ export interface HandlerFunction<TFunc extends (...args: any[]) => U | Promise<U
 /**
  * A function type that can be used as a handler with assignable functionality.
  */
-export interface LazyHandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> {
+export interface LazyHandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Invokes the handler function with the provided arguments.
      */
@@ -250,7 +250,7 @@ export interface LazyHandlerFunction<TFunc extends (...args: any[]) => U | Promi
 /**
  * A function type that can be used as a multiple handler with add/remove functionality.
  */
-export interface MultipleHandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> {
+export interface MultipleHandlerFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Invokes the handler function with the provided arguments.
      */
@@ -271,11 +271,11 @@ export interface MultipleHandlerFunction<TFunc extends (...args: any[]) => U | P
 /**
  * A function type that can be used as a value-collecting handler with add/remove functionality.
  */
-export type CollectorFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> = (...args: Parameters<TFunc>) => Promise<Awaited<U>>;
+export type CollectorFunction<TFunc extends (...args: any[]) => U | Promise<U>, U = any> = (...args: Parameters<TFunc>) => Promise<Awaited<U>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * A Handler function type that can have multiple handlers added or removed, and collects their results into an array.
  */
-export interface CollectiveHandlerFunction<TFunc extends (...args: any[]) => U[] | Promise<U[]>, U = any> {
+export interface CollectiveHandlerFunction<TFunc extends (...args: any[]) => U[] | Promise<U[]>, U = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Invokes the handler function with the provided arguments.
      */
@@ -293,7 +293,7 @@ export interface CollectiveHandlerFunction<TFunc extends (...args: any[]) => U[]
      */
     removeHandler: (callback: CollectorFunction<TFunc>) => void;
 }
-export interface BooleanMultipleHandlerFunction<TFunc extends (...args: any[]) => boolean | Promise<boolean>> {
+export interface BooleanMultipleHandlerFunction<TFunc extends (...args: any[]) => boolean | Promise<boolean>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Invokes the handler function with the provided arguments.
      */
@@ -315,16 +315,16 @@ export interface MultiBinderInstance<T extends unknown[], U> extends InvokableHa
 }
 export interface BooleanMultiBinderInstance<T extends unknown[]> extends InvokableBooleanHandler<T>, MultiRegisterHandler<T, boolean> {
 }
-export declare function allFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>;
-export declare function bailFirstFailureFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>;
-export declare function allParallelFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>;
-export declare function anySuccessFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>;
-export declare function firstResultFunction<TFunc extends (...args: any[]) => Promise<any>>(name?: string): MultipleHandlerFunction<TFunc>;
-export declare function dispatchParallelFunction<TFunc extends (...args: any[]) => Promise<any[]>>(name?: string): CollectiveHandlerFunction<TFunc>;
-export declare function bindableFunction<TFunc extends (...args: any[]) => any>(name?: string): HandlerFunction<TFunc>;
-export declare function lazyBindableFunction<TFunc extends (...args: any[]) => any>(name?: string): LazyHandlerFunction<TFunc>;
+export declare function allFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function bailFirstFailureFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function allParallelFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function anySuccessFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function firstResultFunction<TFunc extends (...args: any[]) => Promise<any>>(name?: string): MultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function dispatchParallelFunction<TFunc extends (...args: any[]) => Promise<any[]>>(name?: string): CollectiveHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function bindableFunction<TFunc extends (...args: any[]) => any>(name?: string): HandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export declare function lazyBindableFunction<TFunc extends (...args: any[]) => any>(name?: string): LazyHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type FunctionKeys<T> = Extract<{
-    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 }[keyof T], string>;
 export declare function handlers<T extends object>(): {
     /**
@@ -332,43 +332,43 @@ export declare function handlers<T extends object>(): {
      * @param name
      * @returns
      */
-    all<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>;
+    all<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a handler that invokes all added handler functions in parallel and returns true only if all return true.
      * @param name
      * @returns
      */
-    allParallel<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>;
+    allParallel<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a handler that invokes all added handler functions sequentially until one returns false.
      * @param name
      * @returns
      */
-    bailFirstFailure<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>;
+    bailFirstFailure<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a handler that invokes all added handler functions sequentially until one returns true.
      * @param name
      * @returns
      */
-    anySuccess<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>;
+    anySuccess<K extends FunctionKeys<T>>(name: K): BooleanMultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<boolean>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a handler that invokes all added handler functions sequentially until one returns a non-falsy value.
      * @param name
      * @returns
      */
-    firstResult<K extends FunctionKeys<T>>(name: K): MultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<any>>>;
+    firstResult<K extends FunctionKeys<T>>(name: K): MultipleHandlerFunction<Extract<T[K], (...args: any[]) => Promise<any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a handler that invokes all added handler functions in parallel.
      * @param name
      * @returns
      */
-    dispatchParallel<K extends FunctionKeys<T>>(name: K): CollectiveHandlerFunction<Extract<T[K], (...args: any[]) => Promise<any[]>>>;
+    dispatchParallel<K extends FunctionKeys<T>>(name: K): CollectiveHandlerFunction<Extract<T[K], (...args: any[]) => Promise<any[]>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Create a binder handler that can assign a single handler function.
      * @param name
      * @returns
      */
-    binder<K extends FunctionKeys<T>>(name: K): HandlerFunction<Extract<T[K], (...args: any[]) => any>>;
-    lazyBinder<K extends FunctionKeys<T>>(name: K): LazyHandlerFunction<Extract<T[K], (...args: any[]) => any>>;
+    binder<K extends FunctionKeys<T>>(name: K): HandlerFunction<Extract<T[K], (...args: any[]) => any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    lazyBinder<K extends FunctionKeys<T>>(name: K): LazyHandlerFunction<Extract<T[K], (...args: any[]) => any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
 export {};

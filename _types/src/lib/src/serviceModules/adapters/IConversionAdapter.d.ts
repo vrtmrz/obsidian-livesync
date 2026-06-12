@@ -3,7 +3,7 @@ import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/models/fileaccess
  * Conversion adapter interface
  * Converts between native file system types and universal types
  */
-export interface IConversionAdapter<TNativeFile = any, TNativeFolder = any> {
+export interface IConversionAdapter<TNativeFile = any, TNativeFolder = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Convert a native file object to a universal file info stub
      */

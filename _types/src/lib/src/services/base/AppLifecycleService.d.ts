@@ -57,7 +57,7 @@ export declare abstract class AppLifecycleService<T extends ServiceContext = Ser
      * This is typically called during the unload() method of the plugin.
      * Entry point to unload everything.
      */
-    readonly onAppUnload: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<() => Promise<undefined[]>, any>;
+    readonly onAppUnload: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<() => Promise<undefined[]>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Event triggered before the plug-in is unloaded.
      * This is typically used to perform any necessary cleanup or save state before the plug-in is unloaded.
@@ -128,5 +128,5 @@ export declare abstract class AppLifecycleService<T extends ServiceContext = Ser
     /**
      * Get unresolved error messages.
      */
-    readonly getUnresolvedMessages: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<() => Promise<(string | Error)[][]>, any>;
+    readonly getUnresolvedMessages: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<() => Promise<(string | Error)[][]>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

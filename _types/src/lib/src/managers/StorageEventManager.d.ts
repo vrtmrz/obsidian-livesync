@@ -32,18 +32,18 @@ export interface StorageEventManagerBaseDependencies {
 /**
  * Type helper to extract the file type from a storage event manager adapter
  */
-export type ExtractFile<T> = T extends IStorageEventManagerAdapter<infer F, any> ? F : never;
+export type ExtractFile<T> = T extends IStorageEventManagerAdapter<infer F, any> ? F : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Type helper to extract the folder type from a storage event manager adapter
  */
-export type ExtractFolder<T> = T extends IStorageEventManagerAdapter<any, infer D> ? D : never;
+export type ExtractFolder<T> = T extends IStorageEventManagerAdapter<any, infer D> ? D : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Base class for storage event management
  * Uses adapter pattern for platform-specific implementations
  *
  * @template TAdapter - The storage event manager adapter type
  */
-export declare abstract class StorageEventManagerBase<TAdapter extends IStorageEventManagerAdapter<any, any>> extends StorageEventManager {
+export declare abstract class StorageEventManagerBase<TAdapter extends IStorageEventManagerAdapter<any, any>> extends StorageEventManager { // eslint-disable-line @typescript-eslint/no-explicit-any
     _log: ReturnType<typeof createInstanceLogFunction>;
     protected setting: SettingService;
     protected vaultService: IVaultService;
@@ -125,11 +125,11 @@ export declare abstract class StorageEventManagerBase<TAdapter extends IStorageE
     /**
      * Platform-agnostic event handlers
      */
-    protected watchEditorChange(editor: any, info: any): void;
-    protected watchVaultCreate(file: any, ctx?: any): void;
-    protected watchVaultChange(file: any, ctx?: any): void;
-    protected watchVaultDelete(file: any, ctx?: any): void;
-    protected watchVaultRename(file: any, oldPath: string, ctx?: any): void;
+    protected watchEditorChange(editor: any, info: any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    protected watchVaultCreate(file: any, ctx?: any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    protected watchVaultChange(file: any, ctx?: any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    protected watchVaultDelete(file: any, ctx?: any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    protected watchVaultRename(file: any, oldPath: string, ctx?: any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     protected watchVaultRawEvents(path: FilePath): void;
     protected _watchVaultRawEvents(path: FilePath): Promise<void>;
 }

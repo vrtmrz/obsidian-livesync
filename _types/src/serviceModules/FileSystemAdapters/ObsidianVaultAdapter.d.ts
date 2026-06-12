@@ -16,5 +16,5 @@ export declare class ObsidianVaultAdapter implements IVaultAdapter<TFile> {
     createBinary(path: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<TFile>;
     delete(file: TFile | TFolder, force?: boolean): Promise<void>;
     trash(file: TFile | TFolder, force?: boolean): Promise<void>;
-    trigger(name: string, ...data: any[]): any;
+    trigger(name: string, ...data: any[]): any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

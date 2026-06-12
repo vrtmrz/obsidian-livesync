@@ -1,5 +1,5 @@
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { TestService } from "@lib/services/base/TestService";
 export declare class InjectableTestService<T extends ServiceContext> extends TestService<T> {
-    addTestResult: import("@lib/services/lib/HandlerUtils").HandlerFunction<(name: string, key: string, result: boolean, summary?: string, message?: string) => void, any>;
+    addTestResult: import("@lib/services/lib/HandlerUtils").HandlerFunction<(name: string, key: string, result: boolean, summary?: string, message?: string) => void, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

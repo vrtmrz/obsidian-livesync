@@ -26,10 +26,10 @@ export interface ICommandCompat {
     id: string;
     name: string;
     icon?: string;
-    callback?: () => any;
+    callback?: () => any; // eslint-disable-line @typescript-eslint/no-explicit-any
     checkCallback?: (checking: boolean) => boolean | void;
-    editorCallback?: (editor: any, ctx: any) => any;
-    editorCheckCallback?: (checking: any, editor: any, ctx: any) => boolean | void;
+    editorCallback?: (editor: any, ctx: any) => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    editorCheckCallback?: (checking: any, editor: any, ctx: any) => boolean | void; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 export interface IAPIService {
     getCustomFetchHandler(): FetchHttpHandler;
@@ -44,9 +44,9 @@ export interface IAPIService {
     getAppVersion(): string;
     getPluginVersion(): string;
     addCommand<TCommand extends ICommandCompat>(command: TCommand): TCommand;
-    registerWindow(type: string, factory: (leaf: any) => any): void;
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement;
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void;
+    registerWindow(type: string, factory: (leaf: any) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     confirm: Confirm;
     responseCount: ReactiveSource<number>;
     requestCount: ReactiveSource<number>;

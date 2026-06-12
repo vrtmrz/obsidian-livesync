@@ -58,7 +58,7 @@ export declare class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     isConfiguredAs(key: AllBooleanItemKey, value: boolean): boolean;
     settingComponents: Setting[];
     controlledElementFunc: UpdateFunction[];
-    onSavedHandlers: OnSavedHandler<any>[];
+    onSavedHandlers: OnSavedHandler<any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     inWizard: boolean;
     constructor(app: App, plugin: ObsidianLiveSyncPlugin);
     testConnection(settingOverride?: Partial<ObsidianLiveSyncSettings>): Promise<void>;

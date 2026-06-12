@@ -22,7 +22,7 @@ export declare class P2PReplicatorPaneView extends SvelteItemView {
     getDisplayText(): string;
     onClose(): Promise<void>;
     instantiateComponent(target: HTMLElement): {
-        $on?(type: string, callback: (e: any) => void): () => void;
-        $set?(props: Partial<Record<string, any>>): void;
-    } & Record<string, any>;
+        $on?(type: string, callback: (e: any) => void): () => void; // eslint-disable-line @typescript-eslint/no-explicit-any
+        $set?(props: Partial<Record<string, any>>): void; // eslint-disable-line @typescript-eslint/no-explicit-any
+    } & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

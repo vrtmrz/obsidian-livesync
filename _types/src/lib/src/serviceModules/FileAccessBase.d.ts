@@ -16,26 +16,26 @@ export interface FileAccessBaseDependencies {
 /**
  * Type helper to extract the abstract file type from a file system adapter
  */
-export type ExtractAbstractFile<T> = T extends IFileSystemAdapter<infer A, any, any, any> ? A : never;
+export type ExtractAbstractFile<T> = T extends IFileSystemAdapter<infer A, any, any, any> ? A : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Type helper to extract the file type from a file system adapter
  */
-export type ExtractFile<T> = T extends IFileSystemAdapter<any, infer F, any, any> ? F : never;
+export type ExtractFile<T> = T extends IFileSystemAdapter<any, infer F, any, any> ? F : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Type helper to extract the folder type from a file system adapter
  */
-export type ExtractFolder<T> = T extends IFileSystemAdapter<any, any, infer D, any> ? D : never;
+export type ExtractFolder<T> = T extends IFileSystemAdapter<any, any, infer D, any> ? D : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Type helper to extract the stat type from a file system adapter
  */
-export type ExtractStat<T> = T extends IFileSystemAdapter<any, any, any, infer S> ? S : never;
+export type ExtractStat<T> = T extends IFileSystemAdapter<any, any, any, infer S> ? S : never; // eslint-disable-line @typescript-eslint/no-explicit-any
 /**
  * Base class for file access operations
  * Uses adapter pattern for platform-specific implementations
  *
  * @template TAdapter - The file system adapter type, which determines all native file types
  */
-export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any, any, any>> {
+export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any, any, any>> { // eslint-disable-line @typescript-eslint/no-explicit-any
     protected storageAccessManager: IStorageAccessManager;
     protected vaultService: IVaultService;
     protected settingService: ISettingService;
@@ -52,7 +52,7 @@ export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any
     normalisePath(path: string): string;
     protected _writeOp<T extends ExtractAbstractFile<TAdapter> | string, U>(file: T, callback: (path: FilePath, file: T) => Promise<U>): Promise<U>;
     protected _readOp<T extends ExtractAbstractFile<TAdapter> | string, U>(file: T, callback: (path: FilePath, file: T) => Promise<U>): Promise<U>;
-    tryAdapterStat(file: ExtractFile<TAdapter> | string): Promise<any>;
+    tryAdapterStat(file: ExtractFile<TAdapter> | string): Promise<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     adapterStat(file: ExtractFile<TAdapter> | string): Promise<ExtractStat<TAdapter> | null>;
     adapterExists(file: ExtractFile<TAdapter> | string): Promise<boolean>;
     adapterRemove(file: ExtractFile<TAdapter> | string): Promise<void>;
@@ -70,7 +70,7 @@ export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any
     vaultReadAuto(file: ExtractFile<TAdapter>): Promise<string | ArrayBuffer>;
     vaultModify(file: ExtractFile<TAdapter>, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: UXDataWriteOptions): Promise<boolean>;
     vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: UXDataWriteOptions): Promise<ExtractFile<TAdapter>>;
-    trigger(name: string, ...data: any[]): any;
+    trigger(name: string, ...data: any[]): any; // eslint-disable-line @typescript-eslint/no-explicit-any
     reconcileInternalFile(path: string): Promise<void>;
     /**
      * Append data to a file using the adapter's append method. This is useful for large files that cannot be read into memory.

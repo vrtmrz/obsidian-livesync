@@ -3,7 +3,7 @@ import { VaultService } from "@lib/services/base/VaultService";
 export declare abstract class InjectableVaultService<T extends ServiceContext> extends VaultService<T> {
 }
 export declare class InjectableVaultServiceCompat<T extends ServiceContext> extends InjectableVaultService<T> {
-    isStorageInsensitive: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => boolean, any>;
-    getActiveFilePath: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => import("../../../common/settingConstants").FilePath | undefined, any>;
+    isStorageInsensitive: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => boolean, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    getActiveFilePath: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => import("../../../common/settingConstants").FilePath | undefined, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     isValidPath(path: string): boolean;
 }

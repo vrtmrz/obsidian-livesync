@@ -58,20 +58,20 @@ export declare abstract class APIService<T extends ServiceContext = ServiceConte
      * @param type
      * @param factory
      */
-    abstract registerWindow(type: string, factory: (leaf: any) => any): void;
+    abstract registerWindow(type: string, factory: (leaf: any) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Add a ribbon icon to the UI.
      * @param icon
      * @param title
      * @param callback
      */
-    abstract addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement;
+    abstract addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Register a protocol handler.
      * @param action The action string for the protocol.
      * @param handler The handler function for the protocol.
      */
-    abstract registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void;
+    abstract registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Get the basic UI component for showing a confirmation dialog to the user.
      */

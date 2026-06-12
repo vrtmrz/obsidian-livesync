@@ -50,7 +50,7 @@ export declare class LiveSyncBaseCore<T extends ServiceContext = ServiceContext,
      * @param constructor
      * @returns
      */
-    getModule<T extends AbstractModule>(constructor: new (...args: any[]) => T): T;
+    getModule<T extends AbstractModule>(constructor: new (...args: any[]) => T): T; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Register a module to the plug-in.
      * @param module The module to register.

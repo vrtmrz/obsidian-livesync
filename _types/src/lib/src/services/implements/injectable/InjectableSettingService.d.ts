@@ -6,6 +6,6 @@ export declare class InjectableSettingService<T extends ServiceContext> extends 
     protected setItem(key: string, value: string): void;
     protected getItem(key: string): string;
     protected deleteItem(key: string): void;
-    saveData: import("@lib/services/lib/HandlerUtils").HandlerFunction<(data: ObsidianLiveSyncSettings) => Promise<void>, any>;
-    loadData: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => Promise<ObsidianLiveSyncSettings | undefined>, any>;
+    saveData: import("@lib/services/lib/HandlerUtils").HandlerFunction<(data: ObsidianLiveSyncSettings) => Promise<void>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    loadData: import("@lib/services/lib/HandlerUtils").HandlerFunction<() => Promise<ObsidianLiveSyncSettings | undefined>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

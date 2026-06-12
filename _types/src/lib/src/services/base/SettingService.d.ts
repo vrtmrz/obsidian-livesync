@@ -85,7 +85,7 @@ export declare abstract class SettingService<T extends ServiceContext = ServiceC
     readonly onSettingLoaded: import("@lib/services/lib/HandlerUtils").BooleanMultipleHandlerFunction<(settings: ObsidianLiveSyncSettings) => Promise<boolean>>;
     readonly onSettingChanged: import("@lib/services/lib/HandlerUtils").BooleanMultipleHandlerFunction<(settings: ObsidianLiveSyncSettings) => Promise<boolean>>;
     readonly onSettingSaved: import("@lib/services/lib/HandlerUtils").BooleanMultipleHandlerFunction<(settings: ObsidianLiveSyncSettings) => Promise<boolean>>;
-    readonly onBeforeSaveSettingData: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<(nextSettings: ObsidianLiveSyncSettings, previousSettings: ObsidianLiveSyncSettings) => Promise<(Partial<ObsidianLiveSyncSettings> | void)[]>, any>;
+    readonly onBeforeSaveSettingData: import("@lib/services/lib/HandlerUtils").CollectiveHandlerFunction<(nextSettings: ObsidianLiveSyncSettings, previousSettings: ObsidianLiveSyncSettings) => Promise<(Partial<ObsidianLiveSyncSettings> | void)[]>, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     /**
      * Get the current settings.
      */
