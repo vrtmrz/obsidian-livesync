@@ -46,9 +46,7 @@ Deno.test("decoupled database and vault", async () => {
             console.log("[INFO] applying CouchDB environment variables to settings");
             await applyCouchdbSettings(settingsFile, uri, user, password, dbname);
         } else {
-            console.warn(
-                "[WARN] CouchDB environment variables are not fully set. Push and pull operations may fail."
-            );
+            console.warn("[WARN] CouchDB environment variables are not fully set. Push and pull operations may fail.");
             await markSettingsConfigured(settingsFile);
         }
 
@@ -59,29 +57,11 @@ Deno.test("decoupled database and vault", async () => {
 
         // 1. Test push command with decoupled vault directory
         console.log(`[INFO] push with decoupled vault -> ${REMOTE_PATH}`);
-        await runCliOrFail(
-            dbDir,
-            "--vault",
-            vaultDir,
-            "--settings",
-            settingsFile,
-            "push",
-            srcFile,
-            REMOTE_PATH
-        );
+        await runCliOrFail(dbDir, "--vault", vaultDir, "--settings", settingsFile, "push", srcFile, REMOTE_PATH);
 
         // 2. Test pull command with decoupled vault directory
         console.log(`[INFO] pull with decoupled vault <- ${REMOTE_PATH}`);
-        await runCliOrFail(
-            dbDir,
-            "--vault",
-            vaultDir,
-            "--settings",
-            settingsFile,
-            "pull",
-            REMOTE_PATH,
-            pulledFile
-        );
+        await runCliOrFail(dbDir, "--vault", vaultDir, "--settings", settingsFile, "pull", REMOTE_PATH, pulledFile);
 
         const pulled = await Deno.readTextFile(pulledFile);
         assertEquals(pulled, content, "push/pull roundtrip with decoupled vault content mismatch");
@@ -93,14 +73,7 @@ Deno.test("decoupled database and vault", async () => {
 
         // 4. Test mirror command with decoupled vault directory
         console.log("[INFO] mirror with decoupled vault");
-        await runCliOrFail(
-            dbDir,
-            "--vault",
-            vaultDir,
-            "--settings",
-            settingsFile,
-            "mirror"
-        );
+        await runCliOrFail(dbDir, "--vault", vaultDir, "--settings", settingsFile, "mirror");
 
         const restoredFile = join(vaultDir, REMOTE_PATH);
         const restored = await Deno.readTextFile(restoredFile);
