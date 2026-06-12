@@ -30,7 +30,10 @@ function randomId(): string {
 }
 
 async function hasReadWritePermission(handle: FileSystemDirectoryHandle, requestIfNeeded: boolean): Promise<boolean> {
-    const h = handle as any;
+    const h = handle as unknown as {
+        queryPermission?: (options: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+        requestPermission?: (options: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+    };
     if (typeof h.queryPermission === "function") {
         const queried = await h.queryPermission({ mode: "readwrite" });
         if (queried === "granted") {
@@ -89,11 +92,15 @@ export class VaultHistoryStore {
 
     async getVaultHistory(): Promise<VaultHistoryItem[]> {
         return this.withStore("readonly", async (store) => {
-            const keys = (await this.requestAsPromise(store.getAllKeys())) as IDBValidKey[];
+            const keys = await this.requestAsPromise(store.getAllKeys());
             const values = (await this.requestAsPromise(store.getAll())) as unknown[];
             const items: VaultHistoryItem[] = [];
             for (let i = 0; i < keys.length; i++) {
-                const key = String(keys[i]);
+                const keyVal = keys[i];
+                if (typeof keyVal !== "string" && typeof keyVal !== "number") {
+                    continue;
+                }
+                const key = String(keyVal);
                 const id = parseVaultId(key);
                 const value = values[i] as Partial<VaultHistoryValue> | undefined;
                 if (!id || !value || !value.handle || !value.name) {
@@ -170,7 +177,14 @@ export class VaultHistoryStore {
     }
 
     async pickNewVault(): Promise<FileSystemDirectoryHandle> {
-        const picker = (window as any).showDirectoryPicker;
+        const picker = (
+            window as unknown as {
+                showDirectoryPicker?: (options?: {
+                    mode?: "read" | "readwrite";
+                    startIn?: "documents" | "desktop" | "downloads" | "music" | "pictures" | "videos";
+                }) => Promise<FileSystemDirectoryHandle>;
+            }
+        ).showDirectoryPicker;
         if (typeof picker !== "function") {
             throw new Error("FileSystem API showDirectoryPicker is not supported in this browser");
         }

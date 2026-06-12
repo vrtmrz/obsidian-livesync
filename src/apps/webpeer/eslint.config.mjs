@@ -1,28 +1,61 @@
-import { tsBaseConfig, svelteBaseConfig } from "../../../eslint.config.common.mjs";
-import globals from "globals";
+import importAlias from "@dword-design/eslint-plugin-import-alias";
+import tsParser from "@typescript-eslint/parser";
 import { defineConfig, globalIgnores } from "eslint/config";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 import * as sveltePlugin from "eslint-plugin-svelte";
+import svelteParser from "svelte-eslint-parser";
+import { baseRules, CommunityReviewRecommendedRules, ImportAliasRules } from "../../../eslint.config.common.mjs";
 
 export default defineConfig([
     globalIgnores([
         "dist",
-        "node_modules"
+        "node_modules",
+        "vite.config.ts",
+        "svelte.config.js",
+        "**/*.js",
+        "**/*.mjs",
     ]),
+    ...tseslint.configs.recommendedTypeChecked,
     ...sveltePlugin.configs["flat/base"],
+    importAlias.configs.recommended,
     {
-        ...tsBaseConfig,
         files: ["src/**/*.ts"],
         languageOptions: {
-            ...tsBaseConfig.languageOptions,
-            globals: { ...globals.browser },
+            globals: { ...globals.browser, PouchDB: "readonly" },
+            parser: tsParser,
+            parserOptions: {
+                project: "./tsconfig.app.json",
+                rootDir: "../../../",
+            },
+        },
+        linterOptions: {
+            reportUnusedDisableDirectives: false,
+        },
+        rules: {
+            ...baseRules,
+            ...ImportAliasRules("../../../"),
+            ...CommunityReviewRecommendedRules,
+            "no-restricted-globals": "off",
         },
     },
     {
-        ...svelteBaseConfig,
         files: ["src/**/*.svelte"],
         languageOptions: {
-            ...svelteBaseConfig.languageOptions,
-            globals: { ...globals.browser },
+            globals: { ...globals.browser, PouchDB: "readonly" },
+            parser: svelteParser,
+            parserOptions: {
+                parser: tsParser,
+                extraFileExtensions: [".svelte"],
+                project: "./tsconfig.app.json",
+                rootDir: "../../../",
+            },
+        },
+        rules: {
+            "no-unused-vars": "off",
+            ...ImportAliasRules("../../../"),
+            ...CommunityReviewRecommendedRules,
+            "no-restricted-globals": "off",
         },
     },
 ]);

@@ -1,6 +1,7 @@
 import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 
 /**
  * Conversion adapter implementation for FileSystem API
@@ -28,7 +29,7 @@ export class FSAPIConversionAdapter implements IConversionAdapter<FSAPIFile, FSA
             path: folder.path,
             isFolder: true,
             children: [],
-            parent: parentPath as any,
+            parent: parentPath as FilePathWithPrefix,
         };
     }
 }

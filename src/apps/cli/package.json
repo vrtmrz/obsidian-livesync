@@ -6,7 +6,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "package:apply-repo": "node scripts/apply-package.mjs",
+        "package:apply-repo": "node ../../../apply-package.mjs",
         "prebuild": "node scripts/check-submodule.mjs",
         "build": "vite build",
         "preview": "vite preview",

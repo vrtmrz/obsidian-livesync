@@ -15,17 +15,18 @@
         "noEmit": true,
 
         /* Linting */
-        "strict": false,
+        "strict": true,
         // "noImplicitAny": false,
         "noUnusedLocals": false,
         "noUnusedParameters": false,
-        "noFallthroughCasesInSwitch": true
-
-        // /* Path mapping */
-        // "paths": {
-        //     "@/*": ["../../*"],
-        //     "@lib/*": ["../../lib/src/*"]
-        // }
+        "noFallthroughCasesInSwitch": true,
+        // "rootDir": "../../../",
+        /* Path mapping */
+        "paths": {
+            "@/*": ["../../*"],
+            "@lib/*": ["../../lib/src/*"],
+            "@cli/*": ["./*"]
+        }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx"],
     "exclude": ["node_modules", "dist", "test", "testdeno"]

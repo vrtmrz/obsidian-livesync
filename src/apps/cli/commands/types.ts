@@ -1,6 +1,6 @@
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
-import { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 export type CLICommand =
     | "daemon"
     | "sync"
@@ -46,7 +46,7 @@ export interface CLIOptions {
 export interface CLICommandContext {
     databasePath: string;
     vaultPath: string;
-    core: LiveSyncBaseCore<ServiceContext, any>;
+    core: LiveSyncBaseCore<ServiceContext, never>;
     settingsPath: string;
     originalSyncSettings: Pick<
         ObsidianLiveSyncSettings,

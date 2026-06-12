@@ -14,19 +14,30 @@ import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { Stats } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
-import type { NodeFile, NodeFolder } from "../adapters/NodeTypes";
-import type { IgnoreRules } from "../serviceModules/IgnoreRules";
+import type { NodeFile, NodeFolder } from "@cli/adapters/NodeTypes";
+import type { IgnoreRules } from "@cli/serviceModules/IgnoreRules";
 
 /**
  * CLI-specific type guard adapter
  */
 class CLITypeGuardAdapter implements IStorageEventTypeGuardAdapter<NodeFile, NodeFolder> {
-    isFile(file: any): file is NodeFile {
-        return file && typeof file === "object" && "path" in file && "stat" in file && !file.isFolder;
+    isFile(file: unknown): file is NodeFile {
+        return !!(
+            file &&
+            typeof file === "object" &&
+            "path" in file &&
+            "stat" in file &&
+            !(file as { isFolder?: boolean }).isFolder
+        );
     }
 
-    isFolder(item: any): item is NodeFolder {
-        return item && typeof item === "object" && "path" in item && item.isFolder === true;
+    isFolder(item: unknown): item is NodeFolder {
+        return !!(
+            item &&
+            typeof item === "object" &&
+            "path" in item &&
+            (item as { isFolder?: boolean }).isFolder === true
+        );
     }
 }
 

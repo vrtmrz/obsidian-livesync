@@ -35,7 +35,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     private normalisePath(p: FilePath | string): string {
-        return this.path.normalisePath(p as string);
+        return this.path.normalisePath(p);
     }
 
     async getAbstractFileByPath(p: FilePath | string): Promise<NodeFile | null> {
@@ -77,7 +77,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     async statFromNative(file: NodeFile): Promise<UXStat> {
-        return file.stat;
+        return await Promise.resolve(file.stat);
     }
 
     async reconcileInternalFile(p: string): Promise<void> {

@@ -30,14 +30,14 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     }
 
     private normalisePath(path: FilePath | string): string {
-        return this.path.normalisePath(path as string);
+        return this.path.normalisePath(path);
     }
 
     /**
      * Get file handle for a given path
      */
     private async getFileHandleByPath(p: FilePath | string): Promise<FileSystemFileHandle | null> {
-        const pathStr = p as string;
+        const pathStr = p;
 
         // Check cache first
         const cached = this.handleCache.get(pathStr);
@@ -173,7 +173,9 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
                 }
 
                 // Use AsyncIterator instead of .values() for better compatibility
-                for await (const [name, entry] of (currentHandle as any).entries()) {
+                for await (const [name, entry] of (
+                    currentHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
+                ).entries()) {
                     const entryPath = relativePath ? `${relativePath}/${name}` : name;
 
                     if (entry.kind === "directory") {

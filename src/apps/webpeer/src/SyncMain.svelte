@@ -5,18 +5,20 @@
     import { cmdSyncShim } from "./P2PReplicatorShim";
     import { eventHub } from "@lib/hub/hub";
     import { EVENT_LAYOUT_READY } from "@lib/events/coreEvents";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     let synchronised = $state(cmdSyncShim.init());
 
     onMount(() => {
         eventHub.emitEvent(EVENT_LAYOUT_READY);
         return () => {
-            synchronised.then((e) => e.close());
+            void synchronised.then((e) => e.close());
         };
     });
     let elP: HTMLDivElement;
     logs.subscribe((log) => {
-        tick().then(() => elP?.scrollTo({ top: elP.scrollHeight }));
+        void tick().then(() => elP?.scrollTo({ top: elP.scrollHeight }));
     });
     let statusLine = $state("");
     storeP2PStatusLine.subscribe((status) => {
@@ -27,7 +29,10 @@
 <main>
     <div class="control">
         {#await synchronised then cmdSync}
-            <P2PReplicatorPane plugin={cmdSync.plugin} {cmdSync} core={cmdSync.plugin.core}></P2PReplicatorPane>
+            <P2PReplicatorPane
+                cmdSync={cmdSync as unknown as LiveSyncTrysteroReplicator}
+                core={cmdSync.plugin.core as unknown as LiveSyncBaseCore}
+            ></P2PReplicatorPane>
         {:catch error}
             <p>{error.message}</p>
         {/await}

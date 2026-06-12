@@ -15,6 +15,9 @@ import * as path from "path";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
+import type { EntryMilestoneInfo } from "@lib/common/models/db.definition";
+import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import type { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -35,16 +38,20 @@ async function verifyRemoteState(
     }
 
     try {
-        let milestone: any;
+        let milestone: EntryMilestoneInfo | null | false = null;
         if (settings.remoteType === REMOTE_COUCHDB) {
-            const dbRet = await (replicator as any).connectRemoteCouchDBWithSetting(settings, false, true);
+            const dbRet = await (replicator as LiveSyncCouchDBReplicator).connectRemoteCouchDBWithSetting(
+                settings,
+                false,
+                true
+            );
             if (typeof dbRet === "string") {
                 process.stderr.write(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
                 return false;
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
         } else if (settings.remoteType === REMOTE_MINIO) {
-            milestone = await (replicator as any).client.downloadJson("_00000000-milestone.json");
+            milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
         }
 
         if (milestone) {
@@ -59,8 +66,10 @@ async function verifyRemoteState(
             process.stderr.write("[Verification] Milestone document not found on remote.\n");
             return false;
         }
-    } catch (e: any) {
-        process.stderr.write(`[Verification] Failed to fetch milestone document: ${e?.message || e}\n`);
+    } catch (e: unknown) {
+        process.stderr.write(
+            `[Verification] Failed to fetch milestone document: ${e instanceof Error ? e.message : String(e)}\n`
+        );
         return false;
     }
 }
@@ -71,7 +80,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     await core.services.control.activated;
     if (options.command === "daemon") {
-        const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
+        const log = (msg: unknown) => console.error(`[Daemon] ${msg instanceof Error ? msg.message : String(msg)}`);
 
         // Skip the config mismatch dialog — the daemon cannot resolve it interactively
         // and the default "Dismiss" action would block replication. The daemon should
@@ -90,7 +99,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
         log("Running mirror scan...");
-        const scanOk = await performFullScan(core as any, log, errorManager, false, true);
+        const scanOk = await performFullScan(core, log, errorManager, false, true);
         if (!scanOk) {
             console.error("[Daemon] Mirror scan failed, cannot continue");
             return false;
@@ -147,12 +156,12 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                         );
                     }
                 }
-                pollTimer = setTimeout(poll, currentIntervalMs);
+                pollTimer = setTimeout(poll as unknown as () => void, currentIntervalMs);
             };
-            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll, currentIntervalMs);
+            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll as unknown as () => void, currentIntervalMs);
             core.services.appLifecycle.onUnload.addHandler(async () => {
                 clearTimeout(pollTimer);
-                return true;
+                return await Promise.resolve(true);
             });
         } else {
             log("LiveSync mode: restoring sync settings and starting _changes feed");
@@ -198,7 +207,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[0], "p2p-peers");
         console.error(`[Command] p2p-peers timeout=${timeoutSec}s`);
-        const peers = await collectPeers(core as any, timeoutSec);
+        const peers = await collectPeers(core, timeoutSec);
         if (peers.length > 0) {
             process.stdout.write(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
         }
@@ -215,14 +224,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[1], "p2p-sync");
         console.error(`[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
-        const peer = await syncWithPeer(core as any, peerToken, timeoutSec);
+        const peer = await syncWithPeer(core, peerToken, timeoutSec);
         console.error(`[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
         return true;
     }
 
     if (options.command === "p2p-host") {
         console.error("[Command] p2p-host");
-        await openP2PHost(core as any);
+        await openP2PHost(core);
         console.error("[Ready] P2P host is running. Press Ctrl+C to stop.");
         await new Promise(() => {});
         return true;
@@ -435,9 +444,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             if (docPath !== targetPath) continue;
 
             const filename = path.basename(docPath);
-            const conflictsText = (doc._conflicts?.length ?? 0) > 0 ? doc._conflicts.join("\n           ") : "N/A";
+            const conflicts = doc._conflicts ?? [];
+            const conflictsText = conflicts.length > 0 ? conflicts.join("\n           ") : "N/A";
             const children = "children" in doc ? doc.children : [];
-            const rawDoc = await core.services.database.localDatabase.getRaw<any>(doc._id, {
+            const rawDoc = await core.services.database.localDatabase.getRaw(doc._id, {
                 revs_info: true,
             });
             const pastRevisions = (rawDoc._revs_info ?? [])
@@ -491,6 +501,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             process.stderr.write(`[Info] File not found: ${targetPath}\n`);
             return false;
         }
+        if (!currentMeta._rev) {
+            process.stderr.write(`[Info] Current revision not found for ${targetPath}\n`);
+            return false;
+        }
 
         const conflicts = await core.serviceModules.databaseFileAccess.getConflictedRevs(targetPath);
         const candidateRevisions = [currentMeta._rev, ...conflicts];
@@ -520,9 +534,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     if (options.command === "mirror") {
         console.error("[Command] mirror");
-        const log = (msg: unknown) => console.error(`[Mirror] ${msg}`);
+        const log = (msg: unknown) => console.error(`[Mirror] ${msg instanceof Error ? msg.message : String(msg)}`);
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
-        return await performFullScan(core as any, log, errorManager, false, true);
+        return await performFullScan(core, log, errorManager, false, true);
     }
 
     if (options.command === "remote-add") {

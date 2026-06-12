@@ -1,5 +1,5 @@
 import { FileAccessBase, type FileAccessBaseDependencies } from "@lib/serviceModules/FileAccessBase";
-import { NodeFileSystemAdapter } from "../adapters/NodeFileSystemAdapter";
+import { NodeFileSystemAdapter } from "@cli/adapters/NodeFileSystemAdapter";
 
 /**
  * CLI-specific implementation of FileAccessBase

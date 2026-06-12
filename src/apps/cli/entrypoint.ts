@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Polyfill WebRTC in Node.js environment for CLI app.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as polyfill from "werift";
 import { main } from "./main";
 

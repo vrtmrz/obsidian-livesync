@@ -195,7 +195,9 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
         const folders: string[] = [];
 
         // Use AsyncIterator instead of .values() for better compatibility
-        for await (const [name, entry] of (dirHandle as any).entries()) {
+        for await (const [name, entry] of (
+            dirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
+        ).entries()) {
             const entryPath = basePath ? `${basePath}/${name}` : name;
 
             if (entry.kind === "directory") {

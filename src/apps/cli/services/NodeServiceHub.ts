@@ -197,10 +197,12 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             path,
             API,
             config,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             keyValueDB: keyValueDB as any,
             control,
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         super(context, serviceInstancesToInit as any);
     }
 }

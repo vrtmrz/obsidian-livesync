@@ -72,6 +72,7 @@ export default defineConfig({
             fflate: resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
             "@": resolve(__dirname, "../../"),
             "@lib": resolve(__dirname, "../../lib/src"),
+            "@cli": resolve(__dirname, "../../apps/cli"),
             "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
         },
     },

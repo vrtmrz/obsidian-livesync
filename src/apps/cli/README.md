@@ -115,7 +115,8 @@ cd obsidian-livesync
 # If you already cloned without submodules, run this once instead
 git submodule update --init --recursive
 
-# Install dependencies from the repository root
+# Install dependencies (now the CLI is a on the same monorepo, shared dependencies will be hoisted to the root node_modules)
+cd src/apps/cli
 npm install
 
 # Build the CLI from its package directory

@@ -6,13 +6,13 @@
     const context = getDialogContext();
 
     async function testUI() {
-        const confirm = await context.services.confirm;
+        const confirm = context.services.confirm;
         const ret = await confirm.askString("Your name", "What is your name?", "John Doe", false);
         result = ret;
     }
     let resultPassword = $state<string | boolean>("");
     async function testPassword() {
-        const confirm = await context.services.confirm;
+        const confirm = context.services.confirm;
         const ret = await confirm.askString("passphrase", "?", "anythingonlyyouknow", true);
         resultPassword = ret;
     }
@@ -52,7 +52,7 @@
                     .onClick(async () => {})
                     .setIcon(mark);
             });
-        m.showAtPosition({ x: event.x, y: event.y });
+        void m.showAtPosition({ x: event.x, y: event.y });
     }
 </script>
 

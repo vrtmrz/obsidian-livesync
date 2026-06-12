@@ -120,20 +120,18 @@ async function initializeVaultSelector(): Promise<void> {
     await renderHistoryList();
 }
 
-window.addEventListener("load", async () => {
-    try {
-        await initializeVaultSelector();
-    } catch (error) {
+window.addEventListener("load", () => {
+    initializeVaultSelector().catch((error) => {
         console.error("Failed to initialize vault selector:", error);
         setStatus("error", `Initialization failed: ${String(error)}`);
-    }
+    });
 });
 
 window.addEventListener("beforeunload", () => {
     void app?.shutdown();
 });
 
-(window as any).livesyncApp = {
+(window as unknown as { livesyncApp: unknown }).livesyncApp = {
     getApp: () => app,
     historyStore,
 };

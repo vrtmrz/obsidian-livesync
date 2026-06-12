@@ -5,7 +5,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
 import svelteParser from "svelte-eslint-parser";
 import importAlias from "@dword-design/eslint-plugin-import-alias";
-import { tsBaseConfig, svelteBaseConfig } from "./eslint.config.common.mjs";
+import { baseRules, ImportAliasRules, obsidianRules } from "./eslint.config.common.mjs";
 const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
 export default defineConfig([
     globalIgnores([
@@ -58,59 +58,45 @@ export default defineConfig([
     ...obsidianmd.configs.recommended,
     importAlias.configs.recommended,
     {
-        ...tsBaseConfig,
+        files: ["**/*.ts"],
+        // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
         languageOptions: {
-            ...tsBaseConfig.languageOptions,
             globals: { ...globals.browser, PouchDB: "readonly" },
+            parser: tsParser,
+            parserOptions: {
+                project: "./tsconfig.json",
+                rootDir: "./",
+            },
         },
-        plugins: {
-            ...tsBaseConfig.plugins,
+        linterOptions: {
+            reportUnusedDisableDirectives: false,
         },
         rules: {
-            ...tsBaseConfig.rules,
-            // -- Obsidian rules
-            "obsidianmd/no-unsupported-api": warnWhileDev,
-            "obsidianmd/rule-custom-message": "off",
-            "obsidianmd/ui/sentence-case": "off",
-            "obsidianmd/no-plugin-as-component": "off",
-            "obsidianmd/no-static-styles-assignment": "off",
-
+            ...baseRules,
+            ...obsidianRules,
             // -- Project specific rules
-            "@dword-design/import-alias/prefer-alias": [
-                "error",
-                {
-                    aliasForSubpaths: true,
-                    alias: {
-                        "@": "./src",
-                        "@lib": "./src/lib/src",
-                    },
-                },
-            ],
+            ...ImportAliasRules("."),
         },
     },
     {
-        ...svelteBaseConfig,
+        files: ["**/*.svelte"],
         languageOptions: {
-            ...svelteBaseConfig.languageOptions,
             globals: { ...globals.browser, PouchDB: "readonly" },
-        },
-        plugins: {
-            ...svelteBaseConfig.plugins,
+            parser: svelteParser,
+            parserOptions: {
+                parser: tsParser,
+                extraFileExtensions: [".svelte"],
+                project: "./tsconfig.json",
+                rootDir: "./",
+            },
         },
         rules: {
-            ...svelteBaseConfig.rules,
-            "obsidianmd/no-plugin-as-component": "off",
-            "obsidianmd/ui/sentence-case": "off",
-            "@dword-design/import-alias/prefer-alias": [
-                "error",
-                {
-                    aliasForSubpaths: true,
-                    alias: {
-                        "@": "./src",
-                        "@lib": "./src/lib/src",
-                    },
-                },
-            ],
+            // no-unused-vars:
+            // Svelte template's declarations have a lot of false positives and the rule is not worth the effort to fix at this time.
+            // it may improve in the future with some options as like   ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],]
+            "no-unused-vars": "off",
+            ...obsidianRules,
+            ...ImportAliasRules("."),
         },
     },
 ]);

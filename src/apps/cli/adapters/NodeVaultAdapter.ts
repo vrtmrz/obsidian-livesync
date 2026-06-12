@@ -2,7 +2,8 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import type { UXDataWriteOptions } from "@lib/common/models/fileaccess.type";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
-import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import type { NodeFile, NodeFolder } from "./NodeTypes";
+import type { FilePath } from "@lib/common/types";
 
 /**
  * Vault adapter implementation for Node.js
@@ -70,7 +71,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -93,7 +94,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -118,7 +119,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         await this.delete(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): unknown {
         // No-op in CLI version (no event system)
         return undefined;
     }

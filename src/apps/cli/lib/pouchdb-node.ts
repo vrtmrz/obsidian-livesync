@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import PouchDB from "pouchdb-core";
 
 import HttpPouch from "pouchdb-adapter-http";
@@ -85,7 +86,6 @@ PouchDB.prototype.purgeMulti = adapterFun(
             );
         }
         //@ts-ignore
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         const tasks = docs.map(
             (param) => () =>

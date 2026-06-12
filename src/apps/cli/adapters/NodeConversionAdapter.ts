@@ -2,6 +2,7 @@ import * as path from "path";
 import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/models/fileaccess.type";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
+import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 
 /**
  * Conversion adapter implementation for Node.js
@@ -22,7 +23,7 @@ export class NodeConversionAdapter implements IConversionAdapter<NodeFile, NodeF
             path: folder.path,
             isFolder: true,
             children: [],
-            parent: path.dirname(folder.path) as any,
+            parent: path.dirname(folder.path) as FilePathWithPrefix,
         };
     }
 }

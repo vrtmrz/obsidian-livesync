@@ -91,6 +91,7 @@ export default defineConfig({
         alias: {
             "@": path.resolve(__dirname, "./src"),
             "@lib": path.resolve(__dirname, "./src/lib/src"),
+            "@cli": path.resolve(__dirname, "./src/apps/cli"),
             src: path.resolve(__dirname, "./src"),
         },
     },

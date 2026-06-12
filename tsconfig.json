@@ -20,7 +20,8 @@
         "strictFunctionTypes": true,
         "paths": {
             "@/*": ["./src/*"],
-            "@lib/*": ["./src/lib/src/*", "./_types/src/lib/src/*"]
+            "@lib/*": ["./src/lib/src/*", "./_types/src/lib/src/*"],
+            "@cli/*": ["./src/apps/cli/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],

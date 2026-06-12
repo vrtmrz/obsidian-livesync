@@ -10,20 +10,32 @@ import type {
     IStorageEventWatchHandlers,
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
-import type { FSAPIFile, FSAPIFolder } from "../adapters/FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 
 /**
  * FileSystem API-specific type guard adapter
  */
 class FSAPITypeGuardAdapter implements IStorageEventTypeGuardAdapter<FSAPIFile, FSAPIFolder> {
-    isFile(file: any): file is FSAPIFile {
-        return (
-            file && typeof file === "object" && "path" in file && "stat" in file && "handle" in file && !file.isFolder
+    isFile(file: unknown): file is FSAPIFile {
+        return !!(
+            file &&
+            typeof file === "object" &&
+            "path" in file &&
+            "stat" in file &&
+            "handle" in file &&
+            !("isFolder" in file && file.isFolder === true)
         );
     }
 
-    isFolder(item: any): item is FSAPIFolder {
-        return item && typeof item === "object" && "path" in item && item.isFolder === true && "handle" in item;
+    isFolder(item: unknown): item is FSAPIFolder {
+        return !!(
+            item &&
+            typeof item === "object" &&
+            "path" in item &&
+            "isFolder" in item &&
+            item.isFolder === true &&
+            "handle" in item
+        );
     }
 }
 
@@ -143,22 +155,40 @@ class FSAPIConverterAdapter implements IStorageEventConverterAdapter<FSAPIFile> 
  * FileSystem API-specific watch adapter using FileSystemObserver (Chrome only)
  */
 class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
-    private observer: any = null; // FileSystemObserver type
+    private observer: {
+        observe: (handle: FileSystemDirectoryHandle, options: { recursive: boolean }) => Promise<void>;
+        disconnect: () => void;
+    } | null = null;
 
     constructor(private rootHandle: FileSystemDirectoryHandle) {}
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // Use FileSystemObserver if available (Chrome 124+)
-        if (typeof (window as any).FileSystemObserver === "undefined") {
+        const win = window as unknown as {
+            FileSystemObserver?: new (
+                callback: (
+                    records: {
+                        root: FileSystemDirectoryHandle;
+                        changedHandle: FileSystemFileHandle;
+                        relativePathComponents: string[];
+                        type: string;
+                    }[]
+                ) => Promise<void>
+            ) => {
+                observe: (handle: FileSystemDirectoryHandle, options: { recursive: boolean }) => Promise<void>;
+                disconnect: () => void;
+            };
+        };
+        if (typeof win.FileSystemObserver === "undefined") {
             console.log("[FSAPIWatchAdapter] FileSystemObserver not available, file watching disabled");
             console.log("[FSAPIWatchAdapter] Consider using Chrome 124+ for real-time file watching");
             return Promise.resolve();
         }
 
         try {
-            const FileSystemObserver = (window as any).FileSystemObserver;
+            const FileSystemObserver = win.FileSystemObserver;
 
-            this.observer = new FileSystemObserver(async (records: any[]) => {
+            this.observer = new FileSystemObserver(async (records) => {
                 for (const record of records) {
                     const handle = record.root;
                     const changedHandle = record.changedHandle;
@@ -181,7 +211,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             if (changedHandle && changedHandle.kind === "file") {
                                 const file = await changedHandle.getFile();
                                 const fileInfo = {
-                                    path: relativePath as any,
+                                    path: relativePath,
                                     stat: {
                                         size: file.size,
                                         mtime: file.lastModified,
@@ -192,23 +222,23 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                                 };
 
                                 if (type === "appeared") {
-                                    await handlers.onCreate(fileInfo, undefined);
+                                    handlers.onCreate(fileInfo, undefined);
                                 } else {
-                                    await handlers.onChange(fileInfo, undefined);
+                                    handlers.onChange(fileInfo, undefined);
                                 }
                             }
                         } else if (type === "disappeared") {
                             const fileInfo = {
-                                path: relativePath as any,
+                                path: relativePath,
                                 stat: {
                                     size: 0,
                                     mtime: Date.now(),
                                     ctime: Date.now(),
                                     type: "file" as const,
                                 },
-                                handle: null as any,
+                                handle: null as unknown,
                             };
-                            await handlers.onDelete(fileInfo, undefined);
+                            handlers.onDelete(fileInfo, undefined);
                         } else if (type === "moved") {
                             // Handle as delete + create
                             // Note: FileSystemObserver provides both old and new paths in some cases
@@ -216,7 +246,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             if (changedHandle && changedHandle.kind === "file") {
                                 const file = await changedHandle.getFile();
                                 const fileInfo = {
-                                    path: relativePath as any,
+                                    path: relativePath,
                                     stat: {
                                         size: file.size,
                                         mtime: file.lastModified,
@@ -225,7 +255,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                                     },
                                     handle: changedHandle,
                                 };
-                                await handlers.onChange(fileInfo, undefined);
+                                handlers.onChange(fileInfo, undefined);
                             }
                         }
                     } catch (error) {

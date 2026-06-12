@@ -115,23 +115,25 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {
-        return this.data.get(this.asKeyString(key)) as T;
+        return await Promise.resolve(this.data.get(this.asKeyString(key)) as T);
     }
 
     async set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey> {
         this.data.set(this.asKeyString(key), value);
         this.flush();
-        return key;
+        return await Promise.resolve(key);
     }
 
     async del(key: IDBValidKey): Promise<void> {
         this.data.delete(this.asKeyString(key));
         this.flush();
+        await Promise.resolve();
     }
 
     async clear(): Promise<void> {
         this.data.clear();
         this.flush();
+        await Promise.resolve();
     }
 
     private isIDBKeyRangeLike(value: unknown): value is { lower?: IDBValidKey; upper?: IDBValidKey } {
@@ -143,10 +145,13 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         let filtered = allKeys;
         if (typeof query !== "undefined") {
             if (this.isIDBKeyRangeLike(query)) {
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 const lower = query.lower?.toString() ?? "";
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 const upper = query.upper?.toString() ?? "\uffff";
                 filtered = filtered.filter((key) => key >= lower && key <= upper);
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 const exact = query.toString();
                 filtered = filtered.filter((key) => key === exact);
             }
@@ -154,16 +159,18 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         if (typeof count === "number") {
             filtered = filtered.slice(0, count);
         }
-        return filtered;
+        return await Promise.resolve(filtered);
     }
 
     async close(): Promise<void> {
         this.flush();
+        await Promise.resolve();
     }
 
     async destroy(): Promise<void> {
         this.data.clear();
         nodeFs.rmSync(this.filePath, { force: true });
+        await Promise.resolve();
     }
 }
 
@@ -178,7 +185,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     implements IKeyValueDBService
 {
     private _kvDB: KeyValueDatabase | undefined;
-    private _simpleStore: SimpleStore<any> | undefined;
+    private _simpleStore: SimpleStore<unknown> | undefined;
     private filePath: string;
     private _log = createInstanceLogFunction("NodeKeyValueDBService");
 
@@ -210,11 +217,11 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     private async openKeyValueDB(): Promise<boolean> {
         try {
             this._kvDB = new NodeFileKeyValueDatabase(this.filePath);
-            return true;
+            return await Promise.resolve(true);
         } catch (ex) {
             this._log("Failed to open Node key-value database", LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
+            return await Promise.resolve(false);
         }
     }
 
@@ -248,7 +255,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
         if (!(await this.openKeyValueDB())) {
             return false;
         }
-        this._simpleStore = this.openSimpleStore<any>("os");
+        this._simpleStore = this.openSimpleStore<unknown>("os");
         return true;
     }
 
@@ -264,13 +271,14 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
             get: async (key: string): Promise<T> => {
                 return await getDB().get(`${prefix}${key}`);
             },
-            set: async (key: string, value: any): Promise<void> => {
+            set: async (key: string, value: T): Promise<void> => {
                 await getDB().set(`${prefix}${key}`, value);
             },
             delete: async (key: string): Promise<void> => {
                 await getDB().del(`${prefix}${key}`);
             },
             keys: async (from: string | undefined, to: string | undefined, count?: number): Promise<string[]> => {
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 const allKeys = (await getDB().keys(undefined, count)).map((e) => e.toString());
                 const lower = `${prefix}${from ?? ""}`;
                 const upper = `${prefix}${to ?? "\uffff"}`;

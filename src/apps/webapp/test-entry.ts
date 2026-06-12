@@ -27,11 +27,45 @@ function stripPrefix(raw: string): string {
     return raw.replace(/^[^:]+:/, "");
 }
 
+interface TestCore {
+    services: {
+        replication: {
+            databaseQueueCount?: { value: number };
+            storageApplyingCount?: { value: number };
+            replicate: (force: boolean) => Promise<boolean>;
+        };
+        fileProcessing: {
+            totalQueued?: { value: number };
+            batched?: { value: number };
+            processing?: { value: number };
+        };
+        database: {
+            localDatabase: {
+                findAllNormalDocs: (options: { conflicts: boolean }) => AsyncIterable<{
+                    _deleted?: boolean;
+                    deleted?: boolean;
+                    path?: string;
+                    _rev?: string;
+                    _conflicts?: string[];
+                    size?: number;
+                    mtime?: number;
+                }>;
+            };
+        };
+    };
+    serviceModules: {
+        databaseFileAccess: {
+            storeContent: (path: string, content: string) => Promise<boolean>;
+            delete: (path: string) => Promise<boolean>;
+        };
+    };
+}
+
 /**
  * Poll every 300 ms until all known processing queues are drained, or until
  * the timeout elapses.  Mirrors `waitForIdle` in the existing vitest harness.
  */
-async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
+async function waitForIdle(core: TestCore, timeoutMs = 60_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const q =
@@ -46,8 +80,8 @@ async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
     throw new Error(`waitForIdle timed out after ${timeoutMs} ms`);
 }
 
-function getCore(): any {
-    const core = (app as any)?.core;
+function getCore(): TestCore {
+    const core = (app as unknown as { core: TestCore })?.core;
     if (!core) throw new Error("Vault not initialised – call livesyncTest.init() first");
     return core;
 }
@@ -140,17 +174,14 @@ const livesyncTest: LiveSyncTestAPI = {
 
     async putFile(vaultPath: string, content: string): Promise<boolean> {
         const core = getCore();
-        const result = await core.serviceModules.databaseFileAccess.storeContent(
-            vaultPath as FilePathWithPrefix,
-            content
-        );
+        const result = await core.serviceModules.databaseFileAccess.storeContent(vaultPath, content);
         await waitForIdle(core);
         return result !== false;
     },
 
     async deleteFile(vaultPath: string): Promise<boolean> {
         const core = getCore();
-        const result = await core.serviceModules.databaseFileAccess.delete(vaultPath as FilePathWithPrefix);
+        const result = await core.serviceModules.databaseFileAccess.delete(vaultPath);
         await waitForIdle(core);
         return result !== false;
     },
@@ -200,4 +231,4 @@ const livesyncTest: LiveSyncTestAPI = {
 };
 
 // Expose on window for Playwright page.evaluate() calls.
-(window as any).livesyncTest = livesyncTest;
+(window as unknown as { livesyncTest: unknown }).livesyncTest = livesyncTest;

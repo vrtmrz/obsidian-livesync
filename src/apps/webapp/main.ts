@@ -50,7 +50,7 @@ const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
 
 class LiveSyncWebApp {
     private rootHandle: FileSystemDirectoryHandle;
-    private core: LiveSyncBaseCore<ServiceContext, any> | null = null;
+    private core: LiveSyncBaseCore<ServiceContext, never> | null = null;
     private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
 
     constructor(rootHandle: FileSystemDirectoryHandle) {
@@ -98,17 +98,19 @@ class LiveSyncWebApp {
         });
 
         // App lifecycle handlers
-        this.serviceHub.appLifecycle.scheduleRestart.setHandler(async () => {
-            console.log("[AppLifecycle] Restart requested");
-            await this.shutdown();
-            await this.initialize();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+        this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
+            void (async () => {
+                console.log("[AppLifecycle] Restart requested");
+                await this.shutdown();
+                await this.initialize();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            })();
         });
 
         // Create LiveSync core
-        this.core = new LiveSyncBaseCore(
+        this.core = new LiveSyncBaseCore<ServiceContext, never>(
             this.serviceHub,
             (core, serviceHub) => {
                 return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
@@ -128,7 +130,7 @@ class LiveSyncWebApp {
                 // new ModuleReplicatorP2P(core), // Register P2P replicator for CLI (useP2PReplicator is not used here)
                 new SetupManager(core),
             ],
-            () => [], // No add-ons
+            () => [] as never[], // No add-ons
             (core) => {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
@@ -206,7 +208,8 @@ class LiveSyncWebApp {
             }
 
             // Scan the directory to populate file cache
-            const fileAccess = (this.core as any)._serviceModules?.storageAccess?.vaultAccess;
+            const fileAccess = (this.core as unknown as { _serviceModules?: any })._serviceModules?.storageAccess
+                ?.vaultAccess;
             if (fileAccess?.fsapiAdapter) {
                 console.log("[Scanning] Scanning vault directory...");
                 await fileAccess.fsapiAdapter.scanDirectory();
@@ -224,7 +227,8 @@ class LiveSyncWebApp {
             console.log("[Shutdown] Shutting down...");
 
             // Stop file watching
-            const storageEventManager = (this.core as any)._serviceModules?.storageAccess?.storageEventManager;
+            const storageEventManager = (this.core as unknown as { _serviceModules?: any })._serviceModules
+                ?.storageAccess?.storageEventManager;
             if (storageEventManager?.cleanup) {
                 await storageEventManager.cleanup();
             }
