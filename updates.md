@@ -3,15 +3,16 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## unreleased
+## 0.25.75
 
-12th June, 2026
+13th June, 2026
 
 ### Fixed
 
 - Fixed an issue where using fast synchronisation caused a TypeError in some environments (#953).
 
-## unreleased
+### New features
+- Now we can configure to keep replication active in the background on desktop platforms (#939, PR #949). Thank you so much for @migsferro!
 
 ### Fixed (CLI, automated)
 
@@ -20,6 +21,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Improved
 
 - (CLI) Ported the remaining bash regression tests (`test-daemon-linux.sh`, `test-decoupled-vault-linux.sh`, and `test-remote-commands-linux.sh`) to Deno for cross-platform validation.
+
+### Miscellaneous
+- Some dependencies have been updated.
+- Now we check the compatibility with iOS 15 in the CI tests to ensure the plugin continues to work on older iOS versions even after we upgrade some dependencies.
 
 ## 0.25.74
 
