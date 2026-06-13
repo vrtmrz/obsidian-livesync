@@ -189,6 +189,16 @@ export function paneSyncSettings(
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
+        // Desktop app only, and only for the sync modes that keep a background replication channel
+        // (LiveSync and Periodic). Ignored on mobile, where suspending preserves battery. The
+        // visibility predicate mirrors the runtime guard in ModuleObsidianEvents.
+        if (!this.services.API.isMobile()) {
+            new Setting(paneEl).setClass("wizardHidden").autoWireToggle("keepReplicationActiveInBackground", {
+                onUpdate: visibleOnly(
+                    () => this.isConfiguredAs("syncMode", "LIVESYNC") || this.isConfiguredAs("syncMode", "PERIODIC")
+                ),
+            });
+        }
     });
 
     void addPanel(

@@ -488,6 +488,11 @@ Automatically Sync all files when opening Obsidian.
 Setting key: syncAfterMerge
 Sync automatically after merging files
 
+#### Keep replication active in the background
+
+Setting key: keepReplicationActiveInBackground
+Desktop only; uses more battery and network.
+
 ### 3. Update thinning
 
 #### Batch database update

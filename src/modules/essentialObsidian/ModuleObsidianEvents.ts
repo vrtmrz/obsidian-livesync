@@ -2,7 +2,7 @@ import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
 import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { type TFile } from "../../deps.ts";
+import type { TFile } from "../../deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
@@ -138,12 +138,38 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
         await this.services.fileProcessing.commitPendingFileEvents();
 
+        // Desktop opt-in (LiveSync/Periodic only): keep the background channel running while the
+        // window is hidden, instead of suspending on hide. On hide we skip the suspend for both
+        // modes (LiveSync's continuous replication and Periodic's timer both stall otherwise);
+        // becoming visible reopens normally, and for LiveSync additionally forces a teardown first
+        // (see the resume branch) so a stalled continuous channel is always replaced.
+        const keepActiveInBackground =
+            this.settings.keepReplicationActiveInBackground &&
+            (this.settings.liveSync || this.settings.periodicReplication) &&
+            !this.services.API.isMobile();
+
         if (isHidden) {
-            await this.services.appLifecycle.onSuspending();
+            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
-            // Do not block resume by focus state here; visibility recovery should be enough.
+            // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
+            // emits paused/retry while the replicator keeps its AbortController set, so the reopen
+            // below would no-op on exactly the channel that needs replacing. Force a teardown first
+            // so becoming visible always re-establishes a fresh channel (restoring the default's
+            // reset-on-visibility). Periodic mode has no such channel — its timer just resumes via
+            // the normal path below — so this teardown is gated on liveSync to avoid needlessly
+            // bouncing it. The teardown's closeReplication() aborts synchronously while the reopen is
+            // deferred (fireAndForget + awaited isReplicationReady/initializeDatabaseForReplication),
+            // so the aborted continuousReplication run (and its shareRunningResult lock) unwinds in
+            // microtasks before the reopen runs: it neither double-opens nor gets swallowed by the
+            // still-registered shared run.
+            if (keepActiveInBackground && this.settings.liveSync) {
+                await this.services.appLifecycle.onSuspending();
+            }
+            // Resume is not gated on focus in this branch, but note the top-of-handler check
+            // (isLastHidden && !hasFocus) still defers the whole handler when the window becomes
+            // visible again while unfocused; in that case recovery happens on the next focus.
             await this.services.appLifecycle.onResuming();
             await this.services.appLifecycle.onResumed();
         }
