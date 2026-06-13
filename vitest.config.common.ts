@@ -1,3 +1,9 @@
+/**
+ * @file vitest.config.common.ts
+ * @description Shared base configuration for all Vitest test environments in the project,
+ * defining common resolve aliases, build defines, and plugins (svelte, inlineWorker).
+ * This configuration is not executed directly, but is imported and merged by other specific configuration files.
+ */
 import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { sveltePreprocess } from "svelte-preprocess";

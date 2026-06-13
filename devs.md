@@ -54,8 +54,13 @@ To facilitate development and testing, the build process can automatically copy 
 
 - ~~**Deno Tests**: Unit tests for platform-independent code (e.g., `HashManager.test.ts`)~~
     - This is now obsolete, migrated to vitest.
-- **Vitest** (`vitest.config.ts`): E2E test by Browser-based-harness using Playwright, unit tests.
-    - Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`).
+- **Vitest**:
+    - **Unit Tests** (`vitest.config.unit.ts`): Unit tests run in Node.js (excluding harnesses and integration tests). Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`). Executed via `npm run test:unit`.
+    - **Integration Tests** (`vitest.config.integration.ts`): Tests run in Node.js against a real CouchDB instance. Integration tests should be `*.integration.spec.ts` or `*.integration.test.ts` and placed alongside the implementation file (e.g., `StreamingFetch.integration.spec.ts`). Executed via `npm run test:integration`.
+        - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
+    - **E2E Tests** (`vitest.config.ts`): End-to-end tests run in a browser-based harness using Playwright/Chromium to test full synchronisation scenarios. Executed via `npm run test`.
+    - **P2P Tests** (`vitest.config.p2p.ts`): Browser-based Peer-to-Peer replication tests. Executed via `npm run test:p2p`.
+    - **RPC Unit Tests** (`vitest.config.rpc-unit.ts`): RPC-specific unit tests with coverage thresholds.
 
 - **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
     ```bash
@@ -63,11 +68,11 @@ To facilitate development and testing, the build process can automatically copy 
     npm run test:full              # Run tests with coverage
     npm run test:docker-all:stop   # Stop services
     ```
-    If some services are not needed, start only required ones (e.g., `test:docker-couchdb:start`)
+    If some services are not needed, start only required ones (e.g., `test:docker-couchdb:start`).
     Note that if services are already running, starting script will fail. Please stop them first.
 
 - **Test Structure**:
-    - `test/suite/` - Integration tests for sync operations
+    - `test/suite/` - E2E tests for sync operations (running in browser)
     - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
     - `test/harness/` - Mock implementations (e.g., `obsidian-mock.ts`)
 
@@ -151,7 +156,7 @@ Hence, the new feature should be implemented as follows:
 
 ## Common Patterns
 
-### Module Implementation
+### Module Implementation (Now not recommended for new features, use services instead)
 
 ```typescript
 export class ModuleExample extends AbstractObsidianModule {
@@ -204,6 +209,7 @@ In short, the situation remains unchanged for me, but it means you all become a 
 ## Contribution Guidelines
 
 - Follow existing code style and conventions
+- Write integration tests (`*.integration.spec.ts` or `*.integration.test.ts`) when adding or modifying features that interact with the remote database, and ensure that they pass in the CI workflow.
 - Please bump dependencies with care, check artifacts after updates, with diff-tools and only expected changes in the build output (to avoid unexpected vulnerabilities).
 - When adding new features, please consider it has an OSS implementation, and avoid using proprietary services or APIs that may limit usage.
     - For example, any functionality to connect to a new type of server is expected to either have an OSS implementation available for that server, or to be managed under some responsibilities and/or limitations without disrupting existing functionality, and scope for surveillance reduced by some means (e.g., by client-side encryption, auditing the server ourselves).

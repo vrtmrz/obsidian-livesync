@@ -1,3 +1,9 @@
+/**
+ * @file vitest.config.rpc-unit.ts
+ * @description Configuration for running RPC-specific unit tests (such as RpcRoom and transport layers) in Node.js,
+ * enforcing coverage thresholds on the RPC sub-module.
+ * This can be run manually to verify RPC-specific coverage, or is matched by the glob patterns in `npm run test:unit`.
+ */
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vitest.config.common";
 

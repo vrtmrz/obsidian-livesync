@@ -32,6 +32,9 @@ Always adhere to the following stylistic and spelling rules:
    - Use **'dialogue'** in documentation, user-facing messages, and general text. Use **'dialog'** only inside source code (e.g. class names, methods).
    - Use the hyphenated form **'plug-in'** in user-facing text. Use **'plugin'** only in codebase files, configuration settings, or technical contexts.
 
+5. **User Communication Language**:
+   - Always reply to the user in the language in which they asked the question.
+
 ---
 
 ## Technical & Architecture Rules

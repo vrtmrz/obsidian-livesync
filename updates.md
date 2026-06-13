@@ -5,6 +5,14 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## unreleased
 
+12th June, 2026
+
+### Fixed
+
+- Fixed an issue where using fast synchronisation caused a TypeError in some environments (#953).
+
+## unreleased
+
 ### Fixed (CLI, automated)
 
 - Fixed an issue where the mirror command could fail to apply updates when conflict preservation checks prevented overwriting unsynchronised local changes, even when the `force` parameter or `writeDocumentsIfConflicted` setting was enabled.
