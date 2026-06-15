@@ -14,7 +14,7 @@ import { getOptimalLoopbackIp } from "./helpers/net.ts";
 Deno.test("p2p-peers: discovers host through local relay", async () => {
     const loopbackIp = await getOptimalLoopbackIp();
     const loopbackHost = loopbackIp === "::1" ? "[::1]" : loopbackIp;
-    
+
     const relay = Deno.env.get("RELAY") ?? `ws://${loopbackHost}:4000/`;
     const roomId = Deno.env.get("ROOM_ID") ?? `room-${Date.now()}`;
     const passphrase = Deno.env.get("PASSPHRASE") ?? "test";

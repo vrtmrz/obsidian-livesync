@@ -109,7 +109,11 @@ Deno.test("daemon: ignore rules behaviour", async (t) => {
         await runCliOrFail(vaultDir, "--settings", settingsFile, "mirror");
 
         const dbList = await runCliOrFail(vaultDir, "--settings", settingsFile, "ls");
-        assertNotContains(dbList, "debug.log", "debug.log (ignored via .gitignore import) was unexpectedly synced to database");
+        assertNotContains(
+            dbList,
+            "debug.log",
+            "debug.log (ignored via .gitignore import) was unexpectedly synced to database"
+        );
         assertContains(dbList, "regular.md", "regular.md was not synced normally alongside .gitignore import rules");
         console.log("[PASS] Case 3 verified successfully");
     });
