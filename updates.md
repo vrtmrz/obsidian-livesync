@@ -6,7 +6,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ## Unreleased
 
 ### Fixed
-
+- Now the S3 connection with custom headers works properly (#875).
+  - Previously, custom headers injected for proxy authentication were incorrectly included in the AWS Signature v4 calculation. This led to a '400 Bad Request' error (such as 'signed header is not present') on strict S3 backends (for example, Garage), or when reverse proxies modified, renamed, or stripped these headers before they reached the storage service.
 - No longer connection information of the P2P synchronisation is broken on the specific platform (#956).
 
 ## 0.25.75
