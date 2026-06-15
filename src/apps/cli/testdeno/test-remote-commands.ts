@@ -61,11 +61,7 @@ Deno.test("remote management commands", async () => {
         // 1. remote-status outputs valid JSON with CouchDB details
         console.log("[CASE] remote-status outputs valid JSON with CouchDB details");
         const statusOutput = await runCliCombinedOrFail(vaultDir, "--settings", settingsFile, "remote-status");
-        assertContains(
-            statusOutput,
-            `"db_name": "${dbname}"`,
-            "remote-status should return JSON containing db_name"
-        );
+        assertContains(statusOutput, `"db_name": "${dbname}"`, "remote-status should return JSON containing db_name");
         console.log("[PASS] remote-status verified");
 
         // 2. lock-remote locks and verifies state
