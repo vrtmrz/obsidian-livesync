@@ -6,8 +6,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ## Unreleased
 
 ### Improved
-
-- Fetch chunks on demand now respects network conditions.
+- Now chunk waiting timeout is adaptive
+  - Fetch chunks on demand now respects network conditions. Wait until the replication and network requests have been finished.
 
 ## 0.25.75
 
