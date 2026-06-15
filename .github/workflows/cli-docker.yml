@@ -12,6 +12,17 @@ on:
             - main
         tags:
             - "*.*.*-cli"
+        paths-ignore:
+            - "docs/**"
+            - "*.md"
+            - "images/**"
+            - "assets/**"
+            - "instruction_images/**"
+            - "src/apps/webapp/**"
+            - "src/apps/webpeer/**"
+            - ".github/workflows/release.yml"
+            - ".github/workflows/unit-ci.yml"
+            - ".github/workflows/harness-ci.yml"
     workflow_dispatch:
         inputs:
             dry_run:
