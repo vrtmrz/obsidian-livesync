@@ -124,6 +124,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         await this.services.database.openDatabase({
             databaseEvents: this.services.databaseEvents,
             replicator: this.services.replicator,
+            replication: this.services.replication,
         });
         // this.core.$$realizeSettingSyncMode = this.core.$$realizeSettingSyncMode.bind(this);
         // this.$$parseReplicationResult = this.$$parseReplicationResult.bind(this);

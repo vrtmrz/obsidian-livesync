@@ -1,14 +1,14 @@
-import * as acorn from 'acorn';
-import fs from 'fs';
+import * as acorn from "acorn";
+import fs from "fs";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-let file = 'main.js';
+let file = "main.js";
 let target = 2018;
 let ios = null;
 
 // Help menu
-if (args.includes('--help') || args.includes('-h')) {
+if (args.includes("--help") || args.includes("-h")) {
     console.log(`Usage: node utils/check-compatibility.js [options]
 Options:
   --file <path>                  Path to the bundle file to check (default: main.js)
@@ -27,13 +27,13 @@ Options:
 }
 
 for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--file' && args[i + 1]) {
+    if (args[i] === "--file" && args[i + 1]) {
         file = args[i + 1];
         i++;
-    } else if (args[i] === '--target' && args[i + 1]) {
+    } else if (args[i] === "--target" && args[i + 1]) {
         target = parseInt(args[i + 1], 10);
         i++;
-    } else if (args[i] === '--ios' && args[i + 1]) {
+    } else if (args[i] === "--ios" && args[i + 1]) {
         ios = parseFloat(args[i + 1]);
         i++;
     }
@@ -69,22 +69,22 @@ if (ios !== null) {
 
 // Override defaults with explicit command line options if specified
 for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--allow-dynamic-import') allowDynamicImport = true;
-    else if (args[i] === '--no-allow-dynamic-import') allowDynamicImport = false;
-    else if (args[i] === '--allow-bigint') allowBigInt = true;
-    else if (args[i] === '--no-allow-bigint') allowBigInt = false;
-    else if (args[i] === '--allow-numeric-separator') allowNumericSeparator = true;
-    else if (args[i] === '--no-allow-numeric-separator') allowNumericSeparator = false;
-    else if (args[i] === '--allow-class-fields') allowClassFields = true;
-    else if (args[i] === '--no-allow-class-fields') allowClassFields = false;
-    else if (args[i] === '--allow-class-static-blocks') allowClassStaticBlocks = true;
-    else if (args[i] === '--no-allow-class-static-blocks') allowClassStaticBlocks = false;
-    else if (args[i] === '--allow-regexp-lookbehind') allowRegexpLookbehind = true;
-    else if (args[i] === '--no-allow-regexp-lookbehind') allowRegexpLookbehind = false;
-    else if (args[i] === '--allow-regexp-indices') allowRegexpIndices = true;
-    else if (args[i] === '--no-allow-regexp-indices') allowRegexpIndices = false;
-    else if (args[i] === '--allow-regexp-v-flag') allowRegexpVFlag = true;
-    else if (args[i] === '--no-allow-regexp-v-flag') allowRegexpVFlag = false;
+    if (args[i] === "--allow-dynamic-import") allowDynamicImport = true;
+    else if (args[i] === "--no-allow-dynamic-import") allowDynamicImport = false;
+    else if (args[i] === "--allow-bigint") allowBigInt = true;
+    else if (args[i] === "--no-allow-bigint") allowBigInt = false;
+    else if (args[i] === "--allow-numeric-separator") allowNumericSeparator = true;
+    else if (args[i] === "--no-allow-numeric-separator") allowNumericSeparator = false;
+    else if (args[i] === "--allow-class-fields") allowClassFields = true;
+    else if (args[i] === "--no-allow-class-fields") allowClassFields = false;
+    else if (args[i] === "--allow-class-static-blocks") allowClassStaticBlocks = true;
+    else if (args[i] === "--no-allow-class-static-blocks") allowClassStaticBlocks = false;
+    else if (args[i] === "--allow-regexp-lookbehind") allowRegexpLookbehind = true;
+    else if (args[i] === "--no-allow-regexp-lookbehind") allowRegexpLookbehind = false;
+    else if (args[i] === "--allow-regexp-indices") allowRegexpIndices = true;
+    else if (args[i] === "--no-allow-regexp-indices") allowRegexpIndices = false;
+    else if (args[i] === "--allow-regexp-v-flag") allowRegexpVFlag = true;
+    else if (args[i] === "--no-allow-regexp-v-flag") allowRegexpVFlag = false;
 }
 
 if (!fs.existsSync(file)) {
@@ -92,35 +92,35 @@ if (!fs.existsSync(file)) {
     process.exit(1);
 }
 
-const code = fs.readFileSync(file, 'utf8');
+const code = fs.readFileSync(file, "utf8");
 let ast;
 
 const targetInfo = ios !== null ? `iOS ${ios}` : `ES${target}`;
 console.log(`Parsing '${file}' to inspect compatibility (target ${targetInfo})...`);
 console.log(`Rules:
-  Dynamic Import:     ${allowDynamicImport ? 'Allowed' : 'Prohibited'}
-  BigInt:             ${allowBigInt ? 'Allowed' : 'Prohibited'}
-  Numeric Separators: ${allowNumericSeparator ? 'Allowed' : 'Prohibited'}
-  Class Fields:       ${allowClassFields ? 'Allowed' : 'Prohibited'}
-  Class Static Block: ${allowClassStaticBlocks ? 'Allowed' : 'Prohibited'}
-  RegExp Lookbehind:  ${allowRegexpLookbehind ? 'Allowed' : 'Prohibited'}
-  RegExp Indices (d): ${allowRegexpIndices ? 'Allowed' : 'Prohibited'}
-  RegExp Unicode (v): ${allowRegexpVFlag ? 'Allowed' : 'Prohibited'}
+  Dynamic Import:     ${allowDynamicImport ? "Allowed" : "Prohibited"}
+  BigInt:             ${allowBigInt ? "Allowed" : "Prohibited"}
+  Numeric Separators: ${allowNumericSeparator ? "Allowed" : "Prohibited"}
+  Class Fields:       ${allowClassFields ? "Allowed" : "Prohibited"}
+  Class Static Block: ${allowClassStaticBlocks ? "Allowed" : "Prohibited"}
+  RegExp Lookbehind:  ${allowRegexpLookbehind ? "Allowed" : "Prohibited"}
+  RegExp Indices (d): ${allowRegexpIndices ? "Allowed" : "Prohibited"}
+  RegExp Unicode (v): ${allowRegexpVFlag ? "Allowed" : "Prohibited"}
 `);
 
 try {
-    ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'script' });
+    ast = acorn.parse(code, { ecmaVersion: "latest", sourceType: "script" });
 } catch (err) {
     console.error(`Syntax Error: Failed to parse '${file}' due to a syntax issue:`);
     console.error(err.message);
     if (err.pos !== undefined) {
-        const line = code.substring(0, err.pos).split('\n').length;
+        const line = code.substring(0, err.pos).split("\n").length;
         console.error(`Location: line ${line}, character ${err.pos}`);
         const start = Math.max(0, err.pos - 50);
         const end = Math.min(code.length, err.pos + 50);
-        console.error('Context around error:');
+        console.error("Context around error:");
         console.error(code.substring(start, end));
-        console.error(' '.repeat(err.pos - start) + '^');
+        console.error(" ".repeat(err.pos - start) + "^");
     }
     process.exit(1);
 }
@@ -131,14 +131,14 @@ const violations = [];
 function hasLookbehind(pattern) {
     let index = 0;
     while (true) {
-        const match = pattern.indexOf('(?<=', index);
-        const match2 = pattern.indexOf('(?<!', index);
-        const pos = (match !== -1 && match2 !== -1) ? Math.min(match, match2) : (match !== -1 ? match : match2);
+        const match = pattern.indexOf("(?<=", index);
+        const match2 = pattern.indexOf("(?<!", index);
+        const pos = match !== -1 && match2 !== -1 ? Math.min(match, match2) : match !== -1 ? match : match2;
         if (pos === -1) break;
-        
+
         let backslashes = 0;
         for (let i = pos - 1; i >= 0; i--) {
-            if (pattern[i] === '\\') backslashes++;
+            if (pattern[i] === "\\") backslashes++;
             else break;
         }
         if (backslashes % 2 === 0) {
@@ -150,178 +150,192 @@ function hasLookbehind(pattern) {
 }
 
 function checkNode(node) {
-    if (!node || typeof node !== 'object') return;
+    if (!node || typeof node !== "object") return;
 
     if (node.type) {
         // 1. Optional catch binding (ES2019 / iOS 11.3+)
-        if (node.type === 'CatchClause' && !node.param) {
+        if (node.type === "CatchClause" && !node.param) {
             if (target < 2019 && ios === null) {
                 violations.push({
-                    feature: 'Optional catch binding (ES2019 / iOS 11.3+)',
+                    feature: "Optional catch binding (ES2019 / iOS 11.3+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             } else if (ios !== null && ios < 11.3) {
                 violations.push({
-                    feature: 'Optional catch binding (iOS 11.3+)',
+                    feature: "Optional catch binding (iOS 11.3+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 2. Dynamic import (ES2020 / iOS 11.3+)
-        if (node.type === 'ImportExpression') {
+        if (node.type === "ImportExpression") {
             if (!allowDynamicImport) {
                 violations.push({
-                    feature: 'Dynamic import (ES2020 / iOS 11.3+)',
+                    feature: "Dynamic import (ES2020 / iOS 11.3+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 3. import.meta (ES2020 / iOS 11.3+)
-        if (node.type === 'MetaProperty' && node.meta && node.meta.name === 'import') {
+        if (node.type === "MetaProperty" && node.meta && node.meta.name === "import") {
             if (!allowDynamicImport) {
                 violations.push({
-                    feature: 'import.meta (ES2020 / iOS 11.3+)',
+                    feature: "import.meta (ES2020 / iOS 11.3+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 4. Optional chaining (ES2020 / iOS 13.4+)
-        if (node.type === 'ChainExpression') {
+        if (node.type === "ChainExpression") {
             const isProhibited = ios !== null ? ios < 13.4 : target < 2020;
             if (isProhibited) {
                 violations.push({
-                    feature: 'Optional chaining (ES2020 / iOS 13.4+)',
+                    feature: "Optional chaining (ES2020 / iOS 13.4+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 5. Nullish coalescing (ES2020 / iOS 13.4+)
-        if (node.type === 'LogicalExpression' && node.operator === '??') {
+        if (node.type === "LogicalExpression" && node.operator === "??") {
             const isProhibited = ios !== null ? ios < 13.4 : target < 2020;
             if (isProhibited) {
                 violations.push({
-                    feature: 'Nullish coalescing (ES2020 / iOS 13.4+)',
+                    feature: "Nullish coalescing (ES2020 / iOS 13.4+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 6. BigInt literal (ES2020 / iOS 14.0+)
-        if (node.type === 'Literal' && node.bigint !== undefined) {
+        if (node.type === "Literal" && node.bigint !== undefined) {
             if (!allowBigInt) {
                 violations.push({
-                    feature: 'BigInt literal (ES2020 / iOS 14.0+)',
+                    feature: "BigInt literal (ES2020 / iOS 14.0+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 7. Logical assignment (ES2021 / iOS 14.0+)
-        if (node.type === 'AssignmentExpression' && ['||=', '&&=', '??='].includes(node.operator)) {
+        if (node.type === "AssignmentExpression" && ["||=", "&&=", "??="].includes(node.operator)) {
             const isProhibited = ios !== null ? ios < 14.0 : target < 2021;
             if (isProhibited) {
                 violations.push({
                     feature: `Logical assignment operator '${node.operator}' (ES2021 / iOS 14.0+)`,
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 8. Numeric separators (ES2021 / iOS 14.0+)
-        if (node.type === 'Literal' && typeof node.value === 'number' && node.raw && node.raw.includes('_')) {
+        if (node.type === "Literal" && typeof node.value === "number" && node.raw && node.raw.includes("_")) {
             if (!allowNumericSeparator) {
                 violations.push({
-                    feature: 'Numeric separator (ES2021 / iOS 14.0+)',
+                    feature: "Numeric separator (ES2021 / iOS 14.0+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 9. Class Fields (ES2022 / iOS 14.0+ public, iOS 14.5+ private/static)
-        if (node.type === 'PropertyDefinition') {
+        if (node.type === "PropertyDefinition") {
             if (!allowClassFields) {
-                const requiredVersion = node.key.type === 'PrivateIdentifier' || node.static ? 'iOS 14.5+' : 'iOS 14.0+';
+                const requiredVersion =
+                    node.key.type === "PrivateIdentifier" || node.static ? "iOS 14.5+" : "iOS 14.0+";
                 violations.push({
-                    feature: `Class field definition '${node.key.name || node.key.value || '#private'}' (ES2022 / ${requiredVersion})`,
+                    feature: `Class field definition '${node.key.name || node.key.value || "#private"}' (ES2022 / ${requiredVersion})`,
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 10. Class Static Initialization Blocks (ES2022 / iOS 16.4+)
-        if (node.type === 'StaticBlock') {
+        if (node.type === "StaticBlock") {
             if (!allowClassStaticBlocks) {
                 violations.push({
-                    feature: 'Class static initialization block (ES2022 / iOS 16.4+)',
+                    feature: "Class static initialization block (ES2022 / iOS 16.4+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
         // 11. RegExp lookbehind assertions (ES2018 / iOS 16.4+)
-        if (node.type === 'Literal' && node.regex) {
+        if (node.type === "Literal" && node.regex) {
             if (!allowRegexpLookbehind && hasLookbehind(node.regex.pattern)) {
                 violations.push({
-                    feature: 'RegExp Lookbehind assertion (iOS 16.4+)',
+                    feature: "RegExp Lookbehind assertion (iOS 16.4+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
-            if (!allowRegexpIndices && node.regex.flags.includes('d')) {
+            if (!allowRegexpIndices && node.regex.flags.includes("d")) {
                 violations.push({
                     feature: "RegExp 'd' (indices) flag (ES2022 / iOS 15.0+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
-            if (!allowRegexpVFlag && node.regex.flags.includes('v')) {
+            if (!allowRegexpVFlag && node.regex.flags.includes("v")) {
                 violations.push({
                     feature: "RegExp 'v' (Unicode properties) flag (ES2024 / iOS 17.0+)",
                     pos: node.start,
-                    node
+                    node,
                 });
             }
         }
 
-        if ((node.type === 'NewExpression' || node.type === 'CallExpression') && node.callee && node.callee.name === 'RegExp') {
-            if (!allowRegexpLookbehind && node.arguments[0] && node.arguments[0].type === 'Literal' && typeof node.arguments[0].value === 'string') {
+        if (
+            (node.type === "NewExpression" || node.type === "CallExpression") &&
+            node.callee &&
+            node.callee.name === "RegExp"
+        ) {
+            if (
+                !allowRegexpLookbehind &&
+                node.arguments[0] &&
+                node.arguments[0].type === "Literal" &&
+                typeof node.arguments[0].value === "string"
+            ) {
                 if (hasLookbehind(node.arguments[0].value)) {
                     violations.push({
-                        feature: 'RegExp Lookbehind assertion (iOS 16.4+)',
+                        feature: "RegExp Lookbehind assertion (iOS 16.4+)",
                         pos: node.start,
-                        node
+                        node,
                     });
                 }
             }
-            if (node.arguments[1] && node.arguments[1].type === 'Literal' && typeof node.arguments[1].value === 'string') {
+            if (
+                node.arguments[1] &&
+                node.arguments[1].type === "Literal" &&
+                typeof node.arguments[1].value === "string"
+            ) {
                 const flags = node.arguments[1].value;
-                if (!allowRegexpIndices && flags.includes('d')) {
+                if (!allowRegexpIndices && flags.includes("d")) {
                     violations.push({
                         feature: "RegExp 'd' (indices) flag (ES2022 / iOS 15.0+)",
                         pos: node.start,
-                        node
+                        node,
                     });
                 }
-                if (!allowRegexpVFlag && flags.includes('v')) {
+                if (!allowRegexpVFlag && flags.includes("v")) {
                     violations.push({
                         feature: "RegExp 'v' (Unicode properties) flag (ES2024 / iOS 17.0+)",
                         pos: node.start,
-                        node
+                        node,
                     });
                 }
             }
@@ -329,13 +343,13 @@ function checkNode(node) {
     }
 
     for (const key in node) {
-        if (key === 'loc' || key === 'start' || key === 'end') continue;
+        if (key === "loc" || key === "start" || key === "end") continue;
         const val = node[key];
         if (Array.isArray(val)) {
             for (const child of val) {
                 checkNode(child);
             }
-        } else if (val && typeof val === 'object') {
+        } else if (val && typeof val === "object") {
             checkNode(val);
         }
     }
@@ -347,14 +361,14 @@ checkNode(ast);
 if (violations.length > 0) {
     console.error(`\nCompatibility Check Failed: Found ${violations.length} prohibited features.`);
     violations.forEach((v, index) => {
-        const line = code.substring(0, v.pos).split('\n').length;
+        const line = code.substring(0, v.pos).split("\n").length;
         console.error(`\n[${index + 1}] Prohibited feature: ${v.feature}`);
         console.error(`Location: line ${line}, character ${v.pos}`);
         const start = Math.max(0, v.pos - 50);
         const end = Math.min(code.length, v.pos + 50);
-        console.error('Context around feature:');
+        console.error("Context around feature:");
         console.error(code.substring(start, end));
-        console.error(' '.repeat(v.pos - start) + '^');
+        console.error(" ".repeat(v.pos - start) + "^");
     });
     process.exit(1);
 }
