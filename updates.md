@@ -5,6 +5,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## 0.25.76
 
+15th June, 2026
+
 ### Fixed
 
 - Now the S3 connection with custom headers works properly (#875).
