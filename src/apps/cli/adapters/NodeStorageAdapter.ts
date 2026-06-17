@@ -1,8 +1,7 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import type { NodeStat } from "./NodeTypes";
+import { fsPromises as fs, path } from "../node-compat";
 
 /**
  * Storage adapter implementation for Node.js

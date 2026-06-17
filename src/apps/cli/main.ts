@@ -1,10 +1,3 @@
-/**
- * Self-hosted LiveSync CLI
- * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
- */
-
-import * as fs from "fs/promises";
-import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
@@ -27,6 +20,7 @@ import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
+import { fsPromises as fs, path } from "./node-compat";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();

@@ -93,6 +93,18 @@ Ensures that all import statements are standardised across the codebase, resolvi
     deno run --allow-read --allow-write --allow-env normalise-imports.ts
     ```
 
+### 7. CLI Node.js Import Redirection (`refactor-cli-node-imports.ts`)
+Redirects direct Node.js built-in module imports (like `fs` and `path`) within the CLI codebase to use a single barrel file (`src/apps/cli/node-compat.ts`).
+
+*   **Actions**:
+    *   Finds imports of Node.js built-in APIs (`fs`, `fs/promises`, `path`, and `readline/promises`) in CLI source files.
+    *   Replaces them with imports from the local `node-compat.ts` barrel file.
+    *   This eliminates duplicate browser-targeted linter warnings on Node.js built-ins in the CLI workspace, keeping linter ignores consolidated.
+*   **Command**:
+    ```bash
+    deno run --allow-read --allow-write --allow-env refactor-cli-node-imports.ts
+    ```
+
 ---
 
 ## Safety and Exclusions

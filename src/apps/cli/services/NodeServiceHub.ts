@@ -1,6 +1,5 @@
 import type { AppLifecycleService, AppLifecycleServiceDependencies } from "@lib/services/base/AppLifecycleService";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
-import * as nodePath from "node:path";
 import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
 import { SvelteDialogManagerBase, type ComponentHasResult } from "@lib/services/implements/base/SvelteDialog";
 import { UIService } from "@lib/services/implements/base/UIService";
@@ -25,6 +24,7 @@ import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
 import { DatabaseService } from "@lib/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { path as nodePath } from "../node-compat";
 
 export class NodeServiceContext extends ServiceContext {
     databasePath: string;
