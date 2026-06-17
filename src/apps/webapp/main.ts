@@ -92,7 +92,7 @@ class LiveSyncWebApp {
                     console.log("[Settings] Loaded from .livesync/settings.json");
                     return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
                 }
-            } catch (error) {
+            } catch {
                 console.log("[Settings] Failed to load, using defaults");
             }
             return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
@@ -170,7 +170,7 @@ class LiveSyncWebApp {
             const file = await fileHandle.getFile();
             const text = await file.text();
             return JSON.parse(text);
-        } catch (error) {
+        } catch {
             // File doesn't exist yet
             return null;
         }

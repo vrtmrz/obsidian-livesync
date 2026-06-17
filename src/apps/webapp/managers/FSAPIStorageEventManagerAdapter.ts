@@ -182,7 +182,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             if (changedHandle && changedHandle.kind === "file") {
                                 const file = await changedHandle.getFile();
                                 const fileInfo = {
-                                    path: relativePath as any,
+                                    path: relativePath,
                                     stat: {
                                         size: file.size,
                                         mtime: file.lastModified,
@@ -200,7 +200,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             }
                         } else if (type === "disappeared") {
                             const fileInfo = {
-                                path: relativePath as any,
+                                path: relativePath,
                                 stat: {
                                     size: 0,
                                     mtime: Date.now(),
@@ -217,7 +217,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             if (changedHandle && changedHandle.kind === "file") {
                                 const file = await changedHandle.getFile();
                                 const fileInfo = {
-                                    path: relativePath as any,
+                                    path: relativePath,
                                     stat: {
                                         size: file.size,
                                         mtime: file.lastModified,

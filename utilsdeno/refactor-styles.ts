@@ -100,7 +100,12 @@ for (const sourceFile of project.getSourceFiles()) {
     }
 
     // Exclude unit and integration test files
-    if (posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts") || posixFilePath.includes("/_test/")) {
+    if (
+        posixFilePath.endsWith(".spec.ts") ||
+        posixFilePath.endsWith(".test.ts") ||
+        posixFilePath.includes("/_test/") ||
+        posixFilePath.includes("/testdeno/")
+    ) {
         continue;
     }
 
