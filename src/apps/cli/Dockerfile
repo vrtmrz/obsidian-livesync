@@ -82,8 +82,8 @@ RUN apt-get update \
 
 WORKDIR /deps
 
-# runtime-package.json lists only the packages that Vite leaves external
-COPY src/apps/cli/runtime-package.json ./package.json
+# package.json lists only the packages that the CLI requires
+COPY src/apps/cli/package.json ./package.json
 RUN npm install --omit=dev
 
 # ─────────────────────────────────────────────────────────────────────────────
