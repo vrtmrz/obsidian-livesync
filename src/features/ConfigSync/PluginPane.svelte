@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import ObsidianLiveSyncPlugin from "../../main";
+    import ObsidianLiveSyncPlugin from "@/main";
     import {
         ConfigSync,
         type IPluginDataExDisplay,
@@ -11,16 +11,16 @@
     } from "./CmdConfigSync.ts";
     import PluginCombo from "./PluginCombo.svelte";
     import { Menu, type PluginManifest } from "@/deps.ts";
-    import { unique } from "../../lib/src/common/utils";
+    import { unique } from "@lib/common/utils";
     import {
         MODE_SELECTIVE,
         MODE_AUTOMATIC,
         MODE_PAUSED,
         type SYNC_MODE,
         MODE_SHINY,
-    } from "../../lib/src/common/types";
-    import { normalizePath } from "../../deps";
-    import { HiddenFileSync } from "../HiddenFileSync/CmdHiddenFileSync.ts";
+    } from "@lib/common/types";
+    import { normalizePath } from "@/deps";
+    import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     export let plugin: ObsidianLiveSyncPlugin;

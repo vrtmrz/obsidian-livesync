@@ -1,8 +1,8 @@
 import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@lib/managers/StorageEventManager";
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
-import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { IgnoreRules } from "../serviceModules/IgnoreRules";
+import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 // import type { IMinimumLiveSyncCommands } from "@lib/services/base/IService";
 
 export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEventManagerAdapter> {

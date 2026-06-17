@@ -1,7 +1,7 @@
 import { initializeStores } from "@/common/stores";
 
 // import { InjectableDatabaseService } from "@/lib/src/services/implements/injectable/InjectableDatabaseService";
-import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { DatabaseService, type DatabaseServiceDependencies } from "@lib/services/base/DatabaseService.ts";
 
 export class ObsidianDatabaseService<T extends ObsidianServiceContext> extends DatabaseService<T> {

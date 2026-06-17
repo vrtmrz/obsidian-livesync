@@ -10,12 +10,12 @@ import {
     type RemoteDBSettings,
     IncompatibleChangesInSpecificPattern,
     CompatibleButLossyChanges,
-} from "../../lib/src/common/types.ts";
-import { escapeMarkdownValue } from "../../lib/src/common/utils.ts";
-import { AbstractModule } from "../AbstractModule.ts";
-import { $msg } from "../../lib/src/common/i18n.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+} from "@lib/common/types.ts";
+import { escapeMarkdownValue } from "@lib/common/utils.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
 
 function valueToString(value: any) {

@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "@/deps.ts";
 import TestPaneComponent from "./TestPane.svelte";
-import type ObsidianLiveSyncPlugin from "../../../main.ts";
-import type { ModuleDev } from "../ModuleDev.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
+import type { ModuleDev } from "@/modules/extras/ModuleDev.ts";
 export const VIEW_TYPE_TEST = "ols-pane-test";
 declare global {
     interface LSEvents {

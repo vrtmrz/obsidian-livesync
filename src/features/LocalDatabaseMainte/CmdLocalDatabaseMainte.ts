@@ -9,14 +9,14 @@ import {
     type EntryLeaf,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "../../lib/src/common/types";
-import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
-import { LiveSyncCommands } from "../LiveSyncCommands";
+} from "@lib/common/types";
+import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
-import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/LiveSyncReplicator";
-import { delay } from "@/lib/src/common/utils";
+import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { delay } from "@lib/common/utils";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";

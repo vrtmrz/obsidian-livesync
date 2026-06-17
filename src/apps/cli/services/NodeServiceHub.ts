@@ -24,7 +24,7 @@ import type { ServiceInstances } from "@lib/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
 import { DatabaseService } from "@lib/services/base/DatabaseService";
-import type { ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 
 export class NodeServiceContext extends ServiceContext {
     databasePath: string;

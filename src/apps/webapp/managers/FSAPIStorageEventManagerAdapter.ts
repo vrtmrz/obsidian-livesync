@@ -10,7 +10,7 @@ import type {
     IStorageEventWatchHandlers,
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
-import type { FSAPIFile, FSAPIFolder } from "../adapters/FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 
 /**
  * FileSystem API-specific type guard adapter

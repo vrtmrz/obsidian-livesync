@@ -1,4 +1,4 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { VIEW_TYPE_GLOBAL_HISTORY, GlobalHistoryView } from "./GlobalHistory/GlobalHistoryView.ts";
 
 export class ModuleObsidianGlobalHistory extends AbstractObsidianModule {

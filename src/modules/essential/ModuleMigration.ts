@@ -1,4 +1,4 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "../../lib/src/common/logger.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger.ts";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
@@ -6,16 +6,16 @@ import {
     EVENT_REQUEST_RUN_DOCTOR,
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
-} from "../../common/events.ts";
-import { AbstractModule } from "../AbstractModule.ts";
+} from "@/common/events.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg } from "@lib/common/i18n.ts";
-import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
-import { isValidPath } from "../../common/utils.ts";
-import { isMetaEntry } from "../../lib/src/common/types.ts";
-import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
-import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
-import type { LiveSyncCore } from "../../main.ts";
-import { SetupManager } from "../features/SetupManager.ts";
+import { performDoctorConsultation, RebuildOptions } from "@lib/common/configForDoc.ts";
+import { isValidPath } from "@/common/utils.ts";
+import { isMetaEntry } from "@lib/common/types.ts";
+import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@lib/common/utils.ts";
+import { countCompromisedChunks } from "@lib/pouchdb/negotiation.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { SetupManager } from "@/modules/features/SetupManager.ts";
 
 type ErrorInfo = {
     path: string;

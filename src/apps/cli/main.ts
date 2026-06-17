@@ -7,11 +7,11 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
-import { LiveSyncBaseCore } from "../../LiveSyncBaseCore";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import type { InjectableSettingService } from "@/lib/src/services/implements/injectable/InjectableSettingService";
+import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import {
     LOG_LEVEL_DEBUG,
     setGlobalLogFunction,
@@ -26,7 +26,7 @@ import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
-import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
+import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();

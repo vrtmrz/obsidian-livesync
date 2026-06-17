@@ -1,10 +1,10 @@
-import { requestToCouchDBWithCredentials } from "../../../common/utils";
-import { $msg } from "../../../lib/src/common/i18n";
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "../../../lib/src/common/logger";
-import type { ObsidianLiveSyncSettings } from "../../../lib/src/common/types";
-import { fireAndForget, parseHeaderValues } from "../../../lib/src/common/utils";
-import { isCloudantURI } from "../../../lib/src/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "../../../lib/src/replication/httplib";
+import { requestToCouchDBWithCredentials } from "@/common/utils";
+import { $msg } from "@lib/common/i18n";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { fireAndForget, parseHeaderValues } from "@lib/common/utils";
+import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
+import { generateCredentialObject } from "@lib/replication/httplib";
 
 export const checkConfig = async (
     checkResultDiv: HTMLDivElement | undefined,

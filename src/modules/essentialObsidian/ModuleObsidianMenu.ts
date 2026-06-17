@@ -3,7 +3,7 @@ import { addIcon } from "@/deps.ts";
 import { type FilePathWithPrefix } from "@lib/common/types.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import type { LiveSyncCore } from "@/main.ts";
-import { AbstractModule } from "../AbstractModule.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 // Obsidian specific menu commands.
 export class ModuleObsidianMenu extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {

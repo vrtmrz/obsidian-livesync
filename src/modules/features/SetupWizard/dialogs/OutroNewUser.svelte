@@ -1,10 +1,10 @@
 <script lang="ts">
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import Question from "@/lib/src/UI/components/Question.svelte";
-    import Instruction from "@/lib/src/UI/components/Instruction.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import Question from "@lib/UI/components/Question.svelte";
+    import Instruction from "@lib/UI/components/Instruction.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
     import { TYPE_APPLY, TYPE_CANCELLED, type OutroNewUserResultType } from "./setupDialogTypes";
 
     type Props = {

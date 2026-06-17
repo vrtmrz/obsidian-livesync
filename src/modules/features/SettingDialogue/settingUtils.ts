@@ -1,16 +1,11 @@
 import { escapeStringToHTML } from "octagonal-wheels/string";
-import {
-    E2EEAlgorithmNames,
-    MILESTONE_DOCID,
-    NODEINFO_DOCID,
-    type ObsidianLiveSyncSettings,
-} from "../../../lib/src/common/types";
+import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import {
     pickCouchDBSyncSettings,
     pickBucketSyncSettings,
     pickP2PSyncSettings,
     pickEncryptionSettings,
-} from "../../../lib/src/common/utils";
+} from "@lib/common/utils";
 import { getConfig, type AllSettingItemKey } from "./settingConstants";
 import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 

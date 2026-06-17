@@ -7,7 +7,7 @@ import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { FileAccessFSAPI } from "./FileAccessFSAPI";
 import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
-import { StorageEventManagerFSAPI } from "../managers/StorageEventManagerFSAPI";
+import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 

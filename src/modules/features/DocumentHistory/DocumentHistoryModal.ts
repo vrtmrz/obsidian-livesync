@@ -1,7 +1,7 @@
-import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "../../../deps.ts";
-import { getPathFromTFile, isValidPath } from "../../../common/utils.ts";
-import { decodeBinary, readString } from "../../../lib/src/string_and_binary/convert.ts";
-import ObsidianLiveSyncPlugin from "../../../main.ts";
+import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
+import { getPathFromTFile, isValidPath } from "@/common/utils.ts";
+import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
+import ObsidianLiveSyncPlugin from "@/main.ts";
 import {
     type DocumentID,
     type FilePathWithPrefix,
@@ -9,11 +9,11 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
-} from "../../../lib/src/common/types.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
-import { isErrorOfMissingDoc } from "../../../lib/src/pouchdb/utils_couchdb.ts";
-import { fireAndForget, getDocData, readContent } from "../../../lib/src/common/utils.ts";
-import { isPlainText, stripPrefix } from "../../../lib/src/string_and_binary/path.ts";
+} from "@lib/common/types.ts";
+import { Logger } from "@lib/common/logger.ts";
+import { isErrorOfMissingDoc } from "@lib/pouchdb/utils_couchdb.ts";
+import { fireAndForget, getDocData, readContent } from "@lib/common/utils.ts";
+import { isPlainText, stripPrefix } from "@lib/string_and_binary/path.ts";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";

@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "../../deps.ts";
-    import type { FilePath, LoadedEntry } from "../../lib/src/common/types.ts";
-    import { decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
-    import { getDocData, isObjectDifferent, mergeObject } from "../../lib/src/common/utils.ts";
+    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
+    import type { FilePath, LoadedEntry } from "@lib/common/types.ts";
+    import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
+    import { getDocData, isObjectDifferent, mergeObject } from "@lib/common/utils.ts";
 
     interface Props {
         docs?: LoadedEntry[];

@@ -1,4 +1,4 @@
-import type { ITypeGuardAdapter } from "@/lib/src/serviceModules/adapters";
+import type { ITypeGuardAdapter } from "@lib/serviceModules/adapters";
 import { TFile, TFolder } from "obsidian";
 
 /**

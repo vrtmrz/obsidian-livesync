@@ -1,11 +1,11 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import type ObsidianLiveSyncPlugin from "../../../main.ts";
+    import type ObsidianLiveSyncPlugin from "@/main.ts";
     import { perf_trench } from "./tests.ts";
-    import { MarkdownRenderer, Notice } from "../../../deps.ts";
-    import type { ModuleDev } from "../ModuleDev.ts";
+    import { MarkdownRenderer, Notice } from "@/deps.ts";
+    import type { ModuleDev } from "@/modules/extras/ModuleDev.ts";
     import { fireAndForget } from "octagonal-wheels/promises";
-    import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events.ts";
+    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events.ts";
     export let plugin: ObsidianLiveSyncPlugin;
     export let moduleDev: ModuleDev;
     $: core = plugin.core;

@@ -10,12 +10,12 @@ import type {
     IStorageEventWatchHandlers,
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
-import type { NodeFile, NodeFolder } from "../adapters/NodeTypes";
+import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
 import type { Stats } from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
-import type { IgnoreRules } from "../serviceModules/IgnoreRules";
+import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 
 /**
  * CLI-specific type guard adapter

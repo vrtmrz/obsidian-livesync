@@ -6,9 +6,9 @@ import {
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
-} from "../../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { Menu } from "@/deps.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -22,17 +22,17 @@ import {
     getCouchDBConfigSummary,
     getE2EEConfigSummary,
 } from "./settingUtils.ts";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../lib/src/common/types.ts";
-import { SetupManager, UserMode } from "../SetupManager.ts";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types.ts";
+import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
-import { activateRemoteConfiguration } from "../../../lib/src/serviceFeatures/remoteConfig.ts";
-import { ConnectionStringParser } from "../../../lib/src/common/ConnectionString.ts";
-import type { RemoteConfigurationResult } from "../../../lib/src/common/ConnectionString.ts";
-import type { RemoteConfiguration } from "../../../lib/src/common/models/setting.type.ts";
-import SetupRemote from "../SetupWizard/dialogs/SetupRemote.svelte";
-import SetupRemoteCouchDB from "../SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
-import SetupRemoteBucket from "../SetupWizard/dialogs/SetupRemoteBucket.svelte";
-import SetupRemoteP2P from "../SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
+import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
+import type { RemoteConfigurationResult } from "@lib/common/ConnectionString.ts";
+import type { RemoteConfiguration } from "@lib/common/models/setting.type.ts";
+import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
+import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
+import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
+import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
