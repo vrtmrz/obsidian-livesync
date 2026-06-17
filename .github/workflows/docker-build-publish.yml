@@ -1,0 +1,168 @@
+name: Build and Publish Docker Image
+
+on:
+  # This will only build if relevant files change,
+  #   but then there will be a mismatch in plugin version number and the last
+  #   built docker image having an older version number...
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/Dockerfile"
+      - "docker/docker-compose.yml"
+      - "docker/local.ini"
+      - ".github/workflows/docker-build-publish.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docker/Dockerfile"
+      - "docker/docker-compose.yml"
+      - "docker/local.ini"
+      - ".github/workflows/docker-build-publish.yml"
+
+  # This will be triggered when a new version is published.
+  #   This will create a new docker image even if there are no changes needed,
+  #   but then the version numbers will at least match.
+  release:
+    types: [published]
+
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  TEST_TAG: ${{ github.repository }}:test-${{ github.run_id }} # Unique per workflow run
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      security-events: write # Required to upload SARIF files to Security tab
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # ------------------------------------------------------------------------
+      # Multi-Architecture Support
+      # ------------------------------------------------------------------------
+      # QEMU is required to emulate ARM64 instructions on the AMD64 runner.
+      # This enables building images for Raspberry Pi.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Docker Buildx provides the extended build capabilities (multi-arch).
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ------------------------------------------------------------------------
+      # Registry Authentication
+      # ------------------------------------------------------------------------
+      - name: Login to the GitHub Container registry
+        # Don't log in for pull requests from forks
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      #- name: Login to Docker Hub
+      #  # Don't log in for pull requests from forks
+      #  if: github.event_name != 'pull_request'
+      #  uses: docker/login-action@v3
+      #  with:
+      #    username: ${{ vars.DOCKERHUB_USERNAME }}
+      #    password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ------------------------------------------------------------------------
+      # Metadata Extraction
+      # ------------------------------------------------------------------------
+      # Automatically generates tags based on the event.
+      # - Pushes to main -> 'main', 'edge'
+      # - Releases -> '1.2.3', 'latest'
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # TODO: also/only(?) push to:
+          # docker.io/${{ secrets.DOCKERHUB_USERNAME }}/your-image-name
+          # see: https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images#publishing-images-to-docker-hub-and-github-packages
+          # see also: https://docs.docker.com/build/ci/github-actions/push-multi-registries/
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+            # set `latest` tag if on the default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Add SHORT_SHA Environment Variable
+        run: echo "SHORT_SHA=sha-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      # ------------------------------------------------------------------------
+      # Test Building the Image
+      # ------------------------------------------------------------------------
+      # Cribbed from: https://docs.docker.com/build/ci/github-actions/test-before-push/
+      - name: "Test: Build and export to Docker"
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/
+          file: ./docker/Dockerfile
+          push: false
+          tags: ${{ env.TEST_TAG }}
+          # `load: true` loads the built image into the local Docker
+          #   daemon on the runner, so we can run tests against it.
+          #   This is not enabled right now as we don't run any further tests.
+          #load: true
+
+      ## use https://github.com/marketplace/actions/github-action-for-generating-random-and-unique-names ?
+      ## docker run -e COUCHDB_USER=testUserName -e COUCHDB_PASSWORD=testPassword -v /opt/couchdb/data -v /opt/couchdb/etc --entrypoint "/bin/bash" --rm obsidian-live-sync-test-ghactions:latest /opt/couchdb/bin/couchdb --version
+      ## returns: `No Admin Account Found, aborting startup.`
+      #- name: "Test: Check that couchdb runs in container"
+      #  run: |
+      #    docker run -e COUCHDB_USER=testUserName \
+      #    -e COUCHDB_PASSWORD=testPassword \
+      #    -v /opt/couchdb/data \
+      #    -v /opt/couchdb/etc \
+      #    --entrypoint "/bin/bash" \
+      #    --rm \
+      #     ${{ env.TEST_TAG }}
+      #    /opt/couchdb/bin/couchdb --version
+
+      # ------------------------------------------------------------------------
+      # Build and Push
+      # ------------------------------------------------------------------------
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy results to GitHub Security
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: "trivy-results.sarif"
