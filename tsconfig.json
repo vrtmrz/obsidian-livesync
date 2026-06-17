@@ -23,6 +23,6 @@
             "@lib/*": ["./src/lib/src/*"]
         }
     },
-    "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts"],
-    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**"]
+    "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],
+    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**", "utilsdeno"]
 }
