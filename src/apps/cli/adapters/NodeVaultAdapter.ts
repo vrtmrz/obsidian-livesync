@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
-import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import type { NodeFile, NodeFolder } from "./NodeTypes";
 
 /**
  * Vault adapter implementation for Node.js

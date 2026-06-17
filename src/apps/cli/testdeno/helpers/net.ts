@@ -1,5 +1,3 @@
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-
 type WaitForPortOptions = {
     timeoutMs?: number;
     intervalMs?: number;
@@ -7,7 +5,7 @@ type WaitForPortOptions = {
 };
 
 function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function connectWithTimeout(hostname: string, port: number, timeoutMs: number): Promise<void> {
@@ -15,13 +13,13 @@ async function connectWithTimeout(hostname: string, port: number, timeoutMs: num
     try {
         const connPromise = Deno.connect({ hostname, port });
         const timeoutPromise = new Promise<never>((_, reject) => {
-            timer = compatGlobal.setTimeout(() => reject(new Error(`connect timeout after ${timeoutMs}ms`)), timeoutMs);
+            timer = setTimeout(() => reject(new Error(`connect timeout after ${timeoutMs}ms`)), timeoutMs);
         });
         const conn = await Promise.race([connPromise, timeoutPromise]);
         conn.close();
     } finally {
         if (timer !== undefined) {
-            compatGlobal.clearTimeout(timer);
+            clearTimeout(timer);
         }
     }
 }

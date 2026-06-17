@@ -28,7 +28,6 @@ import { TempDir } from "./helpers/temp.ts";
 import { runCliOrFail, jsonFieldIsNa } from "./helpers/cli.ts";
 import { applyCouchdbSettings, initSettingsFile } from "./helpers/settings.ts";
 import { startCouchdb, stopCouchdb } from "./helpers/docker.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // ---------------------------------------------------------------------------
 // Load configuration
@@ -110,7 +109,7 @@ async function runSuite(
     config: { uri: string; user: string; password: string },
     dbname: string
 ): Promise<void> {
-    const sleep = (ms: number) => new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const runWithRetry = async <T>(label: string, fn: () => Promise<T>, retries = SYNC_RETRY): Promise<T> => {
         let lastErr: unknown;
         for (let i = 0; i <= retries; i++) {

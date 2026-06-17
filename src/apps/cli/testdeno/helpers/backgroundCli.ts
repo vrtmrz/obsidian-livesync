@@ -1,6 +1,5 @@
 import { CLI_DIR, TEE_ENABLED, formatTeeCommand, createLineTeeWriter } from "./cli.ts";
 import { join } from "@std/path";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 const CLI_DIST = join(CLI_DIR, "dist", "index.cjs");
 const VERBOSE_ENABLED = Deno.env.get("LIVESYNC_CLI_VERBOSE") === "1";
@@ -79,7 +78,7 @@ export class BackgroundCliProcess {
             const status = await Promise.race([
                 this.child.status.then((s) => ({ type: "status" as const, status: s })),
                 new Promise<{ type: "tick" }>((resolve) =>
-                    compatGlobal.setTimeout(() => resolve({ type: "tick" }), 100)
+                    setTimeout(() => resolve({ type: "tick" }), 100)
                 ),
             ]);
             if (status.type === "status") {

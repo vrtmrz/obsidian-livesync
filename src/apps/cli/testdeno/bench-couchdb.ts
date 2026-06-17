@@ -3,7 +3,6 @@ import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts
 import { assertFilesEqual, runCliOrFail } from "./helpers/cli.ts";
 import { startCouchdb, stopCouchdb } from "./helpers/docker.ts";
 import { createDeterministicDataset, type DatasetEntry } from "./helpers/dataset.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 type BenchmarkConfig = {
     couchdbBackendUri: string;
@@ -138,7 +137,7 @@ function startCouchdbProxy(options: { backendUri: string; proxyUri: string; requ
             },
         },
         async (request) => {
-            await new Promise((resolve) => compatGlobal.setTimeout(resolve, halfDelayMs));
+            await new Promise((resolve) => setTimeout(resolve, halfDelayMs));
 
             const targetUrl = new URL(request.url);
             targetUrl.protocol = backend.protocol;

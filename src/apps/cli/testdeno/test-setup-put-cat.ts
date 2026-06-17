@@ -132,7 +132,7 @@ Deno.test("CLI file operations: push / cat / ls / info / rm / resolve / cat-rev 
         assertEquals(data.path, REMOTE_PATH, "info .path mismatch");
         assertEquals(data.filename, REMOTE_PATH.split("/").at(-1), "info .filename mismatch");
         assert(typeof data.size === "number" && data.size >= 0, `info .size invalid: ${data.size}`);
-        assert(typeof data.chunks === "number" && (data.chunks as number) >= 1, `info .chunks invalid: ${data.chunks}`);
+        assert(typeof data.chunks === "number" && (data.chunks) >= 1, `info .chunks invalid: ${data.chunks}`);
         assertEquals(data.conflicts, "N/A", "info .conflicts should be N/A");
         console.log("[PASS] info output format matched");
     });
