@@ -40,7 +40,7 @@
     },
     "dependencies": {
         "chokidar": "^4.0.0",
-        "minimatch": "^10.2.2",
+        "minimatch": "^10.2.5",
         "octagonal-wheels": "^0.1.46",
         "pouchdb-adapter-http": "^9.0.0",
         "pouchdb-adapter-leveldb": "^9.0.0",
@@ -55,9 +55,9 @@
         "werift": "^0.23.0"
     },
     "devDependencies": {
-        "@sveltejs/vite-plugin-svelte": "^6.2.4",
+        "@sveltejs/vite-plugin-svelte": "^7.1.2",
         "typescript": "5.9.3",
-        "vite": "^7.3.1",
+        "vite": "^8.0.16",
         "vitest": "^4.1.8"
     }
 }

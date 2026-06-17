@@ -11,10 +11,9 @@ import type {
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
-import type { Stats } from "fs";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
-import { fsPromises as fs, path } from "../node-compat";
+import { fsPromises as fs, path, type Stats } from "../node-compat";
 
 /**
  * CLI-specific type guard adapter
@@ -100,7 +99,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         private basePath: string,
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false
-    ) {}
+    ) { }
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {
