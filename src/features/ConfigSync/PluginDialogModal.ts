@@ -1,6 +1,6 @@
 import { mount, unmount } from "svelte";
-import { App, Modal } from "../../deps.ts";
-import ObsidianLiveSyncPlugin from "../../main.ts";
+import { App, Modal } from "@/deps.ts";
+import ObsidianLiveSyncPlugin from "@/main.ts";
 import PluginPane from "./PluginPane.svelte";
 export class PluginDialogModal extends Modal {
     plugin: ObsidianLiveSyncPlugin;
@@ -14,7 +14,7 @@ export class PluginDialogModal extends Modal {
         this.plugin = plugin;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.contentEl.style.overflow = "auto";
         this.contentEl.style.display = "flex";
@@ -23,12 +23,12 @@ export class PluginDialogModal extends Modal {
         if (!this.component) {
             this.component = mount(PluginPane, {
                 target: contentEl,
-                props: { plugin: this.plugin },
+                props: { plugin: this.plugin, core: this.plugin.core },
             });
         }
     }
 
-    onClose() {
+    override onClose() {
         if (this.component) {
             void unmount(this.component);
             this.component = undefined;

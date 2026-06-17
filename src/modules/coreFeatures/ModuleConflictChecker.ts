@@ -1,9 +1,9 @@
-import { AbstractModule } from "../AbstractModule.ts";
-import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
+import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@lib/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleConflictChecker extends AbstractModule {
     async _queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {
@@ -71,10 +71,10 @@ export class ModuleConflictChecker extends AbstractModule {
                 delay: 0,
                 keepResultUntilDownstreamConnected: true,
                 pipeTo: this.conflictResolveQueue,
-                totalRemainingReactiveSource: this.core.conflictProcessQueueCount,
+                totalRemainingReactiveSource: this.services.conflict.conflictProcessQueueCount,
             }
         );
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.conflict.queueCheckForIfOpen.setHandler(this._queueConflictCheckIfOpen.bind(this));
         services.conflict.queueCheckFor.setHandler(this._queueConflictCheck.bind(this));
         services.conflict.ensureAllProcessed.setHandler(this._waitForAllConflictProcessed.bind(this));

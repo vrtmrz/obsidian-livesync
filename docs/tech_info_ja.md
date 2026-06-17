@@ -2,7 +2,7 @@
 
 ## 同期
 
-![Synchronization](../images/1.png)
+![Synchronisation](../images/1.png)
 
 1. ノートが更新された際、Obsidianがイベントを発報します。Obsidian-LiveSyncはそれをハンドリングして、ローカルのPouchDBに変更を反映します。
 2. PouchDBは、リモートのCouchDBに差分をレプリケーションします。

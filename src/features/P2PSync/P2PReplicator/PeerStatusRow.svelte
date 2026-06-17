@@ -1,9 +1,9 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { AcceptedStatus, type PeerStatus } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
-    import type { P2PReplicator } from "../CmdP2PReplicator";
-    import { eventHub } from "../../../common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
+    import { AcceptedStatus, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import { eventHub } from "@/common/events";
+    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -57,7 +57,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        cmdReplicator._replicatorInstance?.server?.makeDecision({
+        replicator.makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -65,13 +65,12 @@
         });
     }
     function revokeDecision() {
-        cmdReplicator._replicatorInstance?.server?.revokeDecision({
+        replicator.revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
     }
-    const cmdReplicator = getContext<() => P2PReplicator>("getReplicator")();
-    const replicator = cmdReplicator._replicatorInstance!;
+    const replicator = getContext<() => LiveSyncTrysteroReplicator>("getReplicator")();
 
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
@@ -87,14 +86,14 @@
         return attrs;
     });
     function startWatching() {
-        replicator.watchPeer(peer.peerId);
+        replicator?.watchPeer(peer.peerId);
     }
     function stopWatching() {
-        replicator.unwatchPeer(peer.peerId);
+        replicator?.unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        replicator.sync(peer.peerId, false);
+        void replicator?.sync(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {

@@ -1,5 +1,4 @@
-import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import { getPath } from "../common/utils.ts";
+import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -8,26 +7,31 @@ import {
     type FilePath,
     type FilePathWithPrefix,
     type LOG_LEVEL,
-} from "../lib/src/common/types.ts";
-import type ObsidianLiveSyncPlugin from "../main.ts";
-import { MARK_DONE } from "../modules/features/ModuleLog.ts";
-import type { LiveSyncCore } from "../main.ts";
-import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
+} from "@lib/common/types.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
+import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { __$checkInstanceBinding } from "@lib/dev/checks.ts";
+import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
+    /**
+     * @deprecated This class is deprecated. Please use core
+     */
     plugin: ObsidianLiveSyncPlugin;
+    core: LiveSyncCore;
     get app() {
         return this.plugin.app;
     }
     get settings() {
-        return this.plugin.settings;
+        return this.core.settings;
     }
     get localDatabase() {
-        return this.plugin.localDatabase;
+        return this.core.localDatabase;
     }
     get services() {
-        return this.plugin.services;
+        return this.core.services;
     }
 
     // id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
@@ -36,20 +40,23 @@ export abstract class LiveSyncCommands {
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
         return await this.services.path.path2id(filename, prefix);
     }
+
     getPath(entry: AnyEntry): FilePathWithPrefix {
-        return getPath(entry);
+        return this.services.path.getPath(entry);
     }
 
-    constructor(plugin: ObsidianLiveSyncPlugin) {
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
         this.plugin = plugin;
-        this.onBindFunction(plugin, plugin.services);
+        this.core = core;
+        this.onBindFunction(this.core, this.core.services);
+        this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
         __$checkInstanceBinding(this);
     }
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;
 
     _isMainReady() {
-        return this.plugin.services.appLifecycle.isReady();
+        return this.services.appLifecycle.isReady();
     }
     _isMainSuspended() {
         return this.services.appLifecycle.isSuspended();
@@ -58,13 +65,7 @@ export abstract class LiveSyncCommands {
         return this.services.database.isDatabaseReady();
     }
 
-    _log = (msg: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string) => {
-        if (typeof msg === "string" && level !== LOG_LEVEL_NOTICE) {
-            msg = `[${this.constructor.name}]\u{200A} ${msg}`;
-        }
-        // console.log(msg);
-        Logger(msg, level, key);
-    };
+    _log: ReturnType<typeof createInstanceLogFunction>;
 
     _verbose = (msg: any, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);

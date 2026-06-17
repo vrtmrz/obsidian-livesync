@@ -1,48 +1,73 @@
-import { fireAndForget, yieldMicrotask } from "octagonal-wheels/promises";
-import type { LiveSyncLocalDB } from "../../lib/src/pouchdb/LiveSyncLocalDB";
-import { AbstractModule } from "../AbstractModule";
-import {
-    Logger,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_VERBOSE,
-    LEVEL_NOTICE,
-    LEVEL_INFO,
-    type LOG_LEVEL,
-} from "octagonal-wheels/common/logger";
-import { isLockAcquired, shareRunningResult, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { balanceChunkPurgedDBs } from "@/lib/src/pouchdb/chunks";
-import { purgeUnreferencedChunks } from "@/lib/src/pouchdb/chunks";
-import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "../../lib/src/common/types";
-import { rateLimitedSharedExecution, scheduleTask, updatePreviousExecutionTime } from "../../common/utils";
-import { EVENT_FILE_SAVED, EVENT_ON_UNRESOLVED_ERROR, EVENT_SETTING_SAVED, eventHub } from "../../common/events";
-import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
+import type PouchDB from "pouchdb-core";
+import { fireAndForget } from "octagonal-wheels/promises";
+import { AbstractModule } from "@/modules/AbstractModule";
+import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
+import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
+import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
+import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
+import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { type EntryDoc, type RemoteType } from "@lib/common/types";
 
-import { $msg } from "../../lib/src/common/i18n";
-import { clearHandlers } from "../../lib/src/replication/SyncParamsHandler";
-import type { LiveSyncCore } from "../../main";
+import { scheduleTask } from "octagonal-wheels/concurrency/task";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
+
+import { $msg } from "@lib/common/i18n";
+import type { LiveSyncCore } from "@/main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import { clearHandlers } from "@lib/replication/SyncParamsHandler";
+import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
+import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
 
-const KEY_REPLICATION_ON_EVENT = "replicationOnEvent";
-const REPLICATION_ON_EVENT_FORECASTED_TIME = 5000;
+function isOnlineAndCanReplicate(
+    errorManager: UnresolvedErrorManager,
+    host: NecessaryServices<"API", any>,
+    showMessage: boolean
+): Promise<boolean> {
+    const errorMessage = "Network is offline";
+    if (!host.services.API.isOnline) {
+        errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        return Promise.resolve(false);
+    }
+    errorManager.clearError(errorMessage);
+    return Promise.resolve(true);
+}
+async function canReplicateWithPBKDF2(
+    errorManager: UnresolvedErrorManager,
+    host: NecessaryServices<"replicator" | "setting", any>,
+    showMessage: boolean
+): Promise<boolean> {
+    const currentSettings = host.services.setting.currentSettings();
+    // TODO: check using PBKDF2 salt?
+    const errorMessage = $msg("Replicator.Message.InitialiseFatalError");
+    const replicator = host.services.replicator.getActiveReplicator();
+    if (!replicator) {
+        errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        return false;
+    }
+    errorManager.clearError(errorMessage);
+    // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
+    // tagged as network error at beginning for error filtering with NetworkWarningStyles
+    const ensureMessage = `${MARK_LOG_NETWORK_ERROR}Failed to initialise the encryption key, preventing replication.`;
+    const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, true);
+    if (!ensureResult) {
+        errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        return false;
+    }
+    errorManager.clearError(ensureMessage);
+    return ensureResult; // is true.
+}
 
 export class ModuleReplicator extends AbstractModule {
     _replicatorType?: RemoteType;
-    _previousErrors = new Set<string>();
-    processor: ReplicateResultProcessor = new ReplicateResultProcessor(this);
 
-    showError(msg: string, max_log_level: LOG_LEVEL = LEVEL_NOTICE) {
-        const level = this._previousErrors.has(msg) ? LEVEL_INFO : max_log_level;
-        this._log(msg, level);
-        if (!this._previousErrors.has(msg)) {
-            this._previousErrors.add(msg);
-            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
-        }
-    }
+    processor: ReplicateResultProcessor = new ReplicateResultProcessor(this);
+    private _unresolvedErrorManager: UnresolvedErrorManager = new UnresolvedErrorManager(
+        this.core.services.appLifecycle
+    );
+
     clearErrors() {
-        this._previousErrors.clear();
-        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        this._unresolvedErrorManager.clearErrors();
     }
 
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
@@ -52,9 +77,6 @@ export class ModuleReplicator extends AbstractModule {
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
-            if (this._replicatorType !== setting.remoteType) {
-                void this.setReplicator();
-            }
             if (this.core.settings.suspendParseReplicationResult) {
                 this.processor.suspend();
             } else {
@@ -65,72 +87,21 @@ export class ModuleReplicator extends AbstractModule {
         return Promise.resolve(true);
     }
 
-    async setReplicator() {
-        const replicator = await this.services.replicator.getNewReplicator();
-        if (!replicator) {
-            this.showError($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (this.core.replicator) {
-            await this.core.replicator.closeReplication();
-            this._log("Replicator closed for changing", LOG_LEVEL_VERBOSE);
-        }
-        this.core.replicator = replicator;
-        this._replicatorType = this.settings.remoteType;
-        await yieldMicrotask();
-        // Clear any existing sync parameter handlers (means clearing key-deriving salt).
+    _onReplicatorInitialised(): Promise<boolean> {
+        // For now, we only need to clear the error related to replicator initialisation, but in the future, if there are more things to do when the replicator is initialised, we can add them here.
         clearHandlers();
-        return true;
+        return Promise.resolve(true);
     }
 
-    _getReplicator(): LiveSyncAbstractReplicator {
-        return this.core.replicator;
-    }
-
-    _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return this.setReplicator();
-    }
     _everyOnDatabaseInitialized(showNotice: boolean): Promise<boolean> {
         fireAndForget(() => this.processor.restoreFromSnapshotOnce());
         return Promise.resolve(true);
     }
 
-    _everyOnResetDatabase(db: LiveSyncLocalDB): Promise<boolean> {
-        return this.setReplicator();
-    }
-    async ensureReplicatorPBKDF2Salt(showMessage: boolean = false): Promise<boolean> {
-        // Checking salt
-        const replicator = this.services.replicator.getActiveReplicator();
-        if (!replicator) {
-            this.showError($msg("Replicator.Message.InitialiseFatalError"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        return await replicator.ensurePBKDF2Salt(this.settings, showMessage, true);
-    }
-
     async _everyBeforeReplicate(showMessage: boolean): Promise<boolean> {
-        // Checking salt
-        if (!this.core.managers.networkManager.isOnline) {
-            this.showError("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-            return false;
-        }
-        // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
-        if (!(await this.ensureReplicatorPBKDF2Salt(false))) {
-            this.showError("Failed to initialise the encryption key, preventing replication.");
-            return false;
-        }
         await this.processor.restoreFromSnapshotOnce();
         this.clearErrors();
         return true;
-    }
-
-    private async _replicate(showMessage: boolean = false): Promise<boolean | void> {
-        try {
-            updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT, REPLICATION_ON_EVENT_FORECASTED_TIME);
-            return await this.$$_replicate(showMessage);
-        } finally {
-            updatePreviousExecutionTime(KEY_REPLICATION_ON_EVENT);
-        }
     }
 
     /**
@@ -192,156 +163,129 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         });
     }
 
-    async _canReplicate(showMessage: boolean = false): Promise<boolean> {
-        if (!this.services.appLifecycle.isReady()) {
-            Logger(`Not ready`);
+    private async onReplicationFailed(showMessage: boolean = false): Promise<boolean> {
+        const activeReplicator = this.services.replicator.getActiveReplicator();
+        if (!activeReplicator) {
+            Logger(`No active replicator found`, LOG_LEVEL_INFO);
             return false;
         }
-
-        if (isLockAcquired("cleanup")) {
-            Logger($msg("Replicator.Message.Cleaned"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-
-        if (this.settings.versionUpFlash != "") {
-            Logger($msg("Replicator.Message.VersionUpFlash"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-
-        if (!(await this.services.fileProcessing.commitPendingFileEvents())) {
-            this.showError($msg("Replicator.Message.Pending"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-
-        if (!this.core.managers.networkManager.isOnline) {
-            this.showError("Network is offline", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-            return false;
-        }
-        if (!(await this.services.replication.onBeforeReplicate(showMessage))) {
-            this.showError($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        this.clearErrors();
-        return true;
-    }
-
-    async $$_replicate(showMessage: boolean = false): Promise<boolean | void> {
-        const checkBeforeReplicate = await this.services.replication.isReplicationReady(showMessage);
-        if (!checkBeforeReplicate) return false;
-
-        //<-- Here could be an module.
-        const ret = await this.core.replicator.openReplication(this.settings, false, showMessage, false);
-        if (!ret) {
-            if (this.core.replicator.tweakSettingsMismatched && this.core.replicator.preferredTweakValue) {
-                await this.services.tweakValue.askResolvingMismatched(this.core.replicator.preferredTweakValue);
-            } else {
-                if (this.core.replicator?.remoteLockedAndDeviceNotAccepted) {
-                    if (this.core.replicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
-                        await this.cleaned(showMessage);
-                    } else {
-                        const message = $msg("Replicator.Dialogue.Locked.Message");
-                        const CHOICE_FETCH = $msg("Replicator.Dialogue.Locked.Action.Fetch");
-                        const CHOICE_DISMISS = $msg("Replicator.Dialogue.Locked.Action.Dismiss");
-                        const CHOICE_UNLOCK = $msg("Replicator.Dialogue.Locked.Action.Unlock");
-                        const ret = await this.core.confirm.askSelectStringDialogue(
-                            message,
-                            [CHOICE_FETCH, CHOICE_UNLOCK, CHOICE_DISMISS],
-                            {
-                                title: $msg("Replicator.Dialogue.Locked.Title"),
-                                defaultAction: CHOICE_DISMISS,
-                                timeout: 60,
-                            }
-                        );
-                        if (ret == CHOICE_FETCH) {
-                            this._log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
-                            await this.core.rebuilder.scheduleFetch();
-                            this.services.appLifecycle.scheduleRestart();
-                            return;
-                        } else if (ret == CHOICE_UNLOCK) {
-                            await this.core.replicator.markRemoteResolved(this.settings);
-                            this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
-                            return;
+        if (activeReplicator.tweakSettingsMismatched && activeReplicator.preferredTweakValue) {
+            await this.services.tweakValue.askResolvingMismatched(activeReplicator.preferredTweakValue);
+        } else {
+            if (activeReplicator.remoteLockedAndDeviceNotAccepted) {
+                if (activeReplicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
+                    await this.cleaned(showMessage);
+                } else {
+                    const message = $msg("Replicator.Dialogue.Locked.Message");
+                    const CHOICE_FETCH = $msg("Replicator.Dialogue.Locked.Action.Fetch");
+                    const CHOICE_DISMISS = $msg("Replicator.Dialogue.Locked.Action.Dismiss");
+                    const CHOICE_UNLOCK = $msg("Replicator.Dialogue.Locked.Action.Unlock");
+                    const ret = await this.core.confirm.askSelectStringDialogue(
+                        message,
+                        [CHOICE_FETCH, CHOICE_UNLOCK, CHOICE_DISMISS],
+                        {
+                            title: $msg("Replicator.Dialogue.Locked.Title"),
+                            defaultAction: CHOICE_DISMISS,
+                            timeout: 60,
                         }
+                    );
+                    if (ret == CHOICE_FETCH) {
+                        this._log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
+                        await this.core.rebuilder.scheduleFetch();
+                        this.services.appLifecycle.scheduleRestart();
+                        return false;
+                    } else if (ret == CHOICE_UNLOCK) {
+                        await activeReplicator.markRemoteResolved(this.settings);
+                        this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                        return false;
                     }
                 }
             }
         }
-        return ret;
+        // TODO: Check again and true/false return. This will be the result for performReplication.
+        return false;
     }
 
-    private async _replicateByEvent(): Promise<boolean | void> {
-        const least = this.settings.syncMinimumInterval;
-        if (least > 0) {
-            return rateLimitedSharedExecution(KEY_REPLICATION_ON_EVENT, least, async () => {
-                return await this.services.replication.replicate();
-            });
-        }
-        return await shareRunningResult(`replication`, () => this.services.replication.replicate());
-    }
+    // private async _replicateByEvent(): Promise<boolean | void> {
+    //     const least = this.settings.syncMinimumInterval;
+    //     if (least > 0) {
+    //         return rateLimitedSharedExecution(KEY_REPLICATION_ON_EVENT, least, async () => {
+    //             return await this.services.replication.replicate();
+    //         });
+    //     }
+    //     return await shareRunningResult(`replication`, () => this.services.replication.replicate());
+    // }
 
-    _parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void {
+    _parseReplicationResult(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): Promise<boolean> {
         this.processor.enqueueAll(docs);
-    }
-
-    _everyBeforeSuspendProcess(): Promise<boolean> {
-        this.core.replicator?.closeReplication();
         return Promise.resolve(true);
     }
 
-    private async _replicateAllToServer(
-        showingNotice: boolean = false,
-        sendChunksInBulkDisabled: boolean = false
-    ): Promise<boolean> {
-        if (!this.services.appLifecycle.isReady()) return false;
-        if (!(await this.services.replication.onBeforeReplicate(showingNotice))) {
-            Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (!sendChunksInBulkDisabled) {
-            if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
-                if (
-                    (await this.core.confirm.askYesNoDialog("Do you want to send all chunks before replication?", {
-                        defaultOption: "No",
-                        timeout: 20,
-                    })) == "yes"
-                ) {
-                    await this.core.replicator.sendChunks(this.core.settings, undefined, true, 0);
-                }
-            }
-        }
-        const ret = await this.core.replicator.replicateAllToServer(this.settings, showingNotice);
-        if (ret) return true;
-        const checkResult = await this.services.replication.checkConnectionFailure();
-        if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllToRemote(showingNotice);
-        return !checkResult;
-    }
-    async _replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
-        if (!this.services.appLifecycle.isReady()) return false;
-        const ret = await this.core.replicator.replicateAllFromServer(this.settings, showingNotice);
-        if (ret) return true;
-        const checkResult = await this.services.replication.checkConnectionFailure();
-        if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllFromRemote(showingNotice);
-        return !checkResult;
-    }
+    // _everyBeforeSuspendProcess(): Promise<boolean> {
+    //     this.core.replicator?.closeReplication();
+    //     return Promise.resolve(true);
+    // }
 
-    private _reportUnresolvedMessages(): Promise<string[]> {
-        return Promise.resolve([...this._previousErrors]);
-    }
+    // private async _replicateAllToServer(
+    //     showingNotice: boolean = false,
+    //     sendChunksInBulkDisabled: boolean = false
+    // ): Promise<boolean> {
+    //     if (!this.services.appLifecycle.isReady()) return false;
+    //     if (!(await this.services.replication.onBeforeReplicate(showingNotice))) {
+    //         Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
+    //         return false;
+    //     }
+    //     if (!sendChunksInBulkDisabled) {
+    //         if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
+    //             if (
+    //                 (await this.core.confirm.askYesNoDialog("Do you want to send all chunks before replication?", {
+    //                     defaultOption: "No",
+    //                     timeout: 20,
+    //                 })) == "yes"
+    //             ) {
+    //                 await this.core.replicator.sendChunks(this.core.settings, undefined, true, 0);
+    //             }
+    //         }
+    //     }
+    //     const ret = await this.core.replicator.replicateAllToServer(this.settings, showingNotice);
+    //     if (ret) return true;
+    //     const checkResult = await this.services.replication.checkConnectionFailure();
+    //     if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllToRemote(showingNotice);
+    //     return !checkResult;
+    // }
+    // async _replicateAllFromServer(showingNotice: boolean = false): Promise<boolean> {
+    //     if (!this.services.appLifecycle.isReady()) return false;
+    //     const ret = await this.core.replicator.replicateAllFromServer(this.settings, showingNotice);
+    //     if (ret) return true;
+    //     const checkResult = await this.services.replication.checkConnectionFailure();
+    //     if (checkResult == "CHECKAGAIN") return await this.services.remote.replicateAllFromRemote(showingNotice);
+    //     return !checkResult;
+    // }
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.getActiveReplicator.setHandler(this._getReplicator.bind(this));
-        services.databaseEvents.onDatabaseInitialisation.addHandler(this._everyOnInitializeDatabase.bind(this));
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        services.replicator.onReplicatorInitialised.addHandler(this._onReplicatorInitialised.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
-        services.databaseEvents.onResetDatabase.addHandler(this._everyOnResetDatabase.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
-        services.replication.parseSynchroniseResult.setHandler(this._parseReplicationResult.bind(this));
-        services.appLifecycle.onSuspending.addHandler(this._everyBeforeSuspendProcess.bind(this));
-        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
-        services.replication.isReplicationReady.setHandler(this._canReplicate.bind(this));
-        services.replication.replicate.setHandler(this._replicate.bind(this));
-        services.replication.replicateByEvent.setHandler(this._replicateByEvent.bind(this));
-        services.remote.replicateAllToRemote.setHandler(this._replicateAllToServer.bind(this));
-        services.remote.replicateAllFromRemote.setHandler(this._replicateAllFromServer.bind(this));
-        services.appLifecycle.getUnresolvedMessages.addHandler(this._reportUnresolvedMessages.bind(this));
+        services.replication.parseSynchroniseResult.addHandler(this._parseReplicationResult.bind(this));
+
+        // --> These handlers can be separated.
+        const isOnlineAndCanReplicateWithHost = isOnlineAndCanReplicate.bind(null, this._unresolvedErrorManager, {
+            services: {
+                API: services.API,
+            },
+            serviceModules: {},
+        });
+        const canReplicateWithPBKDF2WithHost = canReplicateWithPBKDF2.bind(null, this._unresolvedErrorManager, {
+            services: {
+                replicator: services.replicator,
+                setting: services.setting,
+            },
+            serviceModules: {},
+        });
+        services.replication.onBeforeReplicate.addHandler(isOnlineAndCanReplicateWithHost, 10);
+        services.replication.onBeforeReplicate.addHandler(canReplicateWithPBKDF2WithHost, 20);
+        // <-- End of handlers that can be separated.
+        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this), 100);
+        services.replication.onReplicationFailed.addHandler(this.onReplicationFailed.bind(this));
     }
 }

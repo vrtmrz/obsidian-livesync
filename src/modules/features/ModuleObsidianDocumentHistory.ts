@@ -1,10 +1,9 @@
 import { type TFile } from "@/deps.ts";
-import { eventHub } from "../../common/events.ts";
-import { EVENT_REQUEST_SHOW_HISTORY } from "../../common/obsidianEvents.ts";
-import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "../../lib/src/common/types.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
+import { eventHub } from "@/common/events.ts";
+import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
+import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "@lib/common/types.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts";
-import { getPath } from "../../common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 
 export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
@@ -35,13 +34,13 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
     }
 
     showHistory(file: TFile | FilePathWithPrefix, id?: DocumentID) {
-        new DocumentHistoryModal(this.app, this.plugin, file, id).open();
+        new DocumentHistoryModal(this.app, this.core, this.plugin, file, id).open();
     }
 
     async fileHistory() {
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs()) {
-            notes.push({ id: doc._id, path: getPath(doc), dispPath: getPath(doc), mtime: doc.mtime });
+            notes.push({ id: doc._id, path: this.getPath(doc), dispPath: this.getPath(doc), mtime: doc.mtime });
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
@@ -51,7 +50,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
             this.showHistory(targetId.path, targetId.id);
         }
     }
-    onBindFunction(core: typeof this.core, services: typeof core.services): void {
+    override onBindFunction(core: typeof this.core, services: typeof core.services): void {
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
     }
 }

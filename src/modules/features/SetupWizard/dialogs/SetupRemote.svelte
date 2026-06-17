@@ -1,21 +1,24 @@
 <script lang="ts">
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import Question from "@/lib/src/UI/components/Question.svelte";
-    import Option from "@/lib/src/UI/components/Option.svelte";
-    import Options from "@/lib/src/UI/components/Options.svelte";
-    import Instruction from "@/lib/src/UI/components/Instruction.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    const TYPE_COUCHDB = "couchdb";
-    const TYPE_BUCKET = "bucket";
-    const TYPE_P2P = "p2p";
-    const TYPE_CANCELLED = "cancelled";
-    type ResultType = typeof TYPE_COUCHDB | typeof TYPE_BUCKET | typeof TYPE_P2P | typeof TYPE_CANCELLED;
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import Question from "@lib/UI/components/Question.svelte";
+    import Option from "@lib/UI/components/Option.svelte";
+    import Options from "@lib/UI/components/Options.svelte";
+    import Instruction from "@lib/UI/components/Instruction.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import {
+        TYPE_COUCHDB,
+        TYPE_BUCKET,
+        TYPE_P2P,
+        TYPE_CANCELLED,
+        type SetupRemoteResultType,
+    } from "./setupDialogTypes";
+
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: SetupRemoteResultType) => void;
     };
     const { setResult }: Props = $props();
-    let userType = $state<ResultType>(TYPE_CANCELLED);
+    let userType = $state<SetupRemoteResultType>(TYPE_CANCELLED);
     let proceedTitle = $derived.by(() => {
         if (userType === TYPE_COUCHDB) {
             return "Continue to CouchDB setup";

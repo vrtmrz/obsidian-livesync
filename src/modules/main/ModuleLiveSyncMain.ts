@@ -1,22 +1,20 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "../../lib/src/common/types.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
-    EVENT_PLUGIN_UNLOADED,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,
     eventHub,
-} from "../../common/events.ts";
-import { $msg, setLang } from "../../lib/src/common/i18n.ts";
-import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
-import { cancelAllPeriodicTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
-import { stopAllRunningProcessors } from "octagonal-wheels/concurrency/processor";
-import { AbstractModule } from "../AbstractModule.ts";
-import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
+} from "@/common/events.ts";
+import { $msg, setLang } from "@lib/common/i18n.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
-import type { LiveSyncCore } from "../../main.ts";
-import { initialiseWorkerModule } from "@/lib/src/worker/bgWorker.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
+import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -49,7 +47,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         }
         if (!(await this.core.services.appLifecycle.onFirstInitialise())) return false;
         // await this.core.$$realizeSettingSyncMode();
-        await this.services.setting.realiseSetting();
+        await this.services.control.applySettings();
         fireAndForget(async () => {
             this._log($msg("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
             if (!(await this.services.appLifecycle.onScanningStartupIssues())) {
@@ -65,10 +63,12 @@ export class ModuleLiveSyncMain extends AbstractModule {
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             fireAndForget(async () => {
                 try {
-                    await this.core.services.setting.realiseSetting();
-                    const lang = this.core.services.setting.currentSettings()?.displayLanguage ?? undefined;
+                    const lang = this.core.services.setting.currentSettings()?.displayLanguage;
                     if (lang !== undefined) {
-                        setLang(this.core.services.setting.currentSettings()?.displayLanguage);
+                        setLang(lang);
+                    }
+                    if (this.core.services.database.isDatabaseReady()) {
+                        await this.core.services.control.applySettings();
                     }
                     eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
                 } catch (e) {
@@ -84,18 +84,13 @@ export class ModuleLiveSyncMain extends AbstractModule {
         initialiseWorkerModule();
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
-        eventHub.emitEvent(EVENT_PLUGIN_LOADED, this.core);
+        eventHub.emitEvent(EVENT_PLUGIN_LOADED);
         this._log($msg("moduleLiveSyncMain.logLoadingPlugin"));
         if (!(await this.services.appLifecycle.onInitialise())) {
             this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
             return false;
         }
         // this.addUIs();
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
         this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
         await this.services.setting.loadSettings();
         if (!(await this.services.appLifecycle.onSettingLoaded())) {
@@ -103,17 +98,17 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         const lsKey = "obsidian-live-sync-ver" + this.services.vault.getVaultName();
-        const last_version = localStorage.getItem(lsKey);
+        const last_version = compatGlobal.localStorage.getItem(lsKey);
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
             this._log($msg("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
         }
 
-        //@ts-ignore
-        if (this.isMobile) {
-            this.settings.disableRequestURI = true;
-        }
+        // //@ts-ignore
+        // if (this.isMobile) {
+        //     this.settings.disableRequestURI = true;
+        // }
         if (last_version && Number(last_version) < VER) {
             this.settings.liveSync = false;
             this.settings.syncOnSave = false;
@@ -125,100 +120,96 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
             await this.saveSettings();
         }
-        localStorage.setItem(lsKey, `${VER}`);
-        await this.services.database.openDatabase();
+        compatGlobal.localStorage.setItem(lsKey, `${VER}`);
+        await this.services.database.openDatabase({
+            databaseEvents: this.services.databaseEvents,
+            replicator: this.services.replicator,
+        });
         // this.core.$$realizeSettingSyncMode = this.core.$$realizeSettingSyncMode.bind(this);
         // this.$$parseReplicationResult = this.$$parseReplicationResult.bind(this);
         // this.$$replicate = this.$$replicate.bind(this);
         // this.core.$$onLiveSyncReady = this.core.$$onLiveSyncReady.bind(this);
         await this.core.services.appLifecycle.onLoaded();
-        await Promise.all(this.core.addOns.map((e) => e.onload()));
+        await Promise.all(this.core.addOns.map((e) => Promise.resolve(e.onload())));
         return true;
     }
 
-    async _onLiveSyncUnload(): Promise<void> {
-        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
-        await this.services.appLifecycle.onBeforeUnload();
-        cancelAllPeriodicTask();
-        cancelAllTasks();
-        stopAllRunningProcessors();
-        await this.services.appLifecycle.onUnload();
-        this._unloaded = true;
-        for (const addOn of this.core.addOns) {
-            addOn.onunload();
-        }
-        if (this.localDatabase != null) {
-            this.localDatabase.onunload();
-            if (this.core.replicator) {
-                this.core.replicator?.closeReplication();
-            }
-            await this.localDatabase.close();
-        }
-        eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
-        eventHub.offAll();
-        this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
-        return;
-    }
+    // async _onLiveSyncUnload(): Promise<void> {
+    //     eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
+    //     await this.services.appLifecycle.onBeforeUnload();
+    //     cancelAllPeriodicTask();
+    //     cancelAllTasks();
+    //     stopAllRunningProcessors();
+    //     await this.services.appLifecycle.onUnload();
+    //     this._unloaded = true;
+    //     for (const addOn of this.core.addOns) {
+    //         addOn.onunload();
+    //     }
+    //     if (this.localDatabase != null) {
+    //         this.localDatabase.onunload();
+    //         if (this.core.replicator) {
+    //             this.core.replicator?.closeReplication();
+    //         }
+    //         await this.localDatabase.close();
+    //     }
+    //     eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
+    //     eventHub.offAll();
+    //     this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
+    //     return;
+    // }
 
-    private async _realizeSettingSyncMode(): Promise<void> {
-        await this.services.appLifecycle.onSuspending();
-        await this.services.setting.onBeforeRealiseSetting();
-        this.localDatabase.refreshSettings();
-        await this.services.fileProcessing.commitPendingFileEvents();
-        await this.services.setting.onRealiseSetting();
-        // disable all sync temporary.
-        if (this.services.appLifecycle.isSuspended()) return;
-        await this.services.appLifecycle.onResuming();
-        await this.services.appLifecycle.onResumed();
-        await this.services.setting.onSettingRealised();
-        return;
-    }
+    // private async _realizeSettingSyncMode(): Promise<void> {
+    //     await this.services.appLifecycle.onSuspending();
+    //     await this.services.setting.onBeforeRealiseSetting();
+    //     this.localDatabase.refreshSettings();
+    //     await this.services.fileProcessing.commitPendingFileEvents();
+    //     await this.services.setting.onRealiseSetting();
+    //     // disable all sync temporary.
+    //     if (this.services.appLifecycle.isSuspended()) return;
+    //     await this.services.appLifecycle.onResuming();
+    //     await this.services.appLifecycle.onResumed();
+    //     await this.services.setting.onSettingRealised();
+    //     return;
+    // }
 
-    _isReloadingScheduled(): boolean {
-        return this.core._totalProcessingCount !== undefined;
-    }
+    // isReady = false;
 
-    isReady = false;
+    // _isReady(): boolean {
+    //     return this.isReady;
+    // }
 
-    _isReady(): boolean {
-        return this.isReady;
-    }
+    // _markIsReady(): void {
+    //     this.isReady = true;
+    // }
 
-    _markIsReady(): void {
-        this.isReady = true;
-    }
+    // _resetIsReady(): void {
+    //     this.isReady = false;
+    // }
 
-    _resetIsReady(): void {
-        this.isReady = false;
-    }
+    // _suspended = false;
+    // _isSuspended(): boolean {
+    //     return this._suspended || !this.settings?.isConfigured;
+    // }
 
-    _suspended = false;
-    _isSuspended(): boolean {
-        return this._suspended || !this.settings?.isConfigured;
-    }
+    // _setSuspended(value: boolean) {
+    //     this._suspended = value;
+    // }
 
-    _setSuspended(value: boolean) {
-        this._suspended = value;
-    }
+    // _unloaded = false;
+    // _isUnloaded(): boolean {
+    //     return this._unloaded;
+    // }
 
-    _unloaded = false;
-    _isUnloaded(): boolean {
-        return this._unloaded;
-    }
-
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         super.onBindFunction(core, services);
-        services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
-        services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
-        services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
-        services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
-        services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
-        services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
-        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
+        // services.appLifecycle.isSuspended.setHandler(this._isSuspended.bind(this));
+        // services.appLifecycle.setSuspended.setHandler(this._setSuspended.bind(this));
+        // services.appLifecycle.isReady.setHandler(this._isReady.bind(this));
+        // services.appLifecycle.markIsReady.setHandler(this._markIsReady.bind(this));
+        // services.appLifecycle.resetIsReady.setHandler(this._resetIsReady.bind(this));
+        // services.appLifecycle.hasUnloaded.setHandler(this._isUnloaded.bind(this));
         services.appLifecycle.onReady.addHandler(this._onLiveSyncReady.bind(this));
         services.appLifecycle.onWireUpEvents.addHandler(this._wireUpEvents.bind(this));
         services.appLifecycle.onLoad.addHandler(this._onLiveSyncLoad.bind(this));
-        services.appLifecycle.onAppUnload.addHandler(this._onLiveSyncUnload.bind(this));
-        services.setting.realiseSetting.setHandler(this._realizeSettingSyncMode.bind(this));
     }
 }

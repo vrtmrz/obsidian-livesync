@@ -1,4 +1,4 @@
-import { ChunkAlgorithmNames } from "../../../lib/src/common/types.ts";
+import { ChunkAlgorithmNames } from "@lib/common/types.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -35,6 +35,7 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
         });
+        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("autoAcceptCompatibleTweak");
         // new Setting(paneEl)
         //     .setClass("wizardHidden")
         //     .autoWireToggle("sendChunksBulk", { onUpdate: onlyOnCouchDB })

@@ -1,13 +1,14 @@
 <script lang="ts">
-    import ObsidianLiveSyncPlugin from "../../../main.ts";
+    import ObsidianLiveSyncPlugin from "@/main.ts";
     import { onDestroy, onMount } from "svelte";
-    import type { AnyEntry, FilePathWithPrefix } from "../../../lib/src/common/types.ts";
-    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "../../../lib/src/common/utils.ts";
-    import { diff_match_patch } from "../../../deps.ts";
-    import { DocumentHistoryModal } from "../DocumentHistory/DocumentHistoryModal.ts";
-    import { isPlainText, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
-    import { getPath } from "../../../common/utils.ts";
+    import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types.ts";
+    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
+    import { diff_match_patch } from "@/deps.ts";
+    import { DocumentHistoryModal } from "@/modules/features/DocumentHistory/DocumentHistoryModal.ts";
+    import { isPlainText, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     export let plugin: ObsidianLiveSyncPlugin;
+    export let core: LiveSyncBaseCore;
 
     let showDiffInfo = false;
     let showChunkCorrected = false;
@@ -44,10 +45,13 @@
     };
     let history = [] as HistoryData[];
     let loading = false;
+    function getPath(entry: AnyEntry): FilePathWithPrefix {
+        return core.services.path.getPath(entry);
+    }
 
     async function fetchChanges(): Promise<HistoryData[]> {
         try {
-            const db = plugin.localDatabase;
+            const db = core.localDatabase;
             let result = [] as typeof history;
             for await (const docA of db.findAllNormalDocs()) {
                 if (docA.mtime < range_from_epoch) {
@@ -110,11 +114,11 @@
                         }
                         if (rev == docA._rev) {
                             if (checkStorageDiff) {
-                                const isExist = await plugin.storageAccess.isExistsIncludeHidden(
+                                const isExist = await core.storageAccess.isExistsIncludeHidden(
                                     stripAllPrefixes(getPath(docA))
                                 );
                                 if (isExist) {
-                                    const data = await plugin.storageAccess.readHiddenFileBinary(
+                                    const data = await core.storageAccess.readHiddenFileBinary(
                                         stripAllPrefixes(getPath(docA))
                                     );
                                     const d = readAsBlob(doc);
@@ -187,7 +191,7 @@
     onDestroy(() => {});
 
     function showHistory(file: string, rev: string) {
-        new DocumentHistoryModal(plugin.app, plugin, file as unknown as FilePathWithPrefix, undefined, rev).open();
+        new DocumentHistoryModal(plugin.app, plugin.core, plugin, file as unknown as FilePathWithPrefix, undefined, rev).open();
     }
     function openFile(file: string) {
         plugin.app.workspace.openLinkText(file, file);
@@ -219,69 +223,73 @@
     {/if}
     <table>
         <tbody>
-        <tr>
-            <th> Date </th>
-            <th> Path </th>
-            <th> Rev </th>
-            <th> Stat </th>
-            {#if showChunkCorrected}
-                <th> Chunks </th>
-            {/if}
-        </tr>
-        <tr>
-            <td colspan="5" class="more">
-                {#if loading}
-                        <div class=""></div>
-                {:else}
-                    <div><button on:click={() => nextWeek()}>+1 week</button></div>
-                {/if}
-            </td>
-        </tr>
-        {#each history as entry}
             <tr>
-                <td class="mtime">
-                    {entry.mtimeDisp}
+                <th> Date </th>
+                <th> Path </th>
+                <th> Rev </th>
+                <th> Stat </th>
+                {#if showChunkCorrected}
+                    <th> Chunks </th>
+                {/if}
+            </tr>
+            <tr>
+                <td colspan="5" class="more">
+                    {#if loading}
+                        <div class=""></div>
+                    {:else}
+                        <div><button on:click={() => nextWeek()}>+1 week</button></div>
+                    {/if}
                 </td>
-                <td class="path">
-                    <div class="filenames">
-                        <span class="path">/{entry.dirname.split("/").join(`​/`)}</span>
-                        <!-- svelte-ignore a11y-click-events-have-key-events -->
-                        <!-- svelte-ignore a11y-no-static-element-interactions -->
-                        <!-- svelte-ignore a11y-missing-attribute -->
-                        <span class="filename"><a on:click={() => openFile(entry.path)}>{entry.filename}</a></span>
-                    </div>
-                </td>
-                <td>
-                    <span class="rev">
-                        {#if entry.isPlain}
+            </tr>
+            {#each history as entry}
+                <tr>
+                    <td class="mtime">
+                        {entry.mtimeDisp}
+                    </td>
+                    <td class="path">
+                        <div class="filenames">
+                            <span class="path">/{entry.dirname.split("/").join(`\u200b/`)}</span>
                             <!-- svelte-ignore a11y-click-events-have-key-events -->
                             <!-- svelte-ignore a11y-no-static-element-interactions -->
                             <!-- svelte-ignore a11y-missing-attribute -->
-                            <a on:click={() => showHistory(entry.path, entry?.rev || "")}>{entry.rev}</a>
-                        {:else}
-                            {entry.rev}
-                        {/if}
-                    </span>
-                </td>
-                <td>
-                    {entry.changes}
-                </td>
-                {#if showChunkCorrected}
-                    <td>
-                        {entry.chunks}
+                            {#if entry.isDeleted}
+                                <span class="filename" style="text-decoration: line-through">{entry.filename}</span>
+                            {:else}
+                                <span class="filename"><a on:click={() => openFile(entry.path)}>{entry.filename}</a></span>
+                            {/if}
+                        </div>
                     </td>
-                {/if}
-            </tr>
-        {/each}
-        <tr>
-            <td colspan="5" class="more">
-                {#if loading}
+                    <td>
+                        <span class="rev">
+                            {#if entry.isPlain}
+                                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                                <!-- svelte-ignore a11y-missing-attribute -->
+                                <a on:click={() => showHistory(entry.path, entry?.rev || "")}>{entry.rev}</a>
+                            {:else}
+                                {entry.rev}
+                            {/if}
+                        </span>
+                    </td>
+                    <td>
+                        {entry.changes}
+                    </td>
+                    {#if showChunkCorrected}
+                        <td>
+                            {entry.chunks}
+                        </td>
+                    {/if}
+                </tr>
+            {/each}
+            <tr>
+                <td colspan="5" class="more">
+                    {#if loading}
                         <div class=""></div>
-                {:else}
-                    <div><button on:click={() => prevWeek()}>+1 week</button></div>
-                {/if}
-            </td>
-        </tr>
+                    {:else}
+                        <div><button on:click={() => prevWeek()}>+1 week</button></div>
+                    {/if}
+                </td>
+            </tr>
         </tbody>
     </table>
 </div>

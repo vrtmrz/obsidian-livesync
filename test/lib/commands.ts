@@ -116,6 +116,22 @@ export const acceptWebPeer: BrowserCommand = async (ctx) => {
     return false;
 };
 
+/** Write arbitrary text to a file on the Node.js host (used for phase handoff). */
+export const writeHandoffFile: BrowserCommand<[filePath: string, content: string]> = async (
+    _ctx,
+    filePath: string,
+    content: string
+) => {
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(filePath, content, "utf-8");
+};
+
+/** Read a file from the Node.js host (used for phase handoff). */
+export const readHandoffFile: BrowserCommand<[filePath: string]> = async (_ctx, filePath: string): Promise<string> => {
+    const fs = await import("node:fs/promises");
+    return fs.readFile(filePath, "utf-8");
+};
+
 export default function BrowserCommands(): Plugin {
     return {
         name: "vitest:custom-commands",
@@ -128,6 +144,8 @@ export default function BrowserCommands(): Plugin {
                             openWebPeer,
                             closeWebPeer,
                             acceptWebPeer,
+                            writeHandoffFile,
+                            readHandoffFile,
                         },
                     },
                 },
@@ -141,5 +159,7 @@ declare module "vitest/browser" {
         openWebPeer: (setting: P2PSyncSetting, serverPeerName: string) => Promise<void>;
         closeWebPeer: () => Promise<void>;
         acceptWebPeer: () => Promise<boolean>;
+        writeHandoffFile: (filePath: string, content: string) => Promise<void>;
+        readHandoffFile: (filePath: string) => Promise<string>;
     }
 }

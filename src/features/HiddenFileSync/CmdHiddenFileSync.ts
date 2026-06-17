@@ -1,4 +1,4 @@
-import { type PluginManifest, type ListedFiles } from "../../deps.ts";
+import { type PluginManifest, type ListedFiles } from "@/deps.ts";
 import {
     type LoadedEntry,
     type FilePathWithPrefix,
@@ -15,8 +15,8 @@ import {
     LOG_LEVEL_DEBUG,
     type MetaEntry,
     type UXDataWriteOptions,
-} from "../../lib/src/common/types.ts";
-import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "../../common/types.ts";
+} from "@lib/common/types.ts";
+import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
 import {
     readAsBlob,
     isDocContentSame,
@@ -26,33 +26,31 @@ import {
     fireAndForget,
     type CustomRegExp,
     getFileRegExp,
-} from "../../lib/src/common/utils.ts";
+} from "@lib/common/utils.ts";
 import {
     compareMTime,
-    unmarkChanges,
-    getPath,
     isInternalMetadata,
-    markChangesAreSame,
-    PeriodicProcessor,
     TARGET_IS_NEW,
     scheduleTask,
-    getDocProps,
     getLogLevel,
     autosaveCache,
     type MapLike,
     onlyInNTimes,
     BASE_IS_NEW,
     EVEN,
-} from "../../common/utils.ts";
+    displayRev,
+} from "@/common/utils.ts";
+import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
-import { LiveSyncCommands } from "../LiveSyncCommands.ts";
-import { addPrefix, stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
+import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
+import { addPrefix, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src/mock_and_interop/stores.ts";
-import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
+import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@lib/mock_and_interop/stores.ts";
+import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { tryGetFilePath } from "@lib/common/utils.doc.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 declare global {
@@ -81,25 +79,25 @@ function getComparingMTime(
 
 export class HiddenFileSync extends LiveSyncCommands {
     isThisModuleEnabled() {
-        return this.plugin.settings.syncInternalFiles;
+        return this.core.settings.syncInternalFiles;
     }
 
     periodicInternalFileScanProcessor: PeriodicProcessor = new PeriodicProcessor(
-        this.plugin,
+        this.core,
         async () => this.isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
     );
 
     get kvDB() {
-        return this.plugin.kvDB;
+        return this.core.kvDB;
     }
     getConflictedDoc(path: FilePathWithPrefix, rev: string) {
-        return this.plugin.managers.conflictManager.getConflictedDoc(path, rev);
+        return this.core.localDatabase.managers.conflictManager.getConflictedDoc(path, rev);
     }
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
     }
     onload() {
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "livesync-sync-internal",
             name: "(re)initialise hidden files between storage and database",
             callback: () => {
@@ -108,7 +106,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
             },
         });
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "livesync-scaninternal-storage",
             name: "Scan hidden file changes on the storage",
             callback: () => {
@@ -117,7 +115,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
             },
         });
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "livesync-scaninternal-database",
             name: "Scan hidden file changes on the local database",
             callback: () => {
@@ -126,7 +124,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 }
             },
         });
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "livesync-internal-scan-offline-changes",
             name: "Scan and apply all offline hidden-file changes",
             callback: () => {
@@ -139,6 +137,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             this.updateSettingCache();
         });
     }
+
     // We cannot initialise autosaveCache because kvDB is not ready yet
     // async _everyOnInitializeDatabase(db: LiveSyncLocalDB): Promise<boolean> {
     //     this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
@@ -243,14 +242,24 @@ export class HiddenFileSync extends LiveSyncCommands {
         if (isInternalMetadata(doc._id)) {
             if (this.isThisModuleEnabled()) {
                 //system file
-                const filename = getPath(doc);
-                if (await this.services.vault.isTargetFile(filename)) {
-                    // this.procInternalFile(filename);
-                    await this.processReplicationResult(doc);
+                const filename = this.getPath(doc);
+                const unprefixedPath = stripAllPrefixes(filename);
+                // No need to check via vaultService
+                // if (!await this.services.vault.isTargetFile(unprefixedPath)) {
+                //     this._log(`Skipped processing sync file:${unprefixedPath} (Not target)`, LOG_LEVEL_VERBOSE);
+                //     return true;
+                // }
+                if (!(await this.isTargetFile(stripAllPrefixes(unprefixedPath)))) {
+                    this._log(
+                        `Skipped processing sync file:${unprefixedPath} (Not Hidden File Sync target)`,
+                        LOG_LEVEL_VERBOSE
+                    );
+                    // We should return true, we made sure that document is a internalMetadata.
                     return true;
-                } else {
-                    this._log(`Skipped (Not target:${filename})`, LOG_LEVEL_VERBOSE);
-                    return false;
+                }
+                if (!(await this.processReplicationResult(doc))) {
+                    this._log(`Failed to process sync file:${unprefixedPath}`, LOG_LEVEL_NOTICE);
+                    // Do not yield false, this file had been processed.
                 }
             }
             return true;
@@ -259,7 +268,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     async loadFileWithInfo(path: FilePath): Promise<UXFileInfo> {
-        const stat = await this.plugin.storageAccess.statHidden(path);
+        const stat = await this.core.storageAccess.statHidden(path);
         if (!stat)
             return {
                 name: path.split("/").pop() ?? "",
@@ -274,7 +283,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 deleted: true,
                 body: createBlob(new Uint8Array(0)),
             };
-        const content = await this.plugin.storageAccess.readHiddenFileAuto(path);
+        const content = await this.core.storageAccess.readHiddenFileAuto(path);
         return {
             name: path.split("/").pop() ?? "",
             path,
@@ -296,7 +305,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return `${doc.mtime}-${doc.size}-${doc._rev}-${doc._deleted || doc.deleted || false ? "-0" : "-1"}`;
     }
     async fileToStatKey(file: FilePath, stat: UXStat | null = null) {
-        if (!stat) stat = await this.plugin.storageAccess.statHidden(file);
+        if (!stat) stat = await this.core.storageAccess.statHidden(file);
         return this.statToKey(stat);
     }
 
@@ -309,8 +318,8 @@ export class HiddenFileSync extends LiveSyncCommands {
         this._fileInfoLastProcessed.set(file, key);
     }
 
-    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null | undefined) {
-        if (!stat) stat = await this.plugin.storageAccess.statHidden(file);
+    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null) {
+        if (!stat) stat = await this.core.storageAccess.statHidden(file);
         this._fileInfoLastProcessed.set(file, this.statToKey(stat));
     }
 
@@ -352,38 +361,38 @@ export class HiddenFileSync extends LiveSyncCommands {
         const dbMTime = getComparingMTime(db);
         const storageMTime = getComparingMTime(stat);
         if (dbMTime == 0 || storageMTime == 0) {
-            unmarkChanges(path);
+            this.services.path.unmarkChanges(path);
         } else {
-            markChangesAreSame(path, getComparingMTime(db), getComparingMTime(stat));
+            this.services.path.markChangesAreSame(path, getComparingMTime(db), getComparingMTime(stat));
         }
     }
     updateLastProcessedDeletion(path: FilePath, db: MetaEntry | LoadedEntry | false) {
-        unmarkChanges(path);
+        this.services.path.unmarkChanges(path);
         if (db) this.updateLastProcessedDatabase(path, db);
         this.updateLastProcessedFile(path, this.statToKey(null));
     }
     async ensureDir(path: FilePath) {
-        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(path);
+        const isExists = await this.core.storageAccess.isExistsIncludeHidden(path);
         if (!isExists) {
-            await this.plugin.storageAccess.ensureDir(path);
+            await this.core.storageAccess.ensureDir(path);
         }
     }
 
     async writeFile(path: FilePath, data: string | ArrayBuffer, opt?: UXDataWriteOptions): Promise<UXStat | null> {
-        await this.plugin.storageAccess.writeHiddenFileAuto(path, data, opt);
-        const stat = await this.plugin.storageAccess.statHidden(path);
+        await this.core.storageAccess.writeHiddenFileAuto(path, data, opt);
+        const stat = await this.core.storageAccess.statHidden(path);
         // this.updateLastProcessedFile(path, this.statToKey(stat));
         return stat;
     }
 
     async __removeFile(path: FilePath): Promise<"OK" | "ALREADY" | false> {
         try {
-            if (!(await this.plugin.storageAccess.isExistsIncludeHidden(path))) {
+            if (!(await this.core.storageAccess.isExistsIncludeHidden(path))) {
                 // Already deleted
                 // this.updateLastProcessedFile(path, this.statToKey(null));
                 return "ALREADY";
             }
-            if (await this.plugin.storageAccess.removeHidden(path)) {
+            if (await this.core.storageAccess.removeHidden(path)) {
                 // this.updateLastProcessedFile(path, this.statToKey(null));
                 return "OK";
             }
@@ -396,17 +405,14 @@ export class HiddenFileSync extends LiveSyncCommands {
     async triggerEvent(path: FilePath) {
         try {
             // await this.app.vault.adapter.reconcileInternalFile(filename);
-            await this.plugin.storageAccess.triggerHiddenFile(path);
+            await this.core.storageAccess.triggerHiddenFile(path);
         } catch (ex) {
             this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
             this._log(ex, LOG_LEVEL_VERBOSE);
         }
     }
 
-    async updateLastProcessedAsActualDatabase(
-        file: FilePath,
-        doc?: MetaEntry | LoadedEntry | null | undefined | false
-    ) {
+    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: MetaEntry | LoadedEntry | null | false) {
         const dbPath = addPrefix(file, ICHeader);
         if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
         if (!doc) return;
@@ -510,7 +516,7 @@ export class HiddenFileSync extends LiveSyncCommands {
                 LOG_LEVEL_VERBOSE
             );
             const taskNameAndMeta = [...files].map(
-                async (e) => [e, await this.plugin.storageAccess.statHidden(e)] as const
+                async (e) => [e, await this.core.storageAccess.statHidden(e)] as const
             );
             const nameAndMeta = await Promise.all(taskNameAndMeta);
             const processFiles = nameAndMeta
@@ -552,7 +558,7 @@ Offline Changed files: ${processFiles.length}`;
         }
         try {
             return await this.serializedForEvent(path, async () => {
-                let stat = await this.plugin.storageAccess.statHidden(path);
+                let stat = await this.core.storageAccess.statHidden(path);
                 // sometimes folder is coming.
                 if (stat != null && stat.type != "file") {
                     return false;
@@ -628,8 +634,22 @@ Offline Changed files: ${processFiles.length}`;
 
     // --> Conflict processing
 
+    // Keep one in-flight conflict check per path so repeated sync events do not close the active merge dialogue.
+    pendingConflictChecks = new Set<FilePathWithPrefix>();
+
     queueConflictCheck(path: FilePathWithPrefix) {
+        if (this.pendingConflictChecks.has(path)) return;
+        this.pendingConflictChecks.add(path);
         this.conflictResolutionProcessor.enqueue(path);
+    }
+
+    finishConflictCheck(path: FilePathWithPrefix) {
+        this.pendingConflictChecks.delete(path);
+    }
+
+    requeueConflictCheck(path: FilePathWithPrefix) {
+        this.finishConflictCheck(path);
+        this.queueConflictCheck(path);
     }
 
     async resolveConflictOnInternalFiles() {
@@ -640,7 +660,7 @@ Offline Changed files: ${processFiles.length}`;
             for await (const doc of conflicted) {
                 if (!("_conflicts" in doc)) continue;
                 if (isInternalMetadata(doc._id)) {
-                    this.conflictResolutionProcessor.enqueue(doc.path);
+                    this.queueConflictCheck(doc.path);
                 }
             }
         } catch (ex) {
@@ -671,21 +691,27 @@ Offline Changed files: ${processFiles.length}`;
         const cc = await this.localDatabase.getRaw(id, { conflicts: true });
         if (cc._conflicts?.length === 0) {
             await this.extractInternalFileFromDatabase(stripAllPrefixes(path));
+            this.finishConflictCheck(path);
         } else {
-            this.conflictResolutionProcessor.enqueue(path);
+            this.requeueConflictCheck(path);
         }
         // check the file again
     }
     conflictResolutionProcessor = new QueueProcessor(
         async (paths: FilePathWithPrefix[]) => {
             const path = paths[0];
-            sendSignal(`cancel-internal-conflict:${path}`);
             try {
                 // Retrieve data
                 const id = await this.path2id(path, ICHeader);
                 const doc = await this.localDatabase.getRaw<MetaEntry>(id, { conflicts: true });
-                if (doc._conflicts === undefined) return [];
-                if (doc._conflicts.length == 0) return [];
+                if (doc._conflicts === undefined) {
+                    this.finishConflictCheck(path);
+                    return [];
+                }
+                if (doc._conflicts.length == 0) {
+                    this.finishConflictCheck(path);
+                    return [];
+                }
                 this._log(`Hidden file conflicted:${path}`);
                 const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
                 const revA = doc._rev;
@@ -700,7 +726,7 @@ Offline Changed files: ${processFiles.length}`;
                         revFrom._revs_info
                             ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
                             .first()?.rev ?? "";
-                    const result = await this.plugin.managers.conflictManager.mergeObject(
+                    const result = await this.localDatabase.managers.conflictManager.mergeObject(
                         doc.path,
                         commonBase,
                         doc._rev,
@@ -717,7 +743,7 @@ Offline Changed files: ${processFiles.length}`;
                         await this.storeInternalFileToDatabase({ path: filename, ...stat });
                         await this.extractInternalFileFromDatabase(filename);
                         await this.localDatabase.removeRevision(id, revB);
-                        this.conflictResolutionProcessor.enqueue(path);
+                        this.requeueConflictCheck(path);
                         return [];
                     } else {
                         this._log(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
@@ -735,6 +761,7 @@ Offline Changed files: ${processFiles.length}`;
                 await this.resolveByNewerEntry(id, path, doc, revA, revB);
                 return [];
             } catch (ex) {
+                this.finishConflictCheck(path);
                 this._log(`Failed to resolve conflict (Hidden): ${path}`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return [];
@@ -753,15 +780,22 @@ Offline Changed files: ${processFiles.length}`;
                     const prefixedPath = addPrefix(path, ICHeader);
                     const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
                     const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
-                    if (docAMerge != false && docBMerge != false) {
-                        if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
-                            // Again for other conflicted revisions.
-                            this.conflictResolutionProcessor.enqueue(path);
+                    try {
+                        if (docAMerge != false && docBMerge != false) {
+                            if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
+                                // Again for other conflicted revisions.
+                                this.requeueConflictCheck(path);
+                            } else {
+                                this.finishConflictCheck(path);
+                            }
+                            return;
+                        } else {
+                            // If either revision could not read, force resolving by the newer one.
+                            await this.resolveByNewerEntry(id, path, doc, revA, revB);
                         }
-                        return;
-                    } else {
-                        // If either revision could not read, force resolving by the newer one.
-                        await this.resolveByNewerEntry(id, path, doc, revA, revB);
+                    } catch (ex) {
+                        this.finishConflictCheck(path);
+                        throw ex;
                     }
                 },
                 {
@@ -785,6 +819,8 @@ Offline Changed files: ${processFiles.length}`;
             const storeFilePath = strippedPath;
             const displayFilename = `${storeFilePath}`;
             // const path = this.prefixedConfigDir2configDir(stripAllPrefixes(docA.path)) || docA.path;
+            // Cancel only when replacing an existing dialogue for the same path, not on every queue pass.
+            sendSignal(`cancel-internal-conflict:${docA.path}`);
             const modal = new JsonResolveModal(this.app, storageFilePath, [docA, docB], async (keep, result) => {
                 // modal.close();
                 try {
@@ -807,9 +843,9 @@ Offline Changed files: ${processFiles.length}`;
                         }
                     }
                     if (!keep && result) {
-                        const isExists = await this.plugin.storageAccess.isExistsIncludeHidden(storageFilePath);
+                        const isExists = await this.core.storageAccess.isExistsIncludeHidden(storageFilePath);
                         if (!isExists) {
-                            await this.plugin.storageAccess.ensureDir(storageFilePath);
+                            await this.core.storageAccess.ensureDir(storageFilePath);
                         }
                         const stat = await this.writeFile(storageFilePath, result);
                         if (!stat) {
@@ -843,9 +879,32 @@ Offline Changed files: ${processFiles.length}`;
     // <-- Conflict processing
 
     // --> Event Source Handler (Database)
-
+    getDocProps(doc: LoadedEntry) {
+        /*
+            type DocumentProps = {
+                id: DocumentID;
+                rev?: string;
+                prefixedPath: FilePathWithPrefix;
+                path: FilePath;
+                isDeleted: boolean;
+                revDisplay: string;
+                shortenedId: string;
+                shortenedPath: string;
+            };
+        */
+        const id = doc._id;
+        const shortenedId = id.substring(0, 10);
+        const prefixedPath = this.getPath(doc);
+        const path = stripAllPrefixes(prefixedPath);
+        const rev = doc._rev;
+        const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
+        // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
+        const shortenedPath = path.substring(0, 10);
+        const isDeleted = doc._deleted || doc.deleted || false;
+        return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
+    }
     async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
-        const info = getDocProps(doc);
+        const info = this.getDocProps(doc);
         const path = info.path;
         const headerLine = `Tracking DB ${info.path} (${info.revDisplay}) :`;
         const ret = await this.trackDatabaseFileModification(path, headerLine);
@@ -863,7 +922,7 @@ Offline Changed files: ${processFiles.length}`;
      * @returns An object containing the ignore and target filters.
      */
     parseRegExpSettings() {
-        const regExpKey = `${this.plugin.settings.syncInternalFilesTargetPatterns}||${this.plugin.settings.syncInternalFilesIgnorePatterns}`;
+        const regExpKey = `${this.core.settings.syncInternalFilesTargetPatterns}||${this.core.settings.syncInternalFilesIgnorePatterns}`;
         let ignoreFilter: CustomRegExp[];
         let targetFilter: CustomRegExp[];
         if (this.cacheFileRegExps.has(regExpKey)) {
@@ -871,8 +930,8 @@ Offline Changed files: ${processFiles.length}`;
             ignoreFilter = cached[1];
             targetFilter = cached[0];
         } else {
-            ignoreFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesIgnorePatterns");
-            targetFilter = getFileRegExp(this.plugin.settings, "syncInternalFilesTargetPatterns");
+            ignoreFilter = getFileRegExp(this.core.settings, "syncInternalFilesIgnorePatterns");
+            targetFilter = getFileRegExp(this.core.settings, "syncInternalFilesTargetPatterns");
             this.cacheFileRegExps.clear();
             this.cacheFileRegExps.set(regExpKey, [targetFilter, ignoreFilter]);
         }
@@ -910,7 +969,7 @@ Offline Changed files: ${processFiles.length}`;
      * @returns An array of ignored file paths (lowercase).
      */
     getCustomisationSynchronizationIgnoredFiles(): string[] {
-        const configDir = this.plugin.app.vault.configDir;
+        const configDir = this.services.API.getSystemConfigDir();
         const key =
             JSON.stringify(this.settings.pluginSyncExtendedSetting) + `||${this.settings.usePluginSync}||${configDir}`;
         if (this.cacheCustomisationSyncIgnoredFiles.has(key)) {
@@ -989,7 +1048,7 @@ Offline Changed files: ${processFiles.length}`;
                 }
                 notifyProgress();
             } catch (ex) {
-                this._log(`Failed to process storage change file:${file}`, logLevel);
+                this._log(`Failed to process storage change file:${tryGetFilePath(file)}`, logLevel);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
         });
@@ -1007,7 +1066,7 @@ Offline Changed files: ${processFiles.length}`;
             p.log("Enumerating database files...");
             const currentDatabaseFiles = await this.getAllDatabaseFiles();
             const allDatabaseMap = Object.fromEntries(
-                currentDatabaseFiles.map((e) => [stripAllPrefixes(getPath(e)), e])
+                currentDatabaseFiles.map((e) => [stripAllPrefixes(this.getPath(e)), e])
             );
             const currentDatabaseFileNames = [...Object.keys(allDatabaseMap)] as FilePath[];
             const untrackedLocal = currentStorageFiles.filter((e) => !this._fileInfoLastProcessed.has(e));
@@ -1027,7 +1086,7 @@ Common untracked files: ${bothUntracked.length}`;
                 notifyProgress();
                 const rel = await semaphores.acquire();
                 try {
-                    const fileStat = await this.plugin.storageAccess.statHidden(file);
+                    const fileStat = await this.core.storageAccess.statHidden(file);
                     if (fileStat == null) {
                         // This should not be happened. But, if it happens, we should skip this.
                         this._log(`Unexpected error: Failed to stat file during applyOfflineChange :${file}`);
@@ -1101,7 +1160,7 @@ Offline Changed files: ${files.length}`;
                 await this.trackDatabaseFileModification(path, "[Scanning]", true, onlyNew, file);
                 notifyProgress();
             } catch (ex) {
-                this._log(`Failed to process database changes:${file}`);
+                this._log(`Failed to process database changes:${tryGetFilePath(file)}`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
             return;
@@ -1133,7 +1192,7 @@ Offline Changed files: ${files.length}`;
                 // Check if the file is conflicted, and if so, enqueue to resolve.
                 // Until the conflict is resolved, the file will not be processed.
                 if (docMeta._conflicts && docMeta._conflicts.length > 0) {
-                    this.conflictResolutionProcessor.enqueue(path);
+                    this.queueConflictCheck(path);
                     this._log(`${headerLine} Hidden file conflicted, enqueued to resolve`);
                     return true;
                 }
@@ -1175,7 +1234,7 @@ Offline Changed files: ${files.length}`;
                 // If notified about plug-ins, reloading Obsidian may not be necessary.
                 const updatePluginId = manifest.id;
                 const updatePluginName = manifest.name;
-                this.plugin.confirm.askInPopup(
+                this.core.confirm.askInPopup(
                     `updated-${updatePluginId}`,
                     `Files in ${updatePluginName} has been updated!\nPress {HERE} to reload ${updatePluginName}, or press elsewhere to dismiss this message.`,
                     (anchor) => {
@@ -1207,9 +1266,9 @@ Offline Changed files: ${files.length}`;
         }
 
         // If something changes left, notify for reloading Obsidian.
-        if (updatedFolders.indexOf(this.plugin.app.vault.configDir) >= 0) {
+        if (updatedFolders.indexOf(this.services.API.getSystemConfigDir()) >= 0) {
             if (!this.services.appLifecycle.isReloadingScheduled()) {
-                this.plugin.confirm.askInPopup(
+                this.core.confirm.askInPopup(
                     `updated-any-hidden`,
                     `Some setting files have been modified\nPress {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`,
                     (anchor) => {
@@ -1227,7 +1286,7 @@ Offline Changed files: ${files.length}`;
         if (this.settings.suppressNotifyHiddenFilesChange) {
             return;
         }
-        const configDir = this.plugin.app.vault.configDir;
+        const configDir = this.services.API.getSystemConfigDir();
         if (!key.startsWith(configDir)) return;
         const dirName = key.split("/").slice(0, -1).join("/");
         this.queuedNotificationFiles.add(dirName);
@@ -1250,14 +1309,14 @@ Offline Changed files: ${files.length}`;
             : currentStorageFilesAll;
         p.log("Enumerating database files...");
         const allDatabaseFiles = await this.getAllDatabaseFiles();
-        const allDatabaseMap = new Map(allDatabaseFiles.map((e) => [stripAllPrefixes(getPath(e)), e]));
+        const allDatabaseMap = new Map(allDatabaseFiles.map((e) => [stripAllPrefixes(this.getPath(e)), e]));
         const currentDatabaseFiles = targetFiles
-            ? allDatabaseFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(getPath(e))))
+            ? allDatabaseFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(this.getPath(e))))
             : allDatabaseFiles;
 
         const allFileNames = new Set([
             ...currentStorageFiles,
-            ...currentDatabaseFiles.map((e) => stripAllPrefixes(getPath(e))),
+            ...currentDatabaseFiles.map((e) => stripAllPrefixes(this.getPath(e))),
         ]);
         const storageToDatabase = [] as FilePath[];
         const databaseToStorage = [] as MetaEntry[];
@@ -1265,7 +1324,7 @@ Offline Changed files: ${files.length}`;
         const eachProgress = onlyInNTimes(100, (progress) => p.log(`Checking ${progress}/${allFileNames.size}`));
         for (const file of allFileNames) {
             eachProgress();
-            const storageMTime = await this.plugin.storageAccess.statHidden(file);
+            const storageMTime = await this.core.storageAccess.statHidden(file);
             const mtimeStorage = getComparingMTime(storageMTime);
             const dbEntry = allDatabaseMap.get(file)!;
             const mtimeDB = getComparingMTime(dbEntry);
@@ -1340,7 +1399,7 @@ Offline Changed files: ${files.length}`;
         // However, in perspective of performance and future-proofing, I feel somewhat justified in doing it here.
 
         const currentFiles = targetFiles
-            ? allFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(getPath(e))))
+            ? allFiles.filter((e) => targetFiles.some((f) => f == stripAllPrefixes(this.getPath(e))))
             : allFiles;
 
         p.once(`Database to Storage: ${currentFiles.length} files.`);
@@ -1383,7 +1442,7 @@ Offline Changed files: ${files.length}`;
             const onlyNew = direction == "pull";
             p.log(`Started: Database --> Storage ${onlyNew ? "(Only New)" : ""}`);
             const updatedEntries = await this.rebuildFromDatabase(showMessage, targetFiles, onlyNew);
-            const updatedFiles = updatedEntries.map((e) => stripAllPrefixes(getPath(e)));
+            const updatedFiles = updatedEntries.map((e) => stripAllPrefixes(this.getPath(e)));
             // making doubly sure, No more losing files.
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);
@@ -1439,7 +1498,7 @@ Offline Changed files: ${files.length}`;
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
-        const storeFilePath = stripAllPrefixes(file.path as FilePath);
+        const storeFilePath = stripAllPrefixes(file.path);
         const storageFilePath = file.path;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
@@ -1585,7 +1644,7 @@ Offline Changed files: ${files.length}`;
                 if (onlyNew) {
                     // Check the file is new or not.
                     const dbMTime = getComparingMTime(metaOnDB, includeDeletion); // metaOnDB.mtime;
-                    const storageStat = await this.plugin.storageAccess.statHidden(storageFilePath);
+                    const storageStat = await this.core.storageAccess.statHidden(storageFilePath);
                     const storageMTimeActual = storageStat?.mtime ?? 0;
                     const storageMTime =
                         storageMTimeActual == 0 ? this.getLastProcessedFileMTime(storageFilePath) : storageMTimeActual;
@@ -1639,7 +1698,7 @@ Offline Changed files: ${files.length}`;
 
     async __checkIsNeedToWriteFile(storageFilePath: FilePath, content: string | ArrayBuffer): Promise<boolean> {
         try {
-            const storageContent = await this.plugin.storageAccess.readHiddenFileAuto(storageFilePath);
+            const storageContent = await this.core.storageAccess.readHiddenFileAuto(storageFilePath);
             const needWrite = !(await isDocContentSame(storageContent, content));
             return needWrite;
         } catch (ex) {
@@ -1651,7 +1710,7 @@ Offline Changed files: ${files.length}`;
 
     async __writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
         try {
-            const statBefore = await this.plugin.storageAccess.statHidden(storageFilePath);
+            const statBefore = await this.core.storageAccess.statHidden(storageFilePath);
             const isExist = statBefore != null;
             const writeContent = readContent(fileOnDB);
             await this.ensureDir(storageFilePath);
@@ -1737,7 +1796,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         choices.push(CHOICE_MERGE);
         choices.push(CHOICE_DISABLE);
 
-        const ret = await this.plugin.confirm.confirmWithMessage(
+        const ret = await this.core.confirm.confirmWithMessage(
             "Hidden file sync",
             message,
             choices,
@@ -1756,12 +1815,12 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     private _allSuspendExtraSync(): Promise<boolean> {
-        if (this.plugin.settings.syncInternalFiles) {
+        if (this.core.settings.syncInternalFiles) {
             this._log(
                 "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.",
                 LOG_LEVEL_NOTICE
             );
-            this.plugin.settings.syncInternalFiles = false;
+            this.core.settings.syncInternalFiles = false;
         }
         return Promise.resolve(true);
     }
@@ -1784,9 +1843,15 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         }
 
         if (mode == "DISABLE" || mode == "DISABLE_HIDDEN") {
-            // await this.plugin.$allSuspendExtraSync();
-            this.plugin.settings.syncInternalFiles = false;
-            await this.plugin.saveSettings();
+            // await this.core.$allSuspendExtraSync();
+            await this.core.services.setting.applyPartial(
+                {
+                    syncInternalFiles: false,
+                },
+                true
+            );
+            // this.core.settings.syncInternalFiles = false;
+            // await this.core.saveSettings();
             return;
         }
         this._log("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
@@ -1797,10 +1862,17 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         } else if (mode == "MERGE") {
             await this.initialiseInternalFileSync("safe", true);
         }
-        this.plugin.settings.useAdvancedMode = true;
-        this.plugin.settings.syncInternalFiles = true;
+        await this.core.services.setting.applyPartial(
+            {
+                useAdvancedMode: true,
+                syncInternalFiles: true,
+            },
+            true
+        );
+        // this.plugin.settings.useAdvancedMode = true;
+        // this.plugin.settings.syncInternalFiles = true;
 
-        await this.plugin.saveSettings();
+        // await this.plugin.saveSettings();
         this._log(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
     }
     // <-- Configuration handling
@@ -1820,7 +1892,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         const files = fileNames.map(async (e) => {
             return {
                 path: e,
-                stat: await this.plugin.storageAccess.statHidden(e), // this.plugin.vaultAccess.adapterStat(e)
+                stat: await this.core.storageAccess.statHidden(e), // this.plugin.vaultAccess.adapterStat(e)
             };
         });
         const result: InternalFileInfo[] = [];
@@ -1911,7 +1983,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     */
     // <-- Local Storage SubFunctions
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services) {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services) {
         // No longer needed on initialisation
         // services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
@@ -1925,5 +1997,6 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
         services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
         services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
+        services.vault.isTargetFileInExtra.addHandler(this.isTargetFile.bind(this));
     }
 }

@@ -1,4 +1,4 @@
-import { normalizePath, Platform, TAbstractFile, type RequestUrlParam, requestUrl } from "../deps.ts";
+import { normalizePath, Platform, TAbstractFile, type RequestUrlParam, requestUrl } from "@/deps.ts";
 import {
     path2id_base,
     id2path_base,
@@ -7,9 +7,9 @@ import {
     isValidFilenameInWidows,
     isValidFilenameInAndroid,
     stripAllPrefixes,
-} from "../lib/src/string_and_binary/path.ts";
+} from "@lib/string_and_binary/path.ts";
 
-import { Logger } from "../lib/src/common/logger.ts";
+import { Logger } from "@lib/common/logger.ts";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -22,18 +22,14 @@ import {
     type FilePathWithPrefix,
     type UXFileInfo,
     type UXFileInfoStub,
-} from "../lib/src/common/types.ts";
-import { CHeader, ICHeader, ICHeaderLength, ICXHeader, PSCHeader } from "./types.ts";
-import type ObsidianLiveSyncPlugin from "../main.ts";
-import { writeString } from "../lib/src/string_and_binary/convert.ts";
-import { fireAndForget } from "../lib/src/common/utils.ts";
+} from "@lib/common/types.ts";
+export { ICHeader, ICXHeader } from "./types.ts";
+import { writeString } from "@lib/string_and_binary/convert.ts";
 import { sameChangePairs } from "./stores.ts";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { EVENT_PLUGIN_UNLOADED, eventHub } from "./events.ts";
-import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels/promises";
-import { AuthorizationHeaderGenerator } from "../lib/src/replication/httplib.ts";
-import type { KeyValueDatabase } from "../lib/src/interfaces/KeyValueDatabase.ts";
+import { AuthorizationHeaderGenerator } from "@lib/replication/httplib.ts";
+import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase.ts";
 
 export { scheduleTask, cancelTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 
@@ -63,37 +59,18 @@ export function id2path(id: DocumentID, entry?: EntryHasPath): FilePathWithPrefi
     const fixedPath = temp.join(":") as FilePathWithPrefix;
     return fixedPath;
 }
-export function getPath(entry: AnyEntry) {
-    return id2path(entry._id, entry);
-}
-export function getPathWithoutPrefix(entry: AnyEntry) {
-    const f = getPath(entry);
-    return stripAllPrefixes(f);
-}
 
 export function getPathFromTFile(file: TAbstractFile) {
     return file.path as FilePath;
 }
 
-export function isInternalFile(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return file.startsWith(ICHeader);
-    if (file.isInternal) return true;
-    return false;
-}
-export function getPathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return file as FilePathWithPrefix;
-    return file.path;
-}
-export function getStoragePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string") return stripAllPrefixes(file as FilePathWithPrefix);
-    return stripAllPrefixes(file.path);
-}
-export function getDatabasePathFromUXFileInfo(file: UXFileInfoStub | string | FilePathWithPrefix) {
-    if (typeof file == "string" && file.startsWith(ICXHeader)) return file as FilePathWithPrefix;
-    const prefix = isInternalFile(file) ? ICHeader : "";
-    if (typeof file == "string") return (prefix + stripAllPrefixes(file as FilePathWithPrefix)) as FilePathWithPrefix;
-    return (prefix + stripAllPrefixes(file.path)) as FilePathWithPrefix;
-}
+import {
+    isInternalFile,
+    getPathFromUXFileInfo,
+    getStoragePathFromUXFileInfo,
+    getDatabasePathFromUXFileInfo,
+} from "@lib/common/typeUtils.ts";
+export { isInternalFile, getPathFromUXFileInfo, getStoragePathFromUXFileInfo, getDatabasePathFromUXFileInfo };
 
 const memos: { [key: string]: any } = {};
 export function memoObject<T>(key: string, obj: T): T {
@@ -137,80 +114,21 @@ export function trimPrefix(target: string, prefix: string) {
     return target.startsWith(prefix) ? target.substring(prefix.length) : target;
 }
 
-/**
- * returns is internal chunk of file
- * @param id ID
- * @returns
- */
-export function isInternalMetadata(id: FilePath | FilePathWithPrefix | DocumentID): boolean {
-    return id.startsWith(ICHeader);
-}
-export function stripInternalMetadataPrefix<T extends FilePath | FilePathWithPrefix | DocumentID>(id: T): T {
-    return id.substring(ICHeaderLength) as T;
-}
-export function id2InternalMetadataId(id: DocumentID): DocumentID {
-    return (ICHeader + id) as DocumentID;
-}
-
-// const CHeaderLength = CHeader.length;
-export function isChunk(str: string): boolean {
-    return str.startsWith(CHeader);
-}
-
-export function isPluginMetadata(str: string): boolean {
-    return str.startsWith(PSCHeader);
-}
-export function isCustomisationSyncMetadata(str: string): boolean {
-    return str.startsWith(ICXHeader);
-}
-
-export class PeriodicProcessor {
-    _process: () => Promise<any>;
-    _timer?: number = undefined;
-    _plugin: ObsidianLiveSyncPlugin;
-    constructor(plugin: ObsidianLiveSyncPlugin, process: () => Promise<any>) {
-        this._plugin = plugin;
-        this._process = process;
-        eventHub.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
-            this.disable();
-        });
-    }
-    async process() {
-        try {
-            await this._process();
-        } catch (ex) {
-            Logger(ex);
-        }
-    }
-    enable(interval: number) {
-        this.disable();
-        if (interval == 0) return;
-        this._timer = window.setInterval(
-            () =>
-                fireAndForget(async () => {
-                    await this.process();
-                    if (this._plugin.services?.appLifecycle?.hasUnloaded()) {
-                        this.disable();
-                    }
-                }),
-            interval
-        );
-        this._plugin.registerInterval(this._timer);
-    }
-    disable() {
-        if (this._timer !== undefined) {
-            window.clearInterval(this._timer);
-            this._timer = undefined;
-        }
-    }
-}
+export {
+    isInternalMetadata,
+    id2InternalMetadataId,
+    isChunk,
+    isCustomisationSyncMetadata,
+    isPluginMetadata,
+    stripInternalMetadataPrefix,
+} from "@lib/common/typeUtils.ts";
 
 export const _requestToCouchDBFetch = async (
     baseUri: string,
     username: string,
     password: string,
     path?: string,
-    body?: string | any,
+    body?: any,
     method?: string
 ) => {
     const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
@@ -220,7 +138,7 @@ export const _requestToCouchDBFetch = async (
         authorization: authHeader,
         "content-type": "application/json",
     };
-    const uri = `${baseUri}/${path}`;
+    const uri = `${baseUri.replace(/\/+$/, "")}/${path}`;
     const requestParam = {
         url: uri,
         method: method || (body ? "PUT" : "GET"),
@@ -228,7 +146,7 @@ export const _requestToCouchDBFetch = async (
         contentType: "application/json",
         body: JSON.stringify(body),
     };
-    return await fetch(uri, requestParam);
+    return await _fetch(uri, requestParam);
 };
 
 export const _requestToCouchDB = async (
@@ -244,7 +162,7 @@ export const _requestToCouchDB = async (
     const authHeaderGen = new AuthorizationHeaderGenerator();
     const authHeader = await authHeaderGen.getAuthorizationHeader(credentials);
     const transformedHeaders: Record<string, string> = { authorization: authHeader, origin: origin, ...customHeaders };
-    const uri = `${baseUri}/${path}`;
+    const uri = `${baseUri.replace(/\/+$/, "")}/${path}`;
     const requestParam: RequestUrlParam = {
         url: uri,
         method: method || (body ? "PUT" : "GET"),
@@ -292,25 +210,12 @@ export function requestToCouchDBWithCredentials(
     return _requestToCouchDB(baseUri, credentials, origin, uri, body, method, customHeaders);
 }
 
-export const BASE_IS_NEW = Symbol("base");
-export const TARGET_IS_NEW = Symbol("target");
-export const EVEN = Symbol("even");
-
+import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
+export { BASE_IS_NEW, EVEN, TARGET_IS_NEW };
 // Why 2000? : ZIP FILE Does not have enough resolution.
-const resolution = 2000;
-export function compareMTime(
-    baseMTime: number,
-    targetMTime: number
-): typeof BASE_IS_NEW | typeof TARGET_IS_NEW | typeof EVEN {
-    const truncatedBaseMTime = ~~(baseMTime / resolution) * resolution;
-    const truncatedTargetMTime = ~~(targetMTime / resolution) * resolution;
-    // Logger(`Resolution MTime ${truncatedBaseMTime} and ${truncatedTargetMTime} `, LOG_LEVEL_VERBOSE);
-    if (truncatedBaseMTime == truncatedTargetMTime) return EVEN;
-    if (truncatedBaseMTime > truncatedTargetMTime) return BASE_IS_NEW;
-    if (truncatedBaseMTime < truncatedTargetMTime) return TARGET_IS_NEW;
-    throw new Error("Unexpected error");
-}
-
+import { compareMTime } from "@lib/common/utils.ts";
+import { _fetch } from "@lib/common/coreEnvFunctions.ts";
+export { compareMTime };
 function getKey(file: AnyEntry | string | UXFileInfoStub) {
     const key = typeof file == "string" ? file : stripAllPrefixes(file.path);
     return key;
@@ -425,35 +330,6 @@ export function disposeAllMemo() {
     _cached.clear();
 }
 
-export function displayRev(rev: string) {
-    const [number, hash] = rev.split("-");
-    return `${number}-${hash.substring(0, 6)}`;
-}
-
-type DocumentProps = {
-    id: DocumentID;
-    rev?: string;
-    prefixedPath: FilePathWithPrefix;
-    path: FilePath;
-    isDeleted: boolean;
-    revDisplay: string;
-    shortenedId: string;
-    shortenedPath: string;
-};
-
-export function getDocProps(doc: AnyEntry): DocumentProps {
-    const id = doc._id;
-    const shortenedId = id.substring(0, 10);
-    const prefixedPath = getPath(doc);
-    const path = stripAllPrefixes(prefixedPath);
-    const rev = doc._rev;
-    const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
-    // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
-    const shortenedPath = path.substring(0, 10);
-    const isDeleted = doc._deleted || doc.deleted || false;
-    return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
-}
-
 export function getLogLevel(showNotice: boolean) {
     return showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
 }
@@ -523,46 +399,4 @@ export function onlyInNTimes(n: number, proc: (progress: number) => any) {
     };
 }
 
-const waitingTasks = {} as Record<string, { task?: PromiseWithResolvers<any>; previous: number; leastNext: number }>;
-
-export function rateLimitedSharedExecution<T>(key: string, interval: number, proc: () => Promise<T>): Promise<T> {
-    if (!(key in waitingTasks)) {
-        waitingTasks[key] = { task: undefined, previous: 0, leastNext: 0 };
-    }
-    if (waitingTasks[key].task) {
-        // Extend the previous execution time.
-        waitingTasks[key].leastNext = Date.now() + interval;
-        return waitingTasks[key].task.promise;
-    }
-
-    const previous = waitingTasks[key].previous;
-
-    const delay = previous == 0 ? 0 : Math.max(interval - (Date.now() - previous), 0);
-
-    const task = promiseWithResolver<T>();
-    void task.promise.finally(() => {
-        if (waitingTasks[key].task === task) {
-            waitingTasks[key].task = undefined;
-            waitingTasks[key].previous = Math.max(Date.now(), waitingTasks[key].leastNext);
-        }
-    });
-    waitingTasks[key] = {
-        task,
-        previous: Date.now(),
-        leastNext: Date.now() + interval,
-    };
-    void scheduleTask("thin-out-" + key, delay, async () => {
-        try {
-            task.resolve(await proc());
-        } catch (ex) {
-            task.reject(ex);
-        }
-    });
-    return task.promise;
-}
-export function updatePreviousExecutionTime(key: string, timeDelta: number = 0) {
-    if (!(key in waitingTasks)) {
-        waitingTasks[key] = { task: undefined, previous: 0, leastNext: 0 };
-    }
-    waitingTasks[key].leastNext = Math.max(Date.now() + timeDelta, waitingTasks[key].leastNext);
-}
+export { displayRev } from "@lib/common/utils.ts";

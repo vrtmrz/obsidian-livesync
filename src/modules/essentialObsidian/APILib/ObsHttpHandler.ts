@@ -5,13 +5,23 @@
 
 import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-http-handler";
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
-//@ts-ignore
-import { requestTimeout } from "@smithy/fetch-http-handler/dist-es/request-timeout";
 import { buildQueryString } from "@smithy/querystring-builder";
-import { requestUrl, type RequestUrlParam } from "../../../deps.ts";
+import { requestUrl, type RequestUrlParam } from "@/deps.ts";
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl
 ////////////////////////////////////////////////////////////////////////////////
+
+function requestTimeout(timeoutInMs: number = 0): Promise<never> {
+    return new Promise((_, reject) => {
+        if (timeoutInMs) {
+            window.setTimeout(() => {
+                const timeoutError = new Error(`Request did not complete within ${timeoutInMs} ms`);
+                timeoutError.name = "TimeoutError";
+                reject(timeoutError);
+            }, timeoutInMs);
+        }
+    });
+}
 
 /**
  * This is close to origin implementation of FetchHttpHandler
@@ -27,8 +37,10 @@ export class ObsHttpHandler extends FetchHttpHandler {
         this.requestTimeoutInMs = options === undefined ? undefined : options.requestTimeout;
         this.reverseProxyNoSignUrl = reverseProxyNoSignUrl;
     }
-    // eslint-disable-next-line require-await
-    async handle(request: HttpRequest, { abortSignal }: HttpHandlerOptions = {}): Promise<{ response: HttpResponse }> {
+    override async handle(
+        request: HttpRequest,
+        { abortSignal }: HttpHandlerOptions = {}
+    ): Promise<{ response: HttpResponse }> {
         if (abortSignal?.aborted) {
             const abortError = new Error("Request aborted");
             abortError.name = "AbortError";

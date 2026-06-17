@@ -1,8 +1,8 @@
-import { REMOTE_MINIO, type RemoteDBSettings } from "../../lib/src/common/types";
-import { LiveSyncJournalReplicator } from "../../lib/src/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
-import type { LiveSyncCore } from "../../main";
-import { AbstractModule } from "../AbstractModule";
+import { REMOTE_MINIO, type RemoteDBSettings } from "@lib/common/types";
+import { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
+import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
+import type { LiveSyncCore } from "@/main";
+import { AbstractModule } from "@/modules/AbstractModule";
 
 export class ModuleReplicatorMinIO extends AbstractModule {
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {
@@ -12,7 +12,7 @@ export class ModuleReplicatorMinIO extends AbstractModule {
         }
         return Promise.resolve(false);
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
     }
 }

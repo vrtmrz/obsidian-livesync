@@ -9,16 +9,15 @@ import {
     type EntryLeaf,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "../../lib/src/common/types";
-import { getNoFromRev } from "../../lib/src/pouchdb/LiveSyncLocalDB";
-import { LiveSyncCommands } from "../LiveSyncCommands";
+} from "@lib/common/types";
+import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
-import type { LiveSyncCouchDBReplicator } from "@/lib/src/replication/couchdb/LiveSyncReplicator";
-import { delay, parseHeaderValues } from "@/lib/src/common/utils";
-import { generateCredentialObject } from "@/lib/src/replication/httplib";
-import { _requestToCouchDB } from "@/common/utils";
+import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { delay } from "@lib/common/utils";
+// import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
 const DB_KEY_DOC_USAGE_MAP = "doc-usage-map";
@@ -71,7 +70,7 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
 
     async confirm(title: string, message: string, affirmative = "Yes", negative = "No") {
         return (
-            (await this.plugin.confirm.askSelectStringDialogue(message, [affirmative, negative], {
+            (await this.core.confirm.askSelectStringDialogue(message, [affirmative, negative], {
                 title,
                 defaultAction: affirmative,
             })) === affirmative
@@ -302,7 +301,7 @@ Note: **Make sure to synchronise all devices before deletion.**
     }
 
     async scanUnusedChunks() {
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
         const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
         const chunkUsageMap = (await kvDB.get<ChunkUsageMap>(DB_KEY_DOC_USAGE_MAP)) || new Map();
         const KEEP_MAX_REVS = 10;
@@ -328,7 +327,7 @@ Note: **Make sure to synchronise all devices before deletion.**
     async trackChanges(fromStart: boolean = false, showNotice: boolean = false) {
         if (!this.isAvailable()) return;
         const logLevel = showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
 
         const previousSeq = fromStart ? "" : await kvDB.get<string>(DB_KEY_SEQ);
         const chunkSet = (await kvDB.get<Set<DocumentID>>(DB_KEY_CHUNK_SET)) || new Set();
@@ -391,7 +390,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                             .map((revInfo) => db.get(doc._id, { rev: revInfo.rev }))
                     ).then((docs) => docs.filter((doc) => doc));
                     for (const oldDoc of oldDocs) {
-                        await processDoc(oldDoc as EntryDoc, false);
+                        await processDoc(oldDoc, false);
                     }
                 }
             } catch (ex) {
@@ -457,7 +456,7 @@ Are you ready to delete unused chunks?`;
         const BUTTON_OK = `Yes, delete chunks`;
         const BUTTON_CANCEL = "Cancel";
 
-        const result = await this.plugin.confirm.askSelectStringDialogue(
+        const result = await this.core.confirm.askSelectStringDialogue(
             confirmMessage,
             [BUTTON_OK, BUTTON_CANCEL] as const,
             {
@@ -506,7 +505,7 @@ Are you ready to delete unused chunks?`;
         const message = `Garbage Collection completed.
 Success: ${successCount}, Errored: ${errored}`;
         this._log(message, logLevel);
-        const kvDB = this.plugin.kvDB;
+        const kvDB = this.core.kvDB;
         await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
     }
 
@@ -533,7 +532,7 @@ Success: ${successCount}, Errored: ${errored}`;
         const docMap = new Map<DocumentID, Set<DocumentInfo>>();
         const info = await db.info();
         // Total number of revisions to process (approximate)
-        const maxSeq = new Number(info.update_seq);
+        const maxSeq = Number.parseInt(`${info.update_seq ?? 0}`, 10);
         let processed = 0;
         let read = 0;
         let errored = 0;
@@ -560,7 +559,7 @@ Success: ${successCount}, Errored: ${errored}`;
                         });
                         docMap.set(id, set);
                     } else if (doc.type === EntryTypes.CHUNK) {
-                        const id = doc._id as DocumentID;
+                        const id = doc._id;
                         if (chunkMap.has(id)) {
                             return;
                         }
@@ -723,7 +722,7 @@ Success: ${successCount}, Errored: ${errored}`;
     }
 
     async compactDatabase() {
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
             this._notice("Failed to connect to remote for compaction.", "gc-compact");
@@ -759,70 +758,71 @@ Success: ${successCount}, Errored: ${errored}`;
         }
     }
 
-    /**
-     * Compact the database by temporarily setting the revision limit to 1.
-     * @returns
-     */
-    async compactDatabaseWithRevLimit() {
-        // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
-        // Very dangerous operation, so now suppressed.
-        return false;
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
-        const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
-        if (!remote) {
-            this._notice("Failed to connect to remote for compaction.");
-            return;
-        }
-        if (typeof remote == "string") {
-            this._notice(`Failed to connect to remote for compaction. ${remote}`);
-            return;
-        }
-        const customHeaders = parseHeaderValues(this.settings.couchDB_CustomHeaders);
-        const credential = generateCredentialObject(this.settings);
-        const request = async (path: string, method: string = "GET", body: any = undefined) => {
-            const req = await _requestToCouchDB(
-                this.settings.couchDB_URI + (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
-                credential,
-                window.origin,
-                path,
-                body,
-                method,
-                customHeaders
-            );
-            return req;
-        };
-        let revsLimit = "";
-        const req = await request(`_revs_limit`, "GET");
-        if (req.status == 200) {
-            revsLimit = req.text.trim();
-            this._info(`Remote database _revs_limit: ${revsLimit}`);
-        } else {
-            this._notice(`Failed to get remote database _revs_limit. Status: ${req.status}`);
-            return;
-        }
-        const req2 = await request(`_revs_limit`, "PUT", 1);
-        if (req2.status == 200) {
-            this._info(`Set remote database _revs_limit to 1 for compaction.`);
-        }
-        try {
-            await this.compactDatabase();
-        } finally {
-            // Restore revs_limit
-            if (revsLimit) {
-                const req3 = await request(`_revs_limit`, "PUT", parseInt(revsLimit));
-                if (req3.status == 200) {
-                    this._info(`Restored remote database _revs_limit to ${revsLimit}.`);
-                } else {
-                    this._notice(
-                        `Failed to restore remote database _revs_limit. Status: ${req3.status} / ${req3.text}`
-                    );
-                }
-            }
-        }
-    }
+    // /**
+    //  * Compact the database by temporarily setting the revision limit to 1.
+    //  * @returns
+    //  */
+    // async compactDatabaseWithRevLimit() {
+    //     // Temporarily set revs_limit to 1, perform compaction, and restore the original revs_limit.
+    //     // Very dangerous operation, so now suppressed.
+    //     return Promise.resolve(false);
+    //     const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+    //     const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
+    //     if (!remote) {
+    //         this._notice("Failed to connect to remote for compaction.");
+    //         return;
+    //     }
+    //     if (typeof remote == "string") {
+    //         this._notice(`Failed to connect to remote for compaction. ${remote}`);
+    //         return;
+    //     }
+    //     const customHeaders = parseHeaderValues(this.settings.couchDB_CustomHeaders);
+    //     const credential = generateCredentialObject(this.settings);
+    //     const request = async (path: string, method: string = "GET", body: any = undefined) => {
+    //         const req = await _requestToCouchDB(
+    //             this.settings.couchDB_URI.replace(/\/+$/, "") +
+    //             (this.settings.couchDB_DBNAME ? `/${this.settings.couchDB_DBNAME}` : ""),
+    //             credential,
+    //             window.origin,
+    //             path,
+    //             body,
+    //             method,
+    //             customHeaders
+    //         );
+    //         return req;
+    //     };
+    //     let revsLimit = "";
+    //     const req = await request(`_revs_limit`, "GET");
+    //     if (req.status == 200) {
+    //         revsLimit = req.text.trim();
+    //         this._info(`Remote database _revs_limit: ${revsLimit}`);
+    //     } else {
+    //         this._notice(`Failed to get remote database _revs_limit. Status: ${req.status}`);
+    //         return;
+    //     }
+    //     const req2 = await request(`_revs_limit`, "PUT", 1);
+    //     if (req2.status == 200) {
+    //         this._info(`Set remote database _revs_limit to 1 for compaction.`);
+    //     }
+    //     try {
+    //         await this.compactDatabase();
+    //     } finally {
+    //         // Restore revs_limit
+    //         if (revsLimit) {
+    //             const req3 = await request(`_revs_limit`, "PUT", parseInt(revsLimit));
+    //             if (req3.status == 200) {
+    //                 this._info(`Restored remote database _revs_limit to ${revsLimit}.`);
+    //             } else {
+    //                 this._notice(
+    //                     `Failed to restore remote database _revs_limit. Status: ${req3.status} / ${req3.text}`
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
     async gcv3() {
         if (!this.isAvailable()) return;
-        const replicator = this.plugin.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         // Start one-shot replication to ensure all changes are synced before GC.
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
         if (!r0) {
@@ -835,7 +835,7 @@ Success: ${successCount}, Errored: ${errored}`;
         // Delete the chunk, but first verify the following:
         // Fetch the list of accepted nodes from the replicator.
         const OPTION_CANCEL = "Cancel Garbage Collection";
-        const info = await this.plugin.replicator.getConnectedDeviceList();
+        const info = await this.core.replicator.getConnectedDeviceList();
         if (!info) {
             this._notice("No connected device information found. Cancelling Garbage Collection.");
             return;
@@ -855,7 +855,7 @@ It is preferable to update all devices if possible. If you have any devices that
             const OPTION_IGNORE = "Ignore and Proceed";
             // const OPTION_DELETE = "Delete them and proceed";
             const buttons = [OPTION_CANCEL, OPTION_IGNORE] as const;
-            const result = await this.plugin.confirm.askSelectStringDialogue(message, buttons, {
+            const result = await this.core.confirm.askSelectStringDialogue(message, buttons, {
                 title: "Node Information Missing",
                 defaultAction: OPTION_CANCEL,
             });
@@ -896,7 +896,7 @@ This may indicate that some devices have not completed synchronisation, which co
                 : `All devices have the same progress value (${maxProgress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.`;
         const buttons = [OPTION_PROCEED, OPTION_CANCEL] as const;
         const defaultAction = progressDifference != 0 ? OPTION_CANCEL : OPTION_PROCEED;
-        const result = await this.plugin.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
+        const result = await this.core.confirm.askSelectStringDialogue(message + "\n\n" + detail, buttons, {
             title: "Garbage Collection Confirmation",
             defaultAction,
         });
@@ -928,7 +928,7 @@ This may indicate that some devices have not completed synchronisation, which co
                     usedChunks.add(chunkId);
                 }
             } else if (doc.type === EntryTypes.CHUNK) {
-                allChunks.set(doc._id as DocumentID, doc._rev);
+                allChunks.set(doc._id, doc._rev);
             }
         }
         this._notice(

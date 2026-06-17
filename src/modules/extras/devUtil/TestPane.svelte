@@ -1,16 +1,15 @@
 <script lang="ts">
-    import { onDestroy, onMount } from "svelte";
-    import type ObsidianLiveSyncPlugin from "../../../main.ts";
+    import { onMount } from "svelte";
+    import type ObsidianLiveSyncPlugin from "@/main.ts";
     import { perf_trench } from "./tests.ts";
-    import { MarkdownRenderer, Notice } from "../../../deps.ts";
-    import type { ModuleDev } from "../ModuleDev.ts";
+    import { MarkdownRenderer, Notice } from "@/deps.ts";
+    import type { ModuleDev } from "@/modules/extras/ModuleDev.ts";
     import { fireAndForget } from "octagonal-wheels/promises";
-    import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events.ts";
-    import { writable } from "svelte/store";
+    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events.ts";
     export let plugin: ObsidianLiveSyncPlugin;
     export let moduleDev: ModuleDev;
+    $: core = plugin.core;
     let performanceTestResult = "";
-    let functionCheckResult = "";
     let testRunning = false;
     let prefTestResultEl: HTMLDivElement;
     let isReady = false;
@@ -42,7 +41,7 @@
         // performTest();
 
         eventHub.onceEvent(EVENT_LAYOUT_READY, async () => {
-            if (await plugin.storageAccess.isExistsIncludeHidden("_AUTO_TEST.md")) {
+            if (await core.storageAccess.isExistsIncludeHidden("_AUTO_TEST.md")) {
                 new Notice("Auto test file found, running tests...");
                 fireAndForget(async () => {
                     await allTest();
@@ -57,14 +56,14 @@
     function moduleMultiDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.services.test.testMultiDevice().finally(() => {
+        core.services.test.testMultiDevice().finally(() => {
             moduleTesting = false;
         });
     }
     function moduleSingleDeviceTest() {
         if (moduleTesting) return;
         moduleTesting = true;
-        plugin.services.test.test().finally(() => {
+        core.services.test.test().finally(() => {
             moduleTesting = false;
         });
     }
@@ -72,8 +71,8 @@
         if (moduleTesting) return;
         moduleTesting = true;
         try {
-            await plugin.services.test.test();
-            await plugin.services.test.testMultiDevice();
+            await core.services.test.test();
+            await core.services.test.testMultiDevice();
         } finally {
             moduleTesting = false;
         }

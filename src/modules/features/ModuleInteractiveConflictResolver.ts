@@ -8,13 +8,13 @@ import {
     type DocumentID,
     type FilePathWithPrefix,
     type diff_result,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { displayRev, getPath, getPathWithoutPrefix } from "../../common/utils.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { displayRev } from "@/common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -88,7 +88,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     return false;
                 }
             } else {
-                this._log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
+                this._log(`Merge: Something went wrong: ${filename}, (${toDelete as string})`, LOG_LEVEL_NOTICE);
                 return false;
             }
             // In here, some merge has been processed.
@@ -110,7 +110,12 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (!("_conflicts" in doc)) continue;
-            notes.push({ id: doc._id, path: getPath(doc), dispPath: getPathWithoutPrefix(doc), mtime: doc.mtime });
+            notes.push({
+                id: doc._id,
+                path: this.getPath(doc),
+                dispPath: this.getPathWithoutPrefix(doc),
+                mtime: doc.mtime,
+            });
         }
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
@@ -134,7 +139,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         try {
             for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
                 if (!("_conflicts" in doc)) continue;
-                notes.push({ path: getPath(doc), mtime: doc.mtime });
+                notes.push({ path: this.getPath(doc), mtime: doc.mtime });
             }
             if (notes.length > 0) {
                 this.core.confirm.askInPopup(
@@ -158,13 +163,13 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                 this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
             }
         } catch (e) {
-            this._log(`Error while scanning conflicted files: ${e}`, LOG_LEVEL_NOTICE);
+            this._log(`Error while scanning conflicted files...`, LOG_LEVEL_NOTICE);
             this._log(e, LOG_LEVEL_VERBOSE);
             return false;
         }
         return true;
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.conflict.resolveByUserInteraction.addHandler(this._anyResolveConflictByUI.bind(this));

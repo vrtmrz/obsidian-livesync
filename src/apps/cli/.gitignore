@@ -1,0 +1,9 @@
+.livesync
+test/*
+!test/*.sh
+test/test-init.local.sh
+node_modules
+.*.json
+*.env
+!.test.env
+bench-results

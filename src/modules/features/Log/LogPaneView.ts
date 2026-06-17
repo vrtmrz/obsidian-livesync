@@ -1,8 +1,8 @@
 import { WorkspaceLeaf } from "@/deps.ts";
 import LogPaneComponent from "./LogPane.svelte";
-import type ObsidianLiveSyncPlugin from "../../../main.ts";
-import { SvelteItemView } from "../../../common/SvelteItemView.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
+import { SvelteItemView } from "@/common/SvelteItemView.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { mount } from "svelte";
 export const VIEW_TYPE_LOG = "log-log";
 //Log view
@@ -19,11 +19,11 @@ export class LogPaneView extends SvelteItemView {
     }
 
     plugin: ObsidianLiveSyncPlugin;
-    icon = "view-log";
+    override icon = "view-log";
     title: string = "";
-    navigation = false;
+    override navigation = false;
 
-    getIcon(): string {
+    override getIcon(): string {
         return "view-log";
     }
 

@@ -2,7 +2,6 @@
 
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
 import sveltePlugin from "esbuild-svelte";
 import { sveltePreprocess } from "svelte-preprocess";
 import fs from "node:fs";
@@ -20,11 +19,15 @@ const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
 const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
 
 const PATHS_TEST_INSTALL = process.env?.PATHS_TEST_INSTALL || "";
-const PATH_TEST_INSTALL = PATHS_TEST_INSTALL.split(path.delimiter).map(p => p.trim()).filter(p => p.length);
+const PATH_TEST_INSTALL = PATHS_TEST_INSTALL.split(path.delimiter)
+    .map((p) => p.trim())
+    .filter((p) => p.length);
 if (PATH_TEST_INSTALL) {
     console.log(`Built files will be copied to ${PATH_TEST_INSTALL}`);
 } else {
-    console.log("Development build: You can install the plug-in to Obsidian for testing by exporting the PATHS_TEST_INSTALL environment variable with the paths to your vault plugins directories separated by your system path delimiter (':' on Unix, ';' on Windows).");
+    console.log(
+        "Development build: You can install the plug-in to Obsidian for testing by exporting the PATHS_TEST_INSTALL environment variable with the paths to your vault plugins directories separated by your system path delimiter (':' on Unix, ';' on Windows)."
+    );
 }
 
 const moduleAliasPlugin = {
@@ -63,6 +66,34 @@ const moduleAliasPlugin = {
                 }
             }
             return null;
+        });
+    },
+};
+
+const removePragmaCommentsPlugin = {
+    name: "remove-pragma-comments",
+    setup(build) {
+        // Filter target extensions (e.g., JavaScript and TypeScript)
+        build.onLoad({ filter: /\.[jt]s?$/ }, async (args) => {
+            const source = await fs.promises.readFile(args.path, "utf8");
+
+            // Regex targeting both single-line and multi-line comments
+            // This regex looks for:
+            // - /* eslint ... */ (multi-line)
+            // const esLintPragmaRegexBlock = /\/\*[\s\S]*?eslint[\s\S]*?\*\/|([^\\:]|^)\/\/.*eslint.*$/gm;
+            // - // eslint-disable-next-line
+            let cleanedSource = source;
+            const tsIgnoreRegex = /\/\*\s*@ts-ignore\s*\*\/|([^\\:]|^)\/\/.*?@ts-ignore.*$/gm;
+            const esLintPragmaRegexLine = /([^\\:]|^)\/\/.*?eslint-.*$/gm;
+            const exps = [tsIgnoreRegex, esLintPragmaRegexLine];
+            for (const exp of exps) {
+                cleanedSource = cleanedSource.replace(exp, "$1");
+            }
+
+            return {
+                contents: cleanedSource,
+                loader: args.path.endsWith("ts") ? "ts" : "js",
+            };
         });
     },
 };
@@ -178,6 +209,7 @@ const context = await esbuild.context({
             preprocess: sveltePreprocess(),
             compilerOptions: { css: "injected", preserveComments: false },
         }),
+        removePragmaCommentsPlugin,
         ...plugins,
     ],
 });

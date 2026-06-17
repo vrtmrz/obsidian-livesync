@@ -1,5 +1,5 @@
-import { LEVEL_ADVANCED, type CustomRegExpSource } from "../../../lib/src/common/types.ts";
-import { constructCustomRegExpList, splitCustomRegExpList } from "../../../lib/src/common/utils.ts";
+import { LEVEL_ADVANCED, type CustomRegExpSource } from "@lib/common/types.ts";
+import { constructCustomRegExpList, splitCustomRegExpList } from "@lib/common/utils.ts";
 import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { mount } from "svelte";

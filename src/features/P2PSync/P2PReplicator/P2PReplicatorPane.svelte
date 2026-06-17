@@ -1,50 +1,48 @@
 <script lang="ts">
     import { onMount, setContext } from "svelte";
-    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "../../../lib/src/common/types";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@lib/common/types";
     import {
         AcceptedStatus,
         ConnectionStatus,
-        type CommandShim,
         type PeerStatus,
-        type PluginShim,
-    } from "../../../lib/src/replication/trystero/P2PReplicatorPaneCommon";
-    import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
-    import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events";
+    } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
+    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
     import {
         type PeerInfo,
         type P2PServerInfo,
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "../../../lib/src/replication/trystero/TrysteroReplicatorP2PServer";
-    import { type P2PReplicatorStatus } from "../../../lib/src/replication/trystero/TrysteroReplicator";
-    import { $msg as _msg } from "../../../lib/src/common/i18n";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../lib/src/common/types";
+    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import { type P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
+    import { $msg as _msg } from "@lib/common/i18n";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
+    import { generateP2PRoomId } from "@lib/common/utils";
+    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        plugin: PluginShim;
-        cmdSync: CommandShim;
+        cmdSync: LiveSyncTrysteroReplicator;
+        core: LiveSyncBaseCore;
     }
 
-    let { plugin, cmdSync }: Props = $props();
+    let { cmdSync, core }: Props = $props();
     // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
     setContext("getReplicator", () => cmdSync);
-
-    const initialSettings = { ...plugin.settings };
+    const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
+    const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
     let settings = $state<P2PSyncSetting>(initialSettings);
-    // const vaultName = service.vault.getVaultName();
-    // const dbKey = `${vaultName}-p2p-device-name`;
 
-    const initialDeviceName = cmdSync.getConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? plugin.services.vault.getVaultName();
-    let deviceName = $state<string>(initialDeviceName);
+    let deviceName = $state<string>("");
 
     let eP2PEnabled = $state<boolean>(initialSettings.P2P_Enabled);
     let eRelay = $state<string>(initialSettings.P2P_relays);
     let eRoomId = $state<string>(initialSettings.P2P_roomID);
     let ePassword = $state<string>(initialSettings.P2P_passphrase);
     let eAppId = $state<string>(initialSettings.P2P_AppID);
-    let eDeviceName = $state<string>(initialDeviceName);
+    let eDeviceName = $state<string>("");
     let eAutoAccept = $state<boolean>(initialSettings.P2P_AutoAccepting == AutoAccepting.ALL);
     let eAutoStart = $state<boolean>(initialSettings.P2P_AutoStart);
     let eAutoBroadcast = $state<boolean>(initialSettings.P2P_AutoBroadcast);
@@ -73,21 +71,32 @@
     );
 
     async function saveAndApply() {
-        const newSettings = {
-            ...plugin.settings,
-            P2P_Enabled: eP2PEnabled,
-            P2P_relays: eRelay,
-            P2P_roomID: eRoomId,
-            P2P_passphrase: ePassword,
-            P2P_AppID: eAppId,
-            P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
-            P2P_AutoStart: eAutoStart,
-            P2P_AutoBroadcast: eAutoBroadcast,
-        };
-        plugin.settings = newSettings;
-        cmdSync.setConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
+        // const newSettings = {
+        //     ...currentSettings(),
+        //     P2P_Enabled: eP2PEnabled,
+        //     P2P_relays: eRelay,
+        //     P2P_roomID: eRoomId,
+        //     P2P_passphrase: ePassword,
+        //     P2P_AppID: eAppId,
+        //     P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
+        //     P2P_AutoStart: eAutoStart,
+        //     P2P_AutoBroadcast: eAutoBroadcast,
+        // };
+        await core.services.setting.applyPartial(
+            {
+                P2P_Enabled: eP2PEnabled,
+                P2P_relays: eRelay,
+                P2P_roomID: eRoomId,
+                P2P_passphrase: ePassword,
+                P2P_AppID: eAppId,
+                P2P_AutoAccepting: eAutoAccept ? AutoAccepting.ALL : AutoAccepting.NONE,
+                P2P_AutoStart: eAutoStart,
+                P2P_AutoBroadcast: eAutoBroadcast,
+            },
+            true
+        );
+        core.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
-        await plugin.saveSettings();
     }
     async function revert() {
         eP2PEnabled = settings.P2P_Enabled;
@@ -103,6 +112,12 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
+        if (force) {
+            const initDeviceName =
+                core.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
+            deviceName = initDeviceName;
+            eDeviceName = initDeviceName;
+        }
         const { P2P_relays, P2P_roomID, P2P_passphrase, P2P_AppID, P2P_AutoAccepting } = d;
         if (force || !isP2PEnabledModified) eP2PEnabled = d.P2P_Enabled;
         if (force || !isRelayModified) eRelay = P2P_relays;
@@ -122,7 +137,7 @@
             closeServer();
         });
         const rx = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
-            applyLoadSettings(plugin.settings, true);
+            applyLoadSettings(currentSettings(), true);
         });
         const r2 = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
@@ -134,6 +149,7 @@
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
         return () => {
             r();
+            rx();
             r2();
             r3();
         };
@@ -202,18 +218,8 @@
     function useDefaultRelay() {
         eRelay = DEFAULT_SETTINGS.P2P_relays;
     }
-    function _generateRandom() {
-        return (Math.floor(Math.random() * 1000) + 1000).toString().substring(1);
-    }
-    function generateRandom(length: number) {
-        let buf = "";
-        while (buf.length < length) {
-            buf += "-" + _generateRandom();
-        }
-        return buf.substring(1, length);
-    }
     function chooseRandom() {
-        eRoomId = generateRandom(12) + "-" + Math.random().toString(36).substring(2, 5);
+        eRoomId = generateP2PRoomId();
     }
 
     async function openServer() {
@@ -223,21 +229,21 @@
         await cmdSync.close();
     }
     function startBroadcasting() {
-        void cmdSync.enableBroadcastCastings();
+        void cmdSync.enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void cmdSync.disableBroadcastCastings();
+        void cmdSync.disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;
     const getDialogStatus = () => {
         try {
-            const initialDialogStatus = JSON.parse(cmdSync.getConfig(initialDialogStatusKey) ?? "{}") as {
+            const initialDialogStatus = JSON.parse(core.services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
                 notice?: boolean;
                 setting?: boolean;
             };
             return initialDialogStatus;
-        } catch (e) {
+        } catch {
             return {};
         }
     };
@@ -249,10 +255,10 @@
             notice: isNoticeOpened,
             setting: isSettingOpened,
         };
-        cmdSync.setConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
+        core.services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
     let isObsidian = $derived.by(() => {
-        return plugin.services.API.getPlatform() === "obsidian";
+        return core.services.API.getPlatform() === "obsidian";
     });
 </script>
 

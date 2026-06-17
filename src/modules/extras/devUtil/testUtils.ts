@@ -1,6 +1,6 @@
-import { fireAndForget } from "../../../lib/src/common/utils.ts";
+import { fireAndForget } from "@lib/common/utils.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import type ObsidianLiveSyncPlugin from "../../../main.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 
 let plugin: ObsidianLiveSyncPlugin;
 export function enableTestFunction(plugin_: ObsidianLiveSyncPlugin) {
@@ -38,8 +38,8 @@ export function addDebugFileLog(message: any, stackLog = false) {
             // const out = "--" + timestamp + "--\n" + messageContent + " " + (stack || "");
             // const out
             try {
-                await plugin.storageAccess.appendHiddenFile(
-                    plugin.app.vault.configDir + "/ls-debug/" + outFile,
+                await plugin.core.storageAccess.appendHiddenFile(
+                    plugin.core.services.API.getSystemConfigDir() + "/ls-debug/" + outFile,
                     JSON.stringify(out) + "\n"
                 );
             } catch {

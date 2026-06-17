@@ -1,4 +1,4 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "../../lib/src/common/logger.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger.ts";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
@@ -6,16 +6,16 @@ import {
     EVENT_REQUEST_RUN_DOCTOR,
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
-} from "../../common/events.ts";
-import { AbstractModule } from "../AbstractModule.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import { performDoctorConsultation, RebuildOptions } from "../../lib/src/common/configForDoc.ts";
-import { getPath, isValidPath } from "../../common/utils.ts";
-import { isMetaEntry } from "../../lib/src/common/types.ts";
-import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "../../lib/src/common/utils.ts";
-import { countCompromisedChunks } from "../../lib/src/pouchdb/negotiation.ts";
-import type { LiveSyncCore } from "../../main.ts";
-import { SetupManager } from "../features/SetupManager.ts";
+} from "@/common/events.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import { performDoctorConsultation, RebuildOptions } from "@lib/common/configForDoc.ts";
+import { isValidPath } from "@/common/utils.ts";
+import { isMetaEntry } from "@lib/common/types.ts";
+import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@lib/common/utils.ts";
+import { countCompromisedChunks } from "@lib/pouchdb/negotiation.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { SetupManager } from "@/modules/features/SetupManager.ts";
 
 type ErrorInfo = {
     path: string;
@@ -40,7 +40,7 @@ export class ModuleMigration extends AbstractModule {
         );
         if (isModified) {
             this.settings = settings;
-            await this.core.saveSettings();
+            await this.saveSettings();
         }
         if (!skipRebuild) {
             if (shouldRebuild) {
@@ -128,12 +128,12 @@ export class ModuleMigration extends AbstractModule {
 
         const errorFiles = [] as ErrorInfo[];
         for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
-            const path = getPath(metaDoc);
+            const path = this.getPath(metaDoc);
 
             if (!isValidPath(path)) {
                 continue;
             }
-            if (!(await this.services.vault.isTargetFile(path, true))) {
+            if (!(await this.services.vault.isTargetFile(path))) {
                 continue;
             }
             if (!isMetaEntry(metaDoc)) {
@@ -231,7 +231,7 @@ export class ModuleMigration extends AbstractModule {
         if (ret == FIX) {
             for (const file of recoverable) {
                 // Overwrite the database with the files on the storage
-                const stubFile = this.core.storageAccess.getFileStub(file.path);
+                const stubFile = await this.core.storageAccess.getFileStub(file.path);
                 if (stubFile == null) {
                     Logger(`Could not find stub file for ${file.path}`, LOG_LEVEL_NOTICE);
                     continue;
@@ -262,9 +262,7 @@ export class ModuleMigration extends AbstractModule {
         // Check local database for compromised chunks
         const localCompromised = await countCompromisedChunks(this.localDatabase.localDatabase);
         const remote = this.services.replicator.getActiveReplicator();
-        const remoteCompromised = this.core.managers.networkManager.isOnline
-            ? await remote?.countCompromisedChunks()
-            : 0;
+        const remoteCompromised = this.services.API.isOnline ? await remote?.countCompromisedChunks() : 0;
         if (localCompromised === false) {
             Logger(`Failed to count compromised chunks in local database`, LOG_LEVEL_NOTICE);
             return false;
@@ -353,7 +351,7 @@ export class ModuleMigration extends AbstractModule {
         });
         return Promise.resolve(true);
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         super.onBindFunction(core, services);
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onFirstInitialise.addHandler(this._everyOnFirstInitialize.bind(this));

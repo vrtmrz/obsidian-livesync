@@ -1,5 +1,5 @@
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { AbstractModule } from "../AbstractModule.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import {
     AUTO_MERGED,
     CANCELLED,
@@ -10,19 +10,15 @@ import {
     NOT_CONFLICTED,
     type diff_check_result,
     type FilePathWithPrefix,
-} from "../../lib/src/common/types";
-import {
-    compareMTime,
-    displayRev,
-    isCustomisationSyncMetadata,
-    isPluginMetadata,
-    TARGET_IS_NEW,
-} from "../../common/utils";
+} from "@lib/common/types";
+import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
+import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
+import { compareMTime, displayRev } from "@lib/common/utils.ts";
 import diff_match_patch from "diff-match-patch";
-import { stripAllPrefixes, isPlainText } from "../../lib/src/string_and_binary/path";
-import { eventHub } from "../../common/events.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
+import { eventHub } from "@/common/events.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 declare global {
     interface LSEvents {
@@ -211,10 +207,30 @@ export class ModuleConflictResolver extends AbstractModule {
         }
         return true;
     }
+    private async _resolveAllConflictedFilesByNewerOnes() {
+        this._log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
 
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+        const files = await this.core.storageAccess.getFileNames();
+
+        let i = 0;
+        for (const file of files) {
+            if (i++ % 10)
+                this._log(
+                    `Check and Processing ${i} / ${files.length}`,
+                    LOG_LEVEL_NOTICE,
+                    "resolveAllConflictedFilesByNewerOnes"
+                );
+            await this.services.conflict.resolveByNewest(file);
+        }
+        this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    }
+
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.conflict.resolveByDeletingRevision.setHandler(this._resolveConflictByDeletingRev.bind(this));
         services.conflict.resolve.setHandler(this._resolveConflict.bind(this));
         services.conflict.resolveByNewest.setHandler(this._anyResolveConflictByNewest.bind(this));
+        services.conflict.resolveAllConflictedFilesByNewerOnes.setHandler(
+            this._resolveAllConflictedFilesByNewerOnes.bind(this)
+        );
     }
 }

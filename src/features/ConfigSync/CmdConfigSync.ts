@@ -8,7 +8,7 @@ import {
     diff_match_patch,
     Platform,
     addIcon,
-} from "../../deps.ts";
+} from "@/deps.ts";
 
 import type {
     EntryDoc,
@@ -19,7 +19,7 @@ import type {
     AnyEntry,
     SavingEntry,
     diff_result,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import {
     CANCELLED,
     LEAVE_TO_SUBSEQUENT,
@@ -29,8 +29,8 @@ import {
     LOG_LEVEL_VERBOSE,
     MODE_SELECTIVE,
     MODE_SHINY,
-} from "../../lib/src/common/types.ts";
-import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "../../common/types.ts";
+} from "@lib/common/types.ts";
+import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
     createBlob,
     createSavingEntryFromLoadedEntry,
@@ -42,37 +42,36 @@ import {
     isDocContentSame,
     isLoadedEntry,
     isObjectDifferent,
-} from "../../lib/src/common/utils.ts";
-import { digestHash } from "../../lib/src/string_and_binary/hash.ts";
-import { arrayBufferToBase64, decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
+} from "@lib/common/utils.ts";
+import { digestHash } from "@lib/string_and_binary/hash.ts";
+import { arrayBufferToBase64, decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
-import { LiveSyncCommands } from "../LiveSyncCommands.ts";
-import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
+import { stripAllPrefixes } from "@lib/string_and_binary/path.ts";
 import {
     EVEN,
-    PeriodicProcessor,
     disposeMemoObject,
     isCustomisationSyncMetadata,
-    isMarkedAsSameChanges,
     isPluginMetadata,
-    markChangesAreSame,
     memoIfNotExist,
     memoObject,
     retrieveMemoObject,
     scheduleTask,
-} from "../../common/utils.ts";
-import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
+} from "@/common/utils.ts";
+import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
+import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { pluginScanningCount } from "../../lib/src/mock_and_interop/stores.ts";
-import type ObsidianLiveSyncPlugin from "../../main.ts";
+import { pluginScanningCount } from "@lib/mock_and_interop/stores.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
-import { ConflictResolveModal } from "../../modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
+import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
+import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -394,29 +393,32 @@ export type PluginDataEx = {
 };
 
 export class ConfigSync extends LiveSyncCommands {
-    constructor(plugin: ObsidianLiveSyncPlugin) {
-        super(plugin);
+    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
+        super(plugin, core);
         pluginScanningCount.onChanged((e) => {
             const total = e.value;
             pluginIsEnumerating.set(total != 0);
         });
     }
+    get configDir() {
+        return this.core.services.API.getSystemConfigDir();
+    }
     get kvDB() {
-        return this.plugin.kvDB;
+        return this.core.kvDB;
     }
 
     get useV2() {
-        return this.plugin.settings.usePluginSyncV2;
+        return this.core.settings.usePluginSyncV2;
     }
     get useSyncPluginEtc() {
-        return this.plugin.settings.usePluginEtc;
+        return this.core.settings.usePluginEtc;
     }
     isThisModuleEnabled() {
-        return this.plugin.settings.usePluginSync;
+        return this.core.settings.usePluginSync;
     }
 
     pluginDialog?: PluginDialogModal = undefined;
-    periodicPluginSweepProcessor = new PeriodicProcessor(this.plugin, async () => await this.scanAllConfigFiles(false));
+    periodicPluginSweepProcessor = new PeriodicProcessor(this.core, async () => await this.scanAllConfigFiles(false));
 
     pluginList: IPluginDataExDisplay[] = [];
     showPluginSyncModal() {
@@ -441,7 +443,7 @@ export class ConfigSync extends LiveSyncCommands {
         this.hidePluginSyncModal();
         this.periodicPluginSweepProcessor?.disable();
     }
-    addRibbonIcon = this.plugin.addRibbonIcon.bind(this.plugin);
+    addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
     onload() {
         addIcon(
             "custom-sync",
@@ -449,7 +451,7 @@ export class ConfigSync extends LiveSyncCommands {
             <path d="m272 166-9.38 9.38 9.38 9.38 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.058 1.91 1.94 1.91 5.04 0 6.98l-9.38 9.38 5.86 5.86-11.7 11.7c-8.34 8.35-21.4 9.68-31.3 3.19l-3.84 3.98c-8.45 8.7-20.1 13.6-32.2 13.6h-5.55v-9.95h5.55c9.43-0.0182 18.5-3.84 25-10.6l3.95-4.09c-6.54-9.86-5.23-23 3.14-31.3l11.7-11.7 5.86 5.86 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.0564 1.91 1.93 1.91 5.04 2e-3 6.98z"/>
         </g>`
         );
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "livesync-plugin-dialog-ex",
             name: "Show customization sync dialog",
             callback: () => {
@@ -466,10 +468,9 @@ export class ConfigSync extends LiveSyncCommands {
         filePath: string
     ): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
         if (filePath.split("/").length == 2 && filePath.endsWith(".json")) return "CONFIG";
-        if (filePath.split("/").length == 4 && filePath.startsWith(`${this.app.vault.configDir}/themes/`))
-            return "THEME";
-        if (filePath.startsWith(`${this.app.vault.configDir}/snippets/`) && filePath.endsWith(".css")) return "SNIPPET";
-        if (filePath.startsWith(`${this.app.vault.configDir}/plugins/`)) {
+        if (filePath.split("/").length == 4 && filePath.startsWith(`${this.configDir}/themes/`)) return "THEME";
+        if (filePath.startsWith(`${this.configDir}/snippets/`) && filePath.endsWith(".css")) return "SNIPPET";
+        if (filePath.startsWith(`${this.configDir}/plugins/`)) {
             if (
                 filePath.endsWith("/styles.css") ||
                 filePath.endsWith("/manifest.json") ||
@@ -487,7 +488,7 @@ export class ConfigSync extends LiveSyncCommands {
         return "";
     }
     isTargetPath(filePath: string): boolean {
-        if (!filePath.startsWith(this.app.vault.configDir)) return false;
+        if (!filePath.startsWith(this.configDir)) return false;
         // Idea non-filter option?
         return this.getFileCategory(filePath) != "";
     }
@@ -564,7 +565,7 @@ export class ConfigSync extends LiveSyncCommands {
                 ...data,
                 documentPath: this.getPath(wx),
                 files: xFiles,
-            } as PluginDataExDisplay;
+            } satisfies PluginDataExDisplay;
         }
         return false;
     }
@@ -856,7 +857,7 @@ export class ConfigSync extends LiveSyncCommands {
                 children: [],
                 eden: {},
             };
-            const r = await this.plugin.localDatabase.putDBEntry(saving);
+            const r = await this.core.localDatabase.putDBEntry(saving);
             if (r && r.ok) {
                 this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
                 const delR = await this.deleteConfigOnDatabase(v1Path);
@@ -998,16 +999,16 @@ export class ConfigSync extends LiveSyncCommands {
         }
     }
     async applyDataV2(data: PluginDataExDisplayV2, content?: string): Promise<boolean> {
-        const baseDir = this.app.vault.configDir;
+        const baseDir = this.configDir;
         try {
             if (content) {
                 // const dt = createBlob(content);
                 const filename = data.files[0].filename;
                 this._log(`Applying ${filename} of ${data.displayName || data.name}..`);
                 const path = `${baseDir}/${filename}` as FilePath;
-                await this.plugin.storageAccess.ensureDir(path);
+                await this.core.storageAccess.ensureDir(path);
                 // If the content has applied, modified time will be updated to the current time.
-                await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
+                await this.core.storageAccess.writeHiddenFileAuto(path, content);
                 await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
             } else {
                 const files = data.files;
@@ -1017,12 +1018,12 @@ export class ConfigSync extends LiveSyncCommands {
                     const path = `${baseDir}/${f.filename}` as FilePath;
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
-                    await this.plugin.storageAccess.ensureDir(path);
+                    await this.core.storageAccess.ensureDir(path);
 
                     if (f.datatype == "newnote") {
                         let oldData;
                         try {
-                            oldData = await this.plugin.storageAccess.readHiddenFileBinary(path);
+                            oldData = await this.core.storageAccess.readHiddenFileBinary(path);
                         } catch (ex) {
                             this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
@@ -1033,11 +1034,11 @@ export class ConfigSync extends LiveSyncCommands {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
+                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     } else {
                         let oldData;
                         try {
-                            oldData = await this.plugin.storageAccess.readHiddenFileText(path);
+                            oldData = await this.core.storageAccess.readHiddenFileText(path);
                         } catch (ex) {
                             this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
@@ -1048,7 +1049,7 @@ export class ConfigSync extends LiveSyncCommands {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.plugin.storageAccess.writeHiddenFileAuto(path, content, stat);
+                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
                     await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
@@ -1067,12 +1068,12 @@ export class ConfigSync extends LiveSyncCommands {
         if (data instanceof PluginDataExDisplayV2) {
             return this.applyDataV2(data, content);
         }
-        const baseDir = this.app.vault.configDir;
+        const baseDir = this.configDir;
         try {
-            if (!data.documentPath) throw "InternalError: Document path not exist";
+            if (!data.documentPath) throw new LiveSyncError("InternalError: Document path not exist");
             const dx = await this.localDatabase.getDBEntry(data.documentPath);
             if (dx == false) {
-                throw "Not found on database";
+                throw new LiveSyncError("Not found on database");
             }
             const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
@@ -1080,12 +1081,12 @@ export class ConfigSync extends LiveSyncCommands {
                 try {
                     // console.dir(f);
                     const path = `${baseDir}/${f.filename}`;
-                    await this.plugin.storageAccess.ensureDir(path);
+                    await this.core.storageAccess.ensureDir(path);
                     if (!content) {
                         const dt = decodeBinary(f.data);
-                        await this.plugin.storageAccess.writeHiddenFileAuto(path, dt);
+                        await this.core.storageAccess.writeHiddenFileAuto(path, dt);
                     } else {
-                        await this.plugin.storageAccess.writeHiddenFileAuto(path, content);
+                        await this.core.storageAccess.writeHiddenFileAuto(path, content);
                     }
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
                 } catch (ex) {
@@ -1174,7 +1175,7 @@ export class ConfigSync extends LiveSyncCommands {
                 (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath(docs as AnyEntry)
             );
         }
-        if (this.isThisModuleEnabled() && this.plugin.settings.notifyPluginOrSettingUpdated) {
+        if (this.isThisModuleEnabled() && this.core.settings.notifyPluginOrSettingUpdated) {
             if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                 const fragment = createFragment((doc) => {
                     doc.createEl("span", undefined, (a) => {
@@ -1232,13 +1233,13 @@ export class ConfigSync extends LiveSyncCommands {
 
     recentProcessedInternalFiles = [] as string[];
     async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
-        const stat = await this.plugin.storageAccess.statHidden(path);
+        const stat = await this.core.storageAccess.statHidden(path);
         let version: string | undefined;
         let displayName: string | undefined;
         if (!stat) {
             return false;
         }
-        const contentBin = await this.plugin.storageAccess.readHiddenFileBinary(path);
+        const contentBin = await this.core.storageAccess.readHiddenFileBinary(path);
         let content: string[];
         try {
             content = await arrayBufferToBase64(contentBin);
@@ -1267,7 +1268,7 @@ export class ConfigSync extends LiveSyncCommands {
         }
         const mtime = stat.mtime;
         return {
-            filename: path.substring(this.app.vault.configDir.length + 1),
+            filename: path.substring(this.configDir.length + 1),
             data: content,
             mtime,
             size: stat.size,
@@ -1282,12 +1283,12 @@ export class ConfigSync extends LiveSyncCommands {
             const prefixedFileName = vf;
 
             const id = await this.path2id(prefixedFileName);
-            const stat = await this.plugin.storageAccess.statHidden(path);
+            const stat = await this.core.storageAccess.statHidden(path);
             if (!stat) {
                 return false;
             }
             const mtime = stat.mtime;
-            const content = await this.plugin.storageAccess.readHiddenFileBinary(path);
+            const content = await this.core.storageAccess.readHiddenFileBinary(path);
             const contentBlob = createBlob([DUMMY_HEAD, DUMMY_END, ...(await arrayBufferToBase64(content))]);
             // const contentBlob = createBlob(content);
             try {
@@ -1308,7 +1309,7 @@ export class ConfigSync extends LiveSyncCommands {
                         eden: {},
                     };
                 } else {
-                    if (isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
+                    if (this.services.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
                         this._log(
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`,
                             LOG_LEVEL_DEBUG
@@ -1317,7 +1318,7 @@ export class ConfigSync extends LiveSyncCommands {
                     }
                     const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (docXDoc == false) {
-                        throw "Could not load the document";
+                        throw new LiveSyncError("Could not load the document");
                     }
                     const dataSrc = getDocData(docXDoc.data);
                     const dataStart = dataSrc.indexOf(DUMMY_END);
@@ -1328,7 +1329,7 @@ export class ConfigSync extends LiveSyncCommands {
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`,
                             LOG_LEVEL_VERBOSE
                         );
-                        markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
+                        this.services.path.markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
                         return true;
                     }
                     saveData = {
@@ -1506,11 +1507,11 @@ export class ConfigSync extends LiveSyncCommands {
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
         // if (!this.isTargetPath(path)) return false;
-        const stat = await this.plugin.storageAccess.statHidden(path);
+        const stat = await this.core.storageAccess.statHidden(path);
         // Make sure that target is a file.
         if (stat && stat.type != "file") return false;
 
-        const configDir = normalizePath(this.app.vault.configDir);
+        const configDir = normalizePath(this.configDir);
         const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting)
             .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
             .map((e) => e.files)
@@ -1676,7 +1677,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async scanInternalFiles(): Promise<FilePath[]> {
-        const filenames = (await this.getFiles(this.app.vault.configDir, 2))
+        const filenames = (await this.getFiles(this.configDir, 2))
             .filter((e) => e.startsWith("."))
             .filter((e) => !e.startsWith(".trash"));
         return filenames as FilePath[];
@@ -1707,7 +1708,7 @@ export class ConfigSync extends LiveSyncCommands {
         choices.push(CHOICE_DISABLE);
         choices.push(CHOICE_DISMISS);
 
-        const ret = await this.plugin.confirm.askSelectStringDialogue(message, choices, {
+        const ret = await this.core.confirm.askSelectStringDialogue(message, choices, {
             defaultAction: CHOICE_DISMISS,
             timeout: 40,
             title: "Customisation sync",
@@ -1730,13 +1731,13 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     private _allSuspendExtraSync(): Promise<boolean> {
-        if (this.plugin.settings.usePluginSync || this.plugin.settings.autoSweepPlugins) {
+        if (this.core.settings.usePluginSync || this.core.settings.autoSweepPlugins) {
             this._log(
                 "Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.",
                 LOG_LEVEL_NOTICE
             );
-            this.plugin.settings.usePluginSync = false;
-            this.plugin.settings.autoSweepPlugins = false;
+            this.core.settings.usePluginSync = false;
+            this.core.settings.autoSweepPlugins = false;
         }
         return Promise.resolve(true);
     }
@@ -1747,14 +1748,20 @@ export class ConfigSync extends LiveSyncCommands {
     }
     async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
         if (mode == "DISABLE") {
-            this.plugin.settings.usePluginSync = false;
-            await this.plugin.saveSettings();
+            // this.plugin.settings.usePluginSync = false;
+            // await this.plugin.saveSettings();
+            await this.core.services.setting.applyPartial(
+                {
+                    usePluginSync: false,
+                },
+                true
+            );
             return;
         }
 
         if (mode == "CUSTOMIZE") {
             if (!this.services.setting.getDeviceAndVaultName()) {
-                let name = await this.plugin.confirm.askString("Device name", "Please set this device name", `desktop`);
+                let name = await this.core.confirm.askString("Device name", "Please set this device name", `desktop`);
                 if (!name) {
                     if (Platform.isAndroidApp) {
                         name = "android-app";
@@ -1779,9 +1786,16 @@ export class ConfigSync extends LiveSyncCommands {
                 }
                 this.services.setting.setDeviceAndVaultName(name);
             }
-            this.plugin.settings.usePluginSync = true;
-            this.plugin.settings.useAdvancedMode = true;
-            await this.plugin.saveSettings();
+            // this.core.settings.usePluginSync = true;
+            // this.core.settings.useAdvancedMode = true;
+            // await this.core.saveSettings();
+            await this.core.services.setting.applyPartial(
+                {
+                    usePluginSync: true,
+                    useAdvancedMode: true,
+                },
+                true
+            );
             await this.scanAllConfigFiles(true);
         }
     }
@@ -1802,7 +1816,7 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return files;
     }
-    onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
+    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
         services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
         services.replication.processVirtualDocument.addHandler(this._anyModuleParsedReplicationResultItem.bind(this));

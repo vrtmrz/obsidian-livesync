@@ -1,38 +1,26 @@
 <script lang="ts">
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import Question from "@/lib/src/UI/components/Question.svelte";
-    import Option from "@/lib/src/UI/components/Option.svelte";
-    import Options from "@/lib/src/UI/components/Options.svelte";
-    import Instruction from "@/lib/src/UI/components/Instruction.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
-    import Check from "@/lib/src/UI/components/Check.svelte";
-    const TYPE_CANCEL = "cancelled";
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import Question from "@lib/UI/components/Question.svelte";
+    import Option from "@lib/UI/components/Option.svelte";
+    import Options from "@lib/UI/components/Options.svelte";
+    import Instruction from "@lib/UI/components/Instruction.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import InfoNote from "@lib/UI/components/InfoNote.svelte";
+    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
+    import Check from "@lib/UI/components/Check.svelte";
+    import {
+        TYPE_CANCEL,
+        TYPE_BACKUP_DONE,
+        TYPE_BACKUP_SKIPPED,
+        TYPE_UNABLE_TO_BACKUP,
+        type RebuildEverythingResult,
+        type ResultTypeBackup,
+    } from "./setupDialogTypes";
 
-    const TYPE_BACKUP_DONE = "backup_done";
-    const TYPE_BACKUP_SKIPPED = "backup_skipped";
-    const TYPE_UNABLE_TO_BACKUP = "unable_to_backup";
-
-    type ResultTypeBackup =
-        | typeof TYPE_BACKUP_DONE
-        | typeof TYPE_BACKUP_SKIPPED
-        | typeof TYPE_UNABLE_TO_BACKUP
-        | typeof TYPE_CANCEL;
-
-    type ResultTypeExtra = {
-        preventFetchingConfig: boolean;
-    };
-    type ResultType =
-        | {
-              backup: ResultTypeBackup;
-              extra: ResultTypeExtra;
-          }
-        | typeof TYPE_CANCEL;
     type Props = {
-        setResult: (result: ResultType) => void;
+        setResult: (result: RebuildEverythingResult) => void;
     };
     const { setResult }: Props = $props();
 

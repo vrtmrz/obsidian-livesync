@@ -1,5 +1,5 @@
-import { LOG_LEVEL_VERBOSE, Logger } from "@/lib/src/common/logger";
-import type { KeyValueDatabase } from "@/lib/src/interfaces/KeyValueDatabase";
+import { LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
+import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 

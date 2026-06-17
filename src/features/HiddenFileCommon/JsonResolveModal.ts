@@ -1,7 +1,7 @@
-import { App, Modal } from "../../deps.ts";
-import { type FilePath, type LoadedEntry } from "../../lib/src/common/types.ts";
+import { App, Modal } from "@/deps.ts";
+import { type FilePath, type LoadedEntry } from "@lib/common/types.ts";
 import JsonResolvePane from "./JsonResolvePane.svelte";
-import { waitForSignal } from "../../lib/src/common/utils.ts";
+import { waitForSignal } from "@lib/common/utils.ts";
 import { mount, unmount } from "svelte";
 
 export class JsonResolveModal extends Modal {
@@ -50,7 +50,7 @@ export class JsonResolveModal extends Modal {
         this.callback = undefined;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -74,7 +74,7 @@ export class JsonResolveModal extends Modal {
         return;
     }
 
-    onClose() {
+    override onClose() {
         const { contentEl } = this;
         contentEl.empty();
         // contentEl.empty();

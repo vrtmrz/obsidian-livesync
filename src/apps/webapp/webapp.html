@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-hosted LiveSync WebApp</title>
+    <link rel="stylesheet" href="./webapp.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Self-hosted LiveSync on Web</h1>
+        <p class="subtitle">Browser-based Self-hosted LiveSync using FileSystem API</p>
+
+        <div id="status" class="info">Initialising...</div>
+
+        <div id="vault-selector" class="vault-selector">
+            <h2>Select Vault Folder</h2>
+            <p>Open a vault you already used, or pick a new folder.</p>
+
+            <div id="vault-history-list" class="vault-list"></div>
+            <p id="vault-history-empty" class="empty-note">No saved vaults yet.</p>
+            <button id="pick-new-vault" type="button">Choose new vault folder</button>
+        </div>
+
+        <div class="info-section">
+            <h2>How to Use</h2>
+            <ul>
+                <li>Select a vault folder and grant permission</li>
+                <li>Create <code>.livesync/settings.json</code> in your vault folder</li>
+                <li>Or use Setup-URI to apply settings</li>
+                <li>Your files will be synced after "replicate now"</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>
+                Powered by
+                <a href="https://github.com/vrtmrz/obsidian-livesync" target="_blank">Self-hosted LiveSync</a>
+            </p>
+        </div>
+    </div>
+
+    <script type="module" src="./bootstrap.ts"></script>
+</body>
+</html>

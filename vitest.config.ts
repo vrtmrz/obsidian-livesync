@@ -1,10 +1,20 @@
+/**
+ * @file vitest.config.ts
+ * @description Configuration for running browser-based end-to-end (E2E) integration tests
+ * using Playwright (Chromium) to test replication and synchronisation scenarios.
+ * This is executed when running the full test suite via `npm run test` or `npm run test:full`.
+ */
 import { defineConfig, mergeConfig } from "vitest/config";
 import { playwright } from "@vitest/browser-playwright";
 import viteConfig from "./vitest.config.common";
-import dotenv from "dotenv";
+import path from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { grantClipboardPermissions, openWebPeer, closeWebPeer, acceptWebPeer } from "./test/lib/commands";
-const defEnv = dotenv.config({ path: ".env" }).parsed;
-const testEnv = dotenv.config({ path: ".test.env" }).parsed;
+
+const loadEnvFile = (path: string) => (existsSync(path) ? parseEnv(readFileSync(path, "utf-8")) : undefined);
+const defEnv = loadEnvFile(".env");
+const testEnv = loadEnvFile(".test.env");
 const env = Object.assign({}, defEnv, testEnv);
 const debuggerEnabled = env?.ENABLE_DEBUGGER === "true";
 const enableUI = env?.ENABLE_UI === "true";
@@ -12,6 +22,11 @@ const headless = !debuggerEnabled && !enableUI;
 export default mergeConfig(
     viteConfig,
     defineConfig({
+        resolve: {
+            alias: {
+                obsidian: path.resolve(__dirname, "./test/harness/obsidian-mock.ts"),
+            },
+        },
         test: {
             env: env,
             testTimeout: 40000,

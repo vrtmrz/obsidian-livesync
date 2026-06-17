@@ -21,3 +21,4 @@
 *.ico binary
 *.woff2 binary
 *.woff binary
+*.sh text eol=lf

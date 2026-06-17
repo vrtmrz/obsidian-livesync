@@ -5,10 +5,10 @@
         type IPluginDataExDisplay,
         type PluginDataExFile,
     } from "./CmdConfigSync.ts";
-    import { Logger } from "../../lib/src/common/logger";
-    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "../../lib/src/common/types";
-    import { getDocData, timeDeltaToHumanReadable, unique } from "../../lib/src/common/utils";
-    import type ObsidianLiveSyncPlugin from "../../main";
+    import { Logger } from "@lib/common/logger";
+    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/types";
+    import { getDocData, timeDeltaToHumanReadable, unique } from "@lib/common/utils";
+    import type ObsidianLiveSyncPlugin from "@/main";
     // import { askString } from "../../common/utils";
     import { Menu } from "@/deps.ts";
 
@@ -30,7 +30,8 @@
     export let plugin: ObsidianLiveSyncPlugin;
     export let isMaintenanceMode: boolean = false;
     export let isFlagged: boolean = false;
-    const addOn = plugin.getAddOn<ConfigSync>(ConfigSync.name)!;
+    $: core = plugin.core;
+    const addOn = plugin.core.getAddOn<ConfigSync>(ConfigSync.name)!;
     if (!addOn) {
         Logger(`Could not load the add-on ${ConfigSync.name}`, LOG_LEVEL_INFO);
         throw new Error(`Could not load the add-on ${ConfigSync.name}`);
@@ -334,13 +335,13 @@
             Logger(`Could not find local item`, LOG_LEVEL_VERBOSE);
             return;
         }
-        const duplicateTermName = await plugin.confirm.askString("Duplicate", "device name", "");
+        const duplicateTermName = await core.confirm.askString("Duplicate", "device name", "");
         if (duplicateTermName) {
             if (duplicateTermName.contains("/")) {
                 Logger(`We can not use "/" to the device name`, LOG_LEVEL_NOTICE);
                 return;
             }
-            const key = `${plugin.app.vault.configDir}/${local.files[0].filename}`;
+            const key = `${plugin.core.services.API.getSystemConfigDir()}/${local.files[0].filename}`;
             await addOn.storeCustomizationFiles(key as FilePath, duplicateTermName);
             await addOn.updatePluginList(false, addOn.filenameToUnifiedKey(key, duplicateTermName));
         }

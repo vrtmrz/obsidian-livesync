@@ -1,5 +1,5 @@
 {
-    "extends": "@tsconfig/svelte/tsconfig.json",
+    "extends": "../../../tsconfig.json",
     "compilerOptions": {
         "sourceRoot": "../",
         "target": "ESNext",
@@ -15,11 +15,13 @@
         "allowJs": true,
         "checkJs": true,
         "isolatedModules": true,
+        "allowImportingTsExtensions": true,
         "moduleDetection": "force",
         "paths": {
             "@/*": ["../../*"],
             "@lib/*": ["../../lib/src/*"]
         }
     },
-    "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
+    "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"],
+    "exclude": ["node_modules", "dist"]
 }

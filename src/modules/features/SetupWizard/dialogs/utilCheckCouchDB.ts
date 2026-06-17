@@ -1,10 +1,10 @@
-import { requestToCouchDBWithCredentials } from "../../../../common/utils";
-import { $msg } from "../../../../lib/src/common/i18n";
-import { Logger } from "../../../../lib/src/common/logger";
-import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
-import { parseHeaderValues } from "../../../../lib/src/common/utils";
-import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "../../../../lib/src/replication/httplib";
+import { requestToCouchDBWithCredentials } from "@/common/utils";
+import { $msg } from "@lib/common/i18n";
+import { Logger } from "@lib/common/logger";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { parseHeaderValues } from "@lib/common/utils";
+import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
+import { generateCredentialObject } from "@lib/replication/httplib";
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
 export type ResultOk = { message: string; result: "ok"; value?: any };

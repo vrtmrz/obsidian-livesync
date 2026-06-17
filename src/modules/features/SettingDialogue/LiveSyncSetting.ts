@@ -8,12 +8,7 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import {
-    LEVEL_ADVANCED,
-    LEVEL_POWER_USER,
-    statusDisplay,
-    type ConfigurationItem,
-} from "../../../lib/src/common/types.ts";
+import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@lib/common/types.ts";
 import { createStub, type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
@@ -23,7 +18,7 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { findAttrFromParent, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
@@ -58,7 +53,7 @@ export class LiveSyncSetting extends Setting {
         }
     }
 
-    setDesc(desc: string | DocumentFragment): this {
+    override setDesc(desc: string | DocumentFragment): this {
         this.descBuf = desc;
         DEV: {
             this._createDocStub("desc", desc);
@@ -66,7 +61,7 @@ export class LiveSyncSetting extends Setting {
         super.setDesc(desc);
         return this;
     }
-    setName(name: string | DocumentFragment): this {
+    override setName(name: string | DocumentFragment): this {
         this.nameBuf = name;
         DEV: {
             this._createDocStub("name", name);

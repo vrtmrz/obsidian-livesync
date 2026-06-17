@@ -1,221 +1,211 @@
-import { Plugin } from "./deps";
-import {
-    type EntryDoc,
-    type ObsidianLiveSyncSettings,
-    type DatabaseConnectingStatus,
-    type HasSettings,
-} from "./lib/src/common/types.ts";
-import { type SimpleStore } from "./lib/src/common/utils.ts";
-import { LiveSyncLocalDB, type LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB.ts";
-import {
-    LiveSyncAbstractReplicator,
-    type LiveSyncReplicatorEnv,
-} from "./lib/src/replication/LiveSyncAbstractReplicator.js";
-import { type KeyValueDatabase } from "./lib/src/interfaces/KeyValueDatabase.ts";
+import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
+import { setGetLanguage } from "./lib/src/common/coreEnvFunctions.ts";
+setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
-import { type LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicator.js";
-import { type LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator.js";
-import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes.js";
-import type { IObsidianModule } from "./modules/AbstractObsidianModule.ts";
-
 import { ModuleDev } from "./modules/extras/ModuleDev.ts";
-import { ModuleFileAccessObsidian } from "./modules/coreObsidian/ModuleFileAccessObsidian.ts";
-import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 
-import { ModuleCheckRemoteSize } from "./modules/essentialObsidian/ModuleCheckRemoteSize.ts";
-import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.ts";
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
-import { ModuleObsidianSettings } from "./modules/features/ModuleObsidianSetting.ts";
-import { ModuleRedFlag } from "./modules/coreFeatures/ModuleRedFlag.ts";
-import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
-import { ModuleSetupObsidian } from "./modules/features/ModuleSetupObsidian.ts";
-import { SetupManager } from "./modules/features/SetupManager.ts";
-import type { StorageAccess } from "./modules/interfaces/StorageAccess.ts";
-import type { Confirm } from "./lib/src/interfaces/Confirm.ts";
-import type { Rebuilder } from "./modules/interfaces/DatabaseRebuilder.ts";
-import type { DatabaseFileAccess } from "./modules/interfaces/DatabaseFileAccess.ts";
-import { ModuleDatabaseFileAccess } from "./modules/core/ModuleDatabaseFileAccess.ts";
-import { ModuleFileHandler } from "./modules/core/ModuleFileHandler.ts";
-import { ModuleObsidianAPI } from "./modules/essentialObsidian/ModuleObsidianAPI.ts";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
-import { type AbstractModule } from "./modules/AbstractModule.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
-import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
-import { ModuleInitializerFile } from "./modules/essential/ModuleInitializerFile.ts";
-import { ModuleKeyValueDB } from "./modules/essential/ModuleKeyValueDB.ts";
-import { ModulePouchDB } from "./modules/core/ModulePouchDB.ts";
-import { ModuleReplicator } from "./modules/core/ModuleReplicator.ts";
-import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.ts";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.ts";
-import { ModuleTargetFilter } from "./modules/core/ModuleTargetFilter.ts";
-import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.ts";
-import { ModuleRemoteGovernor } from "./modules/coreFeatures/ModuleRemoteGovernor.ts";
-import { ModuleLocalDatabaseObsidian } from "./modules/core/ModuleLocalDatabaseObsidian.ts";
-import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.ts";
-import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.ts";
-import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
-import { ModuleRebuilder } from "./modules/core/ModuleRebuilder.ts";
-import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
-import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.ts";
-import { ModuleExtraSyncObsidian } from "./modules/extraFeaturesObsidian/ModuleExtraSyncObsidian.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import { P2PReplicator } from "./features/P2PSync/CmdP2PReplicator.ts";
-import type { LiveSyncManagers } from "./lib/src/managers/LiveSyncManagers.ts";
-import type { InjectableServiceHub } from "./lib/src/services/implements/injectable/InjectableServiceHub.ts";
+import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
-import type { ServiceContext } from "./lib/src/services/base/ServiceBase.ts";
-// import type { InjectableServiceHub } from "./lib/src/services/InjectableServices.ts";
+import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
+import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
+import { ServiceFileAccessObsidian } from "@/serviceModules/ServiceFileAccessImpl.ts";
+import { StorageAccessManager } from "@lib/managers/StorageProcessingManager.ts";
+import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
+import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
+import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
+import type { ServiceModules } from "./types.ts";
+import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
+import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
+import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
+import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
+import { SetupManager } from "./modules/features/SetupManager.ts";
+import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
+import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
+import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
+import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
+import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
+import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
+import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
+import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
+import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
+import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
+import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
+import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
+import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
+export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
+export default class ObsidianLiveSyncPlugin extends Plugin {
+    core: LiveSyncCore;
 
-export default class ObsidianLiveSyncPlugin
-    extends Plugin
-    implements
-        LiveSyncLocalDBEnv,
-        LiveSyncReplicatorEnv,
-        LiveSyncJournalReplicatorEnv,
-        LiveSyncCouchDBReplicatorEnv,
-        HasSettings<ObsidianLiveSyncSettings>
-{
     /**
-     * The service hub for managing all services.
+     * Initialise service modules.
      */
-    _services: InjectableServiceHub<ServiceContext> = new ObsidianServiceHub(this);
-    get services() {
-        return this._services;
+    private initialiseServiceModules(
+        core: LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>,
+        services: InjectableServiceHub<ObsidianServiceContext>
+    ): ServiceModules {
+        const storageAccessManager = new StorageAccessManager();
+        // If we want to implement to the other platform, implement ObsidianXXXXXService.
+        const vaultAccess = new FileAccessObsidian(this.app, {
+            storageAccessManager: storageAccessManager,
+            vaultService: services.vault,
+            settingService: services.setting,
+            APIService: services.API,
+            pathService: services.path,
+        });
+        const storageEventManager = new StorageEventManagerObsidian(this, core, {
+            fileProcessing: services.fileProcessing,
+            setting: services.setting,
+            vaultService: services.vault,
+            storageAccessManager: storageAccessManager,
+            APIService: services.API,
+        });
+        const storageAccess = new ServiceFileAccessObsidian({
+            API: services.API,
+            setting: services.setting,
+            fileProcessing: services.fileProcessing,
+            vault: services.vault,
+            appLifecycle: services.appLifecycle,
+            storageEventManager: storageEventManager,
+            storageAccessManager: storageAccessManager,
+            vaultAccess: vaultAccess,
+        });
+
+        const databaseFileAccess = new ServiceDatabaseFileAccess({
+            API: services.API,
+            database: services.database,
+            path: services.path,
+            storageAccess: storageAccess,
+            vault: services.vault,
+        });
+
+        const fileHandler = new ServiceFileHandler({
+            API: services.API,
+            databaseFileAccess: databaseFileAccess,
+            conflict: services.conflict,
+            setting: services.setting,
+            fileProcessing: services.fileProcessing,
+            vault: services.vault,
+            path: services.path,
+            replication: services.replication,
+            storageAccess: storageAccess,
+        });
+        const rebuilder = new ServiceRebuilder({
+            API: services.API,
+            database: services.database,
+            appLifecycle: services.appLifecycle,
+            setting: services.setting,
+            remote: services.remote,
+            databaseEvents: services.databaseEvents,
+            replication: services.replication,
+            replicator: services.replicator,
+            UI: services.UI,
+            vault: services.vault,
+            fileHandler: fileHandler,
+            storageAccess: storageAccess,
+            control: services.control,
+        });
+        return {
+            rebuilder,
+            fileHandler,
+            databaseFileAccess,
+            storageAccess,
+        };
     }
+
     /**
-     * Bind functions to the service hub (for migration purpose).
+     * @obsolete Use services.setting.saveSettingData instead. Save the settings to the disk. This is usually called after changing the settings in the code, to persist the changes.
      */
-    // bindFunctions = (this.serviceHub as ObsidianServiceHub).bindFunctions.bind(this.serviceHub);
-
-    // --> Module System
-    getAddOn<T extends LiveSyncCommands>(cls: string) {
-        for (const addon of this.addOns) {
-            if (addon.constructor.name == cls) return addon as T;
-        }
-        return undefined;
-    }
-
-    // Keep order to display the dialogue in order.
-    addOns = [
-        new ConfigSync(this),
-        new HiddenFileSync(this),
-        new LocalDatabaseMaintenance(this),
-        new P2PReplicator(this),
-    ] as LiveSyncCommands[];
-
-    modules = [
-        new ModuleLiveSyncMain(this),
-        new ModuleExtraSyncObsidian(this, this),
-        // Only on Obsidian
-        new ModuleDatabaseFileAccess(this),
-        // Common
-        new ModulePouchDB(this),
-        new ModuleConflictChecker(this),
-        new ModuleLocalDatabaseObsidian(this),
-        new ModuleReplicatorMinIO(this),
-        new ModuleReplicatorCouchDB(this),
-        new ModuleReplicator(this),
-        new ModuleFileHandler(this),
-        new ModuleConflictResolver(this),
-        new ModuleRemoteGovernor(this),
-        new ModuleTargetFilter(this),
-        new ModulePeriodicProcess(this),
-        // Obsidian modules
-        new ModuleKeyValueDB(this),
-        new ModuleInitializerFile(this),
-        new ModuleObsidianAPI(this, this),
-        new ModuleObsidianEvents(this, this),
-        new ModuleFileAccessObsidian(this, this),
-        new ModuleObsidianSettings(this, this),
-        new ModuleResolvingMismatchedTweaks(this),
-        new ModuleObsidianSettingsAsMarkdown(this, this),
-        new ModuleObsidianSettingDialogue(this, this),
-        new ModuleLog(this, this),
-        new ModuleObsidianMenu(this, this),
-        new ModuleRebuilder(this),
-        new ModuleSetupObsidian(this, this),
-        new ModuleObsidianDocumentHistory(this, this),
-        new ModuleMigration(this),
-        new ModuleRedFlag(this),
-        new ModuleInteractiveConflictResolver(this, this),
-        new ModuleObsidianGlobalHistory(this, this),
-        new ModuleCheckRemoteSize(this, this),
-        // Test and Dev Modules
-        new ModuleDev(this, this),
-        new ModuleReplicateTest(this, this),
-        new ModuleIntegratedTest(this, this),
-        new SetupManager(this, this),
-    ] as (IObsidianModule | AbstractModule)[];
-
-    getModule<T extends IObsidianModule>(constructor: new (...args: any[]) => T): T {
-        for (const module of this.modules) {
-            if (module.constructor === constructor) return module as T;
-        }
-        throw new Error(`Module ${constructor} not found or not loaded.`);
-    }
-
-    settings!: ObsidianLiveSyncSettings;
-    localDatabase!: LiveSyncLocalDB;
-    managers!: LiveSyncManagers;
-    simpleStore!: SimpleStore<CheckPointInfo>;
-    replicator!: LiveSyncAbstractReplicator;
-    get confirm(): Confirm {
-        return this.services.UI.confirm;
-    }
-    storageAccess!: StorageAccess;
-    databaseFileAccess!: DatabaseFileAccess;
-    fileHandler!: ModuleFileHandler;
-    rebuilder!: Rebuilder;
-
-    kvDB!: KeyValueDatabase;
-    getDatabase(): PouchDB.Database<EntryDoc> {
-        return this.localDatabase.localDatabase;
-    }
-    getSettings(): ObsidianLiveSyncSettings {
-        return this.settings;
-    }
-
-    requestCount = reactiveSource(0);
-    responseCount = reactiveSource(0);
-    totalQueued = reactiveSource(0);
-    batched = reactiveSource(0);
-    processing = reactiveSource(0);
-    databaseQueueCount = reactiveSource(0);
-    storageApplyingCount = reactiveSource(0);
-    replicationResultCount = reactiveSource(0);
-    conflictProcessQueueCount = reactiveSource(0);
-    pendingFileEventCount = reactiveSource(0);
-    processingFileEventCount = reactiveSource(0);
-
-    _totalProcessingCount?: ReactiveValue<number>;
-
-    replicationStat = reactiveSource({
-        sent: 0,
-        arrived: 0,
-        maxPullSeq: 0,
-        maxPushSeq: 0,
-        lastSyncPullSeq: 0,
-        lastSyncPushSeq: 0,
-        syncStatus: "CLOSED" as DatabaseConnectingStatus,
-    });
-
-    onload() {
-        void this.services.appLifecycle.onLoad();
-    }
     async saveSettings() {
-        await this.services.setting.saveSettingData();
+        await this.core.services.setting.saveSettingData();
     }
-    onunload() {
-        return void this.services.appLifecycle.onAppUnload();
-    }
-    // <-- Plug-in's overrideable functions
-}
 
-// For now,
-export type LiveSyncCore = ObsidianLiveSyncPlugin;
+    constructor(app: App, manifest: PluginManifest) {
+        super(app, manifest);
+        // Maybe no more need to setNoticeClass, but for safety, set it in the constructor of the main plugin class.
+        // TODO: remove this.
+        setNoticeClass(Notice);
+
+        const serviceHub = new ObsidianServiceHub(this);
+
+        this.core = new LiveSyncBaseCore(
+            serviceHub,
+            (core, serviceHub) => {
+                return this.initialiseServiceModules(core, serviceHub);
+            },
+            (core) => {
+                const extraModules = [
+                    new ModuleObsidianEvents(this, core),
+                    new ModuleObsidianSettingDialogue(this, core),
+                    new ModuleObsidianMenu(core),
+                    new ModuleObsidianSettingsAsMarkdown(core),
+                    new ModuleLog(this, core),
+                    new ModuleObsidianDocumentHistory(this, core),
+                    new ModuleInteractiveConflictResolver(this, core),
+                    new ModuleObsidianGlobalHistory(this, core),
+                    new ModuleDev(this, core),
+                    new SetupManager(core), // this should be moved to core?
+                    new ModuleMigration(core),
+                ];
+                return extraModules;
+            },
+            (core) => {
+                const addOns = [
+                    new ConfigSync(this, core),
+                    new HiddenFileSync(this, core),
+                    new LocalDatabaseMaintenance(this, core),
+                ];
+                return addOns;
+            },
+            (core) => {
+                //TODO Fix: useXXXX
+                const featuresInitialiser = enableI18nFeature;
+                const curriedFeature = () => featuresInitialiser(core);
+                core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
+                const setupManager = core.getModule(SetupManager);
+                const replicator = useP2PReplicatorFeature(
+                    core,
+                    createOpenReplicationUI(this.app),
+                    createOpenRebuildUI(this.app)
+                );
+                useP2PReplicatorCommands(core, replicator);
+                useP2PReplicatorUI(core, core, replicator);
+                useRemoteConfiguration(core);
+
+                useSetupProtocolFeature(core, setupManager);
+                useSetupQRCodeFeature(core);
+                useSetupURIFeature(core);
+                useSetupManagerHandlersFeature(core, setupManager);
+                useOfflineScanner(core);
+                useRedFlagFeatures(core);
+                useCheckRemoteSize(core);
+                // p2pReplicatorResult = useP2PReplicator(core, [
+                //     VIEW_TYPE_P2P,
+                //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
+                // ]);
+            }
+        );
+    }
+
+    private async _startUp() {
+        if (!(await this.core.services.control.onLoad())) return;
+        const onReady = this.core.services.control.onReady.bind(this.core.services.control);
+        this.app.workspace.onLayoutReady(onReady);
+    }
+    override onload() {
+        void this._startUp();
+    }
+    override onunload() {
+        return void this.core.services.control.onUnload();
+    }
+}

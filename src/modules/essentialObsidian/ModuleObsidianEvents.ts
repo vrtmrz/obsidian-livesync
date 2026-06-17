@@ -1,18 +1,19 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "@/common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { type TFile } from "../../deps.ts";
+import type { TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
-import { reactive, reactiveSource } from "octagonal-wheels/dataobject/reactive";
+import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "../../lib/src/mock_and_interop/stores.ts";
-import type { LiveSyncCore } from "../../main.ts";
+} from "@lib/mock_and_interop/stores.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -31,13 +32,8 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         return Promise.resolve(true);
     }
 
-    private _performRestart(): void {
-        this.__performAppReload();
-    }
-
     __performAppReload() {
-        //@ts-ignore
-        this.app.commands.executeCommandById("app:reload");
+        this.services.appLifecycle.performRestart();
     }
 
     initialCallback: any;
@@ -50,7 +46,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
-                    if (this.services.appLifecycle.hasUnloaded()) {
+                    if (this.services.control.hasUnloaded()) {
                         this._log("Unload and remove the handler.", LOG_LEVEL_VERBOSE);
                         saveCommandDefinition.callback = this.initialCallback;
                         this.initialCallback = undefined;
@@ -74,7 +70,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         //@ts-ignore
         window.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
-            _this.app.commands.executeCommandById("editor:save-file");
+            void _this.app.commands.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
         };
     }
@@ -84,11 +80,19 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.watchWindowVisibility = this.watchWindowVisibility.bind(this);
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
         this.watchOnline = this.watchOnline.bind(this);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
-        this.plugin.registerDomEvent(document, "visibilitychange", this.watchWindowVisibility);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
         this.plugin.registerDomEvent(window, "focus", () => this.setHasFocus(true));
         this.plugin.registerDomEvent(window, "blur", () => this.setHasFocus(false));
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerDomEvent(window, "online", this.watchOnline);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerDomEvent(window, "offline", this.watchOnline);
     }
 
@@ -126,7 +130,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
 
-        const isHidden = document.hidden;
+        const isHidden = activeWindow.document.hidden;
         if (this.isLastHidden === isHidden) {
             return;
         }
@@ -134,12 +138,38 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
         await this.services.fileProcessing.commitPendingFileEvents();
 
+        // Desktop opt-in (LiveSync/Periodic only): keep the background channel running while the
+        // window is hidden, instead of suspending on hide. On hide we skip the suspend for both
+        // modes (LiveSync's continuous replication and Periodic's timer both stall otherwise);
+        // becoming visible reopens normally, and for LiveSync additionally forces a teardown first
+        // (see the resume branch) so a stalled continuous channel is always replaced.
+        const keepActiveInBackground =
+            this.settings.keepReplicationActiveInBackground &&
+            (this.settings.liveSync || this.settings.periodicReplication) &&
+            !this.services.API.isMobile();
+
         if (isHidden) {
-            await this.services.appLifecycle.onSuspending();
+            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
-            if (!this.hasFocus) return;
+            // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
+            // emits paused/retry while the replicator keeps its AbortController set, so the reopen
+            // below would no-op on exactly the channel that needs replacing. Force a teardown first
+            // so becoming visible always re-establishes a fresh channel (restoring the default's
+            // reset-on-visibility). Periodic mode has no such channel — its timer just resumes via
+            // the normal path below — so this teardown is gated on liveSync to avoid needlessly
+            // bouncing it. The teardown's closeReplication() aborts synchronously while the reopen is
+            // deferred (fireAndForget + awaited isReplicationReady/initializeDatabaseForReplication),
+            // so the aborted continuousReplication run (and its shareRunningResult lock) unwinds in
+            // microtasks before the reopen runs: it neither double-opens nor gets swallowed by the
+            // still-registered shared run.
+            if (keepActiveInBackground && this.settings.liveSync) {
+                await this.services.appLifecycle.onSuspending();
+            }
+            // Resume is not gated on focus in this branch, but note the top-of-handler check
+            // (isLastHidden && !hasFocus) still defers the whole handler when the window becomes
+            // visible again while unfocused; in that case recovery happens on the next focus.
             await this.services.appLifecycle.onResuming();
             await this.services.appLifecycle.onResumed();
         }
@@ -193,19 +223,25 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             }
         });
     }
+
+    // Process counting for app reload scheduling
+    _totalProcessingCount?: ReactiveSource<number> = undefined;
     private _scheduleAppReload() {
-        if (!this.core._totalProcessingCount) {
+        if (!this._totalProcessingCount) {
             const __tick = reactiveSource(0);
-            this.core._totalProcessingCount = reactive(() => {
-                const dbCount = this.core.databaseQueueCount.value;
-                const replicationCount = this.core.replicationResultCount.value;
-                const storageApplyingCount = this.core.storageApplyingCount.value;
+            this._totalProcessingCount = reactive(() => {
+                const dbCount = this.services.replication.databaseQueueCount.value;
+                const replicationCount = this.services.replication.replicationResultCount.value;
+                const storageApplyingCount = this.services.replication.storageApplyingCount.value;
                 const chunkCount = collectingChunks.value;
                 const pluginScanCount = pluginScanningCount.value;
                 const hiddenFilesCount = hiddenFilesEventCount.value + hiddenFilesProcessingCount.value;
-                const conflictProcessCount = this.core.conflictProcessQueueCount.value;
-                const e = this.core.pendingFileEventCount.value;
-                const proc = this.core.processingFileEventCount.value;
+                const conflictProcessCount = this.services.conflict.conflictProcessQueueCount.value;
+                // Now no longer `pendingFileEventCount` and `processingFileEventCount` is used
+                // const e = this.core.pendingFileEventCount.value;
+                // const proc = this.core.processingFileEventCount.value;
+                const e = 0;
+                const proc = 0;
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const __ = __tick.value;
                 return (
@@ -221,13 +257,13 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 );
             });
             this.plugin.registerInterval(
-                setInterval(() => {
+                compatGlobal.setInterval(() => {
                     __tick.value++;
-                }, 1000) as unknown as number
+                }, 1000)
             );
 
             let stableCheck = 3;
-            this.core._totalProcessingCount.onChanged((e) => {
+            this._totalProcessingCount.onChanged((e) => {
                 if (e.value == 0) {
                     if (stableCheck-- <= 0) {
                         this.__performAppReload();
@@ -243,11 +279,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             });
         }
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    _isReloadingScheduled(): boolean {
+        return this._totalProcessingCount !== undefined;
+    }
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
-        services.appLifecycle.performRestart.setHandler(this._performRestart.bind(this));
         services.appLifecycle.askRestart.setHandler(this._askReload.bind(this));
         services.appLifecycle.scheduleRestart.setHandler(this._scheduleAppReload.bind(this));
+        services.appLifecycle.isReloadingScheduled.setHandler(this._isReloadingScheduled.bind(this));
     }
 }

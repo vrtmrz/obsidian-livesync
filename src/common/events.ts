@@ -1,5 +1,5 @@
-import { eventHub } from "../lib/src/hub/hub";
-import type ObsidianLiveSyncPlugin from "../main";
+import { eventHub } from "@lib/hub/hub";
+// import type ObsidianLiveSyncPlugin from "../main";
 
 export const EVENT_PLUGIN_LOADED = "plugin-loaded";
 export const EVENT_PLUGIN_UNLOADED = "plugin-unloaded";
@@ -16,40 +16,32 @@ export const EVENT_REQUEST_RELOAD_SETTING_TAB = "reload-setting-tab";
 
 export const EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG = "request-open-plugin-sync-dialog";
 
-export const EVENT_REQUEST_OPEN_P2P = "request-open-p2p";
-export const EVENT_REQUEST_CLOSE_P2P = "request-close-p2p";
-
 export const EVENT_REQUEST_RUN_DOCTOR = "request-run-doctor";
 export const EVENT_REQUEST_RUN_FIX_INCOMPLETE = "request-run-fix-incomplete";
-export const EVENT_ON_UNRESOLVED_ERROR = "on-unresolved-error";
 
 export const EVENT_ANALYSE_DB_USAGE = "analyse-db-usage";
 export const EVENT_REQUEST_PERFORM_GC_V3 = "request-perform-gc-v3";
-export const EVENT_REQUEST_CHECK_REMOTE_SIZE = "request-check-remote-size";
+// export const EVENT_REQUEST_CHECK_REMOTE_SIZE = "request-check-remote-size";
 // export const EVENT_FILE_CHANGED = "file-changed";
 
 declare global {
     interface LSEvents {
-        [EVENT_PLUGIN_LOADED]: ObsidianLiveSyncPlugin;
+        [EVENT_PLUGIN_LOADED]: undefined;
         [EVENT_PLUGIN_UNLOADED]: undefined;
         [EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG]: undefined;
         [EVENT_REQUEST_OPEN_SETTINGS]: undefined;
         [EVENT_REQUEST_OPEN_SETTING_WIZARD]: undefined;
         [EVENT_REQUEST_RELOAD_SETTING_TAB]: undefined;
         [EVENT_LEAF_ACTIVE_CHANGED]: undefined;
-        [EVENT_REQUEST_CLOSE_P2P]: undefined;
-        [EVENT_REQUEST_OPEN_P2P]: undefined;
         [EVENT_REQUEST_OPEN_SETUP_URI]: undefined;
         [EVENT_REQUEST_COPY_SETUP_URI]: undefined;
         [EVENT_REQUEST_SHOW_SETUP_QR]: undefined;
         [EVENT_REQUEST_RUN_DOCTOR]: string;
         [EVENT_REQUEST_RUN_FIX_INCOMPLETE]: undefined;
-        [EVENT_ON_UNRESOLVED_ERROR]: undefined;
         [EVENT_ANALYSE_DB_USAGE]: undefined;
-        [EVENT_REQUEST_CHECK_REMOTE_SIZE]: undefined;
         [EVENT_REQUEST_PERFORM_GC_V3]: undefined;
     }
 }
 
-export * from "../lib/src/events/coreEvents.ts";
+export * from "@lib/events/coreEvents.ts";
 export { eventHub };

@@ -64,6 +64,10 @@ Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
 # Creating the save data & configuration directories.
 mkdir couchdb-data
 mkdir couchdb-etc
+
+# Changing perms to user 5984.
+chown -R 5984:5984 ./couchdb-data
+chown -R 5984:5984 ./couchdb-etc
 ```
 
 #### 2. Create a `docker-compose.yml` file with the following added to it
@@ -226,7 +230,6 @@ And, be sure to check the server log and be careful of malicious access.
 If you are using Traefik, this [docker-compose.yml](https://github.com/vrtmrz/obsidian-livesync/blob/main/docker-compose.traefik.yml) file (also pasted below) has all the right CORS parameters set. It assumes you have an external network called `proxy`.
 
 ```yaml
-version: "2.1"
 services:
   couchdb:
     image: couchdb:latest

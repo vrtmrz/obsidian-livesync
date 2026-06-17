@@ -1,6 +1,6 @@
-import { MarkdownRenderer } from "../../../deps.ts";
-import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { MarkdownRenderer } from "@/deps.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import { visibleOnly } from "./SettingPane.ts";
@@ -43,10 +43,13 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
     // tmpDiv.addClass("sls-header-button");
     tmpDiv.addClass("op-warn-info");
 
-    tmpDiv.innerHTML = `<p>${$msg("obsidianLiveSyncSettingTab.msgNewVersionNote")}</p><button>${$msg("obsidianLiveSyncSettingTab.optionOkReadEverything")}</button>`;
+    tmpDiv.createEl("p", { text: $msg("obsidianLiveSyncSettingTab.msgNewVersionNote") });
+    const readEverythingButton = tmpDiv.createEl("button", {
+        text: $msg("obsidianLiveSyncSettingTab.optionOkReadEverything"),
+    });
     if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
         const informationButtonDiv = informationDivEl.appendChild(tmpDiv);
-        informationButtonDiv.querySelector("button")?.addEventListener("click", () => {
+        readEverythingButton.addEventListener("click", () => {
             fireAndForget(async () => {
                 this.editingSettings.lastReadUpdates = lastVersion;
                 await this.saveAllDirtySettings();

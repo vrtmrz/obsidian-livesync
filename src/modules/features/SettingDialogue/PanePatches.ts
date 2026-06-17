@@ -4,14 +4,14 @@ import {
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
     SuffixDatabaseName,
-} from "../../../lib/src/common/types.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
+} from "@lib/common/types.ts";
+import { Logger } from "@lib/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { PouchDB } from "../../../lib/src/pouchdb/pouchdb-browser";
-import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
+import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
+import { ExtraSuffixIndexedDB } from "@lib/common/types.ts";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
@@ -31,7 +31,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
         const migrateAllToIndexedDB = async () => {
-            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
+            const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
             const options = {
                 adapter: "indexeddb",
                 //@ts-ignore :missing def
@@ -42,18 +42,19 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             const openTo = () => {
                 return new PouchDB(dbToName, options);
             };
-            if (await migrateDatabases("to IndexedDB", this.plugin.localDatabase.localDatabase, openTo)) {
+            if (await migrateDatabases("to IndexedDB", this.core.localDatabase.localDatabase, openTo)) {
                 Logger(
                     "Migration to IndexedDB completed. Obsidian will be restarted with new configuration immediately.",
                     LOG_LEVEL_NOTICE
                 );
-                this.plugin.settings.useIndexedDBAdapter = true;
-                await this.services.setting.saveSettingData();
+                // this.plugin.settings.useIndexedDBAdapter = true;
+                // await this.services.setting.saveSettingData();
+                await this.core.services.setting.applyPartial({ useIndexedDBAdapter: true }, true);
                 this.services.appLifecycle.performRestart();
             }
         };
         const migrateAllToIDB = async () => {
-            const dbToName = this.plugin.localDatabase.dbname + SuffixDatabaseName;
+            const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName;
             const options = {
                 adapter: "idb",
                 auto_compaction: false,
@@ -62,13 +63,14 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             const openTo = () => {
                 return new PouchDB(dbToName, options);
             };
-            if (await migrateDatabases("to IDB", this.plugin.localDatabase.localDatabase, openTo)) {
+            if (await migrateDatabases("to IDB", this.core.localDatabase.localDatabase, openTo)) {
                 Logger(
                     "Migration to IDB completed. Obsidian will be restarted with new configuration immediately.",
                     LOG_LEVEL_NOTICE
                 );
-                this.plugin.settings.useIndexedDBAdapter = false;
-                await this.services.setting.saveSettingData();
+                await this.core.services.setting.applyPartial({ useIndexedDBAdapter: false }, true);
+                // this.core.settings.useIndexedDBAdapter = false;
+                // await this.services.setting.saveSettingData();
                 this.services.appLifecycle.performRestart();
             }
         };
@@ -148,10 +150,10 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 xxhash64: "xxhash64 (Fastest)",
                 "mixed-purejs": "PureJS fallback  (Fast, W/O WebAssembly)",
                 sha1: "Older fallback (Slow, W/O WebAssembly)",
-            } as Record<HashAlgorithm, string>,
+            } satisfies Record<HashAlgorithm, string>,
         });
         this.addOnSaved("hashAlg", async () => {
-            await this.plugin.localDatabase._prepareHashFunctions();
+            await this.core.localDatabase._prepareHashFunctions();
         });
     });
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
@@ -186,7 +188,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = document.createElement("span")));
+                text.inputEl.before((dateEl = activeDocument.createElement("span")));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
@@ -215,7 +217,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
             const buttons = ["Restart Now", "Later"] as const;
-            const reboot = await this.plugin.confirm.askSelectStringDialogue(
+            const reboot = await this.core.confirm.askSelectStringDialogue(
                 "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?",
                 buttons,
                 {

@@ -1,9 +1,9 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "../../lib/src/common/types";
-import { LiveSyncCouchDBReplicator } from "../../lib/src/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncAbstractReplicator } from "../../lib/src/replication/LiveSyncAbstractReplicator";
-import { AbstractModule } from "../AbstractModule";
-import type { LiveSyncCore } from "../../main";
+import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@lib/common/types";
+import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
+import { AbstractModule } from "@/modules/AbstractModule";
+import type { LiveSyncCore } from "@/main";
 
 export class ModuleReplicatorCouchDB extends AbstractModule {
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {
@@ -35,7 +35,7 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
 
         return Promise.resolve(true);
     }
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+    override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.replicator.getNewReplicator.addHandler(this._anyNewReplicator.bind(this));
         services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
     }

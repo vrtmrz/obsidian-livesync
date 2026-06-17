@@ -1,5 +1,5 @@
-import { MarkdownRenderer } from "../../../deps.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { MarkdownRenderer } from "@/deps.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
@@ -7,13 +7,13 @@ import {
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
-} from "../../../common/events.ts";
+} from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { DEFAULT_SETTINGS } from "../../../lib/src/common/types.ts";
+import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "../SetupManager.ts";
+import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -35,7 +35,7 @@ export function paneSetup(
             .setDesc($msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."))
             .addButton((text) => {
                 text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
-                    const setupManager = this.plugin.getModule(SetupManager);
+                    const setupManager = this.core.getModule(SetupManager);
                     await setupManager.onOnboard(UserMode.ExistingUser);
                     // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
                 });
@@ -86,14 +86,14 @@ export function paneSetup(
                 text.setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
                     .onClick(async () => {
                         if (
-                            (await this.plugin.confirm.askYesNoDialog(
+                            (await this.core.confirm.askYesNoDialog(
                                 $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
                                 { defaultOption: "No" }
                             )) == "yes"
                         ) {
                             this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
                             await this.saveAllDirtySettings();
-                            this.plugin.settings = { ...DEFAULT_SETTINGS };
+                            this.core.settings = { ...DEFAULT_SETTINGS };
                             await this.services.setting.saveSettingData();
                             await this.services.database.resetDatabase();
                             // await this.plugin.initializeDatabase();
@@ -121,13 +121,13 @@ export function paneSetup(
         const repo = "vrtmrz/obsidian-livesync";
         const topPath = $msg("obsidianLiveSyncSettingTab.linkTroubleshooting");
         const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
-        this.createEl(
-            paneEl,
-            "div",
-            "",
-            (el) =>
-                (el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">${$msg("obsidianLiveSyncSettingTab.linkOpenInBrowser")}</a>`)
-        );
+        this.createEl(paneEl, "div", "", (el) => {
+            el.createEl("a", { text: $msg("obsidianLiveSyncSettingTab.linkOpenInBrowser") }, (anchor) => {
+                anchor.href = `https://github.com/${repo}/blob/main${topPath}`;
+                anchor.target = "_blank";
+                anchor.rel = "noopener";
+            });
+        });
         const troubleShootEl = this.createEl(paneEl, "div", {
             text: "",
             cls: "sls-troubleshoot-preview",

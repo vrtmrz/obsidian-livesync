@@ -56,7 +56,7 @@ jobs:
         if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suitep2p/' }}
         env:
           CI: true
-        run: npm run test suitep2p/
+        run: npm run test:p2p
       - name: Stop test services (CouchDB)
         run: npm run test:docker-couchdb:stop
         if: ${{ inputs.testsuite == '' || inputs.testsuite == 'suite/' }}

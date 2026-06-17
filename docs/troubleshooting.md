@@ -224,7 +224,7 @@ There are many cases where this is really unclear. One possibility is that the c
     - If you know when the files were deleted, set the time a bit before that.
     - If not, bisecting may help us.
 6. Delete `redflag.md`.
-7. Perform `Reset synchronisation on This Device` on the `🎛️ Maintenance` pane.
+7. Perform `Reset Synchronisation on This Device` on the `🎛️ Maintenance` pane.
 
 This mode is very fragile. Please be careful.
 
@@ -236,16 +236,16 @@ not been stable. The new adapter has better performance and has a new feature
 like purging. Therefore, we should use new adapters and current default is so.
 
 However, when switching from an old adapter to a new adapter, some converting or
-local database rebuilding is required, and it takes a few time. It was a long
+local database rebuilding is required, and it takes some time. It was a long
 time ago now, but we once inconvenienced everyone in a hurry when we changed the
 format of our database. For these reasons, this toggle is automatically on if we
 have upgraded from vault which using an old adapter.
 
-When you rebuild everything or fetch from the remote again, you will be asked to
+When you overwrite server data with this device's files or reset synchronisation on this device again, you will be asked to
 switch this.
 
 Therefore, experienced users (especially those stable enough not to have to
-rebuild the database) may have this toggle enabled in their Vault. Please
+overwrite server data) may have this toggle enabled in their Vault. Please
 disable it when you have enough time.
 
 ### ZIP (or any extensions) files were not synchronised. Why?
@@ -255,14 +255,20 @@ It depends on Obsidian detects. May toggling `Detect all extensions` of
 
 ### I hope to report the issue, but you said you needs `Report`. How to make it?
 
-We can copy the report to the clipboard, by pressing the `Make report` button on
-the `Hatch` pane. ![Screenshot](../images/hatch.png)
+We can copy the report to the clipboard, by performing 
+`Generate full report for opening the issue with debug info` command!
 
 ### Where can I check the log?
 
 We can launch the log pane by `Show log` on the command palette. And if you have
 troubled something, please enable the `Verbose Log` on the `General Setting`
 pane.
+`Generate full report for opening the issue with debug info` command also contains 
+the recent 1000 log lines, which is very helpful for debugging. Full-report is 
+already set to the verbose level, so it contains all the logs without enabling the 
+`Verbose Log` toggle.
+
+Let me note that please be sure to remove any sensitive information before sharing the report.
 
 However, the logs would not be kept so long and cleared when restarted. If you
 want to check the logs, please enable `Write logs into the file` temporarily.
@@ -297,9 +303,9 @@ happened on other devices. This means that conflicts will happen in the past,
 after the time we have synchronised. Hence we cannot collect and delete the
 unused chunks even though if we are not currently referenced.
 
-To shrink the database size, `Rebuild everything` only reliably and effectively.
+To shrink the database size, `Overwrite Server Data with This Device's Files` is the only reliable and effective way.
 But do not worry, if we have synchronised well. We have the actual and real
-files. Only it takes a bit of time and traffics.
+files. Only it takes a bit of time and traffic.
 
 ### How to launch the DevTools
 
@@ -367,47 +373,64 @@ without Obsidian.
 For example, if there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
 processes.
 
-### Flag Files
+### Scram State and Flag Files (SCRAM Warning Loop)
 
-The flag file is a simple Markdown file designed to prevent storage events and database events in self-hosted LiveSync.
-Its very existence is significant; it may be left blank, or it may contain text; either is acceptable.
+The plug-in uses a **Scram state** (emergency suspension of all synchronisation processes) to prevent database corruption when severe errors or conflicts are detected. This state is often triggered or persisted by **flag files** placed at the root of the vault.
 
-This file is in Markdown format so that it can be placed in the Vault externally, even if Obsidian fails to launch.
+If you encounter a warning saying **"Scram detected, all sync operations are suspended per SCRAM"** or get caught in an infinite loop where the warning persists even after clicking "Resume", it is likely due to a flag file in your vault.
 
-There are some options to use `redflag.md`.
+#### Flag Files
 
-| Filename      | Human-Friendly Name | Description                                                                          |
-| ------------- | ------------------- | ------------------------------------------------------------------------------------ |
-| `redflag.md`  | -                   | Suspends all processes.                                                              |
-| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and rebuild both local and remote databases by local files.  |
-| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discard the local database, and fetch from the remote again. |
+A flag file is a simple Markdown file located at the root of your vault. Its very existence is significant; it may be left blank or contain any text. These files are used so they can be easily placed or deleted from outside Obsidian (e.g., when Obsidian fails to launch).
 
-When fetching everything remotely or performing a rebuild, restarting Obsidian
-is performed once for safety reasons. At that time, Self-hosted LiveSync uses
-these files to determine whether the process should be carried out. (The use of
-normal markdown files is a trick to externally force cancellation in the event
-of faults in the rebuild or fetch function itself, especially on mobile
-devices). This mechanism is also used for set-up. And just for information,
-these files are also not subject to synchronisation.
+| Filename      | Human-Friendly Name | Description                                                                             |
+| ------------- | ------------------- | --------------------------------------------------------------------------------------- |
+| `redflag.md`  | -                   | Suspends all processes (activates Scram).                                               |
+| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and overwrites server data with this device's files.           |
+| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and resets synchronisation on this device. |
 
-However, occasionally the deletion of files may fail. This should generally work
-normally after restarting Obsidian. (As far as I can observe).
+When resetting synchronisation on this device or overwriting server data, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out. (This mechanism is especially useful on mobile devices to force cancellation if the database rebuilding fails). These files are not subject to synchronisation.
+
+#### How to Resolve the Scram Loop
+
+If you cannot disable Scram, please follow these steps:
+1. Close Obsidian completely.
+2. Open your system's file manager and check the root directory of your vault.
+3. Locate and delete any flag files (such as `redflag.md`, `redflag2.md`, or `redflag3.md`).
+4. Launch Obsidian.
+5. Go to the settings dialogue -> **Hatch** -> **Scram Switches**, and manually toggle **Suspend file watching** and **Suspend database reflecting** to `false` (disabled) if they have not been reset automatically.
+
+> [!TIP]
+> This is the reason why flag files are standard `.md` files: it allows you to manage them externally. On mobile devices, you can use system file manager applications (such as the native **Files** app on iOS/iPadOS or **Files by Google** on Android) to find and delete these files to resolve a lock, or conversely, create/place a new `redflag.md` file (or directory) at the root of your vault to force-suspend synchronisation and stop Obsidian's boot-up sequence if you need to fix a database issue.
+
+### JWT Authentication Errors
+
+#### DataError when configuring JWT authentication
+
+If you encounter a `DataError:` with no additional information in the logs when configuring JWT authentication, this usually indicates a private key formatting issue.
+
+Self-hosted LiveSync requires the private key (for ES256/ES512 algorithms) to be in the **PKCS#8 PEM** format. Standard SEC1 EC private keys (which begin with `-----BEGIN EC PRIVATE KEY-----`) will trigger this error.
+
+To resolve this, convert your private key to PKCS#8 format using the following `openssl` command:
+```bash
+openssl pkcs8 -topk8 -inform PEM -nocrypt -in private.key -out pkcs8.key
+```
+Then paste the contents of `pkcs8.key` (which begins with `-----BEGIN PRIVATE KEY-----`) into the JWT Key field.
 
 ### Old tips
 
-- Rarely, a file in the database could be corrupted. The plugin will not write
+- Rarely, a file in the database could be corrupted. The plug-in will not write
   to local storage when a file looks corrupted. If a local version of the file
   is on your device, the corruption could be fixed by editing the local file and
-  synchronizing it. But if the file does not exist on any of your devices, then
+  synchronising it. But if the file does not exist on any of your devices, then
   it can not be rescued. In this case, you can delete these items from the
-  settings dialog.
+  settings dialogue.
 - To stop the boot-up sequence (eg. for fixing problems on databases), you can
   put a `redflag.md` file (or directory) at the root of your vault. Tip for iOS:
   a redflag directory can be created at the root of the vault using the File
   application.
-- Also, with `redflag2.md` placed, we can automatically rebuild both the local
-  and the remote databases during the boot-up sequence. With `redflag3.md`, we
-  can discard only the local database and fetch from the remote again.
+- Also, with `redflag2.md` placed, we can automatically overwrite server data with this device's files during the boot-up sequence. With `redflag3.md`, we
+  can discard only the local database and reset synchronisation on this device.
 - Q: The database is growing, how can I shrink it down? A: each of the docs is
   saved with their past 100 revisions for detecting and resolving conflicts.
   Picturing that one device has been offline for a while, and comes online
@@ -419,7 +442,7 @@ normally after restarting Obsidian. (As far as I can observe).
   So, We have to make the database again like an enlarged git repo if you want
   to solve the root of the problem.
 - And more technical Information is in the [Technical Information](tech_info.md)
-- If you want to synchronize files without obsidian, you can use
+- If you want to synchronise files without obsidian, you can use
   [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
 - WebClipper is also available on Chrome Web
   Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)

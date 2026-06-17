@@ -109,7 +109,7 @@ export async function generateHarness(
 }
 export async function waitForReady(harness: LiveSyncHarness): Promise<void> {
     for (let i = 0; i < 10; i++) {
-        if (harness.plugin.services.appLifecycle.isReady()) {
+        if (harness.plugin.core.services.appLifecycle.isReady()) {
             console.log("App Lifecycle is ready");
             return;
         }
@@ -122,13 +122,11 @@ export async function waitForIdle(harness: LiveSyncHarness): Promise<void> {
     for (let i = 0; i < 20; i++) {
         await delay(25);
         const processing =
-            harness.plugin.databaseQueueCount.value +
-            harness.plugin.processingFileEventCount.value +
-            harness.plugin.pendingFileEventCount.value +
-            harness.plugin.totalQueued.value +
-            harness.plugin.batched.value +
-            harness.plugin.processing.value +
-            harness.plugin.storageApplyingCount.value;
+            harness.plugin.core.services.replication.databaseQueueCount.value +
+            harness.plugin.core.services.fileProcessing.totalQueued.value +
+            harness.plugin.core.services.fileProcessing.batched.value +
+            harness.plugin.core.services.fileProcessing.processing.value +
+            harness.plugin.core.services.replication.storageApplyingCount.value;
 
         if (processing === 0) {
             if (i > 0) {
@@ -141,8 +139,8 @@ export async function waitForIdle(harness: LiveSyncHarness): Promise<void> {
 export async function waitForClosed(harness: LiveSyncHarness): Promise<void> {
     await delay(100);
     for (let i = 0; i < 10; i++) {
-        if (harness.plugin.services.appLifecycle.hasUnloaded()) {
-            console.log("App Lifecycle has unloaded");
+        if (harness.plugin.core.services.control.hasUnloaded()) {
+            console.log("App has unloaded");
             return;
         }
         await delay(100);
