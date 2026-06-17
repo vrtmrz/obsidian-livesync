@@ -5,6 +5,7 @@ import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 import { fireAndForget, parseHeaderValues } from "@lib/common/utils";
 import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "@lib/replication/httplib";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export const checkConfig = async (
     checkResultDiv: HTMLDivElement | undefined,
@@ -35,7 +36,7 @@ export const checkConfig = async (
         const r = await requestToCouchDBWithCredentials(
             editingSettings.couchDB_URI,
             credential,
-            window.origin,
+            compatGlobal.origin,
             undefined,
             undefined,
             undefined,
@@ -218,7 +219,7 @@ export const checkConfig = async (
             isSuccessful = false;
         }
         addResult($msg("obsidianLiveSyncSettingTab.msgConnectionCheck"), ["ob-btn-config-head"]);
-        addResult($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: window.location.origin }));
+        addResult($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: compatGlobal.location.origin }));
 
         // Request header check
         const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];

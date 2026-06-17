@@ -7,6 +7,8 @@ import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-ht
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
 import { buildQueryString } from "@smithy/querystring-builder";
 import { requestUrl, type RequestUrlParam } from "@/deps.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl
 ////////////////////////////////////////////////////////////////////////////////
@@ -14,7 +16,7 @@ import { requestUrl, type RequestUrlParam } from "@/deps.ts";
 function requestTimeout(timeoutInMs: number = 0): Promise<never> {
     return new Promise((_, reject) => {
         if (timeoutInMs) {
-            window.setTimeout(() => {
+            compatGlobal.setTimeout(() => {
                 const timeoutError = new Error(`Request did not complete within ${timeoutInMs} ms`);
                 timeoutError.name = "TimeoutError";
                 reject(timeoutError);
