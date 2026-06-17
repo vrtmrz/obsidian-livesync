@@ -139,7 +139,7 @@
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",
         "idb": "^8.0.3",
-        "markdown-it": "^14.1.1",
+        "markdown-it": "^14.2.0",
         "minimatch": "^10.2.2",
         "obsidian": "^1.12.3",
         "octagonal-wheels": "^0.1.46",
