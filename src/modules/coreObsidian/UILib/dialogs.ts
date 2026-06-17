@@ -194,7 +194,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         const div = contentEl.createDiv();
         div.setCssStyles({
             userSelect: "text",
-            "webkitUserSelect": "text"
+            webkitUserSelect: "text",
         });
         void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
         const buttonSetting = new Setting(contentEl);
@@ -214,7 +214,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                flexGrow: "1"
+                flexGrow: "1",
             });
         }
         contentEl.addEventListener("click", () => {
@@ -244,7 +244,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
                 if (this.wideButton) {
                     btn.buttonEl.setCssStyles({
                         flexGrow: "1",
-                        width: "100%"
+                        width: "100%",
                     });
                 }
                 return btn;

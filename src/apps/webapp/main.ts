@@ -19,6 +19,7 @@ import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
+import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
@@ -102,8 +103,8 @@ class LiveSyncWebApp {
             console.log("[AppLifecycle] Restart requested");
             await this.shutdown();
             await this.initialize();
-            setTimeout(() => {
-                window.location.reload();
+            compatGlobal.setTimeout(() => {
+                compatGlobal.location.reload();
             }, 1000);
         });
 
@@ -235,7 +236,7 @@ class LiveSyncWebApp {
     }
 
     private showError(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "error";
             statusEl.textContent = `Error: ${message}`;
@@ -243,7 +244,7 @@ class LiveSyncWebApp {
     }
 
     private showWarning(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "warning";
             statusEl.textContent = `Warning: ${message}`;
@@ -251,7 +252,7 @@ class LiveSyncWebApp {
     }
 
     private showSuccess(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "success";
             statusEl.textContent = message;

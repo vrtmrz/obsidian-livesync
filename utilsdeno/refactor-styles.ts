@@ -41,7 +41,7 @@ function matchStyleAccess(node: Node): { element: Node; propertyName: string; is
             return {
                 element: expr.getExpression(),
                 propertyName: node.getName(),
-                isComputed: false
+                isComputed: false,
             };
         }
     } else if (Node.isElementAccessExpression(node)) {
@@ -52,7 +52,7 @@ function matchStyleAccess(node: Node): { element: Node; propertyName: string; is
                 return {
                     element: expr.getExpression(),
                     propertyName: arg.getText(),
-                    isComputed: true
+                    isComputed: true,
                 };
             }
         }
@@ -74,7 +74,7 @@ function getStyleAssignment(statement: Node) {
         property: styleAccess.propertyName,
         valueText: expr.getRight().getText(),
         isComputed: styleAccess.isComputed,
-        statementNode: statement
+        statementNode: statement,
     };
 }
 
@@ -100,11 +100,7 @@ for (const sourceFile of project.getSourceFiles()) {
     }
 
     // Exclude unit and integration test files
-    if (
-        posixFilePath.endsWith(".spec.ts") ||
-        posixFilePath.endsWith(".test.ts") ||
-        posixFilePath.includes("/_test/")
-    ) {
+    if (posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts") || posixFilePath.includes("/_test/")) {
         continue;
     }
 
@@ -126,12 +122,14 @@ for (const sourceFile of project.getSourceFiles()) {
             if (assignment) {
                 const currentGroup: StyleGroup = {
                     elementText: assignment.elementText,
-                    assignments: [{
-                        property: assignment.property,
-                        valueText: assignment.valueText,
-                        isComputed: assignment.isComputed,
-                        statementNode: assignment.statementNode
-                    }]
+                    assignments: [
+                        {
+                            property: assignment.property,
+                            valueText: assignment.valueText,
+                            isComputed: assignment.isComputed,
+                            statementNode: assignment.statementNode,
+                        },
+                    ],
                 };
 
                 // Look ahead to collect consecutive assignments to the same element
@@ -143,7 +141,7 @@ for (const sourceFile of project.getSourceFiles()) {
                             property: nextAssignment.property,
                             valueText: nextAssignment.valueText,
                             isComputed: nextAssignment.isComputed,
-                            statementNode: nextAssignment.statementNode
+                            statementNode: nextAssignment.statementNode,
                         });
                         j++;
                     } else {
@@ -190,7 +188,12 @@ for (const sourceFile of project.getSourceFiles()) {
             const { line } = sourceFile.getLineAndColumnAtPos(firstNode.getStart());
 
             console.log(`  Line ${line}: Replacing consecutive style assignments on "${group.elementText}" with:`);
-            console.log(newText.split("\n").map((l) => `    ${l}`).join("\n"));
+            console.log(
+                newText
+                    .split("\n")
+                    .map((l) => `    ${l}`)
+                    .join("\n")
+            );
 
             if (!isDryRun) {
                 firstNode.replaceWithText(newText);

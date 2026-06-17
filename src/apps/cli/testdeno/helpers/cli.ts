@@ -1,4 +1,5 @@
 import { join } from "@std/path";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // ---------------------------------------------------------------------------
 // Path resolution
@@ -25,7 +26,7 @@ const VERBOSE_ENABLED = Deno.env.get("LIVESYNC_CLI_VERBOSE") === "1";
 const DEBUG_ENABLED = Deno.env.get("LIVESYNC_CLI_DEBUG") === "1";
 
 function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 function concatChunks(chunks: Uint8Array[]): Uint8Array {

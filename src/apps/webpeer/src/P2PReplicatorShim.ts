@@ -17,7 +17,9 @@ import {
     type PeerStatus,
     type PluginShim,
 } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-import { P2PLogCollector, type P2PReplicatorBase, useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore";
+import { useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore";
+import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector";
+import type { P2PReplicatorBase } from "@lib/replication/trystero/P2PReplicatorBase.ts";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
@@ -31,6 +33,7 @@ import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
 import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -137,7 +140,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
 
         this._initP2PReplicator();
 
-        setTimeout(() => {
+        compatGlobal.setTimeout(() => {
             if (this.settings.P2P_AutoStart && this.settings.P2P_Enabled) {
                 void this.open();
             }
@@ -164,12 +167,12 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
     getConfig(key: string) {
         const vaultName = this.services.vault.getVaultName();
         const dbKey = `${vaultName}-${key}`;
-        return localStorage.getItem(dbKey);
+        return compatGlobal.localStorage.getItem(dbKey);
     }
     setConfig(key: string, value: string) {
         const vaultName = this.services.vault.getVaultName();
         const dbKey = `${vaultName}-${key}`;
-        localStorage.setItem(dbKey, value);
+        compatGlobal.localStorage.setItem(dbKey, value);
     }
 
     getDeviceName(): string {

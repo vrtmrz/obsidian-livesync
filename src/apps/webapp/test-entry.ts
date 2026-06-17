@@ -12,6 +12,7 @@
 import { LiveSyncWebApp } from "./main";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { FilePathWithPrefix } from "@lib/common/types";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // --------------------------------------------------------------------------
 // Internal state – one app instance per page / browser context
@@ -41,7 +42,7 @@ async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
             (core.services?.fileProcessing?.processing?.value ?? 0) +
             (core.services?.replication?.storageApplyingCount?.value ?? 0);
         if (q === 0) return;
-        await new Promise<void>((r) => setTimeout(r, 300));
+        await new Promise<void>((r) => compatGlobal.setTimeout(r, 300));
     }
     throw new Error(`waitForIdle timed out after ${timeoutMs} ms`);
 }
@@ -116,7 +117,7 @@ export interface LiveSyncTestAPI {
 const livesyncTest: LiveSyncTestAPI = {
     async init(vaultName: string, settings: Partial<ObsidianLiveSyncSettings>): Promise<void> {
         // Clean up any stale OPFS data from previous runs.
-        const opfsRoot = await navigator.storage.getDirectory();
+        const opfsRoot = await compatGlobal.navigator.storage.getDirectory();
         try {
             await opfsRoot.removeEntry(vaultName, { recursive: true });
         } catch {
@@ -200,4 +201,4 @@ const livesyncTest: LiveSyncTestAPI = {
 };
 
 // Expose on window for Playwright page.evaluate() calls.
-(window as any).livesyncTest = livesyncTest;
+(compatGlobal as any).livesyncTest = livesyncTest;

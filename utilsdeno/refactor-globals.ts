@@ -45,7 +45,7 @@ const TARGET_GLOBALS = new Set([
     "navigator",
     "location",
     "document",
-    "window"
+    "window",
 ]);
 
 let modifiedFilesCount = 0;
@@ -59,22 +59,13 @@ for (const sourceFile of project.getSourceFiles()) {
         continue;
     }
 
-    // Exclude submodule files under src/lib/
-    if (posixFilePath.startsWith(posixLibSrc)) {
-        continue;
-    }
-
-    // Exclude independent application modules under src/apps/
-    if (posixFilePath.startsWith(`${posixSrc}/apps/`)) {
+    // Exclude coreEnvFunctions.ts to avoid self-referential definitions
+    if (posixFilePath.endsWith("/coreEnvFunctions.ts") || posixFilePath.endsWith("/coreEnvFunctions")) {
         continue;
     }
 
     // Exclude unit and integration test files
-    if (
-        posixFilePath.endsWith(".spec.ts") ||
-        posixFilePath.endsWith(".test.ts") ||
-        posixFilePath.includes("/_test/")
-    ) {
+    if (posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts") || posixFilePath.includes("/_test/")) {
         continue;
     }
 
@@ -97,6 +88,14 @@ for (const sourceFile of project.getSourceFiles()) {
         if (parent.getKind() === SyntaxKind.PropertyAccessExpression) {
             const propAccess = parent.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
             if (propAccess.getNameNode() === idNode) {
+                continue;
+            }
+        }
+
+        // 1.5. Skip if it is the right-hand side of a QualifiedName (e.g. the "requestAnimationFrame" in "typeof compatGlobal.requestAnimationFrame")
+        if (parent.getKind() === SyntaxKind.QualifiedName) {
+            const qualified = parent.asKindOrThrow(SyntaxKind.QualifiedName);
+            if (qualified.getRight() === idNode) {
                 continue;
             }
         }
@@ -153,6 +152,8 @@ for (const sourceFile of project.getSourceFiles()) {
         let replacement = "";
         if (name === "window" || name === "globalThis") {
             replacement = "compatGlobal";
+        } else if (name === "document") {
+            replacement = "_activeDocument";
         } else {
             replacement = `compatGlobal.${name}`;
         }
@@ -174,23 +175,33 @@ for (const sourceFile of project.getSourceFiles()) {
                 node.replaceWithText(replacement);
             }
 
-            // Ensure compatGlobal is imported
-            const hasCompatGlobalImport = sourceFile.getImportDeclarations().some((imp) => {
-                return imp.getNamedImports().some((ni) => ni.getName() === "compatGlobal");
-            });
+            // Determine what needs to be imported based on replacements
+            const needsCompatGlobal = nodesToReplace.some((r) => r.replacement.includes("compatGlobal"));
+            const needsActiveDocument = nodesToReplace.some((r) => r.replacement.includes("_activeDocument"));
 
-            if (!hasCompatGlobalImport) {
+            const requiredImports: string[] = [];
+            if (needsCompatGlobal) requiredImports.push("compatGlobal");
+            if (needsActiveDocument) requiredImports.push("_activeDocument");
+
+            if (requiredImports.length > 0) {
                 const existingImport = sourceFile.getImportDeclarations().find((imp) => {
                     const spec = imp.getModuleSpecifierValue();
                     return spec === "@lib/common/coreEnvFunctions" || spec === "@lib/common/coreEnvFunctions.ts";
                 });
 
                 if (existingImport) {
-                    existingImport.addNamedImport("compatGlobal");
+                    for (const nameToImport of requiredImports) {
+                        const alreadyImported = existingImport
+                            .getNamedImports()
+                            .some((ni) => ni.getName() === nameToImport);
+                        if (!alreadyImported) {
+                            existingImport.addNamedImport(nameToImport);
+                        }
+                    }
                 } else {
                     sourceFile.addImportDeclaration({
-                        namedImports: ["compatGlobal"],
-                        moduleSpecifier: "@lib/common/coreEnvFunctions.ts"
+                        namedImports: requiredImports,
+                        moduleSpecifier: "@lib/common/coreEnvFunctions.ts",
                     });
                 }
             }

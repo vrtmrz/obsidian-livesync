@@ -1,7 +1,7 @@
 {
     "extends": "../../../tsconfig.json",
     "compilerOptions": {
-        "sourceRoot": "../",
+        // "sourceRoot": "../",
         "target": "ESNext",
         "useDefineForClassFields": true,
         "module": "ESNext",

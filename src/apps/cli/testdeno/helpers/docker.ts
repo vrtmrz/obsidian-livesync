@@ -1,3 +1,5 @@
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+
 /**
  * Docker service management for tests.
  *
@@ -256,7 +258,7 @@ function untrackContainer(container: string): void {
 }
 
 function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 async function waitForCouchdbStable(hostname: string, user: string, password: string): Promise<void> {

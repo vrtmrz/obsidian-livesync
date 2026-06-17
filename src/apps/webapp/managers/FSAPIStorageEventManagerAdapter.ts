@@ -11,6 +11,7 @@ import type {
 } from "@lib/managers/adapters";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 /**
  * FileSystem API-specific type guard adapter
@@ -149,14 +150,14 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // Use FileSystemObserver if available (Chrome 124+)
-        if (typeof (window as any).FileSystemObserver === "undefined") {
+        if (typeof (compatGlobal as any).FileSystemObserver === "undefined") {
             console.log("[FSAPIWatchAdapter] FileSystemObserver not available, file watching disabled");
             console.log("[FSAPIWatchAdapter] Consider using Chrome 124+ for real-time file watching");
             return Promise.resolve();
         }
 
         try {
-            const FileSystemObserver = (window as any).FileSystemObserver;
+            const FileSystemObserver = (compatGlobal as any).FileSystemObserver;
 
             this.observer = new FileSystemObserver(async (records: any[]) => {
                 for (const record of records) {

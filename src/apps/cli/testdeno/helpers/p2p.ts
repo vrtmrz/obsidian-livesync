@@ -1,6 +1,7 @@
 import { runCli } from "./cli.ts";
 import { isLocalP2pRelay, startP2pRelay, stopP2pRelay, startCoturn, stopCoturn } from "./docker.ts";
 import { waitForPort } from "./net.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export type PeerEntry = {
     id: string;
@@ -8,7 +9,7 @@ export type PeerEntry = {
 };
 
 function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 function parseRelayEndpoint(relay: string): { hostname: string; port: number } {
