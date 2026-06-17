@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "0.0.0",
+    "version": "0.25.76-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -11,13 +11,15 @@
         "preview": "vite preview",
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
     },
-    "dependencies": {},
+    "dependencies": {
+        "octagonal-wheels": "^0.1.46"
+    },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.15.0",
         "@sveltejs/vite-plugin-svelte": "^6.2.4",
         "@tsconfig/svelte": "^5.0.8",
         "svelte": "5.41.1",
-        "svelte-check": "^443.3",
+        "svelte-check": "^4.6.0",
         "typescript": "5.9.3",
         "vite": "^7.3.1"
     },

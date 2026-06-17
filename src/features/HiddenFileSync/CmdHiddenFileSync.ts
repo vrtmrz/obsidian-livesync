@@ -1,4 +1,4 @@
-import { type PluginManifest, type ListedFiles } from "../../deps.ts";
+import { type PluginManifest, type ListedFiles } from "@/deps.ts";
 import {
     type LoadedEntry,
     type FilePathWithPrefix,
@@ -15,8 +15,8 @@ import {
     LOG_LEVEL_DEBUG,
     type MetaEntry,
     type UXDataWriteOptions,
-} from "../../lib/src/common/types.ts";
-import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "../../common/types.ts";
+} from "@lib/common/types.ts";
+import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
 import {
     readAsBlob,
     isDocContentSame,
@@ -26,7 +26,7 @@ import {
     fireAndForget,
     type CustomRegExp,
     getFileRegExp,
-} from "../../lib/src/common/utils.ts";
+} from "@lib/common/utils.ts";
 import {
     compareMTime,
     isInternalMetadata,
@@ -39,17 +39,17 @@ import {
     BASE_IS_NEW,
     EVEN,
     displayRev,
-} from "../../common/utils.ts";
+} from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
-import { LiveSyncCommands } from "../LiveSyncCommands.ts";
-import { addPrefix, stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
+import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
+import { addPrefix, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "../../lib/src/mock_and_interop/stores.ts";
-import { EVENT_SETTING_SAVED, eventHub } from "../../common/events.ts";
+import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@lib/mock_and_interop/stores.ts";
+import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { tryGetFilePath } from "@lib/common/utils.doc.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 

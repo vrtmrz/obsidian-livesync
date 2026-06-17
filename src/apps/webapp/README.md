@@ -35,8 +35,15 @@ npm install
 
 ### Development
 
+From the repository root:
+
 ```bash
-# Build the project (ensure you are in `src/apps/webapp` directory)
+npm run dev -w livesync-webapp
+```
+
+Or from the package directory:
+
+```bash
 cd src/apps/webapp
 npm run dev
 ```
@@ -45,8 +52,15 @@ This will start a development server at `http://localhost:3000`.
 
 ### Build
 
+From the repository root:
+
 ```bash
-# Build the project (ensure you are in `src/apps/webapp` directory)
+npm run build -w livesync-webapp
+```
+
+Or from the package directory:
+
+```bash
 cd src/apps/webapp
 npm run build
 ```

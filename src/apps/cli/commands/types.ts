@@ -1,4 +1,4 @@
-import { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 

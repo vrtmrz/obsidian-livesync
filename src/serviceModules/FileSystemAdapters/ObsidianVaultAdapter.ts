@@ -1,6 +1,6 @@
-import type { UXDataWriteOptions } from "@/lib/src/common/types";
-import type { IVaultAdapter } from "@/lib/src/serviceModules/adapters";
-import { toArrayBuffer } from "@/lib/src/serviceModules/FileAccessBase";
+import type { UXDataWriteOptions } from "@lib/common/types";
+import type { IVaultAdapter } from "@lib/serviceModules/adapters";
+import { toArrayBuffer } from "@lib/serviceModules/FileAccessBase";
 import type { TFile, App, TFolder } from "obsidian";
 
 /**

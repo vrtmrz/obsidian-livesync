@@ -1,6 +1,6 @@
 import { ButtonComponent } from "@/deps.ts";
-import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
-import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
+import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "@/deps.ts";
+import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 import { compatGlobal, type CompatIntervalHandle } from "@lib/common/coreEnvFunctions.ts";
 
 class AutoClosableModal extends Modal {

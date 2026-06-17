@@ -9,7 +9,7 @@
     // import type { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
     import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
     import { Logger } from "@lib/common/logger";
-    import type { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
 

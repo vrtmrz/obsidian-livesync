@@ -1,5 +1,5 @@
 import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@lib/serviceModules/ServiceFileAccessBase";
-import { FSAPIFileSystemAdapter } from "../adapters/FSAPIFileSystemAdapter";
+import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAdapter";
 
 /**
  * FileSystem API-specific implementation of ServiceFileAccess

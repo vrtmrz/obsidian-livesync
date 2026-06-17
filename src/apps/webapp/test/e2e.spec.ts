@@ -17,7 +17,7 @@
  */
 
 import { test, expect, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
-import type { LiveSyncTestAPI } from "../test-entry";
+import type { LiveSyncTestAPI } from "@/apps/webapp/test-entry";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

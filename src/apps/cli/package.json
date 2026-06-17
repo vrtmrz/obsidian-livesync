@@ -1,7 +1,7 @@
 {
     "name": "self-hosted-livesync-cli",
     "private": true,
-    "version": "0.0.0",
+    "version": "0.25.76-cli",
     "main": "dist/index.cjs",
     "type": "module",
     "scripts": {
@@ -38,6 +38,26 @@
         "test:e2e:docker:p2p-sync": "RUN_BUILD=0 LIVESYNC_TEST_DOCKER=1 bash test/test-p2p-sync-linux.sh",
         "test:e2e:docker:all": "export RUN_BUILD=0 && npm run test:e2e:docker:setup-put-cat && npm run test:e2e:docker:push-pull && npm run test:e2e:docker:sync-two-local && npm run test:e2e:docker:mirror && npm run test:e2e:docker:remote-commands"
     },
-    "dependencies": {},
-    "devDependencies": {}
+    "dependencies": {
+        "chokidar": "^4.0.0",
+        "minimatch": "^10.2.2",
+        "octagonal-wheels": "^0.1.46",
+        "pouchdb-adapter-http": "^9.0.0",
+        "pouchdb-adapter-leveldb": "^9.0.0",
+        "pouchdb-core": "^9.0.0",
+        "pouchdb-errors": "^9.0.0",
+        "pouchdb-find": "^9.0.0",
+        "pouchdb-mapreduce": "^9.0.0",
+        "pouchdb-merge": "^9.0.0",
+        "pouchdb-replication": "^9.0.0",
+        "pouchdb-utils": "^9.0.0",
+        "transform-pouch": "^2.0.0",
+        "werift": "^0.23.0"
+    },
+    "devDependencies": {
+        "@sveltejs/vite-plugin-svelte": "^6.2.4",
+        "typescript": "5.9.3",
+        "vite": "^7.3.1",
+        "vitest": "^4.1.8"
+    }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { IStorageEventWatchHandlers } from "@lib/managers/adapters";
-import type { NodeFile } from "../adapters/NodeTypes";
+import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
 
 // ── chokidar mock ──────────────────────────────────────────────────────────────
 // Must be hoisted before imports that pull in chokidar.

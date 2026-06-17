@@ -18,12 +18,12 @@ import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-} from "@/lib/src/common/types";
+} from "@lib/common/types";
 import {
     ExtraOnLocal,
     FullScanModes,
     synchroniseAllFilesBetweenDBandStorage,
-} from "@/lib/src/serviceFeatures/offlineScanner";
+} from "@lib/serviceFeatures/offlineScanner";
 import {
     SIMPLE_FETCH_STAGE1_LEGACY,
     SIMPLE_FETCH_STAGE1_NEWER_WINS,

@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import { logMessages } from "../../../lib/src/mock_and_interop/stores";
+    import { logMessages } from "@lib/mock_and_interop/stores";
     import { reactive, type ReactiveInstance } from "octagonal-wheels/dataobject/reactive";
-    import { Logger } from "../../../lib/src/common/logger";
-    import { $msg as msg, currentLang as lang } from "../../../lib/src/common/i18n.ts";
+    import { Logger } from "@lib/common/logger";
+    import { $msg as msg, currentLang as lang } from "@lib/common/i18n.ts";
     import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
     let unsubscribe: () => void;

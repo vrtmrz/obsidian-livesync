@@ -1,17 +1,17 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "../../lib/src/common/types.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,
     eventHub,
-} from "../../common/events.ts";
-import { $msg, setLang } from "../../lib/src/common/i18n.ts";
-import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
-import { AbstractModule } from "../AbstractModule.ts";
+} from "@/common/events.ts";
+import { $msg, setLang } from "@lib/common/i18n.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
 import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO } from "../../../lib/src/common/types";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO } from "@lib/common/types";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer";
 
 describe("syncActivatedRemoteSettings", () => {

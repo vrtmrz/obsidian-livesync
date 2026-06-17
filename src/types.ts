@@ -1,7 +1,7 @@
-import type { DatabaseFileAccess } from "@/lib/src/interfaces/DatabaseFileAccess";
-import type { Rebuilder } from "@/lib/src/interfaces/DatabaseRebuilder";
-import type { IFileHandler } from "@/lib/src/interfaces/FileHandler";
-import type { StorageAccess } from "@/lib/src/interfaces/StorageAccess";
+import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
+import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
+import type { IFileHandler } from "@lib/interfaces/FileHandler";
+import type { StorageAccess } from "@lib/interfaces/StorageAccess";
 import type { IServiceHub } from "./lib/src/services/base/IService";
 
 export interface ServiceModules {

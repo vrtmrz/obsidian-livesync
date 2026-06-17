@@ -1,13 +1,13 @@
 <script lang="ts">
     import { onMount, setContext } from "svelte";
-    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "../../../lib/src/common/types";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@lib/common/types";
     import {
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
     } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
     import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import PeerStatusRow from "../P2PReplicator/PeerStatusRow.svelte";
+    import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
     import {
         type PeerInfo,

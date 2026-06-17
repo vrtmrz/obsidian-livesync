@@ -1,6 +1,6 @@
-import { type Prettify } from "../lib/src/common/types";
-import type { LiveSyncCore } from "../main";
-import type ObsidianLiveSyncPlugin from "../main";
+import { type Prettify } from "@lib/common/types";
+import type { LiveSyncCore } from "@/main";
+import type ObsidianLiveSyncPlugin from "@/main";
 import { AbstractModule } from "./AbstractModule.ts";
 import type { ChainableExecuteFunction, OverridableFunctionsKeys } from "./ModuleTypes";
 

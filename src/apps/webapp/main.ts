@@ -17,8 +17,8 @@ import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri"
 import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
 import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
-import { useP2PReplicatorCommands } from "@/lib/src/replication/trystero/useP2PReplicatorCommands";
-import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
+import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
+import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";

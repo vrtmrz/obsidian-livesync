@@ -6,7 +6,7 @@
 import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-http-handler";
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
 import { buildQueryString } from "@smithy/querystring-builder";
-import { requestUrl, type RequestUrlParam } from "../../../deps.ts";
+import { requestUrl, type RequestUrlParam } from "@/deps.ts";
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl
 ////////////////////////////////////////////////////////////////////////////////

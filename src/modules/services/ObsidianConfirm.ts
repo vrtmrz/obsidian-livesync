@@ -1,15 +1,15 @@
 import { type App, type Plugin, Notice } from "@/deps";
 import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
-import { $msg } from "@/lib/src/common/i18n";
-import type { Confirm } from "@/lib/src/interfaces/Confirm";
-import type { ObsidianServiceContext } from "@/lib/src/services/implements/obsidian/ObsidianServiceContext";
+import { $msg } from "@lib/common/i18n";
+import type { Confirm } from "@lib/interfaces/Confirm";
+import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import {
     askYesNo,
     askString,
     confirmWithMessageWithWideButton,
     askSelectString,
     confirmWithMessage,
-} from "../coreObsidian/UILib/dialogs";
+} from "@/modules/coreObsidian/UILib/dialogs";
 
 export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
     private _context: T;
