@@ -1,6 +1,6 @@
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-import { Platform, type Command, type ViewCreator } from "obsidian";
+import { Platform, type Command, type ViewCreator } from "@/deps.ts";
 import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandler";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@lib/interfaces/Confirm";
@@ -122,14 +122,15 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         return this.context.plugin.addCommand(command) as TCommand;
     }
 
-    registerWindow(type: string, factory: ViewCreator): void {
-        return this.context.plugin.registerView(type, factory);
+    registerWindow<T>(type: string, factory: (leaf: T) => unknown): void {
+        return this.context.plugin.registerView(type, factory as ViewCreator);
     }
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement {
+
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => unknown): HTMLElement {
         return this.context.plugin.addRibbonIcon(icon, title, callback);
     }
 
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void {
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => unknown): void {
         return this.context.plugin.registerObsidianProtocolHandler(action, handler);
     }
 

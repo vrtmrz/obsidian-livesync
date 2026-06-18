@@ -37,7 +37,8 @@ for (const sourceFile of project.getSourceFiles()) {
     const posixFilePath = toPosixPath(filePath);
 
     if (!posixFilePath.startsWith(posixSrc)) continue;
-    if (posixFilePath.includes("/_test/") || posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts")) continue;
+    if (posixFilePath.includes("/_test/") || posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts"))
+        continue;
 
     // Find AsExpression (expr as Type) and TypeAssertion (<Type>expr)
     const asExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.AsExpression);

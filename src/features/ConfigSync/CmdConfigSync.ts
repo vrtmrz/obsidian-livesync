@@ -1101,7 +1101,7 @@ export class ConfigSync extends LiveSyncCommands {
             this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
                 //@ts-ignore
-                const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
+                const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
                 //@ts-ignore
                 const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
                 const pluginManifest = manifests.find(

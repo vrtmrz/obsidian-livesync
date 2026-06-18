@@ -27,6 +27,6 @@
             "@lib/*": ["../../lib/src/*"]
         }
     },
-    "include": ["*.ts", "**/*.ts", "**/*.tsx"],
+    "include": ["*.ts", "**/*.ts", "**/*.tsx", "**/*.svelte"],
     "exclude": ["node_modules", "dist"]
 }

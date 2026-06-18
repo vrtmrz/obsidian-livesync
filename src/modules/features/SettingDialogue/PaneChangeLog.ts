@@ -20,7 +20,6 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
         undefined,
         visibleOnly(() => !this.isConfiguredAs("versionUpFlash", ""))
     );
-
     this.createEl(
         cx,
         "div",
@@ -58,6 +57,6 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
         });
     }
     fireAndForget(() =>
-        MarkdownRenderer.render(this.plugin.app, updateInformation, informationDivEl, "/", this.plugin)
+        MarkdownRenderer.render(this.plugin.app, updateInformation, informationDivEl, "/", this.lifetimeComponent)
     );
 }

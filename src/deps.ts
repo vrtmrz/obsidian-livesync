@@ -31,6 +31,7 @@ export {
     TextComponent,
     ToggleComponent,
     DropdownComponent,
+    Component,
 } from "obsidian";
 export type {
     DataWriteOptions,
@@ -41,6 +42,8 @@ export type {
     ListedFiles,
     ValueComponent,
     Stat,
+    Command,
+    ViewCreator,
 } from "obsidian";
 import { normalizePath as normalizePath_ } from "obsidian";
 const normalizePath = normalizePath_ as <T extends string | FilePath>(from: T) => T;

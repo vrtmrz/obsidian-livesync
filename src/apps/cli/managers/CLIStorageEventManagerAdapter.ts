@@ -99,7 +99,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         private basePath: string,
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false
-    ) { }
+    ) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {

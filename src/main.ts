@@ -4,7 +4,7 @@ setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { ModuleDev } from "./modules/extras/ModuleDev.ts";
+// import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
@@ -153,7 +153,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleObsidianDocumentHistory(this, core),
                     new ModuleInteractiveConflictResolver(this, core),
                     new ModuleObsidianGlobalHistory(this, core),
-                    new ModuleDev(this, core),
+                    // new ModuleDev(this, core),
                     new SetupManager(core), // this should be moved to core?
                     new ModuleMigration(core),
                 ];

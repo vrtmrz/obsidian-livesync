@@ -77,9 +77,7 @@ export class BackgroundCliProcess {
             if (this.combined.includes(needle)) return;
             const status = await Promise.race([
                 this.child.status.then((s) => ({ type: "status" as const, status: s })),
-                new Promise<{ type: "tick" }>((resolve) =>
-                    setTimeout(() => resolve({ type: "tick" }), 100)
-                ),
+                new Promise<{ type: "tick" }>((resolve) => setTimeout(() => resolve({ type: "tick" }), 100)),
             ]);
             if (status.type === "status") {
                 throw new Error(

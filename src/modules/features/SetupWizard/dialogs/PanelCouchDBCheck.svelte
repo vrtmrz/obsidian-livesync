@@ -22,17 +22,17 @@
             detectedIssues.push({ message: `Error during testAndFixSettings: ${e}`, result: "error", classes: [] });
         }
     }
-    function isErrorResult(result: ConfigCheckResult): result is ResultError | ResultErrorMessage {
+    function isErrorResult(result: ConfigCheckResult): result is ResultError<unknown> | ResultErrorMessage {
         return "result" in result && result.result === "error";
     }
-    function isFixableError(result: ConfigCheckResult): result is ResultError {
+    function isFixableError(result: ConfigCheckResult): result is ResultError<unknown> {
         return isErrorResult(result) && "fix" in result && typeof result.fix === "function";
     }
     function isSuccessResult(result: ConfigCheckResult): result is { message: string; result: "ok"; value?: any } {
         return "result" in result && result.result === "ok";
     }
     let processing = $state(false);
-    async function fixIssue(issue: ResultError) {
+    async function fixIssue(issue: ResultError<unknown>) {
         try {
             processing = true;
             await issue.fix();

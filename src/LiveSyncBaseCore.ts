@@ -29,6 +29,7 @@ import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "./lib/src/interfaces/ServiceModule";
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
 import { usePrepareDatabaseForUse } from "./lib/src/serviceFeatures/prepareDatabaseForUse";
+import type { Constructor } from "@lib/common/utils.type";
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -120,7 +121,7 @@ export class LiveSyncBaseCore<
      * @param constructor
      * @returns
      */
-    getModule<T extends AbstractModule>(constructor: new (...args: any[]) => T): T {
+    getModule<T extends AbstractModule>(constructor: Constructor<T>): T {
         for (const module of this.modules) {
             if (module.constructor === constructor) return module as T;
         }

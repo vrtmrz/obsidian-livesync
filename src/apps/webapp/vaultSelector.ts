@@ -91,7 +91,7 @@ export class VaultHistoryStore {
 
     async getVaultHistory(): Promise<VaultHistoryItem[]> {
         return this.withStore("readonly", async (store) => {
-            const keys = (await this.requestAsPromise(store.getAllKeys()));
+            const keys = await this.requestAsPromise(store.getAllKeys());
             const values = (await this.requestAsPromise(store.getAll())) as unknown[];
             const items: VaultHistoryItem[] = [];
             for (let i = 0; i < keys.length; i++) {

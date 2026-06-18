@@ -18,7 +18,7 @@ import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
 
-function valueToString(value: any) {
+function valueToString(value: string | number | boolean | object | undefined): string {
     if (typeof value === "boolean") {
         return value ? "true" : "false";
     }

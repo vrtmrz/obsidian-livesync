@@ -3,10 +3,12 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import istanbul from "vite-plugin-istanbul";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-const packageJson = JSON.parse(readFileSync("../../../package.json", "utf-8"));
-const manifestJson = JSON.parse(readFileSync("../../../manifest.json", "utf-8"));
-const enableCoverage = process.env.PW_COVERAGE === "1";
+import { fileURLToPath } from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
+const packageJson = JSON.parse(readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
+const manifestJson = JSON.parse(readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+const enableCoverage = process.env.PW_COVERAGE === "1";
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [

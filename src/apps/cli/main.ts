@@ -232,8 +232,8 @@ async function createDefaultSettingsFile(options: CLIOptions) {
     const targetPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : options.commandArgs[0]
-            ? path.resolve(options.commandArgs[0])
-            : path.resolve(process.cwd(), "data.json");
+          ? path.resolve(options.commandArgs[0])
+          : path.resolve(process.cwd(), "data.json");
 
     if (!options.force) {
         try {
@@ -323,8 +323,8 @@ export async function main() {
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
-                ? path.resolve(options.vaultPath)
-                : databasePath!;
+              ? path.resolve(options.vaultPath)
+              : databasePath!;
 
     // Check if vault directory exists
     try {
@@ -458,8 +458,8 @@ export async function main() {
                     if (rules.shouldIgnore(targetPath)) {
                         return false;
                     }
-                    // undefined = pass through to next handler in chain
-                    return undefined;
+                    // At least this handler think it is a target file, but other handlers may still veto it.
+                    return true;
                 }, 0);
             }
         }
@@ -557,7 +557,7 @@ export async function main() {
 
         if (options.command === "daemon" && result) {
             // Keep the process running
-            await new Promise(() => { });
+            await new Promise(() => {});
         } else {
             await core.services.control.onUnload();
         }

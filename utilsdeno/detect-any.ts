@@ -26,11 +26,7 @@ for (const sourceFile of project.getSourceFiles()) {
     const posixFilePath = toPosixPath(filePath);
 
     if (!posixFilePath.startsWith(posixSrc)) continue;
-    if (
-        posixFilePath.includes("/_test/") ||
-        posixFilePath.endsWith(".spec.ts") ||
-        posixFilePath.endsWith(".test.ts")
-    ) {
+    if (posixFilePath.includes("/_test/") || posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts")) {
         continue;
     }
 

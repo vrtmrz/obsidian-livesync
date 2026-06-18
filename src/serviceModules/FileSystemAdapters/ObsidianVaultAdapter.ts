@@ -6,7 +6,7 @@ import type { TFile, App, TFolder } from "obsidian";
 /**
  * Vault adapter implementation for Obsidian
  */
-export class ObsidianVaultAdapter implements IVaultAdapter<TFile> {
+export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
     constructor(private app: App) {}
 
     async read(file: TFile): Promise<string> {
@@ -55,7 +55,7 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile> {
         return await this.app.vault.trash(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): void {
         return this.app.vault.trigger(name, ...data);
     }
 }

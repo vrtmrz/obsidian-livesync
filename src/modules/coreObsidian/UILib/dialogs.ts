@@ -1,5 +1,5 @@
 import { ButtonComponent } from "@/deps.ts";
-import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "@/deps.ts";
+import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting, Component } from "@/deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 import { compatGlobal, type CompatIntervalHandle } from "@lib/common/coreEnvFunctions.ts";
 
@@ -148,6 +148,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     wideButton: boolean;
 
     onSubmit: (result: string | false) => void;
+    component: Component = new Component();
 
     constructor(
         plugin: Plugin,
@@ -189,6 +190,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     }
 
     override onOpen() {
+        this.component.load();
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
@@ -196,7 +198,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
             userSelect: "text",
             webkitUserSelect: "text",
         });
-        void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
+        void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.component);
         const buttonSetting = new Setting(contentEl);
         const labelWrapper = contentEl.createDiv();
         labelWrapper.addClass("sls-dialogue-note-wrapper");
@@ -254,6 +256,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
 
     override onClose() {
         super.onClose();
+        this.component.unload();
         const { contentEl } = this;
         contentEl.empty();
         if (this.timer) {

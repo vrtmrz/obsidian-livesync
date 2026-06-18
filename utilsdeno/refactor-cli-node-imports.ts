@@ -69,7 +69,7 @@ for (const sourceFile of project.getSourceFiles()) {
 
     for (const impDecl of importDeclarations) {
         const specifier = impDecl.getModuleSpecifierValue();
-        
+
         // Check if it's a Node.js built-in module we want to redirect
         let exportedName = "";
         if (specifier === "fs/promises" || specifier === "node:fs/promises") {
@@ -92,11 +92,11 @@ for (const sourceFile of project.getSourceFiles()) {
 
     if (targetImports.length > 0) {
         console.log(`File: ${posixFilePath.slice(posixProjectRoot.length + 1)}`);
-        
+
         for (const { impDecl, exportedName, localName } of targetImports) {
             const { line } = sourceFile.getLineAndColumnAtPos(impDecl.getStart());
             console.log(`  Line ${line}: Redirecting "${impDecl.getText()}"`);
-            
+
             if (exportedName === localName) {
                 namedImportsToAdd.push(exportedName);
             } else {

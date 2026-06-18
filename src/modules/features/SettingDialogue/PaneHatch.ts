@@ -6,6 +6,7 @@ import {
     type LoadedEntry,
     type MetaEntry,
     type FilePath,
+    type EntryDoc,
 } from "@lib/common/types.ts";
 import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
 import { Logger } from "@lib/common/logger.ts";
@@ -441,8 +442,8 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     const newData = entriesToDelete.rows.map((e) => ({
                         ...e.doc,
                         _deleted: true,
-                    }));
-                    const r = await this.core.localDatabase.bulkDocsRaw(newData as any[]);
+                    })) as EntryDoc[];
+                    const r = await this.core.localDatabase.bulkDocsRaw(newData);
                     // Do not care about the result.
                     Logger(
                         `${r.length} items have been removed, to confirm how many items are left, please perform it again.`,

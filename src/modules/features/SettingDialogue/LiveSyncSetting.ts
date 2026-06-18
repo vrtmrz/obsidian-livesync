@@ -9,7 +9,7 @@ import {
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
 import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@lib/common/types.ts";
-import { createStub, type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
     getConfig,
@@ -19,7 +19,7 @@ import {
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
 import { $msg } from "@lib/common/i18n.ts";
-import { findAttrFromParent, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
+import { wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -35,37 +35,19 @@ export class LiveSyncSetting extends Setting {
     hasPassword: boolean = false;
 
     invalidateValue?: () => void;
-    setValue?: (value: any) => void;
+    setValue?: (value: unknown) => void;
     constructor(containerEl: HTMLElement) {
         super(containerEl);
         LiveSyncSetting.env.settingComponents.push(this);
     }
 
-    _createDocStub(key: string, value: string | DocumentFragment) {
-        DEV: {
-            const paneName = findAttrFromParent(this.settingEl, "data-pane");
-            const panelName = findAttrFromParent(this.settingEl, "data-panel");
-            const itemName =
-                typeof this.nameBuf == "string" ? this.nameBuf : (this.nameBuf.textContent?.toString() ?? "");
-            const strValue = typeof value == "string" ? value : (value.textContent?.toString() ?? "");
-
-            createStub(itemName, key, strValue, panelName, paneName);
-        }
-    }
-
     override setDesc(desc: string | DocumentFragment): this {
         this.descBuf = desc;
-        DEV: {
-            this._createDocStub("desc", desc);
-        }
         super.setDesc(desc);
         return this;
     }
     override setName(name: string | DocumentFragment): this {
         this.nameBuf = name;
-        DEV: {
-            this._createDocStub("name", name);
-        }
         super.setName(name);
         return this;
     }
@@ -84,11 +66,6 @@ export class LiveSyncSetting extends Setting {
         if (conf.desc) {
             this.setDesc(conf.desc);
         }
-        DEV: {
-            this._createDocStub("key", key);
-            if (conf.obsolete) this._createDocStub("is_obsolete", "true");
-            if (conf.level) this._createDocStub("level", conf.level);
-        }
 
         this.holdValue = opt?.holdValue || this.holdValue;
         this.selfKey = key;
@@ -102,7 +79,7 @@ export class LiveSyncSetting extends Setting {
         }
         return conf;
     }
-    autoWireComponent(component: ValueComponent<any>, conf?: ConfigurationItem, opt?: AutoWireOption) {
+    autoWireComponent<T>(component: ValueComponent<T>, conf?: ConfigurationItem, opt?: AutoWireOption) {
         this.placeHolderBuf = conf?.placeHolder || opt?.placeHolder || "";
         if (conf?.level == LEVEL_ADVANCED) {
             this.settingEl.toggleClass("sls-setting-advanced", true);
