@@ -316,7 +316,7 @@ export class ModuleLog extends AbstractObsidianModule {
 
         const showStatusOnEditor = this.settings?.showStatusOnEditor ?? false;
         if (this.statusDiv) {
-            this.statusDiv.style.display = showStatusOnEditor ? "" : "none";
+            this.statusDiv.setCssStyles({ display: showStatusOnEditor ? "" : "none" });
         }
         if (!showStatusOnEditor) {
             this.messageArea.innerText = "";
@@ -351,7 +351,7 @@ export class ModuleLog extends AbstractObsidianModule {
         });
     }
 
-    nextFrameQueue: ReturnType<typeof requestAnimationFrame> | undefined = undefined;
+    nextFrameQueue: ReturnType<typeof compatGlobal.requestAnimationFrame> | undefined = undefined;
     logLines: { ttl: number; message: string }[] = [];
 
     applyStatusBarText() {
@@ -371,7 +371,7 @@ export class ModuleLog extends AbstractObsidianModule {
 
             this.statusBar?.setText(newMsg.split("\n")[0]);
             if (this.statusDiv) {
-                this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+                this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
             }
             if (this.settings?.showStatusOnEditor && this.statusDiv) {
                 if (this.settings.showLongerLogInsideEditor) {
@@ -472,7 +472,7 @@ ${stringifyYaml(info)}
             this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
             this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
             this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
-            this.statusDiv.style.display = this.settings?.showStatusOnEditor ? "" : "none";
+            this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
         }
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {

@@ -1,5 +1,4 @@
-import * as path from "path";
-import * as readline from "node:readline/promises";
+import { path, readline } from "../node-compat";
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;

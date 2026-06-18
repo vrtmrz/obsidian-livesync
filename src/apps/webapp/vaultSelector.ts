@@ -1,3 +1,5 @@
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+
 const HANDLE_DB_NAME = "livesync-webapp-handles";
 const HANDLE_STORE_NAME = "handles";
 const LAST_USED_KEY = "meta:lastUsedVaultId";
@@ -89,7 +91,7 @@ export class VaultHistoryStore {
 
     async getVaultHistory(): Promise<VaultHistoryItem[]> {
         return this.withStore("readonly", async (store) => {
-            const keys = (await this.requestAsPromise(store.getAllKeys())) as IDBValidKey[];
+            const keys = (await this.requestAsPromise(store.getAllKeys()));
             const values = (await this.requestAsPromise(store.getAll())) as unknown[];
             const items: VaultHistoryItem[] = [];
             for (let i = 0; i < keys.length; i++) {
@@ -170,7 +172,7 @@ export class VaultHistoryStore {
     }
 
     async pickNewVault(): Promise<FileSystemDirectoryHandle> {
-        const picker = (window as any).showDirectoryPicker;
+        const picker = (compatGlobal as any).showDirectoryPicker;
         if (typeof picker !== "function") {
             throw new Error("FileSystem API showDirectoryPicker is not supported in this browser");
         }

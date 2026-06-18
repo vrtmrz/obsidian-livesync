@@ -36,7 +36,7 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
             const r = await requestToCouchDBWithCredentials(
                 settings.couchDB_URI,
                 credential,
-                window.origin,
+                compatGlobal.origin,
                 undefined,
                 undefined,
                 undefined,

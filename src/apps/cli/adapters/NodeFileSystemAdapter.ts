@@ -1,5 +1,3 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import type { FilePath, UXStat } from "@lib/common/types";
 import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
 import { NodePathAdapter } from "./NodePathAdapter";
@@ -8,6 +6,7 @@ import { NodeConversionAdapter } from "./NodeConversionAdapter";
 import { NodeStorageAdapter } from "./NodeStorageAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import { fsPromises as fs, path } from "../node-compat";
 
 /**
  * Complete file system adapter implementation for Node.js

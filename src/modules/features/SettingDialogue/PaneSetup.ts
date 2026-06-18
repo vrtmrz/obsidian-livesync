@@ -133,7 +133,7 @@ export function paneSetup(
             cls: "sls-troubleshoot-preview",
         });
         const loadMarkdownPage = async (pathAll: string, basePathParam: string = "") => {
-            troubleShootEl.style.minHeight = troubleShootEl.clientHeight + "px";
+            troubleShootEl.setCssStyles({ minHeight: troubleShootEl.clientHeight + "px" });
             troubleShootEl.empty();
             const fullPath = pathAll.startsWith("/") ? pathAll : `${basePathParam}/${pathAll}`;
 
@@ -201,7 +201,7 @@ export function paneSetup(
                     });
                 });
             });
-            troubleShootEl.style.minHeight = "";
+            troubleShootEl.setCssStyles({ minHeight: "" });
         };
         void loadMarkdownPage(topPath);
     });

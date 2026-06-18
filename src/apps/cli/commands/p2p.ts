@@ -2,14 +2,15 @@ import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { addP2PEventHandlers } from "@lib/replication/trystero/addP2PEventHandlers";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+
 type CLIP2PPeer = {
     peerId: string;
     name: string;
 };
 
 function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 export function parseTimeoutSeconds(value: string, commandName: string): number {

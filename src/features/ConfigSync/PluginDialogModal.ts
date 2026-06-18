@@ -16,9 +16,11 @@ export class PluginDialogModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        this.contentEl.style.overflow = "auto";
-        this.contentEl.style.display = "flex";
-        this.contentEl.style.flexDirection = "column";
+        this.contentEl.setCssStyles({
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+        });
         this.titleEl.setText("Customization Sync (Beta3)");
         if (!this.component) {
             this.component = mount(PluginPane, {

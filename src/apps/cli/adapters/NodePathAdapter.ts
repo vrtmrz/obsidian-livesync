@@ -1,7 +1,7 @@
-import * as path from "path";
 import type { FilePath } from "@lib/common/types";
 import type { IPathAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile } from "./NodeTypes";
+import { path } from "../node-compat";
 
 /**
  * Path adapter implementation for Node.js

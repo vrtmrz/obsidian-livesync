@@ -367,10 +367,10 @@ export class DocumentHistoryModal extends Modal {
      */
     updateDiffNavVisibility() {
         if (this.diffNavContainer) {
-            this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
+            this.diffNavContainer.setCssStyles({ display: this.showDiff ? "flex" : "none" });
         }
         if (this.diffOnlyLabel) {
-            this.diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+            this.diffOnlyLabel.setCssStyles({ display: this.showDiff ? "inline-block" : "none" });
         }
     }
 
@@ -573,13 +573,13 @@ export class DocumentHistoryModal extends Modal {
         });
         diffOnlyLabel.appendText("Diff only");
         diffOnlyLabel.addClass("diff-only-label");
-        diffOnlyLabel.style.display = this.showDiff ? "inline-block" : "none";
+        diffOnlyLabel.setCssStyles({ display: this.showDiff ? "inline-block" : "none" });
         this.diffOnlyLabel = diffOnlyLabel;
 
         // Diff navigation buttons
         this.diffNavContainer = diffOptionsRow.createDiv("");
         this.diffNavContainer.addClass("diff-nav");
-        this.diffNavContainer.style.display = this.showDiff ? "flex" : "none";
+        this.diffNavContainer.setCssStyles({ display: this.showDiff ? "flex" : "none" });
 
         this.diffNavContainer.createEl("button", { text: "\u25B2 Prev" }, (e) => {
             e.addClass("diff-nav-btn");
@@ -608,7 +608,7 @@ export class DocumentHistoryModal extends Modal {
             e.addClass("mod-cta");
             e.addEventListener("click", () => {
                 fireAndForget(async () => {
-                    await navigator.clipboard.writeText(this.currentText);
+                    await compatGlobal.navigator.clipboard.writeText(this.currentText);
                     Logger(`Old content copied to clipboard`, LOG_LEVEL_NOTICE);
                 });
             });

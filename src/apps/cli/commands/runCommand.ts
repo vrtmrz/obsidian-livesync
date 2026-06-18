@@ -1,5 +1,3 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
 import { configURIBase } from "@lib/common/models/shared.const";
 import {
@@ -18,6 +16,8 @@ import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelative
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { fsPromises as fs, path } from "../node-compat";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -150,11 +150,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                         );
                     }
                 }
-                pollTimer = setTimeout(poll, currentIntervalMs);
+                pollTimer = compatGlobal.setTimeout(poll, currentIntervalMs);
             };
-            let pollTimer: ReturnType<typeof setTimeout> = setTimeout(poll, currentIntervalMs);
+            let pollTimer = compatGlobal.setTimeout(poll, currentIntervalMs);
             core.services.appLifecycle.onUnload.addHandler(async () => {
-                clearTimeout(pollTimer);
+                compatGlobal.clearTimeout(pollTimer);
                 return true;
             });
         } else {

@@ -63,12 +63,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _this = this;
         //@ts-ignore
-        if (!window.CodeMirrorAdapter) {
+        if (!compatGlobal.CodeMirrorAdapter) {
             this._log("CodeMirrorAdapter is not available");
             return;
         }
         //@ts-ignore
-        window.CodeMirrorAdapter.commands.save = () => {
+        compatGlobal.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
             void _this.app.commands.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
@@ -86,14 +86,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // Already bound
         // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
-        this.plugin.registerDomEvent(window, "focus", () => this.setHasFocus(true));
-        this.plugin.registerDomEvent(window, "blur", () => this.setHasFocus(false));
+        this.plugin.registerDomEvent(compatGlobal, "focus", () => this.setHasFocus(true));
+        this.plugin.registerDomEvent(compatGlobal, "blur", () => this.setHasFocus(false));
         // Already bound
         // eslint-disable-next-line @typescript-eslint/unbound-method
-        this.plugin.registerDomEvent(window, "online", this.watchOnline);
+        this.plugin.registerDomEvent(compatGlobal, "online", this.watchOnline);
         // Already bound
         // eslint-disable-next-line @typescript-eslint/unbound-method
-        this.plugin.registerDomEvent(window, "offline", this.watchOnline);
+        this.plugin.registerDomEvent(compatGlobal, "offline", this.watchOnline);
     }
 
     hasFocus = true;
@@ -114,7 +114,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     async watchOnlineAsync() {
         // If some files were failed to retrieve, scan files again.
         // TODO:FIXME AT V0.17.31, this logic has been disabled.
-        if (navigator.onLine && this.localDatabase.needScanning) {
+        if (compatGlobal.navigator.onLine && this.localDatabase.needScanning) {
             this.localDatabase.needScanning = false;
             await this.services.vault.scanVault();
         }

@@ -1,7 +1,7 @@
-import * as path from "path";
 import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
+import { path } from "../node-compat";
 
 /**
  * Conversion adapter implementation for Node.js

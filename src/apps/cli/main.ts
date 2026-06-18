@@ -1,10 +1,3 @@
-/**
- * Self-hosted LiveSync CLI
- * Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian
- */
-
-import * as fs from "fs/promises";
-import * as path from "path";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
@@ -27,6 +20,7 @@ import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
+import { fsPromises as fs, path, fs as fsSync } from "./node-compat";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -238,8 +232,8 @@ async function createDefaultSettingsFile(options: CLIOptions) {
     const targetPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : options.commandArgs[0]
-          ? path.resolve(options.commandArgs[0])
-          : path.resolve(process.cwd(), "data.json");
+            ? path.resolve(options.commandArgs[0])
+            : path.resolve(process.cwd(), "data.json");
 
     if (!options.force) {
         try {
@@ -329,8 +323,8 @@ export async function main() {
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
-              ? path.resolve(options.vaultPath)
-              : databasePath!;
+                ? path.resolve(options.vaultPath)
+                : databasePath!;
 
     // Check if vault directory exists
     try {
@@ -485,8 +479,8 @@ export async function main() {
         }
     };
 
-    process.on("SIGINT", () => shutdown("SIGINT"));
-    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => void shutdown("SIGINT"));
+    process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
     // Save the settings file before any lifecycle events can mutate and persist them.
     // suspendAllSync and other lifecycle hooks clobber sync settings in memory, and
@@ -499,8 +493,8 @@ export async function main() {
         if (settingsBackup) {
             const tmpPath = settingsPath + ".tmp";
             try {
-                require("fs").writeFileSync(tmpPath, settingsBackup, "utf-8");
-                require("fs").renameSync(tmpPath, settingsPath);
+                fsSync.writeFileSync(tmpPath, settingsBackup, "utf-8");
+                fsSync.renameSync(tmpPath, settingsPath);
             } catch (err) {
                 console.error("[Settings] Failed to restore settings on exit:", err);
             }
@@ -563,7 +557,7 @@ export async function main() {
 
         if (options.command === "daemon" && result) {
             // Keep the process running
-            await new Promise(() => {});
+            await new Promise(() => { });
         } else {
             await core.services.control.onUnload();
         }

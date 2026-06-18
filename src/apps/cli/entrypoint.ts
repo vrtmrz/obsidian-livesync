@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// eslint-disable -- This is the entry point for the CLI application.
 import * as polyfill from "werift";
 import { main } from "./main";
 

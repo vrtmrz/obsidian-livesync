@@ -182,9 +182,9 @@ export class ModuleConflictResolver extends AbstractModule {
                     revs.map(async (rev) => {
                         const leaf = await this.core.databaseFileAccess.fetchEntryMeta(filename, rev);
                         if (leaf == false) {
-                            return [0, rev] as [number, string];
+                            return [0, rev];
                         }
-                        return [leaf.mtime, rev] as [number, string];
+                        return [leaf.mtime, rev];
                     })
                 )),
             ] as [number, string][]
