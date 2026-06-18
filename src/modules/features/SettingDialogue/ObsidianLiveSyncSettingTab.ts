@@ -368,8 +368,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     override hide() {
         super.hide();
-        this._lifetimeComponent?.unload();
-        this._lifetimeComponent = undefined;
+        this._lifetimeComponent.unload();
         this.isShown = false;
     }
     isShown: boolean = false;
