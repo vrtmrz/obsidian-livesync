@@ -1,0 +1,187 @@
+# Self-hosted LiveSync — Docker Compose
+# =============================================================================
+#  PROFILES
+#  --------
+#  (default)              CouchDB only — LAN/localhost access, no TLS
+#                         Suitable for desktop-only use or testing.
+#
+#  --profile caddy        CouchDB + Caddy reverse proxy
+#                         Auto TLS via Let's Encrypt. Needs public domain + ports 80/443.
+#
+#  --profile tailscale    CouchDB + Tailscale sidecar
+#                         No domain required. HTTPS via *.ts.net PKI.
+#                         Needs a Tailscale account (free tier works).
+#
+#  --profile cloudflare   CouchDB + cloudflared tunnel daemon
+#                         Free public HTTPS via Cloudflare. Needs a CF account + tunnel token.
+#                         NOTE: Enable "Use Request API" in the Obsidian plugin to avoid 524 timeouts.
+#
+#  QUICK START (local test):
+#    cp .env.example .env && edit .env
+#    docker compose up -d
+#    curl -u admin:yourpassword http://localhost:5984/_up
+# =============================================================================
+
+name: obsidian-livesync
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # CouchDB — the only required service
+  # ---------------------------------------------------------------------------
+  couchdb:
+    image: couchdb:latest
+    container_name: livesync-couchdb
+    restart: unless-stopped
+    # NOTE: Do NOT set user: here — the CouchDB entrypoint starts as root to
+    # write docker.ini (from env vars), then drops to uid 5984 automatically.
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER:?Set COUCHDB_USER in .env}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?Set COUCHDB_PASSWORD in .env}
+    volumes:
+      - couchdb-data:/opt/couchdb/data
+      # Mount to /opt/couchdb/etc/local.ini (NOT into local.d/).
+      # Do NOT use :ro — the CouchDB entrypoint runs chmod on this file at startup
+      # and will crash with EPERM if the file is read-only. The file is only read
+      # at startup; runtime changes go via the REST API into local.d/docker.ini.
+      - ./config/livesync.ini:/opt/couchdb/etc/local.ini
+    ports:
+      # Exposes CouchDB on the host for LAN/localhost access.
+      # The tunnel profiles (caddy/tailscale/cloudflare) provide HTTPS on top.
+      # You can remove this port mapping once a tunnel profile is in use.
+      - "${COUCHDB_PORT:-5984}:5984"
+    healthcheck:
+      # Test with admin credentials — ensures both CouchDB is up AND auth is ready.
+      # ${COUCHDB_USER} / ${COUCHDB_PASSWORD} are expanded by Docker Compose here.
+      test:
+        - "CMD-SHELL"
+        - "curl -sf -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/_session | grep -q ok || exit 1"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    networks:
+      - livesync-net
+
+  # ---------------------------------------------------------------------------
+  # One-shot init container — runs couchdb-init.sh after CouchDB is healthy.
+  # Sets single-node cluster, auth requirements, CORS, size limits, creates DB.
+  # Restarts on failure (e.g. race at first boot) but won't re-run if already done.
+  # ---------------------------------------------------------------------------
+  couchdb-init:
+    image: curlimages/curl:latest
+    container_name: livesync-init
+    restart: on-failure
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    environment:
+      COUCHDB_INTERNAL_URL: http://couchdb:5984
+      COUCHDB_USER: ${COUCHDB_USER}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+      COUCHDB_DATABASE: ${COUCHDB_DATABASE:-obsidiannotes}
+    volumes:
+      - ./scripts/couchdb-init.sh:/couchdb-init.sh:ro
+    entrypoint: ["sh", "/couchdb-init.sh"]
+    networks:
+      - livesync-net
+
+  # ---------------------------------------------------------------------------
+  # PROFILE: caddy — Caddy reverse proxy with automatic Let's Encrypt TLS
+  # Requirements: public domain, ports 80 + 443 open to internet
+  # Usage: docker compose --profile caddy up -d
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:latest
+    container_name: livesync-caddy
+    profiles: [caddy]
+    restart: unless-stopped
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    environment:
+      COUCHDB_DOMAIN: ${COUCHDB_DOMAIN:?Set COUCHDB_DOMAIN in .env for caddy profile}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env for caddy profile}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - livesync-net
+
+  # ---------------------------------------------------------------------------
+  # PROFILE: tailscale — Tailscale sidecar for mesh VPN + optional Funnel
+  # Requirements: Tailscale account (free), OAuth key, Funnel enabled in ACL
+  # Usage: docker compose --profile tailscale up -d
+  # The CouchDB port mapping above can be removed for tailscale-only deployments.
+  # ---------------------------------------------------------------------------
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: livesync-tailscale
+    profiles: [tailscale]
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-livesync}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?Set TS_AUTHKEY in .env for tailscale profile}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "false"
+      TS_ACCEPT_DNS: "false"
+      TS_EXTRA_ARGS: ""
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./config/ts-serve.json:/config/serve.json:ro
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    # Share CouchDB's network namespace so Tailscale can reach it on localhost
+    network_mode: service:couchdb
+    depends_on:
+      - couchdb
+
+  # ---------------------------------------------------------------------------
+  # PROFILE: cloudflare — cloudflared tunnel daemon
+  # Requirements: Cloudflare account, tunnel token from CF Zero Trust dashboard
+  # Usage: docker compose --profile cloudflare up -d
+  # NOTE: Enable "Use Request API" toggle in the Obsidian LiveSync plugin settings
+  #       to avoid Cloudflare's 100-second proxy timeout (524 errors).
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: livesync-cloudflared
+    profiles: [cloudflare]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN:?Set CF_TUNNEL_TOKEN in .env for cloudflare profile}
+    volumes:
+      - ./config/cloudflared.yml:/etc/cloudflared/config.yml:ro
+    depends_on:
+      couchdb:
+        condition: service_healthy
+    networks:
+      - livesync-net
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  couchdb-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
+  tailscale-state:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  livesync-net:
+    driver: bridge

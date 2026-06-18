@@ -1,0 +1,31 @@
+# cloudflared tunnel configuration for Self-hosted LiveSync
+# =============================================================================
+#
+# Prerequisites:
+#   1. Create a tunnel in Cloudflare Zero Trust → Networks → Tunnels
+#   2. Copy the tunnel token to CF_TUNNEL_TOKEN in your .env
+#   3. Add a public hostname in the tunnel config:
+#       Hostname : couchdb.yourdomain.com   (or whatever you set COUCHDB_DOMAIN to)
+#       Service  : http://couchdb:5984
+#
+# Known issue: Cloudflare's 100-second proxy timeout can interrupt CouchDB's
+# long-polling replication change feed, causing 524 errors.
+# MITIGATION: In the Obsidian plugin settings, enable:
+#   "Use Request API to avoid inevitable CORS problem"
+# This switches from long-poll to short-poll mode.
+#
+# =============================================================================
+
+tunnel: ${CF_TUNNEL_ID}
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: ${COUCHDB_DOMAIN}
+    service: http://couchdb:5984
+    originRequest:
+      # Increase timeouts for CouchDB replication streams
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+      keepAliveConnections: 100
+      noTLSVerify: false
+  - service: http_status:404

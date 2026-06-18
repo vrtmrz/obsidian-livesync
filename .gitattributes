@@ -1,1 +1,24 @@
+# Always checkout shell scripts with LF line endings (never CRLF)
+*.sh text eol=lf
+
+# Standard text files — auto normalize on checkout
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ini text eol=lf
+*.env text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+
+# Binary files — no line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff2 binary
+*.woff binary
 *.sh text eol=lf
