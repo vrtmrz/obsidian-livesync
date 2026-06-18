@@ -23,7 +23,6 @@ import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
-const DB_NAME = "livesync-webapp";
 
 /**
  * Default settings for the webapp
@@ -65,7 +64,6 @@ class LiveSyncWebApp {
         console.log(`Vault directory: ${this.rootHandle.name}`);
 
         // Create service context and hub
-        const context = new ServiceContext();
         this.serviceHub = new BrowserServiceHub<ServiceContext>();
 
         // Setup API service

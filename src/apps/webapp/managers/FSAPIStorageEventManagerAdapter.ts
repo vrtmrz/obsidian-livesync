@@ -161,7 +161,6 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
 
             this.observer = new FileSystemObserver(async (records: any[]) => {
                 for (const record of records) {
-                    const handle = record.root;
                     const changedHandle = record.changedHandle;
                     const relativePathComponents = record.relativePathComponents;
                     const type = record.type; // "appeared", "disappeared", "modified", "moved", "unknown", "errored"

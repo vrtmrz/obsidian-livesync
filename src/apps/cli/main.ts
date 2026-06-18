@@ -303,7 +303,7 @@ export async function main() {
             console.error(`Error: ${databasePath} is not a directory`);
             process.exit(1);
         }
-    } catch (error) {
+    } catch {
         console.error(`Error: Database directory ${databasePath} does not exist`);
         process.exit(1);
     }
@@ -324,7 +324,7 @@ export async function main() {
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
               ? path.resolve(options.vaultPath)
-              : databasePath!;
+              : databasePath;
 
     // Check if vault directory exists
     try {
@@ -333,7 +333,7 @@ export async function main() {
             console.error(`Error: Vault path ${vaultPath} is not a directory`);
             process.exit(1);
         }
-    } catch (error) {
+    } catch {
         console.error(`Error: Vault directory ${vaultPath} does not exist`);
         process.exit(1);
     }
@@ -415,7 +415,7 @@ export async function main() {
                 // Force disable IndexedDB adapter in CLI environment
                 data.useIndexedDBAdapter = false;
                 return data;
-            } catch (error) {
+            } catch {
                 if (options.verbose) {
                     console.error(`[Settings] File not found, using defaults`);
                 }
@@ -434,7 +434,7 @@ export async function main() {
         () => [], // No add-ons
         (core) => {
             // Register P2P replicator feature.
-            const _replicator = useP2PReplicatorFeature(core);
+            useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));

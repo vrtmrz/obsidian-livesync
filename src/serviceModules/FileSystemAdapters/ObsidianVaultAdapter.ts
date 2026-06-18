@@ -38,20 +38,20 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
     }
 
     async delete(file: TFile | TFolder, force = false): Promise<void> {
-        // if ("trashFile" in this.app.fileManager) {
-        //     // eslint-disable-next-line obsidianmd/no-unsupported-api
-        //     return await this.app.fileManager.trashFile(file);
-        // }
-        //TODO: need fix
+        if ("trashFile" in this.app.fileManager) {
+            // eslint-disable-next-line obsidianmd/no-unsupported-api
+            return await this.app.fileManager.trashFile(file);
+        }
+        // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Fallback for older versions of Obsidian without trashFile support
         return await this.app.vault.delete(file, force);
     }
 
     async trash(file: TFile | TFolder, force = false): Promise<void> {
-        // if ("trashFile" in this.app.fileManager) {
-        //     // eslint-disable-next-line obsidianmd/no-unsupported-api
-        //     return await this.app.fileManager.trashFile(file);
-        // }
-        //TODO: need fix
+        if ("trashFile" in this.app.fileManager) {
+            // eslint-disable-next-line obsidianmd/no-unsupported-api
+            return await this.app.fileManager.trashFile(file);
+        }
+        // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Fallback for older versions of Obsidian without trashFile support
         return await this.app.vault.trash(file, force);
     }
 

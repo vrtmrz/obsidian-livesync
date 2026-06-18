@@ -99,9 +99,11 @@ export class DocumentHistoryModal extends Modal {
         if (!file && id) {
             this.file = this.services.path.id2path(id);
         }
+        // eslint-disable-next-line obsidianmd/no-unsupported-api -- loadLocalStorage is supported in Obsidian 1.7.2+
         if (this.app.loadLocalStorage("ols-history-highlightdiff") == "1") {
             this.showDiff = true;
         }
+        // eslint-disable-next-line obsidianmd/no-unsupported-api -- loadLocalStorage is supported in Obsidian 1.7.2+
         if (this.app.loadLocalStorage("ols-history-diffonly") == "1") {
             this.diffOnly = true;
         }
@@ -552,6 +554,7 @@ export class DocumentHistoryModal extends Modal {
                 }
                 checkbox.addEventListener("input", (evt: Event) => {
                     this.showDiff = checkbox.checked;
+                    // eslint-disable-next-line obsidianmd/no-unsupported-api -- saveLocalStorage is supported in Obsidian 1.7.2+
                     this.app.saveLocalStorage("ols-history-highlightdiff", this.showDiff == true ? "1" : null);
                     this.updateDiffNavVisibility();
                     void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
@@ -567,6 +570,7 @@ export class DocumentHistoryModal extends Modal {
             }
             checkbox.addEventListener("input", (evt: Event) => {
                 this.diffOnly = checkbox.checked;
+                // eslint-disable-next-line obsidianmd/no-unsupported-api -- saveLocalStorage is supported in Obsidian 1.7.2+
                 this.app.saveLocalStorage("ols-history-diffonly", this.diffOnly == true ? "1" : null);
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
             });

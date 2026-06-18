@@ -738,7 +738,7 @@ Success: ${successCount}, Errored: ${errored}`;
         });
         // Probably no need to wait, but just in case.
         let timeout = 2 * 60 * 1000; // 2 minutes
-        do {
+        for (;;) {
             const status = await remote.db.info();
             if ("compact_running" in status && status?.compact_running) {
                 this._notice("Compaction in progress on remote database...", "gc-compact");
@@ -751,7 +751,7 @@ Success: ${successCount}, Errored: ${errored}`;
             } else {
                 break;
             }
-        } while (true);
+        }
         if (compactResult && "ok" in compactResult) {
             this._notice("Compaction on remote database completed successfully.", "gc-compact");
         } else {

@@ -11,7 +11,6 @@ import { eventHub } from "@lib/hub/hub";
 
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { LOG_LEVEL_NOTICE, Logger } from "@lib/common/logger";
-import { storeP2PStatusLine } from "./CommandsShim";
 import {
     EVENT_P2P_PEER_SHOW_EXTRA_MENU,
     type PeerStatus,
@@ -87,7 +86,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         this._liveSyncReplicator = replicator;
         this.p2pLogCollector = p2pLogCollector;
         p2pLogCollector.p2pReplicationLine.onChanged((line) => {
-            storeP2PStatusLine.set(line.value);
+            p2pStatusLine.value = line.value;
         });
     }
 
