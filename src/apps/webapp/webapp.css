@@ -254,7 +254,7 @@ body.livesync-log-visible {
     flex: 1;
     overflow: auto;
     padding: 8px 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 12px;
     line-height: 1.4;
     color: #e2e8f0;
