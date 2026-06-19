@@ -1,20 +1,20 @@
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "./lib/src/common/types";
-import type { Confirm } from "./lib/src/interfaces/Confirm";
-import type { DatabaseFileAccess } from "./lib/src/interfaces/DatabaseFileAccess";
-import type { Rebuilder } from "./lib/src/interfaces/DatabaseRebuilder";
-import type { IFileHandler } from "./lib/src/interfaces/FileHandler";
-import type { StorageAccess } from "./lib/src/interfaces/StorageAccess";
-import type { LiveSyncLocalDBEnv } from "./lib/src/pouchdb/LiveSyncLocalDB";
-import type { LiveSyncCouchDBReplicatorEnv } from "./lib/src/replication/couchdb/LiveSyncReplicator";
-import type { CheckPointInfo } from "./lib/src/replication/journal/JournalSyncTypes";
-import type { LiveSyncJournalReplicatorEnv } from "./lib/src/replication/journal/LiveSyncJournalReplicatorEnv";
-import type { LiveSyncReplicatorEnv } from "./lib/src/replication/LiveSyncAbstractReplicator";
-import type { ServiceContext } from "./lib/src/services/base/ServiceBase";
-import type { InjectableServiceHub } from "./lib/src/services/InjectableServices";
+import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@lib/common/types";
+import type { Confirm } from "@lib/interfaces/Confirm";
+import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
+import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
+import type { IFileHandler } from "@lib/interfaces/FileHandler";
+import type { StorageAccess } from "@lib/interfaces/StorageAccess";
+import type { LiveSyncLocalDBEnv } from "@lib/pouchdb/LiveSyncLocalDB";
+import type { LiveSyncCouchDBReplicatorEnv } from "@lib/replication/couchdb/LiveSyncReplicator";
+import type { CheckPointInfo } from "@lib/replication/journal/JournalSyncTypes";
+import type { LiveSyncJournalReplicatorEnv } from "@lib/replication/journal/LiveSyncJournalReplicatorEnv";
+import type { LiveSyncReplicatorEnv } from "@lib/replication/LiveSyncAbstractReplicator";
+import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices";
 import { AbstractModule } from "./modules/AbstractModule";
-import type { ServiceModules } from "./lib/src/interfaces/ServiceModule";
+import type { ServiceModules } from "@lib/interfaces/ServiceModule";
 import type { Constructor } from "@lib/common/utils.type";
 export declare class LiveSyncBaseCore<T extends ServiceContext = ServiceContext, TCommands extends IMinimumLiveSyncCommands = IMinimumLiveSyncCommands> implements LiveSyncLocalDBEnv, LiveSyncReplicatorEnv, LiveSyncJournalReplicatorEnv, LiveSyncCouchDBReplicatorEnv, HasSettings<ObsidianLiveSyncSettings> {
     addOns: TCommands[];
@@ -82,7 +82,7 @@ export declare class LiveSyncBaseCore<T extends ServiceContext = ServiceContext,
     /**
      * @obsolete Use services.database.localDatabase instead. The local database instance.
      */
-    get localDatabase(): import("./lib/src/pouchdb/LiveSyncLocalDB").LiveSyncLocalDB;
+    get localDatabase(): import("@lib/pouchdb/LiveSyncLocalDB").LiveSyncLocalDB;
     /**
      * @obsolete Use services.database.localDatabase instead. Get the PouchDB database instance. Note that this is not the same as the local database instance, which is a wrapper around the PouchDB database.
      * @returns The PouchDB database instance.
@@ -95,7 +95,7 @@ export declare class LiveSyncBaseCore<T extends ServiceContext = ServiceContext,
     /**
      * @obsolete Use services.replication.getActiveReplicator instead. Get the active replicator instance. Note that there can be multiple replicators, but only one can be active at a time.
      */
-    get replicator(): import("./lib/src/replication/LiveSyncAbstractReplicator").LiveSyncAbstractReplicator;
+    get replicator(): import("@lib/replication/LiveSyncAbstractReplicator").LiveSyncAbstractReplicator;
     /**
      * @obsolete Use services.keyValueDB.kvDB instead. Get the key-value database instance. This is used for storing large data that cannot be stored in the simple store, such as file metadata, etc.
      */
