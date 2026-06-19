@@ -1,4 +1,4 @@
-import { type FilePath } from "./lib/src/common/types.ts";
+import { type FilePath } from "@lib/common/types.ts";
 
 export {
     addIcon,

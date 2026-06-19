@@ -1,5 +1,5 @@
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
-import { setGetLanguage } from "./lib/src/common/coreEnvFunctions.ts";
+import { setGetLanguage } from "@lib/common/coreEnvFunctions.ts";
 setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
