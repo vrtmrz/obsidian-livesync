@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
 import { type PluginManifest, TFile } from "@/deps.ts";
 import { type DatabaseEntry, type EntryBody, type FilePath } from "@lib/common/types.ts";
 export type { CacheData, FileEventItem } from "@lib/common/types.ts";

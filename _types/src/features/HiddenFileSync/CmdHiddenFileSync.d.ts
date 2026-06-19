@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
 import { type LoadedEntry, type FilePathWithPrefix, type FilePath, type DocumentID, type UXFileInfo, type UXStat, type MetaEntry, type UXDataWriteOptions } from "@lib/common/types.ts";
 import { type InternalFileInfo } from "@/common/types.ts";
 import { type CustomRegExp } from "@lib/common/utils.ts";

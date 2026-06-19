@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
 import type { MILESTONE_DOCID, NODEINFO_DOCID } from "./db.const";
 import type { AnyEntry, ChunkVersionRange, DatabaseEntry, EntryChunkPack, EntryLeaf, EntryTypes, EntryVersionInfo, InternalFileEntry, LoadedEntry, MetaEntry, NewEntry, NoteEntry, PlainEntry } from "./db.type";
 import type { TweakValues } from "./tweak.definition";

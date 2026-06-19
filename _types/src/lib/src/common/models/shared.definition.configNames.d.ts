@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
 import type { ObsidianLiveSyncSettings } from "./setting.type";
 export declare const LEVEL_ADVANCED = "ADVANCED";
 export declare const LEVEL_POWER_USER = "POWER_USER";

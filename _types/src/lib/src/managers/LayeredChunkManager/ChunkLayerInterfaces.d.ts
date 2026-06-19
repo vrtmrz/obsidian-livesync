@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
 import type { DocumentID, EntryLeaf } from "@lib/common/types.ts";
 import type { ChunkReadOptions, ChunkWriteOptions, WriteResult } from "./types.ts";
 /**
