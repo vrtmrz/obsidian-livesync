@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { WorkspaceLeaf } from "@/deps.ts";
 import type ObsidianLiveSyncPlugin from "@/main.ts";

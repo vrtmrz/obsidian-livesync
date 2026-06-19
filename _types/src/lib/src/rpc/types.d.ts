@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export declare const RPC_VERSION_MAJOR = 1;
 export declare const RPC_VERSION_MINOR = 0;

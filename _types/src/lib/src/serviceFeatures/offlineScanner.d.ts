@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type FilePathWithPrefix, type FilePathWithPrefixLC, type MetaEntry, type UXFileInfoStub, type ObsidianLiveSyncSettings, type LOG_LEVEL } from "@lib/common/types";
 import { type LogFunction } from "@lib/services/lib/logUtils";

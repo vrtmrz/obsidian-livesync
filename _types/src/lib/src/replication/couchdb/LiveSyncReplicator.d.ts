@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type EntryDoc, type RemoteDBSettings, type EntryLeaf, type TweakValues, type SyncParameters, type DatabaseEntry, type NodeData } from "@lib/common/types.ts";
 import { LiveSyncAbstractReplicator, type LiveSyncReplicatorEnv, type RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";

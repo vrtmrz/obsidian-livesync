@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { DocumentID, EntryHasPath, FilePathWithPrefix, FilePath, AnyEntry, UXFileInfo, UXFileInfoStub } from "@lib/common/types";
 import type { IPathService, ISettingService } from "./IService";

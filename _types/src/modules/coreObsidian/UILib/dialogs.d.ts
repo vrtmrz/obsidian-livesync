@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { ButtonComponent } from "@/deps.ts";
 import { App, FuzzySuggestModal, Modal, Plugin, Component } from "@/deps.ts";

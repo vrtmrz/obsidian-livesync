@@ -6,7 +6,7 @@ function processFile(filePath: string, origin: string, repoHash: string): string
     let updated = false;
 
     // 0. insert a commit hash comment at the top of the file
-    sourceFile.insertText(0, `// REPO: ${origin}  Commit hash: ${repoHash}\n`);
+    sourceFile.insertText(0, `// @ts-nocheck\n// REPO: ${origin}  Commit hash: ${repoHash}\n`);
     updated = true;
 
     // 1. Replacements for Uint8Array<ArrayBuffer> and DataView<ArrayBuffer>

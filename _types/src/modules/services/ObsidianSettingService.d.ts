@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type ObsidianLiveSyncSettings } from "@lib/common/types";
 import { SettingService, type SettingServiceDependencies } from "@lib/services/base/SettingService";

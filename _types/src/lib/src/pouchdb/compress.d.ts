@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import * as fflate from "fflate";
 import type { EntryDoc } from "@lib/common/types";

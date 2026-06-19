@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { ConfigService } from "@lib/services/base/ConfigService";
 import type { IAPIService, ISettingService } from "@lib/services/base/IService";

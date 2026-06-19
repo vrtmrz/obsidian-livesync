@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { EntryTypes } from "./db.const";
 import type { DatabaseEntry, DocumentID } from "./db.type";

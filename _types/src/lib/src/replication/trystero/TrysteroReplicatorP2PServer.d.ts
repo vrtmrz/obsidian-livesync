@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type ActionSender, type Room } from "@trystero-p2p/nostr";
 import { type P2PSyncSetting } from "@lib/common/types";

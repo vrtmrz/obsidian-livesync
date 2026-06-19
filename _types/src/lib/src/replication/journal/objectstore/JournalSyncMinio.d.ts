@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { S3 } from "@aws-sdk/client-s3";
 import { JournalSyncAbstract } from "@lib/replication/journal/JournalSyncAbstract.ts";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";

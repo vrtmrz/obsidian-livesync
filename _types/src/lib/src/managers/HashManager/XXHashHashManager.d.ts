@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { HashManagerCore, type HashManagerCoreOptions } from "./HashManagerCore.ts";
 import type { XXHashAPI } from "xxhash-wasm-102";

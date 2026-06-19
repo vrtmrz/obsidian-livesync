@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { JsonLike } from "./types";
 import type { RpcRoom } from "./RpcRoom";

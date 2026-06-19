@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { Plugin, type App, type PluginManifest } from "./deps";
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";

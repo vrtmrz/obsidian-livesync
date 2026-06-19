@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { SimpleStore } from "@lib/common/utils";
 import type { IKeyValueDBService, IVaultService } from "./IService";

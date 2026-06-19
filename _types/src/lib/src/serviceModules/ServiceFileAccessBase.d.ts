@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { FilePath, FilePathWithPrefix, UXDataWriteOptions, UXFileInfo, UXFileInfoStub, UXFolderInfo, UXStat } from "@lib/common/types";
 import { ServiceModuleBase } from "@lib/serviceModules/ServiceModuleBase";

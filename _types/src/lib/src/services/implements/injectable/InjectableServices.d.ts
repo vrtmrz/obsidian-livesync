@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type ServiceInstances } from "@lib/services/ServiceHub.ts";
 import type { UIService } from "@lib/services/implements/base/UIService.ts";

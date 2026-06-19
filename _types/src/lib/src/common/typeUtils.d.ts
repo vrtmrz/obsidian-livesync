@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { DocumentID, FilePath, FilePathWithPrefix } from "./models/db.type";
 import type { UXFileInfoStub } from "./types";

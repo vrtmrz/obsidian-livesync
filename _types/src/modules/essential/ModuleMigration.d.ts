@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { LiveSyncCore } from "@/main.ts";

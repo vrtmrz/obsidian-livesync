@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { TFile, Modal, App } from "@/deps.ts";
 import ObsidianLiveSyncPlugin from "@/main.ts";

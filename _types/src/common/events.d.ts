@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { eventHub } from "@lib/hub/hub";
 export declare const EVENT_PLUGIN_LOADED = "plugin-loaded";

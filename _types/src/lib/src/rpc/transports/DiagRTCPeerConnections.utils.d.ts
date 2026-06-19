@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type DiagRTCPeerConnectionInternalStateHistory, type DiagRTCFailureDiagnosis, type DiagRTCPeerConnectionMetrics, type DiagRTCFailureStats } from "./DiagRTCPeerConnections.types";
 /**

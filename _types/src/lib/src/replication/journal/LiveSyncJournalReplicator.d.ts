@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type RemoteDBSettings, type EntryLeaf, type ChunkVersionRange, type TweakValues, type NodeData } from "@lib/common/types.ts";
 import { JournalSyncMinio } from "./objectstore/JournalSyncMinio.ts";

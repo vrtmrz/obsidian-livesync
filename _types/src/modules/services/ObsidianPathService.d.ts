@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { PathService } from "@lib/services/base/PathService";

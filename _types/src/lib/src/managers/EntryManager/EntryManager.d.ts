@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type FilePathWithPrefix, type FilePath, type LoadedEntry, type EntryDoc, type SavingEntry, type MetaEntry } from "@lib/common/types";
 import type { ChunkManager } from "@lib/managers/ChunkManager";

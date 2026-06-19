@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { PouchDBShim, SomeDocument } from "@lib/pouchdb/ReplicatorShim";
 import type { TrysteroReplicatorP2PServer } from "./TrysteroReplicatorP2PServer";

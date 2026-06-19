@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncTrysteroReplicator } from "./LiveSyncTrysteroReplicator";

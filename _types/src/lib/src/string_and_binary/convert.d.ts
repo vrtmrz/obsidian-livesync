@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToArrayBufferInternalBrowser, readString, writeString, tryConvertBase64ToArrayBuffer } from "octagonal-wheels/binary";
 export { arrayBufferToBase64, base64ToArrayBuffer, base64ToArrayBufferInternalBrowser, readString, writeString, tryConvertBase64ToArrayBuffer, };

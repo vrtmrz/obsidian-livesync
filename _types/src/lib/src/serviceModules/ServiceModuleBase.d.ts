@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { APIService } from "@lib/services/base/APIService";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";

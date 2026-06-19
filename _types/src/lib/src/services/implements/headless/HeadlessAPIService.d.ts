@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";

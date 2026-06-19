@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { FilePathWithPrefix, ObsidianLiveSyncSettings } from "@lib/common/types";
 export declare const EVENT_LAYOUT_READY = "layout-ready";

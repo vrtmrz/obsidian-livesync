@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-http-handler";
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";

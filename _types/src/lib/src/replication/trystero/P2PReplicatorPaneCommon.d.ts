@@ -1,3 +1,4 @@
+// @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
 export declare const EVENT_P2P_PEER_SHOW_EXTRA_MENU = "p2p-peer-show-extra-menu";
