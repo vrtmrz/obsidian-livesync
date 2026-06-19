@@ -1,7 +1,7 @@
 import { getLanguage } from "@/deps";
 import { createServiceFeature } from "@lib/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta";
-import { $msg, setLang } from "@lib/common/i18n";
+import { $msg, __onMissingTranslation, setLang } from "@lib/common/i18n";
 
 function tryGetLanguage() {
     try {
@@ -15,6 +15,8 @@ function tryGetLanguage() {
 }
 
 export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API } }) => {
+    // Clear missing translation handler to avoid unnecessary warnings.
+    __onMissingTranslation(() => {});
     let isChanged = false;
     const settings = setting.currentSettings();
     if (settings.displayLanguage == "") {
