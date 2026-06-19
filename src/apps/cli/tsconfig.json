@@ -24,7 +24,7 @@
         /* Path mapping */
         "paths": {
             "@/*": ["../../*"],
-            "@lib/*": ["../../lib/src/*"]
+            "@lib/*": ["../../lib/src/*", "../../../_types/src/lib/src/*"]
         }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx"],

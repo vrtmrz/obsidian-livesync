@@ -47,7 +47,7 @@ export interface CLIOptions {
 export interface CLICommandContext {
     databasePath: string;
     vaultPath: string;
-    core: LiveSyncBaseCore<ServiceContext, any>;
+    core: LiveSyncBaseCore<ServiceContext, never>;
     settingsPath: string;
     originalSyncSettings: Pick<
         ObsidianLiveSyncSettings,

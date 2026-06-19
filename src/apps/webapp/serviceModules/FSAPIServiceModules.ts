@@ -22,7 +22,7 @@ import { ServiceFileHandler } from "@/serviceModules/FileHandler";
  */
 export function initialiseServiceModulesFSAPI(
     rootHandle: FileSystemDirectoryHandle,
-    core: LiveSyncBaseCore<ServiceContext, any>,
+    core: LiveSyncBaseCore<ServiceContext, never>,
     services: InjectableServiceHub<ServiceContext>
 ): ServiceModules {
     const storageAccessManager = new StorageAccessManager();
@@ -67,7 +67,7 @@ export function initialiseServiceModulesFSAPI(
     });
 
     // File handler (platform-independent)
-    const fileHandler = new (ServiceFileHandler as any)({
+    const fileHandler = new ServiceFileHandler({
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,

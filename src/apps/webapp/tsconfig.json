@@ -24,9 +24,9 @@
         // "baseUrl": ".",
         "paths": {
             "@/*": ["../../*"],
-            "@lib/*": ["../../lib/src/*"]
+            "@lib/*": ["../../lib/src/*", "../../../_types/src/lib/src/*"]
         }
     },
-    "include": ["*.ts", "**/*.ts", "**/*.tsx"],
+    "include": ["*.ts", "**/*.ts", "**/*.tsx", "**/*.svelte"],
     "exclude": ["node_modules", "dist"]
 }

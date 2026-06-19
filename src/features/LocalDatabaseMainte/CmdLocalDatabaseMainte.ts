@@ -17,6 +17,7 @@ import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
 import { delay } from "@lib/common/utils";
+import { isNotFoundError } from "@lib/common/utils.doc";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
@@ -394,7 +395,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                     }
                 }
             } catch (ex) {
-                if ((ex as any)?.status == 404) {
+                if (isNotFoundError(ex)) {
                     this._log(`No revisions found for ${doc._id}`, LOG_LEVEL_VERBOSE);
                 } else {
                     this._log(`Error finding revisions for ${doc._id}`);
@@ -474,14 +475,14 @@ Are you ready to delete unused chunks?`;
             include_docs: true,
         });
         for (const chunk of deleteChunks.rows) {
-            if ((chunk as any)?.value?.deleted) {
+            if ((chunk as { value?: { deleted?: boolean } })?.value?.deleted) {
                 chunkSet.delete(chunk.key as DocumentID);
             }
         }
         const deleteDocs = deleteChunks.rows
             .filter((e) => "doc" in e)
             .map((e) => ({
-                ...(e as any).doc!,
+                ...(e as { doc?: EntryLeaf }).doc!,
                 _deleted: true,
             }));
 
@@ -490,7 +491,7 @@ Are you ready to delete unused chunks?`;
         let successCount = 0;
         let errored = 0;
         for (const batch of deleteChunkBatch) {
-            const results = await this.database.bulkDocs(batch as EntryLeaf[]);
+            const results = await this.database.bulkDocs(batch);
             for (const result of results) {
                 if ("ok" in result) {
                     chunkSet.delete(result.id as DocumentID);
@@ -698,7 +699,7 @@ Success: ${successCount}, Errored: ${errored}`;
             sharedChunkCount: 0,
             uniqueChunkSize: orphanChunkSize,
             sharedChunkSize: 0,
-        } as any);
+        } as const);
 
         const csvSrc = result.map((e) => {
             return [
@@ -737,7 +738,7 @@ Success: ${successCount}, Errored: ${errored}`;
         });
         // Probably no need to wait, but just in case.
         let timeout = 2 * 60 * 1000; // 2 minutes
-        do {
+        for (;;) {
             const status = await remote.db.info();
             if ("compact_running" in status && status?.compact_running) {
                 this._notice("Compaction in progress on remote database...", "gc-compact");
@@ -750,7 +751,7 @@ Success: ${successCount}, Errored: ${errored}`;
             } else {
                 break;
             }
-        } while (true);
+        }
         if (compactResult && "ok" in compactResult) {
             this._notice("Compaction on remote database completed successfully.", "gc-compact");
         } else {

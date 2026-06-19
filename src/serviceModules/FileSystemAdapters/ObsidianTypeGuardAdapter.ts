@@ -6,11 +6,11 @@ import { TFile, TFolder } from "obsidian";
  */
 
 export class ObsidianTypeGuardAdapter implements ITypeGuardAdapter<TFile, TFolder> {
-    isFile(file: any): file is TFile {
+    isFile(file: unknown): file is TFile {
         return file instanceof TFile;
     }
 
-    isFolder(item: any): item is TFolder {
+    isFolder(item: unknown): item is TFolder {
         return item instanceof TFolder;
     }
 }

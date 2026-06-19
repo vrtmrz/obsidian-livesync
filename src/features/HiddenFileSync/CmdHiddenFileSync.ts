@@ -1225,7 +1225,7 @@ Offline Changed files: ${files.length}`;
         this.queuedNotificationFiles.clear();
         try {
             //@ts-ignore
-            const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
+            const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
             //@ts-ignore
             const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
             const enabledPluginManifests = manifests.filter((e) => enabledPlugins.has(e.id));

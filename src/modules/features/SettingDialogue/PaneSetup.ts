@@ -14,6 +14,7 @@ import { visibleOnly } from "./SettingPane.ts";
 import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -145,8 +146,9 @@ export function paneSetup(
             let remoteTroubleShootMDSrc = "";
             try {
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
-            } catch (ex: any) {
-                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${ex.toString()}`;
+            } catch (ex) {
+                const err = LiveSyncError.fromError(ex);
+                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${err.toString()}`;
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                 /\((.*?(.png)|(.jpg))\)/g,
@@ -158,7 +160,7 @@ export function paneSetup(
                 `<a class='sls-troubleshoot-anchor'></a> [${$msg("obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting")}](${topPath}) [${$msg("obsidianLiveSyncSettingTab.linkPageTop")}](${filename})\n\n${remoteTroubleShootMD}`,
                 troubleShootEl,
                 `${rawRepoURI}`,
-                this.plugin
+                this.lifetimeComponent
             );
             // Menu
             troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({

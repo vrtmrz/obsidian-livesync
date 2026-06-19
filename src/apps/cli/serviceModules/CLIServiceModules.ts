@@ -22,7 +22,7 @@ import type { IgnoreRules } from "./IgnoreRules";
  */
 export function initialiseServiceModulesCLI(
     basePath: string,
-    core: LiveSyncBaseCore<ServiceContext, any>,
+    core: LiveSyncBaseCore<ServiceContext, never>,
     services: InjectableServiceHub<ServiceContext>,
     ignoreRules?: IgnoreRules,
     watchEnabled: boolean = false
@@ -81,7 +81,7 @@ export function initialiseServiceModulesCLI(
     });
 
     // File handler (platform-independent)
-    const fileHandler = new (ServiceFileHandler as any)({
+    const fileHandler = new ServiceFileHandler({
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,

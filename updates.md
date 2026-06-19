@@ -3,6 +3,24 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.77
+
+19th June, 2026
+
+This update is mostly meaningless for users. But for maintainers, not, I hope. I wonder if I were done well in the start, there would be no hassles. It really was a great opportunity.
+
+Also, this update is a very large one, even if we had a lot of time, and we had CI tests, and mostly only fixing the types. Please let me know if you find any issues!
+
+### Improved
+
+- File deletion now respects the user's deletion preferences (by utilising the `FileManager.trashFile` API) on Obsidian v1.7.2 or newer, regardless of the plug-in's internal trashbin setting.
+
+### Miscellaneous
+- Typings of the library are now included
+- Many typing errors have been improved.
+- Import paths have been normalised to be relative to the root and to the `lib/src` directory, to avoid breaking the boundary between the library and the plug-in.
+- Subprojects, such as the CLI and the webapp, are now in the workspace.
+
 ## 0.25.76
 
 15th June, 2026
@@ -124,46 +142,6 @@ Thank you so much to @SeleiXi for implementing these features!
 ### New features
 - Diagnostic P2P connection stats are now available.
   - These stats indicate the number of connection trials, successes, and failures.
-
-## 0.25.68
-
-22nd May, 2026
-
-### Improved
-
-- P2P connections have improved slightly
-  - Upgrade to `trystero` v0.24.0, and fixes event handler assignment. This should fix some edge cases where P2P connections fail to establish or messages are not properly handled.
-  - Weaken terser options to avoid potential issues with minification that could cause runtime errors in some environments.
-
-## ~~0.25.66~~ 0.25.67
-
-20th May, 2026
-
-0.25.66 had a bug that the auto-accept logic for compatible but lossy mismatches was not working as intended.
-
-### New features
-- Implement an auto-accept compatible tweak setting and enhance the mismatch resolution logic.
-
-### Improved
-- Many messages related to tweak mismatch resolution have been updated for clarity.
-
-## 0.25.65
-
-19th May, 2026
-
-### Fixed
-- Fix an issue about resuming from background on iOS (#888).
-- Now Chunk Splitter: `V3: Fine Deduplication` is working fine again (#866).
-  - It has some drawbacks, such as fewer chunks are generated. However, it makes less transfer and storage when the files are modified but not completely changed.
-- Unsynchronised local changes (which means changes that have not been sent) are now correctly preserved as a conflict (Thank you so much for @SeleiXi!).
-- Avoid creating a new revision when the current and conflicted revisions have identical content (Thank you so much for @daichi-629).
-
-### Improved
-- Improved the error verbosity on concurrent processing during the start-up process.
-- Now the `report` includes recent logs (of verbosity `verbose` even settings is not set to `verbose`).
-- Updating logs is now debounced to avoid excessive updates during rapid log generation.
-- Added a `Generate full report for opening the issue with debug info` command to the command palette, which generates a report without opening the settings dialogue.
-
 
 Full notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

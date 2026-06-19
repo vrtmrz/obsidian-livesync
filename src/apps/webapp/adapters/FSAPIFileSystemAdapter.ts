@@ -173,7 +173,11 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
                 }
 
                 // Use AsyncIterator instead of .values() for better compatibility
-                for await (const [name, entry] of (currentHandle as any).entries()) {
+                for await (const [name, entry] of (
+                    currentHandle as unknown as {
+                        entries(): AsyncIterable<[string, FileSystemHandle]>;
+                    }
+                ).entries()) {
                     const entryPath = relativePath ? `${relativePath}/${name}` : name;
 
                     if (entry.kind === "directory") {

@@ -1,7 +1,7 @@
-import type { UXDataWriteOptions } from "@lib/common/types";
+import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
-import { fsPromises as fs, path } from "../node-compat";
+import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 /**
  * Vault adapter implementation for Node.js
@@ -31,6 +31,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         const buffer = await fs.readFile(this.resolvePath(file.path));
         // Same correction as read() — ensure stat.size matches actual byte length.
         file.stat.size = buffer.length;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
         return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     }
 
@@ -69,7 +70,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -92,7 +93,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -117,7 +118,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         await this.delete(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): void {
         // No-op in CLI version (no event system)
         return undefined;
     }

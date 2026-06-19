@@ -2,9 +2,12 @@ import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import path from "node:path";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
-const packageJson = JSON.parse(readFileSync("../../../package.json", "utf-8"));
-const manifestJson = JSON.parse(readFileSync("../../../manifest.json", "utf-8"));
+const repoRoot = path.resolve(__dirname, "../../..");
+const packageJson = JSON.parse(readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
+const manifestJson = JSON.parse(readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
 // https://vite.dev/config/
 const defaultExternal = [
     "obsidian",

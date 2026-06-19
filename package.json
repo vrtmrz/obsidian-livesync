@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "0.25.76",
+    "version": "0.25.77",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -16,12 +16,15 @@
         "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
         "build": "node esbuild.config.mjs production",
+        "build:lib:types": "node generate-types.mjs",
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
         "buildViteOriginal": "npx dotenv-cli -e .env  -- vite build --mode original",
         "buildDev": "node esbuild.config.mjs dev",
         "lint": "eslint --cache --concurrency auto src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
         "tsc-check": "tsc --noEmit",
+        "pretty:importpath": "cd utilsdeno && deno run -A ./normalise-imports.ts",
+        "pretty:json": "prettier --config ./.prettierrc.mjs \"**/*.json\" --write --log-level error",
         "pretty": "npm run prettyNoWrite -- --write --log-level error",
         "prettyCheck": "npm run prettyNoWrite -- --check",
         "prettyNoWrite": "prettier --config ./.prettierrc.mjs \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
@@ -58,7 +61,7 @@
         "test:full": "npm run test:docker-all:start && vitest run --coverage && npm run test:docker-all:stop",
         "test:p2p": "bash test/suitep2p/run-p2p-tests.sh",
         "update-workspaces": "node update-workspaces.mjs",
-        "version": "node version-bump.mjs && node update-workspaces.mjs && git add manifest.json versions.json src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json"
+        "version": "node version-bump.mjs && node update-workspaces.mjs && npm run pretty:json && git add manifest.json versions.json src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json"
     },
     "keywords": [],
     "author": "vorotamoroz",

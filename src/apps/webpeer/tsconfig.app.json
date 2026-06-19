@@ -19,7 +19,7 @@
         "moduleDetection": "force",
         "paths": {
             "@/*": ["../../*"],
-            "@lib/*": ["../../lib/src/*"]
+            "@lib/*": ["../../lib/src/*", "../../../_types/src/lib/src/*"]
         }
     },
     "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"],

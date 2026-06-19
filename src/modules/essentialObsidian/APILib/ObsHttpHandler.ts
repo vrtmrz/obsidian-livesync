@@ -80,7 +80,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             contentType = transformedHeaders["content-type"];
         }
 
-        let transformedBody: any = body;
+        let transformedBody = body;
         if (ArrayBuffer.isView(body)) {
             transformedBody = new Uint8Array(body.buffer).buffer;
         }

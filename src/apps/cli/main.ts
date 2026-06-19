@@ -184,6 +184,7 @@ export function parseArgs(): CLIOptions {
                 break;
             default: {
                 if (!databasePath) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
                     if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
                         command = token as CLICommand;
                         break;
@@ -195,6 +196,7 @@ export function parseArgs(): CLIOptions {
                     databasePath = token;
                     break;
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
                 if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
                     command = token as CLICommand;
                     break;
@@ -232,15 +234,15 @@ async function createDefaultSettingsFile(options: CLIOptions) {
     const targetPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : options.commandArgs[0]
-            ? path.resolve(options.commandArgs[0])
-            : path.resolve(process.cwd(), "data.json");
+          ? path.resolve(options.commandArgs[0])
+          : path.resolve(process.cwd(), "data.json");
 
     if (!options.force) {
         try {
             await fs.stat(targetPath);
             throw new Error(`Settings file already exists: ${targetPath} (use --force to overwrite)`);
-        } catch (ex: any) {
-            if (!(ex && ex?.code === "ENOENT")) {
+        } catch (ex) {
+            if (!(ex && (ex as { code?: string })?.code === "ENOENT")) {
                 throw ex;
             }
         }
@@ -303,7 +305,7 @@ export async function main() {
             console.error(`Error: ${databasePath} is not a directory`);
             process.exit(1);
         }
-    } catch (error) {
+    } catch {
         console.error(`Error: Database directory ${databasePath} does not exist`);
         process.exit(1);
     }
@@ -323,8 +325,8 @@ export async function main() {
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
-                ? path.resolve(options.vaultPath)
-                : databasePath!;
+              ? path.resolve(options.vaultPath)
+              : databasePath;
 
     // Check if vault directory exists
     try {
@@ -333,7 +335,7 @@ export async function main() {
             console.error(`Error: Vault path ${vaultPath} is not a directory`);
             process.exit(1);
         }
-    } catch (error) {
+    } catch {
         console.error(`Error: Vault directory ${vaultPath} does not exist`);
         process.exit(1);
     }
@@ -415,7 +417,7 @@ export async function main() {
                 // Force disable IndexedDB adapter in CLI environment
                 data.useIndexedDBAdapter = false;
                 return data;
-            } catch (error) {
+            } catch {
                 if (options.verbose) {
                     console.error(`[Settings] File not found, using defaults`);
                 }
@@ -427,14 +429,14 @@ export async function main() {
     // Create LiveSync core
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
-        (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
+        (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
             return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
         (core) => [],
         () => [], // No add-ons
         (core) => {
             // Register P2P replicator feature.
-            const _replicator = useP2PReplicatorFeature(core);
+            useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -458,8 +460,8 @@ export async function main() {
                     if (rules.shouldIgnore(targetPath)) {
                         return false;
                     }
-                    // undefined = pass through to next handler in chain
-                    return undefined;
+                    // At least this handler think it is a target file, but other handlers may still veto it.
+                    return true;
                 }, 0);
             }
         }
@@ -557,7 +559,7 @@ export async function main() {
 
         if (options.command === "daemon" && result) {
             // Keep the process running
-            await new Promise(() => { });
+            await new Promise(() => {});
         } else {
             await core.services.control.onUnload();
         }

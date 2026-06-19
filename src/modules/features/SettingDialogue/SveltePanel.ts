@@ -5,7 +5,7 @@ import { type Writable, writable, get } from "svelte/store";
  * Props passed to Svelte panels, containing a writable port
  * to communicate with the panel
  */
-export type SveltePanelProps<T = any> = {
+export type SveltePanelProps<T = unknown> = {
     port: Writable<T | undefined>;
 };
 
@@ -13,7 +13,7 @@ export type SveltePanelProps<T = any> = {
  * A class to manage a Svelte panel within Obsidian
  * Especially useful for settings panels
  */
-export class SveltePanel<T = any> {
+export class SveltePanel<T = unknown> {
     private _mountedComponent: ReturnType<typeof mount>;
     private _componentValue = writable<T | undefined>(undefined);
     /**

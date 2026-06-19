@@ -86,8 +86,6 @@ export default defineConfig([
             parserOptions: {
                 parser: tsParser,
                 extraFileExtensions: [".svelte"],
-                project: "./tsconfig.json",
-                rootDir: "./",
             },
         },
         rules: {
@@ -96,6 +94,7 @@ export default defineConfig([
             // it may improve in the future with some options as like   ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],]
             "no-unused-vars": "off",
             ...obsidianRules,
+            "obsidianmd/no-plugin-as-component": "off",
             ...ImportAliasRules("."),
         },
     },

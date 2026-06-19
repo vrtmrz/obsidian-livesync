@@ -10,8 +10,7 @@ import {
 import { eventHub } from "@lib/hub/hub";
 
 import type { Confirm } from "@lib/interfaces/Confirm";
-import { LOG_LEVEL_NOTICE, Logger } from "@lib/common/logger";
-import { storeP2PStatusLine } from "./CommandsShim";
+import { LOG_LEVEL_NOTICE, Logger, type LOG_LEVEL } from "@lib/common/logger";
 import {
     EVENT_P2P_PEER_SHOW_EXTRA_MENU,
     type PeerStatus,
@@ -66,7 +65,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         }
         return this.db;
     }
-    _simpleStore!: SimpleStore<any>;
+    _simpleStore!: SimpleStore<unknown>;
 
     async closeDB() {
         if (this.db) {
@@ -83,11 +82,11 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
             replicator,
             p2pLogCollector,
             storeP2PStatusLine: p2pStatusLine,
-        } = useP2PReplicator({ services: this.services } as any);
+        } = useP2PReplicator({ services: this.services } as unknown as Parameters<typeof useP2PReplicator>[0]);
         this._liveSyncReplicator = replicator;
         this.p2pLogCollector = p2pLogCollector;
         p2pLogCollector.p2pReplicationLine.onChanged((line) => {
-            storeP2PStatusLine.set(line.value);
+            p2pStatusLine.value = line.value;
         });
     }
 
@@ -98,15 +97,15 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
             () => "p2p-livesync-web-peer"
         );
-        const repStore = SimpleStoreIDBv2.open<any>("p2p-livesync-web-peer");
+        const repStore = SimpleStoreIDBv2.open<unknown>("p2p-livesync-web-peer");
         this._simpleStore = repStore;
         let _settings = { ...P2P_DEFAULT_SETTINGS, additionalSuffixOfDatabaseName: "" } as ObsidianLiveSyncSettings;
-        this.services.setting.settings = _settings as any;
-        (this.services.setting as InjectableSettingService<any>).saveData.setHandler(async (data) => {
+        this.services.setting.settings = _settings;
+        (this.services.setting as InjectableSettingService<ServiceContext>).saveData.setHandler(async (data) => {
             await repStore.set("settings", data);
             eventHub.emitEvent(EVENT_SETTING_SAVED, data);
         });
-        (this.services.setting as InjectableSettingService<any>).loadData.setHandler(async () => {
+        (this.services.setting as InjectableSettingService<ServiceContext>).loadData.setHandler(async () => {
             const settings = { ..._settings, ...((await repStore.get("settings")) as ObsidianLiveSyncSettings) };
             return settings;
         });
@@ -148,7 +147,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         return this;
     }
 
-    _log(msg: any, level?: any): void {
+    _log(msg: unknown, level?: LOG_LEVEL): void {
         Logger(msg, level);
     }
     _notice(msg: string, key?: string): void {
@@ -157,7 +156,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
     getSettings(): P2PSyncSetting {
         return this.settings;
     }
-    simpleStore(): SimpleStore<any> {
+    simpleStore(): SimpleStore<unknown> {
         return this._simpleStore;
     }
     handleReplicatedDocuments(_docs: EntryDoc[]): Promise<boolean> {
@@ -281,7 +280,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
                 }
                 await this.services.setting.applyExternalSettings(remoteConfig, true);
                 if (yn !== DROP) {
-                    await this.plugin.core.services.appLifecycle.scheduleRestart();
+                    this.plugin.core.services.appLifecycle.scheduleRestart();
                 }
             } else {
                 Logger(`Cancelled\nRemote config for ${peer.name} is not applied`, LOG_LEVEL_NOTICE);

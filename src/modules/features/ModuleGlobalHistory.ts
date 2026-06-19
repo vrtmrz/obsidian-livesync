@@ -1,5 +1,6 @@
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { VIEW_TYPE_GLOBAL_HISTORY, GlobalHistoryView } from "./GlobalHistory/GlobalHistoryView.ts";
+import type { WorkspaceLeaf } from "@/deps.ts";
 
 export class ModuleObsidianGlobalHistory extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -11,7 +12,7 @@ export class ModuleObsidianGlobalHistory extends AbstractObsidianModule {
             },
         });
 
-        this.registerView(VIEW_TYPE_GLOBAL_HISTORY, (leaf) => new GlobalHistoryView(leaf, this.plugin));
+        this.registerView(VIEW_TYPE_GLOBAL_HISTORY, (leaf: WorkspaceLeaf) => new GlobalHistoryView(leaf, this.plugin));
 
         return Promise.resolve(true);
     }

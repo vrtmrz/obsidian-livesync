@@ -13,18 +13,29 @@ import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
-import { fsPromises as fs, path, type Stats } from "../node-compat";
+import { fsPromises as fs, path, type Stats } from "@/apps/cli/node-compat";
 
 /**
  * CLI-specific type guard adapter
  */
 class CLITypeGuardAdapter implements IStorageEventTypeGuardAdapter<NodeFile, NodeFolder> {
-    isFile(file: any): file is NodeFile {
-        return file && typeof file === "object" && "path" in file && "stat" in file && !file.isFolder;
+    isFile(file: unknown): file is NodeFile {
+        return !!(
+            file &&
+            typeof file === "object" &&
+            "path" in file &&
+            "stat" in file &&
+            !(file as { isFolder?: boolean }).isFolder
+        );
     }
 
-    isFolder(item: any): item is NodeFolder {
-        return item && typeof item === "object" && "path" in item && item.isFolder === true;
+    isFolder(item: unknown): item is NodeFolder {
+        return !!(
+            item &&
+            typeof item === "object" &&
+            "path" in item &&
+            (item as { isFolder?: boolean }).isFolder === true
+        );
     }
 }
 
@@ -99,7 +110,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         private basePath: string,
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false
-    ) { }
+    ) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
         return {

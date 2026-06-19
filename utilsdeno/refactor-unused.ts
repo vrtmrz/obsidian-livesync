@@ -38,7 +38,8 @@ for (const sourceFile of project.getSourceFiles()) {
     const posixFilePath = toPosixPath(filePath);
 
     if (!posixFilePath.startsWith(posixSrc)) continue;
-    if (posixFilePath.includes("/_test/") || posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts")) continue;
+    if (posixFilePath.includes("/_test/") || posixFilePath.endsWith(".spec.ts") || posixFilePath.endsWith(".test.ts"))
+        continue;
 
     let fileModified = false;
 
@@ -51,10 +52,11 @@ for (const sourceFile of project.getSourceFiles()) {
         if (varDec) {
             const varName = varDec.getName();
             // Count references within the catch clause itself
-            const count = catchClause.getDescendantsOfKind(SyntaxKind.Identifier)
-                .filter((id) => id.getText() === varName)
-                .length;
-            if (count === 1) { // Only the declaration itself
+            const count = catchClause
+                .getDescendantsOfKind(SyntaxKind.Identifier)
+                .filter((id) => id.getText() === varName).length;
+            if (count === 1) {
+                // Only the declaration itself
                 catchVarsToRemove.push(varDec);
             }
         }
@@ -86,10 +88,11 @@ for (const sourceFile of project.getSourceFiles()) {
         for (const namedImport of namedImports) {
             const importName = namedImport.getAliasNode()?.getText() ?? namedImport.getName();
             // Count references in the entire file
-            const count = sourceFile.getDescendantsOfKind(SyntaxKind.Identifier)
-                .filter((id) => id.getText() === importName)
-                .length;
-            if (count === 1) { // Only the import specifier itself
+            const count = sourceFile
+                .getDescendantsOfKind(SyntaxKind.Identifier)
+                .filter((id) => id.getText() === importName).length;
+            if (count === 1) {
+                // Only the import specifier itself
                 importsToRemove.push({ namedImport, impDecl });
             }
         }

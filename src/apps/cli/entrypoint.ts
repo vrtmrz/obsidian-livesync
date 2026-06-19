@@ -2,11 +2,16 @@
 // eslint-disable -- This is the entry point for the CLI application.
 import * as polyfill from "werift";
 import { main } from "./main";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Polyfill
 const rtcPolyfillCtor = (polyfill as any).RTCPeerConnection;
-if (typeof (globalThis as any).RTCPeerConnection === "undefined" && typeof rtcPolyfillCtor === "function") {
+if (
+    typeof (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection === "undefined" &&
+    typeof rtcPolyfillCtor === "function"
+) {
     // Fill only the standard WebRTC global in Node CLI runtime.
-    (globalThis as any).RTCPeerConnection = rtcPolyfillCtor;
+    (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection = rtcPolyfillCtor;
 }
 
 main().catch((error) => {

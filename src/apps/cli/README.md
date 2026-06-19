@@ -1,17 +1,17 @@
 # Self-hosted LiveSync CLI
-Command-line version of Self-hosted LiveSync plugin for syncing vaults without Obsidian.
+Command-line version of Self-hosted LiveSync plug-in for syncing vaults without Obsidian.
 
 ## Features
 
 - ✅ Sync Obsidian vaults using CouchDB without running Obsidian
-- ✅ Compatible with Self-hosted LiveSync plugin settings
+- ✅ Compatible with Self-hosted LiveSync plug-in settings
 - ✅ Supports all core sync features (encryption, conflict resolution, etc.)
 - ✅ Lightweight and headless operation
 - ✅ Cross-platform (Windows, macOS, Linux)
 
 ## Architecture
 
-This CLI version is built using the same core as the Obsidian plugin:
+This CLI version is built using the same core as the Obsidian plug-in:
 
 ```
 CLI Main
@@ -290,7 +290,7 @@ livesync-cli /path/to/your-local-database --settings /path/to/settings.json unlo
 
 ### Configuration
 
-The CLI uses the same settings format as the Obsidian plugin. Create a `.livesync/settings.json` file in your vault directory:
+The CLI uses the same settings format as the Obsidian plug-in. Create a `.livesync/settings.json` file in your vault directory:
 
 ```json
 {

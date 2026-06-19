@@ -17,7 +17,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: system-ui, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     display: flex;
@@ -254,7 +254,7 @@ body.livesync-log-visible {
     flex: 1;
     overflow: auto;
     padding: 8px 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 12px;
     line-height: 1.4;
     color: #e2e8f0;
@@ -397,6 +397,4 @@ popup {
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(15px);
-    border-radius: 10px;
-    z-index: 10;
 }

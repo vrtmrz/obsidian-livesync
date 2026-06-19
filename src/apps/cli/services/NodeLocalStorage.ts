@@ -1,4 +1,5 @@
-import { fs as nodeFs, path as nodePath } from "../node-compat";
+import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
 type LocalStorageShape = {
     getItem(key: string): string | null;
@@ -83,8 +84,12 @@ function createNodeLocalStorageShim(): LocalStorageShape {
 }
 
 export function ensureGlobalNodeLocalStorage() {
-    if (!("localStorage" in globalThis) || typeof (globalThis as any).localStorage?.getItem !== "function") {
-        (globalThis as any).localStorage = createNodeLocalStorageShim();
+    const g = compatGlobal as unknown as Record<string, unknown>;
+    if (
+        !("localStorage" in g) ||
+        typeof (g.localStorage as Record<string, unknown> | undefined)?.getItem !== "function"
+    ) {
+        g.localStorage = createNodeLocalStorageShim();
     }
 }
 

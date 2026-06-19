@@ -97,7 +97,7 @@ export const obsidianRules = {
     // -- Plugin specific overrides
     "obsidianmd/rule-custom-message": "off",
     "obsidianmd/ui/sentence-case": "off",
-    "obsidianmd/no-plugin-as-component": "off",
+    "obsidianmd/no-plugin-as-component": "warn",
 
     // -- Temporary overrides for migration
     "obsidianmd/no-static-styles-assignment": "off",

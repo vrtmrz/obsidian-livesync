@@ -36,10 +36,11 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.services.appLifecycle.performRestart();
     }
 
-    initialCallback: any;
+    initialCallback: (() => void) | undefined = undefined;
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor Tweaking
         const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
         if (typeof save === "function") {

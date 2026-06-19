@@ -72,7 +72,7 @@ import {
 } from "@lib/common/typeUtils.ts";
 export { isInternalFile, getPathFromUXFileInfo, getStoragePathFromUXFileInfo, getDatabasePathFromUXFileInfo };
 
-const memos: { [key: string]: any } = {};
+const memos: { [key: string]: unknown } = {};
 export function memoObject<T>(key: string, obj: T): T {
     memos[key] = obj;
     return memos[key] as T;
@@ -87,7 +87,7 @@ export async function memoIfNotExist<T>(key: string, func: () => T | Promise<T>)
 }
 export function retrieveMemoObject<T>(key: string): T | false {
     if (key in memos) {
-        return memos[key];
+        return memos[key] as T;
     } else {
         return false;
     }
@@ -128,7 +128,7 @@ export const _requestToCouchDBFetch = async (
     username: string,
     password: string,
     path?: string,
-    body?: any,
+    body?: unknown,
     method?: string
 ) => {
     const utf8str = String.fromCharCode.apply(null, [...writeString(`${username}:${password}`)]);
@@ -154,7 +154,7 @@ export const _requestToCouchDB = async (
     credentials: CouchDBCredentials,
     origin: string,
     path?: string,
-    body?: any,
+    body?: unknown,
     method?: string,
     customHeaders?: Record<string, string>
 ) => {
@@ -263,38 +263,37 @@ export function compareFileFreshness(
 const _cached = new Map<
     string,
     {
-        value: any;
-        context: Map<string, any>;
+        value: unknown;
+        context: Map<string, unknown>;
     }
 >();
 
 export type MemoOption = {
     key: string;
     forceUpdate?: boolean;
-    validator?: (context: Map<string, any>) => boolean;
+    validator?: (context: Map<string, unknown>) => boolean;
 };
 
 export function useMemo<T>(
     { key, forceUpdate, validator }: MemoOption,
-    updateFunc: (context: Map<string, any>, prev: T) => T
+    updateFunc: (context: Map<string, unknown>, prev: T) => T
 ): T {
     const cached = _cached.get(key);
-    const context = cached?.context || new Map<string, any>();
+    const context = cached?.context || new Map<string, unknown>();
     if (cached && !forceUpdate && (!validator || (validator && !validator(context)))) {
-        return cached.value;
+        return cached.value as T;
     }
-    const value = updateFunc(context, cached?.value);
+    const value = updateFunc(context, cached?.value as T);
     if (value !== cached?.value) {
         _cached.set(key, { value, context });
     }
     return value;
 }
 
-// const _static = new Map<string, any>();
 const _staticObj = new Map<
     string,
     {
-        value: any;
+        value: unknown;
     }
 >();
 
@@ -390,7 +389,7 @@ export async function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string):
     };
 }
 
-export function onlyInNTimes(n: number, proc: (progress: number) => any) {
+export function onlyInNTimes(n: number, proc: (progress: number) => unknown) {
     let counter = 0;
     return function () {
         if (counter++ % n == 0) {

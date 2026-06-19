@@ -40,6 +40,7 @@ function toPosixPath(filePath: string): string {
 const posixProjectRoot = toPosixPath(projectRoot);
 const posixSrc = `${posixProjectRoot}/src`;
 const posixLibSrc = `${posixProjectRoot}/src/lib/src`;
+const posixSubrepo = `${posixProjectRoot}/src/lib`;
 
 console.log(`Project Root: ${posixProjectRoot}`);
 console.log(`Source Directory: ${posixSrc}`);
@@ -93,12 +94,6 @@ for (const sourceFile of project.getSourceFiles()) {
             continue;
         }
 
-        // Keep relative sibling/child imports unchanged (e.g. ./utils) unless --all-alias is set.
-        const isSibling = isRelative && !moduleSpecifier.startsWith("..");
-        if (isSibling && !allAlias) {
-            continue;
-        }
-
         // Resolve path to an absolute POSIX path.
         let resolvedPath = "";
         if (moduleSpecifier.startsWith("@lib/")) {
@@ -111,6 +106,17 @@ for (const sourceFile of project.getSourceFiles()) {
         }
 
         resolvedPath = toPosixPath(path.normalize(resolvedPath));
+
+        // Keep relative sibling/child imports unchanged (e.g. ./utils) unless:
+        // 1. --all-alias is set, OR
+        // 2. the import crosses the subrepository boundary (src/lib/)
+        const isSibling = isRelative && !moduleSpecifier.startsWith("..");
+        const importerInsideSubrepo = posixFilePath.startsWith(posixSubrepo + "/");
+        const targetInsideSubrepo = resolvedPath.startsWith(posixSubrepo + "/");
+        const crossesSubrepo = importerInsideSubrepo !== targetInsideSubrepo;
+        if (isSibling && !allAlias && !crossesSubrepo) {
+            continue;
+        }
 
         // Determine correct normalised specifier.
         let newSpecifier = "";

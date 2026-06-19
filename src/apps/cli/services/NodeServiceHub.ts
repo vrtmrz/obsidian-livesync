@@ -24,7 +24,8 @@ import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
 import { DatabaseService } from "@lib/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { path as nodePath } from "../node-compat";
+import { path as nodePath } from "@/apps/cli/node-compat";
+import type { KeyValueDBService } from "@lib/services/base/KeyValueDBService";
 
 export class NodeServiceContext extends ServiceContext {
     databasePath: string;
@@ -197,10 +198,10 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             path,
             API,
             config,
-            keyValueDB: keyValueDB as any,
+            keyValueDB: keyValueDB as unknown as KeyValueDBService<T>,
             control,
         };
-
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- (Forcibly )
         super(context, serviceInstancesToInit as any);
     }
 }

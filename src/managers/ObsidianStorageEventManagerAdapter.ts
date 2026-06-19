@@ -20,7 +20,7 @@ import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/c
  * Obsidian-specific type guard adapter
  */
 class ObsidianTypeGuardAdapter implements IStorageEventTypeGuardAdapter<TFile, TFolder> {
-    isFile(file: any): file is TFile {
+    isFile(file: unknown): file is TFile {
         if (file instanceof TFile) {
             return true;
         }
@@ -30,7 +30,7 @@ class ObsidianTypeGuardAdapter implements IStorageEventTypeGuardAdapter<TFile, T
         return false;
     }
 
-    isFolder(item: any): item is TFolder {
+    isFolder(item: unknown): item is TFolder {
         if (item instanceof TFolder) {
             return true;
         }
