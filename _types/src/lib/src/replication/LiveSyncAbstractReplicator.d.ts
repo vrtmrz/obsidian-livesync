@@ -39,7 +39,7 @@ export declare abstract class LiveSyncAbstractReplicator {
     get rawDatabase(): PouchDB.Database<EntryDoc>;
     get currentSettings(): import("@lib/common/types.ts").ObsidianLiveSyncSettings;
     sendChunks(setting: RemoteDBSettings, remoteDB: PouchDB.Database<EntryDoc> | undefined, showResult: boolean, fromSeq?: number | string): Promise<boolean>;
-    abstract getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array<ArrayBuffer>>;
+    abstract getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array>;
     ensurePBKDF2Salt(setting: RemoteDBSettings, showMessage?: boolean, useCache?: boolean): Promise<boolean>;
     env: LiveSyncReplicatorEnv;
     initializeDatabaseForReplication(): Promise<boolean>;

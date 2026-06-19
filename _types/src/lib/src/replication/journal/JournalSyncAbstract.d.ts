@@ -60,12 +60,12 @@ export declare abstract class JournalSyncAbstract {
     abstract listFiles(from: string, limit?: number): Promise<string[]>;
     abstract isAvailable(): Promise<boolean>;
     getRemoteKey(): string;
-    getReplicationPBKDF2Salt(refresh?: boolean): Promise<Uint8Array<ArrayBuffer>>;
+    getReplicationPBKDF2Salt(refresh?: boolean): Promise<Uint8Array>;
     isEncryptionPrevented(fileName: string): boolean;
     private decryptDataV2;
     private decryptDataV1;
-    decryptDownloaded(key: string, encrypted: Uint8Array<ArrayBuffer>, set: RemoteDBSettings): Promise<Uint8Array<ArrayBuffer>>;
-    encryptForUpload(key: string, data: Uint8Array<ArrayBuffer>, set: RemoteDBSettings): Promise<Uint8Array<ArrayBuffer>>;
+    decryptDownloaded(key: string, encrypted: Uint8Array, set: RemoteDBSettings): Promise<Uint8Array>;
+    encryptForUpload(key: string, data: Uint8Array, set: RemoteDBSettings): Promise<Uint8Array>;
     _createJournalPack(override?: number | string): Promise<{
         changes: (EntryDoc & PouchDB.Core.GetMeta)[];
         hasNext: boolean;

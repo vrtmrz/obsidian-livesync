@@ -20,7 +20,7 @@ export declare const enum UserMode {
     /**
      * Update User Mode - for users who are updating configuration. May be `existing-user` as well, but possibly they want to treat it differently.
      */
-    Update = "unknown"
+    Update = "unknown" // eslint-disable-line @typescript-eslint/no-duplicate-enum-values -- Duplicate enum value
 }
 /**
  * Setup Manager to handle onboarding and configuration setup

@@ -26,7 +26,7 @@ type BaseRule<TType extends string, TValue> = {
     valueDisplayFunc?: (settings: Partial<ObsidianLiveSyncSettings>) => string;
     obsoleteValues?: TValue[];
 };
-type NumberRuleExact = BaseRule<"number", number> & {};
+type NumberRuleExact = BaseRule<"number", number> & {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type
 type NumberRuleRange = BaseRule<"number", number> & {
     min?: number;
     max?: number;
@@ -37,8 +37,8 @@ type StringRangeRule = BaseRule<"string", string> & {
     maxLength?: number;
     regexp?: string;
 };
-type StringRule = BaseRule<"string", string> & {};
-type BooleanRule = BaseRule<"boolean", boolean> & {};
+type StringRule = BaseRule<"string", string> & {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type
+type BooleanRule = BaseRule<"boolean", boolean> & {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type
 export type RuleForType<T> = T extends number ? NumberRuleExact | NumberRuleRange : T extends string ? StringRule | StringRangeRule : T extends boolean ? BooleanRule : never;
 type DoctorCheckSettings = Omit<Partial<ObsidianLiveSyncSettings>, "remoteConfigurations" | "pluginSyncExtendedSetting">;
 export type DoctorRegulation = {

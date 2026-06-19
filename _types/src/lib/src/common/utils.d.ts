@@ -27,11 +27,11 @@ export declare const Parallels: (ps?: Set<Promise<unknown>>) => {
 export declare function allSettledWithConcurrencyLimit<T>(processes: Promise<T>[], limit: number): Promise<void>;
 export declare function getDocData(doc: string | string[]): string;
 export declare function getDocDataAsArray(doc: string | string[]): string[];
-export declare function getDocDataAsArrayBuffer(doc: string | string[] | ArrayBuffer): Uint8Array<ArrayBuffer>;
+export declare function getDocDataAsArrayBuffer(doc: string | string[] | ArrayBuffer): Uint8Array;
 export declare function isTextBlob(blob: Blob): boolean;
 export declare function createTextBlob(data: string | string[]): Blob;
-export declare function createBinaryBlob(data: Uint8Array<ArrayBuffer> | ArrayBuffer): Blob;
-export declare function createBlob(data: string | string[] | Uint8Array<ArrayBuffer> | ArrayBuffer | Blob): Blob;
+export declare function createBinaryBlob(data: Uint8Array | ArrayBuffer): Blob;
+export declare function createBlob(data: string | string[] | Uint8Array | ArrayBuffer | Blob): Blob;
 export declare function isTextDocument(doc: LoadedEntry): boolean;
 export declare function readAsBlob(doc: LoadedEntry): Blob;
 export declare function readContent(doc: LoadedEntry): string | ArrayBuffer;

@@ -83,8 +83,8 @@ function createNodeLocalStorageShim(): LocalStorageShape {
 }
 
 export function ensureGlobalNodeLocalStorage() {
-    if (!("localStorage" in globalThis) || typeof (globalThis as any).localStorage?.getItem !== "function") {
-        (globalThis as any).localStorage = createNodeLocalStorageShim();
+    if (!("localStorage" in global) || typeof (global as any).localStorage?.getItem !== "function") {
+        (global as any).localStorage = createNodeLocalStorageShim();
     }
 }
 

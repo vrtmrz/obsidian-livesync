@@ -57,7 +57,7 @@ export type AllReplicationClientStatus = {
 export declare class TrysteroReplicator {
     _env: ReplicatorHostEnv;
     server?: P2PHost;
-    replicationStatus(): {};
+    replicationStatus(): {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type
     get settings(): import("@lib/common/types").P2PSyncSetting;
     get db(): PouchDB.Database<EntryDoc>;
     get deviceName(): string;

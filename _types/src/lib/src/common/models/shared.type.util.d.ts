@@ -6,4 +6,4 @@ export type CustomRegExpSourceList<D extends string = ","> = TaggedType<string, 
 export type ParsedCustomRegExp = [isInverted: boolean, pattern: string];
 export type Prettify<T> = {
     [K in keyof T]: T[K];
-} & {};
+} & {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type

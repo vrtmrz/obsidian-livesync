@@ -23,7 +23,7 @@ export declare class LiveSyncTrysteroReplicator extends LiveSyncAbstractReplicat
     get rawReplicator(): TrysteroReplicator | undefined;
     get rawHost(): P2PHost | undefined;
     get isChunkSendingSupported(): boolean;
-    getReplicationPBKDF2Salt(_setting: RemoteDBSettings, _refresh?: boolean): Promise<Uint8Array<ArrayBuffer>>;
+    getReplicationPBKDF2Salt(_setting: RemoteDBSettings, _refresh?: boolean): Promise<Uint8Array>;
     terminateSync(): void;
     private _buildEnv;
     open(): Promise<void>;

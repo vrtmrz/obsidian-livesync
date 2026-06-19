@@ -50,7 +50,7 @@ export declare abstract class RemoteService<T extends ServiceContext = ServiceCo
     showError(msg: string, max_log_level?: LOG_LEVEL): void;
     clearErrors(): void;
     performFetch(req: string | Request, opts?: RequestInit, fetchMethod?: FetchMethod): Promise<Response>;
-    connect(uri: string, auth: CouchDBCredentials, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean, customHeaders: Record<string, string>, useRequestAPI: boolean, getPBKDF2Salt: () => Promise<Uint8Array<ArrayBuffer>>): Promise<string | {
+    connect(uri: string, auth: CouchDBCredentials, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean, customHeaders: Record<string, string>, useRequestAPI: boolean, getPBKDF2Salt: () => Promise<Uint8Array>): Promise<string | {
         db: PouchDB.Database<EntryDoc>;
         info: PouchDB.Core.DatabaseInfo;
     }>;

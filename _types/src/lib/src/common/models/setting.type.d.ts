@@ -891,7 +891,7 @@ export interface RemoteConfigurations {
      */
     P2P_ActiveRemoteConfigurationId: string;
 }
-interface ObsidianLiveSyncSettings_PluginSetting extends SyncMethodSettings, UISettings, FileHandlingSettings, MergeBehaviourSettings, EncryptedUserSettings, PeriodicReplicationSettings, InternalFileSettings, PluginSyncSettings, ModeSettings, ExtraTweakSettings, BetaTweakSettings, ObsoleteSettings, DebugModeSettings, SettingSyncSettings, SafetyValveSettings, DataOnSettings, RemoteConfigurations {
+interface ObsidianLiveSyncSettings_PluginSetting extends SyncMethodSettings, UISettings, FileHandlingSettings, MergeBehaviourSettings, EncryptedUserSettings, PeriodicReplicationSettings, InternalFileSettings, PluginSyncSettings, ModeSettings, ExtraTweakSettings, BetaTweakSettings, ObsoleteSettings, DebugModeSettings, SettingSyncSettings, SafetyValveSettings, DataOnSettings, RemoteConfigurations { // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface
 }
 export type RemoteDBSettings = CouchDBConnection & BucketSyncSetting & RemoteTypeSettings & EncryptionSettings & ChunkSettings & EdenSettings & DataOnRemoteDBSettings & ObsoleteRemoteDBSettings & OnDemandChunkSettings & BetaRemoteDBSettings & ReplicationSetting & RemoteDBTweakSettings & FileHandlingSettings & ProcessingBehaviourSettings & OptionalAndNotExposedRemoteDBSettings & CrossPlatformInteroperabilitySettings & ConflictHandlingSettings & EdgeCaseHandlingSettings & DeletedFileMetadataSettings & P2PSyncSetting & RemoteConfigurations;
 export type ObsidianLiveSyncSettings = ObsidianLiveSyncSettings_PluginSetting & RemoteDBSettings & LocalDBSettings;

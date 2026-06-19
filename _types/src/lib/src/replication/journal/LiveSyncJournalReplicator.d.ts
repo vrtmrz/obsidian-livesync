@@ -12,7 +12,7 @@ export declare class LiveSyncJournalReplicator extends LiveSyncAbstractReplicato
     get client(): JournalSyncMinio;
     get simpleStore(): SimpleStore<CheckPointInfo>;
     _client: JournalSyncMinio;
-    getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array<ArrayBuffer>>;
+    getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array>;
     setupJournalSyncClient(): JournalSyncMinio;
     ensureBucketIsCompatible(deviceNodeID: string, currentVersionRange: ChunkVersionRange): Promise<ENSURE_DB_RESULT>;
     constructor(env: LiveSyncJournalReplicatorEnv);

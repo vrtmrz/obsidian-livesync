@@ -21,7 +21,7 @@ type CreateSyncParamsHanderOptions = {
 };
 export type SyncParamsHandler = {
     fetch: (refresh?: boolean) => Promise<SyncParameters | false>;
-    getPBKDF2Salt: (refresh?: boolean) => Promise<Uint8Array<ArrayBuffer>>;
+    getPBKDF2Salt: (refresh?: boolean) => Promise<Uint8Array>;
 };
 export declare function createSyncParamsHanderForServer(key: string, options: CreateSyncParamsHanderOptions): SyncParamsHandler;
 export declare function clearHandlers(): void;

@@ -126,7 +126,7 @@ export interface IReplicationService {
     markResolved(): Promise<void>;
 }
 export interface IRemoteService {
-    connect(uri: string, auth: CouchDBCredentials, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean, customHeaders: Record<string, string>, useRequestAPI: boolean, getPBKDF2Salt: () => Promise<Uint8Array<ArrayBuffer>>): Promise<string | {
+    connect(uri: string, auth: CouchDBCredentials, disableRequestURI: boolean, passphrase: string | false, useDynamicIterationCount: boolean, performSetup: boolean, skipInfo: boolean, compression: boolean, customHeaders: Record<string, string>, useRequestAPI: boolean, getPBKDF2Salt: () => Promise<Uint8Array>): Promise<string | {
         db: PouchDB.Database<EntryDoc>;
         info: PouchDB.Core.DatabaseInfo;
     }>;

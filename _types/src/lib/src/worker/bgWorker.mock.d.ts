@@ -31,8 +31,8 @@ export declare function splitPieces2WorkerV2(dataSrc: Blob, pieceSize: number, p
 export declare function splitPieces2WorkerRabinKarp(dataSrc: Blob, pieceSize: number, plainSplit: boolean, minimumChunkSize: number, filename?: string, useSegmenter?: boolean): () => AsyncGenerator<string, void, unknown>;
 export declare function encryptWorker(input: string, passphrase: string, autoCalculateIterations: boolean): Promise<string>;
 export declare function decryptWorker(input: string, passphrase: string, autoCalculateIterations: boolean): Promise<string>;
-export declare function encryptHKDFWorker(input: string, passphrase: string, pbkdf2Salt: Uint8Array<ArrayBuffer>): Promise<string>;
-export declare function decryptHKDFWorker(input: string, passphrase: string, pbkdf2Salt: Uint8Array<ArrayBuffer>): Promise<string>;
+export declare function encryptHKDFWorker(input: string, passphrase: string, pbkdf2Salt: Uint8Array): Promise<string>;
+export declare function decryptHKDFWorker(input: string, passphrase: string, pbkdf2Salt: Uint8Array): Promise<string>;
 export declare function startWorker(data: Omit<EncryptHKDFArguments, "key">): EncryptHKDFProcessItem;
 export declare function startWorker(data: Omit<EncryptArguments, "key">): EncryptProcessItem;
 export declare function startWorker(data: Omit<SplitArguments, "key">): SplitProcessItem;

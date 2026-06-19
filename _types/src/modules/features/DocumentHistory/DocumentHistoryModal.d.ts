@@ -39,7 +39,7 @@ export declare class DocumentHistoryModal extends Modal {
     loadRevs(initialRev?: string): Promise<void>;
     BlobURLs: Map<string, string>;
     revokeURL(key: string): void;
-    generateBlobURL(key: string, data: Uint8Array<ArrayBuffer>): string;
+    generateBlobURL(key: string, data: Uint8Array): string;
     prepareContentView(usePreformatted?: boolean): void;
     appendTextDiff(diff: [number, string][]): void;
     appendSearchHighlightedText(container: HTMLElement, text: string): void;

@@ -1,5 +1,4 @@
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
-import EventEmitter from "events";
 import type { RpcSession } from "@lib/rpc/RpcSession";
 /**
  * A PouchDB-compatible proxy that forwards all database operations to a remote
@@ -73,4 +72,14 @@ export declare class RpcPouchDBProxy extends EventEmitter {
     }, opts?: PouchDB.Core.BulkDocsOptions): Promise<(PouchDB.Core.Response | PouchDB.Core.Error)[]>;
     revsDiff(diff: PouchDB.Core.RevisionDiffOptions): Promise<PouchDB.Core.RevisionDiffResponse>;
     allDocs<T extends object>(opts?: PouchDB.Core.AllDocsOptions): Promise<PouchDB.Core.AllDocsResponse<T>>;
+}
+
+class EventEmitter {
+    on(event: string | symbol, listener: (...args: any[]) => void): this; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    once(event: string | symbol, listener: (...args: any[]) => void): this; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    off(event: string | symbol, listener: (...args: any[]) => void): this; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    emit(event: string | symbol, ...args: any[]): boolean; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    addListener(event: string | symbol, listener: (...args: any[]) => void): this; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    removeListener(event: string | symbol, listener: (...args: any[]) => void): this; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
+    removeAllListeners(event: string | symbol): this;
 }

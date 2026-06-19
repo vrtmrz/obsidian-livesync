@@ -60,7 +60,7 @@ export interface DispatcherHandler<T extends unknown[], U> {
 /**
  * An interface for dispatch handlers that can add and remove handler functions.
  */
-export interface DispatchHandler<T extends unknown[], U> extends DispatcherHandler<T, U>, MultiRegisterHandler<T, U> {
+export interface DispatchHandler<T extends unknown[], U> extends DispatcherHandler<T, U>, MultiRegisterHandler<T, U> { // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface
 }
 /**
  * A binder that allows assigning and invoking a single handler function.
@@ -312,9 +312,9 @@ export interface BooleanMultipleHandlerFunction<TFunc extends (...args: any[]) =
      */
     removeHandler: (callback: TFunc) => void;
 }
-export interface MultiBinderInstance<T extends unknown[], U> extends InvokableHandler<T, U>, MultiRegisterHandler<T, U> {
+export interface MultiBinderInstance<T extends unknown[], U> extends InvokableHandler<T, U>, MultiRegisterHandler<T, U> { // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface
 }
-export interface BooleanMultiBinderInstance<T extends unknown[]> extends InvokableBooleanHandler<T>, MultiRegisterHandler<T, boolean> {
+export interface BooleanMultiBinderInstance<T extends unknown[]> extends InvokableBooleanHandler<T>, MultiRegisterHandler<T, boolean> { // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface
 }
 export declare function allFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration
 export declare function bailFirstFailureFunction<TFunc extends (...args: any[]) => Promise<boolean>>(name?: string): BooleanMultipleHandlerFunction<TFunc>; // eslint-disable-line @typescript-eslint/no-explicit-any -- Only type declaration

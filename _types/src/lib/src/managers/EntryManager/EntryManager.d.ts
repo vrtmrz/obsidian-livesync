@@ -25,7 +25,7 @@ export declare class EntryManager {
             setting: ISettingService;
             path: IPathService;
         };
-        serviceModules: {};
+        serviceModules: {}; // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type
     };
     get isOnDemandChunkEnabled(): boolean;
     isTargetFile(filenameSrc: string): boolean;

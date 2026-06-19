@@ -12,7 +12,7 @@ export declare class LiveSyncCouchDBReplicator extends LiveSyncAbstractReplicato
     getInitialSyncParameters(setting: RemoteDBSettings): Promise<SyncParameters>;
     getSyncParameters(setting: RemoteDBSettings): Promise<SyncParameters>;
     putSyncParameters(setting: RemoteDBSettings, params: SyncParameters): Promise<boolean>;
-    getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array<ArrayBuffer>>;
+    getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array>;
     migrate(from: number, to: number): Promise<boolean>;
     terminateSync(): void;
     openReplication(setting: RemoteDBSettings, keepAlive: boolean, showResult: boolean, ignoreCleanLock: boolean): Promise<boolean | undefined>;

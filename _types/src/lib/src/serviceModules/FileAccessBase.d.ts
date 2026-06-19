@@ -5,7 +5,7 @@ import type { IAPIService, IPathService, ISettingService, IVaultService } from "
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
 import type { FileWithFileStat } from "@lib/common/models/fileaccess.type";
 import type { IFileSystemAdapter } from "./adapters";
-export declare function toArrayBuffer(arr: Uint8Array<ArrayBuffer> | ArrayBuffer | DataView<ArrayBuffer>): ArrayBuffer;
+export declare function toArrayBuffer(arr: Uint8Array | ArrayBuffer | DataView): ArrayBuffer;
 export interface FileAccessBaseDependencies {
     vaultService: IVaultService;
     storageAccessManager: IStorageAccessManager;
@@ -59,7 +59,7 @@ export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any
     adapterRead(file: ExtractFile<TAdapter> | string): Promise<string>;
     adapterReadBinary(file: ExtractFile<TAdapter> | string): Promise<ArrayBuffer>;
     adapterReadAuto(file: ExtractFile<TAdapter> | string): Promise<string | ArrayBuffer>;
-    adapterWrite(file: ExtractFile<TAdapter> | string, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: UXDataWriteOptions): Promise<void>;
+    adapterWrite(file: ExtractFile<TAdapter> | string, data: string | ArrayBuffer | Uint8Array, options?: UXDataWriteOptions): Promise<void>;
     adapterList(basePath: string): Promise<{
         files: string[];
         folders: string[];
@@ -68,8 +68,8 @@ export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any
     vaultRead(file: ExtractFile<TAdapter>): Promise<string>;
     vaultReadBinary(file: ExtractFile<TAdapter>): Promise<ArrayBuffer>;
     vaultReadAuto(file: ExtractFile<TAdapter>): Promise<string | ArrayBuffer>;
-    vaultModify(file: ExtractFile<TAdapter>, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: UXDataWriteOptions): Promise<boolean>;
-    vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array<ArrayBuffer>, options?: UXDataWriteOptions): Promise<ExtractFile<TAdapter>>;
+    vaultModify(file: ExtractFile<TAdapter>, data: string | ArrayBuffer | Uint8Array, options?: UXDataWriteOptions): Promise<boolean>;
+    vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array, options?: UXDataWriteOptions): Promise<ExtractFile<TAdapter>>;
     trigger(name: string, ...data: unknown[]): void;
     reconcileInternalFile(path: string): Promise<void>;
     /**
