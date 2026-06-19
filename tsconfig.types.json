@@ -1,0 +1,26 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "outDir": "./_types",
+        "rootDir": "."
+    },
+    "include": ["src/lib/**/*.ts"],
+    "exclude": [
+        "_types",
+        "pouchdb-browser-webpack",
+        "utils",
+        "src/apps",
+        "src/**/*.test.ts",
+        "src/lib/_tools",
+        "src/lib/apps",
+        "src/lib/src/cli",
+        "**/_test/**",
+        "utilsdeno",
+        "node_modules",
+        "test/**/*.test.ts",
+        "**/*.unit.spec.ts"
+    ]
+}

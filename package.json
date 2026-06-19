@@ -16,6 +16,7 @@
         "dev": "node --env-file=.env esbuild.config.mjs",
         "prebuild": "npm run bakei18n",
         "build": "node esbuild.config.mjs production",
+        "build:lib:types": "node generate-types.mjs",
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
         "buildViteOriginal": "npx dotenv-cli -e .env  -- vite build --mode original",
         "buildDev": "node esbuild.config.mjs dev",
