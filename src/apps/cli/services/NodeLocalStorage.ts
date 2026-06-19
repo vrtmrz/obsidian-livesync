@@ -1,4 +1,5 @@
 import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 
 type LocalStorageShape = {
     getItem(key: string): string | null;
@@ -83,10 +84,12 @@ function createNodeLocalStorageShim(): LocalStorageShape {
 }
 
 export function ensureGlobalNodeLocalStorage() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node.js global object manipulation
-    if (!("localStorage" in global) || typeof (global as any).localStorage?.getItem !== "function") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node.js global object access
-        (global as any).localStorage = createNodeLocalStorageShim();
+    const g = compatGlobal as unknown as Record<string, unknown>;
+    if (
+        !("localStorage" in g) ||
+        typeof (g.localStorage as Record<string, unknown> | undefined)?.getItem !== "function"
+    ) {
+        g.localStorage = createNodeLocalStorageShim();
     }
 }
 

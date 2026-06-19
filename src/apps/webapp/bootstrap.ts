@@ -121,13 +121,11 @@ async function initializeVaultSelector(): Promise<void> {
     await renderHistoryList();
 }
 
-compatGlobal.addEventListener("load", async () => {
-    try {
-        await initializeVaultSelector();
-    } catch (error) {
+compatGlobal.addEventListener("load", () => {
+    initializeVaultSelector().catch((error) => {
         console.error("Failed to initialize vault selector:", error);
         setStatus("error", `Initialization failed: ${String(error)}`);
-    }
+    });
 });
 
 compatGlobal.addEventListener("beforeunload", () => {

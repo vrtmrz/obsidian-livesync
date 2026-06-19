@@ -28,11 +28,38 @@ function stripPrefix(raw: string): string {
     return raw.replace(/^[^:]+:/, "");
 }
 
+interface TestCore {
+    services?: {
+        replication?: {
+            databaseQueueCount?: { value: number };
+            storageApplyingCount?: { value: number };
+        };
+        fileProcessing?: {
+            totalQueued?: { value: number };
+            batched?: { value: number };
+            processing?: { value: number };
+        };
+        database?: {
+            localDatabase: {
+                findAllNormalDocs(options?: { conflicts?: boolean }): AsyncIterable<{
+                    _deleted?: boolean;
+                    deleted?: boolean;
+                    path?: string;
+                    _rev?: string;
+                    _conflicts?: string[];
+                    size?: number;
+                    mtime?: number;
+                }>;
+            };
+        };
+    };
+}
+
 /**
  * Poll every 300 ms until all known processing queues are drained, or until
  * the timeout elapses.  Mirrors `waitForIdle` in the existing vitest harness.
  */
-async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
+async function waitForIdle(core: TestCore, timeoutMs = 60_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const q =
@@ -47,8 +74,8 @@ async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
     throw new Error(`waitForIdle timed out after ${timeoutMs} ms`);
 }
 
-function getCore(): any {
-    const core = (app as any)?.core;
+function getCore(): TestCore {
+    const core = (app as unknown as { core: TestCore | null })?.core;
     if (!core) throw new Error("Vault not initialised – call livesyncTest.init() first");
     return core;
 }
@@ -201,4 +228,4 @@ const livesyncTest: LiveSyncTestAPI = {
 };
 
 // Expose on window for Playwright page.evaluate() calls.
-(compatGlobal as any).livesyncTest = livesyncTest;
+(compatGlobal as unknown as Record<string, unknown>).livesyncTest = livesyncTest;

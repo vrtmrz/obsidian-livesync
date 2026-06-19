@@ -97,13 +97,15 @@ class LiveSyncWebApp {
         });
 
         // App lifecycle handlers
-        this.serviceHub.appLifecycle.scheduleRestart.setHandler(async () => {
-            console.log("[AppLifecycle] Restart requested");
-            await this.shutdown();
-            await this.initialize();
-            compatGlobal.setTimeout(() => {
-                compatGlobal.location.reload();
-            }, 1000);
+        this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
+            void (async () => {
+                console.log("[AppLifecycle] Restart requested");
+                await this.shutdown();
+                await this.initialize();
+                compatGlobal.setTimeout(() => {
+                    compatGlobal.location.reload();
+                }, 1000);
+            })();
         });
 
         // Create LiveSync core

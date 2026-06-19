@@ -207,9 +207,9 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                                 };
 
                                 if (type === "appeared") {
-                                    await handlers.onCreate(fileInfo, undefined);
+                                    handlers.onCreate(fileInfo, undefined);
                                 } else {
-                                    await handlers.onChange(fileInfo, undefined);
+                                    handlers.onChange(fileInfo, undefined);
                                 }
                             }
                         } else if (type === "disappeared") {
@@ -223,7 +223,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                                 },
                                 handle: null as unknown as FileSystemFileHandle, // No handle available for disappeared files
                             };
-                            await handlers.onDelete(fileInfo, undefined);
+                            handlers.onDelete(fileInfo, undefined);
                         } else if (type === "moved") {
                             // Handle as delete + create
                             // Note: FileSystemObserver provides both old and new paths in some cases
@@ -240,7 +240,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                                     },
                                     handle: changedHandle,
                                 };
-                                await handlers.onChange(fileInfo, undefined);
+                                handlers.onChange(fileInfo, undefined);
                             }
                         }
                     } catch (error) {

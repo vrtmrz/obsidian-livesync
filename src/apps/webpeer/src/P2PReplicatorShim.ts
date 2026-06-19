@@ -82,8 +82,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
             replicator,
             p2pLogCollector,
             storeP2PStatusLine: p2pStatusLine,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars -- hacky way. //TODO: check it later
-        } = useP2PReplicator({ services: this.services } as any);
+        } = useP2PReplicator({ services: this.services } as unknown as Parameters<typeof useP2PReplicator>[0]);
         this._liveSyncReplicator = replicator;
         this.p2pLogCollector = p2pLogCollector;
         p2pLogCollector.p2pReplicationLine.onChanged((line) => {
@@ -101,7 +100,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         const repStore = SimpleStoreIDBv2.open<unknown>("p2p-livesync-web-peer");
         this._simpleStore = repStore;
         let _settings = { ...P2P_DEFAULT_SETTINGS, additionalSuffixOfDatabaseName: "" } as ObsidianLiveSyncSettings;
-        this.services.setting.settings = _settings as ObsidianLiveSyncSettings;
+        this.services.setting.settings = _settings;
         (this.services.setting as InjectableSettingService<ServiceContext>).saveData.setHandler(async (data) => {
             await repStore.set("settings", data);
             eventHub.emitEvent(EVENT_SETTING_SAVED, data);
@@ -281,7 +280,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
                 }
                 await this.services.setting.applyExternalSettings(remoteConfig, true);
                 if (yn !== DROP) {
-                    await this.plugin.core.services.appLifecycle.scheduleRestart();
+                    this.plugin.core.services.appLifecycle.scheduleRestart();
                 }
             } else {
                 Logger(`Cancelled\nRemote config for ${peer.name} is not applied`, LOG_LEVEL_NOTICE);

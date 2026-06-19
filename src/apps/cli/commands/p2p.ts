@@ -3,6 +3,7 @@ import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { LiveSyncError } from "@lib/common/LSError";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -107,11 +108,14 @@ export async function syncWithPeer(
 
         const pullResult = await replicator.replicateFrom(targetPeer.peerId, false);
         if (pullResult && "error" in pullResult && pullResult.error) {
-            throw pullResult.error;
+            throw pullResult.error instanceof Error ? pullResult.error : LiveSyncError.fromError(pullResult.error);
         }
         const pushResult = await replicator.requestSynchroniseToPeer(targetPeer.peerId);
         if (!pushResult || pushResult.ok !== true) {
-            throw pushResult?.error ?? new Error("P2P sync failed while requesting remote sync");
+            const err = pushResult?.error;
+            throw err instanceof Error
+                ? err
+                : LiveSyncError.fromError(err ?? "P2P sync failed while requesting remote sync");
         }
 
         return targetPeer;

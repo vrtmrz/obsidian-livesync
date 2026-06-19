@@ -159,9 +159,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                         );
                     }
                 }
-                pollTimer = compatGlobal.setTimeout(poll, currentIntervalMs);
+                pollTimer = compatGlobal.setTimeout(() => {
+                    void poll();
+                }, currentIntervalMs);
             };
-            let pollTimer = compatGlobal.setTimeout(poll, currentIntervalMs);
+            let pollTimer = compatGlobal.setTimeout(() => {
+                void poll();
+            }, currentIntervalMs);
             core.services.appLifecycle.onUnload.addHandler(async () => {
                 compatGlobal.clearTimeout(pollTimer);
                 return true;
