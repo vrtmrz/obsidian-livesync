@@ -76,6 +76,26 @@ To facilitate development and testing, the build process can automatically copy 
     - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
     - `test/harness/` - Mock implementations (e.g., `obsidian-mock.ts`)
 
+### Import Path Normalisation
+
+The codebase uses `@/` and `@lib/` path aliases to keep import structures clean. To normalise imports and exports across files, use the following utility script:
+```bash
+npm run pretty:importpath
+```
+Under the hood, this runs Deno with the script [utilsdeno/normalise-imports.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/normalise-imports.ts). You can pass additional flags to this script if required (by running it via Deno directly from the `utilsdeno` directory):
+- `--run`: Applies the changes (the script runs in dry-run mode by default).
+- `--all-alias`: Normalises sibling/child relative imports starting with `./` to use aliases.
+
+### Type Generation
+
+To generate fallback type definitions for the shared library and add appropriate Deno ignore comments (which suppresses Deno compilation warnings and linting warnings inside the `_types` directory), run:
+```bash
+npm run build:lib:types
+```
+This script executes:
+1. TypeScript compilation (`tsconfig.types.json`) to output definitions to the `_types` directory.
+2. The Deno script [utilsdeno/types-add-ignore.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/types-add-ignore.ts) to prepend Deno ignore comments to the generated type files.
+
 
 
 ## Architecture

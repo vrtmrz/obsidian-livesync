@@ -515,7 +515,7 @@ Saving will be performed forcefully after this number of seconds.
 #### Use the trash bin
 
 Setting key: trashInsteadDelete
-Move remotely deleted files to the trash, instead of deleting.
+Move remotely deleted files to the trash, instead of deleting. On Obsidian v1.7.2 or newer, file deletion respects the user's deletion preferences (by utilising the `FileManager.trashFile` API), regardless of this setting.
 
 #### Keep empty folder
 
@@ -557,9 +557,10 @@ Setting key: notifyAllSettingSyncFile
 
 ### 7. Hidden Files (Advanced)
 
-#### Hidden file synchronisation
-
 #### Enable Hidden files sync
+
+Setting key: syncInternalFiles
+Enable the synchronisation of hidden files and folders (e.g. settings files, templates, snippets, and themes under `.obsidian`).
 
 #### Scan for hidden files before replication
 
