@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export declare const SETTING_KEY_P2P_DEVICE_NAME = "p2p_device_name";
 export declare const configURIBase = "obsidian://setuplivesync?settings=";
 export declare const configURIBaseQR = "obsidian://setuplivesync?settingsQR=";

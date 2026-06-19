@@ -7,7 +7,7 @@ import type { InjectableDatabaseEventService } from "@lib/services/implements/in
 import type { IVaultService } from "@lib/services/base/IService";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import { fs as nodeFs, path as nodePath } from "../node-compat";
+import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";

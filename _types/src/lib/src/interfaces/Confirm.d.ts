@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export interface Confirm {
     askYesNo(message: string): Promise<"yes" | "no">;
     askString(title: string, key: string, placeholder: string, isPassword?: boolean): Promise<string | false>;

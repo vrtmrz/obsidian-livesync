@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { TAbstractFile } from "@/deps.ts";
 import { type AnyEntry, type CouchDBCredentials, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type UXFileInfo, type UXFileInfoStub } from "@lib/common/types.ts";
 export { ICHeader, ICXHeader } from "./types.ts";

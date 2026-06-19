@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { App, Modal } from "@/deps.ts";
 import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@lib/common/types.ts";
 import { eventHub } from "@/common/events.ts";

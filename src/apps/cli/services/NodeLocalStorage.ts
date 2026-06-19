@@ -1,4 +1,4 @@
-import { fs as nodeFs, path as nodePath } from "../node-compat";
+import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
 
 type LocalStorageShape = {
     getItem(key: string): string | null;

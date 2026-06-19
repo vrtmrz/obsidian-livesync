@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export declare const SETTING_VERSION_INITIAL = 0;
 export declare const SETTING_VERSION_SUPPORT_CASE_INSENSITIVE = 10;
 export declare const CURRENT_SETTING_VERSION = 10;

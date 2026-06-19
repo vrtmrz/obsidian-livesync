@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
 import type { APIService } from "./APIService";
 import type { DatabaseService } from "./DatabaseService";

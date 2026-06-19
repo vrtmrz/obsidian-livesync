@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type EntryDoc, type SyncParameters, type BucketSyncSetting, type RemoteDBSettings } from "@lib/common/types.ts";
 import type { ReplicationCallback, ReplicationStat } from "@lib/replication/LiveSyncAbstractReplicator.ts";
 import { type SimpleStore } from "@lib/common/utils.ts";

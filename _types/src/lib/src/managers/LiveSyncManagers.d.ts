@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type EntryDoc } from "@lib/common/types";
 import { ContentSplitter } from "@lib/ContentSplitter/ContentSplitters.ts";
 import { ChangeManager } from "@lib/managers/ChangeManager.ts";

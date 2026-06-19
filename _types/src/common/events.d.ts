@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { eventHub } from "@lib/hub/hub";
 export declare const EVENT_PLUGIN_LOADED = "plugin-loaded";
 export declare const EVENT_PLUGIN_UNLOADED = "plugin-unloaded";

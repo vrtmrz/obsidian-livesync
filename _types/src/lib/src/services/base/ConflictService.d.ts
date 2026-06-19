@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { FilePathWithPrefix, MISSING_OR_ERROR, AUTO_MERGED } from "@lib/common/types";
 import type { IConflictService } from "@lib/services/base/IService";
 import { ServiceBase } from "@lib/services/base/ServiceBase";

@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { RpcSession } from "./RpcSession";
 import { type JsonLike, type RpcMethodHandler, type RpcRegisterOptions, type RpcRoomOptions } from "./types";
 export declare class RpcRoom {

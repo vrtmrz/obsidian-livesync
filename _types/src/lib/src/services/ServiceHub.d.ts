@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { UIService } from "./implements/base/UIService.ts";
 import type { ConfigService } from "@lib/services/base/ConfigService.ts";
 import type { TestService } from "@lib/services/base/TestService.ts";

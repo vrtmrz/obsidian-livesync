@@ -17,7 +17,7 @@ import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./
 import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { fsPromises as fs, path } from "../node-compat";
+import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");

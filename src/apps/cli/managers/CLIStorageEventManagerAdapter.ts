@@ -13,7 +13,7 @@ import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
-import { fsPromises as fs, path, type Stats } from "../node-compat";
+import { fsPromises as fs, path, type Stats } from "@/apps/cli/node-compat";
 
 /**
  * CLI-specific type guard adapter

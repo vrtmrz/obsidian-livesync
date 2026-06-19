@@ -14,7 +14,7 @@ import { visibleOnly } from "./SettingPane.ts";
 import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
-import { LiveSyncError } from "@/lib/src/common/LSError.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

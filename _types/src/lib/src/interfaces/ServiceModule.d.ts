@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
 import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
 import type { IFileHandler } from "@lib/interfaces/FileHandler";

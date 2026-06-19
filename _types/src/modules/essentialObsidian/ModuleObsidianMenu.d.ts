@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 export declare class ModuleObsidianMenu extends AbstractModule {

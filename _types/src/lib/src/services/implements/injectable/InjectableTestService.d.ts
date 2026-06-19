@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { TestService } from "@lib/services/base/TestService";
 export declare class InjectableTestService<T extends ServiceContext> extends TestService<T> {

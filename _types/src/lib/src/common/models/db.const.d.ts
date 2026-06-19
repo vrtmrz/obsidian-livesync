@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { DocumentID } from "./db.type";
 export declare const VERSIONING_DOCID: DocumentID;
 export declare const MILESTONE_DOCID: DocumentID;

@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type EntryDoc, type EntryLeaf, type Credential, type RemoteDBSettings, type DocumentID, type FilePathWithPrefix, type FilePath, type DatabaseEntry, type LoadedEntry, type MetaEntry, type SavingEntry, type diff_result_leaf } from "@lib/common/types.ts";
 import { eventHub } from "@lib/hub/hub.ts";
 import { LiveSyncManagers } from "@lib/managers/LiveSyncManagers.ts";

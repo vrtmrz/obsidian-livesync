@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { LogFunction } from "@lib/services/lib/logUtils";
 import type { SetupFeatureHost } from "@lib/serviceFeatures/setupObsidian/types";
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";

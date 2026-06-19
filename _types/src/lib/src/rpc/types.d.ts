@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export declare const RPC_VERSION_MAJOR = 1;
 export declare const RPC_VERSION_MINOR = 0;
 export type JsonLike = null | boolean | number | string | JsonLike[] | {

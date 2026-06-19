@@ -1,3 +1,3 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 export type { HasSetResult, HasGetInitialData, ComponentHasResult, GuestDialogProps, DialogSvelteComponentBaseProps, DialogControlBase, } from "@lib/services/implements/base/SvelteDialog.ts";
 export { CONTEXT_DIALOG_CONTROLS, setupDialogContext, getDialogContext, SvelteDialogManagerBase, } from "@lib/services/implements/base/SvelteDialog.ts";

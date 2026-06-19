@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type FilePathWithPrefix, type diff_result } from "@lib/common/types.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import type { LiveSyncCore } from "@/main.ts";

@@ -11,7 +11,7 @@ try {
     // Ignore compiler errors from tsc so that pre-existing type errors in the submodule
     // do not block the build from succeeding.
     console.warn("[Postbuild] Type definitions generated with some compilation warnings.");
-    process.exit(-1);
+    // process.exit(-1);
 }
 
 try {

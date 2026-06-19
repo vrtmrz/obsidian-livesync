@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type SavingEntry, type DocumentID, type EntryDoc, type EntryBase, type FilePath, type FilePathWithPrefix, type LoadedEntry, type ObsidianLiveSyncSettings, type MetaEntry } from "@lib/common/types";
 import type { ContentSplitter } from "@lib/ContentSplitter/ContentSplitters";
 import type { HashManager } from "@lib/managers/HashManager/HashManager";

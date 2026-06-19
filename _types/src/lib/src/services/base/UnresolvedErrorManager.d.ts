@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type LOG_LEVEL } from "octagonal-wheels/common/logger";
 import type { AppLifecycleService } from "./AppLifecycleService";
 export declare class UnresolvedErrorManager {

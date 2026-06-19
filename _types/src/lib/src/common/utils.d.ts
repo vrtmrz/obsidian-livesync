@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { type AnyEntry, type DatabaseEntry, type EntryLeaf, type SyncInfo, type LoadedEntry, type SavingEntry, type NewEntry, type PlainEntry, type CustomRegExpSource, type ParsedCustomRegExp, type CustomRegExpSourceList, type ObsidianLiveSyncSettings, type RemoteDBSettings, type P2PConnectionInfo, type BucketSyncSetting, type CouchDBConnection, type EncryptionSettings } from "./types.ts";
 import { replaceAll, replaceAllPairs } from "octagonal-wheels/string";
 export { replaceAll, replaceAllPairs };

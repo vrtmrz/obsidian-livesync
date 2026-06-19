@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { CouchDBCredentials, EntryDoc } from "@lib/common/types";
 import type { IRemoteService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";

@@ -6,7 +6,7 @@ import { NodeConversionAdapter } from "./NodeConversionAdapter";
 import { NodeStorageAdapter } from "./NodeStorageAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
-import { fsPromises as fs, path } from "../node-compat";
+import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 /**
  * Complete file system adapter implementation for Node.js

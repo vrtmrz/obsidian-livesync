@@ -1,8 +1,8 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import type { PouchDBShim, SomeDocument } from "@lib/pouchdb/ReplicatorShim";
 import type { TrysteroReplicatorP2PServer } from "./TrysteroReplicatorP2PServer";
 import { type BindableObject, type NonPrivateMethodKeys, type Response } from "./types";
-import type { JsonLike } from "@/lib/src/rpc";
+import type { JsonLike } from "@lib/rpc";
 export declare class TrysteroReplicatorP2PClient {
     _server: TrysteroReplicatorP2PServer;
     _connectedPeerId: string;

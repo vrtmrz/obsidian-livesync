@@ -1,4 +1,4 @@
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 9aeab51
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6de1db1
 import { TFile, TFolder } from "@/deps";
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
 import type { FileEventItem } from "@lib/common/types";
