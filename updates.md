@@ -3,13 +3,23 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Unreleased
+## 0.25.77
 
-18th June, 2026
+19th June, 2026
+
+This update is mostly meaningless for users. But for maintainers, not, I hope. I wonder if I were done well in the start, there would be no hassles. It really was a great opportunity.
+
+Also, this update is a very large one, even if we had a lot of time, and we had CI tests, and mostly only fixing the types. Please let me know if you find any issues!
 
 ### Improved
 
 - File deletion now respects the user's deletion preferences (by utilising the `FileManager.trashFile` API) on Obsidian v1.7.2 or newer, regardless of the plug-in's internal trashbin setting.
+
+### Miscellaneous
+- Typings of the library are now included
+- Many typing errors have been improved.
+- Import paths have been normalised to be relative to the root and to the `lib/src` directory, to avoid breaking the boundary between the library and the plug-in.
+- Subprojects, such as the CLI and the webapp, are now in the workspace.
 
 ## 0.25.76
 

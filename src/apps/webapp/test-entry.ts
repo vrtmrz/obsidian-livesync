@@ -205,10 +205,10 @@ const livesyncTest: LiveSyncTestAPI = {
             if (docPath !== vaultPath) continue;
             return {
                 path: docPath,
-                revision: (doc._rev as string) ?? "",
-                conflicts: (doc._conflicts as string[]) ?? [],
-                size: (doc.size as number) ?? 0,
-                mtime: (doc.mtime as number) ?? 0,
+                revision: doc._rev ?? "",
+                conflicts: doc._conflicts ?? [],
+                size: doc.size ?? 0,
+                mtime: doc.mtime ?? 0,
             };
         }
         return null;
