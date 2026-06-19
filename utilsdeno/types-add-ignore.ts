@@ -29,14 +29,60 @@ function processFile(filePath: string, origin: string, repoHash: string): string
                     name: "EventEmitter",
                     isExported: false,
                     methods: [
-                        { name: "on", parameters: [{ name: "event", type: "string | symbol" }, { name: "listener", type: "(...args: any[]) => void" }], returnType: "this" },
-                        { name: "once", parameters: [{ name: "event", type: "string | symbol" }, { name: "listener", type: "(...args: any[]) => void" }], returnType: "this" },
-                        { name: "off", parameters: [{ name: "event", type: "string | symbol" }, { name: "listener", type: "(...args: any[]) => void" }], returnType: "this" },
-                        { name: "emit", parameters: [{ name: "event", type: "string | symbol" }, { name: "args", isRestParameter: true, type: "any[]" }], returnType: "boolean" },
-                        { name: "addListener", parameters: [{ name: "event", type: "string | symbol" }, { name: "listener", type: "(...args: any[]) => void" }], returnType: "this" },
-                        { name: "removeListener", parameters: [{ name: "event", type: "string | symbol" }, { name: "listener", type: "(...args: any[]) => void" }], returnType: "this" },
-                        { name: "removeAllListeners", parameters: [{ name: "event", isOptional: true, type: "string | symbol" }], returnType: "this" },
-                    ]
+                        {
+                            name: "on",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "listener", type: "(...args: any[]) => void" },
+                            ],
+                            returnType: "this",
+                        },
+                        {
+                            name: "once",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "listener", type: "(...args: any[]) => void" },
+                            ],
+                            returnType: "this",
+                        },
+                        {
+                            name: "off",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "listener", type: "(...args: any[]) => void" },
+                            ],
+                            returnType: "this",
+                        },
+                        {
+                            name: "emit",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "args", isRestParameter: true, type: "any[]" },
+                            ],
+                            returnType: "boolean",
+                        },
+                        {
+                            name: "addListener",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "listener", type: "(...args: any[]) => void" },
+                            ],
+                            returnType: "this",
+                        },
+                        {
+                            name: "removeListener",
+                            parameters: [
+                                { name: "event", type: "string | symbol" },
+                                { name: "listener", type: "(...args: any[]) => void" },
+                            ],
+                            returnType: "this",
+                        },
+                        {
+                            name: "removeAllListeners",
+                            parameters: [{ name: "event", isOptional: true, type: "string | symbol" }],
+                            returnType: "this",
+                        },
+                    ],
                 });
                 updated = true;
             }
@@ -110,7 +156,8 @@ function processFile(filePath: string, origin: string, repoHash: string): string
         const line = lines[lineIndex];
         if (!line) continue;
         if (line.includes("eslint-disable-line") || line.includes("eslint-disable-next-line")) continue;
-        lines[lineIndex] = `${line} // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type`;
+        lines[lineIndex] =
+            `${line} // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/ban-types -- Empty object type`;
         updated = true;
     }
 
@@ -119,7 +166,8 @@ function processFile(filePath: string, origin: string, repoHash: string): string
         const line = lines[lineIndex];
         if (!line) continue;
         if (line.includes("eslint-disable-line") || line.includes("eslint-disable-next-line")) continue;
-        lines[lineIndex] = `${line} // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface`;
+        lines[lineIndex] =
+            `${line} // eslint-disable-line @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Empty interface`;
         updated = true;
     }
 
@@ -128,7 +176,8 @@ function processFile(filePath: string, origin: string, repoHash: string): string
         const line = lines[lineIndex];
         if (!line) continue;
         if (line.includes("eslint-disable-line") || line.includes("eslint-disable-next-line")) continue;
-        lines[lineIndex] = `${line} // eslint-disable-line @typescript-eslint/no-duplicate-enum-values -- Duplicate enum value`;
+        lines[lineIndex] =
+            `${line} // eslint-disable-line @typescript-eslint/no-duplicate-enum-values -- Duplicate enum value`;
         updated = true;
     }
 

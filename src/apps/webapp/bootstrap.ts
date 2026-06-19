@@ -133,7 +133,7 @@ compatGlobal.addEventListener("load", async () => {
 compatGlobal.addEventListener("beforeunload", () => {
     void app?.shutdown();
 });
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patching
 (compatGlobal as any).livesyncApp = {
     getApp: () => app,
     historyStore,

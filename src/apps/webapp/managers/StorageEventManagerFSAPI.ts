@@ -30,7 +30,7 @@ export class StorageEventManagerFSAPI extends StorageEventManagerBase<FSAPIStora
     async cleanup() {
         // Stop file watching
         if (this.fsapiAdapter?.watch) {
-            await (this.fsapiAdapter.watch as any).stopWatch?.();
+            await this.fsapiAdapter.watch.stopWatch?.();
         }
     }
 }

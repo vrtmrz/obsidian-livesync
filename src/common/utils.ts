@@ -290,7 +290,6 @@ export function useMemo<T>(
     return value;
 }
 
-// const _static = new Map<string, any>();
 const _staticObj = new Map<
     string,
     {

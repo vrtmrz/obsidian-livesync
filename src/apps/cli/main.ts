@@ -184,6 +184,7 @@ export function parseArgs(): CLIOptions {
                 break;
             default: {
                 if (!databasePath) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
                     if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
                         command = token as CLICommand;
                         break;
@@ -195,6 +196,7 @@ export function parseArgs(): CLIOptions {
                     databasePath = token;
                     break;
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
                 if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
                     command = token as CLICommand;
                     break;
@@ -239,8 +241,8 @@ async function createDefaultSettingsFile(options: CLIOptions) {
         try {
             await fs.stat(targetPath);
             throw new Error(`Settings file already exists: ${targetPath} (use --force to overwrite)`);
-        } catch (ex: any) {
-            if (!(ex && ex?.code === "ENOENT")) {
+        } catch (ex) {
+            if (!(ex && (ex as { code?: string })?.code === "ENOENT")) {
                 throw ex;
             }
         }
@@ -427,7 +429,7 @@ export async function main() {
     // Create LiveSync core
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
-        (core: LiveSyncBaseCore<NodeServiceContext, any>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
+        (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
             return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
         },
         (core) => [],

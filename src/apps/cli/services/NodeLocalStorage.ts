@@ -83,7 +83,9 @@ function createNodeLocalStorageShim(): LocalStorageShape {
 }
 
 export function ensureGlobalNodeLocalStorage() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node.js global object manipulation
     if (!("localStorage" in global) || typeof (global as any).localStorage?.getItem !== "function") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node.js global object access
         (global as any).localStorage = createNodeLocalStorageShim();
     }
 }

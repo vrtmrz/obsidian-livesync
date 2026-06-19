@@ -1,4 +1,4 @@
-import type { UXDataWriteOptions } from "@lib/common/types";
+import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
 import { fsPromises as fs, path } from "@/apps/cli/node-compat";
@@ -70,7 +70,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -93,7 +93,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -118,7 +118,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         await this.delete(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): void {
         // No-op in CLI version (no event system)
         return undefined;
     }
