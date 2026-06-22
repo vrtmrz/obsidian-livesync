@@ -8,7 +8,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ### Improved
 
-- Overhauled the Object Storage (e.g. MinIO, S3) replication engine ("Journal Replicator 2nd Edition"). It now leverages the standard Web Streams API for a resilient, backpressure-aware architecture, reducing memory footprints on large vaults.
+- Overhauled the Object Storage (e.g., MinIO and S3) replication engine ('Journal Replicator 2nd Edition'). It now leverages the standard Web Streams API for a resilient, backpressure-aware architecture, reducing memory footprints on large vaults.
 - Decoupled the physical storage logic to make it easier to add new storage backends in the future.
 - Stricter compliance with CouchDB's replication protocol (proper `_revisions` transfers with `new_edits: false`) when using Object Storage.
 - Introduced Connection String support for setup configuration.
