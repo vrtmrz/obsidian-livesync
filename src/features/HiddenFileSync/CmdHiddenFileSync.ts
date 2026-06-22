@@ -971,7 +971,8 @@ Offline Changed files: ${processFiles.length}`;
     getCustomisationSynchronizationIgnoredFiles(): string[] {
         const configDir = this.services.API.getSystemConfigDir();
         const key =
-            JSON.stringify(this.settings.pluginSyncExtendedSetting) + `||${this.settings.usePluginSync}||${configDir}`;
+            JSON.stringify(this.settings.pluginSyncExtendedSetting) +
+            `||${this.settings.usePluginSync}||${this.settings.usePluginSyncV2}||${configDir}`;
         if (this.cacheCustomisationSyncIgnoredFiles.has(key)) {
             return this.cacheCustomisationSyncIgnoredFiles.get(key)!;
         }
@@ -983,6 +984,13 @@ Offline Changed files: ${processFiles.length}`;
                   .map((e) => e.files)
                   .flat()
                   .map((e) => `${configDir}/${e}`.toLowerCase());
+
+        if (this.settings.usePluginSyncV2) {
+            synchronisedInConfigSync.push(`${configDir}/plugins/`.toLowerCase());
+            synchronisedInConfigSync.push(`${configDir}/themes/`.toLowerCase());
+            synchronisedInConfigSync.push(`${configDir}/snippets/`.toLowerCase());
+        }
+
         this.cacheCustomisationSyncIgnoredFiles.set(key, synchronisedInConfigSync);
         return synchronisedInConfigSync;
     }

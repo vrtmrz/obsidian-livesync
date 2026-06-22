@@ -1512,11 +1512,13 @@ export class ConfigSync extends LiveSyncCommands {
         if (stat && stat.type != "file") return false;
 
         const configDir = normalizePath(this.configDir);
-        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting)
-            .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
-            .map((e) => e.files)
-            .flat()
-            .map((e) => `${configDir}/${e}`.toLowerCase());
+        const synchronisedInConfigSync = this.useV2
+            ? []
+            : Object.values(this.settings.pluginSyncExtendedSetting)
+                  .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
+                  .map((e) => e.files)
+                  .flat()
+                  .map((e) => `${configDir}/${e}`.toLowerCase());
         if (synchronisedInConfigSync.some((e) => e.startsWith(path.toLowerCase()))) {
             this._log(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
             // This file could be handled by the other module.
