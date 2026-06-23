@@ -34,7 +34,7 @@
         "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/",
         "test": "vitest run",
         "test:unit": "vitest run --config vitest.config.unit.ts",
-        "test:integration": "vitest run --config vitest.config.integration.ts",
+        "test:integration": "npx dotenv-cli -e .env -e .test.env -- vitest run --config vitest.config.integration.ts",
         "test:unit:coverage": "vitest run --config vitest.config.unit.ts --coverage",
         "test:install-playwright": "npx playwright install chromium",
         "test:install-dependencies": "npm run test:install-playwright",
