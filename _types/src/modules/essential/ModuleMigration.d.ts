@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { LiveSyncCore } from "@/main.ts";
 export declare class ModuleMigration extends AbstractModule {

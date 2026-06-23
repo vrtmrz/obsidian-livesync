@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
 import { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
 import type { IAppLifecycleService } from "@lib/services/base/IService";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";

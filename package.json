@@ -29,6 +29,7 @@
         "prettyCheck": "npm run prettyNoWrite -- --check",
         "prettyNoWrite": "prettier --config ./.prettierrc.mjs \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
         "check:compatibility": "node utils/check-compatibility.js --file main.js --ios 15",
+        "precheck": "npm run build:lib:types",
         "check": "npm run tsc-check && npm run lint && npm run svelte-check && npm run check:compatibility",
         "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/",
         "test": "vitest run",

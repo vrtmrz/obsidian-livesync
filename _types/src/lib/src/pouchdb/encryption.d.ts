@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
 import { type EntryDoc, type AnyEntry, type EntryLeaf, type DocumentID, type E2EEAlgorithm } from "@lib/common/types";
 import { encryptWorker, decryptWorker, encryptHKDFWorker, decryptHKDFWorker } from "@lib/worker/bgWorker.ts";
 export declare const encrypt: typeof encryptWorker;

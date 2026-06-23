@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 export declare class ModuleObsidianGlobalHistory extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean>;
