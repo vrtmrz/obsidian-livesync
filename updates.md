@@ -12,6 +12,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Decoupled the physical storage logic to make it easier to add new storage backends in the future.
 - Stricter compliance with CouchDB's replication protocol (proper `_revisions` transfers with `new_edits: false`) when using Object Storage.
 - Introduced Connection String support for setup configuration.
+- Added comprehensive unit tests for the new `JournalSyncCore` engine, covering streams, backpressure, and `new_edits: false` validation.
+- Improved integration test workflows in the CI pipeline to run MinIO tests automatically using standard environment variables.
 
 ## 0.25.77
 

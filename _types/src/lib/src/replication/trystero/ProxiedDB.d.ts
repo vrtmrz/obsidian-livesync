@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { type ReplicatorHostEnv } from "./types";
 import type { EntryDoc } from "@lib/common/models/db.definition";
 export declare function createHostingDB(env: ReplicatorHostEnv): {

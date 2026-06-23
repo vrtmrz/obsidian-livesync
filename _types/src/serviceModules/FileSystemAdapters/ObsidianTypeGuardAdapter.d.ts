@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import type { ITypeGuardAdapter } from "@lib/serviceModules/adapters";
 import { TFile, TFolder } from "obsidian";
 /**

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 type PeriodicProcessorHost = NecessaryServices<"API" | "control", never>;
 export declare class PeriodicProcessor {

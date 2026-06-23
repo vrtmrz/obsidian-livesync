@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { type Room } from "@trystero-p2p/nostr";
 import { RpcRoom } from "@lib/rpc/RpcRoom";
 import { RpcPouchDBProxy } from "@lib/rpc/pouchdb/RpcPouchDBProxy";

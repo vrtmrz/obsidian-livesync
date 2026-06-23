@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { type TAbstractFile } from "@/deps";
 import type { FilePath } from "@lib/common/types";
 import type { IPathAdapter } from "@lib/serviceModules/adapters";

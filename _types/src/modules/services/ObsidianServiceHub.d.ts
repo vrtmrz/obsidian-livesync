@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import type ObsidianLiveSyncPlugin from "@/main";

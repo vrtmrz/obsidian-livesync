@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 export declare const DatabaseConnectingStatuses: {
     readonly STARTED: "STARTED";
     readonly NOT_CONNECTED: "NOT_CONNECTED";

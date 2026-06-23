@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { type TweakValues, type ObsidianLiveSyncSettings, type RemoteDBSettings } from "@lib/common/types.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
