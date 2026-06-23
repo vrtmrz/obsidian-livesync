@@ -1,14 +1,15 @@
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
-import { ServiceFileHandler } from "../../../serviceModules/FileHandler";
+import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
-import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { FileAccessCLI } from "./FileAccessCLI";
 import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
-import { StorageEventManagerCLI } from "../managers/StorageEventManagerCLI";
+import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { IgnoreRules } from "./IgnoreRules";
 
 /**
  * Initialize service modules for CLI version
@@ -21,8 +22,10 @@ import type { ServiceModules } from "@lib/interfaces/ServiceModule";
  */
 export function initialiseServiceModulesCLI(
     basePath: string,
-    core: LiveSyncBaseCore<ServiceContext, any>,
-    services: InjectableServiceHub<ServiceContext>
+    core: LiveSyncBaseCore<ServiceContext, never>,
+    services: InjectableServiceHub<ServiceContext>,
+    ignoreRules?: IgnoreRules,
+    watchEnabled: boolean = false
 ): ServiceModules {
     const storageAccessManager = new StorageAccessManager();
 
@@ -36,12 +39,24 @@ export function initialiseServiceModulesCLI(
     });
 
     // CLI-specific storage event manager
-    const storageEventManager = new StorageEventManagerCLI(basePath, core, {
-        fileProcessing: services.fileProcessing,
-        setting: services.setting,
-        vaultService: services.vault,
-        storageAccessManager: storageAccessManager,
-        APIService: services.API,
+    const storageEventManager = new StorageEventManagerCLI(
+        basePath,
+        core,
+        {
+            fileProcessing: services.fileProcessing,
+            setting: services.setting,
+            vaultService: services.vault,
+            storageAccessManager: storageAccessManager,
+            APIService: services.API,
+        },
+        ignoreRules,
+        watchEnabled
+    );
+
+    // Close the file watcher during graceful shutdown so the process can exit cleanly.
+    services.appLifecycle.onUnload.addHandler(async () => {
+        await storageEventManager.close();
+        return true;
     });
 
     // Storage access using CLI file system adapter
@@ -66,7 +81,7 @@ export function initialiseServiceModulesCLI(
     });
 
     // File handler (platform-independent)
-    const fileHandler = new (ServiceFileHandler as any)({
+    const fileHandler = new ServiceFileHandler({
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,

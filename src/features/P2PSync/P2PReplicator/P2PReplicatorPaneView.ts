@@ -9,7 +9,7 @@ import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@lib/common/types.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@/lib/src/replication/trystero/UseP2PReplicatorResult";
+import type { P2PPaneParams } from "@lib/replication/trystero/UseP2PReplicatorResult";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {
@@ -87,7 +87,7 @@ And you can also drop the local database to rebuild from the remote device.`,
 
                 // this.plugin.settings = remoteConfig;
                 // await this.plugin.saveSettings();
-                await this.core.services.setting.applyPartial(remoteConfig);
+                await this.core.services.setting.applyExternalSettings(remoteConfig);
                 if (yn === DROP) {
                     await this.core.rebuilder.scheduleFetch();
                 } else {

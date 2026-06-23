@@ -1,5 +1,3 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import type { FilePath, UXStat } from "@lib/common/types";
 import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
 import { NodePathAdapter } from "./NodePathAdapter";
@@ -8,6 +6,7 @@ import { NodeConversionAdapter } from "./NodeConversionAdapter";
 import { NodeStorageAdapter } from "./NodeStorageAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 /**
  * Complete file system adapter implementation for Node.js
@@ -39,12 +38,6 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
 
     async getAbstractFileByPath(p: FilePath | string): Promise<NodeFile | null> {
         const pathStr = this.normalisePath(p);
-
-        const cached = this.fileCache.get(pathStr);
-        if (cached) {
-            return cached;
-        }
-
         return await this.refreshFile(pathStr);
     }
 
@@ -104,14 +97,15 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                 path: pathStr as FilePath,
                 stat: {
                     size: stat.size,
-                    mtime: stat.mtimeMs,
-                    ctime: stat.ctimeMs,
+                    mtime: Math.floor(stat.mtimeMs),
+                    ctime: Math.floor(stat.ctimeMs),
                     type: "file",
                 },
             };
             this.fileCache.set(pathStr, file);
             return file;
         } catch {
+            // Evict so a deleted file is not returned by subsequent cache scans.
             this.fileCache.delete(pathStr);
             return null;
         }
@@ -137,8 +131,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                         path: entryRelativePath as FilePath,
                         stat: {
                             size: stat.size,
-                            mtime: stat.mtimeMs,
-                            ctime: stat.ctimeMs,
+                            mtime: Math.floor(stat.mtimeMs),
+                            ctime: Math.floor(stat.ctimeMs),
                             type: "file",
                         },
                     };

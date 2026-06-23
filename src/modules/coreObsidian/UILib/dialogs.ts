@@ -1,9 +1,11 @@
 import { ButtonComponent } from "@/deps.ts";
-import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting } from "../../../deps.ts";
-import { EVENT_PLUGIN_UNLOADED, eventHub } from "../../../common/events.ts";
+import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting, Component } from "@/deps.ts";
+import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
+import { compatGlobal, type CompatIntervalHandle } from "@lib/common/coreEnvFunctions.ts";
 
 class AutoClosableModal extends Modal {
     _closeByUnload() {
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
         this.close();
     }
@@ -11,9 +13,11 @@ class AutoClosableModal extends Modal {
     constructor(app: App) {
         super(app);
         this._closeByUnload = this._closeByUnload.bind(this);
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
     override onClose() {
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }
@@ -121,7 +125,7 @@ export class PopoverSelectString extends FuzzySuggestModal<string> {
         this.callback = undefined;
     }
     override onClose(): void {
-        setTimeout(() => {
+        compatGlobal.setTimeout(() => {
             if (this.callback) {
                 this.callback("");
                 this.callback = undefined;
@@ -139,11 +143,12 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     isManuallyClosed = false;
     defaultAction: string | undefined;
     timeout: number | undefined;
-    timer: ReturnType<typeof setInterval> | undefined = undefined;
+    timer: CompatIntervalHandle | undefined = undefined;
     defaultButtonComponent: ButtonComponent | undefined;
     wideButton: boolean;
 
     onSubmit: (result: string | false) => void;
+    component: Component = new Component();
 
     constructor(
         plugin: Plugin,
@@ -165,12 +170,12 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         this.timeout = timeout;
         this.wideButton = wideButton;
         if (this.timeout) {
-            this.timer = setInterval(() => {
+            this.timer = compatGlobal.setInterval(() => {
                 if (this.timeout === undefined) return;
                 this.timeout--;
                 if (this.timeout < 0) {
                     if (this.timer) {
-                        clearInterval(this.timer);
+                        compatGlobal.clearInterval(this.timer);
                         this.defaultButtonComponent?.setButtonText(`${defaultAction}`);
                         this.timer = undefined;
                     }
@@ -185,12 +190,15 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     }
 
     override onOpen() {
+        this.component.load();
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
-        div.style.userSelect = "text";
-        div.style["webkitUserSelect"] = "text";
-        void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.plugin);
+        div.setCssStyles({
+            userSelect: "text",
+            webkitUserSelect: "text",
+        });
+        void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.component);
         const buttonSetting = new Setting(contentEl);
         const labelWrapper = contentEl.createDiv();
         labelWrapper.addClass("sls-dialogue-note-wrapper");
@@ -198,22 +206,24 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         labelEl.addClass("sls-dialogue-note-countdown");
         if (!this.timeout || !this.timer) {
             labelWrapper.empty();
-            labelWrapper.style.display = "none";
+            labelWrapper.setCssStyles({ display: "none" });
         }
 
-        buttonSetting.infoEl.style.display = "none";
-        buttonSetting.controlEl.style.flexWrap = "wrap";
+        buttonSetting.infoEl.setCssStyles({ display: "none" });
+        buttonSetting.controlEl.setCssStyles({ flexWrap: "wrap" });
         if (this.wideButton) {
-            buttonSetting.controlEl.style.flexDirection = "column";
-            buttonSetting.controlEl.style.alignItems = "center";
-            buttonSetting.controlEl.style.justifyContent = "center";
-            buttonSetting.controlEl.style.flexGrow = "1";
+            buttonSetting.controlEl.setCssStyles({
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                flexGrow: "1",
+            });
         }
         contentEl.addEventListener("click", () => {
             if (this.timer) {
                 labelWrapper.empty();
-                labelWrapper.style.display = "none";
-                clearInterval(this.timer);
+                labelWrapper.setCssStyles({ display: "none" });
+                compatGlobal.clearInterval(this.timer);
                 this.timer = undefined;
                 this.defaultButtonComponent?.setButtonText(`${this.defaultAction}`);
             }
@@ -224,7 +234,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
                     this.isManuallyClosed = true;
                     this.result = button;
                     if (this.timer) {
-                        clearInterval(this.timer);
+                        compatGlobal.clearInterval(this.timer);
                         this.timer = undefined;
                     }
                     this.close();
@@ -234,8 +244,10 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
                     btn.setCta();
                 }
                 if (this.wideButton) {
-                    btn.buttonEl.style.flexGrow = "1";
-                    btn.buttonEl.style.width = "100%";
+                    btn.buttonEl.setCssStyles({
+                        flexGrow: "1",
+                        width: "100%",
+                    });
                 }
                 return btn;
             });
@@ -244,10 +256,11 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
 
     override onClose() {
         super.onClose();
+        this.component.unload();
         const { contentEl } = this;
         contentEl.empty();
         if (this.timer) {
-            clearInterval(this.timer);
+            compatGlobal.clearInterval(this.timer);
             this.timer = undefined;
         }
         if (this.isManuallyClosed) {

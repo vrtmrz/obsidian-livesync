@@ -6,9 +6,9 @@ import {
     PREFIXMD_LOGFILE,
     type DatabaseConnectingStatus,
     type LOG_LEVEL,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
-import { fireAndForget, isDirty, throttle } from "../../lib/src/common/utils.ts";
+import { fireAndForget, isDirty, throttle } from "@lib/common/utils.ts";
 import {
     collectingChunks,
     pluginScanningCount,
@@ -16,22 +16,22 @@ import {
     hiddenFilesProcessingCount,
     type LogEntry,
     logMessages,
-} from "../../lib/src/mock_and_interop/stores.ts";
-import { eventHub } from "../../lib/src/hub/hub.ts";
+} from "@lib/mock_and_interop/stores.ts";
+import { eventHub } from "@lib/hub/hub.ts";
 import {
     EVENT_FILE_RENAMED,
     EVENT_LAYOUT_READY,
     EVENT_LEAF_ACTIVE_CHANGED,
     EVENT_ON_UNRESOLVED_ERROR,
-} from "../../common/events.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { addIcon, normalizePath, Notice } from "../../deps.ts";
+} from "@/common/events.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import { P2PLogCollector } from "@/lib/src/replication/trystero/P2PLogCollector.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 import { isValidPath } from "@/common/utils.ts";
 import {
@@ -41,27 +41,62 @@ import {
 } from "@lib/string_and_binary/path.ts";
 import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@lib/services/lib/logUtils.ts";
 import { NetworkWarningStyles } from "@lib/common/models/setting.const.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { generateReport } from "@/common/reportTool.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
 // DI the log again.
 const recentLogEntries = reactiveSource<LogEntry[]>([]);
-const globalLogFunction = (message: any, level?: number, key?: string) => {
+const globalLogFunction = (message: unknown, level?: number, key?: string) => {
     const messageX =
         message instanceof Error
             ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
-            : message;
+            : typeof message === "string"
+              ? message
+              : JSON.stringify(message);
     const entry = { message: messageX, level, key } as LogEntry;
     recentLogEntries.value = [...recentLogEntries.value, entry];
 };
 
 setGlobalLogFunction(globalLogFunction);
-let recentLogs = [] as string[];
+// Keep the recent logs in memory for display, but also keep a longer history in logForDump for when the user wants to see more logs.
+// logForDump is not reactive and is only used for dumping logs when requested, while recentLogs is reactive and is used for displaying logs in the UI.
+const logForDump = [] as string[];
 
 function addLog(log: string) {
-    recentLogs = [...recentLogs, log].splice(-200);
-    logMessages.value = recentLogs;
+    logForDump.push(log);
+    while (logForDump.length > 1000) {
+        logForDump.shift();
+    }
 }
+
+// Display log is kept separate from the full log history to optimize performance and memory usage.
+// And debounce the updates to the display log to avoid excessive UI updates when there are many log entries in a short time.
+const logForDisplay = [] as string[];
+
+const updateLogMessage = debounce(() => {
+    logMessages.value = [...logForDisplay];
+}, 25);
+function addDisplayLog(log: string) {
+    logForDisplay.push(log);
+    while (logForDisplay.length > 200) {
+        logForDisplay.shift();
+    }
+    updateLogMessage();
+}
+
+const redactPatterns = [/PBKDF2 salt \(Security Seed\):.*$/];
+function redactLog(log: string) {
+    let redactedLog = log;
+    for (const pattern of redactPatterns) {
+        redactedLog = redactedLog.replace(pattern, (match) => {
+            return match.split(":")[0] + ": [REDACTED]";
+        });
+    }
+    return redactedLog;
+}
+
 // logStore.intercept(e => e.slice(Math.min(e.length - 200, 0)));
 
 const showDebugLog = false;
@@ -86,15 +121,15 @@ export class ModuleLog extends AbstractObsidianModule {
         // const emptyMark = `\u{2003}`;
         function padLeftSpComputed(numI: ReactiveValue<number>, mark: string) {
             const formatted = reactiveSource("");
-            let timer: ReturnType<typeof setTimeout> | undefined = undefined;
+            let timer: number | undefined = undefined;
             let maxLen = 1;
             numI.onChanged((numX) => {
                 const num = numX.value;
                 const numLen = `${Math.abs(num)}`.length + 1;
                 maxLen = maxLen < numLen ? numLen : maxLen;
-                if (timer) clearTimeout(timer);
+                if (timer) compatGlobal.clearTimeout(timer);
                 if (num == 0) {
-                    timer = setTimeout(() => {
+                    timer = compatGlobal.setTimeout(() => {
                         formatted.value = "";
                         maxLen = 1;
                     }, 3000);
@@ -227,7 +262,7 @@ export class ModuleLog extends AbstractObsidianModule {
             this.statusDiv.remove();
             // this.statusDiv.pa();
             const container = mdv.view.containerEl;
-            container.insertBefore(this.statusDiv, container.lastChild);
+            container.appendChild(this.statusDiv);
         }
     }
 
@@ -277,27 +312,36 @@ export class ModuleLog extends AbstractObsidianModule {
     }
 
     async updateMessageArea() {
-        if (this.messageArea) {
-            const messageLines = [];
-            const fileStatus = this.activeFileStatus.value;
-            if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
-            const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
-            const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
-            const networkMessages = stringMessages.filter((m) => m.startsWith(MARK_LOG_NETWORK_ERROR));
-            const otherMessages = stringMessages.filter((m) => !m.startsWith(MARK_LOG_NETWORK_ERROR));
+        if (!this.messageArea) return;
 
-            messageLines.push(...otherMessages);
-
-            if (
-                this.settings.networkWarningStyle !== NetworkWarningStyles.ICON &&
-                this.settings.networkWarningStyle !== NetworkWarningStyles.HIDDEN
-            ) {
-                messageLines.push(...networkMessages);
-            } else if (this.settings.networkWarningStyle === NetworkWarningStyles.ICON) {
-                if (networkMessages.length > 0) messageLines.push("🔗❌");
-            }
-            this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
+        const showStatusOnEditor = this.settings?.showStatusOnEditor ?? false;
+        if (this.statusDiv) {
+            this.statusDiv.setCssStyles({ display: showStatusOnEditor ? "" : "none" });
         }
+        if (!showStatusOnEditor) {
+            this.messageArea.innerText = "";
+            return;
+        }
+
+        const messageLines = [];
+        const fileStatus = this.activeFileStatus.value;
+        if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
+        const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
+        const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
+        const networkMessages = stringMessages.filter((m) => m.startsWith(MARK_LOG_NETWORK_ERROR));
+        const otherMessages = stringMessages.filter((m) => !m.startsWith(MARK_LOG_NETWORK_ERROR));
+
+        messageLines.push(...otherMessages);
+
+        if (
+            this.settings.networkWarningStyle !== NetworkWarningStyles.ICON &&
+            this.settings.networkWarningStyle !== NetworkWarningStyles.HIDDEN
+        ) {
+            messageLines.push(...networkMessages);
+        } else if (this.settings.networkWarningStyle === NetworkWarningStyles.ICON) {
+            if (networkMessages.length > 0) messageLines.push("🔗❌");
+        }
+        this.messageArea.innerText = messageLines.map((e) => `⚠️ ${e}`).join("\n");
     }
 
     onActiveLeafChange() {
@@ -307,14 +351,14 @@ export class ModuleLog extends AbstractObsidianModule {
         });
     }
 
-    nextFrameQueue: ReturnType<typeof requestAnimationFrame> | undefined = undefined;
+    nextFrameQueue: ReturnType<typeof compatGlobal.requestAnimationFrame> | undefined = undefined;
     logLines: { ttl: number; message: string }[] = [];
 
     applyStatusBarText() {
         if (this.nextFrameQueue) {
             return;
         }
-        this.nextFrameQueue = requestAnimationFrame(() => {
+        this.nextFrameQueue = compatGlobal.requestAnimationFrame(() => {
             this.nextFrameQueue = undefined;
             const { message, status } = this.statusBarLabels.value;
             // const recent = logMessages.value;
@@ -326,6 +370,9 @@ export class ModuleLog extends AbstractObsidianModule {
             }
 
             this.statusBar?.setText(newMsg.split("\n")[0]);
+            if (this.statusDiv) {
+                this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
+            }
             if (this.settings?.showStatusOnEditor && this.statusDiv) {
                 if (this.settings.showLongerLogInsideEditor) {
                     const now = new Date().getTime();
@@ -334,7 +381,8 @@ export class ModuleLog extends AbstractObsidianModule {
                         (a, b) => (a < b.ttl ? a : b.ttl),
                         Number.MAX_SAFE_INTEGER
                     );
-                    if (this.logLines.length > 0) setTimeout(() => this.applyStatusBarText(), minimumNext - now);
+                    if (this.logLines.length > 0)
+                        compatGlobal.setTimeout(() => this.applyStatusBarText(), minimumNext - now);
                     const recent = this.logLines.map((e) => e.message);
                     const recentLogs = recent.reverse().join("\n");
                     if (isDirty("recentLogs", recentLogs)) this.logHistory!.innerText = recentLogs;
@@ -356,7 +404,7 @@ export class ModuleLog extends AbstractObsidianModule {
         if (this.statusDiv) {
             this.statusDiv.remove();
         }
-        document.querySelectorAll(`.livesync-status`)?.forEach((e) => e.remove());
+        compatGlobal.document.querySelectorAll(`.livesync-status`)?.forEach((e) => e.remove());
         return Promise.resolve(true);
     }
     _everyOnloadStart(): Promise<boolean> {
@@ -378,7 +426,28 @@ export class ModuleLog extends AbstractObsidianModule {
                 void this.services.API.showWindow(VIEW_TYPE_LOG);
             },
         });
-        this.registerView(VIEW_TYPE_LOG, (leaf) => new LogPaneView(leaf, this.plugin));
+        this.addCommand({
+            id: "dump-debug-info",
+            name: "Generate full report for opening the issue with debug info",
+            callback: async () => {
+                const recentLog = [...logForDump];
+                const report = await generateReport(this.services.setting.currentSettings(), this.core);
+                const info = {
+                    ...report,
+                    recentLog: recentLog.map(redactLog),
+                };
+                const yaml = `\`\`\`\`
+# ---- Debug Info Dump ----
+${stringifyYaml(info)}
+\`\`\`\``;
+                if (await this.services.UI.promptCopyToClipboard("Debug info", yaml)) {
+                    new Notice(
+                        "Debug info copied to clipboard. You can paste it in the issue. Be careful as it may contain sensitive information, review it before sharing."
+                    );
+                }
+            },
+        });
+        this.registerView(VIEW_TYPE_LOG, (leaf: WorkspaceLeaf) => new LogPaneView(leaf, this.plugin));
         return Promise.resolve(true);
     }
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
@@ -392,22 +461,27 @@ export class ModuleLog extends AbstractObsidianModule {
             void this.setFileStatus();
         });
 
-        const w = document.querySelectorAll(`.livesync-status`);
+        const w = compatGlobal.document.querySelectorAll(`.livesync-status`);
         w.forEach((e) => e.remove());
 
         this.observeForLogs();
 
-        this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
-        this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
-        this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
-        this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
-        this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
+        if (this.settings.showStatusOnEditor) {
+            this.statusDiv = this.app.workspace.containerEl.createDiv({ cls: "livesync-status" });
+            this.statusLine = this.statusDiv.createDiv({ cls: "livesync-status-statusline" });
+            this.messageArea = this.statusDiv.createDiv({ cls: "livesync-status-messagearea" });
+            this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
+            this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
+            this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
+        }
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
             this.statusBar?.addClass("syncstatusbar");
         }
         this.adjustStatusDivPosition();
+        this._log("Log module loaded", LOG_LEVEL_INFO);
+        this._log("Verbose log", LOG_LEVEL_VERBOSE);
         return Promise.resolve(true);
     }
 
@@ -427,15 +501,16 @@ export class ModuleLog extends AbstractObsidianModule {
             })
         );
     }
-    __addLog(message: any, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
+    __addLog(message: unknown, level: LOG_LEVEL = LOG_LEVEL_INFO, key = ""): void {
         if (level == LOG_LEVEL_DEBUG && !showDebugLog) {
             return;
         }
+        let memoOnly = false;
         if (level <= LOG_LEVEL_INFO && this.settings && this.settings.lessInformationInLog) {
-            return;
+            memoOnly = true;
         }
         if (this.settings && !this.settings.showVerboseLog && level == LOG_LEVEL_VERBOSE) {
-            return;
+            memoOnly = true;
         }
         const vaultName = this.services.vault.getVaultName();
         const now = new Date();
@@ -443,7 +518,12 @@ export class ModuleLog extends AbstractObsidianModule {
         let errorInfo = "";
         if (message instanceof Error) {
             if (message instanceof LiveSyncError) {
-                errorInfo = `${message.cause?.name}:${message.cause?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${message.cause?.stack}`;
+                if (message.cause && message.cause instanceof Error) {
+                    const causedError = message.cause;
+                    errorInfo = `${causedError?.name}:${causedError?.message}\n[StackTrace]: ${message.stack}\n[CausedBy]: ${causedError?.stack}`;
+                } else {
+                    errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}`;
+                }
             } else {
                 const thisStack = new Error().stack;
                 errorInfo = `${message.name}:${message.message}\n[StackTrace]: ${message.stack}\n[LogCallStack]: ${thisStack}`;
@@ -456,6 +536,15 @@ export class ModuleLog extends AbstractObsidianModule {
                   ? `${errorInfo}`
                   : JSON.stringify(message, null, 2);
         const newMessage = timestamp + "->" + messageContent;
+
+        if (this.settings?.writeLogToTheFile) {
+            this.writeLogToTheFile(now, vaultName, newMessage);
+        }
+        addLog(newMessage);
+        if (memoOnly) {
+            return;
+        }
+        addDisplayLog(newMessage);
         if (message instanceof Error) {
             console.error(vaultName + ":" + newMessage);
         } else if (level >= LOG_LEVEL_INFO) {
@@ -466,10 +555,6 @@ export class ModuleLog extends AbstractObsidianModule {
         if (!this.settings?.showOnlyIconsOnEditor) {
             this.statusLog.value = messageContent;
         }
-        if (this.settings?.writeLogToTheFile) {
-            this.writeLogToTheFile(now, vaultName, newMessage);
-        }
-        addLog(newMessage);
         this.logLines.push({ ttl: now.getTime() + 3000, message: newMessage });
 
         if (level >= LOG_LEVEL_NOTICE) {

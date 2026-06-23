@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Menu } from "@/lib/src/services/implements/browser/Menu";
+    import { Menu } from "@lib/services/implements/browser/Menu";
     import { getDialogContext } from "@lib/services/implements/base/SvelteDialog";
     let result = $state<string | boolean>("");
 

@@ -2,7 +2,7 @@
 
 ## 这个插件是怎么实现同步的.
 
-![Synchronization](../images/1.png)
+![Synchronisation](../images/1.png)
 
 1. 当笔记创建或修改时，Obsidian会触发事件。Self-hosted LiveSync捕获这些事件，并将变更同步至本地PouchDB
 2. PouchDB通过自动或手动方式将变更同步至远程CouchDB

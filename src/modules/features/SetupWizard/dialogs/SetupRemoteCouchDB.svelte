@@ -1,12 +1,12 @@
 <script lang="ts">
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import ExtraItems from "@/lib/src/UI/components/ExtraItems.svelte";
-    import InputRow from "@/lib/src/UI/components/InputRow.svelte";
-    import Password from "@/lib/src/UI/components/Password.svelte";
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import InfoNote from "@lib/UI/components/InfoNote.svelte";
+    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
+    import InputRow from "@lib/UI/components/InputRow.svelte";
+    import Password from "@lib/UI/components/Password.svelte";
     import {
         DEFAULT_SETTINGS,
         PREFERRED_SETTING_CLOUDANT,
@@ -14,20 +14,19 @@
         RemoteTypes,
         type CouchDBConnection,
         type ObsidianLiveSyncSettings,
-    } from "../../../../lib/src/common/types";
-    import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
+    } from "@lib/common/types";
+    import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { copyTo, pickCouchDBSyncSettings } from "../../../../lib/src/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { copyTo, pickCouchDBSyncSettings } from "@lib/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
+    import { TYPE_CANCELLED, type SetupRemoteCouchDBResultType } from "./setupDialogTypes";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
     let syncSetting = $state<CouchDBConnection>({ ...default_setting });
-    type ResultType = typeof TYPE_CANCELLED | CouchDBConnection;
-    const TYPE_CANCELLED = "cancelled";
-    type Props = GuestDialogProps<ResultType, CouchDBConnection>;
+    type Props = GuestDialogProps<SetupRemoteCouchDBResultType, CouchDBConnection>;
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
         if (getInitialData) {
@@ -181,7 +180,7 @@
         autocapitalize="off"
         spellcheck="false"
         required
-        pattern="^[a-z0-9][a-z0-9_]*$"
+        pattern="^[a-z][a-z0-9_$()+/-]*$"
         bind:value={syncSetting.couchDB_DBNAME}
     />
 </InputRow>

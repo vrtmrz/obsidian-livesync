@@ -7,7 +7,7 @@ import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { FileAccessFSAPI } from "./FileAccessFSAPI";
 import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
-import { StorageEventManagerFSAPI } from "../managers/StorageEventManagerFSAPI";
+import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 
@@ -22,7 +22,7 @@ import { ServiceFileHandler } from "@/serviceModules/FileHandler";
  */
 export function initialiseServiceModulesFSAPI(
     rootHandle: FileSystemDirectoryHandle,
-    core: LiveSyncBaseCore<ServiceContext, any>,
+    core: LiveSyncBaseCore<ServiceContext, never>,
     services: InjectableServiceHub<ServiceContext>
 ): ServiceModules {
     const storageAccessManager = new StorageAccessManager();
@@ -67,7 +67,7 @@ export function initialiseServiceModulesFSAPI(
     });
 
     // File handler (platform-independent)
-    const fileHandler = new (ServiceFileHandler as any)({
+    const fileHandler = new ServiceFileHandler({
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,

@@ -14,14 +14,15 @@ import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
 import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
 import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
-import { useP2PReplicatorCommands } from "@/lib/src/replication/trystero/useP2PReplicatorCommands";
-import { useP2PReplicatorFeature } from "@/lib/src/replication/trystero/useP2PReplicatorFeature";
+import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
+import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
+import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
-const DB_NAME = "livesync-webapp";
 
 /**
  * Default settings for the webapp
@@ -49,7 +50,7 @@ const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
 
 class LiveSyncWebApp {
     private rootHandle: FileSystemDirectoryHandle;
-    private core: LiveSyncBaseCore<ServiceContext, any> | null = null;
+    private core: LiveSyncBaseCore<ServiceContext, never> | null = null;
     private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
 
     constructor(rootHandle: FileSystemDirectoryHandle) {
@@ -63,7 +64,6 @@ class LiveSyncWebApp {
         console.log(`Vault directory: ${this.rootHandle.name}`);
 
         // Create service context and hub
-        const context = new ServiceContext();
         this.serviceHub = new BrowserServiceHub<ServiceContext>();
 
         // Setup API service
@@ -90,24 +90,26 @@ class LiveSyncWebApp {
                     console.log("[Settings] Loaded from .livesync/settings.json");
                     return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
                 }
-            } catch (error) {
+            } catch {
                 console.log("[Settings] Failed to load, using defaults");
             }
             return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
         });
 
         // App lifecycle handlers
-        this.serviceHub.appLifecycle.scheduleRestart.setHandler(async () => {
-            console.log("[AppLifecycle] Restart requested");
-            await this.shutdown();
-            await this.initialize();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+        this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
+            void (async () => {
+                console.log("[AppLifecycle] Restart requested");
+                await this.shutdown();
+                await this.initialize();
+                compatGlobal.setTimeout(() => {
+                    compatGlobal.location.reload();
+                }, 1000);
+            })();
         });
 
         // Create LiveSync core
-        this.core = new LiveSyncBaseCore(
+        this.core = new LiveSyncBaseCore<ServiceContext, never>(
             this.serviceHub,
             (core, serviceHub) => {
                 return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
@@ -127,11 +129,12 @@ class LiveSyncWebApp {
                 // new ModuleReplicatorP2P(core), // Register P2P replicator for CLI (useP2PReplicator is not used here)
                 new SetupManager(core),
             ],
-            () => [], // No add-ons
+            () => [] as never[], // No add-ons
             (core) => {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                useRemoteConfiguration(core);
                 const replicator = useP2PReplicatorFeature(core);
                 useP2PReplicatorCommands(core, replicator);
                 const setupManager = core.getModule(SetupManager);
@@ -167,7 +170,7 @@ class LiveSyncWebApp {
             const file = await fileHandle.getFile();
             const text = await file.text();
             return JSON.parse(text);
-        } catch (error) {
+        } catch {
             // File doesn't exist yet
             return null;
         }
@@ -204,6 +207,7 @@ class LiveSyncWebApp {
             }
 
             // Scan the directory to populate file cache
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
             const fileAccess = (this.core as any)._serviceModules?.storageAccess?.vaultAccess;
             if (fileAccess?.fsapiAdapter) {
                 console.log("[Scanning] Scanning vault directory...");
@@ -222,6 +226,7 @@ class LiveSyncWebApp {
             console.log("[Shutdown] Shutting down...");
 
             // Stop file watching
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
             const storageEventManager = (this.core as any)._serviceModules?.storageAccess?.storageEventManager;
             if (storageEventManager?.cleanup) {
                 await storageEventManager.cleanup();
@@ -233,7 +238,7 @@ class LiveSyncWebApp {
     }
 
     private showError(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "error";
             statusEl.textContent = `Error: ${message}`;
@@ -241,7 +246,7 @@ class LiveSyncWebApp {
     }
 
     private showWarning(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "warning";
             statusEl.textContent = `Warning: ${message}`;
@@ -249,7 +254,7 @@ class LiveSyncWebApp {
     }
 
     private showSuccess(message: string) {
-        const statusEl = document.getElementById("status");
+        const statusEl = _activeDocument.getElementById("status");
         if (statusEl) {
             statusEl.className = "success";
             statusEl.textContent = message;

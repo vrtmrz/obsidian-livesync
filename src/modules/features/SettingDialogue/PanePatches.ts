@@ -4,14 +4,14 @@ import {
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
     SuffixDatabaseName,
-} from "../../../lib/src/common/types.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
+} from "@lib/common/types.ts";
+import { Logger } from "@lib/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { PouchDB } from "../../../lib/src/pouchdb/pouchdb-browser";
-import { ExtraSuffixIndexedDB } from "../../../lib/src/common/types.ts";
+import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
+import { ExtraSuffixIndexedDB } from "@lib/common/types.ts";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
@@ -150,7 +150,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 xxhash64: "xxhash64 (Fastest)",
                 "mixed-purejs": "PureJS fallback  (Fast, W/O WebAssembly)",
                 sha1: "Older fallback (Slow, W/O WebAssembly)",
-            } as Record<HashAlgorithm, string>,
+            } satisfies Record<HashAlgorithm, string>,
         });
         this.addOnSaved("hashAlg", async () => {
             await this.core.localDatabase._prepareHashFunctions();
@@ -188,7 +188,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = document.createElement("span")));
+                text.inputEl.before((dateEl = activeDocument.createElement("span")));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);

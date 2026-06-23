@@ -1,4 +1,4 @@
-import { eventHub } from "../lib/src/hub/hub";
+import { eventHub } from "@lib/hub/hub";
 // import type ObsidianLiveSyncPlugin from "../main";
 
 export const EVENT_PLUGIN_LOADED = "plugin-loaded";
@@ -43,5 +43,5 @@ declare global {
     }
 }
 
-export * from "../lib/src/events/coreEvents.ts";
+export * from "@lib/events/coreEvents.ts";
 export { eventHub };

@@ -1,5 +1,5 @@
-import { $msg, $t } from "../../../lib/src/common/i18n.ts";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../../../lib/src/common/rosetta.ts";
+import { $msg, $t } from "@lib/common/i18n.ts";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -21,6 +21,9 @@ export function paneGeneral(
         });
         this.addOnSaved("displayLanguage", () => this.display());
         new Setting(paneEl).autoWireToggle("showStatusOnEditor");
+        this.addOnSaved("showStatusOnEditor", () => {
+            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        });
         new Setting(paneEl).autoWireToggle("showOnlyIconsOnEditor", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)),
         });

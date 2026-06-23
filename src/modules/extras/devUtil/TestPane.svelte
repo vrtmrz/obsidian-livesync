@@ -1,17 +1,15 @@
 <script lang="ts">
-    import { onDestroy, onMount } from "svelte";
-    import type ObsidianLiveSyncPlugin from "../../../main.ts";
+    import { onMount } from "svelte";
+    import type ObsidianLiveSyncPlugin from "@/main.ts";
     import { perf_trench } from "./tests.ts";
-    import { MarkdownRenderer, Notice } from "../../../deps.ts";
-    import type { ModuleDev } from "../ModuleDev.ts";
+    import { MarkdownRenderer, Notice } from "@/deps.ts";
+    import type { ModuleDev } from "@/modules/extras/ModuleDev.ts";
     import { fireAndForget } from "octagonal-wheels/promises";
-    import { EVENT_LAYOUT_READY, eventHub } from "../../../common/events.ts";
-    import { writable } from "svelte/store";
+    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events.ts";
     export let plugin: ObsidianLiveSyncPlugin;
     export let moduleDev: ModuleDev;
     $: core = plugin.core;
     let performanceTestResult = "";
-    let functionCheckResult = "";
     let testRunning = false;
     let prefTestResultEl: HTMLDivElement;
     let isReady = false;

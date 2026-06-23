@@ -1,4 +1,4 @@
-import { App, PluginSettingTab } from "../../../deps.ts";
+import { App, Component, PluginSettingTab } from "@/deps.ts";
 import {
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
@@ -12,15 +12,15 @@ import {
     LEVEL_ADVANCED,
     LEVEL_EDGE_CASE,
     REMOTE_P2P,
-} from "../../../lib/src/common/types.ts";
-import { delay, isObjectDifferent, sizeToHumanReadable } from "../../../lib/src/common/utils.ts";
-import { versionNumberString2Number } from "../../../lib/src/string_and_binary/convert.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
+} from "@lib/common/types.ts";
+import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { Logger } from "@lib/common/logger.ts";
 import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
-import ObsidianLiveSyncPlugin from "../../../main.ts";
-import { scheduleTask } from "../../../common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "../../../lib/src/replication/couchdb/LiveSyncReplicator.ts";
+import ObsidianLiveSyncPlugin from "@/main.ts";
+import { scheduleTask } from "@/common/utils.ts";
+import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
 import {
     type AllSettingItemKey,
     type AllStringItemKey,
@@ -31,21 +31,21 @@ import {
     type OnDialogSettings,
     getConfName,
 } from "./settingConstants.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
-import { confirmWithMessage } from "../../coreObsidian/UILib/dialogs.ts";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "../../../common/events.ts";
-import { JournalSyncMinio } from "../../../lib/src/replication/journal/objectstore/JournalSyncMinio.ts";
+import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
+import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
     enableOnly,
-    findAttrFromParent,
-    getLevelStr,
+    // findAttrFromParent,
+    // getLevelStr,
     setLevelClass,
     setStyle,
     visibleOnly,
     type OnSavedHandler,
+    type OnSavedHandlerFunc,
     type OnUpdateFunc,
     type OnUpdateResult,
     type PageFunctions,
@@ -62,30 +62,19 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
+import { MinioStorageAdapter } from "@lib/replication/journal/objectstore/MinioStorageAdapter.js";
 
 // For creating a document
-const toc = new Set<string>();
-const stubs = {} as {
-    [key: string]: { [key: string]: Map<string, Record<string, string>> };
-};
-export function createStub(name: string, key: string, value: string, panel: string, pane: string) {
-    DEV: {
-        if (!(pane in stubs)) {
-            stubs[pane] = {};
-        }
-        if (!(panel in stubs[pane])) {
-            stubs[pane][panel] = new Map<string, Record<string, string>>();
-        }
-        const old = stubs[pane][panel].get(name) ?? {};
-        stubs[pane][panel].set(name, { ...old, [key]: value });
-        scheduleTask("update-stub", 100, () => {
-            eventHub.emitEvent("document-stub-created", { toc: toc, stub: stubs });
-        });
-    }
-}
+// const toc = new Set<string>();
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
+    private _lifetimeComponent: Component = new Component();
+    get lifetimeComponent(): Component {
+        return this._lifetimeComponent;
+    }
     get core() {
         return this.plugin.core;
     }
@@ -141,7 +130,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     async saveLocalSetting(key: keyof typeof OnDialogSettingsDefault) {
         if (key == "configPassphrase") {
-            localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
+            compatGlobal.localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
             return await Promise.resolve();
         }
         if (key == "deviceAndVaultName") {
@@ -180,7 +169,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // if (runOnSaved) {
         const handlers = this.onSavedHandlers
             .filter((e) => appliedKeys.indexOf(e.key) !== -1)
-            .map((e) => e.handler(this.editingSettings[e.key as AllSettingItemKey]));
+            .map((e) => Promise.resolve(e.handler(this.editingSettings[e.key])));
         await Promise.all(handlers);
         // }
         keys.forEach((e) => this.refreshSetting(e));
@@ -214,7 +203,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     reloadAllLocalSettings() {
         const ret = { ...OnDialogSettingsDefault };
-        ret.configPassphrase = localStorage.getItem("ls-setting-passphrase") || "";
+        ret.configPassphrase = compatGlobal.localStorage.getItem("ls-setting-passphrase") || "";
         ret.preset = "";
         ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
         return ret;
@@ -286,7 +275,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     // UI Element Wrapper -->
     settingComponents = [] as Setting[];
     controlledElementFunc = [] as UpdateFunction[];
-    onSavedHandlers = [] as OnSavedHandler<any>[];
+    onSavedHandlers = [] as OnSavedHandler<AllSettingItemKey>[];
 
     inWizard: boolean = false;
 
@@ -349,7 +338,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     createEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {
@@ -361,7 +350,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     addEl<T extends keyof HTMLElementTagNameMap>(
         el: HTMLElement,
         tag: T,
-        o?: string | DomElementInfo | undefined,
+        o?: string | DomElementInfo,
         callback?: (el: HTMLElementTagNameMap[T]) => void,
         func?: OnUpdateFunc
     ) {
@@ -369,8 +358,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         return Promise.resolve(elm);
     }
 
-    addOnSaved<T extends AllSettingItemKey>(key: T, func: (value: AllSettings[T]) => Promise<void> | void) {
-        this.onSavedHandlers.push({ key, handler: func });
+    addOnSaved<T extends AllSettingItemKey>(key: T, func: OnSavedHandlerFunc<T>) {
+        const newHandler = { key, handler: func } as OnSavedHandler<AllSettingItemKey>;
+        this.onSavedHandlers.push(newHandler);
     }
     resetEditingSettings() {
         this._editingSettings = undefined;
@@ -378,6 +368,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     override hide() {
+        super.hide();
+        this._lifetimeComponent.unload();
         this.isShown = false;
     }
     isShown: boolean = false;
@@ -647,7 +639,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.editingSettings.passphrase = "";
         }
         await this.saveAllDirtySettings();
-        await this.applyAllSettings();
+        await Promise.resolve(this.applyAllSettings());
         if (result == OPTION_FETCH) {
             await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
             this.services.appLifecycle.scheduleRestart();
@@ -662,8 +654,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
-    display(): void {
+    override display(): void {
         const changeDisplay = this.changeDisplay.bind(this);
+        // Make sure lifetime component is loaded for markdown rendering in panes.
+        this._lifetimeComponent.load();
         const { containerEl } = this;
         this.settingComponents.length = 0;
         this.controlledElementFunc.length = 0;
@@ -717,7 +711,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             visibleOnly(() => this.isNeedRebuildLocal() || this.isNeedRebuildRemote())
         );
 
-        let paneNo = 0;
+        // let paneNo = 0;
         const addPane = (
             parentEl: HTMLElement,
             title: string,
@@ -727,18 +721,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             level?: ConfigLevel
         ) => {
             const el = this.createEl(parentEl, "div", { text: "" });
-            DEV: {
-                const mdTitle = `${paneNo++}. ${title}${getLevelStr(level ?? "")}`;
-                el.setAttribute("data-pane", mdTitle);
-                toc.add(
-                    `| ${icon} | [${mdTitle}](#${mdTitle
-                        .toLowerCase()
-                        .replace(/ /g, "-")
-                        .replace(/[^\w\s-]/g, "")}) | `
-                );
-            }
+
             setLevelClass(el, level);
-            el.createEl("h3", { text: title, cls: "sls-setting-pane-title" });
+            new Setting(el).setName(title).setHeading().setClass("sls-setting-pane-title");
             if (this.menuEl) {
                 this.menuEl.createEl(
                     "label",
@@ -769,7 +754,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             // });
             return p;
         };
-        const panelNoMap = {} as { [key: string]: number };
+        // const panelNoMap = {} as { [key: string]: number };
         const addPanel = (
             parentEl: HTMLElement,
             title: string,
@@ -778,15 +763,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             level?: ConfigLevel
         ) => {
             const el = this.createEl(parentEl, "div", { text: "" }, callback, func);
-            DEV: {
-                const paneNo = findAttrFromParent(parentEl, "data-pane");
-                if (!(paneNo in panelNoMap)) {
-                    panelNoMap[paneNo] = 0;
-                }
-                panelNoMap[paneNo] += 1;
-                const panelNo = panelNoMap[paneNo];
-                el.setAttribute("data-panel", `${panelNo}. ${title}${getLevelStr(level ?? "")}`);
-            }
             setLevelClass(el, level);
             this.createEl(el, "h4", { text: title, cls: "sls-setting-panel-title" });
             const p = Promise.resolve(el);
@@ -820,6 +796,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return callback;
         };
 
+        // Add panes
+
+        // TODO: Refactor to new API style.
         void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then(
             bindPane(paneChangeLog)
         );
@@ -871,7 +850,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     getMinioJournalSyncClient() {
-        return new JournalSyncMinio(this.core.settings, this.core.simpleStore, this.core);
+        // return new JournalSyncMinio(this.core.settings, this.core.simpleStore, this.core);
+        // const settings = this.editingSettings as ObsidianLiveSyncSettings;
+        return new JournalSyncCore(
+            this.core.settings,
+            this.core.simpleStore,
+            this.core,
+            new MinioStorageAdapter(this.core.settings, this.core)
+        );
     }
     async resetRemoteBucket() {
         const minioJournal = this.getMinioJournalSyncClient();

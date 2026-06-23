@@ -1,15 +1,17 @@
-import type { LiveSyncBaseCore } from "../../../LiveSyncBaseCore";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { addP2PEventHandlers } from "@lib/replication/trystero/addP2PEventHandlers";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { LiveSyncError } from "@lib/common/LSError";
+
 type CLIP2PPeer = {
     peerId: string;
     name: string;
 };
 
 function delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
 export function parseTimeoutSeconds(value: string, commandName: string): number {
@@ -20,7 +22,7 @@ export function parseTimeoutSeconds(value: string, commandName: string): number 
     return timeoutSec;
 }
 
-function validateP2PSettings(core: LiveSyncBaseCore<ServiceContext, any>) {
+function validateP2PSettings(core: LiveSyncBaseCore<ServiceContext, never>) {
     const settings = core.services.setting.currentSettings();
     if (!settings.P2P_Enabled) {
         throw new Error("P2P is disabled in settings (P2P_Enabled=false)");
@@ -32,10 +34,15 @@ function validateP2PSettings(core: LiveSyncBaseCore<ServiceContext, any>) {
     settings.P2P_IsHeadless = true;
 }
 
-function createReplicator(core: LiveSyncBaseCore<ServiceContext, any>): LiveSyncTrysteroReplicator {
+async function createReplicator(core: LiveSyncBaseCore<ServiceContext, never>): Promise<LiveSyncTrysteroReplicator> {
     validateP2PSettings(core);
-    const replicator = new LiveSyncTrysteroReplicator({ services: core.services });
-    addP2PEventHandlers(replicator);
+    const replicator = await core.services.replicator.getNewReplicator();
+    if (!replicator) {
+        throw new Error("Failed to create replicator instance. Ensure P2P is enabled in settings.");
+    }
+    if (!(replicator instanceof LiveSyncTrysteroReplicator)) {
+        throw new Error("Unexpected replicator type. Expected LiveSyncTrysteroReplicator.");
+    }
     return replicator;
 }
 
@@ -46,10 +53,10 @@ function getSortedPeers(replicator: LiveSyncTrysteroReplicator): CLIP2PPeer[] {
 }
 
 export async function collectPeers(
-    core: LiveSyncBaseCore<ServiceContext, any>,
+    core: LiveSyncBaseCore<ServiceContext, never>,
     timeoutSec: number
 ): Promise<CLIP2PPeer[]> {
-    const replicator = createReplicator(core);
+    const replicator = await createReplicator(core);
     await replicator.open();
     try {
         await delay(timeoutSec * 1000);
@@ -75,11 +82,11 @@ function resolvePeer(peers: CLIP2PPeer[], peerToken: string): CLIP2PPeer | undef
 }
 
 export async function syncWithPeer(
-    core: LiveSyncBaseCore<ServiceContext, any>,
+    core: LiveSyncBaseCore<ServiceContext, never>,
     peerToken: string,
     timeoutSec: number
 ): Promise<CLIP2PPeer> {
-    const replicator = createReplicator(core);
+    const replicator = await createReplicator(core);
     await replicator.open();
     try {
         const timeoutMs = timeoutSec * 1000;
@@ -101,11 +108,14 @@ export async function syncWithPeer(
 
         const pullResult = await replicator.replicateFrom(targetPeer.peerId, false);
         if (pullResult && "error" in pullResult && pullResult.error) {
-            throw pullResult.error;
+            throw pullResult.error instanceof Error ? pullResult.error : LiveSyncError.fromError(pullResult.error);
         }
-        const pushResult = (await replicator.requestSynchroniseToPeer(targetPeer.peerId)) as any;
+        const pushResult = await replicator.requestSynchroniseToPeer(targetPeer.peerId);
         if (!pushResult || pushResult.ok !== true) {
-            throw pushResult?.error ?? new Error("P2P sync failed while requesting remote sync");
+            const err = pushResult?.error;
+            throw err instanceof Error
+                ? err
+                : LiveSyncError.fromError(err ?? "P2P sync failed while requesting remote sync");
         }
 
         return targetPeer;
@@ -114,8 +124,8 @@ export async function syncWithPeer(
     }
 }
 
-export async function openP2PHost(core: LiveSyncBaseCore<ServiceContext, any>): Promise<LiveSyncTrysteroReplicator> {
-    const replicator = createReplicator(core);
+export async function openP2PHost(core: LiveSyncBaseCore<ServiceContext, never>): Promise<LiveSyncTrysteroReplicator> {
+    const replicator = await createReplicator(core);
     await replicator.open();
     return replicator;
 }

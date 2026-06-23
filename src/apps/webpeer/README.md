@@ -13,13 +13,20 @@ This pseudo client actually receives the data from other devices, and sends if s
 
 ## How to use it?
 
-We can build the application by running the following command:
+We can build the application from the repository root by running the following command:
 
 ```bash
-$ deno task build
+npm run build -w webpeer
 ```
 
-Then, open the `dist/index.html` in the browser. It can be configured as the same as the Self-hosted LiveSync (Same components are used[^1]).
+Or from the package directory:
+
+```bash
+cd src/apps/webpeer
+npm run build
+```
+
+Then, open `dist/index.html` in the browser. It can be configured in the same way as Self-hosted LiveSync (the same components are used[^1]).
 
 ## Some notes
 

@@ -1,5 +1,5 @@
-import type { TFile } from "../deps";
-import type { FilePathWithPrefix, LoadedEntry } from "../lib/src/common/types";
+import type { TFile } from "@/deps";
+import type { FilePathWithPrefix, LoadedEntry } from "@lib/common/types";
 
 export const EVENT_REQUEST_SHOW_HISTORY = "show-history";
 

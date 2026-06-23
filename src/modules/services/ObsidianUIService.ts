@@ -1,7 +1,7 @@
 import type { ConfigService } from "@lib/services/base/ConfigService";
 import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
 import type { ReplicatorService } from "@lib/services/base/ReplicatorService";
-import { UIService } from "@lib/services//implements/base/UIService";
+import { UIService } from "@lib/services/implements/base/UIService";
 import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
 import DialogToCopy from "@lib/UI/dialogues/DialogueToCopy.svelte";

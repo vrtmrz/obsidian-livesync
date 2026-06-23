@@ -12,7 +12,7 @@ There are many settings in Self-hosted LiveSync. This document describes each se
 |  🛰️  | [3. Remote Configuration](#3-remote-configuration)                 |
 |  🔄  | [4. Sync Settings](#4-sync-settings)                               |
 |  🚦  | [5. Selector (Advanced)](#5-selector-advanced)                     |
-|  🔌  | [6. Customization sync (Advanced)](#6-customization-sync-advanced) |
+|  🔌  | [6. Customisation sync (Advanced)](#6-customisation-sync-advanced) |
 |  🧰  | [7. Hatch](#7-hatch)                                               |
 |  🔧  | [8. Advanced (Advanced)](#8-advanced-advanced)                     |
 |  💪  | [9. Power users (Power User)](#9-power-users-power-user)           |
@@ -68,7 +68,7 @@ Following panes will be shown when you enable this setting.
 | Icon | Description |
 | :--: | ------------------------------------------------------------------ |
 | 🚦 | [5. Selector (Advanced)](#5-selector-advanced) |
-| 🔌 | [6. Customization sync (Advanced)](#6-customization-sync-advanced) |
+| 🔌 | [6. Customisation sync (Advanced)](#6-customisation-sync-advanced) |
 | 🔧 | [8. Advanced (Advanced)](#8-advanced-advanced) |
 
 #### Enable poweruser features
@@ -120,6 +120,18 @@ Setting key: showStatusOnStatusbar
 
 We can show the status of synchronisation on the status bar. (Default: On)
 
+#### Show status icon instead of file warnings banner
+
+Setting key: hideFileWarningNotice
+
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.
+
+#### Network warning style
+
+Setting key: networkWarningStyle
+
+How to display network errors when the sync server is unreachable.
+
 ### 2. Logging
 
 #### Show only notifications
@@ -138,11 +150,19 @@ Show verbose log. Please enable when you report the logs
 
 ### 1. Remote Server
 
+Self-hosted LiveSync supports multiple remote connection profiles under **Remote Server** -> **Remote Databases**. This allows you to save and switch between multiple databases or bucket configurations in a single vault.
+
+- **➕ Add new connection**: Create a new connection profile by launching the setup dialogue.
+- **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+p2p://...`) to import a remote configuration profile.
+- **🔧 Configure**: Open the setup dialogue to edit settings for the selected connection profile.
+- **✅ Activate**: Select and activate this profile as the current active remote.
+- **🗑️ Delete**: Remove this connection profile from the list.
+
 #### Remote Type
 
 Setting key: remoteType
 
-Remote server type
+The active remote server type. This is automatically projected to the legacy configuration when you activate a connection profile.
 
 ### 2. Notification
 
@@ -172,6 +192,14 @@ Setting key: usePathObfuscation
 
 In default, the path of the file is not obfuscated to improve the performance. If you enable this, the path of the file will be obfuscated. This is useful when you want to hide the path of the file.
 
+#### Encryption Algorithm
+
+Setting key: E2EEAlgorithm
+
+The encryption algorithm version used for end-to-end encryption.
+- `v2` (V2: AES-256-GCM With HKDF): Recommended and default version.
+- `forceV1` or `""` (V1: Legacy): Older legacy encryption. Only use this if you have an existing vault encrypted in the legacy format.
+
 #### Use dynamic iteration count (Experimental)
 
 Setting key: useDynamicIterationCount
@@ -192,30 +220,62 @@ Fetch necessary settings from already configured remote server.
 
 ### 5. Minio,S3,R2
 
+These settings are configured within the S3/MinIO/R2 Setup dialogue when adding (`➕`) or editing (`🔧`) an Object Storage connection profile.
+
 #### Endpoint URL
 
 Setting key: endpoint
+
+The URL of the remote storage endpoint.
+Note: Only Secure (HTTPS) connections can be used on Obsidian Mobile.
 
 #### Access Key
 
 Setting key: accessKey
 
+The Access Key ID used for authentication.
+
 #### Secret Key
 
 Setting key: secretKey
+
+The Secret Access Key used for authentication.
 
 #### Region
 
 Setting key: region
 
+The storage region (e.g., `us-east-1`, or `auto` for Cloudflare R2).
+
 #### Bucket Name
 
 Setting key: bucket
 
+The name of the bucket to store synchronised files.
+
 #### Use Custom HTTP Handler
 
 Setting key: useCustomRequestHandler
-Enable this if your Object Storage doesn't support CORS
+
+This option is labeled **Use internal API** in the setup dialogue. Enable this if your Object Storage does not support CORS. It uses Obsidian's internal API to communicate with the S3 server, which is not compliant with web standards but can bypass CORS restrictions. Note that this might break in future Obsidian versions.
+
+#### File prefix on the bucket
+
+Setting key: bucketPrefix
+
+This option is labeled **Folder Prefix** in the setup dialogue. Effectively a directory. Should end with `/`. e.g., `vault-name/`. Leave blank to store data at the root of the bucket.
+
+#### Enable forcePathStyle
+
+Setting key: forcePathStyle
+
+This option is labeled **Use Path-Style Access** in the setup dialogue. If enabled, the forcePathStyle option will be used for bucket operations.
+
+#### Custom Headers
+
+Setting key: bucketCustomHeaders
+
+Custom HTTP headers to include in every request sent to the Object Storage bucket. Specify them in the format `Header-Name: Value`, with each header on a new line.
 
 #### Test Connection
 
@@ -223,23 +283,81 @@ Enable this if your Object Storage doesn't support CORS
 
 ### 6. CouchDB
 
+These settings are configured within the CouchDB Setup dialogue when adding (`➕`) or editing (`🔧`) a CouchDB connection profile.
+
 #### Server URI
 
 Setting key: couchDB_URI
 
+The URI of the CouchDB server.
+Note: Only Secure (HTTPS) connections can be used on Obsidian Mobile. The URI must not end with a trailing slash.
+
 #### Username
 
 Setting key: couchDB_USER
-username
+
+The username used to authenticate with CouchDB.
 
 #### Password
 
 Setting key: couchDB_PASSWORD
-password
+
+The password used to authenticate with CouchDB.
 
 #### Database Name
 
 Setting key: couchDB_DBNAME
+
+The name of the database.
+Note: The database name cannot contain capital letters, spaces, or special characters other than `_$()+/-`, and cannot start with an underscore (`_`).
+
+#### Use Request API to avoid inevitable CORS problem
+
+Setting key: useRequestAPI
+
+This option is labeled **Use Internal API** in the setup dialogue. If enabled, Obsidian's internal request API will be used to bypass CORS restrictions. This is a workaround that may not be compliant with web standards and is less secure. Note that this might break in future Obsidian versions.
+
+#### Custom Headers
+
+Setting key: couchDB_CustomHeaders
+
+Custom HTTP headers to include in every request sent to the CouchDB server. Specify them in the format `Header-Name: Value`, with each header on a new line.
+
+#### Use JWT Authentication
+
+Setting key: useJWT
+
+Enable JSON Web Token (JWT) authentication for CouchDB. This is an experimental feature and has not been thoroughly verified.
+
+#### JWT Algorithm
+
+Setting key: jwtAlgorithm
+
+The algorithm used to sign the JWT. Supported algorithms: `HS256`, `HS512`, `ES256`, `ES512`.
+
+#### JWT Expiration Duration (minutes)
+
+Setting key: jwtExpDuration
+
+Token expiration duration in minutes. Set to 0 to disable expiration.
+
+#### JWT Key
+
+Setting key: jwtKey
+
+The secret key (for HS256/HS512) or the PKCS#8 PEM-formatted private key (for ES256/ES512) used to sign the JWT.
+
+#### JWT Key ID (kid)
+
+Setting key: jwtKid
+
+The Key ID (`kid`) header parameter included in the JWT.
+
+#### JWT Subject (sub)
+
+Setting key: jwtSub
+
+The subject (`sub`) claim of the JWT, which should match your CouchDB username.
 
 #### Test Database Connection
 
@@ -251,25 +369,99 @@ Checks and fixes any potential issues with the database config.
 
 #### Apply Settings
 
+### 7. Peer-to-Peer (P2P) Synchronisation
+
+#### Enable P2P Synchronisation
+
+Setting key: P2P_Enabled
+
+Enable direct peer-to-peer synchronisation via WebRTC.
+
+#### Relay URL
+
+Setting key: P2P_relays
+
+The WebSocket relay server URL(s) used for coordinating P2P connections via WebRTC. Multiple URLs can be separated by commas.
+
+#### Group ID
+
+Setting key: P2P_roomID
+
+The room ID or Group ID used to identify your group of synchronising devices. All devices you wish to synchronise must use the same Group ID. You can enter any custom string or generate a random Group ID.
+
+#### Passphrase
+
+Setting key: P2P_passphrase
+
+The password or passphrase used to authenticate and encrypt P2P communication. All devices must use the same passphrase.
+
+#### Device Peer ID
+
+Setting key: P2P_DevicePeerName
+
+The peer name or identifier of this device in the P2P network. This should be unique within your group of devices.
+
+#### Automatically start P2P connection on launch
+
+Setting key: P2P_AutoStart
+
+This option is labeled **Auto Start P2P Connection** in the setup dialogue. If enabled, the P2P connection will start automatically when the plug-in launches.
+
+#### Automatically broadcast changes to connected peers
+
+Setting key: P2P_AutoBroadcast
+
+This option is labeled **Auto Broadcast Changes** in the setup dialogue. If enabled, changes will be automatically broadcasted to connected peers, requesting them to fetch the changes.
+
+#### TURN Server URLs (comma-separated)
+
+Setting key: P2P_turnServers
+
+A comma-separated list of TURN/STUN server URLs. Used to relay P2P connections when direct WebRTC connection fails due to strict NAT or firewalls. In most cases, these can be left blank.
+
+#### TURN Username
+
+Setting key: P2P_turnUsername
+
+The username for authentication with the TURN server.
+
+#### TURN Credential
+
+Setting key: P2P_turnCredential
+
+The password or credential for authentication with the TURN server.
+
 ## 4. Sync Settings
 
-### 1. Synchronization Preset
+### 1. Synchronisation Preset
 
 #### Presets
 
 Setting key: preset
 Apply preset configuration
 
-### 2. Synchronization Method
+### 2. Synchronisation Method
 
 #### Sync Mode
 
 Setting key: syncMode
 
+The trigger mechanism for synchronisation.
+- **LiveSync** (`LIVESYNC`): Real-time, continuous, bidirectional synchronisation.
+  Note: This requires a CouchDB or WebRTC P2P remote server. It is not supported for S3-compatible Object Storage.
+- **Periodic Sync** (`PERIODIC`): Synchronisation is performed at regular intervals specified by the **Periodic Sync interval** setting.
+- **On Events** (`ONEVENTS`): Synchronisation is triggered by specific events (such as save, file open, or startup) configured via the toggles below.
+
 #### Periodic Sync interval
 
 Setting key: periodicReplicationInterval
 Interval (sec)
+
+#### Minimum interval for syncing
+
+Setting key: syncMinimumInterval
+
+The minimum interval for automatic synchronisation on event.
 
 #### Sync on Save
 
@@ -296,6 +488,11 @@ Automatically Sync all files when opening Obsidian.
 Setting key: syncAfterMerge
 Sync automatically after merging files
 
+#### Keep replication active in the background
+
+Setting key: keepReplicationActiveInBackground
+Desktop only; uses more battery and network.
+
 ### 3. Update thinning
 
 #### Batch database update
@@ -318,12 +515,12 @@ Saving will be performed forcefully after this number of seconds.
 #### Use the trash bin
 
 Setting key: trashInsteadDelete
-Move remotely deleted files to the trash, instead of deleting.
+Move remotely deleted files to the trash, instead of deleting. On Obsidian v1.7.2 or newer, file deletion respects the user's deletion preferences (by utilising the `FileManager.trashFile` API), regardless of this setting.
 
 #### Keep empty folder
 
 Setting key: doNotDeleteFolder
-Should we keep folders that don't have any files inside?
+Should we keep folders that do not have any files inside?
 
 ### 5. Conflict resolution (Advanced)
 
@@ -360,9 +557,10 @@ Setting key: notifyAllSettingSyncFile
 
 ### 7. Hidden Files (Advanced)
 
-#### Hidden file synchronization
-
 #### Enable Hidden files sync
+
+Setting key: syncInternalFiles
+Enable the synchronisation of hidden files and folders (e.g. settings files, templates, snippets, and themes under `.obsidian`).
 
 #### Scan for hidden files before replication
 
@@ -372,6 +570,12 @@ Setting key: syncInternalFilesBeforeReplication
 
 Setting key: syncInternalFilesInterval
 Seconds, 0 to disable
+
+#### Suppress notification of hidden files change
+
+Setting key: suppressNotifyHiddenFilesChange
+
+If enabled, the notification of hidden files change will be suppressed.
 
 ## 5. Selector (Advanced)
 
@@ -406,42 +610,42 @@ Comma separated `.gitignore, .dockerignore`
 
 #### Add default patterns
 
-## 6. Customization sync (Advanced)
+## 6. Customisation sync (Advanced)
 
-### 1. Customization Sync
+### 1. Customisation Sync
 
 #### Device name
 
 Setting key: deviceAndVaultName
-Unique name between all synchronized devices. To edit this setting, please disable customization sync once.
+Unique name between all synchronised devices. To edit this setting, please disable customisation sync once.
 
-#### Per-file-saved customization sync
+#### Per-file-saved customisation sync
 
 Setting key: usePluginSyncV2
-If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.
+If enabled, per-file efficient customisation sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enable this, we lose compatibility with old versions.
 
-#### Enable customization sync
+#### Enable customisation sync
 
 Setting key: usePluginSync
 
-#### Scan customization automatically
+#### Scan customisation automatically
 
 Setting key: autoSweepPlugins
-Scan customization before replicating.
+Scan customisation before replicating.
 
-#### Scan customization periodically
+#### Scan customisation periodically
 
 Setting key: autoSweepPluginsPeriodic
-Scan customization every 1 minute.
+Scan customisation every 1 minute.
 
-#### Notify customized
+#### Notify customised
 
 Setting key: notifyPluginOrSettingUpdated
-Notify when other device has newly customized.
+Notify when another device has newly customised.
 
 #### Open
 
-Open the dialog
+Open the dialogue
 
 ## 7. Hatch
 
@@ -456,14 +660,18 @@ Warning! This will have a serious impact on performance. And the logs will not b
 
 ### 2. Scram Switches
 
+Emergency controls to suspend synchronisation processes in order to prevent database corruption. If a critical mismatch or sync error occurs, the plug-in may automatically enter a Scram state and suspend operations.
+
 #### Suspend file watching
 
 Setting key: suspendFileWatching
-Stop watching for file changes.
+
+Stop watching for local file changes.
 
 #### Suspend database reflecting
 
 Setting key: suspendParseReplicationResult
+
 Stop reflecting database changes to storage files.
 
 ### 3. Recovery and Repair
@@ -486,7 +694,7 @@ Compare the content of files between on local database and storage. If not match
 
 #### Back to non-configured
 
-#### Delete all customization sync data
+#### Delete all customisation sync data
 
 ## 8. Advanced (Advanced)
 
@@ -506,6 +714,12 @@ Setting key: hashCacheMaxAmount
 #### Enhance chunk size
 
 Setting key: customChunkSize
+
+#### Chunk Splitter
+
+Setting key: chunkSplitterVersion
+
+Select the chunk splitter version; V3 is the most efficient. If you experience issues, please choose Default or Legacy.
 
 #### Use splitting-limit-capped chunk splitter
 
@@ -531,6 +745,12 @@ Setting key: concurrencyOfReadChunksOnline
 #### The delay for consecutive on-demand fetches
 
 Setting key: minimumIntervalOfReadChunksOnline
+
+#### Maximum size of chunks to send in one request
+
+Setting key: sendChunksBulkMaxSize
+
+Limit the maximum size of chunks to send in a single bulk request (MB).
 
 ## 9. Power users (Power User)
 
@@ -639,7 +859,7 @@ If this enabled, All files are handled as case-Sensitive (Previous behaviour).
 
 ### 4. Compatibility (Internal API Usage)
 
-#### Scan changes on customization sync
+#### Scan changes on customisation sync
 
 Setting key: watchInternalFileChanges
 Do not use internal API
@@ -664,7 +884,13 @@ Setting key: doNotSuspendOnFetching
 #### Keep empty folder
 
 Setting key: doNotDeleteFolder
-Should we keep folders that don't have any files inside?
+Should we keep folders that do not have any files inside?
+
+#### Process files even if seems to be corrupted
+
+Setting key: processSizeMismatchedFiles
+
+Enable this setting to process files with size mismatches, which can sometimes be created by certain external APIs or integrations.
 
 ### 7. Edge case addressing (Processing)
 
@@ -684,17 +910,25 @@ If enabled, the file under 1kb will be processed in the UI thread.
 
 Setting key: disableCheckingConfigMismatch
 
+### 9. Remediation
+
+#### Maximum file modification time for reflected file events
+
+Setting key: maxMTimeForReflectEvents
+
+Files with modification times greater than this value (in seconds since the Unix epoch) will not have their events reflected. Set to 0 to disable this limit.
+
 ## 11. Maintenance
 
 ### 1. Scram!
 
 #### Lock Server
 
-Lock the remote server to prevent synchronization with other devices.
+Lock the remote server to prevent synchronisation with other devices.
 
 #### Emergency restart
 
-Disables all synchronization and restart.
+Disables all synchronisation and restart.
 
 ### 2. Syncing
 
@@ -712,17 +946,13 @@ Initialise journal sent history. On the next sync, every item except this device
 
 ### 3. Rebuilding Operations (Local)
 
-#### Fetch from remote
+#### Reset Synchronisation on This Device
 
 Restore or reconstruct local database from remote.
 
-#### Fetch rebuilt DB (Save local documents before)
-
-Restore or reconstruct local database from remote database but use local chunks.
-
 ### 4. Total Overhaul
 
-#### Rebuild everything
+#### Overwrite Server Data with This Device's Files
 
 Rebuild local and remote database with local files.
 
@@ -752,7 +982,7 @@ Delete all data on the remote server.
 
 #### Run database cleanup
 
-Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Rebuild everything' under Total Overhaul.
+Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Overwrite Server Data with This Device's Files' under Reset Synchronisation information.
 
 ### 7. Reset
 

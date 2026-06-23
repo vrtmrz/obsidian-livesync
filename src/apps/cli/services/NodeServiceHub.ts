@@ -1,6 +1,5 @@
 import type { AppLifecycleService, AppLifecycleServiceDependencies } from "@lib/services/base/AppLifecycleService";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
-import * as nodePath from "node:path";
 import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
 import { SvelteDialogManagerBase, type ComponentHasResult } from "@lib/services/implements/base/SvelteDialog";
 import { UIService } from "@lib/services/implements/base/UIService";
@@ -24,13 +23,15 @@ import type { ServiceInstances } from "@lib/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
 import { DatabaseService } from "@lib/services/base/DatabaseService";
-import type { ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { path as nodePath } from "@/apps/cli/node-compat";
+import type { KeyValueDBService } from "@lib/services/base/KeyValueDBService";
 
 export class NodeServiceContext extends ServiceContext {
-    vaultPath: string;
-    constructor(vaultPath: string) {
+    databasePath: string;
+    constructor(databasePath: string) {
         super();
-        this.vaultPath = vaultPath;
+        this.databasePath = databasePath;
     }
 }
 
@@ -64,7 +65,7 @@ class NodeDatabaseService<T extends NodeServiceContext> extends DatabaseService<
     ): { name: string; options: PouchDB.Configuration.DatabaseConfiguration } {
         const optionPass = {
             ...options,
-            prefix: this.context.vaultPath + nodePath.sep,
+            prefix: this.context.databasePath + nodePath.sep,
         };
         const passSettings = { ...settings, useIndexedDBAdapter: false };
         return super.modifyDatabaseOptions(passSettings, name, optionPass);
@@ -197,10 +198,10 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             path,
             API,
             config,
-            keyValueDB: keyValueDB as any,
+            keyValueDB: keyValueDB as unknown as KeyValueDBService<T>,
             control,
         };
-
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- (Forcibly )
         super(context, serviceInstancesToInit as any);
     }
 }

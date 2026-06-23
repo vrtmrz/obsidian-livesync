@@ -1,13 +1,26 @@
 import { getLanguage } from "@/deps";
 import { createServiceFeature } from "@lib/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta";
-import { $msg, setLang } from "@lib/common/i18n";
+import { $msg, __onMissingTranslation, setLang } from "@lib/common/i18n";
+
+function tryGetLanguage() {
+    try {
+        // Note: 1.8.7+ is required. but it is 18, Feb., 2025. we want to fallback on earlier versions, so we catch the error here.
+        // eslint-disable-next-line obsidianmd/no-unsupported-api
+        return getLanguage();
+    } catch (e) {
+        console.error("Failed to get Obsidian language, defaulting to 'def'", e);
+        return "en";
+    }
+}
 
 export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API } }) => {
+    // Clear missing translation handler to avoid unnecessary warnings.
+    __onMissingTranslation(() => {});
     let isChanged = false;
     const settings = setting.currentSettings();
     if (settings.displayLanguage == "") {
-        const obsidianLanguage = getLanguage();
+        const obsidianLanguage = tryGetLanguage();
         if (
             SUPPORTED_I18N_LANGS.indexOf(obsidianLanguage) !== -1 && // Check if the language is supported
             obsidianLanguage != settings.displayLanguage // Check if the language is different from the current setting

@@ -7,8 +7,7 @@ import type { InjectableDatabaseEventService } from "@lib/services/implements/in
 import type { IVaultService } from "@lib/services/base/IService";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import * as nodeFs from "node:fs";
-import * as nodePath from "node:path";
+import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";
@@ -179,7 +178,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     implements IKeyValueDBService
 {
     private _kvDB: KeyValueDatabase | undefined;
-    private _simpleStore: SimpleStore<any> | undefined;
+    private _simpleStore: SimpleStore<unknown> | undefined;
     private filePath: string;
     private _log = createInstanceLogFunction("NodeKeyValueDBService");
 
@@ -249,7 +248,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
         if (!(await this.openKeyValueDB())) {
             return false;
         }
-        this._simpleStore = this.openSimpleStore<any>("os");
+        this._simpleStore = this.openSimpleStore<unknown>("os");
         return true;
     }
 
@@ -265,7 +264,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
             get: async (key: string): Promise<T> => {
                 return await getDB().get(`${prefix}${key}`);
             },
-            set: async (key: string, value: any): Promise<void> => {
+            set: async (key: string, value: unknown): Promise<void> => {
                 await getDB().set(`${prefix}${key}`, value);
             },
             delete: async (key: string): Promise<void> => {

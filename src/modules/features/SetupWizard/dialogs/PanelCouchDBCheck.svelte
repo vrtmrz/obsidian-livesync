@@ -2,9 +2,9 @@
     /**
      * Panel to check and fix CouchDB configuration issues
      */
-    import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
-    import Decision from "../../../../lib/src/UI/components/Decision.svelte";
-    import UserDecisions from "../../../../lib/src/UI/components/UserDecisions.svelte";
+    import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
     import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;
@@ -22,17 +22,17 @@
             detectedIssues.push({ message: `Error during testAndFixSettings: ${e}`, result: "error", classes: [] });
         }
     }
-    function isErrorResult(result: ConfigCheckResult): result is ResultError | ResultErrorMessage {
+    function isErrorResult(result: ConfigCheckResult): result is ResultError<unknown> | ResultErrorMessage {
         return "result" in result && result.result === "error";
     }
-    function isFixableError(result: ConfigCheckResult): result is ResultError {
+    function isFixableError(result: ConfigCheckResult): result is ResultError<unknown> {
         return isErrorResult(result) && "fix" in result && typeof result.fix === "function";
     }
     function isSuccessResult(result: ConfigCheckResult): result is { message: string; result: "ok"; value?: any } {
         return "result" in result && result.result === "ok";
     }
     let processing = $state(false);
-    async function fixIssue(issue: ResultError) {
+    async function fixIssue(issue: ResultError<unknown>) {
         try {
             processing = true;
             await issue.fix();

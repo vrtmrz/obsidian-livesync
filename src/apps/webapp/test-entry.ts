@@ -12,6 +12,7 @@
 import { LiveSyncWebApp } from "./main";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";
 import type { FilePathWithPrefix } from "@lib/common/types";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 // --------------------------------------------------------------------------
 // Internal state – one app instance per page / browser context
@@ -27,11 +28,38 @@ function stripPrefix(raw: string): string {
     return raw.replace(/^[^:]+:/, "");
 }
 
+interface TestCore {
+    services?: {
+        replication?: {
+            databaseQueueCount?: { value: number };
+            storageApplyingCount?: { value: number };
+        };
+        fileProcessing?: {
+            totalQueued?: { value: number };
+            batched?: { value: number };
+            processing?: { value: number };
+        };
+        database?: {
+            localDatabase: {
+                findAllNormalDocs(options?: { conflicts?: boolean }): AsyncIterable<{
+                    _deleted?: boolean;
+                    deleted?: boolean;
+                    path?: string;
+                    _rev?: string;
+                    _conflicts?: string[];
+                    size?: number;
+                    mtime?: number;
+                }>;
+            };
+        };
+    };
+}
+
 /**
  * Poll every 300 ms until all known processing queues are drained, or until
  * the timeout elapses.  Mirrors `waitForIdle` in the existing vitest harness.
  */
-async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
+async function waitForIdle(core: TestCore, timeoutMs = 60_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const q =
@@ -41,13 +69,13 @@ async function waitForIdle(core: any, timeoutMs = 60_000): Promise<void> {
             (core.services?.fileProcessing?.processing?.value ?? 0) +
             (core.services?.replication?.storageApplyingCount?.value ?? 0);
         if (q === 0) return;
-        await new Promise<void>((r) => setTimeout(r, 300));
+        await new Promise<void>((r) => compatGlobal.setTimeout(r, 300));
     }
     throw new Error(`waitForIdle timed out after ${timeoutMs} ms`);
 }
 
-function getCore(): any {
-    const core = (app as any)?.core;
+function getCore(): TestCore {
+    const core = (app as unknown as { core: TestCore | null })?.core;
     if (!core) throw new Error("Vault not initialised – call livesyncTest.init() first");
     return core;
 }
@@ -116,7 +144,7 @@ export interface LiveSyncTestAPI {
 const livesyncTest: LiveSyncTestAPI = {
     async init(vaultName: string, settings: Partial<ObsidianLiveSyncSettings>): Promise<void> {
         // Clean up any stale OPFS data from previous runs.
-        const opfsRoot = await navigator.storage.getDirectory();
+        const opfsRoot = await compatGlobal.navigator.storage.getDirectory();
         try {
             await opfsRoot.removeEntry(vaultName, { recursive: true });
         } catch {
@@ -177,10 +205,10 @@ const livesyncTest: LiveSyncTestAPI = {
             if (docPath !== vaultPath) continue;
             return {
                 path: docPath,
-                revision: (doc._rev as string) ?? "",
-                conflicts: (doc._conflicts as string[]) ?? [],
-                size: (doc.size as number) ?? 0,
-                mtime: (doc.mtime as number) ?? 0,
+                revision: doc._rev ?? "",
+                conflicts: doc._conflicts ?? [],
+                size: doc.size ?? 0,
+                mtime: doc.mtime ?? 0,
             };
         }
         return null;
@@ -200,4 +228,4 @@ const livesyncTest: LiveSyncTestAPI = {
 };
 
 // Expose on window for Playwright page.evaluate() calls.
-(window as any).livesyncTest = livesyncTest;
+(compatGlobal as unknown as Record<string, unknown>).livesyncTest = livesyncTest;

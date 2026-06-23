@@ -1,0 +1,72 @@
+// @ts-nocheck
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+import { type EntryDoc, type SyncParameters, type BucketSyncSetting, type RemoteDBSettings } from "@lib/common/types.ts";
+import type { ReplicationCallback, ReplicationStat } from "@lib/replication/LiveSyncAbstractReplicator.ts";
+import { type SimpleStore } from "@lib/common/utils.ts";
+import { type CheckPointInfo } from "./JournalSyncTypes.ts";
+import type { LiveSyncJournalReplicatorEnv } from "./LiveSyncJournalReplicatorEnv.ts";
+import type { IJournalStorage } from "./objectstore/JournalStorageAdapter.ts";
+type ProcessingEntry = PouchDB.Core.PutDocument<EntryDoc> & PouchDB.Core.GetMeta;
+export declare class JournalSyncCore {
+    _settings: BucketSyncSetting;
+    storage: IJournalStorage;
+    get db(): PouchDB.Database<EntryDoc>;
+    get currentSettings(): import("@lib/common/types.ts").ObsidianLiveSyncSettings;
+    hash: string;
+    processReplication: ReplicationCallback;
+    batchSize: number;
+    env: LiveSyncJournalReplicatorEnv;
+    store: SimpleStore<CheckPointInfo>;
+    requestedStop: boolean;
+    getInitialSyncParameters(): Promise<SyncParameters>;
+    getSyncParameters(): Promise<SyncParameters>;
+    putSyncParameters(params: SyncParameters): Promise<boolean>;
+    getHash(settings: BucketSyncSetting): string;
+    constructor(settings: BucketSyncSetting, store: SimpleStore<CheckPointInfo>, env: LiveSyncJournalReplicatorEnv, storage: IJournalStorage);
+    downloadJson<T>(key: string): Promise<T | false>;
+    uploadJson<T>(key: string, body: T): Promise<boolean>;
+    applyNewConfig(settings: BucketSyncSetting, store: SimpleStore<CheckPointInfo>, env: LiveSyncJournalReplicatorEnv): void;
+    updateInfo(info: Partial<ReplicationStat>): void;
+    updateCheckPointInfo(func: (infoFrom: CheckPointInfo) => CheckPointInfo): Promise<CheckPointInfo>;
+    _currentCheckPointInfo: {
+        lastLocalSeq: number | string;
+        journalEpoch: string;
+        knownIDs: Set<string>;
+        sentIDs: Set<string>;
+        receivedFiles: Set<string>;
+        sentFiles: Set<string>;
+    };
+    getCheckpointInfo(): Promise<CheckPointInfo>;
+    resetAllCaches(): void;
+    resetCheckpointInfo(): Promise<void>;
+    private getJournalEpochFromSyncParams;
+    ensureCheckpointCachesAreFresh(): Promise<void>;
+    isAvailable(): Promise<boolean>;
+    resetBucket(): Promise<boolean>;
+    getRemoteKey(): string;
+    getReplicationPBKDF2Salt(refresh?: boolean): Promise<Uint8Array>;
+    isEncryptionPrevented(fileName: string): boolean;
+    private decryptDataV2;
+    private decryptDataV1;
+    decryptDownloaded(key: string, encrypted: Uint8Array, set: RemoteDBSettings): Promise<Uint8Array>;
+    encryptForUpload(key: string, data: Uint8Array, set: RemoteDBSettings): Promise<Uint8Array>;
+    getDocKey(doc: EntryDoc): string;
+    _createJournalPack(override?: number | string): Promise<{
+        changes: EntryDoc[];
+        hasNext: boolean;
+        packLastSeq: string | number;
+    }>;
+    private _createSendReadableStream;
+    private _createSendCompressTransformStream;
+    private _createSendUploadWritableStream;
+    sendLocalJournal(showMessage?: boolean): Promise<boolean>;
+    _getRemoteJournals(): Promise<string[]>;
+    processDocuments(allDocs: ProcessingEntry[]): Promise<boolean>;
+    private _createReceiveReadableStream;
+    private _createReceiveTransformStream;
+    private _createReceiveWritableStream;
+    receiveRemoteJournal(showMessage?: boolean): Promise<boolean>;
+    sync(showResult?: boolean): Promise<boolean>;
+    requestStop(): void;
+}
+export {};

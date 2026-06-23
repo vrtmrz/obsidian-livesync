@@ -8,13 +8,13 @@ import {
     type DocumentID,
     type FilePathWithPrefix,
     type diff_result,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { displayRev } from "../../common/utils.ts";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { displayRev } from "@/common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -88,7 +88,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     return false;
                 }
             } else {
-                this._log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
+                this._log(`Merge: Something went wrong: ${filename}, (${toDelete as string})`, LOG_LEVEL_NOTICE);
                 return false;
             }
             // In here, some merge has been processed.
@@ -163,7 +163,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                 this._log(`There are no conflicting files`, LOG_LEVEL_VERBOSE);
             }
         } catch (e) {
-            this._log(`Error while scanning conflicted files: ${e}`, LOG_LEVEL_NOTICE);
+            this._log(`Error while scanning conflicted files...`, LOG_LEVEL_NOTICE);
             this._log(e, LOG_LEVEL_VERBOSE);
             return false;
         }

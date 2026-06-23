@@ -1,18 +1,20 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "../../lib/src/common/types.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,
     eventHub,
-} from "../../common/events.ts";
-import { $msg, setLang } from "../../lib/src/common/i18n.ts";
-import { versionNumberString2Number } from "../../lib/src/string_and_binary/convert.ts";
-import { AbstractModule } from "../AbstractModule.ts";
+} from "@/common/events.ts";
+import { $msg, setLang } from "@lib/common/i18n.ts";
+import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import type { LiveSyncCore } from "@/main.ts";
 import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
+import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -61,10 +63,12 @@ export class ModuleLiveSyncMain extends AbstractModule {
         eventHub.onEvent(EVENT_SETTING_SAVED, (settings: ObsidianLiveSyncSettings) => {
             fireAndForget(async () => {
                 try {
-                    await this.core.services.control.applySettings();
-                    const lang = this.core.services.setting.currentSettings()?.displayLanguage ?? undefined;
+                    const lang = this.core.services.setting.currentSettings()?.displayLanguage;
                     if (lang !== undefined) {
-                        setLang(this.core.services.setting.currentSettings()?.displayLanguage);
+                        setLang(lang);
+                    }
+                    if (this.core.services.database.isDatabaseReady()) {
+                        await this.core.services.control.applySettings();
                     }
                     eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
                 } catch (e) {
@@ -87,11 +91,6 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         // this.addUIs();
-        //@ts-ignore
-        const manifestVersion: string = MANIFEST_VERSION || "0.0.0";
-        //@ts-ignore
-        const packageVersion: string = PACKAGE_VERSION || "0.0.0";
-
         this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
         await this.services.setting.loadSettings();
         if (!(await this.services.appLifecycle.onSettingLoaded())) {
@@ -99,7 +98,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             return false;
         }
         const lsKey = "obsidian-live-sync-ver" + this.services.vault.getVaultName();
-        const last_version = localStorage.getItem(lsKey);
+        const last_version = compatGlobal.localStorage.getItem(lsKey);
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
@@ -121,7 +120,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
             await this.saveSettings();
         }
-        localStorage.setItem(lsKey, `${VER}`);
+        compatGlobal.localStorage.setItem(lsKey, `${VER}`);
         await this.services.database.openDatabase({
             databaseEvents: this.services.databaseEvents,
             replicator: this.services.replicator,
@@ -131,7 +130,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
         // this.$$replicate = this.$$replicate.bind(this);
         // this.core.$$onLiveSyncReady = this.core.$$onLiveSyncReady.bind(this);
         await this.core.services.appLifecycle.onLoaded();
-        await Promise.all(this.core.addOns.map((e) => e.onload()));
+        await Promise.all(this.core.addOns.map((e) => Promise.resolve(e.onload())));
         return true;
     }
 

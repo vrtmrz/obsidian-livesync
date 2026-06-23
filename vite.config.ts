@@ -9,10 +9,17 @@ import fs from "node:fs";
 import { platform } from "node:process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+function readJson(filePath: string) {
+    if (!fs.existsSync(filePath)) {
+        return {};
+    }
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+}
 
-const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
-const packageJson = JSON.parse(fs.readFileSync("./package.json") + "");
-const updateInfo = JSON.stringify(fs.readFileSync("./updates.md") + "");
+const manifestJson = readJson(path.resolve(__dirname, "manifest.json"));
+const packageJson = readJson(path.resolve(__dirname, "package.json"));
+const updatesPath = path.resolve(__dirname, "updates.md");
+const updateInfo = JSON.stringify(fs.existsSync(updatesPath) ? fs.readFileSync(updatesPath, "utf-8") : "");
 
 // const moduleAliasPlugin = {
 //     name: "module-alias",

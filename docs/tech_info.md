@@ -1,8 +1,8 @@
 # Designed architecture
 
-## How does this plugin synchronize.
+## How does this plug-in synchronise.
 
-![Synchronization](../images/1.png)
+![Synchronisation](../images/1.png)
 
 1. When notes are created or modified, Obsidian raises some events. Self-hosted LiveSync catches these events and reflects changes into Local PouchDB.
 2. PouchDB automatically or manually replicates changes to remote CouchDB.

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-hosted LiveSync Setup QR Aggregator</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f4f4f9; color: #333; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 90%; }
+        .progress { margin: 20px 0; font-size: 1.2rem; font-weight: bold; }
+        .status { margin-bottom: 20px; color: #666; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #7c4dff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; transition: background-color 0.2s; border: none; cursor: pointer; }
+        .btn:hover { background-color: #651fff; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); gap: 8px; margin: 20px 0; }
+        .tile { width: 40px; height: 40px; border: 2px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        .tile.filled { background-color: #7c4dff; color: white; border-color: #7c4dff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LiveSync Setup</h1>
+        <div id="app">
+            <p>Checking hash data...</p>
+        </div>
+    </div>
+
+    <script>
+        function updateUI() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            
+            const id = params.get('id');
+            const total = parseInt(params.get('n') || '0');
+            const index = parseInt(params.get('i') || '-1');
+            const data = params.get('d');
+
+            const app = document.getElementById('app');
+
+            if (!id || total <= 0 || index === -1 || !data) {
+                app.innerHTML = '<p class="status">Invalid setup URL. Please scan the QR code correctly.</p>';
+                return;
+            }
+
+            // Get session data
+            const storageKey = 'ls_agg_' + id;
+            let session = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            
+            // Save current data
+            session[index] = data;
+            localStorage.setItem(storageKey, JSON.stringify(session));
+
+            const receivedIndexes = Object.keys(session).map(Number);
+            const count = receivedIndexes.length;
+
+            let html = `
+                <div class="status">Session ID: ${id}</div>
+                <div class="progress">${count} / ${total} Loaded</div>
+                <div class="grid">
+            `;
+
+            for (let i = 0; i < total; i++) {
+                const isFilled = session[i] !== undefined;
+                html += `<div class="tile ${isFilled ? 'filled' : ''}">${i + 1}</div>`;
+            }
+            html += `</div>`;
+
+            if (count === total) {
+                const sortedData = Array.from({length: total}, (_, i) => session[i]).join('');
+                // Use the correct protocol for settings
+                const obsidianUri = `obsidian://setuplivesync?settingsQR=${sortedData}`;
+                
+                html += `
+                    <p>All parts have been collected!</p>
+                    <a href="${obsidianUri}" class="btn">Open Obsidian to complete setup</a>
+                    <p style="margin-top:20px; font-size:0.8rem; color: #999;">Note: If the button does not respond, please ensure you are opening this in a browser that can trigger Obsidian.</p>
+                `;
+            } else {
+                html += `
+                    <p class="status">Please scan the next QR code.</p>
+                    <button class="btn" disabled>Waiting...</button>
+                `;
+            }
+
+            app.innerHTML = html;
+        }
+
+        window.addEventListener('hashchange', updateUI);
+        updateUI();
+    </script>
+</body>
+</html>

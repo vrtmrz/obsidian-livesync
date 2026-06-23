@@ -116,8 +116,7 @@ export class FSAPIVaultAdapter implements IVaultAdapter<FSAPIFile> {
         await this.delete(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): void {
         // No-op in webapp version (no event system yet)
-        return undefined;
     }
 }

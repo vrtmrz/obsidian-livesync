@@ -1,15 +1,22 @@
-import { requestToCouchDBWithCredentials } from "../../../../common/utils";
-import { $msg } from "../../../../lib/src/common/i18n";
-import { Logger } from "../../../../lib/src/common/logger";
-import type { ObsidianLiveSyncSettings } from "../../../../lib/src/common/types";
-import { parseHeaderValues } from "../../../../lib/src/common/utils";
-import { isCloudantURI } from "../../../../lib/src/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "../../../../lib/src/replication/httplib";
+import { requestToCouchDBWithCredentials } from "@/common/utils";
+import { $msg } from "@lib/common/i18n";
+import { Logger } from "@lib/common/logger";
+import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { parseHeaderValues } from "@lib/common/utils";
+import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
+import { generateCredentialObject } from "@lib/replication/httplib";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { isUnauthorizedError } from "@lib/common/utils.doc";
+
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
-export type ResultOk = { message: string; result: "ok"; value?: any };
-export type ResultError = { message: string; result: "error"; value: any; fixMessage: string; fix(): Promise<void> };
-export type ConfigCheckResult = ResultOk | ResultError | ResultMessage | ResultErrorMessage;
+export type ResultOk<T> = { message: string; result: "ok"; value?: T };
+export type ResultError<T> = { message: string; result: "error"; value: T; fixMessage: string; fix(): Promise<void> };
+export type ConfigCheckResult<T = unknown, U = unknown> =
+    | ResultOk<T>
+    | ResultError<U>
+    | ResultMessage
+    | ResultErrorMessage;
 /**
  * Compares two version strings to determine if the baseVersion is greater than or equal to the version.
  * @param baseVersion a.b.c format
@@ -35,7 +42,11 @@ function isGreaterThanOrEqual(baseVersion: string, version: string) {
  * @param value setting value to update
  * @returns true if the update was successful, false otherwise
  */
-async function updateRemoteSetting(setting: ObsidianLiveSyncSettings, key: string, value: any) {
+async function updateRemoteSetting(
+    setting: ObsidianLiveSyncSettings,
+    key: string,
+    value: string
+): Promise<true | string> {
     const customHeaders = parseHeaderValues(setting.couchDB_CustomHeaders);
     const credential = generateCredentialObject(setting);
     const res = await requestToCouchDBWithCredentials(
@@ -60,24 +71,29 @@ async function updateRemoteSetting(setting: ObsidianLiveSyncSettings, key: strin
  * @returns  Array of ConfigCheckResult
  */
 export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => {
-    const result = [] as ConfigCheckResult[];
+    const result = [] as ConfigCheckResult<unknown, unknown>[];
     const addMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, classes });
     };
-    const addSuccess = (msg: string, value?: any) => {
+    const addSuccess = <T>(msg: string, value?: T) => {
         result.push({ message: msg, result: "ok", value });
     };
-    const _addError = (message: string, fixMessage: string, fix: () => Promise<void>, value?: any) => {
+    const _addError = <T>(message: string, fixMessage: string, fix: () => Promise<void>, value?: T) => {
         result.push({ message, result: "error", fixMessage, fix, value });
     };
     const addErrorMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, result: "error", classes });
     };
 
-    const addError = (message: string, fixMessage: string, key: string, expected: any) => {
-        _addError(message, fixMessage, async () => {
-            await updateRemoteSetting(editingSettings, key, expected);
-        });
+    const addError = (message: string, fixMessage: string, key: string, expected: string) => {
+        _addError(
+            message,
+            fixMessage,
+            async () => {
+                await updateRemoteSetting(editingSettings, key, expected);
+            },
+            expected
+        );
     };
 
     addMessage($msg("obsidianLiveSyncSettingTab.logCheckingDbConfig"));
@@ -93,7 +109,7 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         const r = await requestToCouchDBWithCredentials(
             editingSettings.couchDB_URI,
             credential,
-            window.origin,
+            compatGlobal.origin,
             undefined,
             undefined,
             undefined,
@@ -239,7 +255,7 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
             );
         }
         addMessage($msg("obsidianLiveSyncSettingTab.msgConnectionCheck"), ["ob-btn-config-head"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: window.location.origin }));
+        addMessage($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: compatGlobal.location.origin }));
 
         // Request header check
         const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
@@ -279,8 +295,8 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         addMessage($msg("obsidianLiveSyncSettingTab.msgDone"), ["ob-btn-config-head"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgConnectionProxyNote"), ["ob-btn-config-info"]);
         addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));
-    } catch (ex: any) {
-        if (ex?.status == 401) {
+    } catch (ex) {
+        if (isUnauthorizedError(ex)) {
             addErrorMessage($msg("obsidianLiveSyncSettingTab.errAccessForbidden"));
             addErrorMessage($msg("obsidianLiveSyncSettingTab.errCannotContinueTest"));
             addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));

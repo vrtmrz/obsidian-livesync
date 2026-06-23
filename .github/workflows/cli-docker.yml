@@ -8,8 +8,21 @@ name: Build and Push CLI Docker Image
 
 on:
     push:
+        branches:
+            - main
         tags:
             - "*.*.*-cli"
+        paths-ignore:
+            - "docs/**"
+            - "*.md"
+            - "images/**"
+            - "assets/**"
+            - "instruction_images/**"
+            - "src/apps/webapp/**"
+            - "src/apps/webpeer/**"
+            - ".github/workflows/release.yml"
+            - ".github/workflows/unit-ci.yml"
+            - ".github/workflows/harness-ci.yml"
     workflow_dispatch:
         inputs:
             dry_run:
@@ -41,14 +54,32 @@ jobs:
               id: meta
               run: |
                   VERSION=$(jq -r '.version' manifest.json)
-                  EPOCH=$(date +%s)
-                  TAG="${VERSION}-${EPOCH}-cli"
+                  SHORT_SHA=$(git rev-parse --short HEAD)
                   IMAGE="ghcr.io/${{ github.repository_owner }}/livesync-cli"
-                  echo "tag=${TAG}"                        >> $GITHUB_OUTPUT
-                  echo "image=${IMAGE}"                    >> $GITHUB_OUTPUT
-                  echo "full=${IMAGE}:${TAG}"              >> $GITHUB_OUTPUT
-                  echo "version=${IMAGE}:${VERSION}-cli"   >> $GITHUB_OUTPUT
-                  echo "latest=${IMAGE}:latest"            >> $GITHUB_OUTPUT
+                  
+                  # Build tag list based on the event and git ref
+                  TAGS=""
+                  if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+                      # Stable release builds
+                      TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
+                  elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+                      # Bleeding-edge / nightly builds
+                      TAGS="${IMAGE}:edge,${IMAGE}:${VERSION}-dev-sha-${SHORT_SHA}-cli"
+                  else
+                      # Other branches / manual run fallback
+                      TAGS="${IMAGE}:${VERSION}-dev-sha-${SHORT_SHA}-cli"
+                  fi
+                  
+                  # Determine if the image should be pushed
+                  PUSH="true"
+                  if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+                      if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+                          PUSH="false"
+                      fi
+                  fi
+                  
+                  echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+                  echo "push=${PUSH}" >> $GITHUB_OUTPUT
 
             - name: Log in to GitHub Container Registry
               uses: docker/login-action@v3
@@ -92,10 +123,7 @@ jobs:
               with:
                   context: .
                   file: src/apps/cli/Dockerfile
-                  push: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
-                  tags: |
-                      ${{ steps.meta.outputs.full }}
-                      ${{ steps.meta.outputs.version }}
-                      ${{ steps.meta.outputs.latest }}
+                  push: ${{ steps.meta.outputs.push }}
+                  tags: ${{ steps.meta.outputs.tags }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max

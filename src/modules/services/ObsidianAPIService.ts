@@ -1,12 +1,20 @@
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-import { Platform, type Command, type ViewCreator } from "obsidian";
-import { ObsHttpHandler } from "../essentialObsidian/APILib/ObsHttpHandler";
+import { Platform, type Command, type ViewCreator } from "@/deps.ts";
+import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandler";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
+import { compatGlobal } from "@lib/common/coreEnvFunctions";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
+
+declare module "obsidian" {
+    interface App {
+        appId?: string;
+        isMobile?: boolean;
+    }
+}
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
     _customHandler: ObsHttpHandler | undefined;
@@ -38,6 +46,25 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         }
     }
 
+    override async showWindowOnRight(viewType: string): Promise<void> {
+        const existing = this.app.workspace.getLeavesOfType(viewType);
+        if (existing.length > 0) {
+            await this.app.workspace.revealLeaf(existing[0]);
+            return;
+        }
+        const rightLeaf = this.app.workspace.getRightLeaf(false);
+        if (rightLeaf) {
+            await rightLeaf.setViewState({
+                type: viewType,
+                active: false,
+            });
+            await this.app.workspace.revealLeaf(rightLeaf);
+            return;
+        }
+
+        await this.showWindow(viewType);
+    }
+
     private get app() {
         return this.context.app;
     }
@@ -64,8 +91,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         }
     }
     override isMobile(): boolean {
-        //@ts-ignore : internal API
-        return this.app.isMobile;
+        return "isMobile" in this.app ? !!this.app.isMobile : false;
     }
     override getAppID(): string {
         return `${"appId" in this.app ? this.app.appId : ""}`;
@@ -76,7 +102,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     }
 
     override getAppVersion(): string {
-        const navigatorString = globalThis.navigator?.userAgent ?? "";
+        const navigatorString = compatGlobal.navigator?.userAgent ?? "";
         const match = navigatorString.match(/obsidian\/([0-9]+\.[0-9]+\.[0-9]+)/);
         if (match && match.length >= 2) {
             return match[1];
@@ -96,14 +122,15 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         return this.context.plugin.addCommand(command) as TCommand;
     }
 
-    registerWindow(type: string, factory: ViewCreator): void {
-        return this.context.plugin.registerView(type, factory);
+    registerWindow<T>(type: string, factory: (leaf: T) => unknown): void {
+        return this.context.plugin.registerView(type, factory as ViewCreator);
     }
-    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => any): HTMLElement {
+
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => unknown): HTMLElement {
         return this.context.plugin.addRibbonIcon(icon, title, callback);
     }
 
-    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => any): void {
+    registerProtocolHandler(action: string, handler: (params: Record<string, string>) => unknown): void {
         return this.context.plugin.registerObsidianProtocolHandler(action, handler);
     }
 
@@ -177,7 +204,7 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     }
 
     override setInterval(handler: () => void, timeout: number): number {
-        const timerId = globalThis.setInterval(handler, timeout) as unknown as number;
+        const timerId = compatGlobal.setInterval(handler, timeout);
         this.context.plugin.registerInterval(timerId);
         return timerId;
     }

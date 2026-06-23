@@ -1,13 +1,13 @@
 <script lang="ts">
     // import { delay } from "octagonal-wheels/promises";
-    import DialogHeader from "@/lib/src/UI/components/DialogHeader.svelte";
-    import Guidance from "@/lib/src/UI/components/Guidance.svelte";
-    import Decision from "@/lib/src/UI/components/Decision.svelte";
-    import UserDecisions from "@/lib/src/UI/components/UserDecisions.svelte";
-    import InfoNote from "@/lib/src/UI/components/InfoNote.svelte";
-    import InputRow from "@/lib/src/UI/components/InputRow.svelte";
-    import Password from "@/lib/src/UI/components/Password.svelte";
-    import { PouchDB } from "../../../../lib/src/pouchdb/pouchdb-browser";
+    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
+    import Guidance from "@lib/UI/components/Guidance.svelte";
+    import Decision from "@lib/UI/components/Decision.svelte";
+    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import InfoNote from "@lib/UI/components/InfoNote.svelte";
+    import InputRow from "@lib/UI/components/InputRow.svelte";
+    import Password from "@lib/UI/components/Password.svelte";
+    import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
     import {
         DEFAULT_SETTINGS,
         P2P_DEFAULT_SETTINGS,
@@ -17,40 +17,40 @@
         type ObsidianLiveSyncSettings,
         type P2PConnectionInfo,
         type P2PSyncSetting,
-    } from "../../../../lib/src/common/types";
+    } from "@lib/common/types";
 
-    import { TrysteroReplicator } from "../../../../lib/src/replication/trystero/TrysteroReplicator";
-    import type { ReplicatorHostEnv } from "../../../../lib/src/replication/trystero/types";
-    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "../../../../lib/src/common/utils";
+    import { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
+    import type { ReplicatorHostEnv } from "@lib/replication/trystero/types";
+    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "@lib/common/utils";
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "../../../../lib/src/UI/svelteDialog";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "../../../../lib/src/common/types";
-    import ExtraItems from "../../../../lib/src/UI/components/ExtraItems.svelte";
+    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
+    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
+    import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
 
     const context = getDialogContext();
     let error = $state("");
-    const TYPE_CANCELLED = "cancelled";
-    type SettingInfo = P2PConnectionInfo;
-    type ResultType = typeof TYPE_CANCELLED | SettingInfo;
-    type Props = GuestDialogProps<ResultType, P2PSyncSetting>;
+    type Props = GuestDialogProps<SetupRemoteP2PResultType, P2PSyncSetting>;
 
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
+        let initialData: P2PSyncSetting | undefined = undefined;
         if (getInitialData) {
-            const initialData = getInitialData();
+            initialData = getInitialData();
             if (initialData) {
                 copyTo(initialData, syncSetting);
             }
-            if (context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME)) {
-                syncSetting.P2P_DevicePeerName = context.services.config.getSmallConfig(
-                    SETTING_KEY_P2P_DEVICE_NAME
-                ) as string;
-            } else {
-                syncSetting.P2P_DevicePeerName = "";
-            }
+        }
+        const initialPeerName = (initialData?.P2P_DevicePeerName ?? "").trim();
+        if (initialPeerName !== "") {
+            return;
+        }
+        const cachedPeerName = context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME);
+        if (cachedPeerName) {
+            syncSetting.P2P_DevicePeerName = cachedPeerName as string;
         }
     });
     function generateSetting() {
@@ -100,7 +100,7 @@
             const dummyPouch = new PouchDB<EntryDoc>("dummy");
             const env: ReplicatorHostEnv = {
                 settings: trialRemoteSetting,
-                processReplicatedDocs: async (docs: any[]) => {
+                processReplicatedDocs: async (_docs: any[]) => {
                     return;
                 },
                 confirm: context.services.confirm,
@@ -116,7 +116,7 @@
                 await replicator.open();
                 for (let i = 0; i < 10; i++) {
                     // await delay(1000);
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    await new Promise((resolve) => window.setTimeout(resolve, 1000));
                     // Logger(`Checking known advertisements... (${i})`, LOG_LEVEL_INFO);
                     if (replicator.knownAdvertisements.length > 0) {
                         break;

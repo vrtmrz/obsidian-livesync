@@ -230,7 +230,6 @@ And, be sure to check the server log and be careful of malicious access.
 If you are using Traefik, this [docker-compose.yml](https://github.com/vrtmrz/obsidian-livesync/blob/main/docker-compose.traefik.yml) file (also pasted below) has all the right CORS parameters set. It assumes you have an external network called `proxy`.
 
 ```yaml
-version: "2.1"
 services:
   couchdb:
     image: couchdb:latest
@@ -291,4 +290,104 @@ entryPoints:
     address: ":443"
 
 ...
+```
+
+### Nginx
+
+When configuring nginx as a reverse-proxy for CouchDB, note the common mistakes:
+
+1. If fast fetch progress stalls and seems to freeze indefinitely, make sure you disabled `proxy_buffering`:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5984;
+    proxy_buffering off;
+    ...
+}
+```
+
+2. If you get the "413 Entity too large" error, increase the `client_max_body_size`:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5984;
+    client_max_body_size 50M; # Tweak the value to your needs
+    ...
+}
+```
+
+
+3. If you get the "404 Database not found" error, make sure you placed CouchDB at the root location (recommended):
+
+```nginx
+server {
+    server_name couchdb.domain.com
+
+    location / {
+        proxy_pass http://127.0.0.1:5984;
+        ...
+    }
+}
+```
+
+It is possible to place CouchDB into the subdirectory, however, the config should be modified respectively:
+
+```nginx
+
+server {
+    server_name domain.com
+
+    location /couchdb {
+        rewrite ^ $request_uri;
+        rewrite ^/couchdb/(.*) /$1 break;
+        
+        proxy_pass http://127.0.0.1:5984$uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        ... 
+    }
+    location /_session {
+        proxy_pass http://127.0.0.1:5984/_session;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        ...
+    }
+}
+```
+
+4. If you added custom HTTP headers in database connection advanced settings, make sure to update both nginx and CouchDB configurations:
+
+Nginx:
+```nginx
+location / {
+    set $pass 1; 
+    
+    # Example of handling custom HTTP header
+    if ($http_x_custom_header != 'foo'){ 
+        set $pass 0; 
+    } 
+
+    # Important: OPTIONS requests don't carry headers, so they should always be proxied to the CouchDB
+    if ($request_method = 'OPTIONS') { 
+        set $pass 1; 
+    } 
+
+    if ($pass = 0) { 
+        return 403; 
+    } 
+
+    proxy_pass http://127.0.0.1:5984;
+    ...
+}
+```
+
+couchdb-etc/docker.ini:
+```ini
+...
+[cors]
+credentials = true
+origins = app://obsidian.md,capacitor://localhost,http://localhost
+
+;Make sure to add your custom header to the list so CORS won't break
+headers = accept, authorization, content-type, origin, referer, x-custom-header
 ```

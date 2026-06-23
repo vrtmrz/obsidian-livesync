@@ -10,7 +10,18 @@ on:
     paths:
       - 'src/**'
       - 'test/**'
-      - 'lib/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'vitest.config*.ts'
+      - 'esbuild.config.mjs'
+      - 'eslint.config.mjs'
+      - '.github/workflows/unit-ci.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
@@ -24,7 +35,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  unit-test:
+    name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -42,10 +54,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # unit tests do not require Playwright, so we can skip installing its dependencies to save time
-      # - name: Install test dependencies (Playwright Chromium)
-      #   run: npm run test:install-dependencies
-
       - name: Run unit tests suite with coverage
         run: npm run test:unit:coverage
 
@@ -53,5 +61,56 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: unit-coverage-report
           path: coverage/**
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create environment configuration files
+        run: |
+          cat <<EOF > .env
+          BUILD_MODE=dev
+          PATHS_TEST_INSTALL=
+          EOF
+          cat <<EOF > .test.env
+          hostname=http://127.0.0.1:5989/
+          dbname=livesync-test-db2
+          username=admin
+          password=testpassword
+          minioEndpoint=http://127.0.0.1:9000
+          accessKey=minioadmin
+          secretKey=minioadmin
+          bucketName=livesync-test-bucket
+          EOF
+
+      - name: Start CouchDB container
+        run: npm run test:docker-couchdb:start
+
+      - name: Start MinIO container
+        run: npm run test:docker-s3:start
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Stop containers
+        if: always()
+        run: |
+          npm run test:docker-couchdb:stop || true
+          npm run test:docker-s3:stop || true

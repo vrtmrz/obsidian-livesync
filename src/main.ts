@@ -1,9 +1,10 @@
-import { Notice, Plugin, type App, type PluginManifest } from "./deps";
-
+import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
+import { setGetLanguage } from "@lib/common/coreEnvFunctions.ts";
+setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-import { ModuleDev } from "./modules/extras/ModuleDev.ts";
+// import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
@@ -11,8 +12,6 @@ import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidian
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
-import { ModuleIntegratedTest } from "./modules/extras/ModuleIntegratedTest.ts";
-import { ModuleReplicateTest } from "./modules/extras/ModuleReplicateTest.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
@@ -33,6 +32,7 @@ import { SetupManager } from "./modules/features/SetupManager.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
+import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
 import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
@@ -42,6 +42,7 @@ import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/
 import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
+import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -152,9 +153,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleObsidianDocumentHistory(this, core),
                     new ModuleInteractiveConflictResolver(this, core),
                     new ModuleObsidianGlobalHistory(this, core),
-                    new ModuleDev(this, core),
-                    new ModuleReplicateTest(this, core),
-                    new ModuleIntegratedTest(this, core),
+                    // new ModuleDev(this, core),
                     new SetupManager(core), // this should be moved to core?
                     new ModuleMigration(core),
                 ];
@@ -174,6 +173,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
                 const setupManager = core.getModule(SetupManager);
+                const replicator = useP2PReplicatorFeature(
+                    core,
+                    createOpenReplicationUI(this.app),
+                    createOpenRebuildUI(this.app)
+                );
+                useP2PReplicatorCommands(core, replicator);
+                useP2PReplicatorUI(core, core, replicator);
+                useRemoteConfiguration(core);
+
                 useSetupProtocolFeature(core, setupManager);
                 useSetupQRCodeFeature(core);
                 useSetupURIFeature(core);
@@ -185,9 +193,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 //     VIEW_TYPE_P2P,
                 //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
                 // ]);
-                const replicator = useP2PReplicatorFeature(core);
-                useP2PReplicatorCommands(core, replicator);
-                useP2PReplicatorUI(core, core, replicator);
             }
         );
     }

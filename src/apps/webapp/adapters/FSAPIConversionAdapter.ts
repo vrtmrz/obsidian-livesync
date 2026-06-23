@@ -1,4 +1,4 @@
-import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
+import type { FilePath, UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
 
@@ -28,7 +28,7 @@ export class FSAPIConversionAdapter implements IConversionAdapter<FSAPIFile, FSA
             path: folder.path,
             isFolder: true,
             children: [],
-            parent: parentPath as any,
+            parent: parentPath as FilePath,
         };
     }
 }

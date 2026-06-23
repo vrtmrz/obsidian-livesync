@@ -3,219 +3,111 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
-## Unreleased
 
-2nd April, 2026
+## 0.25.78
 
-### CLI
+23rd June, 2026
 
-#### Fixed
+### Fixed
+- No longer fast synchronisation (a.k.a. Fast Fetch) causes a rewind and re-fetch of the entire database when some errors occur during the process (#972, PR #973). Thank you so much for @apple-ouyang for the fix!
 
-- Replication progress is now correctly saved and restored in the CLI.
+### Improved
 
-## ~~0.25.55~~ 0.25.56
+- Overhauled the Object Storage (e.g., MinIO and S3) replication engine ('Journal Replicator 2nd Edition').
+  - It now leverages the standard Web Streams API for a resilient, backpressure-aware architecture, reducing memory footprints/temporary storage usage on large vaults.
+  - Decoupled the physical storage logic to make it easier to add new storage backends in the future.
+  - Stricter compliance with CouchDB's replication protocol (proper `_revisions` transfers with `new_edits: false`) when using Object Storage.
 
-30th March, 2026
+### Testing
+  - Added comprehensive unit tests for the new `JournalSyncCore` engine, covering streams, backpressure, and `new_edits: false` validation.
+  - Improved integration test workflows in the CI pipeline to run MinIO tests automatically using standard environment variables.
+
+## 0.25.77
+
+19th June, 2026
+
+This update is mostly meaningless for users. But for maintainers, not, I hope. I wonder if I were done well in the start, there would be no hassles. It really was a great opportunity.
+
+Also, this update is a very large one, even if we had a lot of time, and we had CI tests, and mostly only fixing the types. Please let me know if you find any issues!
+
+### Improved
+
+- File deletion now respects the user's deletion preferences (by utilising the `FileManager.trashFile` API) on Obsidian v1.7.2 or newer, regardless of the plug-in's internal trashbin setting.
+
+### Miscellaneous
+- Typings of the library are now included
+- Many typing errors have been improved.
+- Import paths have been normalised to be relative to the root and to the `lib/src` directory, to avoid breaking the boundary between the library and the plug-in.
+- Subprojects, such as the CLI and the webapp, are now in the workspace.
+
+## 0.25.76
+
+15th June, 2026
 
 ### Fixed
 
-- No longer `Peer-to-Peer Sync is not enabled. We cannot open a new connection.` error occurs when we have not enabled P2P sync and are not expected to use it (#830).
+- Now the S3 connection with custom headers works properly (#875).
+  - Previously, custom headers injected for proxy authentication were incorrectly included in the AWS Signature v4 calculation. This led to a '400 Bad Request' error (such as 'signed header is not present') on strict S3 backends (for example, Garage), or when reverse proxies modified, renamed, or stripped these headers before they reached the storage service.
+- No longer connection information of the P2P synchronisation is broken on the specific platform (#956).
 
-### CLI
+## 0.25.75
 
-- Fixed incomplete localStorage support in the CLI (#831). Thank you so much @rewse !
-- Fixed the issue where the CLI could not be connected to the remote which had been locked once (#833), also thanks to @rewse !
-
-## 0.25.54
-
-18th March, 2026
+13th June, 2026
 
 ### Fixed
 
-- Remote storage size check now works correctly again (#818).
-- Some buttons on the settings dialogue now respond correctly again (#827).
+- Fixed an issue where using fast synchronisation caused a TypeError in some environments (#953).
 
-### Refactored
+### New features
+- Now we can configure to keep replication active in the background on desktop platforms (#939, PR #949). Thank you so much for @migsferro!
 
-- P2P replicator has been refactored to be a little more robust and easier to understand.
-- Delete items which are no longer used that might cause potential problems
+### Fixed (CLI, automated)
 
-### CLI
+- Fixed an issue where the mirror command could fail to apply updates when conflict preservation checks prevented overwriting unsynchronised local changes, even when the `force` parameter or `writeDocumentsIfConflicted` setting was enabled.
 
-- Fixed the corrupted display of the help message.
-- Remove some unnecessary code.
+### Improved
 
-### WebApp
+- (CLI) Ported the remaining bash regression tests (`test-daemon-linux.sh`, `test-decoupled-vault-linux.sh`, and `test-remote-commands-linux.sh`) to Deno for cross-platform validation.
 
-- Fixed the issue where the detail level was not being applied in the log pane.
-- Pop-ups are now shown.
-- Add coverage for the test.
-- Pop-ups are now shown in the web app as well.
+### Miscellaneous
+- Some dependencies have been updated.
+- Now we check the compatibility with iOS 15 in the CI tests to ensure the plugin continues to work on older iOS versions even after we upgrade some dependencies.
 
-## 0.25.53
+## 0.25.74
 
-17th March, 2026
-
-I did wonder whether I should have released a minor version update, but when I actually tested it, compatibility seemed to be intact, so I didn’t. Hmm.
+8th June, 2026
 
 ### Fixed
 
-#### P2P Synchronisation
+- Fixed an issue where disabling hidden file synchronisation did not take effect, allowing non-target hidden files to continue to be processed and synchronised by replication or boot-sequence scan (#941).
+- Prevented the automatic merging of conflicted revisions when one of the revisions has been deleted, which was causing deleted files to reappear (#911).
+- The startup sequence now saves the state more effectively (Thank you so much for @bmcyver)!
 
-- Fixed flaky timing issues in P2P synchronisation.
-- No longer unexpected `Unhandled Rejections` during P2P operations (waiting for acceptance).
+## Only CLI
 
-#### Journal Sync
+8th June, 2026
 
-- Fixed an issue where some conflicts cannot be resolved in Journal Sync.
-- Many minor fixes have been made for better stability and reliability.
+I should also consider the version numbering for the CLI...
 
-### Tests
+### Improved
 
-- Rewrite P2P end-to-end tests to use the CLI as a host.
+- Added new remote database management commands: `remote-status`, `unlock-remote`, `lock-remote`, and `mark-resolved`.
+- --vault option is now available for daemon and mirror commands! (Thank you so much for @starskyzheng)!
+- Decoupled the database directory path from the actual vault directory path using the `--vault` (or `-V`) option.
 
-### CLI
+### Fixed (preventive)
 
-We have previously developed FileSystem LiveSync and various other components in a separate repository, but updates have been significantly delayed, and we have been plagued by compatibility issues. Now, a CLI tool using the same core logic is emerging. This does not directly manipulate the file system, but it offers a more convenient way of working and can also communicate with Object Storage. We can also resolve conflicts. Please refer to the code in `src/apps/cli` for the [self-hosted-livesync-cli](./src/apps/cli/README.md) for more details.
-- Add `self-hosted-livesync-cli` to `src/apps/cli` as a headless and dedicated version.
-- P2P sync and Object Storage are also supported in the CLI.
-  - Yes, we have finally managed to 'get one file'.
-  - Also, no more need for a [LiveSync PeerServer](https://github.com/vrtmrz/livesync-serverpeer) for virtual environments! The CLI can do it.
+- Validated that the specified vault path exists and is indeed a directory before starting the CLI.
+- Integrated path resolution and validations for one-off commands (such as `'push'`, `'pull'`, `'cat'`, `'rm'`, `'info'`, and `'resolve'`) against the decoupled vault path instead of the database path.
 
-- Now binary files are also supported in the CLI.
+## 0.25.73
 
-### Refactored or internal changes
-
-- ServiceFileAccessBase now correctly handles the reading of binary files.
-- HeadlessAPIService now correctly provides the online status (always online) to the plug-in.
-- Non-worker version of bgWorker now correctly handles some functions.
-- Separated `ObsidianLiveSyncPlugin` into `ObsidianLiveSyncPlugin` and `LiveSyncBaseCore`.
-- Now `LiveSyncCore` indicates the type specified version of `LiveSyncBaseCore`.
-- Referencing `plugin.xxx` has been rewritten to referencing the corresponding service or `core.xxx`.
-- Offline change scanner and the local database preparation have been separated.
-- Set default priority for processFileEvent and processSynchroniseResult for the place to add hooks.
-- ControlService now provides the readiness for processing operations.
-- DatabaseService is now able to modify database opening options on derived classes.
-- Now `useOfflineScanner`, `useCheckRemoteSize`, and `useRedFlagFeatures` are set from `main.ts`, instead of `LiveSyncBaseCore`.
-- Storage Access APIs are now yielding Promises. This is to allow more limited storage platforms to be supported.
-- Journal Replicator now yields true after the replication is done.
-
-### R&D
-
-- Browser-version of Self-hosted LiveSync is now in development. This is not intended for public use now, but I will eventually make it available for testing.
-- We can see the code in `src/apps/webapp` for the browser version.
-
-## 0.25.52
-
-9th March, 2026
-
-Excuses: Too much `I`.
-Whilst I had a fever, I could not figure it out at all, but once I felt better, I spotted the problem in about thirty seconds. I apologise for causing you concern. I am grateful for your patience.
-I would like to devise a mechanism for running simple test scenarios. Now that we have got the Obsidian CLI up and running, it seems the perfect opportunity.
-
-To improve the bus factor, we really need to organise the source code more thoroughly. Your cooperation and contributions would be greatly appreciated.
+4th June, 2026
 
 ### Fixed
 
-- No longer unexpected deletion-propagation occurs when the parent directory is not empty (#813).
-
-### Revert reversions
-
-- Reverted the reversion of ModuleCheckRemoteSize. Now it is back to the service feature.
-
-## 0.25.51
-
-7th March, 2026
-
-### Reverted
-
-- Reverted to ModuleRedFlag and ModuleInitializerFile to the previous version because of some unexpected issues. (#813)
-    - I will re-implement them in the future with better design and tests.
-
-## 0.25.50
-
-3rd March, 2026
-
-Note: 0.25.49 has been skipped because of too verbose logging (credentials are logged in verbose level, but I realised that could lead to unexpected exposure on issue reporting). Please bump to 0.25.50 to get the fix if you are on 0.25.49. (No expected behaviour changes except the logging).
-
-### Fixed
-
-- No longer deleted files are not clickable in the Global History pane.
-- Diff view now uses more specific classes (#803).
-- A message of configuration mismatching slightly added for better understanding.
-    - Now it says `When replication is initiated manually via the command palette or ribbon, a dialogue box will open to address this.` to make it clear that the user can fix the issue by themselves.
-
-### Refactored
-
-- `ModuleRedFlag` has been refactored to `serviceFeatures/redFlag` and also tested.
-- `ModuleInitializerFile` has been refactored to `lib/serviceFeatures/offlineScanner` and also tested.
-
-## 0.25.48
-
-2nd March, 2026
-
-No behavioural changes except unidentified faults. Please report if you find any unexpected behaviour after this update.
-
-### Refactored
-
-- Many storage-related functions have been refactored for better maintainability and testability.
-    - Now all platform-specific logics are supplied as adapters, and the core logic has become platform-agnostic.
-    - Quite a number of tests have been added for the core logic, and the platform-specific logics are also tested with mocked adapters.
-
-## 0.25.47
-
-27th February, 2026
-
-Phew, the financial year is still not over yet, but I have got some time to work on the plug-in again!
-
-### Fixed and refactored
-
-- Fixed the inexplicable behaviour when retrieving chunks from the network.
-    - The chunk manager has been layered to be responsible for its own areas and duties. e.g., `DatabaseWriteLayer`, `DatabaseReadLayer`, `NetworkLayer`, `CacheLayer`, and `ArrivalWaitLayer`.
-        - All layers have been tested now!
-        - `LayeredChunkManager` has been implemented to manage these layers. Also tested.
-    - `EntryManager` has been mostly rewritten and also tested.
-
-- Now we can configure `Never warn` for remote storage size notification again.
-
-### Tests
-
-- The following test has been added:
-    - `ConflictManager`.
-
-## 0.25.46
-
-26th February, 2026
-
-### Fixed
-
-- Unexpected errors no longer occurred when the plug-in was unloaded.
-- Hidden File Sync now respects selectors.
-- Registering protocol-handlers now works safely without causing unexpected errors.
-
-### Refactored
-
-- `ModuleCheckRemoteSize` has been ported to a serviceFeature, and tests have also been added.
-- Some unnecessary things have been removed.
-- LiveSyncManagers has now explicit dependencies.
-- LiveSyncLocalDB is now responsible for LiveSyncManagers, not accepting the managers as dependencies.
-    - This is to avoid circular dependencies and clarify the ownership of the managers.
-- ChangeManager has been refactored. This had a potential issue, so something had been fixed, possibly.
-- Some tests have been ported from Deno's test runner to Vitest to accumulate coverage.
-
-## 0.25.45
-
-25th February, 2026
-
-As a result of recent refactoring, we are able to write tests more easily now!
-
-### Refactored
-
-- `ModuleTargetFilter`, which was responsible for checking if a file is a target file, has been ported to a serviceFeature.
-    - And also tests have been added. The middleware-style-power.
-- `ModuleObsidianAPI` has been removed and implemented in `APIService` and `RemoteService`.
-- Now `APIService` is responsible for the network-online-status, not `databaseService.managers.networkManager`.
-
+- Adjust CouchDB's database name checking to its specification (#926).
+- `Reset Syncronisation on This Device` for minio and P2P is now working properly. 
 
 Full notes are in
 [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).

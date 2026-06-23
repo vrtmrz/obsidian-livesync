@@ -1,29 +1,17 @@
-import { stringifyYaml } from "../../../deps.ts";
 import {
-    type ObsidianLiveSyncSettings,
     type FilePathWithPrefix,
     type DocumentID,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     type LoadedEntry,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
     type MetaEntry,
     type FilePath,
-    DEFAULT_SETTINGS,
-} from "../../../lib/src/common/types.ts";
-import {
-    createBlob,
-    getFileRegExp,
-    isDocContentSame,
-    parseHeaderValues,
-    readAsBlob,
-} from "../../../lib/src/common/utils.ts";
-import { Logger } from "../../../lib/src/common/logger.ts";
-import { isCloudantURI } from "../../../lib/src/pouchdb/utils_couchdb.ts";
-import { requestToCouchDBWithCredentials } from "../../../common/utils.ts";
-import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "../../../lib/src/string_and_binary/path.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+    type EntryDoc,
+} from "@lib/common/types.ts";
+import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
+import { Logger } from "@lib/common/logger.ts";
+import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import {
@@ -32,13 +20,13 @@ import {
     EVENT_REQUEST_RUN_DOCTOR,
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
-} from "../../../common/events.ts";
-import { ICHeader, ICXHeader, PSCHeader } from "../../../common/types.ts";
-import { HiddenFileSync } from "../../../features/HiddenFileSync/CmdHiddenFileSync.ts";
-import { EVENT_REQUEST_SHOW_HISTORY } from "../../../common/obsidianEvents.ts";
-import { generateCredentialObject } from "../../../lib/src/replication/httplib.ts";
+} from "@/common/events.ts";
+import { ICHeader, ICXHeader, PSCHeader } from "@/common/types.ts";
+import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
+import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
+import { isNotFoundError } from "@lib/common/utils.doc.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");
@@ -69,123 +57,14 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         eventHub.emitEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE);
                     })
             );
+
         new Setting(paneEl).setName($msg("Prepare the 'report' to create an issue")).addButton((button) =>
             button
                 .setButtonText($msg("Copy Report to clipboard"))
                 .setCta()
                 .setDisabled(false)
                 .onClick(async () => {
-                    let responseConfig: any = {};
-                    const REDACTED = "𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷";
-                    if (this.editingSettings.remoteType == REMOTE_COUCHDB) {
-                        try {
-                            const credential = generateCredentialObject(this.editingSettings);
-                            const customHeaders = parseHeaderValues(this.editingSettings.couchDB_CustomHeaders);
-                            const r = await requestToCouchDBWithCredentials(
-                                this.editingSettings.couchDB_URI,
-                                credential,
-                                window.origin,
-                                undefined,
-                                undefined,
-                                undefined,
-                                customHeaders
-                            );
-
-                            Logger(JSON.stringify(r.json, null, 2));
-
-                            responseConfig = r.json;
-                            responseConfig["couch_httpd_auth"].secret = REDACTED;
-                            responseConfig["couch_httpd_auth"].authentication_db = REDACTED;
-                            responseConfig["couch_httpd_auth"].authentication_redirect = REDACTED;
-                            responseConfig["couchdb"].uuid = REDACTED;
-                            responseConfig["admins"] = REDACTED;
-                            delete responseConfig["jwt_keys"];
-                            if ("secret" in responseConfig["chttpd_auth"])
-                                responseConfig["chttpd_auth"].secret = REDACTED;
-                        } catch (ex) {
-                            Logger(ex, LOG_LEVEL_VERBOSE);
-                            responseConfig = {
-                                error: "Requesting information from the remote CouchDB has failed. If you are using IBM Cloudant, this is normal behaviour.",
-                            };
-                        }
-                    } else if (this.editingSettings.remoteType == REMOTE_MINIO) {
-                        responseConfig = { error: "Object Storage Synchronisation" };
-                        //
-                    }
-                    const defaultKeys = Object.keys(DEFAULT_SETTINGS) as (keyof ObsidianLiveSyncSettings)[];
-                    const pluginConfig = JSON.parse(JSON.stringify(this.editingSettings)) as ObsidianLiveSyncSettings;
-                    const pluginKeys = Object.keys(pluginConfig);
-                    for (const key of pluginKeys) {
-                        if (defaultKeys.includes(key as any)) continue;
-                        delete pluginConfig[key as keyof ObsidianLiveSyncSettings];
-                    }
-
-                    pluginConfig.couchDB_DBNAME = REDACTED;
-                    pluginConfig.couchDB_PASSWORD = REDACTED;
-                    const scheme = pluginConfig.couchDB_URI.startsWith("http:")
-                        ? "(HTTP)"
-                        : pluginConfig.couchDB_URI.startsWith("https:")
-                          ? "(HTTPS)"
-                          : "";
-                    pluginConfig.couchDB_URI = isCloudantURI(pluginConfig.couchDB_URI)
-                        ? "cloudant"
-                        : `self-hosted${scheme}`;
-                    pluginConfig.couchDB_USER = REDACTED;
-                    pluginConfig.passphrase = REDACTED;
-                    pluginConfig.encryptedPassphrase = REDACTED;
-                    pluginConfig.encryptedCouchDBConnection = REDACTED;
-                    pluginConfig.accessKey = REDACTED;
-                    pluginConfig.secretKey = REDACTED;
-                    const redact = (source: string) => `${REDACTED}(${source.length} letters)`;
-                    pluginConfig.region = redact(pluginConfig.region);
-                    pluginConfig.bucket = redact(pluginConfig.bucket);
-                    pluginConfig.pluginSyncExtendedSetting = {};
-                    pluginConfig.P2P_AppID = redact(pluginConfig.P2P_AppID);
-                    pluginConfig.P2P_passphrase = redact(pluginConfig.P2P_passphrase);
-                    pluginConfig.P2P_roomID = redact(pluginConfig.P2P_roomID);
-                    pluginConfig.P2P_relays = redact(pluginConfig.P2P_relays);
-                    pluginConfig.jwtKey = redact(pluginConfig.jwtKey);
-                    pluginConfig.jwtSub = redact(pluginConfig.jwtSub);
-                    pluginConfig.jwtKid = redact(pluginConfig.jwtKid);
-                    pluginConfig.bucketCustomHeaders = redact(pluginConfig.bucketCustomHeaders);
-                    pluginConfig.couchDB_CustomHeaders = redact(pluginConfig.couchDB_CustomHeaders);
-                    pluginConfig.P2P_turnCredential = redact(pluginConfig.P2P_turnCredential);
-                    pluginConfig.P2P_turnUsername = redact(pluginConfig.P2P_turnUsername);
-                    pluginConfig.P2P_turnServers = `(${pluginConfig.P2P_turnServers.split(",").length} servers configured)`;
-                    const endpoint = pluginConfig.endpoint;
-                    if (endpoint == "") {
-                        pluginConfig.endpoint = "Not configured or AWS";
-                    } else {
-                        const endpointScheme = pluginConfig.endpoint.startsWith("http:")
-                            ? "(HTTP)"
-                            : pluginConfig.endpoint.startsWith("https:")
-                              ? "(HTTPS)"
-                              : "";
-                        pluginConfig.endpoint = `${endpoint.indexOf(".r2.cloudflarestorage.") !== -1 ? "R2" : "self-hosted?"}(${endpointScheme})`;
-                    }
-                    const obsidianInfo = {
-                        navigator: navigator.userAgent,
-                        fileSystem: this.core.services.vault.isStorageInsensitive() ? "insensitive" : "sensitive",
-                    };
-                    const msgConfig = `# ---- Obsidian info ----
-${stringifyYaml(obsidianInfo)}
----
-# ---- remote config ----
-${stringifyYaml(responseConfig)}
----
-# ---- Plug-in config ----
-${stringifyYaml({
-    version: this.manifestVersion,
-    ...pluginConfig,
-})}`;
-                    console.log(msgConfig);
-                    if ((await this.services.UI.promptCopyToClipboard("Generated report", msgConfig)) == true) {
-                        // await navigator.clipboard.writeText(msgConfig);
-                        // Logger(
-                        //     `Generated report has been copied to clipboard. Please report the issue with this! Thank you for your cooperation!`,
-                        //     LOG_LEVEL_NOTICE
-                        // );
-                    }
+                    await this.app.commands.executeCommandById("obsidian-livesync:dump-debug-info");
                 })
         );
         new Setting(paneEl)
@@ -268,14 +147,14 @@ ${stringifyYaml({
                                             }
                                             if (!(await addOn.storeInternalFileToDatabase(file, true))) {
                                                 Logger(
-                                                    `Failed to store the file to the database (Hidden file): ${file}`,
+                                                    `Failed to store the file to the database (Hidden file): ${file.path}`,
                                                     LOG_LEVEL_NOTICE
                                                 );
                                                 return;
                                             }
                                         }
                                     } else {
-                                        if (!(await this.core.fileHandler.storeFileToDB(file as FilePath, true))) {
+                                        if (!(await this.core.fileHandler.storeFileToDB(file, true))) {
                                             Logger(
                                                 `Failed to store the file to the database: ${file}`,
                                                 LOG_LEVEL_NOTICE
@@ -514,8 +393,8 @@ ${stringifyYaml({
                                         Logger(`Converting ${docName} Failed!`, LOG_LEVEL_NOTICE);
                                         Logger(ret, LOG_LEVEL_VERBOSE);
                                     }
-                                } catch (ex: any) {
-                                    if (ex?.status == 404) {
+                                } catch (ex: unknown) {
+                                    if (isNotFoundError(ex)) {
                                         // We can perform this safely
                                         if ((await this.core.localDatabase.putRaw(newDoc)).ok) {
                                             Logger(`${docName} has been converted`, LOG_LEVEL_NOTICE);
@@ -563,8 +442,8 @@ ${stringifyYaml({
                     const newData = entriesToDelete.rows.map((e) => ({
                         ...e.doc,
                         _deleted: true,
-                    }));
-                    const r = await this.core.localDatabase.bulkDocsRaw(newData as any[]);
+                    })) as EntryDoc[];
+                    const r = await this.core.localDatabase.bulkDocsRaw(newData);
                     // Do not care about the result.
                     Logger(
                         `${r.length} items have been removed, to confirm how many items are left, please perform it again.`,

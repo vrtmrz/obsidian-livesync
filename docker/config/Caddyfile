@@ -1,0 +1,26 @@
+# Caddy config for Self-hosted LiveSync CouchDB
+# =============================================================================
+# IMPORTANT: CouchDB handles CORS itself.
+# Do NOT add CORS headers here — they will conflict with CouchDB's own headers.
+# Do NOT intercept OPTIONS requests.
+# =============================================================================
+
+{
+    # Email used for Let's Encrypt certificate notifications
+    email {$ACME_EMAIL}
+}
+
+{$COUCHDB_DOMAIN} {
+    # Forward all traffic to CouchDB, preserving Host and forwarded-for headers
+    reverse_proxy couchdb:5984 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Logging
+    log {
+        output stdout
+        level WARN
+    }
+}

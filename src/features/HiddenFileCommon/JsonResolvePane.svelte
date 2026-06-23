@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "../../deps.ts";
-    import type { FilePath, LoadedEntry } from "../../lib/src/common/types.ts";
-    import { decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
-    import { getDocData, isObjectDifferent, mergeObject } from "../../lib/src/common/utils.ts";
+    import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
+    import type { FilePath, LoadedEntry } from "@lib/common/types.ts";
+    import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
+    import { getDocData, isObjectDifferent, mergeObject } from "@lib/common/utils.ts";
 
     interface Props {
         docs?: LoadedEntry[];
@@ -30,7 +30,8 @@
     type JSONData = Record<string | number | symbol, any> | [any];
 
     const docsArray = $derived.by(() => {
-        if (docs && docs.length >= 1) {
+        // The merge pane compares two revisions, so guard against incomplete input before reading docs[1].
+        if (docs && docs.length >= 2) {
             if (keepOrder || docs[0].mtime < docs[1].mtime) {
                 return { a: docs[0], b: docs[1] } as const;
             } else {

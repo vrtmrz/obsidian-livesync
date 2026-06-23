@@ -1,5 +1,5 @@
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { AbstractModule } from "../AbstractModule.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import {
     AUTO_MERGED,
     CANCELLED,
@@ -10,15 +10,15 @@ import {
     NOT_CONFLICTED,
     type diff_check_result,
     type FilePathWithPrefix,
-} from "../../lib/src/common/types";
+} from "@lib/common/types";
 import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
 import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
 import { compareMTime, displayRev } from "@lib/common/utils.ts";
 import diff_match_patch from "diff-match-patch";
-import { stripAllPrefixes, isPlainText } from "../../lib/src/string_and_binary/path";
-import { eventHub } from "../../common/events.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
+import { eventHub } from "@/common/events.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 declare global {
     interface LSEvents {
@@ -182,9 +182,9 @@ export class ModuleConflictResolver extends AbstractModule {
                     revs.map(async (rev) => {
                         const leaf = await this.core.databaseFileAccess.fetchEntryMeta(filename, rev);
                         if (leaf == false) {
-                            return [0, rev] as [number, string];
+                            return [0, rev];
                         }
-                        return [leaf.mtime, rev] as [number, string];
+                        return [leaf.mtime, rev];
                     })
                 )),
             ] as [number, string][]

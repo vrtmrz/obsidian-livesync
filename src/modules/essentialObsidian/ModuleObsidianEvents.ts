@@ -1,18 +1,19 @@
-import { AbstractObsidianModule } from "../AbstractObsidianModule.ts";
-import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "../../common/events.js";
+import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
+import { EVENT_FILE_RENAMED, EVENT_LEAF_ACTIVE_CHANGED, eventHub } from "@/common/events.js";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { type TFile } from "../../deps.ts";
+import type { TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "../../lib/src/common/types.ts";
+import { type FilePathWithPrefix } from "@lib/common/types.ts";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "../../lib/src/mock_and_interop/stores.ts";
-import type { LiveSyncCore } from "../../main.ts";
+} from "@lib/mock_and_interop/stores.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -35,10 +36,11 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.services.appLifecycle.performRestart();
     }
 
-    initialCallback: any;
+    initialCallback: (() => void) | undefined = undefined;
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor Tweaking
         const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
         if (typeof save === "function") {
@@ -62,12 +64,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const _this = this;
         //@ts-ignore
-        if (!window.CodeMirrorAdapter) {
+        if (!compatGlobal.CodeMirrorAdapter) {
             this._log("CodeMirrorAdapter is not available");
             return;
         }
         //@ts-ignore
-        window.CodeMirrorAdapter.commands.save = () => {
+        compatGlobal.CodeMirrorAdapter.commands.save = () => {
             //@ts-ignore
             void _this.app.commands.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
@@ -79,12 +81,20 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.watchWindowVisibility = this.watchWindowVisibility.bind(this);
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
         this.watchOnline = this.watchOnline.bind(this);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.plugin.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
-        this.plugin.registerDomEvent(document, "visibilitychange", this.watchWindowVisibility);
-        this.plugin.registerDomEvent(window, "focus", () => this.setHasFocus(true));
-        this.plugin.registerDomEvent(window, "blur", () => this.setHasFocus(false));
-        this.plugin.registerDomEvent(window, "online", this.watchOnline);
-        this.plugin.registerDomEvent(window, "offline", this.watchOnline);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
+        this.plugin.registerDomEvent(compatGlobal, "focus", () => this.setHasFocus(true));
+        this.plugin.registerDomEvent(compatGlobal, "blur", () => this.setHasFocus(false));
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        this.plugin.registerDomEvent(compatGlobal, "online", this.watchOnline);
+        // Already bound
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        this.plugin.registerDomEvent(compatGlobal, "offline", this.watchOnline);
     }
 
     hasFocus = true;
@@ -105,7 +115,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     async watchOnlineAsync() {
         // If some files were failed to retrieve, scan files again.
         // TODO:FIXME AT V0.17.31, this logic has been disabled.
-        if (navigator.onLine && this.localDatabase.needScanning) {
+        if (compatGlobal.navigator.onLine && this.localDatabase.needScanning) {
             this.localDatabase.needScanning = false;
             await this.services.vault.scanVault();
         }
@@ -121,7 +131,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
 
-        const isHidden = document.hidden;
+        const isHidden = activeWindow.document.hidden;
         if (this.isLastHidden === isHidden) {
             return;
         }
@@ -129,12 +139,38 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
         await this.services.fileProcessing.commitPendingFileEvents();
 
+        // Desktop opt-in (LiveSync/Periodic only): keep the background channel running while the
+        // window is hidden, instead of suspending on hide. On hide we skip the suspend for both
+        // modes (LiveSync's continuous replication and Periodic's timer both stall otherwise);
+        // becoming visible reopens normally, and for LiveSync additionally forces a teardown first
+        // (see the resume branch) so a stalled continuous channel is always replaced.
+        const keepActiveInBackground =
+            this.settings.keepReplicationActiveInBackground &&
+            (this.settings.liveSync || this.settings.periodicReplication) &&
+            !this.services.API.isMobile();
+
         if (isHidden) {
-            await this.services.appLifecycle.onSuspending();
+            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
-            if (!this.hasFocus) return;
+            // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
+            // emits paused/retry while the replicator keeps its AbortController set, so the reopen
+            // below would no-op on exactly the channel that needs replacing. Force a teardown first
+            // so becoming visible always re-establishes a fresh channel (restoring the default's
+            // reset-on-visibility). Periodic mode has no such channel — its timer just resumes via
+            // the normal path below — so this teardown is gated on liveSync to avoid needlessly
+            // bouncing it. The teardown's closeReplication() aborts synchronously while the reopen is
+            // deferred (fireAndForget + awaited isReplicationReady/initializeDatabaseForReplication),
+            // so the aborted continuousReplication run (and its shareRunningResult lock) unwinds in
+            // microtasks before the reopen runs: it neither double-opens nor gets swallowed by the
+            // still-registered shared run.
+            if (keepActiveInBackground && this.settings.liveSync) {
+                await this.services.appLifecycle.onSuspending();
+            }
+            // Resume is not gated on focus in this branch, but note the top-of-handler check
+            // (isLastHidden && !hasFocus) still defers the whole handler when the window becomes
+            // visible again while unfocused; in that case recovery happens on the next focus.
             await this.services.appLifecycle.onResuming();
             await this.services.appLifecycle.onResumed();
         }
@@ -222,9 +258,9 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 );
             });
             this.plugin.registerInterval(
-                setInterval(() => {
+                compatGlobal.setInterval(() => {
                     __tick.value++;
-                }, 1000) as unknown as number
+                }, 1000)
             );
 
             let stableCheck = 3;

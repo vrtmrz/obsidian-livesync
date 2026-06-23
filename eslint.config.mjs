@@ -1,102 +1,101 @@
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import svelte from "eslint-plugin-svelte";
-import _import from "eslint-plugin-import";
-import { fixupPluginRules } from "@eslint/compat";
 import tsParser from "@typescript-eslint/parser";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+import obsidianmd from "eslint-plugin-obsidianmd";
+import globals from "globals";
+import { defineConfig, globalIgnores } from "eslint/config";
+import * as sveltePlugin from "eslint-plugin-svelte";
+import svelteParser from "svelte-eslint-parser";
+import importAlias from "@dword-design/eslint-plugin-import-alias";
+import { baseRules, ImportAliasRules, obsidianRules } from "./eslint.config.common.mjs";
+const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
+export default defineConfig([
+    globalIgnores([
+        // Build outputs and legacy files
+        "**/build",
+        "coverage",
+        "**/main.js",
+        "main_org.js",
+        "pouchdb-browser.js",
+        "version-bump.mjs",
+        "package.json",
+        "**/*.json",
+        "**/.eslintrc.js.bak",
+        // Files from linked dependencies (those files should not exist for most people).
+        "modules/octagonal-wheels/dist",
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all,
-});
+        // Sub-projects (Exclude from root linting as they have different environments)
+        "src/apps",
+        "utils",
 
-export default [
+        // Specific exclusions from common library (src/lib)
+        "src/lib/coverage",
+        "src/lib/browsertest",
+        "src/lib/test",
+        "src/lib/_tools",
+        "src/lib/src/patches/pouchdb-utils",
+        "src/lib/src/cli",
+        "src/lib/src/services/implements/browser/**",
+        "src/lib/src/services/implements/headless/**",
+        "src/lib/src/API",
+
+        // Config files and build scripts
+        "**/jest.config.js",
+        "**/rollup.config.js",
+        "**/esbuild.config.mjs",
+        "**/terser.*.mjs",
+        ".prettierrc.*.mjs",
+        ".prettierrc.mjs",
+        "*.config.mjs",
+        "vite.*",
+        "vitest.*",
+        // Testing files (Simplified patterns)
+        "test/**",
+        "**/*.test.ts",
+        "**/*.unit.spec.ts",
+        "**/test.ts",
+        "**/tests.ts",
+    ]),
+    ...sveltePlugin.configs["flat/base"],
+    ...obsidianmd.configs.recommended,
+    importAlias.configs.recommended,
     {
-        ignores: [
-            "**/node_modules/*",
-            "**/jest.config.js",
-            "src/lib/coverage",
-            "src/lib/browsertest",
-            "**/test.ts",
-            "**/tests.ts",
-            "**/**test.ts",
-            "**/**.test.ts",
-            "**/esbuild.*.mjs",
-            "**/terser.*.mjs",
-            "**/node_modules",
-            "**/build",
-            "**/.eslintrc.js.bak",
-            "src/lib/src/patches/pouchdb-utils",
-            "**/esbuild.config.mjs",
-            "**/rollup.config.js",
-            "modules/octagonal-wheels/rollup.config.js",
-            "modules/octagonal-wheels/dist/**/*",
-            "src/lib/test",
-            "src/lib/src/cli",
-            "**/main.js",
-            "src/apps/**/*",
-            ".prettierrc.*.mjs",
-            ".prettierrc.mjs",
-            "*.config.mjs"
-        ],
-    },
-    ...compat.extends(
-        "eslint:recommended",
-        "plugin:@typescript-eslint/eslint-recommended",
-        "plugin:@typescript-eslint/recommended"
-    ),
-    {
-        plugins: {
-            "@typescript-eslint": typescriptEslint,
-            svelte,
-            import: fixupPluginRules(_import),
-        },
-
+        files: ["**/*.ts"],
+        // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
         languageOptions: {
+            globals: { ...globals.browser, PouchDB: "readonly" },
             parser: tsParser,
-            ecmaVersion: 5,
-            sourceType: "module",
-
             parserOptions: {
-                project: ["tsconfig.json"],
+                project: "./tsconfig.json",
+                rootDir: "./",
             },
         },
-
+        linterOptions: {
+            reportUnusedDisableDirectives: false,
+        },
         rules: {
-            "no-unused-vars": "off",
-
-            "@typescript-eslint/no-unused-vars": [
-                "error",
-                {
-                    args: "none",
-                },
-            ],
-
-            "no-unused-labels": "off",
-            "@typescript-eslint/ban-ts-comment": "off",
-            "no-prototype-builtins": "off",
-            "@typescript-eslint/no-empty-function": "off",
-            "require-await": "error",
-            "@typescript-eslint/require-await": "warn",
-            "@typescript-eslint/no-misused-promises": "warn",
-            "@typescript-eslint/no-floating-promises": "warn",
-            "no-async-promise-executor": "warn",
-            "@typescript-eslint/no-explicit-any": "off",
-            "@typescript-eslint/no-unnecessary-type-assertion": "error",
-
-            "no-constant-condition": [
-                "error",
-                {
-                    checkLoops: false,
-                },
-            ],
+            ...baseRules,
+            ...obsidianRules,
+            // -- Project specific rules
+            ...ImportAliasRules("."),
         },
     },
-];
-
+    {
+        files: ["**/*.svelte"],
+        languageOptions: {
+            globals: { ...globals.browser, PouchDB: "readonly" },
+            parser: svelteParser,
+            parserOptions: {
+                parser: tsParser,
+                extraFileExtensions: [".svelte"],
+            },
+        },
+        rules: {
+            // no-unused-vars:
+            // Svelte template's declarations have a lot of false positives and the rule is not worth the effort to fix at this time.
+            // it may improve in the future with some options as like   ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],]
+            "no-unused-vars": "off",
+            ...obsidianRules,
+            "obsidianmd/no-plugin-as-component": "off",
+            ...ImportAliasRules("."),
+        },
+    },
+]);

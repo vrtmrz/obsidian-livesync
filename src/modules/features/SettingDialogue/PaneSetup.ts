@@ -1,5 +1,5 @@
-import { MarkdownRenderer } from "../../../deps.ts";
-import { $msg } from "../../../lib/src/common/i18n.ts";
+import { MarkdownRenderer } from "@/deps.ts";
+import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
@@ -7,13 +7,14 @@ import {
     EVENT_REQUEST_OPEN_SETUP_URI,
     EVENT_REQUEST_SHOW_SETUP_QR,
     eventHub,
-} from "../../../common/events.ts";
+} from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { DEFAULT_SETTINGS } from "../../../lib/src/common/types.ts";
+import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "../SetupManager.ts";
+import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -121,19 +122,19 @@ export function paneSetup(
         const repo = "vrtmrz/obsidian-livesync";
         const topPath = $msg("obsidianLiveSyncSettingTab.linkTroubleshooting");
         const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
-        this.createEl(
-            paneEl,
-            "div",
-            "",
-            (el) =>
-                (el.innerHTML = `<a href='https://github.com/${repo}/blob/main${topPath}' target="_blank">${$msg("obsidianLiveSyncSettingTab.linkOpenInBrowser")}</a>`)
-        );
+        this.createEl(paneEl, "div", "", (el) => {
+            el.createEl("a", { text: $msg("obsidianLiveSyncSettingTab.linkOpenInBrowser") }, (anchor) => {
+                anchor.href = `https://github.com/${repo}/blob/main${topPath}`;
+                anchor.target = "_blank";
+                anchor.rel = "noopener";
+            });
+        });
         const troubleShootEl = this.createEl(paneEl, "div", {
             text: "",
             cls: "sls-troubleshoot-preview",
         });
         const loadMarkdownPage = async (pathAll: string, basePathParam: string = "") => {
-            troubleShootEl.style.minHeight = troubleShootEl.clientHeight + "px";
+            troubleShootEl.setCssStyles({ minHeight: troubleShootEl.clientHeight + "px" });
             troubleShootEl.empty();
             const fullPath = pathAll.startsWith("/") ? pathAll : `${basePathParam}/${pathAll}`;
 
@@ -145,8 +146,9 @@ export function paneSetup(
             let remoteTroubleShootMDSrc = "";
             try {
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
-            } catch (ex: any) {
-                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${ex.toString()}`;
+            } catch (ex) {
+                const err = LiveSyncError.fromError(ex);
+                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${err.toString()}`;
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                 /\((.*?(.png)|(.jpg))\)/g,
@@ -158,7 +160,7 @@ export function paneSetup(
                 `<a class='sls-troubleshoot-anchor'></a> [${$msg("obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting")}](${topPath}) [${$msg("obsidianLiveSyncSettingTab.linkPageTop")}](${filename})\n\n${remoteTroubleShootMD}`,
                 troubleShootEl,
                 `${rawRepoURI}`,
-                this.plugin
+                this.lifetimeComponent
             );
             // Menu
             troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({
@@ -201,7 +203,7 @@ export function paneSetup(
                     });
                 });
             });
-            troubleShootEl.style.minHeight = "";
+            troubleShootEl.setCssStyles({ minHeight: "" });
         };
         void loadMarkdownPage(topPath);
     });

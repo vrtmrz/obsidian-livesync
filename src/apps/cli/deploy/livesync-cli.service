@@ -1,0 +1,17 @@
+[Unit]
+Description=Self-hosted LiveSync CLI Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=LIVESYNC_BIN LIVESYNC_VAULT_PATH
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target

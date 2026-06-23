@@ -1,9 +1,9 @@
-import { AbstractModule } from "../AbstractModule.ts";
-import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "../../lib/src/common/types";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
+import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@lib/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleConflictChecker extends AbstractModule {
     async _queueConflictCheckIfOpen(file: FilePathWithPrefix): Promise<void> {

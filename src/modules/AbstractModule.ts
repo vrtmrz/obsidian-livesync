@@ -3,7 +3,7 @@ import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { stripAllPrefixes } from "@lib/string_and_binary/path";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import type { ServiceContext } from "@/lib/src/services/base/ServiceBase";
+import type { ServiceContext } from "@lib/services/base/ServiceBase";
 
 export abstract class AbstractModule<
     T extends LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands> = LiveSyncBaseCore<
@@ -61,21 +61,21 @@ export abstract class AbstractModule<
         return this.testDone(false);
     }
 
-    async _test(key: string, process: () => Promise<any>) {
-        this._log(`Testing ${key}`, LOG_LEVEL_VERBOSE);
-        try {
-            const ret = await process();
-            if (ret !== true) {
-                this.addTestResult(key, false, ret.toString());
-                return this.testFail(`${key} failed: ${ret}`);
-            }
-            this.addTestResult(key, true, "");
-        } catch (ex: any) {
-            this.addTestResult(key, false, "Failed by Exception", ex.toString());
-            return this.testFail(`${key} failed: ${ex}`);
-        }
-        return this.testDone();
-    }
+    // async _test(key: string, process: () => Promise<any>) {
+    //     this._log(`Testing ${key}`, LOG_LEVEL_VERBOSE);
+    //     try {
+    //         const ret = await process();
+    //         if (ret !== true) {
+    //             this.addTestResult(key, false, ret.toString());
+    //             return this.testFail(`${key} failed: ${ret}`);
+    //         }
+    //         this.addTestResult(key, true, "");
+    //     } catch (ex: any) {
+    //         this.addTestResult(key, false, "Failed by Exception", ex.toString());
+    //         return this.testFail(`${key} failed: ${ex}`);
+    //     }
+    //     return this.testDone();
+    // }
 
     isMainReady() {
         return this.services.appLifecycle.isReady();

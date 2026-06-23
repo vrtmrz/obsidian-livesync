@@ -7,12 +7,12 @@ import {
     type FilePath,
     type FilePathWithPrefix,
     type LOG_LEVEL,
-} from "../lib/src/common/types.ts";
-import type ObsidianLiveSyncPlugin from "../main.ts";
-import { MARK_DONE } from "../modules/features/ModuleLog.ts";
-import type { LiveSyncCore } from "../main.ts";
-import { __$checkInstanceBinding } from "../lib/src/dev/checks.ts";
-import { createInstanceLogFunction } from "@/lib/src/services/lib/logUtils.ts";
+} from "@lib/common/types.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
+import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
+import type { LiveSyncCore } from "@/main.ts";
+// import { __$checkInstanceBinding } from "@lib/dev/checks.ts";
+import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
@@ -50,7 +50,7 @@ export abstract class LiveSyncCommands {
         this.core = core;
         this.onBindFunction(this.core, this.core.services);
         this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
-        __$checkInstanceBinding(this);
+        // __$checkInstanceBinding(this);
     }
     abstract onunload(): void;
     abstract onload(): void | Promise<void>;
@@ -67,24 +67,24 @@ export abstract class LiveSyncCommands {
 
     _log: ReturnType<typeof createInstanceLogFunction>;
 
-    _verbose = (msg: any, key?: string) => {
+    _verbose = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);
     };
 
-    _info = (msg: any, key?: string) => {
+    _info = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_INFO, key);
     };
 
-    _notice = (msg: any, key?: string) => {
+    _notice = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_NOTICE, key);
     };
     _progress = (prefix: string = "", level: LOG_LEVEL = LOG_LEVEL_NOTICE) => {
         const key = `keepalive-progress-${noticeIndex++}`;
         return {
-            log: (msg: any) => {
+            log: (msg: string) => {
                 this._log(prefix + msg, level, key);
             },
-            once: (msg: any) => {
+            once: (msg: string) => {
                 this._log(prefix + msg, level);
             },
             done: (msg: string = "Done") => {
@@ -93,7 +93,7 @@ export abstract class LiveSyncCommands {
         };
     };
 
-    _debug = (msg: any, key?: string) => {
+    _debug = (msg: unknown, key?: string) => {
         this._log(msg, LOG_LEVEL_VERBOSE, key);
     };
 

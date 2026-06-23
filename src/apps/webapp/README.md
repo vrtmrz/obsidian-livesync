@@ -6,7 +6,7 @@ Note: (I vrtmrz have not tested this so much yet).
 
 - 🌐 Runs entirely in the browser
 - 📁 Uses FileSystem API to access your local vault
-- 🔄 Syncs with CouchDB, Object Storage server (compatible with Self-hosted LiveSync plugin)
+- 🔄 Syncs with CouchDB, Object Storage server (compatible with Self-hosted LiveSync plug-in)
 - 🚫 No server-side code required!!
 - 💾 Settings stored in `.livesync/settings.json` within your vault
 - 👁️ Real-time file watching (Chrome 124+ with FileSystemObserver)
@@ -35,8 +35,15 @@ npm install
 
 ### Development
 
+From the repository root:
+
 ```bash
-# Build the project (ensure you are in `src/apps/webapp` directory)
+npm run dev -w livesync-webapp
+```
+
+Or from the package directory:
+
+```bash
 cd src/apps/webapp
 npm run dev
 ```
@@ -45,8 +52,15 @@ This will start a development server at `http://localhost:3000`.
 
 ### Build
 
+From the repository root:
+
 ```bash
-# Build the project (ensure you are in `src/apps/webapp` directory)
+npm run build -w livesync-webapp
+```
+
+Or from the package directory:
+
+```bash
 cd src/apps/webapp
 npm run build
 ```
@@ -113,7 +127,7 @@ webapp/
 1. **Adapters**: Implement `IFileSystemAdapter` interface using FileSystem API
 2. **Managers**: Handle storage events and file watching
 3. **Service Modules**: Integrate with LiveSyncBaseCore
-4. **Main**: Application initialization and lifecycle management
+4. **Main**: Application initialisation and lifecycle management
 
 ### Service Hub
 
@@ -140,11 +154,11 @@ Uses `BrowserServiceHub` which provides:
 - Settings stored in `.livesync/settings.json` in vault
 - Real-time file watching only with FileSystemObserver (Chrome 124+)
 
-## Differences from Obsidian Plugin
+## Differences from Obsidian Plug-in
 
-- No Obsidian-specific modules (UI, settings dialog, etc.)
+- No Obsidian-specific modules (UI, settings dialogue, etc.)
 - Simplified configuration
-- No plugin/theme sync features
+- No plug-in/theme sync features
 - No internal file handling (`.obsidian` folder)
 
 ## Development Notes

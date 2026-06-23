@@ -8,7 +8,7 @@ import {
     diff_match_patch,
     Platform,
     addIcon,
-} from "../../deps.ts";
+} from "@/deps.ts";
 
 import type {
     EntryDoc,
@@ -19,7 +19,7 @@ import type {
     AnyEntry,
     SavingEntry,
     diff_result,
-} from "../../lib/src/common/types.ts";
+} from "@lib/common/types.ts";
 import {
     CANCELLED,
     LEAVE_TO_SUBSEQUENT,
@@ -29,8 +29,8 @@ import {
     LOG_LEVEL_VERBOSE,
     MODE_SELECTIVE,
     MODE_SHINY,
-} from "../../lib/src/common/types.ts";
-import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "../../common/types.ts";
+} from "@lib/common/types.ts";
+import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
     createBlob,
     createSavingEntryFromLoadedEntry,
@@ -42,12 +42,12 @@ import {
     isDocContentSame,
     isLoadedEntry,
     isObjectDifferent,
-} from "../../lib/src/common/utils.ts";
-import { digestHash } from "../../lib/src/string_and_binary/hash.ts";
-import { arrayBufferToBase64, decodeBinary, readString } from "../../lib/src/string_and_binary/convert.ts";
+} from "@lib/common/utils.ts";
+import { digestHash } from "@lib/string_and_binary/hash.ts";
+import { arrayBufferToBase64, decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
-import { LiveSyncCommands } from "../LiveSyncCommands.ts";
-import { stripAllPrefixes } from "../../lib/src/string_and_binary/path.ts";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
+import { stripAllPrefixes } from "@lib/string_and_binary/path.ts";
 import {
     EVEN,
     disposeMemoObject,
@@ -57,20 +57,21 @@ import {
     memoObject,
     retrieveMemoObject,
     scheduleTask,
-} from "../../common/utils.ts";
+} from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
-import { JsonResolveModal } from "../HiddenFileCommon/JsonResolveModal.ts";
+import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { pluginScanningCount } from "../../lib/src/mock_and_interop/stores.ts";
-import type ObsidianLiveSyncPlugin from "../../main.ts";
+import { pluginScanningCount } from "@lib/mock_and_interop/stores.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
-import { ConflictResolveModal } from "../../modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
+import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "../../common/events.ts";
+import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
-import { $msg } from "src/lib/src/common/i18n.ts";
-import type { InjectableServiceHub } from "../../lib/src/services/InjectableServices.ts";
-import type { LiveSyncCore } from "../../main.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { LiveSyncCore } from "@/main.ts";
+import { LiveSyncError } from "@lib/common/LSError.ts";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -564,7 +565,7 @@ export class ConfigSync extends LiveSyncCommands {
                 ...data,
                 documentPath: this.getPath(wx),
                 files: xFiles,
-            } as PluginDataExDisplay;
+            } satisfies PluginDataExDisplay;
         }
         return false;
     }
@@ -1069,10 +1070,10 @@ export class ConfigSync extends LiveSyncCommands {
         }
         const baseDir = this.configDir;
         try {
-            if (!data.documentPath) throw "InternalError: Document path not exist";
+            if (!data.documentPath) throw new LiveSyncError("InternalError: Document path not exist");
             const dx = await this.localDatabase.getDBEntry(data.documentPath);
             if (dx == false) {
-                throw "Not found on database";
+                throw new LiveSyncError("Not found on database");
             }
             const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
             for (const f of loadedData.files) {
@@ -1100,7 +1101,7 @@ export class ConfigSync extends LiveSyncCommands {
             this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
                 //@ts-ignore
-                const manifests = Object.values(this.app.plugins.manifests) as any as PluginManifest[];
+                const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
                 //@ts-ignore
                 const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
                 const pluginManifest = manifests.find(
@@ -1317,7 +1318,7 @@ export class ConfigSync extends LiveSyncCommands {
                     }
                     const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (docXDoc == false) {
-                        throw "Could not load the document";
+                        throw new LiveSyncError("Could not load the document");
                     }
                     const dataSrc = getDocData(docXDoc.data);
                     const dataStart = dataSrc.indexOf(DUMMY_END);

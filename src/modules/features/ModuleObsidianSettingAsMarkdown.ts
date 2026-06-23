@@ -1,11 +1,11 @@
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
-import { EVENT_SETTING_SAVED, eventHub } from "../../common/events";
+import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "../../lib/src/common/types";
-import { parseYaml, stringifyYaml } from "../../deps";
+import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { parseYaml, stringifyYaml } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import { AbstractModule } from "../AbstractModule.ts";
+import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { ServiceContext } from "@lib/services/base/ServiceBase.ts";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
 import type { LiveSyncCore } from "@/main.ts";
@@ -162,8 +162,8 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
                             result == APPLY_AND_REBUILD ||
                             result == APPLY_AND_FETCH
                         ) {
-                            this.core.settings = settingToApply;
-                            await this.services.setting.saveSettingData();
+                            await this.services.setting.applyExternalSettings(settingToApply, true);
+                            this.services.setting.clearUsedPassphrase();
                             if (result == APPLY_ONLY) {
                                 this._log("Loaded settings have been applied!", LOG_LEVEL_NOTICE);
                                 return;

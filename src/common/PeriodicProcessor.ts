@@ -4,10 +4,10 @@ import { eventHub, EVENT_PLUGIN_UNLOADED } from "./events";
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 type PeriodicProcessorHost = NecessaryServices<"API" | "control", never>;
 export class PeriodicProcessor {
-    _process: () => Promise<any>;
+    _process: () => Promise<unknown>;
     _timer?: number = undefined;
     _core: PeriodicProcessorHost;
-    constructor(core: PeriodicProcessorHost, process: () => Promise<any>) {
+    constructor(core: PeriodicProcessorHost, process: () => Promise<unknown>) {
         // this._plugin = plugin;
         this._core = core;
         this._process = process;

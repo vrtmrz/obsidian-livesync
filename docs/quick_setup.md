@@ -2,7 +2,7 @@
 
 [Japanese docs](./quick_setup_ja.md) - [Chinese docs](./quick_setup_cn.md).
 
-The plugin has so many configuration options to deal with different circumstances. However, only a few settings are required in the normal cases. Therefore, `The Setup wizard` has been implemented to simplify the setup.
+The plug-in has so many configuration options to deal with different circumstances. However, only a few settings are required in the normal cases. Therefore, `The Setup wizard` has been implemented to simplify the setup.
 
 ![](../images/quick_setup_1.png)
 
@@ -10,7 +10,7 @@ There are three methods to set up Self-hosted LiveSync.
 
 1. [Using setup URIs](#1-using-setup-uris) *(Recommended)*
 2. [Minimal setup](#2-minimal-setup)
-3. [Full manually setup the and Enable on this dialogue](#3-manually-setup)
+3. [Fully manual setup and enabling on this dialogue](#3-manually-setup)
 
 ## At the first device
 
@@ -24,7 +24,7 @@ There are three methods to set up Self-hosted LiveSync.
 
 In this procedure, [this video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 
-1. Click `Use` button (Or launch `Use the copied setup URI` from Command palette).
+1. Click the `Use` button (or launch the `Use the copied setup URI (Formerly Open setup URI)` command from the command palette).
 2. Paste the Setup URI into the dialogue
 3. Type the passphrase of the Setup URI
 4. Answer `yes` for `Importing LiveSync's conf, OK?`.
@@ -107,23 +107,27 @@ Note: If you are going to use Object Storage, you cannot select `LiveSync`.
 
 Select any synchronisation methods we want to use and `Apply`. If database initialisation is required, it will be performed at this time. When `All done!` is displayed, we are ready to synchronise.
 
-The dialogue of `Copy settings as a new setup URI` will be open automatically. Please input a passphrase to encrypt the new `Setup URI`. (This passphrase is to encrypt the setup URI, not the vault).
+The dialogue of `Copy current settings as a new setup URI` will open automatically. Please input a passphrase to encrypt the new `Setup URI`. (This passphrase is to encrypt the setup URI, not the vault).
 
 ![](../images/quick_setup_10.png)
 
 The Setup URI will be copied to the clipboard, please make a note(Not in Obsidian) of this.
 
 >[!TIP]
-We can copy this in any time by `Copy current settings as a new setup URI`.
+We can copy this at any time by running the "Copy settings as a new setup URI" command from the command palette (or clicking the "Copy the current settings to a Setup URI" button in the settings UI).
 
 ### 3. Manually setup
 
 It is strongly recommended to perform a "minimal set-up" first and set up the other contents after making sure has been synchronised.
 
 However, if you have some specific reasons to configure it manually, please click the `Enable` button of `Enable LiveSync on this device as the set-up was completed manually`.
-And, please copy the setup URI by `Copy current settings as a new setup URI` and make a note(Not in Obsidian) of this.
+And, please copy the setup URI by running the "Copy settings as a new setup URI" command (or using the "Copy the current settings to a Setup URI" button) and make a note(Not in Obsidian) of this.
 
 ## At the subsequent device
 After installing Self-hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
 
 It is completely same as [Using setup URIs on the first device](#1-using-setup-uris). Please refer it.
+
+> [!TIP]
+> **Fast Setup (Simple Fetch)**
+> In recent versions, when you import a Setup URI or trigger a Fetch All, the plug-in boots in scheduled fetch mode and runs a simplified **Fast Setup** process. This allows you to choose your sync strategy with a single dialogue and performs initial synchronisation in one step. Refer to the [Fast Setup Guide](./tips/fast-setup.md) for more details.

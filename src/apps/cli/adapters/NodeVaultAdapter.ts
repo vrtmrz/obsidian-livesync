@@ -1,8 +1,7 @@
-import * as fs from "fs/promises";
-import * as path from "path";
-import type { UXDataWriteOptions } from "@lib/common/types";
+import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
-import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import type { NodeFile, NodeFolder } from "./NodeTypes";
+import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 /**
  * Vault adapter implementation for Node.js
@@ -15,7 +14,12 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
     }
 
     async read(file: NodeFile): Promise<string> {
-        return await fs.readFile(this.resolvePath(file.path), "utf-8");
+        const content = await fs.readFile(this.resolvePath(file.path), "utf-8");
+        // Correct stale stat.size — chokidar stats may be from a poll before the final write.
+        // The downstream document integrity check compares stat.size to content length, so
+        // they must agree or other clients reject the file as corrupted.
+        file.stat.size = Buffer.byteLength(content, "utf-8");
+        return content;
     }
 
     async cachedRead(file: NodeFile): Promise<string> {
@@ -25,6 +29,9 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
     async readBinary(file: NodeFile): Promise<ArrayBuffer> {
         const buffer = await fs.readFile(this.resolvePath(file.path));
+        // Same correction as read() — ensure stat.size matches actual byte length.
+        file.stat.size = buffer.length;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
         return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     }
 
@@ -63,11 +70,11 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };
@@ -86,11 +93,11 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
         const stat = await fs.stat(fullPath);
         return {
-            path: p as any,
+            path: p as FilePath,
             stat: {
                 size: stat.size,
-                mtime: stat.mtimeMs,
-                ctime: stat.ctimeMs,
+                mtime: Math.floor(stat.mtimeMs),
+                ctime: Math.floor(stat.ctimeMs),
                 type: "file",
             },
         };
@@ -111,7 +118,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         await this.delete(file, force);
     }
 
-    trigger(name: string, ...data: any[]): any {
+    trigger(name: string, ...data: unknown[]): void {
         // No-op in CLI version (no event system)
         return undefined;
     }
