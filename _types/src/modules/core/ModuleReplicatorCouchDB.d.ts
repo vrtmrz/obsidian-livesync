@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import { type RemoteDBSettings } from "@lib/common/types";
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "@/modules/AbstractModule";

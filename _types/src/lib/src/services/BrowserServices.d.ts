@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import { InjectableVaultServiceCompat } from "@lib/services/implements/injectable/InjectableVaultService";
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";

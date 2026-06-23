@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import type { ConfigService } from "@lib/services/base/ConfigService";
 import { ControlService } from "@lib/services/base/ControlService";
 import type { KeyValueDBService } from "@lib/services/base/KeyValueDBService";
