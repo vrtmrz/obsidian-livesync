@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 /**
  * Encrypts a string using a passphrase, unless the string is already encrypted.
  *

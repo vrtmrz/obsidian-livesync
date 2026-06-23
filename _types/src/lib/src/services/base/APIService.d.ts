@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { FetchHttpHandler } from "@smithy/fetch-http-handler";
 import type { LOG_LEVEL } from "@lib/common/logger";
 import type { IAPIService, ICommandCompat } from "./IService";

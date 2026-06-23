@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { App, Modal } from "@/deps.ts";
 import { type FilePath, type LoadedEntry } from "@lib/common/types.ts";
 import { mount } from "svelte";

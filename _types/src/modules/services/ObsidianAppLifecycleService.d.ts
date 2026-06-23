@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { AppLifecycleServiceBase } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 declare module "obsidian" {

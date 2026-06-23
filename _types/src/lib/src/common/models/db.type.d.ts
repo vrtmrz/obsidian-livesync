@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { TaggedType } from "octagonal-wheels/common/types";
 import type { EntryTypes, SYNCINFO_ID } from "./db.const";
 export type FilePath = TaggedType<string, "FilePath">;

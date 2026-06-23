@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 export declare function generateReport(settings: ObsidianLiveSyncSettings, core: LiveSyncBaseCore): Promise<{

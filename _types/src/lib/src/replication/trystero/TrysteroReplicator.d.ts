@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { type EntryDoc, type ObsidianLiveSyncSettings } from "@lib/common/types";
 import { type ProgressInfo } from "@lib/pouchdb/ReplicatorShim";
 import type { Confirm } from "@lib/interfaces/Confirm";

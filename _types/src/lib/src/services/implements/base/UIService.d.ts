@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { Confirm } from "@lib/interfaces/Confirm";
 import type { ComponentHasResult, SvelteDialogManagerBase } from "@lib/UI/svelteDialog";
 import type { IAPIService, IUIService } from "@lib/services/base/IService";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 export type { IStorageEventTypeGuardAdapter } from "./IStorageEventTypeGuardAdapter";
 export type { IStorageEventPersistenceAdapter } from "./IStorageEventPersistenceAdapter";
 export type { IStorageEventWatchAdapter, IStorageEventWatchHandlers } from "./IStorageEventWatchAdapter";

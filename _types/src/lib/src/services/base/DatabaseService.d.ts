@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { IDatabaseService, IPathService, IVaultService, openDatabaseParameters } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";
 import { LiveSyncLocalDB } from "@lib/pouchdb/LiveSyncLocalDB";

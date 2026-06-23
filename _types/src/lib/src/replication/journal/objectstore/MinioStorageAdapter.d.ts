@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { S3 } from "@aws-sdk/client-s3";
 import { type BucketSyncSetting } from "@lib/common/types.ts";
 import type { RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";
@@ -9,8 +9,6 @@ export declare class MinioStorageAdapter implements IJournalStorage {
     _instance?: S3;
     _settings: BucketSyncSetting;
     _env: LiveSyncJournalReplicatorEnv;
-    static isCompatible(connectionString: string): boolean;
-    static parseConnectionString(connectionString: string): Partial<BucketSyncSetting> | false;
     constructor(settings: BucketSyncSetting, env: LiveSyncJournalReplicatorEnv);
     applyNewConfig(settings: BucketSyncSetting): void;
     get customHeaders(): [string, string][];

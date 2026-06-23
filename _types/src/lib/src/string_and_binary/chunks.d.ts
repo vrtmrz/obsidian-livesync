@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 export declare function splitPiecesTextV2(dataSrc: string | string[], pieceSize: number, minimumChunkSize: number): () => Generator<string>;
 export declare function binaryTextSplit(data: string, pieceSize: number, minimumChunkSize: number): () => Generator<string>;
 export declare function splitPiecesText(dataSrc: string | string[], pieceSize: number, plainSplit: boolean, minimumChunkSize: number, useSegmenter: boolean): () => Generator<string>;

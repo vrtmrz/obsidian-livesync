@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { type TFile } from "@/deps.ts";
 import type { FilePathWithPrefix, DocumentID } from "@lib/common/types.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";

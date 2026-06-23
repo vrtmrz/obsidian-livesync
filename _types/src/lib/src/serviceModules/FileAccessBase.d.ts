@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { FilePath, UXDataWriteOptions, UXFileInfoStub, UXFolderInfo } from "@lib/common/types.ts";
 import type { IStorageAccessManager } from "@lib/interfaces/StorageAccess.ts";
 import type { IAPIService, IPathService, ISettingService, IVaultService } from "@lib/services/base/IService.ts";

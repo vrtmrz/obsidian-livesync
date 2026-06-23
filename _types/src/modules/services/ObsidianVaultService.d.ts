@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { InjectableVaultService } from "@lib/services/implements/injectable/InjectableVaultService";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import type { FilePath } from "@lib/common/types";

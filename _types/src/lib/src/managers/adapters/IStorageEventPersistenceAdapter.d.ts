@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { FileEventItem } from "@lib/common/types";
 import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
 /**

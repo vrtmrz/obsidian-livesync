@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { BucketSyncSetting, CouchDBConnection, EncryptionSettings, ObsidianLiveSyncSettings, P2PConnectionInfo } from "@lib/common/models/setting.type";
 export declare const TYPE_IDENTICAL = "identical";
 export declare const TYPE_INDEPENDENT = "independent";

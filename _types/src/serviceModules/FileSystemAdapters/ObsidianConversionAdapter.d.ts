@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
 import type { IConversionAdapter } from "@lib/serviceModules/adapters";
 import type { TFile, TFolder } from "obsidian";

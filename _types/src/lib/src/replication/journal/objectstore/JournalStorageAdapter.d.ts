@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";
 import type { BucketSyncSetting } from "@lib/common/types.ts";
 export interface IJournalStorage {
@@ -14,6 +14,4 @@ export interface IJournalStorage {
 import type { LiveSyncJournalReplicatorEnv } from "@lib/replication/journal/LiveSyncJournalReplicatorEnv.ts";
 export interface IJournalStorageAdapterClass {
     new (settings: BucketSyncSetting, env: LiveSyncJournalReplicatorEnv): IJournalStorage;
-    isCompatible(connectionString: string): boolean;
-    parseConnectionString(connectionString: string): Partial<BucketSyncSetting> | false;
 }

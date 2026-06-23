@@ -1,4 +1,4 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { END_OF_DATA } from "./universalTypes.ts";
 export declare function postBack(key: number, seq: number, data: string | END_OF_DATA): void;

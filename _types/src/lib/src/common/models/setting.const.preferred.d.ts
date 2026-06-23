@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { ObsidianLiveSyncSettings } from "./setting.type";
 export declare const PREFERRED_BASE: Partial<ObsidianLiveSyncSettings>;
 export declare const PREFERRED_SETTING_CLOUDANT: Partial<ObsidianLiveSyncSettings>;

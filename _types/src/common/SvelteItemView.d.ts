@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import { ItemView } from "@/deps.ts";
 import { type mount } from "svelte";
 export declare abstract class SvelteItemView extends ItemView {

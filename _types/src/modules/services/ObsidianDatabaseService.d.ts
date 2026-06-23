@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
 import { DatabaseService, type DatabaseServiceDependencies } from "@lib/services/base/DatabaseService.ts";
 export declare class ObsidianDatabaseService<T extends ObsidianServiceContext> extends DatabaseService<T> {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@lib/common/types";
 import type { Confirm } from "@lib/interfaces/Confirm";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 4a23eaf
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bc1806f
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import type { SetupFeatureHost } from "./types";
 export declare function encodeSetupSettingsAsQR(host: SetupFeatureHost): Promise<string>;
