@@ -3,6 +3,18 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+
+## Unreleased
+
+### Improved
+
+- Overhauled the Object Storage (e.g., MinIO and S3) replication engine ('Journal Replicator 2nd Edition'). It now leverages the standard Web Streams API for a resilient, backpressure-aware architecture, reducing memory footprints on large vaults.
+- Decoupled the physical storage logic to make it easier to add new storage backends in the future.
+- Stricter compliance with CouchDB's replication protocol (proper `_revisions` transfers with `new_edits: false`) when using Object Storage.
+- Introduced Connection String support for setup configuration.
+- Added comprehensive unit tests for the new `JournalSyncCore` engine, covering streams, backpressure, and `new_edits: false` validation.
+- Improved integration test workflows in the CI pipeline to run MinIO tests automatically using standard environment variables.
+
 ## 0.25.77
 
 19th June, 2026

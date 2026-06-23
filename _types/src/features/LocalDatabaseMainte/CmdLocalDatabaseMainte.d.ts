@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { type DocumentID, type EntryDoc, type EntryLeaf } from "@lib/common/types";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 type ChunkID = DocumentID;

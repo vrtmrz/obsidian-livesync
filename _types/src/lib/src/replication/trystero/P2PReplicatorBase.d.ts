@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import type { LOG_LEVEL } from "octagonal-wheels/common/logger";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";

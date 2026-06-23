@@ -1,12 +1,12 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import { App, Component, PluginSettingTab } from "@/deps.ts";
 import { type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 import ObsidianLiveSyncPlugin from "@/main.ts";
 import { type AllSettingItemKey, type AllStringItemKey, type AllNumericItemKey, type AllBooleanItemKey, type AllSettings, OnDialogSettingsDefault, type OnDialogSettings } from "./settingConstants.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { JournalSyncMinio } from "@lib/replication/journal/objectstore/JournalSyncMinio.ts";
 import { type OnSavedHandler, type OnSavedHandlerFunc, type OnUpdateFunc, type OnUpdateResult, type UpdateFunction } from "./SettingPane.ts";
+import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
 export declare class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
     private _lifetimeComponent;
@@ -99,6 +99,6 @@ export declare class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     rebuildDB: (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") => Promise<void>;
     confirmRebuild(): Promise<void>;
     display(): void;
-    getMinioJournalSyncClient(): JournalSyncMinio;
+    getMinioJournalSyncClient(): JournalSyncCore;
     resetRemoteBucket(): Promise<void>;
 }

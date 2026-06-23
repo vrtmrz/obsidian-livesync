@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import type { EncryptArguments, EncryptHKDFArguments, EncryptHKDFProcessItem, EncryptProcessItem, ProcessItem, SplitArguments, SplitProcessItem } from "./universalTypes.ts";
 export type WorkerInstance = {
     worker: Worker;

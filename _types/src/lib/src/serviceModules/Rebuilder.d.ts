@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
 import type { IFileHandler } from "@lib/interfaces/FileHandler";
 import type { APIService } from "@lib/services/base/APIService";
 import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
@@ -81,4 +81,7 @@ export declare class ServiceRebuilder extends ServiceModuleBase<ServiceRebuilder
     fetchLocalWithRebuild(): Promise<void>;
     private _allSuspendAllSync;
     resetLocalDatabase(): Promise<void>;
+    private getFastFetchCheckpoint;
+    private saveFastFetchCheckpoint;
+    private clearFastFetchCheckpoint;
 }

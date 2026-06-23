@@ -36,7 +36,6 @@ import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
-import { JournalSyncMinio } from "@lib/replication/journal/objectstore/JournalSyncMinio.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
     enableOnly,
@@ -64,6 +63,8 @@ import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
+import { MinioStorageAdapter } from "@lib/replication/journal/objectstore/MinioStorageAdapter.js";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -849,7 +850,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     getMinioJournalSyncClient() {
-        return new JournalSyncMinio(this.core.settings, this.core.simpleStore, this.core);
+        // return new JournalSyncMinio(this.core.settings, this.core.simpleStore, this.core);
+        // const settings = this.editingSettings as ObsidianLiveSyncSettings;
+        return new JournalSyncCore(
+            this.core.settings,
+            this.core.simpleStore,
+            this.core,
+            new MinioStorageAdapter(this.core.settings, this.core)
+        );
     }
     async resetRemoteBucket() {
         const minioJournal = this.getMinioJournalSyncClient();

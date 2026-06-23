@@ -103,9 +103,14 @@ jobs:
       - name: Start CouchDB container
         run: npm run test:docker-couchdb:start
 
+      - name: Start MinIO container
+        run: npm run test:docker-s3:start
+
       - name: Run integration tests
         run: npm run test:integration
 
-      - name: Stop CouchDB container
+      - name: Stop containers
         if: always()
-        run: npm run test:docker-couchdb:stop || true
+        run: |
+          npm run test:docker-couchdb:stop || true
+          npm run test:docker-s3:stop || true
