@@ -346,8 +346,8 @@ export function paneMaintenance(
                     .setButtonText("Reset all")
                     .setWarning()
                     .setDisabled(false)
-                    .onClick(async () => {
-                        await this.getMinioJournalSyncClient().resetAllCaches();
+                    .onClick(() => {
+                        this.getMinioJournalSyncClient().resetAllCaches();
                         Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )

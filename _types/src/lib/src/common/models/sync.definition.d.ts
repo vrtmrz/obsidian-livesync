@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import { EntryTypes } from "./db.const";
 import type { DatabaseEntry, DocumentID } from "./db.type";
 export declare const ProtocolVersions: {

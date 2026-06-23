@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 /**
  * Content-Splitter for Self-hosted LiveSync.
  * Splits content into manageable chunks for efficient storage and synchronisation.

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 export interface Confirm {
     askYesNo(message: string): Promise<"yes" | "no">;
     askString(title: string, key: string, placeholder: string, isPassword?: boolean): Promise<string | false>;

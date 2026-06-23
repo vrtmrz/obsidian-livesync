@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import { type SetupManager } from "@/modules/features/SetupManager";
 import type { SetupFeatureHost } from "@lib/serviceFeatures/setupObsidian/types";
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";

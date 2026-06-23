@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 export declare function isErrorOf(ex: unknown, statusCode: number): boolean;
 /**
  * Checks if the error is effectively a 404 error from CouchDB or PouchDB.

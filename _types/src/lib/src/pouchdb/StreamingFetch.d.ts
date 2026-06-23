@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import type { EntryDoc } from "@lib/common/models/db.definition";
 import type { AnyEntry, EntryLeaf } from "@lib/common/models/db.type";
 export type FetchChangesForInitialSyncProgress = {

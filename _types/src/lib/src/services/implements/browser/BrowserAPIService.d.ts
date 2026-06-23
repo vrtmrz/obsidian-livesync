@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
 import type { FetchHttpHandler } from "@smithy/fetch-http-handler";

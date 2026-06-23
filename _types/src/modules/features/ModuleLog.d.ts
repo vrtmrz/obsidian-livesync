@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import { type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
 import { type LOG_LEVEL } from "@lib/common/types.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";

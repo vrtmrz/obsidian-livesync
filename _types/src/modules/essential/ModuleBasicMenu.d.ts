@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import type { LiveSyncCore } from "@/main";
 import { AbstractModule } from "@/modules/AbstractModule";
 export declare class ModuleBasicMenu extends AbstractModule {

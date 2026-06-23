@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import { type FilePathWithPrefix, type FilePath, type LoadedEntry, type EntryDoc, type SavingEntry, type MetaEntry } from "@lib/common/types";
 import type { ChunkManager } from "@lib/managers/ChunkManager";
 import type { ContentSplitter } from "@lib/ContentSplitter/ContentSplitters";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import type { Confirm } from "@lib/interfaces/Confirm";
 import { type ObsidianLiveSyncSettings } from "./types";
 declare enum ConditionType {

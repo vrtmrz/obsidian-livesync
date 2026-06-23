@@ -1,7 +1,7 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 90de158
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 6c9fa09
 import { type RemoteDBSettings, type EntryLeaf, type ChunkVersionRange, type TweakValues, type NodeData } from "@lib/common/types.ts";
-import { JournalSyncMinio } from "./objectstore/JournalSyncMinio.ts";
+import { JournalSyncCore } from "./JournalSyncCore.ts";
 import { LiveSyncAbstractReplicator, type RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";
 import { type ENSURE_DB_RESULT } from "@lib/pouchdb/LiveSyncDBFunctions.ts";
 import type { CheckPointInfo } from "./JournalSyncTypes.ts";
@@ -10,11 +10,11 @@ import type { LiveSyncJournalReplicatorEnv } from "./LiveSyncJournalReplicatorEn
 export declare class LiveSyncJournalReplicator extends LiveSyncAbstractReplicator {
     env: LiveSyncJournalReplicatorEnv;
     get isChunkSendingSupported(): boolean;
-    get client(): JournalSyncMinio;
+    get client(): JournalSyncCore;
     get simpleStore(): SimpleStore<CheckPointInfo>;
-    _client: JournalSyncMinio;
+    _client: JournalSyncCore;
     getReplicationPBKDF2Salt(setting: RemoteDBSettings, refresh?: boolean): Promise<Uint8Array>;
-    setupJournalSyncClient(): JournalSyncMinio;
+    setupJournalSyncClient(): JournalSyncCore;
     ensureBucketIsCompatible(deviceNodeID: string, currentVersionRange: ChunkVersionRange): Promise<ENSURE_DB_RESULT>;
     constructor(env: LiveSyncJournalReplicatorEnv);
     migrate(from: number, to: number): Promise<boolean>;
