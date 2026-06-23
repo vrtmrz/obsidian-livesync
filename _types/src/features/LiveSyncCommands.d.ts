@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import { type AnyEntry, type DocumentID, type FilePath, type FilePathWithPrefix, type LOG_LEVEL } from "@lib/common/types.ts";
 import type ObsidianLiveSyncPlugin from "@/main.ts";
 import type { LiveSyncCore } from "@/main.ts";

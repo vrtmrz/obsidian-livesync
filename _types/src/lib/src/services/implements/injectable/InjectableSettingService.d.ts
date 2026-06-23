@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { SettingService, type SettingServiceDependencies } from "@lib/services/base/SettingService";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: f20eb19
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import type { Confirm } from "@lib/interfaces/Confirm";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 export declare class BrowserConfirm<T extends ServiceContext> implements Confirm {
