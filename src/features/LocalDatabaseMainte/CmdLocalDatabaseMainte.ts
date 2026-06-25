@@ -18,6 +18,7 @@ import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@
 import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
 import { delay } from "@lib/common/utils";
 import { isNotFoundError } from "@lib/common/utils.doc";
+import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";
@@ -77,22 +78,22 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
             })) === affirmative
         );
     }
-    isAvailable() {
-        if (!this.settings.doNotUseFixedRevisionForChunks) {
-            this._notice("Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.");
-            return false;
-        }
-        if (this.settings.readChunksOnline) {
-            this._notice("Please disable 'Read chunks online' in settings to use Garbage Collection.");
-            return false;
-        }
-        return true;
+    async ensureAvailable(operationName: string) {
+        return await ensureLocalDatabaseMaintenancePrerequisites({
+            operationName,
+            settings: this.settings,
+            askSelectStringDialogue: this.core.confirm.askSelectStringDialogue.bind(this.core.confirm),
+            applyPartial: async (settings, saveImmediately) => {
+                await this.core.services.setting.applyPartial(settings, saveImmediately);
+                Object.assign(this.core.settings, settings);
+            },
+        });
     }
     /**
      * Resurrect deleted chunks that are still used in the database.
      */
     async resurrectChunks() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Resurrect Chunks"))) return;
         const { used, existing } = await this.allChunks(true);
         const excessiveDeletions = [...existing]
             .filter(([key, e]) => e._deleted)
@@ -157,7 +158,7 @@ Do you want to resurrect these chunks?`;
      * After this, chunks that are used in the deleted files become ready for compaction.
      */
     async commitFileDeletion() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Delete Files"))) return;
         const p = this._progress("", LOG_LEVEL_NOTICE);
         p.log("Searching for deleted files..");
         const docs = await this.database.allDocs<MetaEntry>({ include_docs: true });
@@ -199,7 +200,7 @@ Note: **Make sure to synchronise all devices before deletion.**
      * It is recommended to compact the database after this operation (History should be kept once before compaction).
      */
     async commitChunkDeletion() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Delete Chunks"))) return;
         const { existing } = await this.allChunks(true);
         const deletedChunks = [...existing].filter(([key, e]) => e._deleted && e.data !== "").map(([key, e]) => e);
         const deletedNotVacantChunks = deletedChunks.map((e) => ({ ...e, data: "", _deleted: true }));
@@ -236,7 +237,7 @@ Note: **Make sure to synchronise all devices before deletion.**
      * Make sure all devices are synchronized before running this method.
      */
     async markUnusedChunks() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Mark unused chunks"))) return;
         const { used, existing } = await this.allChunks();
         const existChunks = [...existing];
         const unusedChunks = existChunks.filter(([key, e]) => !used.has(e._id)).map(([key, e]) => e);
@@ -269,6 +270,7 @@ Note: **Make sure to synchronise all devices before deletion.**
     }
 
     async removeUnusedChunks() {
+        if (!(await this.ensureAvailable("Delete unused chunks"))) return;
         const { used, existing } = await this.allChunks();
         const existChunks = [...existing];
         const unusedChunks = existChunks.filter(([key, e]) => !used.has(e._id)).map(([key, e]) => e);
@@ -326,7 +328,7 @@ Note: **Make sure to synchronise all devices before deletion.**
      * Note that this only able to perform without Fetch chunks on demand.
      */
     async trackChanges(fromStart: boolean = false, showNotice: boolean = false) {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Track chunk usage"))) return;
         const logLevel = showNotice ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         const kvDB = this.core.kvDB;
 
@@ -442,7 +444,7 @@ Note: **Make sure to synchronise all devices before deletion.**
         this._log(message, logLevel);
     }
     async performGC(showingNotice = false) {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Garbage Collection"))) return;
         await this.trackChanges(false, showingNotice);
         const title = "Are all devices synchronised?";
         const confirmMessage = `This function deletes unused chunks from the device. If there are differences between devices, some chunks may be missing when resolving conflicts.
@@ -512,7 +514,7 @@ Success: ${successCount}, Errored: ${errored}`;
 
     // Analyse the database and report chunk usage.
     async analyseDatabase() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Analyse Database Usage"))) return;
         const db = this.localDatabase.localDatabase;
         // Map of chunk ID to its info
         type ChunkInfo = {
@@ -822,7 +824,7 @@ Success: ${successCount}, Errored: ${errored}`;
     //     }
     // }
     async gcv3() {
-        if (!this.isAvailable()) return;
+        if (!(await this.ensureAvailable("Garbage Collection"))) return;
         const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         // Start one-shot replication to ensure all changes are synced before GC.
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
