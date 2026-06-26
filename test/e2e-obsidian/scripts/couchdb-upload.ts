@@ -8,29 +8,16 @@ import {
     waitForCouchDbDocs,
 } from "../runner/couchdb.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
+import {
+    assertEqual,
+    configureCouchDb,
+    prepareRemote,
+    pushLocalChanges,
+    waitForLiveSyncCoreReady,
+    type LocalDatabaseEntry,
+} from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
-
-type ConfiguredSettings = {
-    isConfigured: boolean;
-    liveSync: boolean;
-    syncOnStart: boolean;
-    syncOnSave: boolean;
-    couchDB_URI: string;
-    couchDB_DBNAME: string;
-};
-
-type LocalDatabaseEntry = {
-    id: string;
-    path: string;
-    type: string;
-    children: string[];
-};
-
-type CoreReadiness = {
-    databaseReady: boolean;
-    appReady: boolean;
-};
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 
@@ -45,111 +32,6 @@ const noteContent = [
     `Created at: ${new Date().toISOString()}`,
     "",
 ].join("\n");
-
-function assertEqual(actual: unknown, expected: unknown, message: string): void {
-    if (actual !== expected) {
-        throw new Error(`${message}\nExpected: ${String(expected)}\nActual: ${String(actual)}`);
-    }
-}
-
-async function configureCouchDb(
-    cliBinary: string,
-    env: NodeJS.ProcessEnv,
-    settings: {
-        uri: string;
-        username: string;
-        password: string;
-        dbName: string;
-    }
-): Promise<ConfiguredSettings> {
-    return await evalObsidianJson<ConfiguredSettings>(
-        cliBinary,
-        [
-            "(async()=>{",
-            "const plugin=app.plugins.plugins['obsidian-livesync'];",
-            "const core=plugin.core;",
-            "const nextSettings={",
-            `couchDB_URI:${JSON.stringify(settings.uri)},`,
-            `couchDB_USER:${JSON.stringify(settings.username)},`,
-            `couchDB_PASSWORD:${JSON.stringify(settings.password)},`,
-            `couchDB_DBNAME:${JSON.stringify(settings.dbName)},`,
-            "remoteType:'',",
-            "liveSync:false,",
-            "syncOnStart:false,",
-            "syncOnSave:false,",
-            "usePluginSync:false,",
-            "usePluginSyncV2:true,",
-            "useEden:false,",
-            "customChunkSize:1,",
-            "sendChunksBulkMaxSize:1,",
-            "chunkSplitterVersion:'v3-rabin-karp',",
-            "readChunksOnline:false,",
-            "disableCheckingConfigMismatch:true,",
-            "isConfigured:true,",
-            "};",
-            "await core.services.setting.applyExternalSettings(nextSettings,true);",
-            "await core.services.control.applySettings();",
-            "const current=core.services.setting.currentSettings();",
-            "return JSON.stringify({",
-            "isConfigured:current.isConfigured,",
-            "liveSync:current.liveSync,",
-            "syncOnStart:current.syncOnStart,",
-            "syncOnSave:current.syncOnSave,",
-            "couchDB_URI:current.couchDB_URI,",
-            "couchDB_DBNAME:current.couchDB_DBNAME,",
-            "});",
-            "})()",
-        ].join(""),
-        env
-    );
-}
-
-async function waitForLiveSyncCoreReady(
-    cliBinary: string,
-    env: NodeJS.ProcessEnv,
-    timeoutMs = Number(process.env.E2E_OBSIDIAN_CORE_READY_TIMEOUT_MS ?? 20000)
-): Promise<CoreReadiness> {
-    const deadline = Date.now() + timeoutMs;
-    let lastReadiness: CoreReadiness | undefined;
-    while (Date.now() < deadline) {
-        lastReadiness = await evalObsidianJson<CoreReadiness>(
-            cliBinary,
-            [
-                "(async()=>{",
-                "const core=app.plugins.plugins['obsidian-livesync'].core;",
-                "return JSON.stringify({",
-                "databaseReady:core.services.database.isDatabaseReady(),",
-                "appReady:core.services.appLifecycle.isReady(),",
-                "});",
-                "})()",
-            ].join(""),
-            env
-        );
-        if (lastReadiness.databaseReady && lastReadiness.appReady) {
-            return lastReadiness;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    throw new Error(`Timed out waiting for Self-hosted LiveSync core readiness: ${JSON.stringify(lastReadiness)}`);
-}
-
-async function prepareRemote(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await evalObsidianJson<unknown>(
-        cliBinary,
-        [
-            "(async()=>{",
-            "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const settings=core.services.setting.currentSettings();",
-            "const replicator=core.services.replicator.getActiveReplicator();",
-            "await replicator.tryCreateRemoteDatabase(settings);",
-            "await replicator.markRemoteResolved(settings);",
-            "const status=await replicator.getRemoteStatus(settings);",
-            "return JSON.stringify({status});",
-            "})()",
-        ].join(""),
-        env
-    );
-}
 
 async function createNoteAndWaitForLocalDb(cliBinary: string, env: NodeJS.ProcessEnv): Promise<LocalDatabaseEntry> {
     return await evalObsidianJson<LocalDatabaseEntry>(
@@ -173,21 +55,6 @@ async function createNoteAndWaitForLocalDb(cliBinary: string, env: NodeJS.Proces
             "}",
             "if(!entry||!entry._id) throw new Error('Timed out waiting for local database entry');",
             "return JSON.stringify({id:entry._id,path:entry.path,type:entry.type,children:entry.children||[]});",
-            "})()",
-        ].join(""),
-        env
-    );
-}
-
-async function pushLocalChanges(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await evalObsidianJson<unknown>(
-        cliBinary,
-        [
-            "(async()=>{",
-            "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "await core.services.fileProcessing.commitPendingFileEvents();",
-            "const result=await core.services.replication.replicate(true);",
-            "return JSON.stringify({result:!!result});",
             "})()",
         ].join(""),
         env

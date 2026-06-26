@@ -47,9 +47,18 @@ npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:vault-reflection
 npm run test:e2e:obsidian:couchdb-upload
+npm run test:e2e:obsidian:startup-scan
+npm run test:e2e:obsidian:hidden-file-snippet-sync
+npm run test:e2e:obsidian:setting-markdown-export
 ```
 
 `test:e2e:obsidian:couchdb-upload` reuses the CouchDB variables from `.test.env` or the process environment. It expects a reachable CouchDB service, creates a unique database, configures Self-hosted LiveSync through `obsidian-cli eval`, creates a note in real Obsidian, commits the note into the local database, runs one-shot synchronisation, and verifies that the remote database contains both the metadata document and its chunk documents.
+
+`test:e2e:obsidian:startup-scan` configures a temporary CouchDB database, stops Obsidian, writes a note directly into the vault, restarts Obsidian, and verifies from CouchDB that the boot-time scan picked up the offline file.
+
+`test:e2e:obsidian:hidden-file-snippet-sync` runs a two-vault hidden file round-trip. It verifies creation and deletion of a real `.obsidian/snippets/*.css` file, automatic JSON conflict merging for a hidden file with the merged result propagated by a second synchronisation, manual JSON Resolve dialogue application through Obsidian's UI, and per-device target patterns where one vault ignores a hidden file that the other vault synchronises.
+
+`test:e2e:obsidian:setting-markdown-export` enables setting Markdown export, waits for the generated Markdown file in the vault, and verifies that credentials are omitted when `writeCredentialsForSettingSync=false`.
 
 Start the local CouchDB fixture first when one is not already running:
 
@@ -72,6 +81,7 @@ Useful environment variables:
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.
 - `E2E_OBSIDIAN_FILE_TIMEOUT_MS`: timeout for waiting until a note created through Obsidian's vault API is reflected to disk.
 - `E2E_OBSIDIAN_CORE_READY_TIMEOUT_MS`: timeout for waiting until Self-hosted LiveSync reports that its core lifecycle and local database are ready.
+- `E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS`: timeout for waiting until a file appears in Self-hosted LiveSync's local database.
 - `E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS`: timeout for waiting until CouchDB contains uploaded E2E documents.
 - `E2E_OBSIDIAN_KEEP_COUCHDB=true`: keep the temporary CouchDB database for inspection.
 - `E2E_OBSIDIAN_STARTUP_GRACE_MS`: early process-exit detection window in milliseconds.

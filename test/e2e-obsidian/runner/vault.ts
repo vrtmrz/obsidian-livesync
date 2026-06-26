@@ -13,11 +13,12 @@ export type TemporaryVault = {
 
 export async function createTemporaryVault(prefix = "obsidian-livesync-e2e-"): Promise<TemporaryVault> {
     const vaultPath = await mkdtemp(join(tmpdir(), prefix));
+    const statePath = await mkdtemp(join(tmpdir(), `${prefix}state-`));
     const name = vaultPath.split(/[\\/]/).pop() ?? "obsidian-livesync-e2e";
     await mkdir(join(vaultPath, ".obsidian"), { recursive: true });
-    const homePath = join(vaultPath, ".obsidian", "e2e-home");
-    const xdgConfigPath = join(vaultPath, ".obsidian", "e2e-xdg-config");
-    const userDataPath = join(vaultPath, ".obsidian", "e2e-user-data");
+    const homePath = join(statePath, "home");
+    const xdgConfigPath = join(statePath, "xdg-config");
+    const userDataPath = join(statePath, "user-data");
     await mkdir(homePath, { recursive: true });
     await mkdir(xdgConfigPath, { recursive: true });
     await mkdir(userDataPath, { recursive: true });
@@ -36,9 +37,13 @@ export async function createTemporaryVault(prefix = "obsidian-livesync-e2e-"): P
         dispose: async () => {
             if (process.env.E2E_OBSIDIAN_KEEP_VAULT === "true") {
                 console.log(`Keeping temporary vault: ${vaultPath}`);
+                console.log(`Keeping temporary Obsidian state: ${statePath}`);
                 return;
             }
-            await rm(vaultPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+            await Promise.all([
+                rm(vaultPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+                rm(statePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }),
+            ]);
         },
     };
 }

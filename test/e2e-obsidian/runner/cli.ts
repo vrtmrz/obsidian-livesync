@@ -74,7 +74,7 @@ export async function evalObsidianJson<T>(
     env: NodeJS.ProcessEnv = process.env
 ): Promise<T> {
     const result = await runObsidianCli(cliBinary, ["eval", `code=${code}`], env);
-    if (result.code !== 0 || result.stdout.includes("Error:")) {
+    if (result.code !== 0) {
         throw new Error(
             [
                 `Failed to evaluate Obsidian JavaScript through CLI. code=${result.code}, signal=${result.signal}`,
@@ -85,5 +85,18 @@ export async function evalObsidianJson<T>(
                 .join("\n")
         );
     }
-    return parseEvalJson(result.stdout) as T;
+    try {
+        return parseEvalJson(result.stdout) as T;
+    } catch (error) {
+        throw new Error(
+            [
+                `Failed to parse Obsidian CLI eval JSON. code=${result.code}, signal=${result.signal}`,
+                error instanceof Error ? `parse error: ${error.message}` : undefined,
+                result.stdout ? `stdout:\n${result.stdout}` : undefined,
+                result.stderr ? `stderr:\n${result.stderr}` : undefined,
+            ]
+                .filter(Boolean)
+                .join("\n")
+        );
+    }
 }
