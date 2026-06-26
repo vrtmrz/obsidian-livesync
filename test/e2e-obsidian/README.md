@@ -17,6 +17,8 @@ The runner does not require Self-hosted LiveSync to expose an E2E-only bridge. R
 
 Obsidian 1.12 stores the global community plug-in switch outside `.obsidian/community-plugins.json`. The smoke runner enables it through `app.plugins.setEnable(true)` after the vault window is available.
 
+Future workflows should use `startObsidianLiveSyncSession()` from `runner/session.ts` rather than repeating the launch and plug-in readiness sequence.
+
 ## Local Setup
 
 Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location.
@@ -42,6 +44,7 @@ npm run test:e2e:obsidian:install-appimage
 npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
+npm run test:e2e:obsidian:vault-reflection
 ```
 
 Useful environment variables:
@@ -57,6 +60,7 @@ Useful environment variables:
 - `E2E_OBSIDIAN_READY_TIMEOUT_MS`: plug-in readiness timeout in milliseconds.
 - `E2E_OBSIDIAN_CLI_READY_TIMEOUT_MS`: timeout for waiting until the vault-side Obsidian CLI exposes the plug-in catalogue.
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.
+- `E2E_OBSIDIAN_FILE_TIMEOUT_MS`: timeout for waiting until a note created through Obsidian's vault API is reflected to disk.
 - `E2E_OBSIDIAN_STARTUP_GRACE_MS`: early process-exit detection window in milliseconds.
 - `E2E_OBSIDIAN_KEEP_VAULT=true`: keep the temporary vault for inspection.
 - `E2E_OBSIDIAN_USE_XVFB=false`: disable automatic `xvfb-run` on headless Linux.

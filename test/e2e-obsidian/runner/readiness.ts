@@ -1,4 +1,4 @@
-import { runObsidianCli } from "./cli.ts";
+import { evalObsidianJson } from "./cli.ts";
 
 export type PluginReadiness = {
     status: "ready";
@@ -6,13 +6,6 @@ export type PluginReadiness = {
     pluginVersion: string;
     vaultName: string;
 };
-
-function parseEvalJson(stdout: string): unknown {
-    const marker = "=> ";
-    const markerIndex = stdout.indexOf(marker);
-    const text = markerIndex >= 0 ? stdout.slice(markerIndex + marker.length) : stdout;
-    return JSON.parse(text.trim());
-}
 
 export async function waitForPluginReady(
     cliBinary: string,
@@ -22,28 +15,24 @@ export async function waitForPluginReady(
     const deadline = Date.now() + timeoutMs;
     let lastOutput = "";
     while (Date.now() < deadline) {
-        const result = await runObsidianCli(
-            cliBinary,
-            [
-                "eval",
+        try {
+            const readiness = await evalObsidianJson<PluginReadiness>(
+                cliBinary,
                 [
-                    "code=(async()=>JSON.stringify({",
+                    "(async()=>JSON.stringify({",
                     "status:!!app.plugins.plugins['obsidian-livesync']?'ready':'pending',",
                     "pluginId:'obsidian-livesync',",
                     "pluginVersion:app.plugins.manifests['obsidian-livesync']?.version,",
                     "vaultName:app.vault.getName()",
                     "}))()",
                 ].join(""),
-            ],
-            env
-        );
-        lastOutput = [result.stdout, result.stderr].filter(Boolean).join("\n");
-        try {
-            const readiness = parseEvalJson(result.stdout) as PluginReadiness;
+                env
+            );
             if (readiness.status === "ready") {
                 return readiness;
             }
-        } catch {
+        } catch (error) {
+            lastOutput = error instanceof Error ? error.message : String(error);
             // Keep polling until Obsidian exposes the vault-side CLI and plug-in state.
         }
         await new Promise((resolve) => setTimeout(resolve, 500));

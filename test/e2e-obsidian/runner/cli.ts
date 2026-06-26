@@ -7,6 +7,13 @@ export type ObsidianCliResult = {
     stderr: string;
 };
 
+function parseEvalJson(stdout: string): unknown {
+    const marker = "=> ";
+    const markerIndex = stdout.indexOf(marker);
+    const text = markerIndex >= 0 ? stdout.slice(markerIndex + marker.length) : stdout;
+    return JSON.parse(text.trim());
+}
+
 export async function runObsidianCli(
     cliBinary: string,
     args: string[],
@@ -59,4 +66,24 @@ export async function openVaultWithObsidianCli(
                 .join("\n")
         );
     }
+}
+
+export async function evalObsidianJson<T>(
+    cliBinary: string,
+    code: string,
+    env: NodeJS.ProcessEnv = process.env
+): Promise<T> {
+    const result = await runObsidianCli(cliBinary, ["eval", `code=${code}`], env);
+    if (result.code !== 0 || result.stdout.includes("Error:")) {
+        throw new Error(
+            [
+                `Failed to evaluate Obsidian JavaScript through CLI. code=${result.code}, signal=${result.signal}`,
+                result.stdout ? `stdout:\n${result.stdout}` : undefined,
+                result.stderr ? `stderr:\n${result.stderr}` : undefined,
+            ]
+                .filter(Boolean)
+                .join("\n")
+        );
+    }
+    return parseEvalJson(result.stdout) as T;
 }
