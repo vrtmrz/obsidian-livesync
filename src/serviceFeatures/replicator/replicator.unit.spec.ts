@@ -10,19 +10,19 @@ import {
     onReplicationFailedHandler,
 } from "./replicator";
 import { createMockServiceHub } from "../mockServiceHub";
-import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import type { ReplicateResultProcessor } from "./replicateResultProcessor";
 import { eventHub, EVENT_FILE_SAVED, EVENT_SETTING_SAVED } from "@/common/events";
 import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
 import { $msg } from "@lib/common/i18n";
 
-vi.mock("./ReplicateResultProcessor", () => {
+vi.mock("./replicateResultProcessor", () => {
     return {
-        ReplicateResultProcessor: class {
-            suspend = vi.fn();
-            resume = vi.fn();
-            restoreFromSnapshotOnce = vi.fn().mockResolvedValue(true);
-            enqueueAll = vi.fn();
-        },
+        useReplicateResultProcessor: vi.fn(() => ({
+            suspend: vi.fn(),
+            resume: vi.fn(),
+            restoreFromSnapshotOnce: vi.fn().mockResolvedValue(true),
+            enqueueAll: vi.fn(),
+        })),
     };
 });
 
@@ -56,6 +56,13 @@ vi.mock("@lib/replication/couchdb/LiveSyncReplicator", () => {
 describe("useReplicator", () => {
     let mockHub: ReturnType<typeof createMockServiceHub>;
 
+    const createMockProcessor = (): ReplicateResultProcessor => ({
+        suspend: vi.fn(),
+        resume: vi.fn(),
+        restoreFromSnapshotOnce: vi.fn().mockResolvedValue(undefined),
+        enqueueAll: vi.fn(),
+    });
+
     beforeEach(() => {
         mockHub = createMockServiceHub();
         (mockHub.services as any).tweakValue = {
@@ -88,7 +95,7 @@ describe("useReplicator", () => {
     });
 
     it("parseReplicationResultHandler should enqueue docs", async () => {
-        const mockProcessor = new ReplicateResultProcessor(mockHub as any);
+        const mockProcessor = createMockProcessor();
         const res = await parseReplicationResultHandler(mockProcessor, []);
         expect(mockProcessor.enqueueAll).toHaveBeenCalledWith([]);
         expect(res).toBe(true);
@@ -144,7 +151,7 @@ describe("useReplicator", () => {
     it("everyOnloadAfterLoadSettingsHandler should register event listeners", async () => {
         vi.useFakeTimers();
         try {
-            const mockProcessor = new ReplicateResultProcessor(mockHub as any);
+            const mockProcessor = createMockProcessor();
             await everyOnloadAfterLoadSettingsHandler(mockHub as any, mockProcessor);
 
             (mockHub.services.setting.settings as any).syncOnSave = true;
@@ -168,7 +175,7 @@ describe("useReplicator", () => {
     });
 
     it("everyOnDatabaseInitializedHandler and everyBeforeReplicateHandler", async () => {
-        const mockProcessor = new ReplicateResultProcessor(mockHub as any);
+        const mockProcessor = createMockProcessor();
 
         await everyOnDatabaseInitializedHandler(mockProcessor, false);
         await new Promise((resolve) => setTimeout(resolve, 1));

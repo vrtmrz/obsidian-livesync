@@ -85,7 +85,7 @@ export function scheduleAppReload(host: ObsidianEventsHost, log: LogFunction, st
             );
         });
 
-        const plugin = (host as any).plugin;
+        const plugin = host.context.plugin;
         const intervalId = compatGlobal.setInterval(() => {
             tick.value++;
         }, 1000);

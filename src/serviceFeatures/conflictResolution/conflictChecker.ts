@@ -1,20 +1,25 @@
 import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@lib/common/types";
-import { Logger } from "octagonal-wheels/common/logger";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
 import type { NecessaryObsidianFeature } from "@/types";
+import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
 
-export type ConflictCheckerHost = NecessaryObsidianFeature<"conflict" | "vault" | "setting">;
+export type ConflictCheckerHost = NecessaryObsidianFeature<"API" | "conflict" | "vault" | "setting">;
+
+const noopLog: LogFunction = () => undefined;
+const createConflictCheckerLog = (host: ConflictCheckerHost): LogFunction =>
+    host.services.API ? createInstanceLogFunction("ConflictChecker", host.services.API) : noopLog;
 
 export const queueConflictCheckIfOpenHandler = async (
     host: ConflictCheckerHost,
     file: FilePathWithPrefix
 ): Promise<void> => {
+    const log = createConflictCheckerLog(host);
     const path = file;
     if (host.services.setting.settings.checkConflictOnlyOnOpen) {
         const af = host.services.vault.getActiveFilePath();
         if (af && af != path) {
-            Logger(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
+            log(`${file} is conflicted, merging process has been postponed.`, LOG_LEVEL_NOTICE);
             return;
         }
     }

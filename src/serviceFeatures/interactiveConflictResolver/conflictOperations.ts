@@ -32,7 +32,7 @@ export async function resolveConflictByUI(
     filename: FilePathWithPrefix,
     conflictCheckResult: diff_result
 ): Promise<boolean> {
-    const app = (host as any).app;
+    const app = host.context.app;
     if (!app) {
         log(`Merge: App instance not available`, LOG_LEVEL_VERBOSE);
         return false;

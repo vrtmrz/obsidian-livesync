@@ -15,7 +15,7 @@ import type { ObsidianEventsState } from "./state.ts";
  */
 export function swapSaveCommand(host: ObsidianEventsHost, log: LogFunction, state: ObsidianEventsState): void {
     log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
-    const appAny = (host as any).app;
+    const appAny = host.context.app as any;
     const saveCommandDefinition = appAny?.commands?.commands?.["editor:save-file"];
     const save = saveCommandDefinition?.callback;
     if (typeof save === "function") {

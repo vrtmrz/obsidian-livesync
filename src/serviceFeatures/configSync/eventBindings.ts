@@ -195,8 +195,7 @@ export function bindConfigSyncEvents(
             const message = `Would you like to enable **Customisation sync**?
 
 > [!DETAILS]-
-> This feature allows you to sync your customisations -- such as configurations, themes, snippets, and plugins -- across your devices in a fully controlled manner, unlike the fully automatic behaviour of hidden file synchronisation.
-> 
+> This feature allows you to sync your customisations -- such as configurations, themes, snippets, and plug-ins -- across your devices in a fully controlled manner, unlike the fully automatic behaviour of hidden file synchronisation.
 > You may use this feature alongside hidden file synchronisation. When both features are enabled, items configured as \`Automatic\` in this feature will be managed by **hidden file synchronisation**.
 > Do not worry, you will be prompted to enable or keep disabled **hidden file synchronisation** after this dialogue.
 `;

@@ -16,8 +16,8 @@ import { compareMTime, displayRev } from "@lib/common/utils.ts";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
 import { eventHub } from "@/common/events.ts";
-import { Logger } from "octagonal-wheels/common/logger";
 import type { NecessaryObsidianFeature } from "@/types";
+import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
 
 declare global {
     interface LSEvents {
@@ -26,9 +26,13 @@ declare global {
 }
 
 export type ConflictResolverHost = NecessaryObsidianFeature<
-    "conflict" | "appLifecycle" | "replication" | "vault" | "setting" | "database",
+    "API" | "conflict" | "appLifecycle" | "replication" | "vault" | "setting" | "database",
     "databaseFileAccess" | "fileHandler" | "storageAccess"
 >;
+
+const noopLog: LogFunction = () => undefined;
+const createConflictResolverLog = (host: ConflictResolverHost): LogFunction =>
+    host.services.API ? createInstanceLogFunction("ConflictResolver", host.services.API) : noopLog;
 
 export const resolveConflictByDeletingRevHandler = async (
     host: ConflictResolverHost,
@@ -37,31 +41,29 @@ export const resolveConflictByDeletingRevHandler = async (
     subTitle = ""
 ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> => {
     const { serviceModules } = host;
+    const log = createConflictResolverLog(host);
     const title = `Resolving ${subTitle ? `[${subTitle}]` : ""}:`;
     if (!(await serviceModules.fileHandler.deleteRevisionFromDB(path, deleteRevision))) {
-        Logger(
-            `${title} Could not delete conflicted revision ${displayRev(deleteRevision)} of ${path}`,
-            LOG_LEVEL_NOTICE
-        );
+        log(`${title} Could not delete conflicted revision ${displayRev(deleteRevision)} of ${path}`, LOG_LEVEL_NOTICE);
         return MISSING_OR_ERROR;
     }
     eventHub.emitEvent("conflict-cancelled", path);
-    Logger(`${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`, LOG_LEVEL_INFO);
+    log(`${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`, LOG_LEVEL_INFO);
     if ((await serviceModules.databaseFileAccess.getConflictedRevs(path)).length != 0) {
-        Logger(`${title} some conflicts are left in ${path}`, LOG_LEVEL_INFO);
+        log(`${title} some conflicts are left in ${path}`, LOG_LEVEL_INFO);
         return AUTO_MERGED;
     }
     if (isPluginMetadata(path) || isCustomisationSyncMetadata(path)) {
-        Logger(`${title} ${path} is a plugin metadata file, no need to write to storage`, LOG_LEVEL_INFO);
+        log(`${title} ${path} is a plug-in metadata file, no need to write to storage`, LOG_LEVEL_INFO);
         return AUTO_MERGED;
     }
     // If no conflicts were found, write the resolved content to the storage.
     if (!(await serviceModules.fileHandler.dbToStorage(path, stripAllPrefixes(path), true))) {
-        Logger(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
+        log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
         return MISSING_OR_ERROR;
     }
     const level = subTitle.indexOf("same") !== -1 ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
-    Logger(`${path} has been merged automatically`, level);
+    log(`${path} has been merged automatically`, level);
     return AUTO_MERGED;
 };
 
@@ -70,6 +72,7 @@ export const checkConflictAndPerformAutoMerge = async (
     path: FilePathWithPrefix
 ): Promise<diff_check_result> => {
     const { services, serviceModules } = host;
+    const log = createConflictResolverLog(host);
     const settings = services.setting.settings;
 
     const ret = await services.database.localDatabase.tryAutoMerge(path, !settings.disableMarkdownAutoMerge);
@@ -82,7 +85,7 @@ export const checkConflictAndPerformAutoMerge = async (
         // Merged content is coming.
         // 1. Store the merged content to the storage
         if (!(await serviceModules.databaseFileAccess.storeContent(path, p))) {
-            Logger(`Merged content cannot be stored:${path}`, LOG_LEVEL_NOTICE);
+            log(`Merged content cannot be stored:${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
         // 2. As usual, delete the conflicted revision and if there are no conflicts, write the resolved content to the storage.
@@ -94,7 +97,7 @@ export const checkConflictAndPerformAutoMerge = async (
     // should be one or more conflicts;
     if (leftLeaf == false) {
         // what's going on..
-        Logger(`could not get current revisions:${path}`, LOG_LEVEL_NOTICE);
+        log(`could not get current revisions:${path}`, LOG_LEVEL_NOTICE);
         return MISSING_OR_ERROR;
     }
     if (rightLeaf == false) {
@@ -124,7 +127,7 @@ export const checkConflictAndPerformAutoMerge = async (
     const dmp = new diff_match_patch();
     const diff = dmp.diff_main(leftLeaf.data, rightLeaf.data);
     dmp.diff_cleanupSemantic(diff);
-    Logger(`conflict(s) found:${path}`);
+    log(`conflict(s) found:${path}`);
     return {
         left: leftLeaf,
         right: rightLeaf,
@@ -137,6 +140,7 @@ export const resolveConflictHandler = async (
     filename: FilePathWithPrefix
 ): Promise<void> => {
     const { services } = host;
+    const log = createConflictResolverLog(host);
     const settings = services.setting.settings;
 
     return await serialized(`conflict-resolve:${filename}`, async () => {
@@ -147,7 +151,7 @@ export const resolveConflictHandler = async (
             conflictCheckResult === CANCELLED
         ) {
             // nothing to do.
-            Logger(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
+            log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
             return;
         }
         if (conflictCheckResult === AUTO_MERGED) {
@@ -156,21 +160,21 @@ export const resolveConflictHandler = async (
                 //Wait for the running replication, if not running replication, run it once.
                 await services.replication.replicateByEvent();
             }
-            Logger("[conflict] Automatically merged, but we have to check it again");
+            log("[conflict] Automatically merged, but we have to check it again");
             await services.conflict.queueCheckFor(filename);
             return;
         }
         if (settings.showMergeDialogOnlyOnActive) {
             const af = services.vault.getActiveFilePath();
             if (af && af != filename) {
-                Logger(
+                log(
                     `[conflict] ${filename} is conflicted. Merging process has been postponed to the file have got opened.`,
                     LOG_LEVEL_NOTICE
                 );
                 return;
             }
         }
-        Logger("[conflict] Manual merge required!");
+        log("[conflict] Manual merge required!");
         eventHub.emitEvent("conflict-cancelled", filename);
         await services.conflict.resolveByUserInteraction(filename, conflictCheckResult);
     });
@@ -181,9 +185,10 @@ export const resolveConflictByNewestHandler = async (
     filename: FilePathWithPrefix
 ): Promise<boolean> => {
     const { services, serviceModules } = host;
+    const log = createConflictResolverLog(host);
     const currentRev = await serviceModules.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
     if (currentRev == false) {
-        Logger(`Could not get current revision of ${filename}`);
+        log(`Could not get current revision of ${filename}`);
         return Promise.resolve(false);
     }
     const revs = await serviceModules.databaseFileAccess.getConflictedRevs(filename);
@@ -210,11 +215,11 @@ export const resolveConflictByNewestHandler = async (
         }
         return diff;
     });
-    Logger(
+    log(
         `Resolving conflict by newest: ${filename} (Newest: ${new Date(mTimeAndRev[0][0]).toLocaleString()}) (${mTimeAndRev.length} revisions exists)`
     );
     for (let i = 1; i < mTimeAndRev.length; i++) {
-        Logger(
+        log(
             `conflict: Deleting the older revision ${mTimeAndRev[i][1]} (${new Date(mTimeAndRev[i][0]).toLocaleString()}) of ${filename}`
         );
         await services.conflict.resolveByDeletingRevision(filename, mTimeAndRev[i][1], "NEWEST");
@@ -224,14 +229,15 @@ export const resolveConflictByNewestHandler = async (
 
 export const resolveAllConflictedFilesByNewerOnesHandler = async (host: ConflictResolverHost) => {
     const { services, serviceModules } = host;
-    Logger(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
+    const log = createConflictResolverLog(host);
+    log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
 
     const files = await serviceModules.storageAccess.getFileNames();
 
     let i = 0;
     for (const file of files) {
         if (i++ % 10) {
-            Logger(
+            log(
                 `Check and Processing ${i} / ${files.length}`,
                 LOG_LEVEL_NOTICE,
                 "resolveAllConflictedFilesByNewerOnes"
@@ -239,7 +245,7 @@ export const resolveAllConflictedFilesByNewerOnesHandler = async (host: Conflict
         }
         await services.conflict.resolveByNewest(file);
     }
-    Logger(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
 };
 
 export function useConflictResolver(host: ConflictResolverHost) {

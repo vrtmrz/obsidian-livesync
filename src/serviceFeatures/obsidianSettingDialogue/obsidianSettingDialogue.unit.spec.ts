@@ -29,11 +29,14 @@ describe("ObsidianSettingDialogue Operations", () => {
         vi.clearAllMocks();
 
         host = {
-            app: {
-                setting: {
-                    open: mockOpen,
-                    openTabById: mockOpenTabById,
+            context: {
+                app: {
+                    setting: {
+                        open: mockOpen,
+                        openTabById: mockOpenTabById,
+                    },
                 },
+                liveSyncPlugin: {},
             },
         } as unknown as SettingDialogueHost;
     });

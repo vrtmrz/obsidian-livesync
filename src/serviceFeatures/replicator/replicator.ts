@@ -1,6 +1,6 @@
 import { fireAndForget } from "octagonal-wheels/promises";
 import { registerReplicatorCommands } from "./commands";
-import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE } from "@lib/common/types";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
@@ -11,12 +11,14 @@ import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
 import { $msg } from "@lib/common/i18n";
-import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import { useReplicateResultProcessor, type ReplicateResultProcessor } from "./replicateResultProcessor";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { clearHandlers } from "@lib/replication/SyncParamsHandler";
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
+import { createInstanceLogFunction, MARK_LOG_NETWORK_ERROR, type LogFunction } from "@lib/services/lib/logUtils";
 import type { NecessaryObsidianFeature } from "@/types";
+
+const noopLog: LogFunction = () => undefined;
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -64,7 +66,9 @@ export type ReplicatorHost = NecessaryObsidianFeature<
     | "API"
     | "database"
     | "databaseEvents"
+    | "keyValueDB"
     | "path"
+    | "vault"
     | "UI",
     "databaseFileAccess" | "rebuilder"
 >;
@@ -114,10 +118,10 @@ export const everyBeforeReplicateHandler = async (
     return true;
 };
 
-export const cleanedHandler = async (host: ReplicatorHost, showMessage: boolean) => {
+export const cleanedHandler = async (host: ReplicatorHost, showMessage: boolean, log: LogFunction = noopLog) => {
     const { services, serviceModules } = host;
     const settings = services.setting.settings;
-    Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+    log(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
     await skipIfDuplicated("cleanup", async () => {
         const count = await purgeUnreferencedChunks(services.database.localDatabase.localDatabase, true);
         const message = `The remote database has been cleaned up.
@@ -143,7 +147,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
             const remoteDB = await replicator.connectRemoteCouchDBWithSetting(settings, services.API.isMobile(), true);
             if (typeof remoteDB == "string") {
-                Logger(remoteDB, LOG_LEVEL_NOTICE);
+                log(remoteDB, LOG_LEVEL_NOTICE);
                 return false;
             }
 
@@ -155,9 +159,9 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                 await purgeUnreferencedChunks(services.database.localDatabase.localDatabase, false);
                 services.database.localDatabase.clearCaches();
                 await activeReplicator.markRemoteResolved(settings);
-                Logger("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+                log("The local database has been cleaned up.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
             } else {
-                Logger(
+                log(
                     "Replication has been cancelled. Please try it again.",
                     showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
                 );
@@ -168,13 +172,14 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
 
 export const onReplicationFailedHandler = async (
     host: ReplicatorHost,
-    showMessage: boolean = false
+    showMessage: boolean = false,
+    log: LogFunction = noopLog
 ): Promise<boolean> => {
     const { services, serviceModules } = host;
     const settings = services.setting.settings;
     const activeReplicator = services.replicator.getActiveReplicator();
     if (!activeReplicator) {
-        Logger(`No active replicator found`, LOG_LEVEL_INFO);
+        log(`No active replicator found`, LOG_LEVEL_INFO);
         return false;
     }
     if (activeReplicator.tweakSettingsMismatched && activeReplicator.preferredTweakValue) {
@@ -182,7 +187,7 @@ export const onReplicationFailedHandler = async (
     } else {
         if (activeReplicator.remoteLockedAndDeviceNotAccepted) {
             if (activeReplicator.remoteCleaned && settings.useIndexedDBAdapter) {
-                await cleanedHandler(host, showMessage);
+                await cleanedHandler(host, showMessage, log);
             } else {
                 const message = $msg("Replicator.Dialogue.Locked.Message");
                 const CHOICE_FETCH = $msg("Replicator.Dialogue.Locked.Action.Fetch");
@@ -198,13 +203,13 @@ export const onReplicationFailedHandler = async (
                     }
                 );
                 if (ret == CHOICE_FETCH) {
-                    Logger($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
+                    log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
                     await serviceModules.rebuilder.scheduleFetch();
                     services.appLifecycle.scheduleRestart();
                     return false;
                 } else if (ret == CHOICE_UNLOCK) {
                     await activeReplicator.markRemoteResolved(settings);
-                    Logger($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                    log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
                     return false;
                 }
             }
@@ -222,10 +227,10 @@ export const parseReplicationResultHandler = (
 };
 
 export function useReplicator(host: ReplicatorHost) {
-    const { services, serviceModules } = host;
-    const settings = services.setting.settings;
+    const { services } = host;
+    const log = createInstanceLogFunction("Replicator", services.API);
 
-    const processor = new ReplicateResultProcessor(host as any);
+    const processor = useReplicateResultProcessor(host);
     const unresolvedErrorManager = new UnresolvedErrorManager(services.appLifecycle);
 
     services.replicator.onReplicatorInitialised.addHandler(onReplicatorInitialisedHandler);
@@ -253,7 +258,9 @@ export function useReplicator(host: ReplicatorHost) {
         everyBeforeReplicateHandler.bind(null, unresolvedErrorManager, processor),
         100
     );
-    services.replication.onReplicationFailed.addHandler(onReplicationFailedHandler.bind(null, host));
+    services.replication.onReplicationFailed.addHandler((showMessage) =>
+        onReplicationFailedHandler(host, showMessage, log)
+    );
 
     registerReplicatorCommands(host);
 }

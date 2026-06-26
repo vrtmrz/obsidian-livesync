@@ -1,4 +1,4 @@
-import { createServiceFeature } from "@lib/interfaces/ServiceModule.ts";
+import { createObsidianServiceFeature } from "@/types.ts";
 import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
 import type { ConflictResolverServices, ConflictResolverModules } from "./types.ts";
 import { resolveConflictByUI, allConflictCheck, pickFileForResolve, allScanStat } from "./conflictOperations.ts";
@@ -7,9 +7,10 @@ import { resolveConflictByUI, allConflictCheck, pickFileForResolve, allScanStat 
  * A service feature hook that initialises and manages the Interactive Conflict Resolver.
  * Registers conflict resolution commands and handles user-interactive resolution flows.
  */
-export const useInteractiveConflictResolver = createServiceFeature<
+export const useInteractiveConflictResolver = createObsidianServiceFeature<
     ConflictResolverServices,
     ConflictResolverModules,
+    "app",
     void
 >((host) => {
     const log = createInstanceLogFunction("InteractiveConflictResolver", host.services.API);

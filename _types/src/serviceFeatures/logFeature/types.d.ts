@@ -1,6 +1,6 @@
 // @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
-import { type NecessaryServices } from "@lib/interfaces/ServiceModule";
+import type { NecessaryObsidianServices } from "@/types.ts";
 /**
  * Service keys required by the logging and status bar feature.
  */
@@ -12,4 +12,4 @@ export type LogFeatureModules = "storageAccess";
 /**
  * The host type representing the injected service container with logging capabilities.
  */
-export type LogFeatureHost = NecessaryServices<LogFeatureServices, LogFeatureModules>;
+export type LogFeatureHost = NecessaryObsidianServices<LogFeatureServices, LogFeatureModules, "app" | "liveSyncPlugin">;

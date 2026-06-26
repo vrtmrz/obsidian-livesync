@@ -12,8 +12,8 @@ import type { LogFunction } from "@lib/services/lib/logUtils";
  * @param id - Optional CouchDB document identifier.
  */
 export function showHistory(host: DocumentHistoryHost, file: TFile | FilePathWithPrefix, id?: DocumentID): void {
-    const app = (host as any).app;
-    const plugin = (host as any).plugin;
+    const app = host.context.app;
+    const plugin = host.context.liveSyncPlugin;
     new DocumentHistoryModal(app, host as any, plugin, file, id).open();
 }
 

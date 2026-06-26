@@ -7,8 +7,8 @@ import type { SettingDialogueState } from "./state.ts";
  * @param host - The service feature host context.
  */
 export function openSetting(host: SettingDialogueHost): void {
-    const app = (host as any).app;
-    if (app && app.setting) {
+    const app = host.context.app as any;
+    if (app?.setting) {
         try {
             app.setting.open();
             app.setting.openTabById("obsidian-livesync");

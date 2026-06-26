@@ -1,4 +1,4 @@
-import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
 import {
     TweakValuesShouldMatchedTemplate,
@@ -15,11 +15,16 @@ import { escapeMarkdownValue } from "@lib/common/utils.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
 import type { NecessaryObsidianFeature } from "@/types";
+import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
 
 export type MismatchedTweaksResolverHost = NecessaryObsidianFeature<
-    "setting" | "tweakValue" | "replication" | "replicator" | "UI",
+    "API" | "setting" | "tweakValue" | "replication" | "replicator" | "UI",
     "rebuilder"
 >;
+
+const noopLog: LogFunction = () => undefined;
+const createMismatchedTweaksLog = (host: MismatchedTweaksResolverHost): LogFunction =>
+    host.services.API ? createInstanceLogFunction("TweakMismatch", host.services.API) : noopLog;
 
 export function valueToString(value: string | number | boolean | object | undefined): string {
     if (typeof value === "boolean") {
@@ -36,8 +41,12 @@ export const collectMismatchedTweakKeys = (current: TweakValues, preferred: Part
     return items.filter((key) => current[key] !== preferred[key]);
 };
 
-export const selectNewerTweakSide = (current: TweakValues, preferred: Partial<TweakValues>): "REMOTE" | "CURRENT" => {
-    Logger(`Modified: ${current.tweakModified} (current) vs ${preferred.tweakModified} (preferred)`);
+export const selectNewerTweakSide = (
+    current: TweakValues,
+    preferred: Partial<TweakValues>,
+    log: LogFunction = noopLog
+): "REMOTE" | "CURRENT" => {
+    log(`Modified: ${current.tweakModified} (current) vs ${preferred.tweakModified} (preferred)`);
     const currentModified = current.tweakModified;
     const preferredModified = preferred.tweakModified;
     const hasCurrentModified = typeof currentModified === "number" && currentModified > 0;
@@ -58,6 +67,7 @@ export const shouldAutoAcceptCompatibleLossy = async (
     mismatchedKeys: (keyof typeof TweakValuesShouldMatchedTemplate)[]
 ): Promise<"REMOTE" | "CURRENT" | undefined> => {
     const { services } = host;
+    const log = createMismatchedTweaksLog(host);
     if (mismatchedKeys.length === 0) return undefined;
     const hasOnlyCompatibleLossyMismatches = mismatchedKeys.every(
         (key) => CompatibleButLossyChanges.indexOf(key) !== -1
@@ -87,26 +97,27 @@ export const shouldAutoAcceptCompatibleLossy = async (
             },
             true
         );
-        Logger("Auto-accept for compatible tweak mismatch has been enabled.");
+        log("Auto-accept for compatible tweak mismatch has been enabled.");
     }
 
     if (services.setting.settings.autoAcceptCompatibleTweak !== true) return undefined;
-    return selectNewerTweakSide(current, preferred);
+    return selectNewerTweakSide(current, preferred, log);
 };
 
 export const onBeforeSaveSettingDataHandler = async (
     next: ObsidianLiveSyncSettings,
-    previous: ObsidianLiveSyncSettings
+    previous: ObsidianLiveSyncSettings,
+    log: LogFunction = noopLog
 ) => {
     const tweakKeys = Object.keys(TweakValuesTemplate) as (keyof TweakValues)[];
     const tweakKeysForUpdate = tweakKeys.filter((key) => key !== "tweakModified");
     const hasChangedTweak = tweakKeysForUpdate.some((key) => next[key] !== previous[key]);
     if (!hasChangedTweak) return;
-    Logger(
+    log(
         `Some tweak values have been changed. ${tweakKeysForUpdate.filter((key) => next[key] !== previous[key]).join(", ")}`
     );
     const modified = Date.now();
-    Logger(`Modified: ${modified}`);
+    log(`Modified: ${modified}`);
     return await Promise.resolve({
         tweakModified: modified,
     });
@@ -239,6 +250,7 @@ export const askResolvingMismatchedTweaksHandler = async (
     host: MismatchedTweaksResolverHost
 ): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> => {
     const { services, serviceModules } = host;
+    const log = createMismatchedTweaksLog(host);
     if (!services.replicator.getActiveReplicator()?.tweakSettingsMismatched) {
         return "OK";
     }
@@ -254,7 +266,7 @@ export const askResolvingMismatchedTweaksHandler = async (
         if (rebuildRequired) {
             await serviceModules.rebuilder.$rebuildRemote();
         }
-        Logger($msg("TweakMismatchResolve.Message.remoteUpdated"), LOG_LEVEL_NOTICE);
+        log($msg("TweakMismatchResolve.Message.remoteUpdated"), LOG_LEVEL_NOTICE);
         return "CHECKAGAIN";
     }
     if (conf) {
@@ -264,7 +276,7 @@ export const askResolvingMismatchedTweaksHandler = async (
         if (rebuildRequired) {
             await serviceModules.rebuilder.$fetchLocal();
         }
-        Logger($msg("TweakMismatchResolve.Message.mineUpdated"), LOG_LEVEL_NOTICE);
+        log($msg("TweakMismatchResolve.Message.mineUpdated"), LOG_LEVEL_NOTICE);
         return "CHECKAGAIN";
     }
     return "IGNORE";
@@ -275,9 +287,10 @@ export const fetchRemotePreferredTweakValuesHandler = async (
     trialSetting: RemoteDBSettings
 ): Promise<TweakValues | false> => {
     const { services } = host;
+    const log = createMismatchedTweaksLog(host);
     const replicator = await services.replicator.getNewReplicator(trialSetting);
     if (!replicator) {
-        Logger("The remote type is not supported for fetching preferred tweak values.", LOG_LEVEL_NOTICE);
+        log("The remote type is not supported for fetching preferred tweak values.", LOG_LEVEL_NOTICE);
         return false;
     }
     if (await replicator.tryConnectRemote(trialSetting)) {
@@ -285,10 +298,10 @@ export const fetchRemotePreferredTweakValuesHandler = async (
         if (preferred) {
             return preferred;
         }
-        Logger("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
+        log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
         return false;
     }
-    Logger("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
+    log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
     return false;
 };
 
@@ -314,6 +327,7 @@ export const askUseRemoteConfigurationHandler = async (
     preferred: TweakValues
 ): Promise<{ result: false | TweakValues; requireFetch: boolean }> => {
     const { services } = host;
+    const log = createMismatchedTweaksLog(host);
     const localTweaks = extractObject(TweakValuesTemplate, services.setting.settings) as TweakValues;
     const mismatchedKeys = collectMismatchedTweakKeys(localTweaks, preferred);
     const autoAcceptSide = await shouldAutoAcceptCompatibleLossy(host, state, localTweaks, preferred, mismatchedKeys);
@@ -367,7 +381,7 @@ export const askUseRemoteConfigurationHandler = async (
     }
 
     if (differenceCount === 0) {
-        Logger("The settings in the remote database are the same as the local database.", LOG_LEVEL_NOTICE);
+        log("The settings in the remote database are the same as the local database.", LOG_LEVEL_NOTICE);
         return { result: false, requireFetch: false };
     }
     const additionalMessage =
@@ -404,9 +418,12 @@ export const askUseRemoteConfigurationHandler = async (
 
 export function useMismatchedTweaksResolver(host: MismatchedTweaksResolverHost) {
     const { services } = host;
+    const log = createMismatchedTweaksLog(host);
     const state = { hasNotifiedAutoAcceptCompatibleUndefined: false };
 
-    services.setting.onBeforeSaveSettingData.addHandler(onBeforeSaveSettingDataHandler);
+    services.setting.onBeforeSaveSettingData.addHandler((next, previous) =>
+        onBeforeSaveSettingDataHandler(next, previous, log)
+    );
     services.tweakValue.fetchRemotePreferred.setHandler(fetchRemotePreferredTweakValuesHandler.bind(null, host));
     services.tweakValue.checkAndAskResolvingMismatched.setHandler(
         checkAndAskResolvingMismatchedTweaksHandler.bind(null, host, state)

@@ -5,4 +5,4 @@
  *
  * Provides Obsidian-specific UI elements like ribbon icons and commands.
  */
-export declare const useObsidianMenuFeature: import("@/types.ts").ObsidianServiceFeatureFunction<"replication" | "appLifecycle" | "conflict", never, "plugin", void>;
+export declare const useObsidianMenuFeature: import("@/types.ts").ObsidianServiceFeatureFunction<"setting" | "replication" | "control" | "appLifecycle" | "API" | "fileProcessing" | "conflict", never, "plugin", void>;

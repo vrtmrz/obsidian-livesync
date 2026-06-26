@@ -260,7 +260,7 @@ export async function getFiles(
 ): Promise<string[]> {
     let w: any;
     try {
-        w = await (host as any).app.vault.adapter.list(path);
+        w = await host.context.app.vault.adapter.list(path);
     } catch (ex) {
         console.warn(`Could not traverse(HiddenSync):${path}`, ex);
         return [];
@@ -289,7 +289,7 @@ export async function getFiles(
  * @returns A list of hidden file paths.
  */
 export async function scanInternalFileNames(host: HiddenFileSyncHost, state: HiddenFileSyncState): Promise<FilePath[]> {
-    const root = (host as any).app.vault.getRoot();
+    const root = host.context.app.vault.getRoot();
     const findRoot = root.path;
     const filenames = await getFiles(host, state, findRoot, (path) => isTargetFile(host, () => {}, state, path));
     return filenames as FilePath[];
@@ -867,8 +867,8 @@ export function notifyConfigChange(host: HiddenFileSyncHost, state: HiddenFileSy
     const updatedFolders = [...state.queuedNotificationFiles];
     state.queuedNotificationFiles.clear();
     try {
-        const manifests = Object.values((host as any).app.plugins.manifests) as unknown as PluginManifest[];
-        const enabledPlugins = (host as any).app.plugins.enabledPlugins as Set<string>;
+        const manifests = Object.values((host.context.app as any).plugins.manifests) as unknown as PluginManifest[];
+        const enabledPlugins = (host.context.app as any).plugins.enabledPlugins as Set<string>;
         const enabledPluginManifests = manifests.filter((e) => enabledPlugins.has(e.id));
         const modifiedManifests = enabledPluginManifests.filter((e) => updatedFolders.indexOf(e?.dir ?? "") >= 0);
         for (const manifest of modifiedManifests) {
@@ -882,8 +882,8 @@ export function notifyConfigChange(host: HiddenFileSyncHost, state: HiddenFileSy
                     anchor.addEventListener("click", () => {
                         fireAndForget(async () => {
                             console.log(`Unloading plugin: ${updatePluginName}`);
-                            await (host as any).app.plugins.unloadPlugin(updatePluginId);
-                            await (host as any).app.plugins.loadPlugin(updatePluginId);
+                            await (host.context.app as any).plugins.unloadPlugin(updatePluginId);
+                            await (host.context.app as any).plugins.loadPlugin(updatePluginId);
                             console.log(`Plugin reloaded: ${updatePluginName}`);
                         });
                     });

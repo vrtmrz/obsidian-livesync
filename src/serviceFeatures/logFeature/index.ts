@@ -1,4 +1,4 @@
-import { createServiceFeature } from "@lib/interfaces/ServiceModule.ts";
+import { createObsidianServiceFeature } from "@/types.ts";
 import { setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 import type { LogEntry } from "@lib/mock_and_interop/stores.ts";
@@ -49,7 +49,12 @@ setGlobalLogFunction(globalLogFunction);
 /**
  * A service feature hook that initialises and manages logging, status display, and debug report generation.
  */
-export const useLogFeature = createServiceFeature<LogFeatureServices, LogFeatureModules, void>((host) => {
+export const useLogFeature = createObsidianServiceFeature<
+    LogFeatureServices,
+    LogFeatureModules,
+    "app" | "liveSyncPlugin",
+    void
+>((host) => {
     const state = createInitialState();
     activeState = state;
 
@@ -93,7 +98,7 @@ export const useLogFeature = createServiceFeature<LogFeatureServices, LogFeature
             },
         });
 
-        const plugin = (host as any).plugin;
+        const plugin = host.context.liveSyncPlugin;
         host.services.API.registerWindow(VIEW_TYPE_LOG, (leaf: WorkspaceLeaf) => new LogPaneView(leaf, plugin));
         return Promise.resolve(true);
     };
@@ -116,7 +121,7 @@ export const useLogFeature = createServiceFeature<LogFeatureServices, LogFeature
         observeForLogs(host, state);
 
         const settings = host.services.setting.settings;
-        const app = (host as any).app;
+        const app = host.context.app;
         if (settings.showStatusOnEditor) {
             const div = app.workspace.containerEl.createDiv({ cls: "livesync-status" });
             state.statusDiv = div;

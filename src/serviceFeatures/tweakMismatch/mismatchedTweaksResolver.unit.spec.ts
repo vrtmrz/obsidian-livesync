@@ -61,6 +61,9 @@ function createFeature(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) 
                     askSelectStringDialogue,
                 },
             },
+            API: {
+                addLog: vi.fn(),
+            },
         },
         serviceModules: {
             rebuilder: {
@@ -69,7 +72,7 @@ function createFeature(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) 
             },
         },
     } as unknown as NecessaryObsidianFeature<
-        "setting" | "tweakValue" | "replication" | "replicator" | "UI",
+        "API" | "setting" | "tweakValue" | "replication" | "replicator" | "UI",
         "rebuilder"
     >;
 
@@ -88,6 +91,25 @@ describe("useMismatchedTweaksResolver", () => {
         expect(host.services.setting.onBeforeSaveSettingData.addHandler).toHaveBeenCalled();
         expect((host.services.tweakValue.fetchRemotePreferred as any).setHandler).toHaveBeenCalled();
         expect((host.services.tweakValue.checkAndAskResolvingMismatched as any).setHandler).toHaveBeenCalled();
+    });
+
+    it("should log through the host API when applying mine", async () => {
+        const host = createFeature().host;
+        const mockReplicator = {
+            tweakSettingsMismatched: true,
+            preferredTweakValue: { tweakModified: 200 },
+            setPreferredRemoteTweakSettings: vi.fn().mockResolvedValue(true),
+        };
+        host.services.replicator.getActiveReplicator = vi.fn().mockReturnValue(mockReplicator);
+        (host.services.tweakValue.checkAndAskResolvingMismatched as any) = vi.fn().mockResolvedValue([true, false]);
+
+        await askResolvingMismatchedTweaksHandler(host);
+
+        expect(host.services.API.addLog).toHaveBeenCalledWith(
+            expect.stringContaining($msg("TweakMismatchResolve.Message.remoteUpdated")),
+            expect.any(Number),
+            ""
+        );
     });
 
     it("should auto-accept compatible mismatches on connect check using newer remote tweakModified", async () => {

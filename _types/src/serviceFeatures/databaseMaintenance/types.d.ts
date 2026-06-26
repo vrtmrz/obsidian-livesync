@@ -4,7 +4,7 @@ import type { NecessaryObsidianServices } from "@/types.ts";
 /**
  * A union of service keys required by the database maintenance feature.
  */
-export type DatabaseMaintenanceServices = "API" | "setting" | "UI" | "database" | "keyValueDB" | "replication" | "replicator";
+export type DatabaseMaintenanceServices = "API" | "setting" | "UI" | "database" | "keyValueDB" | "replication" | "replicator" | "vault";
 /**
  * A union of service module keys required by the database maintenance feature.
  */

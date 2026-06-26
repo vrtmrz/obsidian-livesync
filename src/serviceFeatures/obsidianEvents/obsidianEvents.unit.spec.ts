@@ -208,8 +208,10 @@ describe("useObsidianEvents Feature Hook", () => {
                 },
                 appLifecycle,
             },
-            plugin,
-            app,
+            context: {
+                plugin,
+                app,
+            },
         } as any;
 
         useObsidianEvents(host);
@@ -356,8 +358,10 @@ describe("scheduleAppReload and isReloadingScheduled", () => {
                     performRestart,
                 },
             },
-            plugin: {
-                registerInterval: vi.fn(),
+            context: {
+                plugin: {
+                    registerInterval: vi.fn(),
+                },
             },
         } as any;
 
@@ -368,7 +372,7 @@ describe("scheduleAppReload and isReloadingScheduled", () => {
 
         scheduleAppReload(host, log, state);
         expect(isReloadingScheduled(state)).toBe(true);
-        expect(host.plugin.registerInterval).toHaveBeenCalled();
+        expect(host.context.plugin.registerInterval).toHaveBeenCalled();
 
         vi.advanceTimersByTime(1000);
         expect(log).toHaveBeenCalledWith(
@@ -415,8 +419,10 @@ describe("scheduleAppReload and isReloadingScheduled", () => {
                     performRestart,
                 },
             },
-            plugin: {
-                registerInterval: vi.fn(),
+            context: {
+                plugin: {
+                    registerInterval: vi.fn(),
+                },
             },
         } as any;
 
@@ -455,12 +461,14 @@ describe("swapSaveCommand", () => {
         };
         const replicateByEvent = vi.fn(async () => {});
         const host = {
-            app: {
-                commands: {
+            context: {
+                app: {
                     commands: {
-                        "editor:save-file": saveCommandDefinition,
+                        commands: {
+                            "editor:save-file": saveCommandDefinition,
+                        },
+                        executeCommandById: vi.fn(),
                     },
-                    executeCommandById: vi.fn(),
                 },
             },
             services: {
@@ -499,10 +507,12 @@ describe("swapSaveCommand", () => {
             callback: originalCallback,
         };
         const host = {
-            app: {
-                commands: {
+            context: {
+                app: {
                     commands: {
-                        "editor:save-file": saveCommandDefinition,
+                        commands: {
+                            "editor:save-file": saveCommandDefinition,
+                        },
                     },
                 },
             },

@@ -52,7 +52,9 @@ describe("InteractiveConflictResolver Operations", () => {
         vi.clearAllMocks();
 
         host = {
-            app: {} as any,
+            context: {
+                app: {} as any,
+            },
             services: {
                 API: {
                     confirm: {

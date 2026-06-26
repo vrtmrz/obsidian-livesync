@@ -31,8 +31,10 @@ describe("ObsidianDocumentHistory Operations", () => {
         vi.clearAllMocks();
 
         host = {
-            app: {},
-            plugin: {},
+            context: {
+                app: {},
+                liveSyncPlugin: {},
+            },
             services: {
                 database: {
                     localDatabase: {

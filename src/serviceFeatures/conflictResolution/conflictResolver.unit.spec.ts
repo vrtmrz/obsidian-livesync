@@ -36,6 +36,11 @@ describe("conflictResolver", () => {
             };
             const res = await resolveConflictByDeletingRevHandler(mockHub as any, "test.md" as any, "1-abc");
             expect(res).toBe(MISSING_OR_ERROR);
+            expect(mockHub.services.API.addLog).toHaveBeenCalledWith(
+                expect.stringContaining("Could not delete conflicted revision"),
+                expect.any(Number),
+                ""
+            );
         });
 
         it("resolveConflictByDeletingRevHandler should return early with AUTO_MERGED if conflicts are left", async () => {

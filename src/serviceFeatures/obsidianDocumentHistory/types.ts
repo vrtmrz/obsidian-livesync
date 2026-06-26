@@ -1,4 +1,4 @@
-import { type NecessaryServices } from "@lib/interfaces/ServiceModule";
+import type { NecessaryObsidianServices } from "@/types.ts";
 
 /**
  * Service keys required by the Obsidian document history feature.
@@ -13,4 +13,8 @@ export type DocumentHistoryModules = never;
 /**
  * The host type representing the injected service container with document history capabilities.
  */
-export type DocumentHistoryHost = NecessaryServices<DocumentHistoryServices, DocumentHistoryModules>;
+export type DocumentHistoryHost = NecessaryObsidianServices<
+    DocumentHistoryServices,
+    DocumentHistoryModules,
+    "app" | "liveSyncPlugin"
+>;

@@ -1,0 +1,32 @@
+// @ts-nocheck
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+import { TweakValuesShouldMatchedTemplate, type TweakValues, type ObsidianLiveSyncSettings, type RemoteDBSettings } from "@lib/common/types.ts";
+import type { NecessaryObsidianFeature } from "@/types";
+import { type LogFunction } from "@lib/services/lib/logUtils";
+export type MismatchedTweaksResolverHost = NecessaryObsidianFeature<"API" | "setting" | "tweakValue" | "replication" | "replicator" | "UI", "rebuilder">;
+export declare function valueToString(value: string | number | boolean | object | undefined): string;
+export declare const collectMismatchedTweakKeys: (current: TweakValues, preferred: Partial<TweakValues>) => ("liveSync" | "syncOnSave" | "syncOnStart" | "syncOnFileOpen" | "syncOnEditorSave" | "keepReplicationActiveInBackground" | "syncMinimumInterval" | "showVerboseLog" | "lessInformationInLog" | "showLongerLogInsideEditor" | "showStatusOnEditor" | "showStatusOnStatusbar" | "showOnlyIconsOnEditor" | "hideFileWarningNotice" | "networkWarningStyle" | "displayLanguage" | "trashInsteadDelete" | "doNotDeleteFolder" | "batchSave" | "batchSaveMinimumDelay" | "batchSaveMaximumDelay" | "syncMaxSizeInMB" | "useIgnoreFiles" | "ignoreFiles" | "processSizeMismatchedFiles" | "syncOnlyRegEx" | "syncIgnoreRegEx" | "syncAfterMerge" | "resolveConflictsByNewerFile" | "writeDocumentsIfConflicted" | "disableMarkdownAutoMerge" | "configPassphraseStore" | "encryptedPassphrase" | "encryptedCouchDBConnection" | "periodicReplication" | "periodicReplicationInterval" | "syncInternalFiles" | "syncInternalFilesBeforeReplication" | "syncInternalFilesInterval" | "syncInternalFilesIgnorePatterns" | "syncInternalFilesTargetPatterns" | "watchInternalFileChanges" | "suppressNotifyHiddenFilesChange" | "syncInternalFileOverwritePatterns" | "usePluginSync" | "usePluginSettings" | "showOwnPlugins" | "autoSweepPlugins" | "autoSweepPluginsPeriodic" | "notifyPluginOrSettingUpdated" | "deviceAndVaultName" | "usePluginSyncV2" | "usePluginEtc" | "pluginSyncExtendedSetting" | "useAdvancedMode" | "usePowerUserMode" | "useEdgeCaseMode" | "notifyThresholdOfRemoteStorageSize" | "disableWorkerForGeneratingChunks" | "processSmallFilesInUIThread" | "savingDelay" | "gcDelay" | "skipOlderFilesOnSync" | "useIndexedDBAdapter" | "enableDebugTools" | "writeLogToTheFile" | "settingSyncFile" | "writeCredentialsForSettingSync" | "notifyAllSettingSyncFile" | "suspendFileWatching" | "suspendParseReplicationResult" | "doNotSuspendOnFetching" | "maxMTimeForReflectEvents" | "versionUpFlash" | "settingVersion" | "isConfigured" | "lastReadUpdates" | "doctorProcessedVersion" | "remoteConfigurations" | "activeConfigurationId" | "P2P_ActiveRemoteConfigurationId" | "couchDB_URI" | "couchDB_USER" | "couchDB_PASSWORD" | "couchDB_DBNAME" | "couchDB_CustomHeaders" | "useJWT" | "jwtAlgorithm" | "jwtKey" | "jwtKid" | "jwtSub" | "jwtExpDuration" | "useRequestAPI" | "accessKey" | "secretKey" | "bucket" | "region" | "endpoint" | "useCustomRequestHandler" | "bucketCustomHeaders" | "bucketPrefix" | "forcePathStyle" | "remoteType" | "encrypt" | "passphrase" | "usePathObfuscation" | "E2EEAlgorithm" | "hashAlg" | "minimumChunkSize" | "customChunkSize" | "longLineThreshold" | "useSegmenter" | "enableChunkSplitterV2" | "doNotUseFixedRevisionForChunks" | "chunkSplitterVersion" | "useEden" | "maxChunksInEden" | "maxTotalLengthInEden" | "maxAgeInEden" | "tweakModified" | "checkIntegrityOnSave" | "useHistory" | "disableRequestURI" | "sendChunksBulk" | "sendChunksBulkMaxSize" | "useDynamicIterationCount" | "doNotPaceReplication" | "readChunksOnline" | "useOnlyLocalChunk" | "concurrencyOfReadChunksOnline" | "minimumIntervalOfReadChunksOnline" | "enableCompression" | "batch_size" | "batches_limit" | "ignoreVersionCheck" | "disableCheckingConfigMismatch" | "autoAcceptCompatibleTweak" | "hashCacheMaxCount" | "hashCacheMaxAmount" | "permitEmptyPassphrase" | "handleFilenameCaseSensitive" | "checkConflictOnlyOnOpen" | "showMergeDialogOnlyOnActive" | "additionalSuffixOfDatabaseName" | "useTimeouts" | "deleteMetadataOfDeletedFiles" | "automaticallyDeleteMetadataOfDeletedFiles" | "P2P_AutoAccepting" | "P2P_AutoSyncPeers" | "P2P_AutoWatchPeers" | "P2P_SyncOnReplication" | "P2P_RebuildFrom" | "P2P_AutoAcceptingPeers" | "P2P_AutoDenyingPeers" | "P2P_IsHeadless" | "P2P_Enabled" | "P2P_relays" | "P2P_roomID" | "P2P_passphrase" | "P2P_AppID" | "P2P_AutoStart" | "P2P_AutoBroadcast" | "P2P_DevicePeerName" | "P2P_turnServers" | "P2P_turnUsername" | "P2P_turnCredential" | "P2P_useDiagRTC")[];
+export declare const selectNewerTweakSide: (current: TweakValues, preferred: Partial<TweakValues>, log?: LogFunction) => "REMOTE" | "CURRENT";
+export declare const shouldAutoAcceptCompatibleLossy: (host: MismatchedTweaksResolverHost, state: {
+    hasNotifiedAutoAcceptCompatibleUndefined: boolean;
+}, current: TweakValues, preferred: Partial<TweakValues>, mismatchedKeys: (keyof typeof TweakValuesShouldMatchedTemplate)[]) => Promise<"REMOTE" | "CURRENT" | undefined>;
+export declare const onBeforeSaveSettingDataHandler: (next: ObsidianLiveSyncSettings, previous: ObsidianLiveSyncSettings, log?: LogFunction) => Promise<{
+    tweakModified: number;
+} | undefined>;
+export declare const anyAfterConnectCheckFailedHandler: (host: MismatchedTweaksResolverHost) => Promise<boolean | "CHECKAGAIN" | undefined>;
+export declare const checkAndAskResolvingMismatchedTweaksHandler: (host: MismatchedTweaksResolverHost, state: {
+    hasNotifiedAutoAcceptCompatibleUndefined: boolean;
+}, preferred: TweakValues) => Promise<[TweakValues | boolean, boolean]>;
+export declare const askResolvingMismatchedTweaksHandler: (host: MismatchedTweaksResolverHost) => Promise<"OK" | "CHECKAGAIN" | "IGNORE">;
+export declare const fetchRemotePreferredTweakValuesHandler: (host: MismatchedTweaksResolverHost, trialSetting: RemoteDBSettings) => Promise<TweakValues | false>;
+export declare const checkAndAskUseRemoteConfigurationHandler: (host: MismatchedTweaksResolverHost, trialSetting: RemoteDBSettings) => Promise<{
+    result: false | TweakValues;
+    requireFetch: boolean;
+}>;
+export declare const askUseRemoteConfigurationHandler: (host: MismatchedTweaksResolverHost, state: {
+    hasNotifiedAutoAcceptCompatibleUndefined: boolean;
+}, trialSetting: RemoteDBSettings, preferred: TweakValues) => Promise<{
+    result: false | TweakValues;
+    requireFetch: boolean;
+}>;
+export declare function useMismatchedTweaksResolver(host: MismatchedTweaksResolverHost): void;

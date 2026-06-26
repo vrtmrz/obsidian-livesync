@@ -28,3 +28,10 @@ export declare function createConflict(host: DevFeatureHost): Promise<void>;
  * @param message - Optional detailed stacktrace or assertion info.
  */
 export declare function addTestResult(state: DevFeatureState, name: string, key: string, result: boolean, summary?: string, message?: string): void;
+/**
+ * Dumps information of the specified document for debugging purposes.
+ *
+ * @param host - The service feature host context.
+ * @param file - The file path to dump.
+ */
+export declare function dumpDocument(host: DevFeatureHost, file: string | undefined): void;

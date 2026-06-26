@@ -30,6 +30,11 @@ describe("conflictChecker", () => {
         mockHub.services.vault.getActiveFilePath = vi.fn().mockReturnValue("other.md");
         await queueConflictCheckIfOpenHandler(mockHub as any, "test.md" as any);
         expect(mockHub.services.conflict.queueCheckFor).not.toHaveBeenCalled();
+        expect(mockHub.services.API.addLog).toHaveBeenCalledWith(
+            expect.stringContaining("test.md"),
+            expect.any(Number),
+            ""
+        );
     });
 
     it("queueConflictCheckIfOpenHandler should queue if checkConflictOnlyOnOpen is false", async () => {

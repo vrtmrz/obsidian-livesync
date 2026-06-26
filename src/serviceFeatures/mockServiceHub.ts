@@ -39,7 +39,20 @@ export const createMockServiceHub = () => {
                 localDatabase: {
                     localDatabase: {},
                     tryAutoMerge: vi.fn(),
+                    onNewLeaf: vi.fn(),
+                    getDBEntryFromMeta: vi.fn(),
+                    getRaw: vi.fn(),
+                    clearCaches: vi.fn(),
                 },
+            },
+            keyValueDB: {
+                kvDB: {
+                    get: vi.fn(),
+                    set: vi.fn(),
+                },
+            },
+            path: {
+                getPath: vi.fn((entry) => entry.path ?? entry._id),
             },
             setting: {
                 settings,
@@ -51,9 +64,15 @@ export const createMockServiceHub = () => {
                 replicate: createEventMock(),
                 checkConnectionFailure: createEventMock(),
                 parseSynchroniseResult: createEventMock(),
+                processSynchroniseResult: createEventMock(),
+                processOptionalSynchroniseResult: createEventMock(),
+                processVirtualDocument: createEventMock(),
                 onBeforeReplicate: createEventMock(),
                 onReplicationFailed: createEventMock(),
                 replicateByEvent: vi.fn(),
+                databaseQueueCount: { value: 0 },
+                storageApplyingCount: { value: 0 },
+                replicationResultCount: { value: 0 },
             },
             conflict: {
                 queueCheckForIfOpen: createEventMock(),
@@ -83,9 +102,13 @@ export const createMockServiceHub = () => {
                 setInterval: vi.fn((fn, interval) => 123),
                 clearInterval: vi.fn(),
                 addCommand: vi.fn(),
+                addLog: vi.fn(),
             },
             vault: {
                 getActiveFilePath: vi.fn(),
+                isTargetFile: vi.fn().mockResolvedValue(true),
+                isFileSizeTooLarge: vi.fn().mockReturnValue(false),
+                isValidPath: vi.fn().mockReturnValue(true),
             },
         },
     };

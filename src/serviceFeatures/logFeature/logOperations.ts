@@ -194,7 +194,7 @@ export function processAddLog(
 }
 
 export function adjustStatusDivPosition(host: LogFeatureHost, state: LogFeatureState): void {
-    const app = (host as any).app;
+    const app = host.context.app;
     const mdv = app.workspace.getMostRecentLeaf();
     if (mdv && state.statusDiv) {
         state.statusDiv.remove();
@@ -204,7 +204,7 @@ export function adjustStatusDivPosition(host: LogFeatureHost, state: LogFeatureS
 }
 
 export async function getActiveFileStatus(host: LogFeatureHost): Promise<string> {
-    const app = (host as any).app;
+    const app = host.context.app;
     const reason = [] as string[];
     const reasonWarn = [] as string[];
     const thisFile = app.workspace.getActiveFile();

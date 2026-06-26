@@ -1,6 +1,6 @@
 # Database Maintenance (`databaseMaintenance`)
 
-This module manages database maintenance operations, including garbage collection of unused chunks, remote database compaction, and database usage diagnostics. It refactors the monolithic implementation of `CmdLocalDatabaseMainte.ts` into a set of decoupled, side-effect-free, and highly testable functions.
+This module manages database maintenance operations, including garbage collection of unused chunks, remote database compaction, and database usage diagnostics. It refactors the monolithic implementation of `CmdLocalDatabaseMainte.ts` into a set of decoupled, dependency-explicit, and highly testable functions.
 
 ## Module Structure
 
@@ -13,7 +13,7 @@ graph TD
     index.ts --> garbageCollection.ts["garbageCollection.ts"]
     index.ts --> compaction.ts["compaction.ts"]
     index.ts --> diagnostics.ts["diagnostics.ts"]
-    
+
     garbageCollection.ts --> utils.ts["utils.ts"]
     compaction.ts --> utils.ts
     diagnostics.ts --> utils.ts
@@ -30,6 +30,7 @@ graph TD
 ## Key Workflows
 
 ### Garbage Collection V3 (`gcv3`)
+
 1. Syncs latest modifications via one-shot replication.
 2. Compares progress values across all connected nodes to ensure they are synchronised.
 3. Scans all active database entries to compile a set of referenced chunks.
@@ -37,6 +38,7 @@ graph TD
 5. Invokes database compaction to release physical storage.
 
 ### Database Usage Audit (`analyseDatabase`)
+
 1. Fetches all document revisions from the local database.
 2. Iterates and logs chunk relationships, sorting them into unique, shared, and orphaned categories.
 3. Calculates aggregated sizes and compiles details into a TSV format.

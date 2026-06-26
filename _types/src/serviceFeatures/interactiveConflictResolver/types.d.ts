@@ -1,6 +1,6 @@
 // @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
-import { type NecessaryServices } from "@lib/interfaces/ServiceModule";
+import type { NecessaryObsidianServices } from "@/types.ts";
 /**
  * A union of service keys required by the interactive conflict resolver feature.
  */
@@ -12,4 +12,4 @@ export type ConflictResolverModules = "databaseFileAccess";
 /**
  * The host type representing the injected service container with conflict resolution capabilities.
  */
-export type ConflictResolverHost = NecessaryServices<ConflictResolverServices, ConflictResolverModules>;
+export type ConflictResolverHost = NecessaryObsidianServices<ConflictResolverServices, ConflictResolverModules, "app">;
