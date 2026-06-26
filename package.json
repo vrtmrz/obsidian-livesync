@@ -43,6 +43,7 @@
         "test:e2e:obsidian:cli-help": "tsx test/e2e-obsidian/scripts/cli-help.ts",
         "test:e2e:obsidian:smoke": "tsx test/e2e-obsidian/scripts/smoke.ts",
         "test:e2e:obsidian:vault-reflection": "tsx test/e2e-obsidian/scripts/vault-reflection.ts",
+        "test:e2e:obsidian:couchdb-upload": "tsx test/e2e-obsidian/scripts/couchdb-upload.ts",
         "test:coverage": "vitest run --coverage",
         "test:docker-couchdb:up": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/couchdb-start.sh",
         "test:docker-couchdb:init": "npx dotenv-cli -e .env -e .test.env -- ./test/shell/couchdb-init.sh",

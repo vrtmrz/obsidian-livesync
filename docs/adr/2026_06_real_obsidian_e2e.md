@@ -125,8 +125,9 @@ Initial discovery on Linux ARM64 found that:
 Current implementation status:
 
 - Added `test/e2e-obsidian/runner` helpers for Obsidian discovery, CLI discovery, temporary vault creation, plug-in installation, process launch, CLI execution, and readiness polling.
-- Added `test:e2e:obsidian:discover`, `test:e2e:obsidian:cli-help`, `test:e2e:obsidian:smoke`, `test:e2e:obsidian:vault-reflection`, and `test:e2e:obsidian:install-appimage`.
+- Added `test:e2e:obsidian:discover`, `test:e2e:obsidian:cli-help`, `test:e2e:obsidian:smoke`, `test:e2e:obsidian:vault-reflection`, `test:e2e:obsidian:couchdb-upload`, and `test:e2e:obsidian:install-appimage`.
 - Added `startObsidianLiveSyncSession()` so future workflows can reuse the launch, vault open, community plug-in enablement, plug-in reload, and readiness sequence without duplicating smoke runner code.
+- Added CouchDB runner utilities that reuse `.test.env`/process environment values, create unique temporary databases, query uploaded documents directly, and clean up the database unless `E2E_OBSIDIAN_KEEP_COUCHDB=true` is set.
 - Added a manual AppImage installer that downloads Obsidian `1.12.7` for `arm64` or `x86_64`, stores it under `_testdata/obsidian`, and extracts it for FUSE-free execution.
 - Confirmed the smoke runner on Linux ARM64 with the extracted Obsidian `1.12.7` AppImage, `xvfb-run`, and the built Self-hosted LiveSync bundle.
 - Confirmed the runner can enable the Obsidian CLI through isolated `obsidian.json` state, open the temporary vault through `obsidian-cli`, enable community plug-ins through `app.plugins.setEnable(true)`, reload Self-hosted LiveSync, and verify readiness through `obsidian-cli eval`.
@@ -139,6 +140,7 @@ Current verification:
 - `npm run test:e2e:obsidian:discover` finds `_testdata/obsidian/squashfs-root/obsidian` when the extracted AppImage is present.
 - `E2E_OBSIDIAN_SMOKE_TIMEOUT_MS=1000 npm run test:e2e:obsidian:smoke` passes locally.
 - `npm run test:e2e:obsidian:vault-reflection` creates a note through Obsidian's vault API, verifies the reflected file on disk, and reads it back through Obsidian.
+- `npm run test:e2e:obsidian:couchdb-upload` configures a unique CouchDB database, creates a note through Obsidian, commits it into the local database, runs one-shot synchronisation, and verifies that CouchDB contains the metadata document and all referenced chunk documents.
 - `npm run test:e2e:obsidian:install-appimage` reuses the existing AppImage and extracted binary when they are already present.
 
 Known limits:
@@ -161,6 +163,7 @@ This validates real boot-up, settings persistence, vault file access, database w
 Current implementation status:
 
 - Added a pre-CouchDB workflow that creates a note through Obsidian's vault API, confirms the note is reflected as a real vault file, and reads the same note back through Obsidian. This covers the vault reflection part of the Phase 2 path before remote database setup is introduced.
+- Added a first CouchDB-backed upload workflow, modelled after the CLI Deno tests: reuse the standard CouchDB environment variables, create a unique remote database, apply CouchDB settings through the plug-in's setting service, commit the note through the real Obsidian vault path, run one-shot synchronisation, and assert that remote metadata and chunks exist.
 
 ### Phase 3: Two-Vault Synchronisation
 

@@ -11,7 +11,8 @@ The current smoke runner verifies only the launch path:
 5. enable Obsidian community plug-ins for the temporary app profile,
 6. reload Self-hosted LiveSync through `obsidian-cli`,
 7. verify through `obsidian-cli eval` that the plug-in is loaded,
-8. terminate Obsidian and remove the temporary vault.
+8. optionally drive a real vault or CouchDB workflow through Obsidian's own API,
+9. terminate Obsidian and remove the temporary vault.
 
 The runner does not require Self-hosted LiveSync to expose an E2E-only bridge. Readiness is checked from outside the plug-in through Obsidian's own CLI.
 
@@ -45,6 +46,15 @@ npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:vault-reflection
+npm run test:e2e:obsidian:couchdb-upload
+```
+
+`test:e2e:obsidian:couchdb-upload` reuses the CouchDB variables from `.test.env` or the process environment. It expects a reachable CouchDB service, creates a unique database, configures Self-hosted LiveSync through `obsidian-cli eval`, creates a note in real Obsidian, commits the note into the local database, runs one-shot synchronisation, and verifies that the remote database contains both the metadata document and its chunk documents.
+
+Start the local CouchDB fixture first when one is not already running:
+
+```bash
+npm run test:docker-couchdb:start
 ```
 
 Useful environment variables:
@@ -61,6 +71,9 @@ Useful environment variables:
 - `E2E_OBSIDIAN_CLI_READY_TIMEOUT_MS`: timeout for waiting until the vault-side Obsidian CLI exposes the plug-in catalogue.
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.
 - `E2E_OBSIDIAN_FILE_TIMEOUT_MS`: timeout for waiting until a note created through Obsidian's vault API is reflected to disk.
+- `E2E_OBSIDIAN_CORE_READY_TIMEOUT_MS`: timeout for waiting until Self-hosted LiveSync reports that its core lifecycle and local database are ready.
+- `E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS`: timeout for waiting until CouchDB contains uploaded E2E documents.
+- `E2E_OBSIDIAN_KEEP_COUCHDB=true`: keep the temporary CouchDB database for inspection.
 - `E2E_OBSIDIAN_STARTUP_GRACE_MS`: early process-exit detection window in milliseconds.
 - `E2E_OBSIDIAN_KEEP_VAULT=true`: keep the temporary vault for inspection.
 - `E2E_OBSIDIAN_USE_XVFB=false`: disable automatic `xvfb-run` on headless Linux.
