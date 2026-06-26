@@ -48,7 +48,9 @@ npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:vault-reflection
 npm run test:e2e:obsidian:couchdb-upload
 npm run test:e2e:obsidian:startup-scan
+npm run test:e2e:obsidian:two-vault-sync
 npm run test:e2e:obsidian:hidden-file-snippet-sync
+npm run test:e2e:obsidian:customisation-sync
 npm run test:e2e:obsidian:setting-markdown-export
 ```
 
@@ -56,7 +58,11 @@ npm run test:e2e:obsidian:setting-markdown-export
 
 `test:e2e:obsidian:startup-scan` configures a temporary CouchDB database, stops Obsidian, writes a note directly into the vault, restarts Obsidian, and verifies from CouchDB that the boot-time scan picked up the offline file.
 
+`test:e2e:obsidian:two-vault-sync` runs a two-vault note synchronisation workflow. It verifies note creation, update, deletion, Markdown conflict automatic merging with the merged result propagated by a second synchronisation, and per-device target filters where one vault ignores a note that the other vault synchronises.
+
 `test:e2e:obsidian:hidden-file-snippet-sync` runs a two-vault hidden file round-trip. It verifies creation and deletion of a real `.obsidian/snippets/*.css` file, automatic JSON conflict merging for a hidden file with the merged result propagated by a second synchronisation, manual JSON Resolve dialogue application through Obsidian's UI, and per-device target patterns where one vault ignores a hidden file that the other vault synchronises.
+
+`test:e2e:obsidian:customisation-sync` runs a two-vault Customisation Sync workflow. It scans a real snippet CSS file into per-file Customisation Sync data, synchronises the entry through CouchDB, applies it on the second vault, and verifies the resulting `.obsidian/snippets/*.css` file.
 
 `test:e2e:obsidian:setting-markdown-export` enables setting Markdown export, waits for the generated Markdown file in the vault, and verifies that credentials are omitted when `writeCredentialsForSettingSync=false`.
 
