@@ -18,7 +18,7 @@
     import type { P2PSyncSetting, RemoteConfiguration } from "@lib/common/models/setting.type";
     import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
     import { extractP2PRoomSuffix } from "@lib/common/utils";
-    import { SetupManager } from "@/modules/features/SetupManager";
+    import { getSetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 
     interface Props {
@@ -217,7 +217,7 @@
     }
 
     async function createAndSelectP2PRemote() {
-        const setupManager = core.getModule(SetupManager);
+        const setupManager = getSetupManager();
         const dialogManager = setupManager.dialogManager;
         const currentSettings = core.services.setting.currentSettings();
         const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, currentSettings);

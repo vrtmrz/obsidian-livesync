@@ -1,0 +1,8 @@
+// @ts-nocheck
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+import type { ConflictResolverServices } from "./types.ts";
+/**
+ * A service feature hook that initialises and manages the Interactive Conflict Resolver.
+ * Registers conflict resolution commands and handles user-interactive resolution flows.
+ */
+export declare const useInteractiveConflictResolver: import("@lib/interfaces/ServiceModule.ts").ServiceFeatureFunction<ConflictResolverServices, "databaseFileAccess", void>;

@@ -1,10 +1,9 @@
 // @ts-nocheck
 // REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
 import { Plugin, type App, type PluginManifest } from "./deps";
-import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
-import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
-export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
+import type { LiveSyncCore } from "./types.ts";
+export type { LiveSyncCore, NecessaryObsidianFeature, ObsidianServiceFeatureFunction } from "./types.ts";
+export { createObsidianServiceFeature } from "./types.ts";
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
     /**

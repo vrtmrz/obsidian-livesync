@@ -18,16 +18,9 @@ import { useRemoteConfigurationMigration } from "@lib/serviceFeatures/remoteConf
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices";
 import { AbstractModule } from "./modules/AbstractModule";
-import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
-import { ModuleReplicator } from "./modules/core/ModuleReplicator";
-import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO";
-import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
-import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
-import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
+
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "@lib/interfaces/ServiceModule";
-import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
 import { usePrepareDatabaseForUse } from "@lib/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@lib/common/utils.type";
 
@@ -99,6 +92,9 @@ export class LiveSyncBaseCore<
         }
         return this._services;
     }
+    get context(): T {
+        return (this.services as any).context;
+    }
     /**
      * Service Modules
      */
@@ -138,14 +134,6 @@ export class LiveSyncBaseCore<
 
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
-        this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleReplicatorMinIO(this));
-        this._registerModule(new ModuleReplicatorCouchDB(this));
-        this._registerModule(new ModuleReplicator(this));
-        this._registerModule(new ModuleConflictResolver(this));
-        this._registerModule(new ModulePeriodicProcess(this));
-        this._registerModule(new ModuleResolvingMismatchedTweaks(this));
-        this._registerModule(new ModuleBasicMenu(this));
 
         for (const module of extraModules) {
             this._registerModule(module);

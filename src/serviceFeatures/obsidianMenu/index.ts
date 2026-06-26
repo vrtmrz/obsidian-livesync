@@ -1,0 +1,106 @@
+import { type Editor, type MarkdownFileInfo, type MarkdownView } from "@/deps.ts";
+import { addIcon } from "@/deps.ts";
+import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import { $msg } from "@lib/common/i18n.ts";
+import { createObsidianServiceFeature } from "@/types.ts";
+import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
+import { createInstanceLogFunction } from "@lib/services/lib/logUtils.ts";
+
+/**
+ * Obsidian Menu Feature
+ *
+ * Provides Obsidian-specific UI elements like ribbon icons and commands.
+ */
+export const useObsidianMenuFeature = createObsidianServiceFeature<
+    "appLifecycle" | "replication" | "conflict" | "setting" | "control" | "fileProcessing" | "API",
+    never,
+    "plugin"
+>((host) => {
+    const services = host.services;
+    const context = host.context;
+    const log = createInstanceLogFunction("ObsidianMenu", services.API);
+
+    const REPLICATE_ICON_SVG = `<g transform="matrix(1.15 0 0 1.15 -8.31 -9.52)" fill="currentColor" fill-rule="evenodd">
+        <path d="m85 22.2c-0.799-4.74-4.99-8.37-9.88-8.37-0.499 0-1.1 0.101-1.6 0.101-2.4-3.03-6.09-4.94-10.3-4.94-6.09 0-11.2 4.14-12.8 9.79-5.59 1.11-9.78 6.05-9.78 12 0 6.76 5.39 12.2 12 12.2h29.9c5.79 0 10.1-4.74 10.1-10.6 0-4.84-3.29-8.88-7.68-10.2zm-2.99 14.7h-29.5c-2.3-0.202-4.29-1.51-5.29-3.53-0.899-2.12-0.699-4.54 0.698-6.46 1.2-1.61 2.99-2.52 4.89-2.52 0.299 0 0.698 0 0.998 0.101l1.8 0.303v-2.02c0-3.63 2.4-6.76 5.89-7.57 0.599-0.101 1.2-0.202 1.8-0.202 2.89 0 5.49 1.62 6.79 4.24l0.598 1.21 1.3-0.504c0.599-0.202 1.3-0.303 2-0.303 1.3 0 2.5 0.404 3.59 1.11 1.6 1.21 2.6 3.13 2.6 5.15v1.61h2c2.6 0 4.69 2.12 4.69 4.74-0.099 2.52-2.2 4.64-4.79 4.64z"/>
+        <path d="m53.2 49.2h-41.6c-1.8 0-3.2 1.4-3.2 3.2v28.6c0 1.8 1.4 3.2 3.2 3.2h15.8v4h-7v6h24v-6h-7v-4h15.8c1.8 0 3.2-1.4 3.2-3.2v-28.6c0-1.8-1.4-3.2-3.2-3.2zm-2.8 29h-36v-23h36z"/>
+        <path d="m73 49.2c1.02 1.29 1.53 2.97 1.53 4.56 0 2.97-1.74 5.65-4.39 7.04v-4.06l-7.46 7.33 7.46 7.14v-4.06c7.66-1.98 12.2-9.61 10-17-0.102-0.297-0.205-0.595-0.307-0.892z"/>
+        <path d="m24.1 43c-0.817-0.991-1.53-2.97-1.53-4.56 0-2.97 1.74-5.65 4.39-7.04v4.06l7.46-7.33-7.46-7.14v4.06c-7.66 1.98-12.2 9.61-10 17 0.102 0.297 0.205 0.595 0.307 0.892z"/>
+        </g>`;
+
+    // -------------------------------------------------------------------------
+    // Setup
+    // -------------------------------------------------------------------------
+
+    const setupMenu = async () => {
+        // Register the replicate icon
+        addIcon("replicate", REPLICATE_ICON_SVG);
+
+        const plugin = context.plugin;
+
+        plugin
+            .addRibbonIcon("replicate", $msg("moduleObsidianMenu.replicate"), async () => {
+                await services.replication.replicate(true);
+            })
+            .addClass("livesync-ribbon-replicate");
+
+        plugin.addCommand({
+            id: "livesync-checkdoc-conflicted",
+            name: "Resolve if conflicted.",
+            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+                const file = view.file;
+                if (!file) return;
+                void services.conflict.queueCheckForIfOpen(file.path as FilePathWithPrefix);
+            },
+        });
+
+        plugin.addCommand({
+            id: "livesync-toggle",
+            name: "Toggle LiveSync",
+            callback: async () => {
+                if (services.setting.settings.liveSync) {
+                    services.setting.settings.liveSync = false;
+                    log("LiveSync Disabled.", LOG_LEVEL_NOTICE);
+                } else {
+                    services.setting.settings.liveSync = true;
+                    log("LiveSync Enabled.", LOG_LEVEL_NOTICE);
+                }
+                await services.control.applySettings();
+                await services.setting.saveSettingData();
+            },
+        });
+
+        plugin.addCommand({
+            id: "livesync-suspendall",
+            name: "Toggle All Sync.",
+            callback: async () => {
+                if (services.appLifecycle.isSuspended()) {
+                    services.appLifecycle.setSuspended(false);
+                    log("Self-hosted LiveSync resumed", LOG_LEVEL_NOTICE);
+                } else {
+                    services.appLifecycle.setSuspended(true);
+                    log("Self-hosted LiveSync suspended", LOG_LEVEL_NOTICE);
+                }
+                await services.control.applySettings();
+                await services.setting.saveSettingData();
+            },
+        });
+
+        plugin.addCommand({
+            id: "livesync-runbatch",
+            name: "Run pended batch processes",
+            callback: async () => {
+                await services.fileProcessing.commitPendingFileEvents();
+            },
+        });
+
+        return Promise.resolve(true);
+    };
+
+    // -------------------------------------------------------------------------
+    // Bind to App Lifecycle
+    // -------------------------------------------------------------------------
+
+    services.appLifecycle.onInitialise.addHandler(setupMenu);
+
+    return {};
+});

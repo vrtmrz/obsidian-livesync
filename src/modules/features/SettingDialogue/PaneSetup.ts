@@ -13,7 +13,7 @@ import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
+import { getSetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
@@ -36,7 +36,7 @@ export function paneSetup(
             .setDesc($msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."))
             .addButton((text) => {
                 text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
-                    const setupManager = this.core.getModule(SetupManager);
+                    const setupManager = getSetupManager();
                     await setupManager.onOnboard(UserMode.ExistingUser);
                     // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
                 });

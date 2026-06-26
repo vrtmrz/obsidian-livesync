@@ -22,7 +22,8 @@ vi.mock("../../lib/src/API/processSetting.ts", () => ({
 }));
 
 import { decodeSettingsFromQRCodeData } from "@lib/API/processSetting.ts";
-import { SetupManager, UserMode } from "./SetupManager";
+import { UserMode, type SetupManager } from "./SetupManager.ts";
+import { useSetupManagerFeature } from "@/serviceFeatures/setupManager/index.ts";
 
 class TestSettingService extends SettingService<ServiceContext> {
     protected setItem(_key: string, _value: string): void {}
@@ -112,7 +113,7 @@ function createSetupManager() {
     });
 
     return {
-        manager: new SetupManager(core),
+        manager: useSetupManagerFeature(core) as unknown as SetupManager,
         setting,
         dialogManager,
         core,

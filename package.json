@@ -23,6 +23,7 @@
         "lint": "eslint --cache --concurrency auto src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
         "tsc-check": "tsc --noEmit",
+        "check:onlymain": "npm run tsc-check && npm run lint && npm run svelte-check && npm run check:compatibility",
         "pretty:importpath": "cd utilsdeno && deno run -A ./normalise-imports.ts",
         "pretty:json": "prettier --config ./.prettierrc.mjs \"**/*.json\" --write --log-level error",
         "pretty": "npm run prettyNoWrite -- --write --log-level error",

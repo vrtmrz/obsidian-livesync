@@ -116,6 +116,7 @@ The plugin uses a dynamic module system to reduce coupling and improve maintaina
 - **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
     - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
 - **ServiceModule**: A new type of module that directly depends on services.
+- **serviceFeature**: A decoupled functional feature (defined via `createServiceFeature` or `createObsidianServiceFeature`) that encapsulates state and behaviour within its function closure. Unlike legacy modules, it does not register itself onto the `ServiceHub` registry, preventing global namespace pollution, and enabling simple unit testing.
 
 #### Note on Module vs Service
 
@@ -176,18 +177,56 @@ Hence, the new feature should be implemented as follows:
 
 ## Common Patterns
 
-### Module Implementation (Now not recommended for new features, use services instead)
+### Service Feature Implementation (Highly Recommended for New Features and UI/Event Registrars)
+
+Instead of subclassing 'AbstractModule' or 'AbstractObsidianModule', features should be implemented as functional closures.
+
+#### Standard Service Feature
+Use `createServiceFeature` for features that do not depend on the Obsidian application context:
 
 ```typescript
-export class ModuleExample extends AbstractObsidianModule {
-    async _everyOnloadStart(): Promise<boolean> {
-        /* ... */
-    }
+import { createServiceFeature } from "@lib/interfaces/ServiceModule.ts";
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-    }
-}
+export const useMyFeature = createServiceFeature(({ services, serviceModules }) => {
+    // Encapsulated state in the function closure
+    let localCache = "";
+
+    const onInitialise = (): Promise<boolean> => {
+        services.setting.saveSettingData();
+        return Promise.resolve(true);
+    };
+
+    services.appLifecycle.onInitialise.addHandler(onInitialise);
+});
+```
+
+#### Obsidian-Specific Service Feature
+Use `createObsidianServiceFeature` for features requiring Obsidian context (`app`, `plugin`, or `liveSyncPlugin`):
+
+```typescript
+import { createObsidianServiceFeature } from "@/types.ts";
+
+export const useMyObsidianFeature = createObsidianServiceFeature<
+    MyFeatureServices,
+    MyFeatureModules,
+    "app" | "liveSyncPlugin"
+>((host) => {
+    const plugin = host.context.liveSyncPlugin;
+
+    const onLayoutReady = (): Promise<boolean> => {
+        host.services.API.addCommand({
+            id: "my-command",
+            name: "My plug-in command",
+            callback: () => {
+                // Access typed context safely
+                console.log(host.context.app.vault.getName());
+            }
+        });
+        return Promise.resolve(true);
+    };
+
+    host.services.appLifecycle.onLayoutReady.addHandler(onLayoutReady);
+});
 ```
 
 ### Settings Management

@@ -23,7 +23,7 @@ import {
     getE2EEConfigSummary,
 } from "./settingUtils.ts";
 import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types.ts";
-import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
+import { getSetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
 import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
 import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
@@ -118,7 +118,7 @@ export function paneRemoteConfig(
                 .addButton((button) =>
                     button
                         .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
+                            const setupManager = getSetupManager();
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
                             updateE2EESummary();
@@ -129,7 +129,7 @@ export function paneRemoteConfig(
                 .addButton((button) =>
                     button
                         .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
+                            const setupManager = getSetupManager();
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onConfigureManually(originalSettings, UserMode.Update);
                             updateE2EESummary();
@@ -200,7 +200,7 @@ export function paneRemoteConfig(
                 baseSettings: ObsidianLiveSyncSettings,
                 remoteType?: typeof REMOTE_COUCHDB | typeof REMOTE_MINIO | typeof REMOTE_P2P
             ): Promise<ObsidianLiveSyncSettings | false> => {
-                const setupManager = this.core.getModule(SetupManager);
+                const setupManager = getSetupManager();
                 const dialogManager = setupManager.dialogManager;
                 let targetRemoteType = remoteType;
 
@@ -537,7 +537,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
+                            const setupManager = getSetupManager();
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onCouchDBManualSetup(
                                 UserMode.Update,
@@ -573,7 +573,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
+                            const setupManager = getSetupManager();
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onBucketManualSetup(
                                 UserMode.Update,
@@ -614,7 +614,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                         .setCta()
                         .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
+                            const setupManager = getSetupManager();
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
                             await setupManager.onP2PManualSetup(
                                 UserMode.Update,

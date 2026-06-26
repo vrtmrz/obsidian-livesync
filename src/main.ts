@@ -2,17 +2,25 @@ import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./de
 import { setGetLanguage } from "@lib/common/coreEnvFunctions.ts";
 setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
-import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
-import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
-// import { ModuleDev } from "./modules/extras/ModuleDev.ts";
-
-import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
-import { ModuleLog } from "./modules/features/ModuleLog.ts";
-import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
-import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
-import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
-import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
-import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
+// Migrated features
+import { useInteractiveConflictResolver } from "./serviceFeatures/interactiveConflictResolver/index.ts";
+import { useLogFeature } from "./serviceFeatures/logFeature/index.ts";
+import { useObsidianEvents } from "./serviceFeatures/obsidianEvents/index.ts";
+import { useObsidianSettingDialogue } from "./serviceFeatures/obsidianSettingDialogue/index.ts";
+import { useObsidianDocumentHistory } from "./serviceFeatures/obsidianDocumentHistory/index.ts";
+import { useGlobalHistory } from "./serviceFeatures/globalHistory/index.ts";
+import { useDevFeature } from "./serviceFeatures/devFeature/index.ts";
+import { useConfigSync } from "./serviceFeatures/configSync/index.ts";
+import { useHiddenFileSync } from "./serviceFeatures/hiddenFileSync/index.ts";
+import { useDatabaseMaintenance } from "./serviceFeatures/databaseMaintenance/index.ts";
+import { usePeriodicReplication } from "./serviceFeatures/periodicReplication/index.ts";
+import { useConflictChecker, useConflictResolver } from "./serviceFeatures/conflictResolution/index.ts";
+import { useMismatchedTweaksResolver } from "./serviceFeatures/tweakMismatch/index.ts";
+import {
+    useReplicator,
+    useCouchDBReplicatorFactory,
+    useMinIOReplicatorFactory,
+} from "./serviceFeatures/replicator/index.ts";
 import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
@@ -22,14 +30,14 @@ import { StorageAccessManager } from "@lib/managers/StorageProcessingManager.ts"
 import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
 import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
-import type { ServiceModules } from "./types.ts";
+import type { ServiceModules, LiveSyncCore } from "./types.ts";
 import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
 import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
-import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
-import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
-import { SetupManager } from "./modules/features/SetupManager.ts";
-import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
+import { useObsidianMenuFeature } from "./serviceFeatures/obsidianMenu/index.ts";
+import { useObsidianSettingAsMarkdownFeature } from "./serviceFeatures/obsidianSettingAsMarkdown/index.ts";
+import { useSetupManagerFeature } from "./serviceFeatures/setupManager/index.ts";
+import { useMigrationFeature } from "./serviceFeatures/migration/index.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
 import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
 import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
@@ -43,7 +51,10 @@ import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplica
 import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
 import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
-export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
+
+export type { LiveSyncCore, NecessaryObsidianFeature, ObsidianServiceFeatureFunction } from "./types.ts";
+export { createObsidianServiceFeature } from "./types.ts";
+
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
 
@@ -144,27 +155,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return this.initialiseServiceModules(core, serviceHub);
             },
             (core) => {
-                const extraModules = [
-                    new ModuleObsidianEvents(this, core),
-                    new ModuleObsidianSettingDialogue(this, core),
-                    new ModuleObsidianMenu(core),
-                    new ModuleObsidianSettingsAsMarkdown(core),
-                    new ModuleLog(this, core),
-                    new ModuleObsidianDocumentHistory(this, core),
-                    new ModuleInteractiveConflictResolver(this, core),
-                    new ModuleObsidianGlobalHistory(this, core),
-                    // new ModuleDev(this, core),
-                    new SetupManager(core), // this should be moved to core?
-                    new ModuleMigration(core),
-                ];
+                const extraModules = [] as any[];
                 return extraModules;
             },
-            (core) => {
-                const addOns = [
-                    new ConfigSync(this, core),
-                    new HiddenFileSync(this, core),
-                    new LocalDatabaseMaintenance(this, core),
-                ];
+            () => {
+                const addOns = [] as any[];
                 return addOns;
             },
             (core) => {
@@ -172,7 +167,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const featuresInitialiser = enableI18nFeature;
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
-                const setupManager = core.getModule(SetupManager);
+                const setupManager = useSetupManagerFeature(core);
+                useMigrationFeature(core);
                 const replicator = useP2PReplicatorFeature(
                     core,
                     createOpenReplicationUI(this.app),
@@ -186,13 +182,35 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useSetupQRCodeFeature(core);
                 useSetupURIFeature(core);
                 useSetupManagerHandlersFeature(core, setupManager);
-                useOfflineScanner(core);
-                useRedFlagFeatures(core);
+                useObsidianMenuFeature(core);
+                useObsidianSettingAsMarkdownFeature(core);
                 useCheckRemoteSize(core);
                 // p2pReplicatorResult = useP2PReplicator(core, [
                 //     VIEW_TYPE_P2P,
                 //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
                 // ]);
+                useOfflineScanner(core);
+                useRedFlagFeatures(core);
+
+                // Initialise newly migrated features
+                useObsidianEvents(core);
+                useObsidianSettingDialogue(core);
+                useLogFeature(core);
+                useObsidianDocumentHistory(core);
+                useInteractiveConflictResolver(core);
+                useGlobalHistory(core);
+                useDevFeature(core);
+
+                useConfigSync(core);
+                useHiddenFileSync(core);
+                useDatabaseMaintenance(core);
+                usePeriodicReplication(core);
+                useConflictChecker(core);
+                useConflictResolver(core);
+                useMismatchedTweaksResolver(core);
+                useReplicator(core);
+                useCouchDBReplicatorFactory(core);
+                useMinIOReplicatorFactory(core);
             }
         );
     }

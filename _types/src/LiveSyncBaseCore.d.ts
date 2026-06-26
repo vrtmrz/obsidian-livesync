@@ -37,6 +37,7 @@ export declare class LiveSyncBaseCore<T extends ServiceContext = ServiceContext,
      */
     _services: InjectableServiceHub<T> | undefined;
     get services(): InjectableServiceHub<T>;
+    get context(): T;
     /**
      * Service Modules
      */
