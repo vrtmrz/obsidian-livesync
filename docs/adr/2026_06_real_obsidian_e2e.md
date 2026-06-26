@@ -144,13 +144,13 @@ Current verification:
 - `npm run test:e2e:obsidian:startup-scan` verifies that a file written while Obsidian is stopped is picked up during the next real Obsidian boot and uploaded to CouchDB after one-shot synchronisation.
 - `npm run test:e2e:obsidian:two-vault-sync` verifies two-vault note synchronisation: creation, update, deletion, Markdown conflict automatic merging with the merged result propagated by a second synchronisation, and per-device target-filter differences.
 - `npm run test:e2e:obsidian:hidden-file-snippet-sync` verifies hidden file synchronisation as a two-vault round-trip: creation, deletion, automatic JSON conflict merging with the merged result propagated by a second synchronisation, manual JSON Resolve dialogue application through Obsidian's UI, and per-device target-pattern differences.
-- `npm run test:e2e:obsidian:customisation-sync` verifies a two-vault Customisation Sync snippet workflow: scan a real snippet CSS file into per-file Customisation Sync data, synchronise it through CouchDB, apply it on the second vault, and assert the resulting `.obsidian/snippets/*.css` file.
+- `npm run test:e2e:obsidian:customisation-sync` verifies a two-vault Customisation Sync workflow: scan a real snippet CSS file, config JSON file, and sample plug-in fixture into per-file Customisation Sync data, synchronise them through CouchDB, apply them on the second vault, assert the resulting `.obsidian` files, propagate a snippet update, and verify deletion of the source-vault snippet sync data without confusing it with the target vault's own applied copy.
 - `npm run test:e2e:obsidian:setting-markdown-export` verifies that setting Markdown export creates a vault file and omits credentials when credential export is disabled.
 - `npm run test:e2e:obsidian:install-appimage` reuses the existing AppImage and extracted binary when they are already present.
 
 Known limits:
 
-- The smoke runner currently proves only one-vault launch and plug-in load readiness. It does not yet exercise synchronisation, settings persistence, restart behaviour, or database writes.
+- The smoke runner currently proves only one-vault launch and plug-in load readiness. Broader workflows are covered by separate real Obsidian scripts, including CouchDB upload, startup scan, two-vault note synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export.
 - Cross-platform support is still discovery-level. The working path has been validated on Linux ARM64.
 - CI wiring is not yet implemented. CI should use `OBSIDIAN_BINARY` or a cached `_testdata/obsidian/squashfs-root` rather than downloading the AppImage on every run.
 
@@ -169,7 +169,7 @@ Current implementation status:
 
 - Added a pre-CouchDB workflow that creates a note through Obsidian's vault API, confirms the note is reflected as a real vault file, and reads the same note back through Obsidian. This covers the vault reflection part of the Phase 2 path before remote database setup is introduced.
 - Added a first CouchDB-backed upload workflow, modelled after the CLI Deno tests: reuse the standard CouchDB environment variables, create a unique remote database, apply CouchDB settings through the plug-in's setting service, commit the note through the real Obsidian vault path, run one-shot synchronisation, and assert that remote metadata and chunks exist.
-- Added Obsidian-specific workflows for boot-time vault scanning, two-vault note synchronisation, hidden `.obsidian/snippets` file round-tripping, hidden JSON conflict resolution, Customisation Sync snippet application, per-device target-filter differences, and setting Markdown export. These scenarios assert against CouchDB documents, vault files, or real Obsidian UI outcomes instead of internal service state.
+- Added Obsidian-specific workflows for boot-time vault scanning, two-vault note synchronisation, hidden `.obsidian/snippets` file round-tripping, hidden JSON conflict resolution, Customisation Sync application for snippets, config JSON files, and plug-in fixtures, per-device target-filter differences, and setting Markdown export. These scenarios assert against CouchDB documents, vault files, or real Obsidian UI outcomes instead of internal service state.
 
 ### Phase 3: Two-Vault Synchronisation
 
