@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 export declare class WrappedNotice {
     constructor(message: string | DocumentFragment, timeout?: number);
     setMessage(message: string | DocumentFragment): this;

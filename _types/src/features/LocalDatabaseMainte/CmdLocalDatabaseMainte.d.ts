@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { type DocumentID, type EntryDoc, type EntryLeaf } from "@lib/common/types";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 type ChunkID = DocumentID;
@@ -16,7 +16,7 @@ export declare class LocalDatabaseMaintenance extends LiveSyncCommands {
     get database(): PouchDB.Database<EntryDoc>;
     clearHash(): void;
     confirm(title: string, message: string, affirmative?: string, negative?: string): Promise<boolean>;
-    isAvailable(): boolean;
+    ensureAvailable(operationName: string): Promise<boolean>;
     /**
      * Resurrect deleted chunks that are still used in the database.
      */
