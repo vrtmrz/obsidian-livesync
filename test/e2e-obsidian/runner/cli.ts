@@ -71,9 +71,10 @@ export async function openVaultWithObsidianCli(
 export async function evalObsidianJson<T>(
     cliBinary: string,
     code: string,
-    env: NodeJS.ProcessEnv = process.env
+    env: NodeJS.ProcessEnv = process.env,
+    timeoutMs?: number
 ): Promise<T> {
-    const result = await runObsidianCli(cliBinary, ["eval", `code=${code}`], env);
+    const result = await runObsidianCli(cliBinary, ["eval", `code=${code}`], env, timeoutMs);
     if (result.code !== 0) {
         throw new Error(
             [

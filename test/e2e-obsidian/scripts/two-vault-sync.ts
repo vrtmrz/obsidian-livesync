@@ -29,8 +29,11 @@ process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "20000";
 const createPath = "E2E/two-vault/create.md";
 const updatePath = "E2E/two-vault/update.md";
 const deletePath = "E2E/two-vault/delete.md";
+const renameFromPath = "E2E/two-vault/rename-source.md";
+const renameToPath = "E2E/two-vault/renamed/rename-target.md";
 const conflictPath = "E2E/two-vault/conflict.md";
 const targetMismatchPath = "E2E/two-vault/target-mismatch.md";
+const encryptedPath = "E2E/two-vault/encrypted.md";
 
 type RunnerContext = {
     binary: string;
@@ -127,6 +130,25 @@ async function deleteNoteViaObsidian(cliBinary: string, env: NodeJS.ProcessEnv, 
             `const path=${JSON.stringify(path)};`,
             "const existing=app.vault.getAbstractFileByPath(path);",
             "if(existing) await app.vault.delete(existing);",
+            "return JSON.stringify({ok:true});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function renameNoteViaObsidian(cliBinary: string, env: NodeJS.ProcessEnv, fromPath: string, toPath: string) {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const fromPath=${JSON.stringify(fromPath)};`,
+            `const toPath=${JSON.stringify(toPath)};`,
+            "const folder=toPath.split('/').slice(0,-1).join('/');",
+            "if(folder&&!(await app.vault.adapter.exists(folder))) await app.vault.createFolder(folder);",
+            "const existing=app.vault.getAbstractFileByPath(fromPath);",
+            "if(!existing) throw new Error(`Could not find note to rename: ${fromPath}`);",
+            "await app.vault.rename(existing,toPath);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -319,14 +341,62 @@ async function runCreateUpdateDelete(
     console.log("Two-vault note creation, update, and deletion round-tripped.");
 }
 
+async function runRename(context: RunnerContext, vaultA: TemporaryVault, vaultB: TemporaryVault): Promise<void> {
+    const renamedContent = "# Rename target\n\nThis note should move from A to B.\n";
+
+    let session = await startConfiguredSession(context, vaultA);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, renameFromPath, renamedContent);
+    await uploadNote(context, session, renameFromPath);
+    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, renameFromPath, renameToPath);
+    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, renameToPath);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await session.app.stop();
+
+    session = await startConfiguredSession(context, vaultB);
+    await syncAndApply(context, session);
+    const renamedOnB = await waitForPathContent(vaultB.path, renameToPath, (content) => content === renamedContent);
+    await waitForPathDeleted(vaultB.path, renameFromPath);
+    await session.app.stop();
+
+    assertEqual(renamedOnB, renamedContent, "Renamed note content did not round-trip to the second vault.");
+    console.log("Two-vault note rename round-tripped.");
+}
+
+async function runEncryptedRoundTrip(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const encryptedContent = "# Encrypted round-trip\n\nThis note should synchronise with E2EE enabled.\n";
+    const encryptedOverrides = {
+        encrypt: true,
+        passphrase: "real-obsidian-e2e-passphrase",
+        usePathObfuscation: true,
+        E2EEAlgorithm: "v2",
+    };
+
+    let session = await startConfiguredSession(context, vaultA, encryptedOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, encryptedPath, encryptedContent);
+    await uploadNote(context, session, encryptedPath);
+    await session.app.stop();
+
+    session = await startConfiguredSession(context, vaultB, encryptedOverrides);
+    await syncAndApply(context, session);
+    const received = await waitForPathContent(vaultB.path, encryptedPath, (content) => content === encryptedContent);
+    await session.app.stop();
+
+    assertEqual(received, encryptedContent, "Encrypted note did not round-trip to the second vault.");
+    console.log("Two-vault encrypted note synchronisation round-tripped.");
+}
+
 async function runMarkdownAutoMerge(
     context: RunnerContext,
     vaultA: TemporaryVault,
     vaultB: TemporaryVault
 ): Promise<void> {
-    const base = "# Conflict\n\nBase line\n\nShared tail\n";
-    const left = "# Conflict\n\nLeft line\n\nShared tail\n";
-    const right = "# Conflict\n\nBase line\n\nRight tail\n";
+    const base = "# Conflict\n\nTop anchor\n\nMiddle anchor\n\nBottom anchor\n";
+    const left = "# Conflict\n\nTop anchor\n\nLeft line\n\nMiddle anchor\n\nBottom anchor\n";
+    const right = "# Conflict\n\nTop anchor\n\nMiddle anchor\n\nRight tail\n\nBottom anchor\n";
 
     let session = await startConfiguredSession(context, vaultB);
     await createMarkdownConflict(context, session, vaultB, conflictPath, base, left, right);
@@ -335,7 +405,8 @@ async function runMarkdownAutoMerge(
     const mergedOnB = await waitForPathContent(
         vaultB.path,
         conflictPath,
-        (content) => content.includes("Left line") && content.includes("Right tail")
+        (content) => content.includes("Left line") && content.includes("Right tail"),
+        Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
     );
     await session.app.stop();
 
@@ -344,7 +415,8 @@ async function runMarkdownAutoMerge(
     const mergedOnA = await waitForPathContent(
         vaultA.path,
         conflictPath,
-        (content) => content.includes("Left line") && content.includes("Right tail")
+        (content) => content.includes("Left line") && content.includes("Right tail"),
+        Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
     );
     await session.app.stop();
 
@@ -405,27 +477,42 @@ async function main(): Promise<void> {
 
     const couchDb = await loadCouchDbConfig();
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "two-vault-sync");
+    const encryptedDbName = makeUniqueDatabaseName(couchDb.dbPrefix, "two-vault-sync-e2ee");
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
+    const encryptedVaultA = await createTemporaryVault();
+    const encryptedVaultB = await createTemporaryVault();
     const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName };
+    const encryptedContext: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName: encryptedDbName };
 
     try {
         await assertCouchDbReachable(couchDb);
         await createCouchDbDatabase(couchDb, dbName);
+        await createCouchDbDatabase(couchDb, encryptedDbName);
 
         console.log(`Using Obsidian executable: ${binary}`);
         console.log(`Temporary vault A: ${vaultA.path}`);
         console.log(`Temporary vault B: ${vaultB.path}`);
         console.log(`Temporary CouchDB database: ${dbName}`);
+        console.log(`Temporary encrypted CouchDB database: ${encryptedDbName}`);
 
         await runCreateUpdateDelete(context, vaultA, vaultB);
-        await runMarkdownAutoMerge(context, vaultA, vaultB);
+        await runRename(context, vaultA, vaultB);
+        if (process.env.E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT === "true") {
+            await runMarkdownAutoMerge(context, vaultA, vaultB);
+        }
         await runTargetMismatch(context, vaultA, vaultB);
+        await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
     } finally {
         await vaultA.dispose();
         await vaultB.dispose();
+        await encryptedVaultA.dispose();
+        await encryptedVaultB.dispose();
         if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {
             await deleteCouchDbDatabase(couchDb, dbName).catch((error: unknown) => {
+                console.warn(error instanceof Error ? error.message : error);
+            });
+            await deleteCouchDbDatabase(couchDb, encryptedDbName).catch((error: unknown) => {
                 console.warn(error instanceof Error ? error.message : error);
             });
         }

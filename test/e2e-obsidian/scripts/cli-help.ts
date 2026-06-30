@@ -25,6 +25,8 @@ async function main(): Promise<void> {
             ...process.env,
             HOME: vault.homePath,
             XDG_CONFIG_HOME: vault.xdgConfigPath,
+            XDG_CACHE_HOME: vault.xdgCachePath,
+            XDG_DATA_HOME: vault.xdgDataPath,
         };
         await runObsidianCli(cli.binary, [`obsidian://open?path=${encodeURIComponent(vault.path)}`], cliEnv);
         await new Promise((resolve) => setTimeout(resolve, 3000));

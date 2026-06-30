@@ -21,6 +21,7 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
+import { clickJsonResolveOption, obsidianRemoteDebuggingPort } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
@@ -41,6 +42,7 @@ const snippetContent = [
 const mergeJsonPath = ".obsidian/livesync-e2e-merge.json";
 const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
+const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 
 type RunnerContext = {
     binary: string;
@@ -145,7 +147,8 @@ async function scanHiddenDatabase(cliBinary: string, env: NodeJS.ProcessEnv): Pr
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
-        env
+        env,
+        hiddenFileCliTimeoutMs
     );
 }
 
@@ -161,7 +164,8 @@ async function resolveHiddenConflicts(cliBinary: string, env: NodeJS.ProcessEnv)
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
-        env
+        env,
+        hiddenFileCliTimeoutMs
     );
 }
 
@@ -227,34 +231,6 @@ async function openHiddenJsonResolveModal(cliBinary: string, env: NodeJS.Process
             "if(docA===false||docB===false) throw new Error(`Could not load conflicted hidden JSON entries: ${path}`);",
             "void addOn.showJSONMergeDialogAndMerge(docA,docB);",
             "return JSON.stringify({ok:true});",
-            "})()",
-        ].join(""),
-        env
-    );
-}
-
-async function clickJsonResolveOption(cliBinary: string, env: NodeJS.ProcessEnv, mode: "AB" | "BA"): Promise<void> {
-    await evalObsidianJson<unknown>(
-        cliBinary,
-        [
-            "(async()=>{",
-            `const mode=${JSON.stringify(mode)};`,
-            "const deadline=Date.now()+10000;",
-            "while(Date.now()<deadline){",
-            "  const input=[...document.querySelectorAll('input[name=\"disp\"]')].find((candidate)=>candidate.value===mode);",
-            "  const apply=[...document.querySelectorAll('button')].find((button)=>button.textContent?.trim()==='Apply');",
-            "  if(input&&apply){",
-            "    input.click();",
-            "    input.dispatchEvent(new Event('change',{bubbles:true}));",
-            "    await new Promise((resolve)=>setTimeout(resolve,100));",
-            "    apply.click();",
-            "    return JSON.stringify({ok:true});",
-            "  }",
-            "  await new Promise((resolve)=>setTimeout(resolve,250));",
-            "}",
-            "const buttons=[...document.querySelectorAll('button')].map((button)=>button.textContent?.trim()).filter(Boolean);",
-            "const inputs=[...document.querySelectorAll('input[name=\"disp\"]')].map((input)=>input.value);",
-            "throw new Error(`Timed out waiting for JSON resolve modal; buttons=${JSON.stringify(buttons)}; inputs=${JSON.stringify(inputs)}`);",
             "})()",
         ].join(""),
         env
@@ -368,9 +344,15 @@ async function uploadHiddenFile(
     return entry;
 }
 
-async function pullAndApplyHiddenFiles(context: RunnerContext, session: ObsidianLiveSyncSession): Promise<void> {
+async function pullAndApplyHiddenFiles(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    options: { resolveConflicts?: boolean } = {}
+): Promise<void> {
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await resolveHiddenConflicts(context.cliBinary, session.cliEnv);
+    if (options.resolveConflicts === true) {
+        await resolveHiddenConflicts(context.cliBinary, session.cliEnv);
+    }
     await scanHiddenDatabase(context.cliBinary, session.cliEnv);
 }
 
@@ -449,7 +431,7 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
     const session = await startConfiguredSession(context, vault);
     await createHiddenJsonConflict(context, session, vault, manualMergeJsonPath, base, left, right);
     await openHiddenJsonResolveModal(context.cliBinary, session.cliEnv, manualMergeJsonPath);
-    await clickJsonResolveOption(context.cliBinary, session.cliEnv, "AB");
+    await clickJsonResolveOption(obsidianRemoteDebuggingPort(), "AB");
 
     const merged = await waitForPathContent(vault.path, manualMergeJsonPath, (content) =>
         hasJsonValues(content, { shared: "right", fromA: true, fromB: true })
@@ -472,26 +454,36 @@ async function runTargetMismatch(
     await writeVaultFile(vaultA.path, targetPath, targetContent);
 
     let session = await startConfiguredSession(context, vaultA);
-    await uploadHiddenFile(context, session, targetPath);
-    await session.app.stop();
+    try {
+        await uploadHiddenFile(context, session, targetPath);
+    } finally {
+        await session.app.stop();
+    }
 
     session = await startConfiguredSession(context, vaultB, {
         syncInternalFilesTargetPatterns: "snippets",
     });
-    await pullAndApplyHiddenFiles(context, session);
-    assertEqual(
-        await pathExists(vaultB.path, targetPath),
-        false,
-        "Hidden file was applied on a device where it was not a target file."
-    );
-    await session.app.stop();
+    try {
+        await pullAndApplyHiddenFiles(context, session, { resolveConflicts: false });
+        assertEqual(
+            await pathExists(vaultB.path, targetPath),
+            false,
+            "Hidden file was applied on a device where it was not a target file."
+        );
+    } finally {
+        await session.app.stop();
+    }
 
     session = await startConfiguredSession(context, vaultB, {
         syncInternalFilesTargetPatterns: "",
     });
-    await pullAndApplyHiddenFiles(context, session);
-    const received = await waitForPathContent(vaultB.path, targetPath, (content) => content === targetContent);
-    await session.app.stop();
+    let received = "";
+    try {
+        await pullAndApplyHiddenFiles(context, session, { resolveConflicts: false });
+        received = await waitForPathContent(vaultB.path, targetPath, (content) => content === targetContent);
+    } finally {
+        await session.app.stop();
+    }
 
     assertEqual(received, targetContent, "Hidden file was not applied after it became a target file.");
     console.log("Hidden target mismatch respected per-device target patterns, then applied after enabling the target.");
