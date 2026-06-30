@@ -16,7 +16,7 @@ try {
 
 try {
     console.log("[Postbuild] Type definitions generated successfully. Adding ignore comments...");
-    execSync("Deno run -A ./utilsdeno/types-add-ignore.ts", { stdio: "inherit" });
+    execSync("deno run -A ./utilsdeno/types-add-ignore.ts", { stdio: "inherit" });
     console.log("[Postbuild] Ignore comments added successfully.");
 } catch (error) {
     console.warn("[Postbuild] Failed to add ignore comments to type definitions.");
