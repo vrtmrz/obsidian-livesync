@@ -141,16 +141,16 @@ const uri_passphrase = `${Deno.env.get("uri_passphrase") ?? friendlyString()}`;
 const URIBASE = "obsidian://setuplivesync?settings=";
 async function main() {
     const conf = {
-        couchDB_URI: `${Deno.env.get("hostname")}`,
-        couchDB_USER: `${Deno.env.get("username")}`,
-        couchDB_PASSWORD: `${Deno.env.get("password")}`,
-        couchDB_DBNAME: `${Deno.env.get("database")}`,
+        couchDB_URI: `${Deno.env.get("LIVESYNC_HOST")}`,
+        couchDB_USER: `${Deno.env.get("LIVESYNC_USER")}`,
+        couchDB_PASSWORD: `${Deno.env.get("LIVESYNC_PASS")}`,
+        couchDB_DBNAME: `${Deno.env.get("LIVESYNC_DB")}`,
         syncOnStart: true,
         gcDelay: 0,
         periodicReplication: true,
         syncOnFileOpen: true,
         encrypt: true,
-        passphrase: `${Deno.env.get("passphrase")}`,
+        passphrase: `${Deno.env.get("LIVESYNC_PASSPHRASE")}`,
         usePathObfuscation: true,
         batchSave: true,
         batch_size: 50,
