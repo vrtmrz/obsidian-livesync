@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import type { TFile } from "@/deps.ts";
 import { type ReactiveSource } from "octagonal-wheels/dataobject/reactive";

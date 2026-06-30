@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { App, Modal } from "@/deps.ts";
 import { mount } from "svelte";
 import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";

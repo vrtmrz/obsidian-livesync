@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { type LogFunction } from "@lib/services/lib/logUtils";
 import { type FullScanOptions } from "@lib/serviceFeatures/offlineScanner";
@@ -12,7 +12,7 @@ export declare const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL = "Delete local files
 export declare const SIMPLE_FETCH_STAGE2_NEWER_CLEANUP = "Delete local files if deleted on remote";
 export declare const SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL = "Keep local files even if deleted on remote";
 export declare const STAGE2_ABORT = "Cancel all and reboot";
-export declare function askSimpleFetchMode(host: NecessaryServices<"UI" | "vault", "storageAccess">): Promise<{
+export declare function askSimpleFetchMode(host: NecessaryServices<"UI" | "setting", never>): Promise<{
     mode: string;
     options: Partial<FullScanOptions>;
 } | "cancelled" | "aborted">;
