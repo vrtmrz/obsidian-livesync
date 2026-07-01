@@ -1,4 +1,5 @@
 # Self-hosted LiveSync Development Guide
+
 ## Project Overview
 
 Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devices using CouchDB, MinIO/S3, or peer-to-peer WebRTC. The codebase uses a modular architecture with TypeScript, Svelte, and PouchDB.
@@ -10,6 +11,7 @@ Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devic
 #### First-time Setup
 
 This repository uses submodules by convention. Therefore, you must use the `--recursive` flag when cloning it.
+
 ```bash
 git clone --recursive https://github.com/vrtmrz/obsidian-livesync
 npm ci
@@ -19,7 +21,9 @@ npm run build
 Note: if you already cloned without submodules, run: `git submodule update --init --recursive`
 
 #### Branch switching
+
 When switching branches, please make sure to update submodules as well, since they may be updated in the new branch.
+
 ```bash
 git checkout --recurse-submodules 0.25.70-patch1 # tag or branch name
 npm ci
@@ -41,7 +45,7 @@ npm test             # Run Harness based vitest tests (requires Docker services)
 
 ### Tips
 
-We can use CLI's E2E test command instead of `npm test`.
+Use CLI E2E tests or real Obsidian E2E scripts instead of `npm test` when the behaviour can be verified outside the browser harness.
 
 ### Auto-copy to test vaults
 
@@ -58,45 +62,53 @@ To facilitate development and testing, the build process can automatically copy 
     - **Unit Tests** (`vitest.config.unit.ts`): Unit tests run in Node.js (excluding harnesses and integration tests). Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`). Executed via `npm run test:unit`.
     - **Integration Tests** (`vitest.config.integration.ts`): Tests run in Node.js against a real CouchDB instance. Integration tests should be `*.integration.spec.ts` or `*.integration.test.ts` and placed alongside the implementation file (e.g., `StreamingFetch.integration.spec.ts`). Executed via `npm run test:integration`.
         - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
-    - **E2E Tests** (`vitest.config.ts`): End-to-end tests run in a browser-based harness using Playwright/Chromium to test full synchronisation scenarios. Executed via `npm run test`.
+    - **Browser Harness Tests** (`vitest.config.ts`): Transitional browser-based harness tests using Playwright/Chromium. Executed via `npm run test`. This layer is no longer the preferred destination for new broad E2E coverage because `test/harness` can drift from real Obsidian behaviour.
     - **P2P Tests** (`vitest.config.p2p.ts`): Browser-based Peer-to-Peer replication tests. Executed via `npm run test:p2p`.
     - **RPC Unit Tests** (`vitest.config.rpc-unit.ts`): RPC-specific unit tests with coverage thresholds.
+- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
 
 - **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
+
     ```bash
     npm run test:docker-all:start  # Start all test services
     npm run test:full              # Run tests with coverage
     npm run test:docker-all:stop   # Stop services
     ```
+
     If some services are not needed, start only required ones (e.g., `test:docker-couchdb:start`).
     Note that if services are already running, starting script will fail. Please stop them first.
 
 - **Test Structure**:
-    - `test/suite/` - E2E tests for sync operations (running in browser)
+    - `test/e2e-obsidian/` - Real Obsidian E2E scripts for local verification
+    - `test/suite/` - Transitional browser harness tests for sync operations
     - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
-    - `test/harness/` - Mock implementations (e.g., `obsidian-mock.ts`)
+    - `test/harness/` - Transitional mock implementations (e.g., `obsidian-mock.ts`). Avoid adding broad new E2E coverage here unless it is explicitly a compatibility bridge.
 
 ### Import Path Normalisation
 
 The codebase uses `@/` and `@lib/` path aliases to keep import structures clean. To normalise imports and exports across files, use the following utility script:
+
 ```bash
 npm run pretty:importpath
 ```
+
 Under the hood, this runs Deno with the script [utilsdeno/normalise-imports.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/normalise-imports.ts). You can pass additional flags to this script if required (by running it via Deno directly from the `utilsdeno` directory):
+
 - `--run`: Applies the changes (the script runs in dry-run mode by default).
 - `--all-alias`: Normalises sibling/child relative imports starting with `./` to use aliases.
 
 ### Type Generation
 
 To generate fallback type definitions for the shared library and add appropriate Deno ignore comments (which suppresses Deno compilation warnings and linting warnings inside the `_types` directory), run:
+
 ```bash
 npm run build:lib:types
 ```
+
 This script executes:
+
 1. TypeScript compilation (`tsconfig.types.json`) to output definitions to the `_types` directory.
 2. The Deno script [utilsdeno/types-add-ignore.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/types-add-ignore.ts) to prepend Deno ignore comments to the generated type files.
-
-
 
 ## Architecture
 
