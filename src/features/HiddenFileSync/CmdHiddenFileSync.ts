@@ -51,6 +51,7 @@ import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
 import { tryGetFilePath } from "@lib/common/utils.doc.ts";
+import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 declare global {
@@ -1832,43 +1833,35 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
-        if (
-            mode != "FETCH" &&
-            mode != "OVERWRITE" &&
-            mode != "MERGE" &&
-            mode != "DISABLE" &&
-            mode != "DISABLE_HIDDEN"
-        ) {
-            return;
-        }
-
-        if (mode == "DISABLE" || mode == "DISABLE_HIDDEN") {
-            // await this.core.$allSuspendExtraSync();
-            await this.core.services.setting.applyPartial(
-                {
-                    syncInternalFiles: false,
-                },
-                true
-            );
-            // this.core.settings.syncInternalFiles = false;
-            // await this.core.saveSettings();
-            return;
-        }
-        this._log("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
-        if (mode == "FETCH") {
-            await this.initialiseInternalFileSync("pullForce", true);
-        } else if (mode == "OVERWRITE") {
-            await this.initialiseInternalFileSync("pushForce", true);
-        } else if (mode == "MERGE") {
-            await this.initialiseInternalFileSync("safe", true);
-        }
-        await this.core.services.setting.applyPartial(
-            {
-                useAdvancedMode: true,
-                syncInternalFiles: true,
+        const result = await configureHiddenFileSyncMode(mode, {
+            disable: async () => {
+                // await this.core.$allSuspendExtraSync();
+                await this.core.services.setting.applyPartial(
+                    {
+                        syncInternalFiles: false,
+                    },
+                    true
+                );
+                // this.core.settings.syncInternalFiles = false;
+                // await this.core.saveSettings();
             },
-            true
-        );
+            enable: async () => {
+                this._log("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
+                await this.core.services.setting.applyPartial(
+                    {
+                        useAdvancedMode: true,
+                        syncInternalFiles: true,
+                    },
+                    true
+                );
+            },
+            initialise: async (direction) => {
+                await this.initialiseInternalFileSync(direction, true);
+            },
+        });
+        if (result == "ignored" || result == "disabled") {
+            return;
+        }
         // this.plugin.settings.useAdvancedMode = true;
         // this.plugin.settings.syncInternalFiles = true;
 
