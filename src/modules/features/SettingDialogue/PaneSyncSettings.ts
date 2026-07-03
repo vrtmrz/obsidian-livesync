@@ -2,6 +2,7 @@ import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_
 import { Logger } from "@lib/common/logger.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
+import { renderObsidianApplyButton, renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -31,18 +32,16 @@ export function paneSyncSettings(
                       DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
                   };
 
-        new Setting(paneEl)
-            .autoWireDropDown("preset", {
-                options: options,
-                holdValue: true,
-            })
-            .addButton((button) => {
-                button.setButtonText($msg("obsidianLiveSyncSettingTab.btnApply"));
-                button.onClick(async () => {
-                    // await this.saveSettings(["preset"]);
-                    await this.saveAllDirtySettings();
-                });
+        renderObsidianSetting(paneEl, "preset", {
+            options: options,
+            holdValue: true,
+        }).addButton((button) => {
+            button.setButtonText($msg("obsidianLiveSyncSettingTab.btnApply"));
+            button.onClick(async () => {
+                // await this.saveSettings(["preset"]);
+                await this.saveAllDirtySettings();
             });
+        });
 
         this.addOnSaved("preset", async (currentPreset) => {
             if (currentPreset == "") {
@@ -136,7 +135,7 @@ export function paneSyncSettings(
         const onlyOnNonLiveSync = visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"));
         const onlyOnPeriodic = visibleOnly(() => this.isConfiguredAs("syncMode", "PERIODIC"));
 
-        const optionsSyncMode =
+        const optionsSyncMode: Record<string, string> =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
                       ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
@@ -148,12 +147,9 @@ export function paneSyncSettings(
                       PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
                   };
 
-        new Setting(paneEl)
-            .autoWireDropDown("syncMode", {
-                //@ts-ignore
-                options: optionsSyncMode,
-            })
-            .setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncMode", {
+            options: optionsSyncMode,
+        }).setClass("wizardHidden");
         this.addOnSaved("syncMode", async (value) => {
             this.editingSettings.liveSync = false;
             this.editingSettings.periodicReplication = false;
@@ -167,32 +163,28 @@ export function paneSyncSettings(
             await this.services.control.applySettings();
         });
 
-        new Setting(paneEl)
-            .autoWireNumeric("periodicReplicationInterval", {
-                clampMax: 5000,
-                onUpdate: onlyOnPeriodic,
-            })
-            .setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "periodicReplicationInterval", {
+            clampMax: 5000,
+            onUpdate: onlyOnPeriodic,
+        }).setClass("wizardHidden");
 
-        new Setting(paneEl).autoWireNumeric("syncMinimumInterval", {
+        renderObsidianSetting(paneEl, "syncMinimumInterval", {
             onUpdate: onlyOnNonLiveSync,
         });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnSave", { onUpdate: onlyOnNonLiveSync });
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("syncOnEditorSave", { onUpdate: onlyOnNonLiveSync });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
+        renderObsidianSetting(paneEl, "syncOnSave", { onUpdate: onlyOnNonLiveSync }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncOnEditorSave", { onUpdate: onlyOnNonLiveSync }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncOnFileOpen", { onUpdate: onlyOnNonLiveSync }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncOnStart", { onUpdate: onlyOnNonLiveSync }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncAfterMerge", { onUpdate: onlyOnNonLiveSync }).setClass("wizardHidden");
         // Desktop app only, and only for the sync modes that keep a background replication channel
         // (LiveSync and Periodic). Ignored on mobile, where suspending preserves battery. The
         // visibility predicate mirrors the runtime guard in ModuleObsidianEvents.
         if (!this.services.API.isMobile()) {
-            new Setting(paneEl).setClass("wizardHidden").autoWireToggle("keepReplicationActiveInBackground", {
+            renderObsidianSetting(paneEl, "keepReplicationActiveInBackground", {
                 onUpdate: visibleOnly(
                     () => this.isConfiguredAs("syncMode", "LIVESYNC") || this.isConfiguredAs("syncMode", "PERIODIC")
                 ),
-            });
+            }).setClass("wizardHidden");
         }
     });
 
@@ -203,15 +195,15 @@ export function paneSyncSettings(
         visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"))
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("batchSave");
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMinimumDelay", {
+        renderObsidianSetting(paneEl, "batchSave").setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "batchSaveMinimumDelay", {
             acceptZero: true,
             onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
-        });
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batchSaveMaximumDelay", {
+        }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "batchSaveMaximumDelay", {
             acceptZero: true,
             onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
-        });
+        }).setClass("wizardHidden");
     });
 
     void addPanel(
@@ -222,9 +214,9 @@ export function paneSyncSettings(
         LEVEL_ADVANCED
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("trashInsteadDelete");
+        renderObsidianSetting(paneEl, "trashInsteadDelete").setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
+        renderObsidianSetting(paneEl, "doNotDeleteFolder").setClass("wizardHidden");
     });
     void addPanel(
         paneEl,
@@ -235,11 +227,11 @@ export function paneSyncSettings(
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("resolveConflictsByNewerFile");
+        renderObsidianSetting(paneEl, "resolveConflictsByNewerFile").setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("checkConflictOnlyOnOpen");
+        renderObsidianSetting(paneEl, "checkConflictOnlyOnOpen").setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("showMergeDialogOnlyOnActive");
+        renderObsidianSetting(paneEl, "showMergeDialogOnlyOnActive").setClass("wizardHidden");
     });
 
     void addPanel(
@@ -250,11 +242,12 @@ export function paneSyncSettings(
         LEVEL_ADVANCED
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).autoWireText("settingSyncFile", { holdValue: true }).addApplyButton(["settingSyncFile"]);
+        renderObsidianSetting(paneEl, "settingSyncFile");
+        renderObsidianApplyButton(paneEl, "setting-sync-file");
 
-        new Setting(paneEl).autoWireToggle("writeCredentialsForSettingSync");
+        renderObsidianSetting(paneEl, "writeCredentialsForSettingSync");
 
-        new Setting(paneEl).autoWireToggle("notifyAllSettingSyncFile");
+        renderObsidianSetting(paneEl, "notifyAllSettingSyncFile");
     });
 
     void addPanel(
@@ -313,14 +306,14 @@ export function paneSyncSettings(
                 });
         }
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("suppressNotifyHiddenFilesChange", {});
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("syncInternalFilesBeforeReplication", {
+        renderObsidianSetting(paneEl, "suppressNotifyHiddenFilesChange", {}).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "syncInternalFilesBeforeReplication", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("watchInternalFileChanges", true)),
-        });
+        }).setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("syncInternalFilesInterval", {
+        renderObsidianSetting(paneEl, "syncInternalFilesInterval", {
             clampMin: 10,
             acceptZero: true,
-        });
+        }).setClass("wizardHidden");
     });
 }

@@ -110,6 +110,7 @@ type SettingDefinition<TSettings, TKey extends keyof TSettings | string> = {
     validate?: (value: unknown, context: SettingEvaluationContext<TSettings>) => SettingValidationResult;
     coerce?: (value: unknown, context: SettingEvaluationContext<TSettings>) => unknown;
     affects?: SettingEffect[];
+    commit?: SettingCommitPolicy<TKey>;
     render?: "auto" | "custom";
 };
 ```
@@ -127,8 +128,15 @@ consumers. `label` and `description` remain compatibility aliases while existing
 code still expects resolved strings.
 
 `internal` should mark settings that are not currently editable from the UI.
-Obsolete settings are internal by default. Persisted settings without UI metadata
-are also internal until explicitly classified otherwise.
+Obsolete settings are internal by default. Missing UI metadata alone should not
+make a setting internal; `kind`, `render`, and explicit `internal` metadata
+should decide whether the automatic renderer can safely handle it.
+
+`commit` should describe when a value is persisted, not how a button is rendered.
+Immediate settings can save on change. Explicit settings are held in the editing
+buffer until an apply action commits the configured group. This keeps apply
+buttons out of the repository while still making grouped save behaviour
+testable.
 
 ## Storage Domains
 
@@ -273,6 +281,9 @@ adapter or custom workflow.
 
 - Replace `isNeedRebuildLocal()` and `isNeedRebuildRemote()` with
   repository-driven effect calculation.
+- Model explicit commit groups for settings that must be applied together, for
+  example configuration encryption passphrase settings, setting sync file, and
+  database suffix changes.
 - Add capability metadata for CouchDB diagnostics, repair, Hidden File Sync, and
   Obsidian-only plug-in operations.
 - Use this to improve warnings for database-scoped CouchDB users and

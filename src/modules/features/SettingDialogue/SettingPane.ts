@@ -1,5 +1,11 @@
 import { $msg } from "@lib/common/i18n";
-import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "@lib/common/types";
+import {
+    LEVEL_ADVANCED,
+    LEVEL_EDGE_CASE,
+    LEVEL_POWER_USER,
+    type ConfigLevel,
+    type SettingDefinition,
+} from "@lib/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {
@@ -77,6 +83,7 @@ export type AutoWireOption = {
     invert?: boolean;
     onUpdate?: OnUpdateFunc;
     obsolete?: boolean;
+    settingDefinition?: SettingDefinition<AllSettingItemKey>;
 };
 
 export function findAttrFromParent(el: HTMLElement, attr: string): string {

@@ -15,6 +15,7 @@ import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -107,10 +108,9 @@ export function paneSetup(
     });
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleExtraFeatures")).then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("useAdvancedMode");
-
-        new Setting(paneEl).autoWireToggle("usePowerUserMode");
-        new Setting(paneEl).autoWireToggle("useEdgeCaseMode");
+        renderObsidianSetting(paneEl, "useAdvancedMode");
+        renderObsidianSetting(paneEl, "usePowerUserMode");
+        renderObsidianSetting(paneEl, "useEdgeCaseMode");
 
         this.addOnSaved("useAdvancedMode", () => this.display());
         this.addOnSaved("usePowerUserMode", () => this.display());

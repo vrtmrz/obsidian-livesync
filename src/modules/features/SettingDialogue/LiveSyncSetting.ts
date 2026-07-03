@@ -8,7 +8,13 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@lib/common/types.ts";
+import {
+    LEVEL_ADVANCED,
+    LEVEL_POWER_USER,
+    statusDisplay,
+    type ConfigurationItem,
+    type SettingDefinition,
+} from "@lib/common/types.ts";
 import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
@@ -18,8 +24,20 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg, $t } from "@lib/common/i18n.ts";
 import { wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
+
+function configurationFromDefinition(definition: SettingDefinition<AllSettingItemKey>): ConfigurationItem {
+    return {
+        name: $t(definition.labelKey),
+        desc: definition.descriptionKey ? $t(definition.descriptionKey) : undefined,
+        placeHolder: definition.placeholder,
+        status: definition.status,
+        obsolete: definition.obsolete,
+        level: definition.level,
+        isHidden: definition.secret,
+    };
+}
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -56,7 +74,7 @@ export class LiveSyncSetting extends Setting {
         return this;
     }
     autoWireSetting(key: AllSettingItemKey, opt?: AutoWireOption) {
-        const conf = getConfig(key);
+        const conf = opt?.settingDefinition ? configurationFromDefinition(opt.settingDefinition) : getConfig(key);
         if (!conf) {
             // throw new Error($msg("liveSyncSetting.errorNoSuchSettingItem", { key }));
             return;

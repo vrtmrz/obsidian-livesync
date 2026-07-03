@@ -25,6 +25,7 @@ import { ICHeader, ICXHeader, PSCHeader } from "@/common/types.ts";
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { isNotFoundError } from "@lib/common/utils.doc.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
@@ -87,14 +88,14 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     eventHub.emitEvent(EVENT_REQUEST_CHECK_REMOTE_SIZE);
                 })
             );
-        new Setting(paneEl).autoWireToggle("writeLogToTheFile");
+        renderObsidianSetting(paneEl, "writeLogToTheFile");
     });
 
     void addPanel(paneEl, "Scram Switches").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("suspendFileWatching");
+        renderObsidianSetting(paneEl, "suspendFileWatching");
         this.addOnSaved("suspendFileWatching", () => this.services.appLifecycle.askRestart());
 
-        new Setting(paneEl).autoWireToggle("suspendParseReplicationResult");
+        renderObsidianSetting(paneEl, "suspendParseReplicationResult");
         this.addOnSaved("suspendParseReplicationResult", () => this.services.appLifecycle.askRestart());
     });
 

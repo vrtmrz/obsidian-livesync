@@ -1,6 +1,7 @@
 import { $msg, $t } from "@lib/common/i18n.ts";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
@@ -16,20 +17,20 @@ export function paneGeneral(
             // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
             ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
         ]) as Record<I18N_LANGS, string>;
-        new Setting(paneEl).autoWireDropDown("displayLanguage", {
+        renderObsidianSetting(paneEl, "displayLanguage", {
             options: languages,
         });
         this.addOnSaved("displayLanguage", () => this.display());
-        new Setting(paneEl).autoWireToggle("showStatusOnEditor");
+        renderObsidianSetting(paneEl, "showStatusOnEditor");
         this.addOnSaved("showStatusOnEditor", () => {
             eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
         });
-        new Setting(paneEl).autoWireToggle("showOnlyIconsOnEditor", {
+        renderObsidianSetting(paneEl, "showOnlyIconsOnEditor", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)),
         });
-        new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
-        new Setting(paneEl).autoWireToggle("hideFileWarningNotice");
-        new Setting(paneEl).autoWireDropDown("networkWarningStyle", {
+        renderObsidianSetting(paneEl, "showStatusOnStatusbar");
+        renderObsidianSetting(paneEl, "hideFileWarningNotice");
+        renderObsidianSetting(paneEl, "networkWarningStyle", {
             options: {
                 [NetworkWarningStyles.BANNER]: "Show full banner",
                 [NetworkWarningStyles.ICON]: "Show icon only",
@@ -43,9 +44,9 @@ export function paneGeneral(
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
-        new Setting(paneEl).autoWireToggle("lessInformationInLog");
+        renderObsidianSetting(paneEl, "lessInformationInLog");
 
-        new Setting(paneEl).autoWireToggle("showVerboseLog", {
+        renderObsidianSetting(paneEl, "showVerboseLog", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)),
         });
     });

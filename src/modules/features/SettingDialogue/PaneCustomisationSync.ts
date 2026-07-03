@@ -1,6 +1,7 @@
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { enableOnly, visibleOnly } from "./SettingPane.ts";
 export function paneCustomisationSync(
@@ -35,27 +36,27 @@ export function paneCustomisationSync(
             visibleOnly(() => this.isConfiguredAs("usePluginSync", true))
         );
 
-        new Setting(paneEl).autoWireText("deviceAndVaultName", {
+        renderObsidianSetting(paneEl, "deviceAndVaultName", {
             placeHolder: "desktop",
             onUpdate: enableOnlyOnPluginSyncIsNotEnabled,
         });
 
-        new Setting(paneEl).autoWireToggle("usePluginSyncV2");
+        renderObsidianSetting(paneEl, "usePluginSyncV2");
 
-        new Setting(paneEl).autoWireToggle("usePluginSync", {
+        renderObsidianSetting(paneEl, "usePluginSync", {
             onUpdate: enableOnly(() => !this.isConfiguredAs("deviceAndVaultName", "")),
         });
 
-        new Setting(paneEl).autoWireToggle("autoSweepPlugins", {
+        renderObsidianSetting(paneEl, "autoSweepPlugins", {
             onUpdate: visibleOnlyOnPluginSyncEnabled,
         });
 
-        new Setting(paneEl).autoWireToggle("autoSweepPluginsPeriodic", {
+        renderObsidianSetting(paneEl, "autoSweepPluginsPeriodic", {
             onUpdate: visibleOnly(
                 () => this.isConfiguredAs("usePluginSync", true) && this.isConfiguredAs("autoSweepPlugins", true)
             ),
         });
-        new Setting(paneEl).autoWireToggle("notifyPluginOrSettingUpdated", {
+        renderObsidianSetting(paneEl, "notifyPluginOrSettingUpdated", {
             onUpdate: visibleOnlyOnPluginSyncEnabled,
         });
 

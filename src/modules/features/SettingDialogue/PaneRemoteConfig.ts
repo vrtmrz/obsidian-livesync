@@ -10,6 +10,7 @@ import {
 import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@lib/common/i18n.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 // import { visibleOnly } from "./SettingPane.ts";
@@ -674,7 +675,7 @@ export function paneRemoteConfig(
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification"), () => {}).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
     });
 
     // new Setting(paneEl).setClass("wizardOnly").addButton((button) =>

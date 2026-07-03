@@ -1,41 +1,37 @@
 import { ChunkAlgorithmNames } from "@lib/common/types.ts";
-import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 
 export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Memory cache").then((paneEl) => {
-        new Setting(paneEl).autoWireNumeric("hashCacheMaxCount", { clampMin: 10 });
-        // new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
+        renderObsidianSetting(paneEl, "hashCacheMaxCount", { clampMin: 10 });
+        // renderObsidianSetting(paneEl, "hashCacheMaxAmount", { clampMin: 1 });
     });
     void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
         const items = ChunkAlgorithmNames;
-        new Setting(paneEl).autoWireDropDown("chunkSplitterVersion", {
+        renderObsidianSetting(paneEl, "chunkSplitterVersion", {
             options: items,
         });
-        new Setting(paneEl).autoWireNumeric("customChunkSize", { clampMin: 0, acceptZero: true });
+        renderObsidianSetting(paneEl, "customChunkSize", { clampMin: 0, acceptZero: true });
     });
 
     void addPanel(paneEl, "Transfer Tweak").then((paneEl) => {
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("readChunksOnline", { onUpdate: this.onlyOnCouchDB });
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("useOnlyLocalChunk", { onUpdate: this.onlyOnCouchDB });
+        renderObsidianSetting(paneEl, "readChunksOnline", { onUpdate: this.onlyOnCouchDB }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "useOnlyLocalChunk", { onUpdate: this.onlyOnCouchDB }).setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("concurrencyOfReadChunksOnline", {
+        renderObsidianSetting(paneEl, "concurrencyOfReadChunksOnline", {
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
-        });
+        }).setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("minimumIntervalOfReadChunksOnline", {
+        renderObsidianSetting(paneEl, "minimumIntervalOfReadChunksOnline", {
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
-        });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("autoAcceptCompatibleTweak");
+        }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "autoAcceptCompatibleTweak").setClass("wizardHidden");
         // new Setting(paneEl)
         //     .setClass("wizardHidden")
         //     .autoWireToggle("sendChunksBulk", { onUpdate: onlyOnCouchDB })

@@ -4,6 +4,7 @@ import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { mount } from "svelte";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
@@ -46,12 +47,12 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                 },
             },
         });
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("syncMaxSizeInMB", { clampMin: 0 });
+        renderObsidianSetting(paneEl, "syncMaxSizeInMB", { clampMin: 0 }).setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("useIgnoreFiles");
-        new Setting(paneEl).setClass("wizardHidden").autoWireTextArea("ignoreFiles", {
+        renderObsidianSetting(paneEl, "useIgnoreFiles").setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "ignoreFiles", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("useIgnoreFiles", true)),
-        });
+        }).setClass("wizardHidden");
     });
     void addPanel(paneEl, "Hidden Files", undefined, undefined, LEVEL_ADVANCED).then((paneEl) => {
         const targetPatternSetting = new Setting(paneEl)

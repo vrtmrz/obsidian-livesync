@@ -7,6 +7,7 @@ import {
 } from "@lib/common/types.ts";
 import { Logger } from "@lib/common/logger.ts";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
+import { addObsidianApplyButton, renderObsidianApplyButton, renderObsidianSetting } from "./ObsidianSettingRenderer.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
@@ -16,17 +17,17 @@ import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("deleteMetadataOfDeletedFiles");
+        renderObsidianSetting(paneEl, "deleteMetadataOfDeletedFiles").setClass("wizardHidden");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", {
+        renderObsidianSetting(paneEl, "automaticallyDeleteMetadataOfDeletedFiles", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("deleteMetadataOfDeletedFiles", true)),
-        });
+        }).setClass("wizardHidden");
     });
 
     void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
+        renderObsidianSetting(paneEl, "disableMarkdownAutoMerge").setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "writeDocumentsIfConflicted").setClass("wizardHidden");
     });
 
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
@@ -113,18 +114,18 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 });
             }
         }
-        new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
     });
 
     void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
+        renderObsidianSetting(paneEl, "watchInternalFileChanges", { invert: true });
     });
     void addPanel(paneEl, "Compatibility (Remote Database)").then((paneEl) => {
-        new Setting(paneEl).autoWireDropDown("E2EEAlgorithm", {
+        renderObsidianSetting(paneEl, "E2EEAlgorithm", {
             options: E2EEAlgorithmNames,
         });
     });
-    new Setting(paneEl).autoWireToggle("useDynamicIterationCount", {
+    renderObsidianSetting(paneEl, "useDynamicIterationCount", {
         holdValue: true,
         onUpdate: visibleOnly(
             () =>
@@ -134,16 +135,15 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     });
 
     void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
-        new Setting(paneEl)
-            .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
-            .addApplyButton(["additionalSuffixOfDatabaseName"]);
+        renderObsidianSetting(paneEl, "additionalSuffixOfDatabaseName");
+        renderObsidianApplyButton(paneEl, "database-suffix");
 
         this.addOnSaved("additionalSuffixOfDatabaseName", async (key) => {
             Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
             await this.services.databaseEvents.initialiseDatabase();
         });
 
-        new Setting(paneEl).autoWireDropDown("hashAlg", {
+        renderObsidianSetting(paneEl, "hashAlg", {
             options: {
                 "": "Old Algorithm",
                 xxhash32: "xxhash32 (Fast but less collision resistance)",
@@ -157,15 +157,15 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         });
     });
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
-        new Setting(paneEl).autoWireToggle("processSizeMismatchedFiles");
+        renderObsidianSetting(paneEl, "doNotSuspendOnFetching");
+        renderObsidianSetting(paneEl, "doNotDeleteFolder").setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "processSizeMismatchedFiles");
     });
 
     void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("disableWorkerForGeneratingChunks");
+        renderObsidianSetting(paneEl, "disableWorkerForGeneratingChunks");
 
-        new Setting(paneEl).autoWireToggle("processSmallFilesInUIThread", {
+        renderObsidianSetting(paneEl, "processSmallFilesInUIThread", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("disableWorkerForGeneratingChunks", false)),
         });
     });
@@ -173,11 +173,11 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     // new Setting(paneEl).autoWireToggle("useRequestAPI");
     // });
     void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
+        renderObsidianSetting(paneEl, "disableCheckingConfigMismatch");
     });
     void addPanel(paneEl, "Remediation").then((paneEl) => {
         let dateEl: HTMLSpanElement;
-        new Setting(paneEl)
+        const remediationSetting = new Setting(paneEl)
             .addText((text) => {
                 const updateDateText = () => {
                     if (this.editingSettings.maxMTimeForReflectEvents == 0) {
@@ -212,8 +212,8 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 updateDateText();
                 return text;
             })
-            .setAuto("maxMTimeForReflectEvents")
-            .addApplyButton(["maxMTimeForReflectEvents"]);
+            .setAuto("maxMTimeForReflectEvents");
+        addObsidianApplyButton(remediationSetting, "remediation-reflect-events");
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
             const buttons = ["Restart Now", "Later"] as const;
@@ -240,6 +240,6 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         //     .setClass("wizardHidden");
         // new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
 
-        new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
+        renderObsidianSetting(paneEl, "enableCompression").setClass("wizardHidden");
     });
 }
