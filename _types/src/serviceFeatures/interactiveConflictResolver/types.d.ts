@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { NecessaryObsidianServices } from "@/types.ts";
 /**
  * A union of service keys required by the interactive conflict resolver feature.

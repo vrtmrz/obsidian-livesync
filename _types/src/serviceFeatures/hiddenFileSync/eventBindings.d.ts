@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { FilePath, FilePathWithPrefix, LoadedEntry } from "@lib/common/types.ts";
 import type { LogFunction } from "@lib/services/lib/logUtils";
 import type { HiddenFileSyncHost } from "./types.ts";

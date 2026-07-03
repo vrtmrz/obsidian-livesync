@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import type { FilePathWithPrefix, LoadedEntry, MetaEntry, DocumentID } from "@lib/common/types.ts";
 import type { LogFunction } from "@lib/services/lib/logUtils";

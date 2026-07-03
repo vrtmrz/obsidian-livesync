@@ -340,15 +340,28 @@ export type MapLike<K, V> = {
     get(key: K): V | undefined;
     has(key: K): boolean;
     keys: () => IterableIterator<K>;
+    flush?: () => Promise<void>;
     get size(): number;
 };
 
 export async function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string): Promise<MapLike<K, V>> {
     const savedData = (await db.get<Map<K, V>>(mapKey)) ?? new Map<K, V>();
+    let dirty = false;
+    const commitNow = async () => {
+        if (!dirty) return;
+        dirty = false;
+        try {
+            await db.set(mapKey, savedData);
+        } catch (ex) {
+            dirty = true;
+            throw ex;
+        }
+    };
     const _commit = () => {
+        dirty = true;
         try {
             scheduleTask("commit-map-save-" + mapKey, 250, async () => {
-                await db.set(mapKey, savedData);
+                await commitNow();
             });
         } catch {
             // NO OP.
@@ -382,6 +395,9 @@ export async function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string):
         },
         keys() {
             return savedData.keys();
+        },
+        async flush() {
+            await commitNow();
         },
         get size() {
             return savedData.size;

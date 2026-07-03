@@ -123,7 +123,14 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
     }
 
     registerWindow<T>(type: string, factory: (leaf: T) => unknown): void {
-        return this.context.plugin.registerView(type, factory as ViewCreator);
+        try {
+            return this.context.plugin.registerView(type, factory as ViewCreator);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes(`existing view type "${type}"`)) {
+                return;
+            }
+            throw error;
+        }
     }
 
     addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => unknown): HTMLElement {

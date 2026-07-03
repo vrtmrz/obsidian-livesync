@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
 /**
  * Adapter interface for converting platform-specific file types to UX types

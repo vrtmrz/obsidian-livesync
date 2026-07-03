@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { NecessaryObsidianServices } from "@/types.ts";
 export type HiddenFileSyncServices = "API" | "appLifecycle" | "setting" | "vault" | "path" | "database" | "databaseEvents" | "fileProcessing" | "keyValueDB" | "replication" | "conflict" | "control";
 export type HiddenFileSyncModules = "storageAccess" | "fileHandler";

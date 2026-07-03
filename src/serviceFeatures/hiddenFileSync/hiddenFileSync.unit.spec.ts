@@ -97,6 +97,9 @@ const createAppLifecycleMock = () => {
     return {
         isReady: vi.fn(() => true),
         isSuspended: vi.fn(() => false),
+        onBeforeUnload: createEventMock(),
+        onUnload: createEventMock(),
+        onSuspending: createEventMock(),
     };
 };
 
@@ -446,10 +449,11 @@ describe("Hidden File Synchronisation - Commands", () => {
             scanAllStorageChanges: vi.fn(async () => true),
             scanAllDatabaseChanges: vi.fn(async () => true),
             applyOfflineChanges: vi.fn(async () => {}),
+            resolveConflicts: vi.fn(async () => {}),
         };
 
         registerHiddenFileSyncCommands(host as any, handlers);
-        expect(host.services.API.addCommand).toHaveBeenCalledTimes(4);
+        expect(host.services.API.addCommand).toHaveBeenCalledTimes(5);
 
         // Test one command callback
         const calls = (host.services.API.addCommand as any).mock.calls;

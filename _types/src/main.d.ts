@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { Plugin, type App, type PluginManifest } from "./deps";
 import type { LiveSyncCore } from "./types.ts";
 export type { LiveSyncCore, NecessaryObsidianFeature, ObsidianServiceFeatureFunction } from "./types.ts";

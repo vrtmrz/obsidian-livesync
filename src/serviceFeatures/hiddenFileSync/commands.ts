@@ -8,6 +8,7 @@ export function registerHiddenFileSyncCommands(
         scanAllStorageChanges: (showNotice: boolean) => Promise<boolean>;
         scanAllDatabaseChanges: (showNotice: boolean) => Promise<boolean>;
         applyOfflineChanges: (showNotice: boolean) => Promise<void>;
+        resolveConflicts: (showNotice: boolean) => Promise<void>;
     }
 ) {
     host.services.API.addCommand({
@@ -15,7 +16,7 @@ export function registerHiddenFileSyncCommands(
         name: "(re)initialise hidden files between storage and database",
         callback: () => {
             if (handlers.isReady()) {
-                void handlers.initialiseInternalFileSync("safe", true);
+                return handlers.initialiseInternalFileSync("safe", true);
             }
         },
     });
@@ -25,7 +26,7 @@ export function registerHiddenFileSyncCommands(
         name: "Scan hidden file changes on the storage",
         callback: () => {
             if (handlers.isReady()) {
-                void handlers.scanAllStorageChanges(true);
+                return handlers.scanAllStorageChanges(true);
             }
         },
     });
@@ -35,7 +36,7 @@ export function registerHiddenFileSyncCommands(
         name: "Scan hidden file changes on the local database",
         callback: () => {
             if (handlers.isReady()) {
-                void handlers.scanAllDatabaseChanges(true);
+                return handlers.scanAllDatabaseChanges(true);
             }
         },
     });
@@ -45,7 +46,17 @@ export function registerHiddenFileSyncCommands(
         name: "Scan and apply all offline hidden-file changes",
         callback: () => {
             if (handlers.isReady()) {
-                void handlers.applyOfflineChanges(true);
+                return handlers.applyOfflineChanges(true);
+            }
+        },
+    });
+
+    host.services.API.addCommand({
+        id: "livesync-resolveinternal-conflicts",
+        name: "Resolve hidden file conflicts",
+        callback: () => {
+            if (handlers.isReady()) {
+                return handlers.resolveConflicts(true);
             }
         },
     });

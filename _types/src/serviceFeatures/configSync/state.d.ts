@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import type { PluginDialogModal } from "@/features/ConfigSync/PluginDialogModal.ts";

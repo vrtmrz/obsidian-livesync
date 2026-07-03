@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { PeriodicProcessor } from "@/common/PeriodicProcessor";
 import { type NecessaryObsidianFeature } from "@/types";
 export type PeriodicReplicationHost = NecessaryObsidianFeature<"appLifecycle" | "setting" | "replication" | "control" | "API">;

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { TweakValuesShouldMatchedTemplate, type TweakValues, type ObsidianLiveSyncSettings, type RemoteDBSettings } from "@lib/common/types.ts";
 import type { NecessaryObsidianFeature } from "@/types";
 import { type LogFunction } from "@lib/services/lib/logUtils";

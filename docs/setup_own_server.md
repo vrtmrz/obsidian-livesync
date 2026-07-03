@@ -23,6 +23,7 @@
     - [Setting up your domain](#setting-up-your-domain)
   - [Reverse Proxies](#reverse-proxies)
     - [Traefik](#traefik)
+    - [Nginx](#nginx)
 ---
 
 ## 1. Prepare CouchDB

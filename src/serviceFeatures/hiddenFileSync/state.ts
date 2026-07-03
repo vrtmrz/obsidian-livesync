@@ -3,6 +3,7 @@ import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import type { FilePathWithPrefix } from "@lib/common/types.ts";
 import type { CustomRegExp } from "@lib/common/utils.ts";
+import type { MapLike } from "@/common/utils.ts";
 
 /**
  * Represents the mutable runtime state for the hidden file synchronisation module.
@@ -11,13 +12,13 @@ export interface HiddenFileSyncState {
     /** Processor for executing periodic internal/hidden file scanning. */
     periodicInternalFileScanProcessor: PeriodicProcessor | undefined;
     /** Map tracking the last processed file key for each local file path. */
-    _fileInfoLastProcessed: Map<string, string>;
+    _fileInfoLastProcessed: MapLike<string, string>;
     /** Map tracking the last known modification timestamp for each local file path. */
-    _fileInfoLastKnown: Map<string, number>;
+    _fileInfoLastKnown: MapLike<string, number>;
     /** Map tracking the last processed database document key for each path. */
-    _databaseInfoLastProcessed: Map<string, string>;
+    _databaseInfoLastProcessed: MapLike<string, string>;
     /** Map tracking the last known database document timestamp for each path. */
-    _databaseInfoLastKnown: Map<string, number>;
+    _databaseInfoLastKnown: MapLike<string, number>;
     /** Unused map for tracking deleted files. */
     _databaseInfoLastDeleted: Map<string, string>;
     /** Unused map for tracking deleted file timestamps. */

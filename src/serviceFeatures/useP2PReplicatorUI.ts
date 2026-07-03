@@ -157,6 +157,9 @@ export function useP2PReplicatorUI(
         if (api.getPlatform() !== "obsidian") {
             return Promise.resolve(true);
         }
+        if (!host.services.database.localDatabaseDirect?.isReady) {
+            return Promise.resolve(true);
+        }
         if (api.showWindowOnRight) {
             void api.showWindowOnRight(VIEW_TYPE_P2P_SERVER_STATUS);
         } else {

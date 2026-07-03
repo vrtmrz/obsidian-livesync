@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 export declare const SETTING_HEADER = "````yaml:livesync-setting\n";
 export declare const SETTING_FOOTER = "\n````";

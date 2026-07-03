@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { TAbstractFile } from "@/deps.ts";
 import { type AnyEntry, type CouchDBCredentials, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix, type UXFileInfo, type UXFileInfoStub } from "@lib/common/types.ts";
 export { ICHeader, ICXHeader } from "./types.ts";
@@ -54,6 +54,7 @@ export type MapLike<K, V> = {
     get(key: K): V | undefined;
     has(key: K): boolean;
     keys: () => IterableIterator<K>;
+    flush?: () => Promise<void>;
     get size(): number;
 };
 export declare function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string): Promise<MapLike<K, V>>;

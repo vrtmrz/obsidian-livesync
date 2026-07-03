@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { type LOG_LEVEL } from "@lib/common/types.ts";
 import type { LogFeatureHost } from "./types.ts";
 import type { LogFeatureState } from "./state.ts";

@@ -24,9 +24,73 @@ export const SIMPLE_FETCH_STAGE2_NEWER_CLEANUP = "Delete local files if deleted 
 export const SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL = "Keep local files even if deleted on remote";
 export const STAGE2_ABORT = "Cancel all and reboot";
 
+const SIMPLE_FETCH_MODE_KEY = "simple-fetch-mode";
+
+function buildSimpleFetchResult(stage1: string, stage2?: string) {
+    if (stage1 === SIMPLE_FETCH_STAGE1_LEGACY) {
+        return { mode: "legacy", options: {} };
+    }
+    if (stage1 === SIMPLE_FETCH_STAGE1_REMOTE_WINS && stage2) {
+        if (![SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL, SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE].includes(stage2)) {
+            return undefined;
+        }
+        return {
+            mode: "remote-only",
+            options: {
+                mode: FullScanModes.DB_APPLY,
+                extraOnRemote:
+                    stage2 === SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL ? ExtraOnRemote.DELETE_LOCAL_MISSING : undefined,
+            },
+        };
+    }
+    if (stage1 === SIMPLE_FETCH_STAGE1_NEWER_WINS && stage2) {
+        if (![SIMPLE_FETCH_STAGE2_NEWER_CLEANUP, SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL].includes(stage2)) {
+            return undefined;
+        }
+        return {
+            mode: "newer-wins",
+            options: {
+                mode: FullScanModes.NEWER_WINS,
+                extraOnLocal:
+                    stage2 === SIMPLE_FETCH_STAGE2_NEWER_CLEANUP
+                        ? ExtraOnLocal.DELETE_DB_DELETED
+                        : ExtraOnLocal.APPEND_STORAGE_ONLY,
+            },
+        };
+    }
+    return undefined;
+}
+
+function rememberSimpleFetchMode(host: NecessaryServices<"setting", never>, stage1: string, stage2?: string) {
+    host.services.setting.setSmallConfig(SIMPLE_FETCH_MODE_KEY, JSON.stringify({ stage1, stage2 }));
+}
+
+function getRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
+    const saved = host.services.setting.getSmallConfig(SIMPLE_FETCH_MODE_KEY);
+    if (!saved) return undefined;
+    try {
+        const { stage1, stage2 } = JSON.parse(saved) as { stage1?: string; stage2?: string };
+        if (stage1) {
+            const remembered = buildSimpleFetchResult(stage1, stage2);
+            if (remembered) return remembered;
+        }
+    } catch {
+        // Clear below; the saved choice is optional and can be rebuilt by asking again.
+    }
+    host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
+    return undefined;
+}
+
+function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
+    host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
+}
+
 export async function askSimpleFetchMode(
-    host: NecessaryServices<"UI" | "vault", "storageAccess">
+    host: NecessaryServices<"UI" | "setting", never>
 ): Promise<{ mode: string; options: Partial<FullScanOptions> } | "cancelled" | "aborted"> {
+    const remembered = getRememberedSimpleFetchMode(host);
+    if (remembered) return remembered;
+
     const msg = `We are about to retrieve the remote data.
 
 Firstly, how shall we handle the data retrieved from this remote server?
@@ -55,7 +119,7 @@ Firstly, how shall we handle the data retrieved from this remote server?
     if (!stage1 || stage1 === SIMPLE_FETCH_STAGE1_CANCEL) return "cancelled";
 
     if (stage1 === SIMPLE_FETCH_STAGE1_LEGACY) {
-        return { mode: "legacy", options: {} };
+        return buildSimpleFetchResult(stage1)!;
     }
 
     if (stage1 === SIMPLE_FETCH_STAGE1_REMOTE_WINS) {
@@ -77,14 +141,8 @@ Firstly, how shall we handle the data retrieved from this remote server?
         if (stage2 === STAGE2_ABORT) {
             return "aborted";
         }
-        return {
-            mode: "remote-only",
-            options: {
-                mode: FullScanModes.DB_APPLY,
-                extraOnRemote:
-                    stage2 === SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL ? ExtraOnRemote.DELETE_LOCAL_MISSING : undefined,
-            },
-        };
+        rememberSimpleFetchMode(host, stage1, stage2);
+        return buildSimpleFetchResult(stage1, stage2)!;
     }
 
     if (stage1 === SIMPLE_FETCH_STAGE1_NEWER_WINS) {
@@ -107,16 +165,8 @@ Firstly, how shall we handle the data retrieved from this remote server?
         if (stage2 === STAGE2_ABORT) {
             return "aborted";
         }
-        return {
-            mode: "newer-wins",
-            options: {
-                mode: FullScanModes.NEWER_WINS,
-                extraOnLocal:
-                    stage2 === SIMPLE_FETCH_STAGE2_NEWER_CLEANUP
-                        ? ExtraOnLocal.DELETE_DB_DELETED
-                        : ExtraOnLocal.APPEND_STORAGE_ONLY,
-            },
-        };
+        rememberSimpleFetchMode(host, stage1, stage2);
+        return buildSimpleFetchResult(stage1, stage2)!;
     }
 
     return "cancelled";
@@ -143,12 +193,14 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
     const result = await askSimpleFetchMode(host);
     if (result === "cancelled") {
         log("Fetch cancelled by user.", LOG_LEVEL_NOTICE);
+        clearRememberedSimpleFetchMode(host);
         await cleanupFlag();
         host.services.appLifecycle.performRestart();
         return false;
     }
     if (result === "aborted") {
         log("Fetch exited by user.", LOG_LEVEL_NOTICE);
+        clearRememberedSimpleFetchMode(host);
         host.services.appLifecycle.performRestart();
         return false;
     }
@@ -191,6 +243,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         }
         await host.serviceModules.rebuilder.finishRebuild();
         await cleanupFlag();
+        clearRememberedSimpleFetchMode(host);
         log("Simple fetch and scan operation completed.", LOG_LEVEL_NOTICE);
         return true;
     });

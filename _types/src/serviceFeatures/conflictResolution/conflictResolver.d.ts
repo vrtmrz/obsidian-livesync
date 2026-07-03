@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import { AUTO_MERGED, MISSING_OR_ERROR, type diff_check_result, type FilePathWithPrefix } from "@lib/common/types";
 import type { NecessaryObsidianFeature } from "@/types";
 declare global {

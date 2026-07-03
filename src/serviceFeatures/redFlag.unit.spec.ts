@@ -85,6 +85,7 @@ const createSettingServiceMock = () => {
         writeLogToTheFile: false,
         remoteType: "CouchDB",
     };
+    const smallConfig = new Map<string, string>();
     return {
         settings,
         currentSettings: vi.fn(() => settings),
@@ -98,6 +99,13 @@ const createSettingServiceMock = () => {
         }),
         suspendAllSync: vi.fn(() => Promise.resolve()),
         suspendExtraSync: vi.fn(() => Promise.resolve()),
+        getSmallConfig: vi.fn((key: string) => smallConfig.get(key) ?? ""),
+        setSmallConfig: vi.fn((key: string, value: string) => {
+            smallConfig.set(key, value);
+        }),
+        deleteSmallConfig: vi.fn((key: string) => {
+            smallConfig.delete(key);
+        }),
     };
 };
 
@@ -739,6 +747,39 @@ describe("Red Flag Feature", () => {
     });
 
     describe("askAndPerformFastSetupOnScheduledFetchAll", () => {
+        it("should remember quick flow choices while the scheduled fetch is pending", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_NEWER_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue({ batchSave: false } as any);
+            host.mocks.rebuilder.$fetchLocalDBFast.mockRejectedValueOnce(new Error("offline"));
+
+            await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
+            await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
+
+            expect(host.mocks.ui.confirm.confirmWithMessage).toHaveBeenCalledTimes(2);
+            expect(host.mocks.rebuilder.$fetchLocalDBFast).toHaveBeenCalledTimes(2);
+        });
+
+        it("should clear remembered quick flow choices after completion", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue({ batchSave: false } as any);
+
+            await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
+
+            expect(host.mocks.setting.deleteSmallConfig).toHaveBeenCalledWith("simple-fetch-mode");
+        });
+
         it("should return false and cleanup when quick flow is cancelled", async () => {
             const host = createHostMock();
             const log = createLoggerMock();

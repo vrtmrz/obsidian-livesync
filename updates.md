@@ -3,6 +3,29 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## 0.25.79
+
+29th June, 2026
+
+### Fixed
+
+- Fast Fetch now retries transient stream interruptions and resumes from the latest persisted checkpoint, instead of starting over after ordinary network or platform interruptions (#977, PR #978; commonlib PR #59). Thank you so much for @apple-ouyang for the fix!
+- Simple Fetch now remembers the selected setup choices while an interrupted Fetch All operation is still pending, so users are not asked the same questions again on retry (#977, PR #978). Thank you so much for @apple-ouyang for the fix!
+- No longer hidden storage events, such as `.git` paths, reach the normal target-file filter when internal file synchronisation is disabled. This avoids noisy non-target logs before those files are skipped (commonlib PR #60). Thank you so much for @apple-ouyang for the fix!
+- Fixed an issue where a file deleted from storage could be resurrected by the offline scanner because the database tombstone was not written when the storage file was already gone (commonlib PR #56). Thank you so much for @cosmic-fire-eng for the fix!
+
+### Improved
+
+- Local database maintenance commands now ask before applying the required chunk settings, and can apply those prerequisites before continuing (#980, PR #981). Thank you so much for @apple-ouyang for the improvement!
+- Improved CouchDB replication event handling by using the new `StreamInbox` helper from `octagonal-wheels` (commonlib PR #62).
+
+### Documentation
+
+- Added `nginx` to the setup documentation table of contents (PR #976). Thank you so much for @kiraventom for the improvement!
+
+### Miscellaneous
+
+- Updated `octagonal-wheels` to `0.1.47` across the plug-in and workspace packages to use the newly published helper modules.
 
 ## 0.25.78
 
