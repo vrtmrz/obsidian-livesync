@@ -1,4 +1,9 @@
-import { pickBucketSyncSettings, pickCouchDBSyncSettings, pickP2PSyncSettings } from "@lib/common/utils.ts";
+import {
+    pickBucketSyncSettings,
+    pickCouchDBSyncSettings,
+    pickP2PSyncSettings,
+    pickWebDAVSyncSettings,
+} from "@lib/common/utils.ts";
 import type { ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 
 // Keep the setting dialogue buffer aligned with the current core settings before persisting other dirty keys.
@@ -13,5 +18,6 @@ export function syncActivatedRemoteSettings(
         ...pickBucketSyncSettings(source),
         ...pickCouchDBSyncSettings(source),
         ...pickP2PSyncSettings(source),
+        ...pickWebDAVSyncSettings(source),
     });
 }

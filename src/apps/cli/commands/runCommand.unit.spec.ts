@@ -4,7 +4,7 @@ import * as os from "os";
 import * as processSetting from "@lib/API/processSetting";
 import { ConnectionStringParser } from "@lib/common/ConnectionString";
 import { configURIBase } from "@lib/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@lib/common/types";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P, REMOTE_WEBDAV } from "@lib/common/types";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
@@ -203,6 +203,22 @@ const protocolFixtures: ProtocolFixture[] = [
             expect(settings.P2P_passphrase).toBe("pass-123");
             expect(settings.P2P_relays).toBe("wss://relay.example");
             expect(settings.P2P_AppID).toBe("self-hosted-livesync");
+        },
+    },
+    {
+        protocol: "webdav",
+        connectionString: ConnectionStringParser.serialize({
+            type: "webdav",
+            settings: {
+                webDAVactiveConnectionURI:
+                    "sls+webdav://user:pass@webdav.example.com/dav?prefix=vault%2F&headers=x-test%3A1&useProxy=true",
+            },
+        }),
+        assertProjectedFields: (settings) => {
+            expect(settings.remoteType).toBe(REMOTE_WEBDAV);
+            expect(settings.webDAVactiveConnectionURI).toBe(
+                "sls+webdav://user:pass@webdav.example.com/dav?prefix=vault%2F&headers=x-test%3A1&useProxy=true"
+            );
         },
     },
 ];
@@ -563,6 +579,10 @@ describe("runCommand abnormal cases", () => {
         [
             "p2p",
             "sls+p2p://room-abc?passphrase=pass-123&relays=wss%3A%2F%2Frelay.example&appId=self-hosted-livesync",
+        ] as const,
+        [
+            "webdav",
+            "sls+webdav://user:pass@webdav.example.com/dav?prefix=vault%2F&headers=x-test%3A1&useProxy=true",
         ] as const,
     ])("remote command round-trip works for %s", async (_protocol, initialConnStr) => {
         const core = createCoreMock();

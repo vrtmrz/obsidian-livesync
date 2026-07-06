@@ -3,6 +3,13 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### Experimental
+
+- Added experimental WebDAV support for Journal synchronisation storage, including setup dialogue integration. This is currently a proof of concept for injecting Journal storage backends through the replication layer, and should be treated as an implementation experiment rather than a fully supported setup flow.
+- Hardened the WebDAV Journal storage proof of concept by centralising Journal storage adapter selection, improving connection checks, masking remote configuration descriptions, and verifying the Docker WebDAV integration path.
+
 ## 0.25.79
 
 29th June, 2026

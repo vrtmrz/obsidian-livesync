@@ -12,6 +12,7 @@ import {
     LEVEL_ADVANCED,
     LEVEL_EDGE_CASE,
     REMOTE_P2P,
+    isJournalRemoteType,
 } from "@lib/common/types.ts";
 import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
 import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
@@ -64,7 +65,7 @@ import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
-import { MinioStorageAdapter } from "@lib/replication/journal/objectstore/MinioStorageAdapter.js";
+import { createJournalStorageAdapter } from "@lib/replication/journal/objectstore/JournalStorageAdapterFactory.js";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -530,6 +531,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         ({
             visibility: this.isConfiguredAs("remoteType", REMOTE_MINIO),
         }) as OnUpdateResult;
+    onlyOnJournalSync = () =>
+        ({
+            visibility: isJournalRemoteType(this.editingSettings.remoteType),
+        }) as OnUpdateResult;
     onlyOnOnlyP2P = () =>
         ({
             visibility: this.isConfiguredAs("remoteType", REMOTE_P2P),
@@ -537,11 +542,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     onlyOnCouchDBOrMinIO = () =>
         ({
             visibility:
-                this.isConfiguredAs("remoteType", REMOTE_COUCHDB) || this.isConfiguredAs("remoteType", REMOTE_MINIO),
+                this.isConfiguredAs("remoteType", REMOTE_COUCHDB) ||
+                isJournalRemoteType(this.editingSettings.remoteType),
         }) as OnUpdateResult;
     // E2EE Function
     checkWorkingPassphrase = async (): Promise<boolean> => {
-        if (this.editingSettings.remoteType == REMOTE_MINIO) return true;
+        if (isJournalRemoteType(this.editingSettings.remoteType)) {
+            return true;
+        }
 
         const settingForCheck: RemoteDBSettings = {
             ...this.editingSettings,
@@ -856,7 +864,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.core.settings,
             this.core.simpleStore,
             this.core,
-            new MinioStorageAdapter(this.core.settings, this.core)
+            createJournalStorageAdapter(this.core.settings, this.core)
         );
     }
     async resetRemoteBucket() {

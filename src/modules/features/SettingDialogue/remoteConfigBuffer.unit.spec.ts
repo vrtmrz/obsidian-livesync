@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO } from "@lib/common/types";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_WEBDAV } from "@lib/common/types";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer";
 
 describe("syncActivatedRemoteSettings", () => {
@@ -79,5 +79,26 @@ describe("syncActivatedRemoteSettings", () => {
         expect(target.couchDB_USER).toBe("current-user");
         expect(target.couchDB_PASSWORD).toBe("current-pass");
         expect(target.couchDB_DBNAME).toBe("current-db");
+    });
+
+    it("should copy active WebDAV connection URI into the editing buffer", () => {
+        const target = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_COUCHDB,
+            activeConfigurationId: "old-remote",
+            webDAVactiveConnectionURI: "",
+        };
+        const source = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_WEBDAV,
+            activeConfigurationId: "remote-webdav",
+            webDAVactiveConnectionURI: "sls+webdav://user:pass@example.com/dav?prefix=vault%2F",
+        };
+
+        syncActivatedRemoteSettings(target, source);
+
+        expect(target.remoteType).toBe(REMOTE_WEBDAV);
+        expect(target.activeConfigurationId).toBe("remote-webdav");
+        expect(target.webDAVactiveConnectionURI).toBe("sls+webdav://user:pass@example.com/dav?prefix=vault%2F");
     });
 });

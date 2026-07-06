@@ -153,7 +153,7 @@ Show verbose log. Please enable when you report the logs
 Self-hosted LiveSync supports multiple remote connection profiles under **Remote Server** -> **Remote Databases**. This allows you to save and switch between multiple databases or bucket configurations in a single vault.
 
 - **➕ Add new connection**: Create a new connection profile by launching the setup dialogue.
-- **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+p2p://...`) to import a remote configuration profile.
+- **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+webdav://...`, `sls+p2p://...`) to import a remote configuration profile.
 - **🔧 Configure**: Open the setup dialogue to edit settings for the selected connection profile.
 - **✅ Activate**: Select and activate this profile as the current active remote.
 - **🗑️ Delete**: Remove this connection profile from the list.
@@ -163,6 +163,12 @@ Self-hosted LiveSync supports multiple remote connection profiles under **Remote
 Setting key: remoteType
 
 The active remote server type. This is automatically projected to the legacy configuration when you activate a connection profile.
+
+#### WebDAV Connection URI (Experimental)
+
+Setting key: webDAVactiveConnectionURI
+
+The active WebDAV connection URI used by experimental Journal synchronisation storage. This is configured in the **WebDAV Configuration** setup dialogue as a single `sls+webdav://...` URI. Optional query parameters include `prefix`, `useProxy=true`, and `insecure=true` for local HTTP testing. This feature is still a proof of concept for pluggable Journal storage backends and should be treated as experimental.
 
 ### 2. Notification
 

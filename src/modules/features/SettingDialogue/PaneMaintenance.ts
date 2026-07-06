@@ -163,7 +163,7 @@ export function paneMaintenance(
                         Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournalSync);
 
         new Setting(paneEl)
             .setName("Reset journal sent history")
@@ -185,7 +185,7 @@ export function paneMaintenance(
                         Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournalSync);
     });
     void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
         new Setting(paneEl)
@@ -336,7 +336,7 @@ export function paneMaintenance(
                         Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournalSync);
 
         new Setting(paneEl)
             .setName("Purge all journal counter")
@@ -351,7 +351,7 @@ export function paneMaintenance(
                         Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournalSync);
 
         new Setting(paneEl)
             .setName("Fresh Start Wipe")
@@ -374,7 +374,7 @@ export function paneMaintenance(
                         Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournalSync);
     });
 
     void addPanel(paneEl, "Reset").then((paneEl) => {

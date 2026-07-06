@@ -1,4 +1,4 @@
-import { REMOTE_MINIO, type RemoteDBSettings } from "@lib/common/types";
+import { isJournalRemoteType, type RemoteDBSettings } from "@lib/common/types";
 import { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import type { LiveSyncCore } from "@/main";
@@ -7,7 +7,7 @@ import { AbstractModule } from "@/modules/AbstractModule";
 export class ModuleReplicatorMinIO extends AbstractModule {
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {
         const settings = { ...this.settings, ...settingOverride };
-        if (settings.remoteType == REMOTE_MINIO) {
+        if (isJournalRemoteType(settings.remoteType)) {
             return Promise.resolve(new LiveSyncJournalReplicator(this.core));
         }
         return Promise.resolve(false);

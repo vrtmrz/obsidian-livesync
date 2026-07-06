@@ -10,6 +10,7 @@
         TYPE_COUCHDB,
         TYPE_BUCKET,
         TYPE_P2P,
+        TYPE_WEBDAV,
         TYPE_CANCELLED,
         type SetupRemoteResultType,
     } from "./setupDialogTypes";
@@ -26,12 +27,19 @@
             return "Continue to S3/MinIO/R2 setup";
         } else if (userType === TYPE_P2P) {
             return "Continue to Peer-to-Peer only setup";
+        } else if (userType === TYPE_WEBDAV) {
+            return "Continue to WebDAV setup";
         } else {
             return "Please select an option to proceed";
         }
     });
     const canProceed = $derived.by(() => {
-        return userType === TYPE_COUCHDB || userType === TYPE_BUCKET || userType === TYPE_P2P;
+        return (
+            userType === TYPE_COUCHDB ||
+            userType === TYPE_BUCKET ||
+            userType === TYPE_P2P ||
+            userType === TYPE_WEBDAV
+        );
     });
 </script>
 
@@ -45,6 +53,10 @@
         </Option>
         <Option selectedValue={TYPE_BUCKET} title="S3/MinIO/R2 Object Storage" bind:value={userType}>
             Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
+        </Option>
+        <Option selectedValue={TYPE_WEBDAV} title="WebDAV (Experimental)" bind:value={userType}>
+            Experimental synchronisation utilising journal files stored in a WebDAV collection. This is a proof of
+            concept for pluggable Journal storage backends.
         </Option>
         <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
             This feature enables direct synchronisation between devices. No server is required, but both devices must be

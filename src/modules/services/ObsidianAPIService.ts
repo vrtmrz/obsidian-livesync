@@ -147,14 +147,12 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
                 : req instanceof Request && typeof req.method === "string"
                   ? req.method
                   : "GET";
-        if (typeof req !== "string") {
-            if (opts?.body) {
-                body = typeof opts.body === "string" ? opts.body : await new Response(opts.body).arrayBuffer();
-            } else if (req.body) {
-                body = await new Response(req.body).arrayBuffer();
-            }
+        if (opts?.body) {
+            body = typeof opts.body === "string" ? opts.body : await new Response(opts.body).arrayBuffer();
+        } else if (typeof req !== "string" && req.body) {
+            body = await new Response(req.body).arrayBuffer();
         } else {
-            body = opts?.body as string;
+            body = undefined;
         }
         const reqHeaders = new Headers(req instanceof Request ? req.headers : {});
 
