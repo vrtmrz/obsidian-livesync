@@ -14,6 +14,8 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Fixed an issue where applying a newer database entry to storage could incorrectly preserve an older local file as a conflict (#994).
   - Behaviour change:
     - Local storage is preserved as a conflict when it may contain unsynchronised changes that are not represented in the revision history. A newer incoming text entry is applied without creating a conflict only when it clearly extends the existing local text.
+- Fixed an issue where choosing Disable and then Overwrite in Hidden File Sync could silently skip hidden files, because the overwrite setup ran while hidden file synchronisation was still disabled (#989, PR #992).
+  - Hidden File Sync is now re-enabled before the Fetch, Overwrite, or Merge initialisation runs, instead of after it completes. If that initialisation fails, the setting may remain enabled.
 
 ## 0.25.79
 
