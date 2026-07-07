@@ -13,7 +13,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
     - When one side deletes a line and the other side modifies that same line, the conflict is preserved instead of silently choosing one side.
 - Fixed an issue where applying a newer database entry to storage could incorrectly preserve an older local file as a conflict (#994).
   - Behaviour change:
-    - Local storage is preserved as a conflict only when it is actually newer than the incoming database entry and is not already represented in the revision history.
+    - Local storage is preserved as a conflict when it may contain unsynchronised changes that are not represented in the revision history. If the incoming database entry is clearly newer, it is applied to storage instead.
 
 ## 0.25.79
 
