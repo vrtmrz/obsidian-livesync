@@ -3,6 +3,13 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### Fixed
+
+- Fixed an issue where choosing Disable and then Overwrite in Hidden File Sync could silently skip hidden files, because the overwrite setup ran while hidden file synchronisation was still disabled (#989, PR #992).
+  - Hidden File Sync is now re-enabled before the Fetch, Overwrite, or Merge initialisation runs, instead of after it completes. If that initialisation fails, the setting may remain enabled.
+
 ## 0.25.79
 
 29th June, 2026
