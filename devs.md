@@ -148,6 +148,20 @@ Hence, the new feature should be implemented as follows:
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
 - **Common Library** (`src/lib/`): Platform-independent sync logic, shared with other tools
 
+### Conflict Merge Policy
+
+Markdown conflict auto-merge should behave like a conservative three-way merge. The guiding rule is to merge changes when they touch non-overlapping regions, and to keep a manual conflict when the edits overlap semantically.
+
+When in doubt, prefer the safer outcome: preserve data, keep the conflict visible, and ask the user rather than silently discarding content or choosing one side.
+
+- If one side deletes a line and the other side leaves that same line unchanged, treat it as a safe deletion. The deleted line must not be reintroduced into the merged result.
+- If one side inserts new content in a different region while the other side deletes an unchanged old region, preserve the insertion and the deletion.
+- If one side deletes a line and the other side modifies that same line, keep the conflict for user resolution.
+- If both sides insert different content at the same position, keep both insertions in a deterministic order unless the surrounding deletion context indicates that they are competing replacements.
+- Avoid resolving conflicts by simply choosing the newest revision unless the user has explicitly selected that behaviour.
+
+This policy is intentionally aligned with the conflict checkboxes and compatibility settings: automatic merge should remove avoidable prompts, but it must not silently choose between overlapping user intentions.
+
 ### File Structure Conventions
 
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
