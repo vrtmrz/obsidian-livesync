@@ -47,6 +47,10 @@ Available local cases:
 - `p2p-smartphone-vpn-direct`
 - `p2p-user-turn`
 
+Set `BENCH_REPEAT_COUNT` to run each selected case more than once. Repeated
+results are written with suffixes such as `-r01`, `-r02`, and `-r03`, and the
+summary records the repeat index for each run.
+
 `p2p-smartphone-vpn-direct` is a structural case name. When it is run inside
 this Compose package it is not a real smartphone tethering/VPN measurement; it
 uses the local Compose network. Use it only for wiring checks unless the runner
@@ -192,6 +196,41 @@ a unique `BENCH_SPLIT_RUN_ID`:
 ```bash
 docker compose -f test/bench-network/compose.yml --profile p2p-split down --volumes
 ```
+
+## P2P Signalling-Only Emulation
+
+The optional `signalling-shim` profile shapes only the Nostr signalling relay
+path. The P2P host and client run in the benchmark runner as usual, and the
+configured relay URL points at a TCP netem shim in front of `nostr-relay`.
+This is the preferred fixture when evaluating the hypothesis that P2P avoids a
+constrained remote database data path while still depending on a signalling
+server for rendezvous.
+
+```bash
+BENCH_CASES=p2p-signalling-netem-home-wifi \
+docker compose -f test/bench-network/compose.yml --profile signalling-shim run --rm \
+  bench-runner-signalling-shim
+```
+
+For a stricter signalling path:
+
+```bash
+NETEM_PROFILE=tethering-vpn \
+NETEM_DELAY_MS=140 \
+NETEM_JITTER_MS=50 \
+NETEM_LOSS_PERCENT=1.0 \
+NETEM_BANDWIDTH_MBIT=10 \
+NETEM_MTU=1380 \
+BENCH_CASES=p2p-signalling-netem-tethering-vpn \
+docker compose -f test/bench-network/compose.yml --profile signalling-shim run --rm \
+  bench-runner-signalling-shim
+```
+
+Use this separately from `p2p-split`. The `p2p-split` profile shapes each peer's
+egress path, so it constrains both signalling and the selected WebRTC data
+path. The `signalling-shim` profile constrains only relay access, which keeps
+it focused on peer-to-signalling-server reachability rather than peer-to-peer
+note-data transfer.
 
 ## Shimmed CouchDB benchmark
 
