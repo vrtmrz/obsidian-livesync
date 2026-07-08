@@ -8,9 +8,12 @@ case "${BENCH_COMMAND:-cases}" in
   latency-sweep)
     exec deno task bench:latency-sweep
     ;;
+  p2p-split-node)
+    exec deno task bench:p2p-split-node
+    ;;
   *)
     echo "Unknown BENCH_COMMAND: ${BENCH_COMMAND}" >&2
-    echo "Expected one of: cases, latency-sweep" >&2
+    echo "Expected one of: cases, latency-sweep, p2p-split-node" >&2
     exit 2
     ;;
 esac

@@ -160,6 +160,91 @@ services:
     volumes:
       - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
 
+  p2p-split-host:
+    build:
+      context: ../..
+      dockerfile: test/bench-network/Dockerfile.runner
+    profiles:
+      - p2p-split
+    depends_on:
+      nostr-relay:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    environment:
+      BENCH_COMMAND: p2p-split-node
+      BENCH_P2P_SPLIT_ROLE: host
+      BENCH_SPLIT_RUN_ID: ${BENCH_SPLIT_RUN_ID:-bench-split-run}
+      BENCH_SPLIT_WORK_ROOT: /p2p-work
+      BENCH_SPLIT_RESULT_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_RELAY: ws://nostr-relay:7777/
+      BENCH_APP_ID: ${BENCH_APP_ID:-self-hosted-livesync-cli-benchmark}
+      BENCH_ROOM_ID: ${BENCH_ROOM_ID:-bench-split-room}
+      BENCH_PASSPHRASE: ${BENCH_PASSPHRASE:-bench-split-passphrase}
+      BENCH_TURN_SERVERS: ${BENCH_TURN_SERVERS:-}
+      BENCH_MD_FILE_COUNT: ${BENCH_MD_FILE_COUNT:-20}
+      BENCH_MD_MIN_SIZE_BYTES: ${BENCH_MD_MIN_SIZE_BYTES:-512}
+      BENCH_MD_MAX_SIZE_BYTES: ${BENCH_MD_MAX_SIZE_BYTES:-2048}
+      BENCH_BIN_FILE_COUNT: ${BENCH_BIN_FILE_COUNT:-5}
+      BENCH_BIN_SIZE_BYTES: ${BENCH_BIN_SIZE_BYTES:-8192}
+      BENCH_SYNC_TIMEOUT: ${BENCH_SYNC_TIMEOUT:-300}
+      BENCH_PEERS_TIMEOUT: ${BENCH_PEERS_TIMEOUT:-60}
+      BENCH_NETEM_ENABLED: ${BENCH_NETEM_ENABLED:-1}
+      BENCH_NETWORK_PROFILE: ${BENCH_NETWORK_PROFILE:-home-wifi}
+      NETEM_PROFILE: ${NETEM_PROFILE:-home-wifi}
+      NETEM_INTERFACE: ${NETEM_INTERFACE:-eth0}
+      NETEM_DELAY_MS: ${NETEM_DELAY_MS:-20}
+      NETEM_JITTER_MS: ${NETEM_JITTER_MS:-5}
+      NETEM_LOSS_PERCENT: ${NETEM_LOSS_PERCENT:-0.1}
+      NETEM_BANDWIDTH_MBIT: ${NETEM_BANDWIDTH_MBIT:-100}
+      NETEM_MTU: ${NETEM_MTU:-1500}
+      LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: ${LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS:-60000}
+      LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
+    volumes:
+      - p2p-split-work:/p2p-work
+      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+
+  p2p-split-client:
+    build:
+      context: ../..
+      dockerfile: test/bench-network/Dockerfile.runner
+    profiles:
+      - p2p-split
+    depends_on:
+      nostr-relay:
+        condition: service_healthy
+      p2p-split-host:
+        condition: service_started
+    cap_add:
+      - NET_ADMIN
+    environment:
+      BENCH_COMMAND: p2p-split-node
+      BENCH_P2P_SPLIT_ROLE: client
+      BENCH_SPLIT_RUN_ID: ${BENCH_SPLIT_RUN_ID:-bench-split-run}
+      BENCH_SPLIT_WORK_ROOT: /p2p-work
+      BENCH_SPLIT_RESULT_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_RELAY: ws://nostr-relay:7777/
+      BENCH_APP_ID: ${BENCH_APP_ID:-self-hosted-livesync-cli-benchmark}
+      BENCH_ROOM_ID: ${BENCH_ROOM_ID:-bench-split-room}
+      BENCH_PASSPHRASE: ${BENCH_PASSPHRASE:-bench-split-passphrase}
+      BENCH_TURN_SERVERS: ${BENCH_TURN_SERVERS:-}
+      BENCH_SYNC_TIMEOUT: ${BENCH_SYNC_TIMEOUT:-300}
+      BENCH_PEERS_TIMEOUT: ${BENCH_PEERS_TIMEOUT:-60}
+      BENCH_NETEM_ENABLED: ${BENCH_NETEM_ENABLED:-1}
+      BENCH_NETWORK_PROFILE: ${BENCH_NETWORK_PROFILE:-home-wifi}
+      NETEM_PROFILE: ${NETEM_PROFILE:-home-wifi}
+      NETEM_INTERFACE: ${NETEM_INTERFACE:-eth0}
+      NETEM_DELAY_MS: ${NETEM_DELAY_MS:-20}
+      NETEM_JITTER_MS: ${NETEM_JITTER_MS:-5}
+      NETEM_LOSS_PERCENT: ${NETEM_LOSS_PERCENT:-0.1}
+      NETEM_BANDWIDTH_MBIT: ${NETEM_BANDWIDTH_MBIT:-100}
+      NETEM_MTU: ${NETEM_MTU:-1500}
+      LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: ${LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS:-60000}
+      LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
+    volumes:
+      - p2p-split-work:/p2p-work
+      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+
   netem-smoke:
     build:
       context: ../..
@@ -179,3 +264,6 @@ services:
       NETEM_RESULT_ROOT: /bench-results
     volumes:
       - ./bench-results:/bench-results
+
+volumes:
+  p2p-split-work:

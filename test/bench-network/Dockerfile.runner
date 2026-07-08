@@ -3,7 +3,7 @@
 FROM node:24-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DENO_INSTALL=/usr/local
@@ -25,6 +25,7 @@ WORKDIR /workspace/src/apps/cli/testdeno
 RUN deno cache --lock=deno.lock \
     bench-network-cases.ts \
     bench-latency-sweep.ts \
+    bench-p2p-split-node.ts \
     bench-p2p.ts \
     bench-couchdb.ts
 

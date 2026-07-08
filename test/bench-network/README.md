@@ -57,9 +57,9 @@ is executed in an actual tethered/VPN environment.
 The primary local comparison is between a remote-database path and a direct P2P
 path:
 
-| Case | Data path | What is measured | What is not measured |
-| --- | --- | --- | --- |
-| `couchdb-baseline` | Device A -> CouchDB -> Device B | Two one-shot CLI synchronisation commands through a local HTTP latency proxy | Real WAN jitter, packet loss, bandwidth limits, VPN encapsulation, and server contention |
+| Case               | Data path                                   | What is measured                                                               | What is not measured                                                                                      |
+| ------------------ | ------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `couchdb-baseline` | Device A -> CouchDB -> Device B             | Two one-shot CLI synchronisation commands through a local HTTP latency proxy   | Real WAN jitter, packet loss, bandwidth limits, VPN encapsulation, and server contention                  |
 | `p2p-direct-local` | Device A -> Device B after Nostr signalling | One CLI P2P synchronisation command over WebRTC DataChannel with TURN disabled | Public relay operation, mobile carrier behaviour, TURN relay throughput, and first-peer discovery latency |
 
 Use the CouchDB result as the remote-store baseline and the P2P result as the
@@ -136,6 +136,61 @@ NETEM_LOSS_PERCENT=1.0 \
 NETEM_BANDWIDTH_MBIT=10 \
 NETEM_MTU=1380 \
 docker compose -f test/bench-network/compose.yml --profile netem run --rm netem-smoke
+```
+
+## Split-container P2P emulation
+
+The optional `p2p-split` profile runs the P2P host and client in separate
+Compose services. Each service can apply `tc netem` to its own egress interface
+and the client result records the selected WebRTC ICE candidate pair.
+
+```bash
+BENCH_MD_FILE_COUNT=2 \
+BENCH_BIN_FILE_COUNT=1 \
+BENCH_PEERS_TIMEOUT=10 \
+BENCH_SPLIT_RUN_ID="$(date -u +%Y%m%d%H%M%S)" \
+docker compose -f test/bench-network/compose.yml --profile p2p-split up \
+  --abort-on-container-exit --exit-code-from p2p-split-client \
+  p2p-split-host p2p-split-client
+```
+
+By default this uses the `home-wifi` profile (`20 ms` delay, `5 ms` jitter,
+`0.1%` loss, `100 Mbit`, and `1500` MTU) on both P2P containers. Override the
+same `NETEM_*` variables used by the TCP shim to model a stricter profile.
+
+```bash
+BENCH_MD_FILE_COUNT=100 \
+BENCH_MD_MIN_SIZE_BYTES=512 \
+BENCH_MD_MAX_SIZE_BYTES=2048 \
+BENCH_BIN_FILE_COUNT=25 \
+BENCH_BIN_SIZE_BYTES=8192 \
+BENCH_PEERS_TIMEOUT=60 \
+BENCH_SYNC_TIMEOUT=420 \
+BENCH_SPLIT_RUN_ID="$(date -u +%Y%m%d%H%M%S)" \
+BENCH_NETWORK_PROFILE=tethering-vpn \
+NETEM_PROFILE=tethering-vpn \
+NETEM_DELAY_MS=140 \
+NETEM_JITTER_MS=50 \
+NETEM_LOSS_PERCENT=1.0 \
+NETEM_BANDWIDTH_MBIT=10 \
+NETEM_MTU=1380 \
+docker compose -f test/bench-network/compose.yml --profile p2p-split up \
+  --abort-on-container-exit --exit-code-from p2p-split-client \
+  p2p-split-host p2p-split-client
+```
+
+This is a Linux-only manual benchmark fixture, not a required pull-request CI
+job. It shapes each P2P container's egress path, including signalling traffic,
+and should be reported separately from the CouchDB TCP-shim measurements. The
+result JSON includes `ok: true` for completed runs; failed runs still write a
+summary with `ok: false` and a `failure` object before returning a non-zero
+exit code.
+
+Remove the shared work volume between repeated manual runs when you do not use
+a unique `BENCH_SPLIT_RUN_ID`:
+
+```bash
+docker compose -f test/bench-network/compose.yml --profile p2p-split down --volumes
 ```
 
 ## Shimmed CouchDB benchmark
