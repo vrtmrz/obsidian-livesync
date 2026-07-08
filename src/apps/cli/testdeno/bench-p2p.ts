@@ -179,9 +179,9 @@ async function main(): Promise<void> {
         await host.waitUntilContains("P2P host is running", 20000);
         const hostReadyElapsed = nowMs() - hostReadyStart;
 
-        const peerDiscoveryStart = nowMs();
+        const peerDiscoveryCommandStart = nowMs();
         const peer = await discoverPeer(clientVault, clientSettings, config.peersTimeoutSeconds);
-        const peerDiscoveryElapsed = nowMs() - peerDiscoveryStart;
+        const peerDiscoveryCommandElapsed = nowMs() - peerDiscoveryCommandStart;
 
         const syncStart = nowMs();
         await runCliOrFail(
@@ -223,7 +223,10 @@ async function main(): Promise<void> {
             binFileCount: seedFiles.binCount,
             mirrorElapsedMs: Number(mirrorElapsed.toFixed(1)),
             hostReadyElapsedMs: Number(hostReadyElapsed.toFixed(1)),
-            peerDiscoveryElapsedMs: Number(peerDiscoveryElapsed.toFixed(1)),
+            peerDiscoveryTimeoutSeconds: config.peersTimeoutSeconds,
+            peerDiscoveryCommandElapsedMs: Number(peerDiscoveryCommandElapsed.toFixed(1)),
+            peerDiscoveryNote:
+                "p2p-peers waits for the requested timeout before printing discovered peers, so this is command duration, not first-peer latency.",
             syncElapsedMs: Number(syncElapsed.toFixed(1)),
             throughputBytesPerSec: Number((seedFiles.totalBytes / (syncElapsed / 1000)).toFixed(2)),
             throughputMiBPerSec: Number((seedFiles.totalBytes / (syncElapsed / 1000) / 1024 / 1024).toFixed(4)),

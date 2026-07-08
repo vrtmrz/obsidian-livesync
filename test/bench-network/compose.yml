@@ -45,6 +45,11 @@ services:
         exec /app/strfry --config /tmp/strfry.conf relay
     tmpfs:
       - /app/strfry-db:rw,size=256m
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7777"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
   coturn:
     image: coturn/coturn:latest
@@ -64,7 +69,7 @@ services:
       couchdb:
         condition: service_healthy
       nostr-relay:
-        condition: service_started
+        condition: service_healthy
     environment:
       BENCH_COMMAND: ${BENCH_COMMAND:-cases}
       BENCH_CASES: ${BENCH_CASES:-couchdb-baseline,p2p-direct-local}
@@ -88,6 +93,7 @@ services:
       BENCH_TETHERING_VPN_RTT_MS: ${BENCH_TETHERING_VPN_RTT_MS:-120}
       BENCH_SYNC_TIMEOUT: ${BENCH_SYNC_TIMEOUT:-300}
       BENCH_PEERS_TIMEOUT: ${BENCH_PEERS_TIMEOUT:-60}
+      LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: ${LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS:-60000}
       BENCH_LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
       - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results

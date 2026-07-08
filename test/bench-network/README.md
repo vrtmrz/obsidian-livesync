@@ -68,6 +68,10 @@ The current CouchDB latency model is the existing HTTP proxy inside
 latency, but it does not model packet loss, jitter, MTU, bandwidth limits,
 bufferbloat, or VPN encapsulation.
 
+For P2P runs, `BENCH_PEERS_TIMEOUT` is passed to `p2p-peers`. That command waits
+for the requested observation window before printing discovered peers, so the
+reported peer discovery command time should not be read as first-peer latency.
+
 ## Latency sweep
 
 To run P2P once and CouchDB at several requested RTT values:
