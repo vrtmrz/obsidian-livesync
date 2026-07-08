@@ -25,6 +25,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
       id-token: write

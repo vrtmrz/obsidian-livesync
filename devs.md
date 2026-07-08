@@ -264,6 +264,7 @@ In short, the situation remains unchanged for me, but it means you all become a 
 ## Release Workflow
 
 This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
+The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `release` GitHub Environment. Configure Environment protection in the repository settings so tag creation and release publication require maintainer approval.
 
 - Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
