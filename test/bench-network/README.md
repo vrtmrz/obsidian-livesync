@@ -42,6 +42,8 @@ Available local cases:
 - `couchdb-baseline`
 - `p2p-direct-local`
 - `couchdb-tethering-vpn-proxy`
+- `couchdb-netem-home-wifi`
+- `couchdb-netem-tethering-vpn`
 - `p2p-smartphone-vpn-direct`
 - `p2p-user-turn`
 
@@ -130,3 +132,31 @@ NETEM_BANDWIDTH_MBIT=10 \
 NETEM_MTU=1380 \
 docker compose -f test/bench-network/compose.yml --profile netem run --rm netem-smoke
 ```
+
+## Shimmed CouchDB benchmark
+
+The optional `shim` profile runs a CouchDB benchmark through a TCP forwarding
+container that applies `tc netem`. This is a manual Tier 2 synchronisation
+measurement path; it is intentionally separate from required pull-request CI.
+
+```bash
+docker compose -f test/bench-network/compose.yml --profile shim run --rm bench-runner-shim
+```
+
+The default profile is `home-wifi`. A smartphone/VPN-like profile can be
+requested by overriding both the shim parameters and the benchmark case:
+
+```bash
+NETEM_PROFILE=tethering-vpn \
+NETEM_DELAY_MS=140 \
+NETEM_JITTER_MS=50 \
+NETEM_LOSS_PERCENT=1.0 \
+NETEM_BANDWIDTH_MBIT=10 \
+NETEM_MTU=1380 \
+BENCH_CASES=couchdb-netem-tethering-vpn \
+docker compose -f test/bench-network/compose.yml --profile shim run --rm bench-runner-shim
+```
+
+The benchmark result records `simulationTier`, `networkProfile`, and
+`networkModel`. The shim also writes its applied `tc qdisc`, route, and
+interface state under `test/bench-network/bench-results/`.

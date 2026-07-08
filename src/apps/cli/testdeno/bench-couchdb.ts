@@ -23,6 +23,9 @@ type BenchmarkConfig = {
     passphrase: string;
     encrypt: boolean;
     managedCouchdb: boolean;
+    simulationTier: string;
+    networkProfile: string;
+    networkModel: string;
 };
 
 function readEnvString(name: string, fallback: string): string {
@@ -90,6 +93,9 @@ function buildConfig(): BenchmarkConfig {
         passphrase: readEnvString("BENCH_PASSPHRASE", `bench-${Date.now()}`),
         encrypt: readEnvBool("BENCH_ENCRYPT", true),
         managedCouchdb: readEnvBool("BENCH_COUCHDB_MANAGED", true),
+        simulationTier: readEnvString("BENCH_SIMULATION_TIER", "1"),
+        networkProfile: readEnvString("BENCH_NETWORK_PROFILE", "http-latency-proxy"),
+        networkModel: readEnvString("BENCH_NETWORK_MODEL", "local-http-proxy"),
     };
 }
 
@@ -285,6 +291,9 @@ async function main(): Promise<void> {
             couchdbProxyUri: config.couchdbProxyUri,
             couchdbDbname: config.couchdbDbname,
             managedCouchdb: config.managedCouchdb,
+            simulationTier: config.simulationTier,
+            networkProfile: config.networkProfile,
+            networkModel: config.networkModel,
             rttRequestedMs: config.requestedRttMs,
             proxyApplied: proxy.applied,
             proxyNote: proxy.note,
