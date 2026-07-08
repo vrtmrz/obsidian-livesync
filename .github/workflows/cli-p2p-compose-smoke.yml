@@ -60,9 +60,16 @@ jobs:
           BENCH_BIN_SIZE_BYTES: '512'
           BENCH_COUCHDB_RTT_MS: ${{ inputs.couchdb_rtt_ms || '20' }}
           BENCH_SYNC_TIMEOUT: '180'
-          BENCH_PEERS_TIMEOUT: '90'
+          BENCH_PEERS_TIMEOUT: '20'
+          LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: '60000'
           BENCH_LIVESYNC_TEST_TEE: '0'
         run: docker compose -f test/bench-network/compose.yml run --rm bench-runner
+
+      - name: Show Compose diagnostics
+        if: failure()
+        run: |
+          docker compose -f test/bench-network/compose.yml ps
+          docker compose -f test/bench-network/compose.yml logs --no-color couchdb nostr-relay
 
       - name: Upload benchmark results
         if: always()
