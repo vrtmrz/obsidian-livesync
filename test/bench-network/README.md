@@ -65,6 +65,11 @@ path:
 Use the CouchDB result as the remote-store baseline and the P2P result as the
 direct-transfer comparison. The Nostr relay is used for signalling in the P2P
 case, but synchronised note content is transferred over the WebRTC DataChannel.
+The P2P result JSON records the selected WebRTC ICE candidate pair when the CLI
+can collect it from `RTCPeerConnection.getStats()`. Interpret P2P paths from
+the recorded candidate types rather than from TURN configuration alone. Do not
+report P2P runs as Tier 2 constrained-network measurements until host and
+client are captured under an equivalent shaped topology.
 
 ## Dataset and latency controls
 
@@ -160,3 +165,5 @@ docker compose -f test/bench-network/compose.yml --profile shim run --rm bench-r
 The benchmark result records `simulationTier`, `networkProfile`, and
 `networkModel`. The shim also writes its applied `tc qdisc`, route, and
 interface state under `test/bench-network/bench-results/`.
+This shim currently measures the CouchDB path only. It does not shape or verify
+the WebRTC P2P data path.

@@ -65,6 +65,10 @@ function buildCases(): BenchmarkCase[] {
                 ...base,
                 BENCH_CASE: "p2p-direct-local",
                 BENCH_TURN_SERVERS: "",
+                BENCH_SIMULATION_TIER: "1",
+                BENCH_NETWORK_PROFILE: "local-direct",
+                BENCH_NETWORK_MODEL: "local-runner-webrtc",
+                BENCH_P2P_CANDIDATE_PATH_VERIFICATION: "turn-disabled-but-selected-ice-pair-not-collected",
             },
         },
         {
@@ -125,6 +129,11 @@ function buildCases(): BenchmarkCase[] {
                 ...base,
                 BENCH_CASE: "p2p-smartphone-vpn-direct",
                 BENCH_TURN_SERVERS: "",
+                BENCH_SIMULATION_TIER: "unmeasured",
+                BENCH_NETWORK_PROFILE: "smartphone-vpn-direct-placeholder",
+                BENCH_NETWORK_MODEL: "local-runner-no-netem",
+                BENCH_P2P_CANDIDATE_PATH_VERIFICATION:
+                    "structural-placeholder-only; selected ICE pair may be collected, but the path is not shaped",
             },
         },
         {
@@ -137,6 +146,11 @@ function buildCases(): BenchmarkCase[] {
                 ...base,
                 BENCH_CASE: "p2p-user-turn",
                 BENCH_TURN_SERVERS: localTurnServers,
+                BENCH_SIMULATION_TIER: "1",
+                BENCH_NETWORK_PROFILE: "local-turn-fallback",
+                BENCH_NETWORK_MODEL: "local-runner-webrtc-turn-configured",
+                BENCH_P2P_CANDIDATE_PATH_VERIFICATION:
+                    "turn-configured; selected ICE pair may still be direct or relayed, so interpret the recorded candidate types",
             },
         },
     ];
