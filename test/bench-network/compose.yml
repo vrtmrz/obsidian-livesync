@@ -27,7 +27,7 @@ services:
         relay {
           bind = "0.0.0.0"
           port = 7777
-          nofiles = 100000
+          nofiles = 65536
 
           info {
             name = "livesync bench relay"
