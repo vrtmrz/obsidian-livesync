@@ -97,3 +97,23 @@ services:
       BENCH_LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
       - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+
+  netem-smoke:
+    build:
+      context: ../..
+      dockerfile: test/bench-network/Dockerfile.netem
+    profiles:
+      - netem
+    cap_add:
+      - NET_ADMIN
+    environment:
+      NETEM_PROFILE: ${NETEM_PROFILE:-home-wifi}
+      NETEM_INTERFACE: ${NETEM_INTERFACE:-eth0}
+      NETEM_DELAY_MS: ${NETEM_DELAY_MS:-20}
+      NETEM_JITTER_MS: ${NETEM_JITTER_MS:-5}
+      NETEM_LOSS_PERCENT: ${NETEM_LOSS_PERCENT:-0.1}
+      NETEM_BANDWIDTH_MBIT: ${NETEM_BANDWIDTH_MBIT:-100}
+      NETEM_MTU: ${NETEM_MTU:-1500}
+      NETEM_RESULT_ROOT: /bench-results
+    volumes:
+      - ./bench-results:/bench-results
