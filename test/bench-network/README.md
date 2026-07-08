@@ -106,3 +106,27 @@ docker compose -f test/bench-network/compose.yml run --rm bench-runner
 This sweep is useful for finding where the remote CouchDB path falls behind the
 local direct P2P path in the current HTTP-proxy latency model. It should not be
 presented as a full smartphone/VPN model.
+
+## Network emulation smoke
+
+The optional `netem` profile checks whether a Linux runner can apply traffic
+shaping inside a Compose-managed container. This is a fixture smoke test for a
+second-tier simulation design; it does not produce synchronisation performance
+results by itself.
+
+```bash
+docker compose -f test/bench-network/compose.yml --profile netem run --rm netem-smoke
+```
+
+The smoke writes `tc qdisc`, route, and interface details under
+`test/bench-network/bench-results/`. Profile parameters can be overridden:
+
+```bash
+NETEM_PROFILE=tethering-vpn \
+NETEM_DELAY_MS=140 \
+NETEM_JITTER_MS=50 \
+NETEM_LOSS_PERCENT=1.0 \
+NETEM_BANDWIDTH_MBIT=10 \
+NETEM_MTU=1380 \
+docker compose -f test/bench-network/compose.yml --profile netem run --rm netem-smoke
+```
