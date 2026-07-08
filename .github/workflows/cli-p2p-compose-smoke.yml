@@ -1,0 +1,70 @@
+# Run the Compose-packaged CLI P2P smoke benchmark.
+#
+# This workflow is intentionally manual/non-required at first. It exercises the
+# local Compose package for CouchDB + Nostr relay + CLI runner, and uploads the
+# benchmark JSON results for inspection.
+name: cli-p2p-compose-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: 'Comma-separated benchmark cases'
+        required: false
+        default: 'couchdb-baseline,p2p-direct-local'
+      md_files:
+        description: 'Markdown file count'
+        required: false
+        default: '2'
+      bin_files:
+        description: 'Binary file count'
+        required: false
+        default: '1'
+      couchdb_rtt_ms:
+        description: 'Requested CouchDB RTT in milliseconds'
+        required: false
+        default: '20'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show Docker versions
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Run Compose P2P smoke benchmark
+        env:
+          BENCH_CASES: ${{ inputs.cases }}
+          BENCH_MD_FILE_COUNT: ${{ inputs.md_files }}
+          BENCH_MD_MIN_SIZE_BYTES: '128'
+          BENCH_MD_MAX_SIZE_BYTES: '256'
+          BENCH_BIN_FILE_COUNT: ${{ inputs.bin_files }}
+          BENCH_BIN_SIZE_BYTES: '512'
+          BENCH_COUCHDB_RTT_MS: ${{ inputs.couchdb_rtt_ms }}
+          BENCH_SYNC_TIMEOUT: '180'
+          BENCH_PEERS_TIMEOUT: '90'
+          BENCH_LIVESYNC_TEST_TEE: '0'
+        run: docker compose -f test/bench-network/compose.yml run --rm bench-runner
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-p2p-compose-smoke-results
+          path: test/bench-network/bench-results/**
+          if-no-files-found: warn
+
+      - name: Stop Compose services
+        if: always()
+        run: docker compose -f test/bench-network/compose.yml down -v --remove-orphans

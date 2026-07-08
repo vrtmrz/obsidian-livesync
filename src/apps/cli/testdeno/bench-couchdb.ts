@@ -1,10 +1,11 @@
 import { TempDir } from "./helpers/temp.ts";
 import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
 import { assertFilesEqual, runCliOrFail } from "./helpers/cli.ts";
-import { startCouchdb, stopCouchdb } from "./helpers/docker.ts";
+import { createCouchdbDatabase, startCouchdb, stopCouchdb } from "./helpers/docker.ts";
 import { createDeterministicDataset, type DatasetEntry } from "./helpers/dataset.ts";
 
 type BenchmarkConfig = {
+    caseName: string;
     couchdbBackendUri: string;
     couchdbProxyUri: string;
     couchdbUser: string;
@@ -21,6 +22,7 @@ type BenchmarkConfig = {
     requestedRttMs: number;
     passphrase: string;
     encrypt: boolean;
+    managedCouchdb: boolean;
 };
 
 function readEnvString(name: string, fallback: string): string {
@@ -70,6 +72,7 @@ function formatBytes(value: number): string {
 
 function buildConfig(): BenchmarkConfig {
     return {
+        caseName: readEnvString("BENCH_CASE", "couchdb-baseline"),
         couchdbBackendUri: readEnvString("BENCH_COUCHDB_BACKEND_URI", "http://127.0.0.1:5989"),
         couchdbProxyUri: readEnvString("BENCH_COUCHDB_URI", "http://127.0.0.1:15989"),
         couchdbUser: readEnvString("BENCH_COUCHDB_USER", readEnvString("username", "admin")),
@@ -86,6 +89,7 @@ function buildConfig(): BenchmarkConfig {
         requestedRttMs: Math.floor(readEnvNumber("BENCH_COUCHDB_RTT_MS", 50)),
         passphrase: readEnvString("BENCH_PASSPHRASE", `bench-${Date.now()}`),
         encrypt: readEnvBool("BENCH_ENCRYPT", true),
+        managedCouchdb: readEnvBool("BENCH_COUCHDB_MANAGED", true),
     };
 }
 
@@ -200,7 +204,17 @@ async function main(): Promise<void> {
     await initSettingsFile(settingsA);
     await initSettingsFile(settingsB);
 
-    await startCouchdb(config.couchdbBackendUri, config.couchdbUser, config.couchdbPassword, config.couchdbDbname);
+    if (config.managedCouchdb) {
+        await startCouchdb(config.couchdbBackendUri, config.couchdbUser, config.couchdbPassword, config.couchdbDbname);
+    } else {
+        console.log(`[INFO] using externally managed CouchDB: ${config.couchdbBackendUri}`);
+        await createCouchdbDatabase(
+            config.couchdbBackendUri,
+            config.couchdbUser,
+            config.couchdbPassword,
+            config.couchdbDbname
+        );
+    }
 
     const proxy = startCouchdbProxy({
         backendUri: config.couchdbBackendUri,
@@ -265,10 +279,12 @@ async function main(): Promise<void> {
         }
 
         const result = {
+            caseName: config.caseName,
             mode: "couchdb-cli-benchmark",
             couchdbBackendUri: config.couchdbBackendUri,
             couchdbProxyUri: config.couchdbProxyUri,
             couchdbDbname: config.couchdbDbname,
+            managedCouchdb: config.managedCouchdb,
             rttRequestedMs: config.requestedRttMs,
             proxyApplied: proxy.applied,
             proxyNote: proxy.note,
@@ -300,7 +316,9 @@ async function main(): Promise<void> {
         );
     } finally {
         await proxy.stop();
-        await stopCouchdb().catch(() => {});
+        if (config.managedCouchdb) {
+            await stopCouchdb().catch(() => {});
+        }
     }
 }
 

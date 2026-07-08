@@ -1,0 +1,93 @@
+services:
+  couchdb:
+    image: couchdb:3.5.0
+    environment:
+      COUCHDB_USER: ${BENCH_COUCHDB_USER:-admin}
+      COUCHDB_PASSWORD: ${BENCH_COUCHDB_PASSWORD:-testpassword}
+      COUCHDB_SINGLE_NODE: "true"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS -u ${BENCH_COUCHDB_USER:-admin}:${BENCH_COUCHDB_PASSWORD:-testpassword} http://127.0.0.1:5984/_up >/dev/null",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  nostr-relay:
+    image: ghcr.io/hoytech/strfry:latest
+    entrypoint: sh
+    command:
+      - -lc
+      - |
+        cat > /tmp/strfry.conf <<'EOF'
+        db = "./strfry-db/"
+
+        relay {
+          bind = "0.0.0.0"
+          port = 7777
+          nofiles = 100000
+
+          info {
+            name = "livesync bench relay"
+            description = "local relay for livesync compose benchmarks"
+          }
+
+          maxWebsocketPayloadSize = 131072
+          autoPingSeconds = 55
+
+          writePolicy {
+            plugin = ""
+          }
+        }
+        EOF
+        exec /app/strfry --config /tmp/strfry.conf relay
+    tmpfs:
+      - /app/strfry-db:rw,size=256m
+
+  coturn:
+    image: coturn/coturn:latest
+    command:
+      - --log-file=stdout
+      - --listening-port=3478
+      - --user=${BENCH_TURN_USERNAME:-testuser}:${BENCH_TURN_CREDENTIAL:-testpass}
+      - --realm=${BENCH_TURN_REALM:-livesync.test}
+    profiles:
+      - turn
+
+  bench-runner:
+    build:
+      context: ../..
+      dockerfile: test/bench-network/Dockerfile.runner
+    depends_on:
+      couchdb:
+        condition: service_healthy
+      nostr-relay:
+        condition: service_started
+    environment:
+      BENCH_COMMAND: ${BENCH_COMMAND:-cases}
+      BENCH_CASES: ${BENCH_CASES:-couchdb-baseline,p2p-direct-local}
+      BENCH_CASES_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_SWEEP_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_SWEEP_RTT_MS: ${BENCH_SWEEP_RTT_MS:-20,50,100,150,300}
+      BENCH_SWEEP_INCLUDE_P2P: ${BENCH_SWEEP_INCLUDE_P2P:-true}
+      BENCH_COUCHDB_MANAGED: "false"
+      BENCH_COUCHDB_BACKEND_URI: http://couchdb:5984
+      BENCH_COUCHDB_URI: http://127.0.0.1:15989
+      BENCH_COUCHDB_USER: ${BENCH_COUCHDB_USER:-admin}
+      BENCH_COUCHDB_PASSWORD: ${BENCH_COUCHDB_PASSWORD:-testpassword}
+      BENCH_RELAY: ws://nostr-relay:7777/
+      BENCH_LOCAL_TURN_SERVERS: turn:coturn:3478
+      BENCH_MD_FILE_COUNT: ${BENCH_MD_FILE_COUNT:-20}
+      BENCH_MD_MIN_SIZE_BYTES: ${BENCH_MD_MIN_SIZE_BYTES:-512}
+      BENCH_MD_MAX_SIZE_BYTES: ${BENCH_MD_MAX_SIZE_BYTES:-2048}
+      BENCH_BIN_FILE_COUNT: ${BENCH_BIN_FILE_COUNT:-5}
+      BENCH_BIN_SIZE_BYTES: ${BENCH_BIN_SIZE_BYTES:-8192}
+      BENCH_COUCHDB_RTT_MS: ${BENCH_COUCHDB_RTT_MS:-20}
+      BENCH_TETHERING_VPN_RTT_MS: ${BENCH_TETHERING_VPN_RTT_MS:-120}
+      BENCH_SYNC_TIMEOUT: ${BENCH_SYNC_TIMEOUT:-300}
+      BENCH_PEERS_TIMEOUT: ${BENCH_PEERS_TIMEOUT:-60}
+      BENCH_LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
+    volumes:
+      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
