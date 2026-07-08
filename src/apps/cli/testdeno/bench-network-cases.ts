@@ -40,6 +40,7 @@ function buildCases(): BenchmarkCase[] {
     const couchdbRtt = readEnvString("BENCH_COUCHDB_RTT_MS", "20");
     const tetheringVpnRtt = readEnvString("BENCH_TETHERING_VPN_RTT_MS", "120");
     const localTurnServers = readEnvString("BENCH_LOCAL_TURN_SERVERS", "turn:127.0.0.1:3478");
+    const shimCouchdbUri = readEnvString("BENCH_SHIM_COUCHDB_URI", "http://couchdb-shim:5984");
 
     return [
         {
@@ -77,6 +78,40 @@ function buildCases(): BenchmarkCase[] {
                 ...base,
                 BENCH_CASE: "couchdb-tethering-vpn-proxy",
                 BENCH_COUCHDB_RTT_MS: tetheringVpnRtt,
+            },
+        },
+        {
+            name: "couchdb-netem-home-wifi",
+            runner: "couchdb",
+            description:
+                "Tier 2 CouchDB path through the Compose netem TCP shim using the home-wifi profile.",
+            dataPath: "Device A -> netem TCP shim -> CouchDB -> netem TCP shim -> Device B",
+            trustBoundary: "CouchDB operator and constrained network shim",
+            env: {
+                ...base,
+                BENCH_CASE: "couchdb-netem-home-wifi",
+                BENCH_COUCHDB_BACKEND_URI: shimCouchdbUri,
+                BENCH_COUCHDB_RTT_MS: "1",
+                BENCH_SIMULATION_TIER: "2",
+                BENCH_NETWORK_PROFILE: "home-wifi",
+                BENCH_NETWORK_MODEL: "compose-netem-tcp-shim",
+            },
+        },
+        {
+            name: "couchdb-netem-tethering-vpn",
+            runner: "couchdb",
+            description:
+                "Tier 2 CouchDB path through the Compose netem TCP shim using a tethering-vpn profile.",
+            dataPath: "Device A -> netem TCP shim -> CouchDB -> netem TCP shim -> Device B",
+            trustBoundary: "CouchDB operator and constrained smartphone/VPN-like network shim",
+            env: {
+                ...base,
+                BENCH_CASE: "couchdb-netem-tethering-vpn",
+                BENCH_COUCHDB_BACKEND_URI: shimCouchdbUri,
+                BENCH_COUCHDB_RTT_MS: "1",
+                BENCH_SIMULATION_TIER: "2",
+                BENCH_NETWORK_PROFILE: "tethering-vpn",
+                BENCH_NETWORK_MODEL: "compose-netem-tcp-shim",
             },
         },
         {
