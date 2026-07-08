@@ -252,6 +252,46 @@ export class ModuleExample extends AbstractObsidianModule {
 
 In short, the situation remains unchanged for me, but it means you all become a little safer. Thank you for your understanding!
 
+## Release Notes
+
+- Keep the top section of `updates.md` as `## Unreleased` during normal development.
+- When opening a feature or fix PR, update `## Unreleased` in the same PR if the change is user-facing.
+- Add only user-facing changes that help users understand what they gain, what has changed, or what they may need to do after updating.
+- Avoid listing purely internal refactors, maintenance chores, generated-file changes, and dependency updates unless they affect users; group and label them when they are included.
+- When preparing a release, replace `## Unreleased` with the target version heading (for example, `## 0.25.81`) and add a fresh empty `## Unreleased` section above it for the next cycle.
+- Review and polish the released section in the release PR before tagging, because the content is embedded into the plug-in and may be reused as the GitHub Release notes.
+
+## Release Workflow
+
+This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
+
+- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
+- Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
+- Once the release PR head is fixed, run the `Finalise Release Tags` workflow. It validates the release branch and pushes both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) to the same commit.
+- The plug-in tag triggers the release workflow and creates a draft GitHub Release by default. The CLI tag triggers the Docker workflow and publishes the fixed version tag, the major-minor moving tag (for example, `0.25-cli`), `latest`, and the SHA-qualified tag.
+- If a pre-release is needed, run the `Release Obsidian Plugin` workflow manually with the target tag, `draft=false`, and `prerelease=true`.
+
+### Release Cheat Sheet
+
+1. Before starting, add user-facing notes under `## Unreleased` in `updates.md`.
+2. Run `Prepare Release PR` from GitHub Actions.
+    - `version`: the target version, for example `0.25.81`.
+    - `base_branch`: normally `main`.
+    - `release_branch`: leave blank to use the default branch name, for example `0_25_81`.
+    - `allow_empty_updates`: leave disabled unless the release intentionally has no user-facing notes.
+3. Review the generated draft PR.
+    - Polish `updates.md`.
+    - Confirm `package.json`, `manifest.json`, `versions.json`, and workspace package versions.
+    - Confirm that `manifest.json` has the intended `minAppVersion`.
+    - Wait for the necessary CI checks.
+4. When the PR head is fixed, run `Finalise Release Tags`.
+    - `version`: the same target version.
+    - `release_branch`: leave blank unless the release branch used a custom name.
+5. Check the generated draft GitHub Release for the plug-in tag.
+6. Check the CLI Docker workflow started from the `*-cli` tag.
+7. Publish the draft GitHub Release when ready, then merge the release PR into `main`.
+8. If the release should be a pre-release instead of a draft release, run `Release Obsidian Plugin` manually with the target `tag`, `draft=false`, and `prerelease=true`.
+
 ## Contribution Guidelines
 
 - Follow existing code style and conventions

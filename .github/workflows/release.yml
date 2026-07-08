@@ -6,6 +6,21 @@ on:
     - '*' # Push events to matching any tag format, i.e. 1.0, 20.15.10
     - '!*-cli' # Exclude command-line interface tags
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build
+        required: true
+        type: string
+      draft:
+        description: Create the GitHub Release as a draft
+        required: false
+        type: boolean
+        default: true
+      prerelease:
+        description: Mark the GitHub Release as a pre-release
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -19,6 +34,7 @@ jobs:
       with:
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
         submodules: recursive
+        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
@@ -27,7 +43,18 @@ jobs:
     - name: Get Version
       id: version
       run: |
-        echo "tag=$(git describe --abbrev=0 --tags)" >> $GITHUB_OUTPUT
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          TAG="${{ inputs.tag }}"
+          DRAFT="${{ inputs.draft }}"
+          PRERELEASE="${{ inputs.prerelease }}"
+        else
+          TAG="${GITHUB_REF_NAME}"
+          DRAFT="true"
+          PRERELEASE="false"
+        fi
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "draft=${DRAFT}" >> $GITHUB_OUTPUT
+        echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
     # Build the plugin
     - name: Build
       id: build
@@ -58,4 +85,5 @@ jobs:
           styles.css
         name: ${{ steps.version.outputs.tag }}
         tag_name: ${{ steps.version.outputs.tag }}
-        draft: true
+        draft: ${{ steps.version.outputs.draft }}
+        prerelease: ${{ steps.version.outputs.prerelease }}
