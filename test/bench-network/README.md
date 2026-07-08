@@ -50,6 +50,20 @@ this Compose package it is not a real smartphone tethering/VPN measurement; it
 uses the local Compose network. Use it only for wiring checks unless the runner
 is executed in an actual tethered/VPN environment.
 
+## Comparison model
+
+The primary local comparison is between a remote-database path and a direct P2P
+path:
+
+| Case | Data path | What is measured | What is not measured |
+| --- | --- | --- | --- |
+| `couchdb-baseline` | Device A -> CouchDB -> Device B | Two one-shot CLI synchronisation commands through a local HTTP latency proxy | Real WAN jitter, packet loss, bandwidth limits, VPN encapsulation, and server contention |
+| `p2p-direct-local` | Device A -> Device B after Nostr signalling | One CLI P2P synchronisation command over WebRTC DataChannel with TURN disabled | Public relay operation, mobile carrier behaviour, TURN relay throughput, and first-peer discovery latency |
+
+Use the CouchDB result as the remote-store baseline and the P2P result as the
+direct-transfer comparison. The Nostr relay is used for signalling in the P2P
+case, but synchronised note content is transferred over the WebRTC DataChannel.
+
 ## Dataset and latency controls
 
 ```bash
