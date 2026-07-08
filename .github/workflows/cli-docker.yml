@@ -54,6 +54,7 @@ jobs:
               id: meta
               run: |
                   VERSION=$(jq -r '.version' manifest.json)
+                  MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1,2)
                   SHORT_SHA=$(git rev-parse --short HEAD)
                   IMAGE="ghcr.io/${{ github.repository_owner }}/livesync-cli"
                   
@@ -61,10 +62,10 @@ jobs:
                   TAGS=""
                   if [[ "${{ github.ref }}" == refs/tags/* ]]; then
                       # Stable release builds
-                      TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
+                      TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${MAJOR_MINOR}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
                   elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
                       # Bleeding-edge / nightly builds
-                      TAGS="${IMAGE}:edge,${IMAGE}:${VERSION}-dev-sha-${SHORT_SHA}-cli"
+                      TAGS="${IMAGE}:edge"
                   else
                       # Other branches / manual run fallback
                       TAGS="${IMAGE}:${VERSION}-dev-sha-${SHORT_SHA}-cli"

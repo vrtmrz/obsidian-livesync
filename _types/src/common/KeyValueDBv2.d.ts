@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 0563f26
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
 import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
 import { type IDBPDatabase } from "idb";
 export declare function OpenKeyValueDatabase(dbKey: string): Promise<KeyValueDatabase>;

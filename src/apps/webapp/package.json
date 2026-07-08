@@ -1,7 +1,7 @@
 {
     "name": "livesync-webapp",
     "private": true,
-    "version": "0.25.78-webapp",
+    "version": "0.25.80-webapp",
     "type": "module",
     "description": "Browser-based Self-hosted LiveSync using FileSystem API",
     "scripts": {
@@ -12,7 +12,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.46"
+        "octagonal-wheels": "^0.1.47"
     },
     "devDependencies": {
         "@playwright/test": "^1.58.2",
