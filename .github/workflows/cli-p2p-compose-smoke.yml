@@ -1,11 +1,18 @@
 # Run the Compose-packaged CLI P2P smoke benchmark.
 #
-# This workflow is intentionally manual/non-required at first. It exercises the
-# local Compose package for CouchDB + Nostr relay + CLI runner, and uploads the
+# This workflow is intentionally non-required at first. It exercises the local
+# Compose package for CouchDB + Nostr relay + CLI runner, and uploads the
 # benchmark JSON results for inspection.
 name: cli-p2p-compose-smoke
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/cli-p2p-compose-smoke.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/apps/cli/**'
+      - 'test/bench-network/**'
   workflow_dispatch:
     inputs:
       cases:
@@ -45,13 +52,13 @@ jobs:
 
       - name: Run Compose P2P smoke benchmark
         env:
-          BENCH_CASES: ${{ inputs.cases }}
-          BENCH_MD_FILE_COUNT: ${{ inputs.md_files }}
+          BENCH_CASES: ${{ inputs.cases || 'couchdb-baseline,p2p-direct-local' }}
+          BENCH_MD_FILE_COUNT: ${{ inputs.md_files || '2' }}
           BENCH_MD_MIN_SIZE_BYTES: '128'
           BENCH_MD_MAX_SIZE_BYTES: '256'
-          BENCH_BIN_FILE_COUNT: ${{ inputs.bin_files }}
+          BENCH_BIN_FILE_COUNT: ${{ inputs.bin_files || '1' }}
           BENCH_BIN_SIZE_BYTES: '512'
-          BENCH_COUCHDB_RTT_MS: ${{ inputs.couchdb_rtt_ms }}
+          BENCH_COUCHDB_RTT_MS: ${{ inputs.couchdb_rtt_ms || '20' }}
           BENCH_SYNC_TIMEOUT: '180'
           BENCH_PEERS_TIMEOUT: '90'
           BENCH_LIVESYNC_TEST_TEE: '0'
