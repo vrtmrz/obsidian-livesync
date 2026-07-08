@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV DENO_INSTALL=/usr/local
+RUN curl -fsSL https://deno.land/install.sh | sh
+
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+COPY src/apps/cli/package.json ./src/apps/cli/package.json
+COPY src/apps/webapp/package.json ./src/apps/webapp/package.json
+COPY src/apps/webpeer/package.json ./src/apps/webpeer/package.json
+RUN npm ci
+
+COPY . .
+RUN npm run build -w self-hosted-livesync-cli
+
+WORKDIR /workspace/src/apps/cli/testdeno
+
+RUN deno cache --lock=deno.lock \
+    bench-network-cases.ts \
+    bench-latency-sweep.ts \
+    bench-p2p.ts \
+    bench-couchdb.ts
+
+COPY test/bench-network/run-bench.sh /usr/local/bin/run-livesync-bench
+RUN chmod +x /usr/local/bin/run-livesync-bench
+
+CMD ["run-livesync-bench"]

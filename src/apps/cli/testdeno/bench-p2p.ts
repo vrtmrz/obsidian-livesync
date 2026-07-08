@@ -1,15 +1,23 @@
 import { TempDir } from "./helpers/temp.ts";
 import { applyP2pSettings, applyP2pTestTweaks, initSettingsFile } from "./helpers/settings.ts";
 import { startCliInBackground } from "./helpers/backgroundCli.ts";
-import { discoverPeer, maybeStartLocalRelay, stopLocalRelayIfStarted } from "./helpers/p2p.ts";
+import {
+    discoverPeer,
+    maybeStartCoturn,
+    maybeStartLocalRelay,
+    stopCoturnIfStarted,
+    stopLocalRelayIfStarted,
+} from "./helpers/p2p.ts";
 import { assertFilesEqual, runCliOrFail } from "./helpers/cli.ts";
 import { createDeterministicDataset, type DatasetEntry } from "./helpers/dataset.ts";
 
 type BenchmarkConfig = {
+    caseName: string;
     relay: string;
     appId: string;
     roomId: string;
     passphrase: string;
+    turnServers: string;
     datasetDirName: string;
     datasetSeed: string;
     mdFileCount: number;
@@ -61,10 +69,12 @@ function formatBytes(value: number): string {
 
 function buildConfig(): BenchmarkConfig {
     return {
+        caseName: readEnvString("BENCH_CASE", "p2p-direct-local"),
         relay: readEnvString("BENCH_RELAY", "ws://localhost:4000/"),
         appId: readEnvString("BENCH_APP_ID", "self-hosted-livesync-cli-benchmark"),
         roomId: readEnvString("BENCH_ROOM_ID", `bench-room-${Date.now()}`),
         passphrase: readEnvString("BENCH_PASSPHRASE", `bench-${Date.now()}`),
+        turnServers: readEnvString("BENCH_TURN_SERVERS", ""),
         datasetDirName: readEnvString("BENCH_DATASET_DIR", "bench-dataset"),
         datasetSeed: readEnvString("BENCH_SEED", "livesync-benchmark-seed"),
         mdFileCount: Math.floor(readEnvNumber("BENCH_MD_FILE_COUNT", 1500)),
@@ -107,6 +117,7 @@ async function main(): Promise<void> {
     const resultPath = readOptionalResultPath();
 
     const relayStarted = await maybeStartLocalRelay(config.relay);
+    const coturnStarted = await maybeStartCoturn(config.turnServers);
     await using workDir = await TempDir.create("livesync-cli-p2p-bench");
 
     const hostVault = workDir.join("vault-host");
@@ -122,8 +133,24 @@ async function main(): Promise<void> {
     ]);
 
     await Promise.all([
-        applyP2pSettings(hostSettings, config.roomId, config.passphrase, config.appId, config.relay, "~.*"),
-        applyP2pSettings(clientSettings, config.roomId, config.passphrase, config.appId, config.relay, "~.*"),
+        applyP2pSettings(
+            hostSettings,
+            config.roomId,
+            config.passphrase,
+            config.appId,
+            config.relay,
+            "~.*",
+            config.turnServers
+        ),
+        applyP2pSettings(
+            clientSettings,
+            config.roomId,
+            config.passphrase,
+            config.appId,
+            config.relay,
+            "~.*",
+            config.turnServers
+        ),
     ]);
 
     await Promise.all([
@@ -179,8 +206,11 @@ async function main(): Promise<void> {
         }
 
         const result = {
+            caseName: config.caseName,
             mode: "p2p-cli-benchmark",
             relay: config.relay,
+            turnServers: config.turnServers,
+            turnEnabled: config.turnServers.trim().length > 0,
             appId: config.appId,
             roomId: config.roomId,
             datasetSeed: config.datasetSeed,
@@ -211,6 +241,7 @@ async function main(): Promise<void> {
         );
     } finally {
         await host.stop();
+        await stopCoturnIfStarted(coturnStarted);
         await stopLocalRelayIfStarted(relayStarted);
     }
 }
