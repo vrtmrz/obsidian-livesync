@@ -31,6 +31,7 @@ RUN deno cache --lock=deno.lock \
     test-p2p-sync.ts
 
 COPY test/bench-network/run-bench.sh /usr/local/bin/run-livesync-bench
-RUN chmod +x /usr/local/bin/run-livesync-bench
+COPY src/apps/cli/testdeno/run-cli-e2e.sh /usr/local/bin/run-livesync-cli-e2e
+RUN chmod +x /usr/local/bin/run-livesync-bench /usr/local/bin/run-livesync-cli-e2e
 
 CMD ["run-livesync-bench"]
