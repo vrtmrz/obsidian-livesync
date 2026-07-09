@@ -65,7 +65,7 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - livesync-serverpeer / webpeer
     - Pseudo-clients that assist in WebRTC peer-to-peer communication.
 - Metadata (File metadata)
-    - A database document that stores properties of a file, including its filename, path, size, modification time, conflict history, and references (hashes) of the chunks that comprise the file's content. In Self-hosted LiveSync, metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
+    - A database document that stores properties of a file, including its filename, path, size, modification time, and references (hashes) of the chunks that comprise the file's content. Conflict state is carried by the surrounding PouchDB/CouchDB revision metadata rather than by a separate history field inside the file metadata document. In Self-hosted LiveSync, file metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
 - OneShot Sync
     - A single, immediate bidirectional synchronisation (pull then push) triggered on demand or on specific events, as opposed to continuous (live) replication.
 - Overwrite Server Data with This Device's Files
@@ -100,4 +100,3 @@ All guidelines and conventions listed below are disclosed and maintained solely 
     - An optimisation that groups multiple local file edits together over a short delay before committing them to the local database, reducing the number of database write operations.
 - WebRTC P2P (Peer-to-Peer)
     - A synchronisation method enabling direct communication between devices without a central server database.
-
