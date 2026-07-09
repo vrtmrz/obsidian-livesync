@@ -178,8 +178,7 @@ jobs:
 
       - name: Run Compose CLI P2P E2E
         env:
-          BENCH_COMMAND: cli-p2p-e2e
-          CLI_P2P_E2E_TASK: test:p2p-sync
+          CLI_E2E_TASK: test:p2p-sync
           RELAY: ws://nostr-relay:7777/
           PEERS_TIMEOUT: '20'
           SYNC_TIMEOUT: '60'
@@ -188,7 +187,7 @@ jobs:
           LIVESYNC_P2P_PEERS_RETRY: '1'
           LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: '60000'
           BENCH_LIVESYNC_TEST_TEE: '0'
-        run: docker compose -f test/bench-network/compose.yml run --build --rm bench-runner
+        run: docker compose -f test/bench-network/compose.yml run --build --rm bench-runner run-livesync-cli-e2e
 
       - name: Show Compose diagnostics
         if: failure()
