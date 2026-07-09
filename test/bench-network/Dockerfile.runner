@@ -27,7 +27,8 @@ RUN deno cache --lock=deno.lock \
     bench-latency-sweep.ts \
     bench-p2p-split-node.ts \
     bench-p2p.ts \
-    bench-couchdb.ts
+    bench-couchdb.ts \
+    test-p2p-sync.ts
 
 COPY test/bench-network/run-bench.sh /usr/local/bin/run-livesync-bench
 RUN chmod +x /usr/local/bin/run-livesync-bench
