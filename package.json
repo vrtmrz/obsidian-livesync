@@ -105,7 +105,7 @@
         "@vitest/browser": "^4.1.8",
         "@vitest/browser-playwright": "^4.1.8",
         "@vitest/coverage-v8": "^4.1.8",
-        "@vrtmrz/obsidian-test-session": "https://github.com/vrtmrz/fancy-kit/releases/download/consumer-preview-2026-07-10.2/vrtmrz-obsidian-test-session-0.0.0.tgz",
+        "@vrtmrz/obsidian-test-session": "https://github.com/vrtmrz/fancy-kit/releases/download/consumer-preview-2026-07-10.5/vrtmrz-obsidian-test-session-0.1.0.tgz",
         "dotenv-cli": "^11.0.0",
         "esbuild": "0.28.1",
         "esbuild-plugin-inline-worker": "^0.1.1",
