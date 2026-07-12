@@ -64,16 +64,24 @@ path:
 | Case               | Data path                                   | What is measured                                                               | What is not measured                                                                                      |
 | ------------------ | ------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | `couchdb-baseline` | Device A -> CouchDB -> Device B             | Two one-shot CLI synchronisation commands through a local HTTP latency proxy   | Real WAN jitter, packet loss, bandwidth limits, VPN encapsulation, and server contention                  |
-| `p2p-direct-local` | Device A -> Device B after Nostr signalling | One CLI P2P synchronisation command over WebRTC DataChannel with TURN disabled | Public relay operation, mobile carrier behaviour, TURN relay throughput, and first-peer discovery latency |
+| `p2p-direct-local` | Device A -> Device B using Nostr signalling | One fresh CLI `p2p-sync` command, including process start-up and WebRTC connection establishment, with TURN disabled | Public relay operation, mobile carrier behaviour, and TURN relay throughput |
 
 Use the CouchDB result as the remote-store baseline and the P2P result as the
 direct-transfer comparison. The Nostr relay is used for signalling in the P2P
 case, but synchronised note content is transferred over the WebRTC DataChannel.
-The P2P result JSON records the selected WebRTC ICE candidate pair when the CLI
+The earlier `p2p-peers` observation command is excluded from the P2P timing,
+but the timed `p2p-sync` command performs its own signalling and connection
+establishment. The P2P result JSON records the selected WebRTC ICE candidate pair when the CLI
 can collect it from `RTCPeerConnection.getStats()`. Interpret P2P paths from
 the recorded candidate types rather than from TURN configuration alone. Do not
-report P2P runs as Tier 2 constrained-network measurements until host and
-client are captured under an equivalent shaped topology.
+report a signalling-only Tier 2 run as though the selected note-data path were
+also shaped.
+
+Benchmark cases use `BENCH_VERIFY_MODE=all` by default. After the timed phase,
+the runner retrieves and compares every generated file and records the verified
+file count, whether verification was complete, and a SHA-256 digest of the
+deterministic dataset. Set `BENCH_VERIFY_MODE=sample` only for exploratory
+large-dataset runs where the additional verification time is impractical.
 
 ## Dataset and latency controls
 
@@ -88,10 +96,10 @@ BENCH_PEERS_TIMEOUT=60 \
 docker compose -f test/bench-network/compose.yml run --rm bench-runner
 ```
 
-The current CouchDB latency model is the existing HTTP proxy inside
-`bench-couchdb.ts`. It models a remote database path with additional request
-latency, but it does not model packet loss, jitter, MTU, bandwidth limits,
-bufferbloat, or VPN encapsulation.
+The CouchDB latency model is the HTTP proxy inside `bench-couchdb.ts`. It adds
+half of the requested RTT before forwarding each request and the other half
+before returning its response. It does not model packet loss, jitter, MTU,
+bandwidth limits, bufferbloat, or VPN encapsulation.
 
 For P2P runs, `BENCH_PEERS_TIMEOUT` is passed to `p2p-peers`. That command waits
 for the requested observation window before printing discovered peers, so the
@@ -104,6 +112,7 @@ To run P2P once and CouchDB at several requested RTT values:
 ```bash
 BENCH_COMMAND=latency-sweep \
 BENCH_SWEEP_RTT_MS=20,50,100,150,300 \
+BENCH_REPEAT_COUNT=3 \
 BENCH_MD_FILE_COUNT=100 \
 BENCH_MD_MIN_SIZE_BYTES=512 \
 BENCH_MD_MAX_SIZE_BYTES=2048 \
