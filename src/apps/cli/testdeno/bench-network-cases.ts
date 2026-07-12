@@ -52,6 +52,7 @@ function buildBaseEnv(): Record<string, string> {
         BENCH_SYNC_TIMEOUT: readEnvString("BENCH_SYNC_TIMEOUT", "300"),
         BENCH_PEERS_TIMEOUT: readEnvString("BENCH_PEERS_TIMEOUT", "60"),
         BENCH_SEED: readEnvString("BENCH_SEED", "livesync-benchmark-seed"),
+        BENCH_VERIFY_MODE: readEnvString("BENCH_VERIFY_MODE", "all"),
         LIVESYNC_TEST_TEE: readEnvString("BENCH_LIVESYNC_TEST_TEE", "0"),
     };
 }
@@ -119,9 +120,10 @@ export function buildCases(): BenchmarkCase[] {
             dataPath: "Device A -> Device B",
             trustBoundary: "Nostr relay for signalling metadata; no TURN relay",
             measurementScope:
-                "One CLI P2P synchronisation phase over a local WebRTC DataChannel after Nostr signalling, with TURN disabled.",
+                "One fresh CLI p2p-sync command, including process start-up and WebRTC connection establishment, with TURN disabled; the earlier peer-list observation command is excluded.",
             limitations: [
-                "This does not measure first-peer discovery latency, public relay operation, mobile carrier behaviour, or TURN-relayed throughput.",
+                "The timed command includes its own signalling and connection establishment, but not the earlier peer-list observation window.",
+                "This does not measure public relay operation, mobile carrier behaviour, or TURN-relayed throughput.",
                 "This small-dataset run should not be treated as a WAN, VPN, or large binary initial synchronisation measurement.",
             ],
             env: {
@@ -240,8 +242,9 @@ export function buildCases(): BenchmarkCase[] {
             trustBoundary:
                 "Nostr signalling metadata through constrained network shim; no TURN relay",
             measurementScope:
-                "Tier 2 P2P synchronisation where only the Nostr signalling path is shaped by the home-wifi netem profile.",
+                "One fresh CLI p2p-sync command where only Nostr signalling access is shaped by the home-wifi netem profile; the selected WebRTC note-data path is unshaped.",
             limitations: [
+                "The timed p2p-sync command includes signalling and WebRTC connection establishment.",
                 "This does not shape the selected WebRTC DataChannel note-data path.",
                 "This supports only the claim that constrained signalling access does not place note data on the relay path when a non-relayed ICE path is selected.",
             ],
@@ -267,8 +270,9 @@ export function buildCases(): BenchmarkCase[] {
             trustBoundary:
                 "Nostr signalling metadata through constrained smartphone/VPN-like network shim; no TURN relay",
             measurementScope:
-                "Tier 2 P2P synchronisation where only the Nostr signalling path is shaped by the tethering-vpn netem profile.",
+                "One fresh CLI p2p-sync command where only Nostr signalling access is shaped by the tethering-vpn netem profile; the selected WebRTC note-data path is unshaped.",
             limitations: [
+                "The timed p2p-sync command includes signalling and WebRTC connection establishment.",
                 "This does not shape the selected WebRTC DataChannel note-data path.",
                 "The profile approximates constrained relay access and is not a field measurement on a real tethered VPN connection.",
             ],

@@ -15,8 +15,12 @@ import {
 import { assertFilesEqual, runCliOrFail } from "./helpers/cli.ts";
 import {
     createDeterministicDataset,
-    type DatasetEntry,
 } from "./helpers/dataset.ts";
+import {
+    type BenchmarkVerificationMode,
+    parseBenchmarkVerificationMode,
+    verifyBenchmarkDataset,
+} from "./helpers/benchmarkVerification.ts";
 
 type BenchmarkConfig = {
     caseName: string;
@@ -40,6 +44,9 @@ type BenchmarkConfig = {
     candidatePathVerification: string;
     measurementScope: string;
     limitations: string[];
+    verificationMode: BenchmarkVerificationMode;
+    repeatIndex: number;
+    repeatCount: number;
 };
 
 type P2PConnectionStats = {
@@ -174,11 +181,16 @@ function buildConfig(): BenchmarkConfig {
         ),
         measurementScope: readEnvString(
             "BENCH_MEASUREMENT_SCOPE",
-            "One CLI P2P synchronisation phase over WebRTC DataChannel after signalling.",
+            "One fresh CLI p2p-sync command, including process start-up and WebRTC connection establishment; the earlier peer-list observation command is excluded.",
         ),
         limitations: readEnvStringArray("BENCH_LIMITATIONS_JSON", [
             "This benchmark result is scoped to the configured dataset, network model, and selected ICE path.",
         ]),
+        verificationMode: parseBenchmarkVerificationMode(
+            Deno.env.get("BENCH_VERIFY_MODE"),
+        ),
+        repeatIndex: Math.floor(readEnvNumber("BENCH_REPEAT_INDEX", 1)),
+        repeatCount: Math.floor(readEnvNumber("BENCH_REPEAT_COUNT", 1)),
     };
 }
 
@@ -188,23 +200,6 @@ function readOptionalResultPath(): string | undefined {
         return undefined;
     }
     return raw;
-}
-
-function pickSampleFiles(entries: DatasetEntry[]): DatasetEntry[] {
-    if (entries.length === 0) {
-        return [];
-    }
-    const md = entries.find((e) => e.kind === "md");
-    const bin = entries.find((e) => e.kind === "bin");
-    const middle = entries[Math.floor(entries.length / 2)];
-    const last = entries[entries.length - 1];
-    const unique = new Map<string, DatasetEntry>();
-    for (const entry of [md, bin, middle, last]) {
-        if (entry) {
-            unique.set(entry.relativePath, entry);
-        }
-    }
-    return [...unique.values()];
 }
 
 async function readLatestP2PConnectionStats(
@@ -329,25 +324,28 @@ async function main(): Promise<void> {
             );
             const syncElapsed = nowMs() - syncStart;
 
-            const sampleFiles = pickSampleFiles(seedFiles.entries);
-            for (const sample of sampleFiles) {
-                const pulledPath = workDir.join(
-                    `pulled-${sample.relativePath.replaceAll("/", "_")}`,
-                );
-                await runCliOrFail(
-                    clientVault,
-                    "--settings",
-                    clientSettings,
-                    "pull",
-                    sample.relativePath,
-                    pulledPath,
-                );
-                await assertFilesEqual(
-                    sample.absolutePath,
-                    pulledPath,
-                    `sample file mismatch after sync: ${sample.relativePath}`,
-                );
-            }
+            const verification = await verifyBenchmarkDataset(
+                seedFiles.entries,
+                config.verificationMode,
+                async (entry) => {
+                    const pulledPath = workDir.join(
+                        `pulled-${entry.relativePath.replaceAll("/", "_")}`,
+                    );
+                    await runCliOrFail(
+                        clientVault,
+                        "--settings",
+                        clientSettings,
+                        "pull",
+                        entry.relativePath,
+                        pulledPath,
+                    );
+                    await assertFilesEqual(
+                        entry.absolutePath,
+                        pulledPath,
+                        `file mismatch after P2P sync: ${entry.relativePath}`,
+                    );
+                },
+            );
 
             const p2pConnectionStats = await readLatestP2PConnectionStats(
                 p2pStatsPath,
@@ -363,6 +361,8 @@ async function main(): Promise<void> {
                 networkModel: config.networkModel,
                 measurementScope: config.measurementScope,
                 limitations: config.limitations,
+                repeatIndex: config.repeatIndex,
+                repeatCount: config.repeatCount,
                 p2pCandidatePathVerified:
                     p2pConnectionStats?.candidatePathCollected === true,
                 p2pCandidatePathVerification:
@@ -385,6 +385,7 @@ async function main(): Promise<void> {
                 totalBytes: seedFiles.totalBytes,
                 mdFileCount: seedFiles.mdCount,
                 binFileCount: seedFiles.binCount,
+                ...verification,
                 mirrorElapsedMs: Number(mirrorElapsed.toFixed(1)),
                 hostReadyElapsedMs: Number(hostReadyElapsed.toFixed(1)),
                 peerDiscoveryTimeoutSeconds: config.peersTimeoutSeconds,

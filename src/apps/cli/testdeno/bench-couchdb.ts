@@ -11,8 +11,12 @@ import {
 } from "./helpers/docker.ts";
 import {
     createDeterministicDataset,
-    type DatasetEntry,
 } from "./helpers/dataset.ts";
+import {
+    type BenchmarkVerificationMode,
+    parseBenchmarkVerificationMode,
+    verifyBenchmarkDataset,
+} from "./helpers/benchmarkVerification.ts";
 
 type BenchmarkConfig = {
     caseName: string;
@@ -38,6 +42,9 @@ type BenchmarkConfig = {
     networkModel: string;
     measurementScope: string;
     limitations: string[];
+    verificationMode: BenchmarkVerificationMode;
+    repeatIndex: number;
+    repeatCount: number;
 };
 
 function readEnvString(name: string, fallback: string): string {
@@ -163,6 +170,11 @@ function buildConfig(): BenchmarkConfig {
         limitations: readEnvStringArray("BENCH_LIMITATIONS_JSON", [
             "This benchmark result is scoped to the configured dataset, remote store, and network model.",
         ]),
+        verificationMode: parseBenchmarkVerificationMode(
+            Deno.env.get("BENCH_VERIFY_MODE"),
+        ),
+        repeatIndex: Math.floor(readEnvNumber("BENCH_REPEAT_INDEX", 1)),
+        repeatCount: Math.floor(readEnvNumber("BENCH_REPEAT_COUNT", 1)),
     };
 }
 
@@ -174,35 +186,27 @@ function readOptionalResultPath(): string | undefined {
     return raw;
 }
 
-function pickSampleFiles(entries: DatasetEntry[]): DatasetEntry[] {
-    if (entries.length === 0) {
-        return [];
-    }
-    const md = entries.find((e) => e.kind === "md");
-    const bin = entries.find((e) => e.kind === "bin");
-    const middle = entries[Math.floor(entries.length / 2)];
-    const last = entries[entries.length - 1];
-    const unique = new Map<string, DatasetEntry>();
-    for (const entry of [md, bin, middle, last]) {
-        if (entry) {
-            unique.set(entry.relativePath, entry);
-        }
-    }
-    return [...unique.values()];
-}
-
-type ProxyHandle = {
+export type CouchdbProxyHandle = {
     stop: () => Promise<void>;
     applied: boolean;
     note: string;
+    directionalDelayMs: number;
 };
 
-function startCouchdbProxy(
-    options: { backendUri: string; proxyUri: string; requestedRttMs: number },
-): ProxyHandle {
+export function startCouchdbProxy(
+    options: {
+        backendUri: string;
+        proxyUri: string;
+        requestedRttMs: number;
+        delay?: (milliseconds: number) => Promise<void>;
+    },
+): CouchdbProxyHandle {
     const backend = new URL(options.backendUri);
     const proxy = new URL(options.proxyUri);
-    const halfDelayMs = Math.max(1, Math.floor(options.requestedRttMs / 2));
+    const halfDelayMs = options.requestedRttMs / 2;
+    const delay = options.delay ??
+        ((milliseconds: number) =>
+            new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
     const controller = new AbortController();
 
     const listener = Deno.serve(
@@ -216,7 +220,7 @@ function startCouchdbProxy(
             },
         },
         async (request) => {
-            await new Promise((resolve) => setTimeout(resolve, halfDelayMs));
+            await delay(halfDelayMs);
 
             const targetUrl = new URL(request.url);
             targetUrl.protocol = backend.protocol;
@@ -245,6 +249,7 @@ function startCouchdbProxy(
             const responseHeaders = new Headers(upstream.headers);
             responseHeaders.delete("content-length");
             const responseBody = await upstream.arrayBuffer();
+            await delay(halfDelayMs);
 
             return new Response(responseBody, {
                 status: upstream.status,
@@ -256,8 +261,9 @@ function startCouchdbProxy(
 
     return {
         applied: true,
+        directionalDelayMs: halfDelayMs,
         note:
-            `local reverse proxy on ${proxy.origin} with ${halfDelayMs}ms pre-forward delay`,
+            `local reverse proxy on ${proxy.origin} with ${halfDelayMs}ms request-path and ${halfDelayMs}ms response-path delay`,
         stop: async () => {
             controller.abort();
             await listener.finished.catch(() => {});
@@ -350,25 +356,28 @@ async function main(): Promise<void> {
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
         const syncBElapsed = nowMs() - syncBStart;
 
-        const sampleFiles = pickSampleFiles(seedFiles.entries);
-        for (const sample of sampleFiles) {
-            const pulledPath = workDir.join(
-                `pulled-${sample.relativePath.split("/").join("_")}`,
-            );
-            await runCliOrFail(
-                vaultB,
-                "--settings",
-                settingsB,
-                "pull",
-                sample.relativePath,
-                pulledPath,
-            );
-            await assertFilesEqual(
-                sample.absolutePath,
-                pulledPath,
-                `sample file mismatch after CouchDB sync: ${sample.relativePath}`,
-            );
-        }
+        const verification = await verifyBenchmarkDataset(
+            seedFiles.entries,
+            config.verificationMode,
+            async (entry) => {
+                const pulledPath = workDir.join(
+                    `pulled-${entry.relativePath.split("/").join("_")}`,
+                );
+                await runCliOrFail(
+                    vaultB,
+                    "--settings",
+                    settingsB,
+                    "pull",
+                    entry.relativePath,
+                    pulledPath,
+                );
+                await assertFilesEqual(
+                    entry.absolutePath,
+                    pulledPath,
+                    `file mismatch after CouchDB sync: ${entry.relativePath}`,
+                );
+            },
+        );
 
         const result = {
             caseName: config.caseName,
@@ -382,15 +391,21 @@ async function main(): Promise<void> {
             networkModel: config.networkModel,
             measurementScope: config.measurementScope,
             limitations: config.limitations,
+            repeatIndex: config.repeatIndex,
+            repeatCount: config.repeatCount,
             rttRequestedMs: config.requestedRttMs,
             proxyApplied: proxy.applied,
             proxyNote: proxy.note,
+            proxyDirectionalDelayMs: proxy.directionalDelayMs,
+            proxyConfiguredRttMs: proxy.directionalDelayMs * 2,
+            proxyDelayApplication: "request-and-response",
             datasetSeed: config.datasetSeed,
             datasetDirName: config.datasetDirName,
             totalFiles: seedFiles.totalFiles,
             totalBytes: seedFiles.totalBytes,
             mdFileCount: seedFiles.mdCount,
             binFileCount: seedFiles.binCount,
+            ...verification,
             mirrorElapsedMs: Number(mirrorElapsed.toFixed(1)),
             syncAElapsedMs: Number(syncAElapsed.toFixed(1)),
             syncBElapsedMs: Number(syncBElapsed.toFixed(1)),
