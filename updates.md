@@ -3,6 +3,21 @@ Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
 
 The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
 
+## Unreleased
+
+### Improved (CLI and Webapp)
+
+- Rooted storage adapters now reject absolute, drive-qualified, backslash-separated, and traversal paths. They also prevent file writes, appends, and removal from targeting the configured root itself.
+- File System Access API storage can now create files below previously missing parent directories, matching the existing Node behaviour.
+
+### Testing
+
+- Added shared Node and File System Access API storage contract coverage for metadata, text and binary operations, append, listing, removal, path containment, and empty-root handling.
+
+### Miscellaneous
+
+- Split the internal storage adapter contract into focused capability views without changing existing runtime behaviour.
+
 ## 0.25.80
 
 7th July, 2026

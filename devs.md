@@ -47,6 +47,12 @@ npm test             # Run Harness based vitest tests (requires Docker services)
 
 Use CLI E2E tests or real Obsidian E2E scripts instead of `npm test` when the behaviour can be verified outside the browser harness.
 
+### Unreleased change notes
+
+Keep changes that may belong in a future release under `## Unreleased` at the top of `updates.md` when they do not justify an immediate release. Do not add a date to this virtual version. Move relevant entries under the real version and ordinal release date when preparing that release, then leave an empty `## Unreleased` section for subsequent work.
+
+Use this section for durable release-note candidates, including compatibility-relevant internal maintenance, rather than tasks, local diagnostics, or implementation journals. Categorise user-visible behaviour separately from internal changes and testing.
+
 ### Auto-copy to test vaults
 
 To facilitate development and testing, the build process can automatically copy the built plugin to specified test vault
