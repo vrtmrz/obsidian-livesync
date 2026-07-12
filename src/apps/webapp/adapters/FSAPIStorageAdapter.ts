@@ -1,12 +1,13 @@
 import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import type { FSAPIStat } from "./FSAPITypes";
+import { validateStoragePath } from "@/apps/storagePath";
 
 /**
  * Storage adapter implementation for FileSystem API
  */
 export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
-    constructor(private rootHandle: FileSystemDirectoryHandle) {}
+    constructor(private readonly rootHandle: FileSystemDirectoryHandle) {}
 
     /**
      * Resolve a path to directory and file handles
@@ -15,11 +16,9 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
         dirHandle: FileSystemDirectoryHandle;
         fileName: string;
     } | null> {
+        validateStoragePath(p, false);
         try {
             const parts = p.split("/").filter((part) => part !== "");
-            if (parts.length === 0) {
-                return null;
-            }
 
             let currentHandle = this.rootHandle;
             const fileName = parts[parts.length - 1];
@@ -39,6 +38,8 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
      * Get file handle for a given path
      */
     private async getFileHandle(p: string): Promise<FileSystemFileHandle | null> {
+        validateStoragePath(p);
+        if (p === "") return null;
         const resolved = await this.resolvePath(p);
         if (!resolved) return null;
 
@@ -53,6 +54,7 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
      * Get directory handle for a given path
      */
     private async getDirectoryHandle(p: string): Promise<FileSystemDirectoryHandle | null> {
+        validateStoragePath(p);
         try {
             const parts = p.split("/").filter((part) => part !== "");
             if (parts.length === 0) {
@@ -75,8 +77,8 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
         dirHandle: FileSystemDirectoryHandle;
         fileName: string;
     } | null> {
+        validateStoragePath(p, false);
         const parts = p.split("/").filter((part) => part !== "");
-        if (parts.length === 0) return null;
         const fileName = parts.pop()!;
         const parentPath = parts.join("/");
         await this.mkdir(parentPath);
@@ -124,6 +126,7 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
     }
 
     async mkdir(p: string): Promise<void> {
+        validateStoragePath(p);
         const parts = p.split("/").filter((part) => part !== "");
         let currentHandle = this.rootHandle;
 

@@ -1,5 +1,5 @@
 import { describe, it } from "vitest";
-import { storageAdapterContractCases } from "@/apps/storageAdapterContract";
+import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
 import { FSAPIStorageAdapter } from "./FSAPIStorageAdapter";
 
 class MemoryFileHandle {
