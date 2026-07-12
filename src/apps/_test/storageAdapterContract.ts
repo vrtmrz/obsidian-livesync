@@ -16,6 +16,15 @@ function assertEqual(actual: unknown, expected: unknown, message: string): void 
     }
 }
 
+async function assertRejects(operation: () => Promise<unknown>, message: string): Promise<void> {
+    try {
+        await operation();
+    } catch {
+        return;
+    }
+    throw new Error(message);
+}
+
 /** Passing baseline shared by Node, FSAPI, and future storage adapters. */
 export const storageAdapterContractCases: readonly StorageAdapterContractCase[] = [
     {
@@ -72,6 +81,28 @@ export const storageAdapterContractCases: readonly StorageAdapterContractCase[] 
             assertEqual(await adapter.exists("remove/file.txt"), false, "file should be removed");
             await adapter.remove("remove/folder");
             assertEqual(await adapter.exists("remove/folder"), false, "directory tree should be removed");
+        },
+    },
+    {
+        name: "keeps operations inside the configured root",
+        async run(adapter) {
+            await assertRejects(() => adapter.exists("../outside"), "parent traversal should be rejected");
+            await assertRejects(() => adapter.write("nested/../outside", "content"), "nested traversal should be rejected");
+            await assertRejects(() => adapter.read("/absolute"), "absolute paths should be rejected");
+            await assertRejects(() => adapter.read("C:\\absolute"), "drive-qualified paths should be rejected");
+            await assertRejects(() => adapter.read("nested\\outside"), "backslash-separated paths should be rejected");
+            await assertRejects(() => adapter.remove(""), "removing the configured root should be rejected");
+        },
+    },
+    {
+        name: "uses the empty path only for root-safe operations",
+        async run(adapter) {
+            await adapter.mkdir("");
+            assertEqual(await adapter.exists(""), true, "the configured root should exist");
+            assertEqual((await adapter.stat(""))?.type, "folder", "the configured root should be a folder");
+            assertEqual(await adapter.list(""), { files: [], folders: [] }, "the configured root should be listable");
+            await assertRejects(() => adapter.write("", "content"), "writing over the configured root should be rejected");
+            await assertRejects(() => adapter.append("", "content"), "appending to the configured root should be rejected");
         },
     },
 ];

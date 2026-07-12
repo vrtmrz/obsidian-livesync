@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { storageAdapterContractCases } from "@/apps/storageAdapterContract";
+import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
 import { NodeStorageAdapter } from "./NodeStorageAdapter";
 
 describe("NodeStorageAdapter", () => {
@@ -44,7 +44,4 @@ describe("NodeStorageAdapter", () => {
         expect(result.byteLength).toBe(expected.byteLength);
         expect(Array.from(new Uint8Array(result))).toEqual([0x10, 0x20, 0x30]);
     });
-
-    it.todo("rejects paths that escape the configured root");
-    it.todo("rejects removing the configured root through an empty path");
 });
