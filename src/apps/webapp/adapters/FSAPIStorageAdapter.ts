@@ -70,6 +70,20 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
         }
     }
 
+    /** Resolve a writable file path after creating its parent directories. */
+    private async resolveWritablePath(p: string): Promise<{
+        dirHandle: FileSystemDirectoryHandle;
+        fileName: string;
+    } | null> {
+        const parts = p.split("/").filter((part) => part !== "");
+        if (parts.length === 0) return null;
+        const fileName = parts.pop()!;
+        const parentPath = parts.join("/");
+        await this.mkdir(parentPath);
+        const dirHandle = await this.getDirectoryHandle(parentPath);
+        return dirHandle ? { dirHandle, fileName } : null;
+    }
+
     async exists(p: string): Promise<boolean> {
         const fileHandle = await this.getFileHandle(p);
         if (fileHandle) return true;
@@ -146,13 +160,10 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
     }
 
     async write(p: string, data: string, options?: UXDataWriteOptions): Promise<void> {
-        const resolved = await this.resolvePath(p);
+        const resolved = await this.resolveWritablePath(p);
         if (!resolved) {
             throw new Error(`Invalid path: ${p}`);
         }
-
-        // Ensure parent directory exists
-        await this.mkdir(p.split("/").slice(0, -1).join("/"));
 
         const fileHandle = await resolved.dirHandle.getFileHandle(resolved.fileName, { create: true });
         const writable = await fileHandle.createWritable();
@@ -161,13 +172,10 @@ export class FSAPIStorageAdapter implements IStorageAdapter<FSAPIStat> {
     }
 
     async writeBinary(p: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<void> {
-        const resolved = await this.resolvePath(p);
+        const resolved = await this.resolveWritablePath(p);
         if (!resolved) {
             throw new Error(`Invalid path: ${p}`);
         }
-
-        // Ensure parent directory exists
-        await this.mkdir(p.split("/").slice(0, -1).join("/"));
 
         const fileHandle = await resolved.dirHandle.getFileHandle(resolved.fileName, { create: true });
         const writable = await fileHandle.createWritable();
