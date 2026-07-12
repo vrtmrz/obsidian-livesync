@@ -13,6 +13,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Testing
 
 - Added shared Node and File System Access API storage contract coverage for metadata, text and binary operations, append, listing, removal, path containment, and empty-root handling.
+- Added a Compose-based P2P end-to-end smoke test and repeatable network benchmark cases for local performance investigations.
 
 ### Miscellaneous
 
