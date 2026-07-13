@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+## 0.25.81
+
+14th July, 2026
+
 ### Fixed
 
 - Fixed an issue where a U+FEFF character at a Rabin–Karp chunk boundary could be lost, changing the reconstructed file and causing repeated size-mismatch conflicts (#1000).
