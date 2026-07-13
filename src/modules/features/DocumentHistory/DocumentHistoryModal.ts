@@ -68,6 +68,11 @@ export class DocumentHistoryModal extends Modal {
     currentDeleted = false;
     initialRev?: string;
 
+    // Revision navigation state (◀/▶ beside the range slider)
+    revPrevBtn!: HTMLButtonElement;
+    revNextBtn!: HTMLButtonElement;
+    revNavIndicator!: HTMLSpanElement;
+
     // Diff navigation state
     currentDiffIndex = -1;
     diffNavContainer!: HTMLDivElement;
@@ -78,6 +83,8 @@ export class DocumentHistoryModal extends Modal {
     searchKeyword = "";
     searchResults: { rev: string; index: number; matchType: "Content" | "Diff" }[] = [];
     currentSearchIndex = -1;
+    searchPrevBtn!: HTMLButtonElement;
+    searchNextBtn!: HTMLButtonElement;
     searchResultIndicator!: HTMLSpanElement;
     searchProgressIndicator!: HTMLSpanElement;
     searchTimeout: number | null = null;
@@ -121,12 +128,14 @@ export class DocumentHistoryModal extends Modal {
             this.range.value = this.range.max;
             this.fileInfo.setText(`${this.file} / ${this.revs_info.length} revisions`);
             await this.loadRevs(initialRev);
+            this.updateRevisionNavUI();
         } catch (ex) {
             if (isErrorOfMissingDoc(ex)) {
                 this.range.max = "0";
                 this.range.value = "";
                 this.range.disabled = true;
                 this.contentView.setText(`We don't have any history for this note.`);
+                this.updateRevisionNavUI();
             } else {
                 this.contentView.setText(`Error while loading file.`);
                 Logger(ex, LOG_LEVEL_VERBOSE);
@@ -144,6 +153,37 @@ export class DocumentHistoryModal extends Modal {
         const index = this.revs_info.length - 1 - (Number(this.range.value) || 0);
         const rev = this.revs_info[index];
         await this.showExactRev(rev.rev);
+        this.updateRevisionNavUI();
+    }
+
+    navigateVersion(direction: "older" | "newer") {
+        const current = Number(this.range.value) || 0;
+        const max = Number(this.range.max) || 0;
+
+        if (direction === "older" && current > 0) {
+            this.range.value = `${current - 1}`;
+        } else if (direction === "newer" && current < max) {
+            this.range.value = `${current + 1}`;
+        } else {
+            return;
+        }
+
+        this.updateRevisionNavUI();
+        void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
+    }
+
+    updateRevisionNavUI() {
+        if (!this.revNavIndicator) return;
+
+        const total = this.revs_info.length;
+        const max = Number(this.range.max) || 0;
+        const current = Number(this.range.value) || 0;
+
+        this.revNavIndicator.setText(total > 0 ? `Rev ${current + 1}/${total}` : "\u2014");
+
+        const disabled = !!this.range.disabled || total <= 1;
+        this.revPrevBtn.disabled = disabled || current <= 0;
+        this.revNextBtn.disabled = disabled || current >= max;
     }
     BlobURLs = new Map<string, string>();
 
@@ -387,6 +427,7 @@ export class DocumentHistoryModal extends Modal {
         if (!keyword) {
             this.searchResultIndicator.setText("");
             this.searchProgressIndicator.setText("");
+            this.updateSearchUI();
             return;
         }
 
@@ -460,6 +501,10 @@ export class DocumentHistoryModal extends Modal {
             const current = this.currentSearchIndex >= 0 ? this.currentSearchIndex + 1 : 0;
             this.searchResultIndicator.setText(`${current}/${this.searchResults.length} matches`);
         }
+
+        const hasResults = this.searchResults.length > 0;
+        this.searchPrevBtn.disabled = !hasResults;
+        this.searchNextBtn.disabled = !hasResults;
     }
 
     navigateSearch(direction: "prev" | "next") {
@@ -511,12 +556,14 @@ export class DocumentHistoryModal extends Modal {
             }, 500);
         });
 
-        searchRow.createEl("button", { text: "\u25B2" }, (e) => {
+        this.searchPrevBtn = searchRow.createEl("button", { text: "\u25B2" }, (e) => {
             e.title = "Previous match";
+            e.disabled = true;
             e.addEventListener("click", () => this.navigateSearch("prev"));
         });
-        searchRow.createEl("button", { text: "\u25BC" }, (e) => {
+        this.searchNextBtn = searchRow.createEl("button", { text: "\u25BC" }, (e) => {
             e.title = "Next match";
+            e.disabled = true;
             e.addEventListener("click", () => this.navigateSearch("next"));
         });
 
@@ -526,17 +573,36 @@ export class DocumentHistoryModal extends Modal {
         this.searchProgressIndicator = searchRow.createEl("span", { text: "" });
         this.searchProgressIndicator.addClass("history-search-progress-indicator");
 
-        const divView = contentEl.createDiv("");
-        divView.addClass("op-flex");
+        const revNavRow = contentEl.createDiv({ cls: "history-rev-nav-row" });
 
-        divView.createEl("input", { type: "range" }, (e) => {
+        this.revPrevBtn = revNavRow.createEl("button", { text: "\u25C0" }, (e) => {
+            e.addClass("history-rev-nav-btn");
+            e.title = "Older revision";
+            e.disabled = true;
+            e.addEventListener("click", () => this.navigateVersion("older"));
+        });
+
+        revNavRow.createEl("input", { type: "range" }, (e) => {
             this.range = e;
-            e.addEventListener("change", (e) => {
+            e.addEventListener("change", () => {
+                this.updateRevisionNavUI();
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
             });
-            e.addEventListener("input", (e) => {
+            e.addEventListener("input", () => {
+                this.updateRevisionNavUI();
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
             });
+        });
+
+        this.revNextBtn = revNavRow.createEl("button", { text: "\u25B6" }, (e) => {
+            e.addClass("history-rev-nav-btn");
+            e.title = "Newer revision";
+            e.disabled = true;
+            e.addEventListener("click", () => this.navigateVersion("newer"));
+        });
+
+        this.revNavIndicator = revNavRow.createEl("span", { text: "\u2014" }, (e) => {
+            e.addClass("history-rev-indicator");
         });
         const diffOptionsRow = contentEl.createDiv("");
         diffOptionsRow.addClass("op-info");

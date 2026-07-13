@@ -551,6 +551,51 @@ div.workspace-leaf-content[data-type=bases]  .livesync-status {
     color: var(--text-muted);
 }
 
+.history-search-row button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.history-rev-nav-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.history-rev-nav-row input[type="range"] {
+    flex-grow: 1;
+    margin-bottom: 0;
+}
+
+.history-rev-nav-btn {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+}
+
+.history-rev-nav-btn:hover:not(:disabled) {
+    background-color: var(--background-modifier-hover);
+}
+
+.history-rev-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.history-rev-indicator {
+    flex-shrink: 0;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    min-width: 4.5em;
+    text-align: right;
+}
+
 .history-diff-options-row {
     justify-content: space-between;
 }
