@@ -274,9 +274,12 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 
 - Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, regenerates the `_types` fallback definitions used by the community plug-in scan, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
-- Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch and pushes both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) to that commit.
-- The plug-in tag triggers the release workflow and creates a draft GitHub Release by default. The CLI tag triggers the Docker workflow and publishes the fixed version tag, the major-minor moving tag (for example, `0.25-cli`), `latest`, and the SHA-qualified tag.
-- Merge the release PR with a merge commit after the draft or pre-release has been created. This keeps the tagged release commit in the `main` history.
+- Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, pushes both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) to that commit, and explicitly dispatches the plug-in and CLI publishing workflows. An explicit dispatch is required because tags pushed with `GITHUB_TOKEN` do not trigger tag-push workflows.
+- Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. Confirm that the CLI workflow has published the fixed version tag, the major-minor moving tag (for example, `0.25-cli`), `latest`, and the SHA-qualified tag.
+- Publish the draft GitHub Release as the latest stable release while keeping the release PR in draft and leaving `main` unchanged. Record the state in the PR with: 'Release `<version>` has been published as the latest stable release. This pull request intentionally remains in draft, and `main` has not yet been updated. Merge is on hold until BRAT validation is complete.'
+- Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
+- After BRAT validation succeeds, mark the release PR ready and merge it with a merge commit. This keeps the tagged release commit in the `main` history.
+- If BRAT validation fails, keep the release PR in draft. Do not move published tags; prepare and publish a new patch release instead.
 - If a pre-release is needed, run the `Release Obsidian Plugin` workflow manually with the target tag, `draft=false`, and `prerelease=true`.
 
 ### Release Cheat Sheet
@@ -297,10 +300,14 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
     - `version`: the same target version.
     - `release_branch`: leave blank unless the release branch used a custom name.
     - `expected_head_sha`: the full head commit SHA reviewed in the release PR.
-5. Check the generated draft GitHub Release for the plug-in tag.
-6. Check the CLI Docker workflow started from the `*-cli` tag.
-7. Publish the draft GitHub Release when ready, then merge the release PR into `main` with a merge commit.
-8. If the release should be a pre-release instead of a draft release, run `Release Obsidian Plugin` manually with the target `tag`, `draft=false`, and `prerelease=true`.
+5. Approve the `Release Obsidian Plugin` workflow for the `release` environment, then check the generated draft GitHub Release.
+6. Confirm that the explicitly dispatched CLI Docker workflow has published the expected image tags.
+7. Publish the draft GitHub Release as the latest stable release, but keep the release PR in draft and leave `main` unchanged.
+8. Update the PR state message to say that the release is now the latest stable release and that merging is intentionally on hold until BRAT validation is complete.
+9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
+10. After BRAT validation succeeds, mark the release PR ready and merge it into `main` with a merge commit.
+11. If validation fails, leave the PR in draft and prepare a new patch release without moving the published tags.
+12. If the release should be a pre-release instead of a draft release, run `Release Obsidian Plugin` manually with the target `tag`, `draft=false`, and `prerelease=true`.
 
 ## Contribution Guidelines
 

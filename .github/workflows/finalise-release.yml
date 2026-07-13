@@ -21,6 +21,7 @@ jobs:
         runs-on: ubuntu-latest
         environment: release
         permissions:
+            actions: write
             contents: write
         steps:
             - name: Resolve release branch
@@ -78,6 +79,22 @@ jobs:
                   git tag "${VERSION}-cli"
                   git push origin "${VERSION}" "${VERSION}-cli"
 
+            - name: Dispatch release workflows
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ inputs.version }}
+              run: |
+                  set -euo pipefail
+                  gh workflow run release.yml \
+                    --ref "${VERSION}" \
+                    --field tag="${VERSION}" \
+                    --field draft=true \
+                    --field prerelease=false
+                  gh workflow run cli-docker.yml \
+                    --ref "${VERSION}-cli" \
+                    --field dry_run=false \
+                    --field force=false
+
             - name: Summarise next steps
               env:
                   VERSION: ${{ inputs.version }}
@@ -85,8 +102,8 @@ jobs:
                   {
                     echo "Created tags \`${VERSION}\` and \`${VERSION}-cli\`."
                     echo ""
-                    echo "The plug-in release workflow is triggered by the \`${VERSION}\` tag and creates a draft release by default."
-                    echo "The CLI Docker workflow is triggered by the \`${VERSION}-cli\` tag and publishes the version, major-minor, latest, and SHA-qualified image tags."
+                    echo "Dispatched the plug-in release workflow for \`${VERSION}\`. After approval for the release environment, it creates a draft GitHub Release."
+                    echo "Dispatched the CLI Docker workflow for \`${VERSION}-cli\`. It publishes the version, major-minor, latest, and SHA-qualified image tags."
                     echo ""
-                    echo "To create a pre-release instead of the default draft flow, run \`Release Obsidian Plugin\` manually with \`tag=${VERSION}\`, \`draft=false\`, and \`prerelease=true\`."
+                    echo "Keep the release pull request in draft after publishing the GitHub Release as the latest stable release. Mark it ready and merge it only after BRAT validation succeeds."
                   } >> "$GITHUB_STEP_SUMMARY"

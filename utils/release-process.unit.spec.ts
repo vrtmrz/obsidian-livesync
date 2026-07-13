@@ -10,6 +10,7 @@ const versionBumpScript =
     process.env.VERSION_BUMP_SCRIPT || fileURLToPath(new URL("../version-bump.mjs", import.meta.url));
 const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
 const prepareReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/prepare-release.yml", import.meta.url));
+const finaliseReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/finalise-release.yml", import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -110,6 +111,26 @@ describe("release workflow", () => {
 
         expect(workflow).toContain("npm run build:lib:types");
         expect(workflow).toMatch(/git add[^\n]*_types/);
+    });
+
+    it("keeps the release PR in draft until BRAT validation", () => {
+        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain("Merge intentionally on hold");
+        expect(workflow).toContain(
+            "Publish the GitHub Release as the latest stable release while keeping this pull request in draft"
+        );
+        expect(workflow).toContain("Validate the published release with BRAT");
+        expect(workflow).toContain("Mark this pull request ready and merge it with a merge commit");
+    });
+
+    it("explicitly dispatches publishing workflows after creating tags", () => {
+        const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain("actions: write");
+        expect(workflow).toContain("gh workflow run release.yml");
+        expect(workflow).toContain("gh workflow run cli-docker.yml");
+        expect(workflow).toContain("dry_run=false");
     });
 });
 
