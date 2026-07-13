@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import { type LoadedEntry, type FilePathWithPrefix, type FilePath, type DocumentID, type UXFileInfo, type UXStat, type MetaEntry, type UXDataWriteOptions } from "@lib/common/types.ts";
 import { type InternalFileInfo } from "@/common/types.ts";
 import { type CustomRegExp } from "@lib/common/utils.ts";
@@ -21,7 +21,7 @@ declare global {
 export declare class HiddenFileSync extends LiveSyncCommands {
     isThisModuleEnabled(): boolean;
     periodicInternalFileScanProcessor: PeriodicProcessor;
-    get kvDB(): import("../../lib/src/interfaces/KeyValueDatabase").KeyValueDatabase;
+    get kvDB(): import("../../lib/src/interfaces/KeyValueDatabase.ts").KeyValueDatabase;
     getConflictedDoc(path: FilePathWithPrefix, rev: string): Promise<false | import("@lib/common/types.ts").diff_result_leaf>;
     onunload(): void;
     onload(): void;

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import { type RemoteDBSettings, type EntryLeaf, type ChunkVersionRange, type TweakValues, type NodeData } from "@lib/common/types.ts";
 import { JournalSyncCore } from "./JournalSyncCore.ts";
 import { LiveSyncAbstractReplicator, type RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import type { CouchDBConnection } from "@lib/common/types";
 export declare function purgeUnreferencedChunks(db: PouchDB.Database, dryRun: boolean, connSetting?: CouchDBConnection, performCompact?: boolean): Promise<number>;
 export declare function transferChunks(key: string, label: string, dbFrom: PouchDB.Database, dbTo: PouchDB.Database, items: {

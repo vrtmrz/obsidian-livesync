@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
 import type { TFile, App, TFolder } from "obsidian";

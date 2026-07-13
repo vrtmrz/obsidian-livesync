@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 export declare class StoredMapLike<U> {
     _store: SimpleStore<U>;

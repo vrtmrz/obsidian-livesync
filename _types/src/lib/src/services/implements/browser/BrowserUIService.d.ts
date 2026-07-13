@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import { UIService } from "@lib/services/implements/base/UIService";
 import type { ConfigService } from "@lib/services/base/ConfigService";
 import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";

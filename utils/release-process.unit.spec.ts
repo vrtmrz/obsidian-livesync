@@ -9,6 +9,7 @@ const releaseNotesScript = fileURLToPath(new URL("./release-notes.mjs", import.m
 const versionBumpScript =
     process.env.VERSION_BUMP_SCRIPT || fileURLToPath(new URL("../version-bump.mjs", import.meta.url));
 const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
+const prepareReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/prepare-release.yml", import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -100,6 +101,15 @@ describe("release notes", () => {
         const result = runNode(releaseNotesScript, ["validate", "0.25.81"], directory);
         expect(result.status).toBe(1);
         expect(result.stderr).toContain("still contain TODO or WIP markers");
+    });
+});
+
+describe("release workflow", () => {
+    it("regenerates and stages fallback type definitions", () => {
+        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain("npm run build:lib:types");
+        expect(workflow).toMatch(/git add[^\n]*_types/);
     });
 });
 

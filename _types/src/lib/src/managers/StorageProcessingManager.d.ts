@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import type { FilePathWithPrefix } from "@lib/common/models/db.type";
 import type { UXFileInfoStub } from "@lib/common/models/fileaccess.type";
 import type { IStorageAccessManager } from "@lib/interfaces/StorageAccess";

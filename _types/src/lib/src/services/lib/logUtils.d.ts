@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import { type LOG_LEVEL } from "octagonal-wheels/common/logger";
 import type { IAPIService } from "@lib/services/base/IService";
 export declare const MARK_LOG_SEPARATOR = "\u200A";

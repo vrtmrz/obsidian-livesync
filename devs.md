@@ -272,7 +272,7 @@ In short, the situation remains unchanged for me, but it means you all become a 
 This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
 The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `release` GitHub Environment. Configure Environment protection in the repository settings so tag creation and release publication require maintainer approval.
 
-- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
+- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, regenerates the `_types` fallback definitions used by the community plug-in scan, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
 - Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch and pushes both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) to that commit.
 - The plug-in tag triggers the release workflow and creates a draft GitHub Release by default. The CLI tag triggers the Docker workflow and publishes the fixed version tag, the major-minor moving tag (for example, `0.25-cli`), `latest`, and the SHA-qualified tag.
@@ -290,7 +290,7 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
     - `allow_empty_updates`: leave disabled unless the release intentionally has no user-facing notes.
 3. Review the generated draft PR.
     - Polish `updates.md`.
-    - Confirm `package.json`, `manifest.json`, `versions.json`, and workspace package versions.
+    - Confirm `package.json`, `manifest.json`, `versions.json`, workspace package versions, and the generated `_types` definitions.
     - Confirm that `manifest.json` has the intended `minAppVersion`.
     - Wait for the necessary CI checks.
 4. When the PR head is fixed, run `Finalise Release Tags`.
