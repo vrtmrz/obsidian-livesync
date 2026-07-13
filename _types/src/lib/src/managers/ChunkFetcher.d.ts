@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 87dc724
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
 import { type DocumentID } from "@lib/common/types.ts";
 import { type ChunkManager } from "./ChunkManager.ts";
 import type { IReplicatorService, ISettingService } from "@lib/services/base/IService.ts";
