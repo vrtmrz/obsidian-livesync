@@ -16,6 +16,10 @@ on:
                 description: Release branch name. Defaults to the version with dots replaced by underscores.
                 required: false
                 type: string
+            release_date:
+                description: Release date in ordinal format. Defaults to the current UTC date.
+                required: false
+                type: string
             allow_empty_updates:
                 description: Allow an empty Unreleased section
                 required: false
@@ -49,6 +53,7 @@ jobs:
               env:
                   VERSION: ${{ inputs.version }}
                   RELEASE_BRANCH_INPUT: ${{ inputs.release_branch }}
+                  RELEASE_DATE: ${{ inputs.release_date }}
                   ALLOW_EMPTY_UPDATES: ${{ inputs.allow_empty_updates }}
               run: |
                   set -euo pipefail
@@ -88,10 +93,11 @@ jobs:
                   ## Release checklist
 
                   - [ ] Review and polish \`updates.md\`
+                  - [ ] Confirm the release date
                   - [ ] Confirm \`manifest.json\`, \`versions.json\`, and workspace package versions
                   - [ ] Confirm CI has passed
-                  - [ ] Run the finalise release workflow after the PR head is fixed
-                  - [ ] Merge this PR after the draft or pre-release has been created
+                  - [ ] Run the finalise release workflow with this PR's fixed head SHA
+                  - [ ] Merge this PR with a merge commit after the draft or pre-release has been created
                   EOF
 
                   gh pr create \

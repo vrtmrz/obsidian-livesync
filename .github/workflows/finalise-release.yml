@@ -11,6 +11,10 @@ on:
                 description: Release PR branch. Defaults to the version with dots replaced by underscores.
                 required: false
                 type: string
+            expected_head_sha:
+                description: Full head commit SHA reviewed in the release PR
+                required: true
+                type: string
 
 jobs:
     finalise:
@@ -46,8 +50,14 @@ jobs:
             - name: Validate release head
               env:
                   VERSION: ${{ inputs.version }}
+                  EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
               run: |
                   set -euo pipefail
+                  ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+                  if [[ "${ACTUAL_HEAD_SHA}" != "${EXPECTED_HEAD_SHA}" ]]; then
+                    echo "Release branch head is ${ACTUAL_HEAD_SHA}, expected ${EXPECTED_HEAD_SHA}." >&2
+                    exit 1
+                  fi
                   node utils/release-notes.mjs validate "${VERSION}"
                   git fetch --tags --force
                   if git rev-parse --verify --quiet "refs/tags/${VERSION}" >/dev/null; then
