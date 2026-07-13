@@ -12,7 +12,7 @@
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.47"
+        "octagonal-wheels": "^0.1.50"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",

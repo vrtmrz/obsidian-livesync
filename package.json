@@ -163,7 +163,7 @@
         "markdown-it": "^14.2.0",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
-        "octagonal-wheels": "^0.1.47",
+        "octagonal-wheels": "^0.1.50",
         "qrcode-generator": "^1.4.4",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     },
