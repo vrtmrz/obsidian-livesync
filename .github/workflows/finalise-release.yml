@@ -1,0 +1,92 @@
+name: Finalise Release Tags
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Release version, for example 0.25.81
+                required: true
+                type: string
+            release_branch:
+                description: Release PR branch. Defaults to the version with dots replaced by underscores.
+                required: false
+                type: string
+            expected_head_sha:
+                description: Full head commit SHA reviewed in the release PR
+                required: true
+                type: string
+
+jobs:
+    finalise:
+        runs-on: ubuntu-latest
+        environment: release
+        permissions:
+            contents: write
+        steps:
+            - name: Resolve release branch
+              id: branch
+              env:
+                  VERSION: ${{ inputs.version }}
+                  RELEASE_BRANCH_INPUT: ${{ inputs.release_branch }}
+              run: |
+                  set -euo pipefail
+                  BRANCH="${RELEASE_BRANCH_INPUT}"
+                  if [[ -z "${BRANCH}" ]]; then
+                    BRANCH="${VERSION//./_}"
+                  fi
+                  echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ steps.branch.outputs.name }}
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Use Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24.x"
+
+            - name: Validate release head
+              env:
+                  VERSION: ${{ inputs.version }}
+                  EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+              run: |
+                  set -euo pipefail
+                  ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+                  if [[ "${ACTUAL_HEAD_SHA}" != "${EXPECTED_HEAD_SHA}" ]]; then
+                    echo "Release branch head is ${ACTUAL_HEAD_SHA}, expected ${EXPECTED_HEAD_SHA}." >&2
+                    exit 1
+                  fi
+                  node utils/release-notes.mjs validate "${VERSION}"
+                  git fetch --tags --force
+                  if git rev-parse --verify --quiet "refs/tags/${VERSION}" >/dev/null; then
+                    echo "Tag already exists: ${VERSION}" >&2
+                    exit 1
+                  fi
+                  if git rev-parse --verify --quiet "refs/tags/${VERSION}-cli" >/dev/null; then
+                    echo "Tag already exists: ${VERSION}-cli" >&2
+                    exit 1
+                  fi
+
+            - name: Create and push release tags
+              env:
+                  VERSION: ${{ inputs.version }}
+              run: |
+                  set -euo pipefail
+                  git tag "${VERSION}"
+                  git tag "${VERSION}-cli"
+                  git push origin "${VERSION}" "${VERSION}-cli"
+
+            - name: Summarise next steps
+              env:
+                  VERSION: ${{ inputs.version }}
+              run: |
+                  {
+                    echo "Created tags \`${VERSION}\` and \`${VERSION}-cli\`."
+                    echo ""
+                    echo "The plug-in release workflow is triggered by the \`${VERSION}\` tag and creates a draft release by default."
+                    echo "The CLI Docker workflow is triggered by the \`${VERSION}-cli\` tag and publishes the version, major-minor, latest, and SHA-qualified image tags."
+                    echo ""
+                    echo "To create a pre-release instead of the default draft flow, run \`Release Obsidian Plugin\` manually with \`tag=${VERSION}\`, \`draft=false\`, and \`prerelease=true\`."
+                  } >> "$GITHUB_STEP_SUMMARY"

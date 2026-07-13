@@ -1,0 +1,108 @@
+name: Prepare Release PR
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Release version, for example 0.25.81
+                required: true
+                type: string
+            base_branch:
+                description: Base branch for the release PR
+                required: false
+                type: string
+                default: main
+            release_branch:
+                description: Release branch name. Defaults to the version with dots replaced by underscores.
+                required: false
+                type: string
+            release_date:
+                description: Release date in ordinal format. Defaults to the current UTC date.
+                required: false
+                type: string
+            allow_empty_updates:
+                description: Allow an empty Unreleased section
+                required: false
+                type: boolean
+                default: false
+
+jobs:
+    prepare:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.base_branch }}
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Use Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "24.x"
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Prepare release changes
+              id: prepare
+              env:
+                  VERSION: ${{ inputs.version }}
+                  RELEASE_BRANCH_INPUT: ${{ inputs.release_branch }}
+                  RELEASE_DATE: ${{ inputs.release_date }}
+                  ALLOW_EMPTY_UPDATES: ${{ inputs.allow_empty_updates }}
+              run: |
+                  set -euo pipefail
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                  BRANCH="${RELEASE_BRANCH_INPUT}"
+                  if [[ -z "${BRANCH}" ]]; then
+                    BRANCH="${VERSION//./_}"
+                  fi
+
+                  if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+                    echo "Release branch already exists: ${BRANCH}" >&2
+                    exit 1
+                  fi
+
+                  git switch -c "${BRANCH}"
+                  npm version "${VERSION}" --no-git-tag-version
+                  node utils/release-notes.mjs prepare "${VERSION}"
+                  npm run pretty:json
+
+                  git add package.json package-lock.json manifest.json versions.json updates.md src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json
+                  git diff --cached --check
+                  git commit -m "Releasing ${VERSION}"
+                  git push --set-upstream origin "${BRANCH}"
+
+                  echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+            - name: Create draft release PR
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ inputs.version }}
+                  BASE_BRANCH: ${{ inputs.base_branch }}
+                  RELEASE_BRANCH: ${{ steps.prepare.outputs.branch }}
+              run: |
+                  cat > /tmp/release-pr-body.md <<EOF
+                  ## Release checklist
+
+                  - [ ] Review and polish \`updates.md\`
+                  - [ ] Confirm the release date
+                  - [ ] Confirm \`manifest.json\`, \`versions.json\`, and workspace package versions
+                  - [ ] Confirm CI has passed
+                  - [ ] Run the finalise release workflow with this PR's fixed head SHA
+                  - [ ] Merge this PR with a merge commit after the draft or pre-release has been created
+                  EOF
+
+                  gh pr create \
+                    --base "${BASE_BRANCH}" \
+                    --head "${RELEASE_BRANCH}" \
+                    --draft \
+                    --title "Releasing ${VERSION}" \
+                    --body-file /tmp/release-pr-body.md

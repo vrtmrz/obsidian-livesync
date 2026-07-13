@@ -23,6 +23,23 @@ if (!workspaces || !Array.isArray(workspaces)) {
     process.exit(1);
 }
 
+const packageLockPath = resolve('package-lock.json');
+let packageLock;
+let packageLockChanged = false;
+try {
+    packageLock = JSON.parse(readFileSync(packageLockPath, 'utf8'));
+    if (packageLock.version !== mainVersion) {
+        packageLock.version = mainVersion;
+        packageLockChanged = true;
+    }
+    if (packageLock.packages?.[''] && packageLock.packages[''].version !== mainVersion) {
+        packageLock.packages[''].version = mainVersion;
+        packageLockChanged = true;
+    }
+} catch (error) {
+    console.warn('Could not update package-lock.json:', error.message);
+}
+
 // Collect all root dependencies for version matching.
 const rootDeps = {
     ...(rootPackage.dependencies || {}),
@@ -68,10 +85,15 @@ for (const dir of workspaceDirs) {
 
     const workspaceName = basename(dir);
     const targetVersion = `${mainVersion}-${workspaceName}`;
+    const lockWorkspace = packageLock?.packages?.[dir.replaceAll('\\', '/')];
 
     console.log(`Updating ${pkg.name || dir}:`);
     console.log(`  Version: ${pkg.version} -> ${targetVersion}`);
     pkg.version = targetVersion;
+    if (lockWorkspace && lockWorkspace.version !== targetVersion) {
+        lockWorkspace.version = targetVersion;
+        packageLockChanged = true;
+    }
 
     // Synchronise dependencies.
     if (pkg.dependencies) {
@@ -108,4 +130,8 @@ for (const dir of workspaceDirs) {
     } catch (error) {
         console.error(`  Failed to write ${pkgJsonPath}:`, error);
     }
+}
+
+if (packageLockChanged) {
+    writeFileSync(packageLockPath, JSON.stringify(packageLock, null, 4) + '\n', 'utf8');
 }
