@@ -1,4 +1,4 @@
-import { minimatch } from "minimatch";
+import { Minimatch } from "minimatch";
 import { fsPromises as fs, path } from "@/apps/cli/node-compat";
 
 /**
@@ -17,7 +17,7 @@ import { fsPromises as fs, path } from "@/apps/cli/node-compat";
  * Missing files (`.livesync/ignore` or `.gitignore`) are silently skipped.
  */
 export class IgnoreRules {
-    private patterns: string[] = [];
+    private patterns: Minimatch[] = [];
 
     constructor(private vaultPath: string) {}
 
@@ -108,7 +108,7 @@ export class IgnoreRules {
                     `Remove it from .livesync/ignore or use a separate include/exclude file.`
             );
         }
-        this.patterns.push(this._normalisePattern(raw));
+        this.patterns.push(new Minimatch(this._normalisePattern(raw), { dot: true }));
     }
 
     /**
@@ -124,6 +124,6 @@ export class IgnoreRules {
         }
         // Normalise to forward slashes for minimatch.
         const normalised = relativePath.replace(/\\/g, "/");
-        return this.patterns.some((p) => minimatch(normalised, p, { dot: true }));
+        return this.patterns.some((pattern) => pattern.match(normalised));
     }
 }

@@ -4,10 +4,19 @@ import type { ServiceContext } from "@lib/services/base/ServiceBase";
 import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
 import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
 import { LiveSyncError } from "@lib/common/LSError";
+import { getPeerConnectionStats } from "@lib/rpc/transports/DiagRTCPeerConnections.utils";
+import { appendFile } from "node:fs/promises";
 
 type CLIP2PPeer = {
     peerId: string;
     name: string;
+};
+
+type CandidateSummary = {
+    id: string | "unknown";
+    candidateType: string | "unknown";
+    protocol: string | "unknown";
+    relayProtocol: string | "unknown";
 };
 
 function delay(ms: number): Promise<void> {
@@ -81,6 +90,74 @@ function resolvePeer(peers: CLIP2PPeer[], peerToken: string): CLIP2PPeer | undef
     return undefined;
 }
 
+function getReportValue<T extends string | number>(
+    report: Record<string, unknown> | undefined,
+    key: string
+): T | "unknown" {
+    const value = report?.[key];
+    return typeof value === "string" || typeof value === "number" ? (value as T) : "unknown";
+}
+
+function summariseCandidate(reports: unknown[], candidateId: string | "unknown"): CandidateSummary | undefined {
+    if (candidateId === "unknown") {
+        return undefined;
+    }
+    const report = reports.map((r) => r as Record<string, unknown>).find((r) => r.id === candidateId);
+    if (!report) {
+        return undefined;
+    }
+    return {
+        id: candidateId,
+        candidateType: getReportValue<string>(report, "candidateType"),
+        protocol: getReportValue<string>(report, "protocol"),
+        relayProtocol: getReportValue<string>(report, "relayProtocol"),
+    };
+}
+
+async function writePeerConnectionStatsIfRequested(
+    replicator: LiveSyncTrysteroReplicator,
+    peer: CLIP2PPeer
+): Promise<void> {
+    const outputPath = process.env.LIVESYNC_P2P_STATS_JSONL?.trim();
+    if (!outputPath) {
+        return;
+    }
+
+    const peerConnection = replicator.rawHost?.room?.getPeers()[peer.peerId];
+    const stats = peerConnection ? await getPeerConnectionStats(`cli-p2p-${peer.peerId}`, peerConnection) : undefined;
+    const localCandidate = summariseCandidate(stats?.reports ?? [], stats?.localCandidateId ?? "unknown");
+    const remoteCandidate = summariseCandidate(stats?.reports ?? [], stats?.remoteCandidateId ?? "unknown");
+    const selectedPath =
+        localCandidate && remoteCandidate
+            ? `${localCandidate.candidateType}<->${remoteCandidate.candidateType}`
+            : "unknown";
+
+    const payload = {
+        generatedAt: new Date().toISOString(),
+        command: "p2p-sync",
+        peerId: peer.peerId,
+        peerName: peer.name,
+        candidatePathCollected: !!stats?.selectedPair,
+        selectedPath,
+        selectedPair: stats
+            ? {
+                  id: stats.selectedPairId,
+                  state: stats.state,
+                  currentRoundTripTime: stats.currentRoundTripTime,
+                  totalRoundTripTime: stats.totalRoundTripTime,
+                  requestsSent: stats.requestsSent,
+                  responsesReceived: stats.responsesReceived,
+                  packetsDiscardedOnSend: stats.packetsDiscardedOnSend,
+                  bytesSent: stats.bytesSent,
+                  bytesReceived: stats.bytesReceived,
+              }
+            : undefined,
+        localCandidate,
+        remoteCandidate,
+    };
+    await appendFile(outputPath, `${JSON.stringify(payload)}\n`, "utf8");
+}
+
 export async function syncWithPeer(
     core: LiveSyncBaseCore<ServiceContext, never>,
     peerToken: string,
@@ -118,6 +195,7 @@ export async function syncWithPeer(
                 : LiveSyncError.fromError(err ?? "P2P sync failed while requesting remote sync");
         }
 
+        await writePeerConnectionStatsIfRequested(replicator, targetPeer);
         return targetPeer;
     } finally {
         await replicator.close();

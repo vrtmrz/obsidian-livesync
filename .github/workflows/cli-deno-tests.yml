@@ -9,6 +9,9 @@ on:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
       - 'src/lib/src/API/processSetting.ts'
+      - 'src/lib/src/replication/trystero/**'
+      - 'src/lib/src/rpc/**'
+      - 'test/bench-network/**'
       - 'package.json'
       - 'package-lock.json'
   pull_request:
@@ -16,6 +19,9 @@ on:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
       - 'src/lib/src/API/processSetting.ts'
+      - 'src/lib/src/replication/trystero/**'
+      - 'src/lib/src/rpc/**'
+      - 'test/bench-network/**'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
@@ -155,3 +161,40 @@ jobs:
         run: |
           docker stop couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
           docker rm couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
+
+  compose-p2p-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show Docker versions
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Run Compose CLI P2P E2E
+        env:
+          CLI_E2E_TASK: test:p2p-sync
+          RELAY: ws://nostr-relay:7777/
+          PEERS_TIMEOUT: '20'
+          SYNC_TIMEOUT: '60'
+          LIVESYNC_USE_COTURN: '0'
+          TURN_SERVERS: none
+          LIVESYNC_P2P_PEERS_RETRY: '1'
+          LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: '60000'
+          BENCH_LIVESYNC_TEST_TEE: '0'
+        run: docker compose -f test/bench-network/compose.yml run --build --rm bench-runner run-livesync-cli-e2e
+
+      - name: Show Compose diagnostics
+        if: failure()
+        run: |
+          docker compose -f test/bench-network/compose.yml ps
+          docker compose -f test/bench-network/compose.yml logs --no-color couchdb nostr-relay || true
+
+      - name: Stop Compose services
+        if: always()
+        run: docker compose -f test/bench-network/compose.yml down -v --remove-orphans

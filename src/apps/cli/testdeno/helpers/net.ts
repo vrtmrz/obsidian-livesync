@@ -9,7 +9,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function connectWithTimeout(hostname: string, port: number, timeoutMs: number): Promise<void> {
-    let timer: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
         const connPromise = Deno.connect({ hostname, port });
         const timeoutPromise = new Promise<never>((_, reject) => {

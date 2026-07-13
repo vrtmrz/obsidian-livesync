@@ -41,7 +41,7 @@
     "dependencies": {
         "chokidar": "^4.0.0",
         "minimatch": "^10.2.5",
-        "octagonal-wheels": "^0.1.47",
+        "octagonal-wheels": "^0.1.50",
         "pouchdb-adapter-http": "^9.0.0",
         "pouchdb-adapter-leveldb": "^9.0.0",
         "pouchdb-core": "^9.0.0",

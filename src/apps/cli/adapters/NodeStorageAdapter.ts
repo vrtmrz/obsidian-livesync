@@ -2,20 +2,22 @@ import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import type { NodeStat } from "./NodeTypes";
 import { fsPromises as fs, path } from "@/apps/cli/node-compat";
+import { validateStoragePath } from "@/apps/storagePath";
 
 /**
  * Storage adapter implementation for Node.js
  */
 export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
-    constructor(private basePath: string) {}
+    constructor(private readonly basePath: string) {}
 
-    private resolvePath(p: string): string {
-        return path.join(this.basePath, p);
+    private resolvePath(p: string, allowRoot: boolean = true): string {
+        return path.join(this.basePath, validateStoragePath(p, allowRoot));
     }
 
     async exists(p: string): Promise<boolean> {
+        const fullPath = this.resolvePath(p);
         try {
-            await fs.access(this.resolvePath(p));
+            await fs.access(fullPath);
             return true;
         } catch {
             return false;
@@ -23,8 +25,9 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
     }
 
     async trystat(p: string): Promise<NodeStat | null> {
+        const fullPath = this.resolvePath(p);
         try {
-            const stat = await fs.stat(this.resolvePath(p));
+            const stat = await fs.stat(fullPath);
             return {
                 size: stat.size,
                 mtime: Math.floor(stat.mtimeMs),
@@ -45,7 +48,7 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
     }
 
     async remove(p: string): Promise<void> {
-        const fullPath = this.resolvePath(p);
+        const fullPath = this.resolvePath(p, false);
         const stat = await fs.stat(fullPath);
         if (stat.isDirectory()) {
             await fs.rm(fullPath, { recursive: true, force: true });
@@ -55,17 +58,17 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
     }
 
     async read(p: string): Promise<string> {
-        return await fs.readFile(this.resolvePath(p), "utf-8");
+        return await fs.readFile(this.resolvePath(p, false), "utf-8");
     }
 
     async readBinary(p: string): Promise<ArrayBuffer> {
-        const buffer = await fs.readFile(this.resolvePath(p));
+        const buffer = await fs.readFile(this.resolvePath(p, false));
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
         return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     }
 
     async write(p: string, data: string, options?: UXDataWriteOptions): Promise<void> {
-        const fullPath = this.resolvePath(p);
+        const fullPath = this.resolvePath(p, false);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, data, "utf-8");
 
@@ -77,7 +80,7 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
     }
 
     async writeBinary(p: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<void> {
-        const fullPath = this.resolvePath(p);
+        const fullPath = this.resolvePath(p, false);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, new Uint8Array(data));
 
@@ -89,7 +92,7 @@ export class NodeStorageAdapter implements IStorageAdapter<NodeStat> {
     }
 
     async append(p: string, data: string, options?: UXDataWriteOptions): Promise<void> {
-        const fullPath = this.resolvePath(p);
+        const fullPath = this.resolvePath(p, false);
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.appendFile(fullPath, data, "utf-8");
 

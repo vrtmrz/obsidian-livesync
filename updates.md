@@ -5,6 +5,28 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Fixed
+
+- Fixed an issue where a U+FEFF character at a Rabin–Karp chunk boundary could be lost, changing the reconstructed file and causing repeated size-mismatch conflicts (#1000).
+
+### Improved
+
+- Improved vault scanning and CLI file filtering by reusing compiled ignore patterns, reducing processing overhead for vaults with many files or ignore rules (#1006, #1007, and #1008).
+
+### Improved (CLI and Webapp)
+
+- Rooted storage adapters now reject absolute, drive-qualified, backslash-separated, and traversal paths. They also prevent file writes, appends, and removal from targeting the configured root itself.
+- File System Access API storage can now create files below previously missing parent directories, matching the existing Node behaviour.
+
+### Testing
+
+- Added shared Node and File System Access API storage contract coverage for metadata, text and binary operations, append, listing, removal, path containment, and empty-root handling.
+- Added a Compose-based P2P end-to-end smoke test and repeatable network benchmark cases for local performance investigations.
+
+### Miscellaneous
+
+- Split the internal storage adapter contract into focused capability views without changing existing runtime behaviour.
+
 ## 0.25.80
 
 7th July, 2026
