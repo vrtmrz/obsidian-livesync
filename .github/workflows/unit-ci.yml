@@ -17,6 +17,13 @@ on:
       - 'vitest.config*.ts'
       - 'esbuild.config.mjs'
       - 'eslint.config.mjs'
+      - 'update-workspaces.mjs'
+      - 'version-bump.mjs'
+      - 'utils/release-*.mjs'
+      - 'utils/release-*.unit.spec.ts'
+      - '.github/workflows/prepare-release.yml'
+      - '.github/workflows/finalise-release.yml'
+      - '.github/workflows/release.yml'
       - '.github/workflows/unit-ci.yml'
   pull_request:
     paths:
@@ -29,6 +36,13 @@ on:
       - 'vitest.config*.ts'
       - 'esbuild.config.mjs'
       - 'eslint.config.mjs'
+      - 'update-workspaces.mjs'
+      - 'version-bump.mjs'
+      - 'utils/release-*.mjs'
+      - 'utils/release-*.unit.spec.ts'
+      - '.github/workflows/prepare-release.yml'
+      - '.github/workflows/finalise-release.yml'
+      - '.github/workflows/release.yml'
       - '.github/workflows/unit-ci.yml'
 
 permissions:
@@ -113,4 +127,4 @@ jobs:
         if: always()
         run: |
           npm run test:docker-couchdb:stop || true
-          npm run test:docker-s3:stop || true
+          npm run test:docker-s3:stop || true
