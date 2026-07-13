@@ -12,7 +12,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.47"
+        "octagonal-wheels": "^0.1.50"
     },
     "devDependencies": {
         "@playwright/test": "^1.58.2",
