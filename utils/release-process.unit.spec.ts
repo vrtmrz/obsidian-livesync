@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const releaseNotesScript = fileURLToPath(new URL("./release-notes.mjs", import.meta.url));
 const versionBumpScript =
     process.env.VERSION_BUMP_SCRIPT || fileURLToPath(new URL("../version-bump.mjs", import.meta.url));
+const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -119,5 +120,41 @@ describe("version bump", () => {
             "0.25.61": "1.7.2",
             "0.25.81": "1.7.2",
         });
+    });
+});
+
+describe("workspace version update", () => {
+    it("keeps workspace package and lockfile versions together", () => {
+        const directory = makeTemporaryDirectory();
+        const workspaces = ["src/apps/cli", "src/apps/webpeer", "src/apps/webapp"];
+        writeJson(directory, "package.json", { version: "0.25.81", workspaces });
+        for (const workspace of ["cli", "webpeer", "webapp"]) {
+            writeJson(directory, `src/apps/${workspace}/package.json`, { version: `0.25.80-${workspace}` });
+        }
+        writeJson(directory, "package-lock.json", {
+            name: "obsidian-livesync",
+            version: "0.25.80",
+            lockfileVersion: 3,
+            packages: {
+                "": { version: "0.25.80", workspaces },
+                "src/apps/cli": { version: "0.25.80-cli" },
+                "src/apps/webpeer": { version: "0.25.80-webpeer" },
+                "src/apps/webapp": { version: "0.25.80-webapp" },
+            },
+        });
+
+        const result = runNode(workspaceUpdateScript, [], directory);
+
+        expect(result.status, result.stderr).toBe(0);
+        for (const workspace of ["cli", "webpeer", "webapp"]) {
+            const packageJson = JSON.parse(readFileSync(join(directory, `src/apps/${workspace}/package.json`), "utf8"));
+            expect(packageJson.version).toBe(`0.25.81-${workspace}`);
+        }
+        const packageLock = JSON.parse(readFileSync(join(directory, "package-lock.json"), "utf8"));
+        expect(packageLock.version).toBe("0.25.81");
+        expect(packageLock.packages[""].version).toBe("0.25.81");
+        expect(packageLock.packages["src/apps/cli"].version).toBe("0.25.81-cli");
+        expect(packageLock.packages["src/apps/webpeer"].version).toBe("0.25.81-webpeer");
+        expect(packageLock.packages["src/apps/webapp"].version).toBe("0.25.81-webapp");
     });
 });
