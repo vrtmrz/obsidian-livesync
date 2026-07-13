@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Improved
+
+- Improved vault scanning and CLI file filtering by reusing compiled ignore patterns, reducing processing overhead for vaults with many files or ignore rules (#1006, #1007, and #1008).
+
 ### Improved (CLI and Webapp)
 
 - Rooted storage adapters now reject absolute, drive-qualified, backslash-separated, and traversal paths. They also prevent file writes, appends, and removal from targeting the configured root itself.
