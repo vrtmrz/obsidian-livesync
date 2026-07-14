@@ -13,6 +13,7 @@
         TYPE_CANCELLED,
         type SetupRemoteResultType,
     } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     type Props = {
         setResult: (result: SetupRemoteResultType) => void;
@@ -37,19 +38,22 @@
 
 <DialogHeader title="Enter Server Information" />
 <Instruction>
-    <Question>Please select the type of server to which you are connecting.</Question>
+    <Question>{msg("Please select the type of server to which you are connecting.")}</Question>
     <Options>
         <Option selectedValue={TYPE_COUCHDB} title="CouchDB" bind:value={userType}>
-            This is the most suitable synchronisation method for the design. All functions are available. You must have
-            set up a CouchDB instance.
+            {msg(
+                "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance."
+            )}
         </Option>
         <Option selectedValue={TYPE_BUCKET} title="S3/MinIO/R2 Object Storage" bind:value={userType}>
-            Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
+            {msg(
+                "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage."
+            )}
         </Option>
         <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
-            This feature enables direct synchronisation between devices. No server is required, but both devices must be
-            online at the same time for synchronisation to occur, and some features may be limited. Internet connection
-            is only required to signalling (detecting peers) and not for data transfer.
+            {msg(
+                "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer."
+            )}
         </Option>
     </Options>
 </Instruction>

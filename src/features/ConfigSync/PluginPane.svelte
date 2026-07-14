@@ -20,6 +20,7 @@
         MODE_SHINY,
     } from "@lib/common/types";
     import { normalizePath } from "@/deps";
+    import { $msg as msg } from "@lib/common/i18n.ts";
     import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
@@ -32,17 +33,17 @@
 
     const addOn = core.getAddOn<ConfigSync>(ConfigSync.name)!;
     if (!addOn) {
-        const msg =
+        const errorMessage =
             "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.";
-        Logger(msg, LOG_LEVEL_NOTICE);
-        throw new Error(msg);
+        Logger(errorMessage, LOG_LEVEL_NOTICE);
+        throw new Error(errorMessage);
     }
     const addOnHiddenFileSync = core.getAddOn<HiddenFileSync>(HiddenFileSync.name) as HiddenFileSync;
     if (!addOnHiddenFileSync) {
-        const msg =
+        const errorMessage =
             "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.";
-        Logger(msg, LOG_LEVEL_NOTICE);
-        throw new Error(msg);
+        Logger(errorMessage, LOG_LEVEL_NOTICE);
+        throw new Error(errorMessage);
     }
 
     let list: IPluginDataExDisplay[] = [];
@@ -92,9 +93,9 @@
     }
 
     const displays = {
-        CONFIG: "Configuration",
-        THEME: "Themes",
-        SNIPPET: "Snippets",
+        CONFIG: msg("Configuration"),
+        THEME: msg("Themes"),
+        SNIPPET: msg("Snippets"),
     };
     async function scanAgain() {
         await addOn.scanAllConfigFiles(true);
@@ -156,20 +157,20 @@
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
         const menu = new Menu();
-        menu.addItem((item) => item.setTitle("Initial Action").setIsLabel(true));
+        menu.addItem((item) => item.setTitle(msg("Initial Action")).setIsLabel(true));
         menu.addSeparator();
         menu.addItem((item) => {
-            item.setTitle(`↑: Overwrite Remote`).onClick((e) => {
+            item.setTitle(msg("↑: Overwrite Remote")).onClick((e) => {
                 applyAutomaticSync(key, "pushForce");
             });
         })
             .addItem((item) => {
-                item.setTitle(`↓: Overwrite Local`).onClick((e) => {
+                item.setTitle(msg("↓: Overwrite Local")).onClick((e) => {
                     applyAutomaticSync(key, "pullForce");
                 });
             })
             .addItem((item) => {
-                item.setTitle(`⇅: Use newer`).onClick((e) => {
+                item.setTitle(msg("⇅: Use newer")).onClick((e) => {
                     applyAutomaticSync(key, "safe");
                 });
             });
@@ -201,10 +202,10 @@
         [MODE_SHINY]: ICON_EMOJI_FLAGGED,
     };
     const TITLES: { [key: number]: string } = {
-        [MODE_SELECTIVE]: "Selective",
-        [MODE_PAUSED]: "Ignore",
-        [MODE_AUTOMATIC]: "Automatic",
-        [MODE_SHINY]: "Flagged Selective",
+        [MODE_SELECTIVE]: msg("Selective"),
+        [MODE_PAUSED]: msg("Ignore"),
+        [MODE_AUTOMATIC]: msg("Automatic"),
+        [MODE_SHINY]: msg("Flagged Selective"),
     };
     const PREFIX_PLUGIN_ALL = "PLUGIN_ALL";
     const PREFIX_PLUGIN_DATA = "PLUGIN_DATA";
@@ -329,28 +330,28 @@
 
 <div class="buttonsWrap">
     <div class="buttons">
-        <button on:click={() => scanAgain()}>Scan changes</button>
-        <button on:click={() => replicate()}>Sync once</button>
-        <button on:click={() => requestUpdate()}>Refresh</button>
+        <button on:click={() => scanAgain()}>{msg("Scan changes")}</button>
+        <button on:click={() => replicate()}>{msg("Sync once")}</button>
+        <button on:click={() => requestUpdate()}>{msg("Refresh")}</button>
         {#if isMaintenanceMode}
-            <button on:click={() => requestReload()}>Reload</button>
+            <button on:click={() => requestReload()}>{msg("Reload")}</button>
         {/if}
     </div>
     <div class="buttons">
-        <button on:click={() => selectAllNewest(true)}>Select All Shiny</button>
-        <button on:click={() => selectAllNewest(false)}>{ICON_EMOJI_FLAGGED} Select Flagged Shiny</button>
-        <button on:click={() => resetSelectNewest()}>Deselect all</button>
-        <button on:click={() => applyAll()} class="mod-cta">Apply All Selected</button>
+        <button on:click={() => selectAllNewest(true)}>{msg("Select All Shiny")}</button>
+        <button on:click={() => selectAllNewest(false)}>{ICON_EMOJI_FLAGGED} {msg("Select Flagged Shiny")}</button>
+        <button on:click={() => resetSelectNewest()}>{msg("Deselect all")}</button>
+        <button on:click={() => applyAll()} class="mod-cta">{msg("Apply All Selected")}</button>
     </div>
 </div>
 <div class="loading">
     {#if loading || $pluginV2Progress !== 0}
-        <span>Updating list...{$pluginV2Progress == 0 ? "" : ` (${$pluginV2Progress})`}</span>
+        <span>{msg("Updating list...")}{$pluginV2Progress == 0 ? "" : ` (${$pluginV2Progress})`}</span>
     {/if}
 </div>
 <div class="list">
     {#if list.length == 0}
-        <div class="center">No Items.</div>
+        <div class="center">{msg("No Items.")}</div>
     {:else}
         {#each displayEntries as [key, label]}
             <div>
@@ -382,7 +383,7 @@
             </div>
         {/each}
         <div>
-            <h3>Plugins</h3>
+            <h3>{msg("Plugins")}</h3>
             {#each pluginEntries as [name, listX]}
                 {@const bindKeyAll = `${PREFIX_PLUGIN_ALL}/${name}`}
                 {@const modeAll = automaticListDisp.get(bindKeyAll) ?? MODE_SELECTIVE}
@@ -464,7 +465,7 @@
                                 >
                                     {getIcon(modeEtc)}
                                 </button>
-                                <span class="name">Other files</span>
+                                <span class="name">{msg("Other files")}</span>
                             </div>
                             <div class="body">
                                 {#if modeEtc == MODE_SELECTIVE || modeEtc == MODE_SHINY}
@@ -492,9 +493,9 @@
 {#if isMaintenanceMode}
     <div class="buttons">
         <div>
-            <h3>Maintenance Commands</h3>
+            <h3>{msg("Maintenance Commands")}</h3>
             <div class="maintenancerow">
-                <label for="">Delete All of </label>
+                <label for="">{msg("Delete All of")} </label>
                 <select bind:value={deleteTerm}>
                     {#each allTerms as term}
                         <option value={term}>{term}</option>
@@ -513,10 +514,10 @@
     </div>
 {/if}
 <div class="buttons">
-    <label><span>Hide not applicable items</span><input type="checkbox" bind:checked={hideEven} /></label>
+    <label><span>{msg("Hide not applicable items")}</span><input type="checkbox" bind:checked={hideEven} /></label>
 </div>
 <div class="buttons">
-    <label><span>Maintenance mode</span><input type="checkbox" bind:checked={isMaintenanceMode} /></label>
+    <label><span>{msg("Maintenance mode")}</span><input type="checkbox" bind:checked={isMaintenanceMode} /></label>
 </div>
 
 <style>

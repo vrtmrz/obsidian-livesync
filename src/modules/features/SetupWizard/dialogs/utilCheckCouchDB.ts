@@ -96,11 +96,11 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         );
     };
 
-    addMessage($msg("obsidianLiveSyncSettingTab.logCheckingDbConfig"));
+    addMessage($msg("Checking database configuration"));
 
     try {
         if (isCloudantURI(editingSettings.couchDB_URI)) {
-            addMessage($msg("obsidianLiveSyncSettingTab.logCannotUseCloudant"));
+            addMessage($msg("This feature cannot be used with IBM Cloudant."));
             return result;
         }
         // Tip: Add log for cloudant as Logger($msg("obsidianLiveSyncSettingTab.logServerConfigurationCheck"));
@@ -116,12 +116,12 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
             customHeaders
         );
         const responseConfig = r.json;
-        addMessage($msg("obsidianLiveSyncSettingTab.msgNotice"), ["ob-btn-config-head"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.msgIfConfigNotPersistent"), ["ob-btn-config-info"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.msgConfigCheck"), ["ob-btn-config-head"]);
+        addMessage($msg("---Notice---"), ["ob-btn-config-head"]);
+        addMessage($msg("If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini."), ["ob-btn-config-info"]);
+        addMessage($msg("--Config check--"), ["ob-btn-config-head"]);
 
         const serverBanner = r.headers["server"] ?? r.headers["Server"] ?? "unknown";
-        addMessage($msg("obsidianLiveSyncSettingTab.serverVersion", { info: serverBanner }));
+        addMessage($msg("Server info: ${info}", { info: serverBanner }));
         const versionMatch = serverBanner.match(/CouchDB(\/([0-9.]+))?/);
         const versionStr = versionMatch ? versionMatch[2] : "0.0.0";
 
@@ -131,67 +131,67 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         // Admin check
         //  for database creation and deletion
         if (!(editingSettings.couchDB_USER in responseConfig.admins)) {
-            addSuccess($msg("obsidianLiveSyncSettingTab.warnNoAdmin"));
+            addSuccess($msg("⚠ You do not have administrator privileges."));
         } else {
-            addSuccess($msg("obsidianLiveSyncSettingTab.okAdminPrivileges"));
+            addSuccess($msg("✔ You have administrator privileges."));
         }
         if (isGreaterThanOrEqual(versionStr, "3.2.0")) {
             // HTTP user-authorization check
             if (responseConfig?.chttpd?.require_valid_user != "true") {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errRequireValidUser"),
-                    $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUser"),
+                    $msg("❗ chttpd.require_valid_user is wrong."),
+                    $msg("Set chttpd.require_valid_user = true"),
                     "chttpd/require_valid_user",
                     "true"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okRequireValidUser"));
+                addSuccess($msg("✔ chttpd.require_valid_user is ok."));
             }
         } else {
             if (responseConfig?.chttpd_auth?.require_valid_user != "true") {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errRequireValidUserAuth"),
-                    $msg("obsidianLiveSyncSettingTab.msgSetRequireValidUserAuth"),
+                    $msg("❗ chttpd_auth.require_valid_user is wrong."),
+                    $msg("Set chttpd_auth.require_valid_user = true"),
                     "chttpd_auth/require_valid_user",
                     "true"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okRequireValidUserAuth"));
+                addSuccess($msg("✔ chttpd_auth.require_valid_user is ok."));
             }
         }
         // HTTPD check
         //  Check Authentication header
         if (!responseConfig?.httpd["WWW-Authenticate"]) {
             addError(
-                $msg("obsidianLiveSyncSettingTab.errMissingWwwAuth"),
-                $msg("obsidianLiveSyncSettingTab.msgSetWwwAuth"),
+                $msg("❗ httpd.WWW-Authenticate is missing"),
+                $msg("Set httpd.WWW-Authenticate"),
                 "httpd/WWW-Authenticate",
                 'Basic realm="couchdb"'
             );
         } else {
-            addSuccess($msg("obsidianLiveSyncSettingTab.okWwwAuth"));
+            addSuccess($msg("✔ httpd.WWW-Authenticate is ok."));
         }
         if (isGreaterThanOrEqual(versionStr, "3.2.0")) {
             if (responseConfig?.chttpd?.enable_cors != "true") {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errEnableCorsChttpd"),
-                    $msg("obsidianLiveSyncSettingTab.msgEnableCorsChttpd"),
+                    $msg("❗ chttpd.enable_cors is wrong"),
+                    $msg("Set chttpd.enable_cors"),
                     "chttpd/enable_cors",
                     "true"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okEnableCorsChttpd"));
+                addSuccess($msg("✔ chttpd.enable_cors is ok."));
             }
         } else {
             if (responseConfig?.httpd?.enable_cors != "true") {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errEnableCors"),
-                    $msg("obsidianLiveSyncSettingTab.msgEnableCors"),
+                    $msg("❗ httpd.enable_cors is wrong"),
+                    $msg("Set httpd.enable_cors"),
                     "httpd/enable_cors",
                     "true"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okEnableCors"));
+                addSuccess($msg("✔ httpd.enable_cors is ok."));
             }
         }
         // If the server is not cloudant, configure request size
@@ -199,36 +199,36 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
             // REQUEST SIZE
             if (Number(responseConfig?.chttpd?.max_http_request_size ?? 0) < 4294967296) {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errMaxRequestSize"),
-                    $msg("obsidianLiveSyncSettingTab.msgSetMaxRequestSize"),
+                    $msg("❗ chttpd.max_http_request_size is low)"),
+                    $msg("Set chttpd.max_http_request_size"),
                     "chttpd/max_http_request_size",
                     "4294967296"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okMaxRequestSize"));
+                addSuccess($msg("✔ chttpd.max_http_request_size is ok."));
             }
             if (Number(responseConfig?.couchdb?.max_document_size ?? 0) < 50000000) {
                 addError(
-                    $msg("obsidianLiveSyncSettingTab.errMaxDocumentSize"),
-                    $msg("obsidianLiveSyncSettingTab.msgSetMaxDocSize"),
+                    $msg("❗ couchdb.max_document_size is low)"),
+                    $msg("Set couchdb.max_document_size"),
                     "couchdb/max_document_size",
                     "50000000"
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okMaxDocumentSize"));
+                addSuccess($msg("✔ couchdb.max_document_size is ok."));
             }
         }
         // CORS check
         //  checking connectivity for mobile
         if (responseConfig?.cors?.credentials != "true") {
             addError(
-                $msg("obsidianLiveSyncSettingTab.errCorsCredentials"),
-                $msg("obsidianLiveSyncSettingTab.msgSetCorsCredentials"),
+                $msg("❗ cors.credentials is wrong"),
+                $msg("Set cors.credentials"),
                 "cors/credentials",
                 "true"
             );
         } else {
-            addSuccess($msg("obsidianLiveSyncSettingTab.okCorsCredentials"));
+            addSuccess($msg("✔ cors.credentials is ok."));
         }
         const ConfiguredOrigins = ((responseConfig?.cors?.origins ?? "") + "").split(",");
         if (
@@ -237,7 +237,7 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
                 ConfiguredOrigins.indexOf("capacitor://localhost") !== -1 &&
                 ConfiguredOrigins.indexOf("http://localhost") !== -1)
         ) {
-            addSuccess($msg("obsidianLiveSyncSettingTab.okCorsOrigins"));
+            addSuccess($msg("✔ cors.origins is ok."));
         } else {
             const fixedValue = [
                 ...new Set([
@@ -248,14 +248,14 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
                 ]),
             ].join(",");
             addError(
-                $msg("obsidianLiveSyncSettingTab.errCorsOrigins"),
-                $msg("obsidianLiveSyncSettingTab.msgSetCorsOrigins"),
+                $msg("❗ cors.origins is wrong"),
+                $msg("Set cors.origins"),
                 "cors/origins",
                 fixedValue
             );
         }
-        addMessage($msg("obsidianLiveSyncSettingTab.msgConnectionCheck"), ["ob-btn-config-head"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.msgCurrentOrigin", { origin: compatGlobal.location.origin }));
+        addMessage($msg("--Connection check--"), ["ob-btn-config-head"]);
+        addMessage($msg("Current origin: ${origin}", { origin: compatGlobal.location.origin }));
 
         // Request header check
         const origins = ["app://obsidian.md", "capacitor://localhost", "http://localhost"];
@@ -275,33 +275,33 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
                     return e;
                 })
             );
-            addMessage($msg("obsidianLiveSyncSettingTab.msgOriginCheck", { org }));
+            addMessage($msg("Origin check: ${org}", { org }));
             if (responseHeaders["access-control-allow-credentials"] != "true") {
-                addErrorMessage($msg("obsidianLiveSyncSettingTab.errCorsNotAllowingCredentials"));
+                addErrorMessage($msg("❗ CORS is not allowing credentials"));
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okCorsCredentialsForOrigin"));
+                addSuccess($msg("CORS credentials OK"));
             }
             if (responseHeaders["access-control-allow-origin"] != org) {
                 addErrorMessage(
-                    $msg("obsidianLiveSyncSettingTab.warnCorsOriginUnmatched", {
+                    $msg("⚠ CORS Origin is unmatched ${from}->${to}", {
                         from: origin,
                         to: responseHeaders["access-control-allow-origin"],
                     })
                 );
             } else {
-                addSuccess($msg("obsidianLiveSyncSettingTab.okCorsOriginMatched"));
+                addSuccess($msg("✔ CORS origin OK"));
             }
         }
-        addMessage($msg("obsidianLiveSyncSettingTab.msgDone"), ["ob-btn-config-head"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.msgConnectionProxyNote"), ["ob-btn-config-info"]);
-        addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));
+        addMessage($msg("--Done--"), ["ob-btn-config-head"]);
+        addMessage($msg("If you're having trouble with the Connection-check (even after checking config), please check your reverse proxy configuration."), ["ob-btn-config-info"]);
+        addMessage($msg("Checking configuration done"));
     } catch (ex) {
         if (isUnauthorizedError(ex)) {
-            addErrorMessage($msg("obsidianLiveSyncSettingTab.errAccessForbidden"));
-            addErrorMessage($msg("obsidianLiveSyncSettingTab.errCannotContinueTest"));
-            addMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigDone"));
+            addErrorMessage($msg("❗ Access forbidden."));
+            addErrorMessage($msg("We could not continue the test."));
+            addMessage($msg("Checking configuration done"));
         } else {
-            addErrorMessage($msg("obsidianLiveSyncSettingTab.logCheckingConfigFailed"));
+            addErrorMessage($msg("Checking configuration failed"));
             Logger(ex);
         }
     }

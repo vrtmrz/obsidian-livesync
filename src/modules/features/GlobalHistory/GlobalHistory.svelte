@@ -6,6 +6,7 @@
     import { diff_match_patch } from "@/deps.ts";
     import { DocumentHistoryModal } from "@/modules/features/DocumentHistory/DocumentHistoryModal.ts";
     import { isPlainText, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+    import { $msg as msg } from "@lib/common/i18n.ts";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     export let plugin: ObsidianLiveSyncPlugin;
     export let core: LiveSyncBaseCore;
@@ -199,37 +200,37 @@
 </script>
 
 <div class="globalhistory">
-    <h1>Vault history</h1>
+    <h1>{msg("Vault history")}</h1>
     <div class="control">
         <div class="row">
-            <label for="">From:</label><input type="date" bind:value={dispDateFrom} disabled={loading} />
+            <label for="">{msg("From:")}</label><input type="date" bind:value={dispDateFrom} disabled={loading} />
         </div>
-        <div class="row"><label for="">To:</label><input type="date" bind:value={dispDateTo} disabled={loading} /></div>
+        <div class="row"><label for="">{msg("To:")}</label><input type="date" bind:value={dispDateTo} disabled={loading} /></div>
         <div class="row">
-            <label for="">Info:</label>
-            <label><input type="checkbox" bind:checked={showDiffInfo} disabled={loading} /><span>Diff</span></label>
+            <label for="">{msg("Info:")}</label>
+            <label><input type="checkbox" bind:checked={showDiffInfo} disabled={loading} /><span>{msg("Diff")}</span></label>
             <label
-                ><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span>Chunks</span
+                ><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span>{msg("Chunks")}</span
                 ></label
             >
             <label
-                ><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span>File integrity</span
+                ><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span>{msg("File integrity")}</span
                 ></label
             >
         </div>
     </div>
     {#if loading}
-        <div class="">Gathering information...</div>
+        <div class="">{msg("Gathering information...")}</div>
     {/if}
     <table>
         <tbody>
             <tr>
-                <th> Date </th>
-                <th> Path </th>
-                <th> Rev </th>
-                <th> Stat </th>
+                <th> {msg("Date")} </th>
+                <th> {msg("Path")} </th>
+                <th> {msg("Rev")} </th>
+                <th> {msg("Stat")} </th>
                 {#if showChunkCorrected}
-                    <th> Chunks </th>
+                    <th> {msg("Chunks")} </th>
                 {/if}
             </tr>
             <tr>
@@ -237,7 +238,7 @@
                     {#if loading}
                         <div class=""></div>
                     {:else}
-                        <div><button on:click={() => nextWeek()}>+1 week</button></div>
+                        <div><button on:click={() => nextWeek()}>{msg("+1 week")}</button></div>
                     {/if}
                 </td>
             </tr>
@@ -286,7 +287,7 @@
                     {#if loading}
                         <div class=""></div>
                     {:else}
-                        <div><button on:click={() => prevWeek()}>+1 week</button></div>
+                        <div><button on:click={() => prevWeek()}>{msg("+1 week")}</button></div>
                     {/if}
                 </td>
             </tr>

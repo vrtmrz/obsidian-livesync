@@ -58,7 +58,7 @@ export class ModuleMigration extends AbstractModule {
 
     async migrateDisableBulkSend() {
         if (this.settings.sendChunksBulk) {
-            this._log($msg("moduleMigration.logBulkSendCorrupted"), LOG_LEVEL_NOTICE);
+            this._log($msg("Send chunks in bulk has been enabled, however, this feature had been corrupted. Sorry for your inconvenience. Automatically disabled."), LOG_LEVEL_NOTICE);
             this.settings.sendChunksBulk = false;
             this.settings.sendChunksBulkMaxSize = 1;
             await this.saveSettings();
@@ -72,8 +72,8 @@ export class ModuleMigration extends AbstractModule {
         const message = $msg("moduleMigration.msgInitialSetup", {
             URI_DOC: $msg("moduleMigration.docUri"),
         });
-        const USE_SETUP = $msg("moduleMigration.optionHaveSetupUri");
-        const NEXT = $msg("moduleMigration.optionNoSetupUri");
+        const USE_SETUP = $msg("Yes, I have");
+        const NEXT = $msg("No, I do not have");
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_SETUP, NEXT], {
             title: $msg("moduleMigration.titleWelcome"),
@@ -91,13 +91,13 @@ export class ModuleMigration extends AbstractModule {
 
     async askAgainForSetupURI() {
         const message = $msg("moduleMigration.msgRecommendSetupUri", { URI_DOC: $msg("moduleMigration.docUri") });
-        const USE_MINIMAL = $msg("moduleMigration.optionSetupWizard");
-        const USE_P2P = $msg("moduleMigration.optionSetupViaP2P");
-        const USE_SETUP = $msg("moduleMigration.optionManualSetup");
-        const NEXT = $msg("moduleMigration.optionRemindNextLaunch");
+        const USE_MINIMAL = $msg("Take me into the setup wizard");
+        const USE_P2P = $msg("Use %{short_p2p_sync} to set up");
+        const USE_SETUP = $msg("Set it up all manually");
+        const NEXT = $msg("Remind me at the next launch");
 
         const ret = await this.core.confirm.askSelectStringDialogue(message, [USE_MINIMAL, USE_SETUP, USE_P2P, NEXT], {
-            title: $msg("moduleMigration.titleRecommendSetupUri"),
+            title: $msg("Recommendation to use Setup URI"),
             defaultAction: USE_MINIMAL,
         });
         if (ret === USE_MINIMAL) {
@@ -221,11 +221,11 @@ export class ModuleMigration extends AbstractModule {
             files: recoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
             messageUnrecoverable,
         });
-        const CHECK_IT_LATER = $msg("moduleMigration.fix0256.buttons.checkItLater");
+        const CHECK_IT_LATER = $msg("Check it later");
         const FIX = $msg("moduleMigration.fix0256.buttons.fix");
-        const DISMISS = $msg("moduleMigration.fix0256.buttons.DismissForever");
+        const DISMISS = $msg("I have fixed it, and do not ask again");
         const ret = await this.core.confirm.askSelectStringDialogue(message, [CHECK_IT_LATER, FIX, DISMISS], {
-            title: $msg("moduleMigration.fix0256.title"),
+            title: $msg("Broken files has been detected"),
             defaultAction: CHECK_IT_LATER,
         });
         if (ret == FIX) {
@@ -278,11 +278,11 @@ export class ModuleMigration extends AbstractModule {
             `Found compromised chunks : ${localCompromised} in local, ${remoteCompromised} in remote`,
             LOG_LEVEL_NOTICE
         );
-        const title = $msg("moduleMigration.insecureChunkExist.title");
+        const title = $msg("Insecure chunks found!");
         const msg = $msg("moduleMigration.insecureChunkExist.message");
-        const REBUILD = $msg("moduleMigration.insecureChunkExist.buttons.rebuild");
-        const FETCH = $msg("moduleMigration.insecureChunkExist.buttons.fetch");
-        const DISMISS = $msg("moduleMigration.insecureChunkExist.buttons.later");
+        const REBUILD = $msg("Rebuild Everything");
+        const FETCH = $msg("I already rebuilt the remote. Fetch from the remote");
+        const DISMISS = $msg("I will do it later");
         const buttons = [REBUILD, FETCH, DISMISS];
         if (remoteCompromised != 0) {
             buttons.splice(buttons.indexOf(FETCH), 1);
@@ -304,14 +304,14 @@ export class ModuleMigration extends AbstractModule {
             return false;
         } else {
             // User chose to dismiss the issue
-            this._log($msg("moduleMigration.insecureChunkExist.laterMessage"), LOG_LEVEL_NOTICE);
+            this._log($msg("We strongly recommend to treat this as soon as possible!"), LOG_LEVEL_NOTICE);
         }
         return true;
     }
 
     async _everyOnFirstInitialize(): Promise<boolean> {
         if (!this.localDatabase.isReady) {
-            this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
+            this._log($msg("Something went wrong! The local database is not ready"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.settings.isConfigured) {
@@ -329,11 +329,11 @@ export class ModuleMigration extends AbstractModule {
         }
         if (!this.settings.isConfigured) {
             // if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
-            //     this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
+            //     this._log($msg("The setup has been cancelled, Self-hosted LiveSync waiting for your setup!"), LOG_LEVEL_NOTICE);
             //     return false;
             // }
             if (!(await this.initialMessage())) {
-                this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
+                this._log($msg("The setup has been cancelled, Self-hosted LiveSync waiting for your setup!"), LOG_LEVEL_NOTICE);
                 return false;
             }
             if (!(await this.migrateUsingDoctor(true))) {

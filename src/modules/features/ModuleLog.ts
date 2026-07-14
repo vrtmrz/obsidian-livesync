@@ -415,7 +415,7 @@ export class ModuleLog extends AbstractObsidianModule {
         <path d="m106 346v44h70v-44zm45 16h-20v-8h20z"/>
        </g>`
         );
-        this.addRibbonIcon("view-log", $msg("moduleLog.showLog"), () => {
+        this.addRibbonIcon("view-log", $msg("Show Log"), () => {
             void this.services.API.showWindow(VIEW_TYPE_LOG);
         }).addClass("livesync-ribbon-showlog");
 

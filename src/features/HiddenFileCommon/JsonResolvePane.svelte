@@ -3,6 +3,7 @@
     import type { FilePath, LoadedEntry } from "@lib/common/types.ts";
     import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
     import { getDocData, isObjectDifferent, mergeObject } from "@lib/common/utils.ts";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     interface Props {
         docs?: LoadedEntry[];
@@ -115,7 +116,7 @@
         let newModes = [] as typeof modesSrc;
 
         if (!hideLocal) {
-            newModes.push(["", "Not now"]);
+            newModes.push(["", msg("Not now")]);
             newModes.push(["A", nameA || "A"]);
         }
         newModes.push(["B", nameB || "B"]);
@@ -127,9 +128,9 @@
 
 <h2>{filename}</h2>
 {#if !docA || !docB}
-    <div class="message">Just for a minute, please!</div>
+    <div class="message">{msg("Just for a minute, please!")}</div>
     <div class="buttons">
-        <button onclick={apply}>Dismiss</button>
+        <button onclick={apply}>{msg("Dismiss")}</button>
     </div>
 {:else}
     <div class="options">
@@ -152,7 +153,7 @@
             {/each}
         </div>
     {:else}
-        NO PREVIEW
+        {msg("NO PREVIEW")}
     {/if}
 
     <div class="infos">
@@ -162,24 +163,24 @@
                     <th>{nameA}</th>
                     <td
                         >{#if docA._id == docB._id}
-                            Rev:{revStringToRevNumber(docA._rev)}
+                            {msg("Rev:")}{revStringToRevNumber(docA._rev)}
                         {/if}
                         {new Date(docA.mtime).toLocaleString()}</td
                     >
                     <td>
-                        {docAContent && docAContent.length} letters
+                        {docAContent && docAContent.length} {msg("letters")}
                     </td>
                 </tr>
                 <tr>
                     <th>{nameB}</th>
                     <td
                         >{#if docA._id == docB._id}
-                            Rev:{revStringToRevNumber(docB._rev)}
+                            {msg("Rev:")}{revStringToRevNumber(docB._rev)}
                         {/if}
                         {new Date(docB.mtime).toLocaleString()}</td
                     >
                     <td>
-                        {docBContent && docBContent.length} letters
+                        {docBContent && docBContent.length} {msg("letters")}
                     </td>
                 </tr>
             </tbody>
@@ -188,9 +189,9 @@
 
     <div class="buttons">
         {#if hideLocal}
-            <button onclick={cancel}>Cancel</button>
+            <button onclick={cancel}>{msg("Cancel")}</button>
         {/if}
-        <button onclick={apply}>Apply</button>
+        <button onclick={apply}>{msg("Apply")}</button>
     </div>
 {/if}
 

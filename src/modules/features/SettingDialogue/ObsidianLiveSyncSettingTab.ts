@@ -300,7 +300,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (status) {
             if (status.estimatedSize) {
                 Logger(
-                    $msg("obsidianLiveSyncSettingTab.logEstimatedSize", {
+                    $msg("Estimated size: ${size}", {
                         size: sizeToHumanReadable(status.estimatedSize),
                     }),
                     LOG_LEVEL_NOTICE
@@ -386,11 +386,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         // And modified.
                         this.core.confirm.askInPopup(
                             `config-reloaded-${k}`,
-                            $msg("obsidianLiveSyncSettingTab.msgSettingModified", {
+                            $msg("The setting \"${setting}\" was modified from another device. Click {HERE} to reload settings. Click elsewhere to ignore changes.", {
                                 setting: getConfName(k as AllSettingItemKey),
                             }),
                             (anchor) => {
-                                anchor.text = $msg("obsidianLiveSyncSettingTab.optionHere");
+                                anchor.text = $msg("HERE");
                                 anchor.addEventListener("click", () => {
                                     this.refreshSetting(k as AllSettingItemKey);
                                     this.display();
@@ -559,21 +559,21 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return false;
         } else {
             if (await checkSyncInfo(db.db)) {
-                // Logger($msg("obsidianLiveSyncSettingTab.logDatabaseConnected"), LOG_LEVEL_NOTICE);
+                // Logger($msg("Database connected"), LOG_LEVEL_NOTICE);
                 return true;
             } else {
-                Logger($msg("obsidianLiveSyncSettingTab.logPassphraseNotCompatible"), LOG_LEVEL_NOTICE);
+                Logger($msg("ERROR: Passphrase is not compatible with the remote server! Please check it again!"), LOG_LEVEL_NOTICE);
                 return false;
             }
         }
     };
     isPassphraseValid = async () => {
         if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-            Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoPassphrase"), LOG_LEVEL_NOTICE);
+            Logger($msg("You cannot enable encryption without a passphrase"), LOG_LEVEL_NOTICE);
             return false;
         }
         if (this.editingSettings.encrypt && !(await testCrypt())) {
-            Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoSupport"), LOG_LEVEL_NOTICE);
+            Logger($msg("Your device does not support encryption."), LOG_LEVEL_NOTICE);
             return false;
         }
         return true;
@@ -581,11 +581,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") => {
         if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
-            Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoPassphrase"), LOG_LEVEL_NOTICE);
+            Logger($msg("You cannot enable encryption without a passphrase"), LOG_LEVEL_NOTICE);
             return;
         }
         if (this.editingSettings.encrypt && !(await testCrypt())) {
-            Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoSupport"), LOG_LEVEL_NOTICE);
+            Logger($msg("Your device does not support encryption."), LOG_LEVEL_NOTICE);
             return;
         }
         if (!this.editingSettings.encrypt) {
@@ -596,7 +596,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.services.setting.suspendExtraSync();
         this.reloadAllSettings();
         this.editingSettings.isConfigured = true;
-        Logger($msg("obsidianLiveSyncSettingTab.logRebuildNote"), LOG_LEVEL_NOTICE);
+        Logger($msg("Syncing has been disabled, fetch and re-enabled if desired."), LOG_LEVEL_NOTICE);
         await this.saveAllDirtySettings();
         this.closeSetting();
         await delay(2000);
@@ -607,11 +607,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             Logger(`Passphrase is not valid, please fix it.`, LOG_LEVEL_NOTICE);
             return;
         }
-        const OPTION_FETCH = $msg("obsidianLiveSyncSettingTab.optionFetchFromRemote");
-        const OPTION_REBUILD_BOTH = $msg("obsidianLiveSyncSettingTab.optionRebuildBoth");
-        const OPTION_ONLY_SETTING = $msg("obsidianLiveSyncSettingTab.optionSaveOnlySettings");
+        const OPTION_FETCH = $msg("Fetch from Remote");
+        const OPTION_REBUILD_BOTH = $msg("Rebuild Both from This Device");
+        const OPTION_ONLY_SETTING = $msg("(Danger) Save Only Settings");
         const OPTION_CANCEL = $msg("obsidianLiveSyncSettingTab.optionCancel");
-        const title = $msg("obsidianLiveSyncSettingTab.titleRebuildRequired");
+        const title = $msg("Rebuild Required");
         const note = $msg("obsidianLiveSyncSettingTab.msgRebuildRequired", {
             OPTION_REBUILD_BOTH,
             OPTION_FETCH,
@@ -628,7 +628,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (result == OPTION_FETCH) {
             if (!(await this.checkWorkingPassphrase())) {
                 if (
-                    (await this.core.confirm.askYesNoDialog($msg("obsidianLiveSyncSettingTab.msgAreYouSureProceed"), {
+                    (await this.core.confirm.askYesNoDialog($msg("Are you sure to proceed?"), {
                         defaultOption: "No",
                     })) != "yes"
                 )
@@ -696,7 +696,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             { cls: "sls-setting-menu-buttons" },
             (el) => {
                 el.addClass("wizardHidden");
-                el.createEl("label", { text: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied") });
+                el.createEl("label", { text: $msg("Changes need to be applied!") });
                 void this.addEl(
                     el,
                     "button",
@@ -799,19 +799,19 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // Add panes
 
         // TODO: Refactor to new API style.
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then(
+        void addPane(containerEl, $msg("Change Log"), "💬", 100, false).then(
             bindPane(paneChangeLog)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then(
+        void addPane(containerEl, $msg("Setup"), "🧙‍♂️", 110, false).then(
             bindPane(paneSetup)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20, false).then(
+        void addPane(containerEl, $msg("General Settings"), "⚙️", 20, false).then(
             bindPane(paneGeneral)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0, false).then(
+        void addPane(containerEl, $msg("Remote Configuration"), "🛰️", 0, false).then(
             bindPane(paneRemoteConfig)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30, false).then(
+        void addPane(containerEl, $msg("Sync Settings"), "🔄", 30, false).then(
             bindPane(paneSyncSettings)
         );
         void addPane(containerEl, "Selector", "🚦", 33, false, LEVEL_ADVANCED).then(bindPane(paneSelector));

@@ -18,7 +18,7 @@ export class ModuleObsidianMenu extends AbstractModule {
            </g>`
         );
 
-        this.addRibbonIcon("replicate", $msg("moduleObsidianMenu.replicate"), async () => {
+        this.addRibbonIcon("replicate", $msg("Replicate"), async () => {
             await this.services.replication.replicate(true);
         }).addClass("livesync-ribbon-replicate");
 

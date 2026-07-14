@@ -58,7 +58,7 @@ export class LiveSyncSetting extends Setting {
     autoWireSetting(key: AllSettingItemKey, opt?: AutoWireOption) {
         const conf = getConfig(key);
         if (!conf) {
-            // throw new Error($msg("liveSyncSetting.errorNoSuchSettingItem", { key }));
+            // throw new Error($msg("No such setting item: ${key}", { key }));
             return;
         }
         const name = `${conf.name}${statusDisplay(conf.status)}`;
@@ -184,7 +184,7 @@ export class LiveSyncSetting extends Setting {
                     await this.commitValue(value);
                 } else {
                     this.setTooltip(
-                        $msg("liveSyncSetting.valueShouldBeInRange", {
+                        $msg("The value should ${min} < value < ${max}", {
                             min: opt.clampMin?.toString() || "~",
                             max: opt.clampMax?.toString() || "~",
                         })
@@ -336,7 +336,7 @@ export class LiveSyncSetting extends Setting {
         if (this.holdValue && this.selfKey) {
             const isDirty = LiveSyncSetting.env.isDirty(this.selfKey);
             const alt = isDirty
-                ? $msg("liveSyncSetting.originalValue", {
+                ? $msg("Original: ${value}", {
                       value: String(LiveSyncSetting.env.initialSettings?.[this.selfKey] ?? ""),
                   })
                 : "";

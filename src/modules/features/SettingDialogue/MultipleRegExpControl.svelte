@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { CustomRegExpSource } from "@lib/common/types";
     import { isInvertedRegExp, isValidRegExp } from "@lib/common/utils";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     export let patterns = [] as CustomRegExpSource[];
     export let originals = [] as CustomRegExpSource[];
@@ -31,26 +32,26 @@
         <!-- svelte-ignore a11y-label-has-associated-control -->
         <li>
             <label>{modified[idx]}{statusName[idx]}</label>
-            <span class="chip">{isInvertedExp[idx] ? "INVERTED" : ""}</span>
+            <span class="chip">{isInvertedExp[idx] ? msg("INVERTED") : ""}</span>
             <input type="text" bind:value={pattern} class={modified[idx]} />
             <button class="iconbutton" on:click={() => remove(idx)}>🗑</button>
         </li>
     {/each}
     <li>
         <label>
-            <button on:click={() => add()}>Add</button>
+            <button on:click={() => add()}>{msg("Add")}</button>
         </label>
     </li>
     <li class="buttons">
         <button
             on:click={() => apply(patterns)}
             disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}
-            >Apply
+            >{msg("Apply")}
         </button>
         <button
             on:click={() => revert()}
             disabled={statusName.some((e) => e === CHECK_NG) || modified.every((e) => e === "")}
-            >Revert
+            >{msg("Revert")}
         </button>
     </li>
 </ul>

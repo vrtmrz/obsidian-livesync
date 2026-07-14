@@ -33,7 +33,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         message: string,
         opt: { title?: string; defaultOption?: "Yes" | "No"; timeout?: number } = { title: "Confirmation" }
     ): Promise<"yes" | "no"> {
-        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleConfirmation");
+        const defaultTitle = $msg("Confirmation");
         const yesLabel = $msg("moduleInputUIObsidian.optionYes");
         const noLabel = $msg("moduleInputUIObsidian.optionNo");
         const defaultOption = opt.defaultOption === "Yes" ? yesLabel : noLabel;
@@ -57,7 +57,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         buttons: T,
         opt: { title?: string; defaultAction: T[number]; timeout?: number }
     ): Promise<T[number] | false> {
-        const defaultTitle = $msg("moduleInputUIObsidian.defaultTitleSelect");
+        const defaultTitle = $msg("Select");
         return confirmWithMessageWithWideButton(
             this._plugin,
             opt.title || defaultTitle,

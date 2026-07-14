@@ -19,6 +19,7 @@
     import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
     import { copyTo, pickBucketSyncSettings } from "@lib/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
 
@@ -82,17 +83,17 @@
             const trialRemoteSetting = generateSetting();
             const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
             if (!replicator) {
-                return "Failed to create replicator instance.";
+                return msg("Failed to create replicator instance.");
             }
             try {
                 const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
                 if (result) {
                     return "";
                 } else {
-                    return "Failed to connect to the server. Please check your settings.";
+                    return msg("Failed to connect to the server. Please check your settings.");
                 }
             } catch (e) {
-                return `Failed to connect to the server: ${e}`;
+                return msg("Failed to connect to the server: ${error}", { error: String(e) });
             }
         } finally {
             processing = false;
@@ -109,7 +110,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = msg("Error during connection test: ${error}", { error: String(e) });
             return;
         }
     }
@@ -123,7 +124,7 @@
 </script>
 
 <DialogHeader title="S3/MinIO/R2 Configuration" />
-<Guidance>Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.</Guidance>
+<Guidance>{msg("Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.")}</Guidance>
 <InputRow label="Endpoint URL">
     <input
         type="text"
@@ -137,13 +138,15 @@
         bind:value={syncSetting.endpoint}
     />
 </InputRow>
-<InfoNote warning visible={isEndpointInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
+<InfoNote warning visible={isEndpointInsecure}
+    >{msg("We can use only Secure (HTTPS) connections on Obsidian Mobile.")}</InfoNote
+>
 
 <InputRow label="Access Key ID">
     <input
         type="text"
         name="s3-access-key-id"
-        placeholder="Enter your Access Key ID"
+        placeholder={msg("Enter your Access Key ID")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -164,7 +167,7 @@
     <input
         type="text"
         name="s3-bucket-name"
-        placeholder="Enter your Bucket Name"
+        placeholder={msg("Enter your Bucket Name")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -176,7 +179,7 @@
     <input
         type="text"
         name="s3-region"
-        placeholder="Enter your Region (e.g., us-east-1, auto for R2)"
+        placeholder={msg("Enter your Region (e.g., us-east-1, auto for R2)")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -191,7 +194,7 @@
     <input
         type="text"
         name="s3-folder-prefix"
-        placeholder="Enter a folder prefix (optional)"
+        placeholder={msg("Enter a folder prefix (optional)")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -199,16 +202,17 @@
     />
 </InputRow>
 <InfoNote>
-    If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here.
-    Otherwise, leave it blank to store data at the root of the bucket.
+    {msg(
+        "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket."
+    )}
 </InfoNote>
 <InputRow label="Use internal API">
     <input type="checkbox" name="s3-use-internal-api" bind:checked={syncSetting.useCustomRequestHandler} />
 </InputRow>
 <InfoNote>
-    If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate
-    with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian
-    versions.
+    {msg(
+        "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions."
+    )}
 </InfoNote>
 
 <ExtraItems title="Advanced Settings">
@@ -229,7 +233,7 @@
 </InfoNote>
 
 {#if processing}
-    Checking connection... Please wait.
+    {msg("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
         <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />

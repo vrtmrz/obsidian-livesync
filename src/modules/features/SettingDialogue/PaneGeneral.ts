@@ -11,7 +11,7 @@ export function paneGeneral(
     paneEl: HTMLElement,
     { addPanel, addPane }: PageFunctions
 ): void {
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Appearance")).then((paneEl) => {
         const languages = Object.fromEntries([
             // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
             ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
@@ -40,7 +40,7 @@ export function paneGeneral(
             eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
         });
     });
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Logging")).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
         new Setting(paneEl).autoWireToggle("lessInformationInLog");

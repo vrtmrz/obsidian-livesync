@@ -14,6 +14,7 @@
         TYPE_NEW,
         TYPE_COMPATIBLE_EXISTING,
     } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     type Props = {
         setResult: (result: OutroAskUserModeResultType) => void;
@@ -38,20 +39,21 @@
 
 <DialogHeader title="Mostly Complete: Decision Required" />
 <Guidance>
-    The connection to the server has been configured successfully. As the next step, <strong
-        >the local database, that is to say the synchronisation information, must be reconstituted.</strong
+    {msg("The connection to the server has been configured successfully. As the next step,")} <strong
+        >{msg("the local database, that is to say the synchronisation information, must be reconstituted.")}</strong
     >
 </Guidance>
 <Instruction>
-    <Question>Please select your situation.</Question>
+    <Question>{msg("Please select your situation.")}</Question>
     <Option
         title="I am setting up a new server for the first time / I want to reset my existing server."
         bind:value={userType}
         selectedValue={TYPE_NEW}
     >
         <InfoNote>
-            Selecting this option will result in the current data on this device being used to initialise the server.
-            Any existing data on the server will be completely overwritten.
+            {msg(
+                "Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten."
+            )}
         </InfoNote>
     </Option>
     <Option
@@ -60,8 +62,9 @@
         selectedValue={TYPE_EXISTING}
     >
         <InfoNote>
-            Selecting this option will result in this device joining the existing server. You need to fetching the
-            existing synchronisation data from the server to this device.
+            {msg(
+                "Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device."
+            )}
         </InfoNote>
     </Option>
     <Option
@@ -70,9 +73,9 @@
         selectedValue={TYPE_COMPATIBLE_EXISTING}
     >
         <InfoNote warning>
-            Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is
-            compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you
-            are doing.
+            {msg(
+                "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing."
+            )}
         </InfoNote>
     </Option>
 </Instruction>

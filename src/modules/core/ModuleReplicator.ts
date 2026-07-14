@@ -39,7 +39,7 @@ async function canReplicateWithPBKDF2(
 ): Promise<boolean> {
     const currentSettings = host.services.setting.currentSettings();
     // TODO: check using PBKDF2 salt?
-    const errorMessage = $msg("Replicator.Message.InitialiseFatalError");
+    const errorMessage = $msg("No replicator is available, this is the fatal error.");
     const replicator = host.services.replicator.getActiveReplicator();
     if (!replicator) {
         errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
@@ -184,19 +184,19 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         message,
                         [CHOICE_FETCH, CHOICE_UNLOCK, CHOICE_DISMISS],
                         {
-                            title: $msg("Replicator.Dialogue.Locked.Title"),
+                            title: $msg("Locked"),
                             defaultAction: CHOICE_DISMISS,
                             timeout: 60,
                         }
                     );
                     if (ret == CHOICE_FETCH) {
-                        this._log($msg("Replicator.Dialogue.Locked.Message.Fetch"), LOG_LEVEL_NOTICE);
+                        this._log($msg("Fetch all has been scheduled. Plug-in will be restarted to perform it."), LOG_LEVEL_NOTICE);
                         await this.core.rebuilder.scheduleFetch();
                         this.services.appLifecycle.scheduleRestart();
                         return false;
                     } else if (ret == CHOICE_UNLOCK) {
                         await activeReplicator.markRemoteResolved(this.settings);
-                        this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                        this._log($msg("The remote database has been unlocked. Please retry the operation."), LOG_LEVEL_NOTICE);
                         return false;
                     }
                 }
@@ -232,7 +232,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     // ): Promise<boolean> {
     //     if (!this.services.appLifecycle.isReady()) return false;
     //     if (!(await this.services.replication.onBeforeReplicate(showingNotice))) {
-    //         Logger($msg("Replicator.Message.SomeModuleFailed"), LOG_LEVEL_NOTICE);
+    //         Logger($msg("Replication has been cancelled by some module failure"), LOG_LEVEL_NOTICE);
     //         return false;
     //     }
     //     if (!sendChunksInBulkDisabled) {

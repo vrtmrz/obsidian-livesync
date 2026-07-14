@@ -4,6 +4,7 @@
     import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
     import { eventHub } from "@/common/events";
     import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import { $msg as msg, $t as t } from "@lib/common/i18n.ts";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -75,13 +76,13 @@
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
         if (peer.syncOnConnect) {
-            attrs.push("✔ SYNC");
+            attrs.push("SYNC");
         }
         if (peer.watchOnConnect) {
-            attrs.push("✔ WATCH");
+            attrs.push("WATCH");
         }
         if (peer.syncOnReplicationCommand) {
-            attrs.push("✔ SELECT");
+            attrs.push("SELECT");
         }
         return attrs;
     });
@@ -113,18 +114,18 @@
         </div>
         <div class="status-chips">
             <div class="row">
-                <span class="chip {select(acceptedStatusChip, classList)}">{acceptedStatusChip}</span>
+                <span class="chip {select(acceptedStatusChip, classList)}">{t(acceptedStatusChip)}</span>
             </div>
             {#if isAccepted}
                 <div class="row">
                     {#each statusChips as chip}
-                        <span class="chip {select(chip, classList)}">{chip}</span>
+                        <span class="chip {select(chip, classList)}">{t(chip)}</span>
                     {/each}
                 </div>
             {/if}
             <div class="row">
                 {#each peerAttrLabels as attr}
-                    <span class="chip attr">{attr}</span>
+                    <span class="chip attr">✔ {t(attr)}</span>
                 {/each}
             </div>
         </div>
@@ -134,15 +135,15 @@
             <div class="row">
                 {#if isNew}
                     {#if !isAccepted}
-                        <button class="button" onclick={() => makeDecision(true, true)}>Accept in session</button>
-                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}>Accept</button>
+                        <button class="button" onclick={() => makeDecision(true, true)}>{msg("Accept in session")}</button>
+                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}>{msg("Accept")}</button>
                     {/if}
                     {#if !isDenied}
-                        <button class="button" onclick={() => makeDecision(false, true)}>Deny in session</button>
-                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}>Deny</button>
+                        <button class="button" onclick={() => makeDecision(false, true)}>{msg("Deny in session")}</button>
+                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}>{msg("Deny")}</button>
                     {/if}
                 {:else}
-                    <button class="button mod-warning" onclick={() => revokeDecision()}>Revoke</button>
+                    <button class="button mod-warning" onclick={() => revokeDecision()}>{msg("Revoke")}</button>
                 {/if}
             </div>
         </div>
@@ -155,9 +156,9 @@
                     <!-- <button class="button" onclick={replicateFrom} disabled={peer.isFetching}>📥</button>
                     <button class="button" onclick={replicateTo} disabled={peer.isSending}>📤</button> -->
                     {#if peer.isWatching}
-                        <button class="button" onclick={stopWatching}>Stop ⚡</button>
+                        <button class="button" onclick={stopWatching}>{msg("Stop")} ⚡</button>
                     {:else}
-                        <button class="button" onclick={startWatching} title="live">⚡</button>
+                        <button class="button" onclick={startWatching} title={msg("live")}>⚡</button>
                     {/if}
                     <button class="button" onclick={moreMenu}>...</button>
                 </div>
