@@ -58,7 +58,7 @@ export class ModuleConflictResolver extends AbstractModule {
             this._log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
-        const level = subTitle.indexOf("same") !== -1 ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
+        const level = subTitle.indexOf("same") !== -1 || subTitle === "NEWEST" ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
         this._log(`${path} has been merged automatically`, level);
         return AUTO_MERGED;
     }
@@ -214,7 +214,8 @@ export class ModuleConflictResolver extends AbstractModule {
 
         let i = 0;
         for (const file of files) {
-            if (i++ % 10)
+            i++;
+            if (i % 10 === 0)
                 this._log(
                     `Check and Processing ${i} / ${files.length}`,
                     LOG_LEVEL_NOTICE,
