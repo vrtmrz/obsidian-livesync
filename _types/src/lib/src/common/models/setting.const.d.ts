@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 export declare const SETTING_VERSION_INITIAL = 0;
 export declare const SETTING_VERSION_SUPPORT_CASE_INSENSITIVE = 10;
 export declare const CURRENT_SETTING_VERSION = 10;

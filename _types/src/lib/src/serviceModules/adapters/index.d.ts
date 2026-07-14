@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 export type { IPathAdapter } from "./IPathAdapter.ts";
 export type { ITypeGuardAdapter } from "./ITypeGuardAdapter.ts";
 export type { IConversionAdapter } from "./IConversionAdapter.ts";

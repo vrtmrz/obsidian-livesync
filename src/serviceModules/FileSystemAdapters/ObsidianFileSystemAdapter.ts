@@ -54,6 +54,11 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
         return Promise.resolve(this.app.vault.getFiles());
     }
 
+    async renameFile(file: TFile, newPath: string): Promise<TFile> {
+        await this.vault.rename(file, newPath);
+        return file;
+    }
+
     statFromNative(file: TFile): Promise<UXStat> {
         return Promise.resolve({ ...file.stat, type: "file" });
     }

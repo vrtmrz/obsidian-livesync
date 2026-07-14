@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { type EntryDoc, type DatabaseConnectingStatus, type RemoteDBSettings, type EntryLeaf, type TweakValues, type NodeData } from "@lib/common/types.ts";
 import type { RequiredServices } from "@lib/interfaces/ServiceModule";
 export type ReplicationCallback = (e: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<boolean> | boolean;

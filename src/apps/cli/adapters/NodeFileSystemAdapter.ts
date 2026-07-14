@@ -36,8 +36,27 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         return this.path.normalisePath(p as string);
     }
 
+    private async hasExactPathCase(pathStr: string): Promise<boolean> {
+        try {
+            const segments = pathStr.split("/").filter((segment) => segment !== "");
+            let currentPath = this.basePath;
+            for (const segment of segments) {
+                const entries = await fs.readdir(currentPath);
+                if (!entries.includes(segment)) return false;
+                currentPath = path.join(currentPath, segment);
+            }
+            return segments.length > 0;
+        } catch {
+            return false;
+        }
+    }
+
     async getAbstractFileByPath(p: FilePath | string): Promise<NodeFile | null> {
         const pathStr = this.normalisePath(p);
+        if (!this.fileCache.has(pathStr) && !(await this.hasExactPathCase(pathStr))) {
+            this.fileCache.delete(pathStr);
+            return null;
+        }
         return await this.refreshFile(pathStr);
     }
 
@@ -72,6 +91,15 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             await this.scanDirectory();
         }
         return Array.from(this.fileCache.values());
+    }
+
+    async renameFile(file: NodeFile, newPath: string): Promise<NodeFile> {
+        const oldPath = file.path;
+        await this.vault.rename(file, newPath);
+        this.fileCache.delete(oldPath);
+        const renamedFile = await this.refreshFile(newPath);
+        if (!renamedFile) throw new Error(`Could not find renamed file: ${newPath}`);
+        return renamedFile;
     }
 
     async statFromNative(file: NodeFile): Promise<UXStat> {

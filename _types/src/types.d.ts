@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
 import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
 import type { IFileHandler } from "@lib/interfaces/FileHandler";

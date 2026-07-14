@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 /** Options attached to one bounded asynchronous activity. */
 export interface AsyncActivityOptions {
     /** An optional diagnostic label supplied to the activity owner. */

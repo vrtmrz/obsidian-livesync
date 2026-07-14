@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { type FilePathWithPrefix } from "@lib/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";

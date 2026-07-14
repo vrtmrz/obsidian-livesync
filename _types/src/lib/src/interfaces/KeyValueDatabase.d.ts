@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 export interface KeyValueDatabase {
     get<T>(key: IDBValidKey): Promise<T>;
     set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey>;

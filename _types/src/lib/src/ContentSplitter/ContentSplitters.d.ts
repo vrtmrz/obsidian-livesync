@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { SavingEntry } from "@lib/common/types";
 import type { ContentSplitterOptions } from "./ContentSplitter";
 import { ContentSplitterCore, type ContentSplitterBase } from "./ContentSplitterBase";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
 import { type LogFunction } from "@lib/services/lib/logUtils";

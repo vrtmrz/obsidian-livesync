@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath, FilePathWithPrefix } from "./db.type";
 export type UXStat = {
     size: number;
@@ -50,7 +50,7 @@ export type UXDataWriteOptions = {
     mtime?: number;
 };
 export type CacheData = string | ArrayBuffer;
-export type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "INTERNAL";
+export type FileEventType = "CREATE" | "DELETE" | "CHANGED" | "RENAME" | "INTERNAL";
 export type FileEventArgs = {
     file: UXFileInfoStub | UXInternalFileInfoStub;
     cache?: CacheData;

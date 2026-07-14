@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { PeriodicProcessor } from "@/common/PeriodicProcessor";
 import type { LiveSyncCore } from "@/main";
 import { AbstractModule } from "@/modules/AbstractModule";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { DiagRTCStats, DiagRTCFailureDiagnosis } from "./DiagRTCPeerConnections.types";
 /**
  * Subscribes to connection status updates. The callback will be called with the latest connection statistics whenever there is a change in the connection status of any RTCPeerConnection instance.

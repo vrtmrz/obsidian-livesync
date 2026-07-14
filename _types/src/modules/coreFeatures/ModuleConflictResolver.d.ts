@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { type diff_check_result, type FilePathWithPrefix } from "@lib/common/types";
 import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";

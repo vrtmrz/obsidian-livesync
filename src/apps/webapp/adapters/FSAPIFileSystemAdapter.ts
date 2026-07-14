@@ -53,9 +53,11 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
             // Navigate to the parent directory
             for (let i = 0; i < parts.length - 1; i++) {
                 currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
+                if (currentHandle.name !== parts[i]) return null;
             }
 
             const fileHandle = await currentHandle.getFileHandle(fileName);
+            if (fileHandle.name !== fileName) return null;
             this.handleCache.set(pathStr, fileHandle);
             return fileHandle;
         } catch {
@@ -108,6 +110,14 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
             await this.scanDirectory();
         }
         return Array.from(this.fileCache.values());
+    }
+
+    async renameFile(file: FSAPIFile, newPath: string): Promise<FSAPIFile> {
+        await this.vault.rename(file, newPath);
+        this.clearCache();
+        const renamedFile = await this.refreshFile(newPath);
+        if (!renamedFile) throw new Error(`Could not find renamed file: ${newPath}`);
+        return renamedFile;
     }
 
     async statFromNative(file: FSAPIFile): Promise<UXStat> {

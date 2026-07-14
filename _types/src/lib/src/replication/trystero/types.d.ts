@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { JsonLike } from "@lib/rpc";
 import type { P2PSyncSetting, EntryDoc } from "@lib/common/types";
 import type { SimpleStore } from "@lib/common/utils";
@@ -80,7 +80,7 @@ export interface ReplicatorHostEnv extends ReplicatorHost {
     settings: P2PSyncSetting;
     db: PouchDB.Database<EntryDoc>;
     simpleStore: SimpleStore<unknown>;
-    runBoundedRemoteActivity?: AsyncActivityRunner["run"];
+    runFiniteReplicationActivity?: AsyncActivityRunner["run"];
     processReplicatedDocs(docs: Array<PouchDB.Core.ExistingDocument<EntryDoc>>): void | Promise<void>;
 }
 export type Advertisement = {
