@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath, UXDataWriteOptions, UXFileInfoStub, UXFolderInfo } from "@lib/common/types.ts";
 import type { IStorageAccessManager } from "@lib/interfaces/StorageAccess.ts";
 import type { IAPIService, IPathService, ISettingService, IVaultService } from "@lib/services/base/IService.ts";
@@ -71,6 +71,7 @@ export declare class FileAccessBase<TAdapter extends IFileSystemAdapter<any, any
     vaultReadAuto(file: ExtractFile<TAdapter>): Promise<string | ArrayBuffer>;
     vaultModify(file: ExtractFile<TAdapter>, data: string | ArrayBuffer | Uint8Array, options?: UXDataWriteOptions): Promise<boolean>;
     vaultCreate(path: string, data: string | ArrayBuffer | Uint8Array, options?: UXDataWriteOptions): Promise<ExtractFile<TAdapter>>;
+    vaultRename(file: ExtractFile<TAdapter>, newPath: string): Promise<ExtractFile<TAdapter>>;
     trigger(name: string, ...data: unknown[]): void;
     reconcileInternalFile(path: string): Promise<void>;
     /**

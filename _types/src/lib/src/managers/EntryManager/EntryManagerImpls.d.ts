@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { type SavingEntry, type DocumentID, type EntryDoc, type EntryBase, type FilePath, type FilePathWithPrefix, type LoadedEntry, type ObsidianLiveSyncSettings, type MetaEntry } from "@lib/common/types";
 import type { ContentSplitter } from "@lib/ContentSplitter/ContentSplitters";
 import type { HashManager } from "@lib/managers/HashManager/HashManager";
@@ -33,6 +33,14 @@ export declare function isLegacyNote(meta: LoadedEntry | MetaEntry): meta is (im
     children: string[];
 });
 export declare function canUseOnDemandChunking(settings: ObsidianLiveSyncSettings): boolean;
+/**
+ * Decide how to retrieve chunks based on settings and waitForReady flag.
+ * `waitForReady` allows an already-observable finite delivery lifecycle to finish.
+ */
+export declare function computeChunkRetrievalMethod(waitForReady: boolean, settings: ObsidianLiveSyncSettings): {
+    waitForDelivery: boolean;
+    preventRemoteRequest: boolean;
+};
 export declare function getDBEntryFromMeta(host: NecessaryServicesInterfaces<"path" | "setting", never>, { localDatabase, chunkManager }: NecessaryManagers<"localDatabase" | "chunkManager">, meta: LoadedEntry | MetaEntry, dump?: boolean, waitForReady?: boolean): Promise<false | (import("@lib/common/types").DatabaseEntry & EntryBase & import("@lib/common/types").EntryWithEden & {
     path: FilePathWithPrefix;
     data: string | string[];

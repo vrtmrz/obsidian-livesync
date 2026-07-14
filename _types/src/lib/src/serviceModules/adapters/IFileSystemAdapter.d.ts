@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath, UXStat } from "@lib/common/types.ts";
 import type { IPathAdapter } from "./IPathAdapter.ts";
 import type { ITypeGuardAdapter } from "./ITypeGuardAdapter.ts";
@@ -33,6 +33,10 @@ export interface IFileSystemAdapter<TNativeAbstractFile = any, TNativeFile = any
      * Get all files in the vault
      */
     getFiles(): Promise<TNativeFile[]>;
+    /**
+     * Rename a file and refresh any platform-specific caches
+     */
+    renameFile(file: TNativeFile, newPath: string): Promise<TNativeFile>;
     /**
      * Get file statistics from a native file object
      */

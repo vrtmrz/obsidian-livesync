@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath } from "./db.type";
 export declare const PREFIXMD_LOGFILE = "livesync_log_";
 export declare const PREFIXMD_LOGFILE_UC = "LIVESYNC_LOG_";

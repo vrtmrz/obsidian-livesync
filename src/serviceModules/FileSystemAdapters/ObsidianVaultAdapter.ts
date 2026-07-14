@@ -37,6 +37,10 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
         return await this.app.vault.createBinary(path, toArrayBuffer(data), options);
     }
 
+    async rename(file: TFile, newPath: string): Promise<void> {
+        return await this.app.vault.rename(file, newPath);
+    }
+
     async delete(file: TFile | TFolder, force = false): Promise<void> {
         if ("trashFile" in this.app.fileManager) {
             // eslint-disable-next-line obsidianmd/no-unsupported-api

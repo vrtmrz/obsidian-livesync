@@ -9,6 +9,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 - Fixed the 📲 remote-activity indicator remaining visible after CouchDB requests had completed.
 - Fixed missing chunks being reported unavailable while an in-progress on-demand fetch or finite replication could still deliver them. Reads now follow the actual delivery lifecycle and recheck the local database when it finishes.
+- Fixed an issue where changing only the letter case of a file name within the same directory could delete it on other devices when 'Handle files as Case-Sensitive' was disabled. Directory case changes remain unsupported (#198).
 
 ### Improved
 
