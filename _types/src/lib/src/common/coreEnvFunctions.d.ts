@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { getLanguage as ObsidianGetLanguage } from "obsidian";
 export declare function setGetLanguage(func: typeof ObsidianGetLanguage): void;
 export declare function getLanguage(): string;

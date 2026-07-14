@@ -1,8 +1,9 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { DocumentID, EntryDoc, EntryLeaf } from "@lib/common/types.ts";
 import type { ChangeManager } from "@lib/managers/ChangeManager.ts";
 import type { ChunkManagerEventMap, ChunkManagerOptions, ChunkReadOptions, ChunkWriteOptions, WriteResult } from "./LayeredChunkManager/types.ts";
+import { ChunkDeliveryCoordinator } from "./ChunkDeliveryCoordinator.ts";
 /**
  * ChunkManager class that manages chunk operations such as reading, writing, and caching.
  * Now uses a middleware layer architecture for read and write operations.
@@ -11,9 +12,11 @@ export declare class LayeredChunkManager {
     protected options: ChunkManagerOptions;
     protected eventTarget: EventTarget;
     private cacheLayer;
+    private databaseReadLayer;
     private readLayers;
     private writeLayers;
     private arrivalWaitLayer;
+    readonly deliveryCoordinator: ChunkDeliveryCoordinator;
     get changeManager(): ChangeManager<EntryDoc>;
     get database(): PouchDB.Database<EntryDoc>;
     get cacheStatistics(): {

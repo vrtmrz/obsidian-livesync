@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import type { IReplicatorService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";
@@ -20,6 +20,7 @@ export interface ReplicatorServiceDependencies {
 export declare abstract class ReplicatorService<T extends ServiceContext = ServiceContext> extends ServiceBase<T> implements IReplicatorService {
     protected dependencies: ReplicatorServiceDependencies;
     readonly boundedRemoteActivityCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;
+    readonly finiteReplicationActivityCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;
     _log: (msg: unknown, level?: import("octagonal-wheels/common/logger").LOG_LEVEL, key?: string) => void;
     private settingService;
     private databaseEventService;
@@ -33,6 +34,9 @@ export declare abstract class ReplicatorService<T extends ServiceContext = Servi
      * Continuous replication must not use this boundary.
      */
     runBoundedRemoteActivity<TValue>(task: () => TValue | PromiseLike<TValue>, options?: AsyncActivityOptions): Promise<TValue>;
+    /** Runs one finite replication and exposes its document-delivery lifetime. */
+    runFiniteReplicationActivity<TValue>(task: () => TValue | PromiseLike<TValue>, options?: AsyncActivityOptions): Promise<TValue>;
+    private runRemoteActivity;
     private suspendReplication;
     private reinitialiseReplicator;
     private disposeReplicator;

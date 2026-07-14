@@ -1,11 +1,12 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath, FilePathWithPrefix, MetaEntry } from "@lib/common/models/db.type";
 import type { UXFileInfo, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/models/fileaccess.type";
 export interface IFileHandler {
     readFileFromStub(file: UXFileInfoStub | UXFileInfo): Promise<UXFileInfo>;
     storeFileToDB(info: UXFileInfoStub | UXFileInfo | UXInternalFileInfoStub | FilePathWithPrefix, force?: boolean, onlyChunks?: boolean): Promise<boolean>;
     deleteFileFromDB(info: UXFileInfoStub | UXInternalFileInfoStub | FilePath): Promise<boolean>;
+    renameFileInDB(info: UXFileInfoStub | UXFileInfo, oldPath: FilePath | FilePathWithPrefix): Promise<boolean>;
     deleteRevisionFromDB(info: UXFileInfoStub | FilePath | FilePathWithPrefix, rev: string): Promise<boolean | undefined>;
     resolveConflictedByDeletingRevision(info: UXFileInfoStub | FilePath, rev: string): Promise<boolean | undefined>;
     dbToStorageWithSpecificRev(info: UXFileInfoStub | UXFileInfo | FilePath | null, rev: string, force?: boolean): Promise<boolean>;

@@ -103,6 +103,13 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         };
     }
 
+    async rename(file: NodeFile, newPath: string): Promise<void> {
+        const targetPath = this.resolvePath(newPath);
+        await fs.mkdir(path.dirname(targetPath), { recursive: true });
+        await fs.rename(this.resolvePath(file.path), targetPath);
+        file.path = newPath as FilePath;
+    }
+
     async delete(file: NodeFile | NodeFolder, force = false): Promise<void> {
         const fullPath = this.resolvePath(file.path);
         const stat = await fs.stat(fullPath);

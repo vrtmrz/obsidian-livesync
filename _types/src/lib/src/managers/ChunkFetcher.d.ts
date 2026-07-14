@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import { type DocumentID } from "@lib/common/types.ts";
 import { type ChunkManager } from "./ChunkManager.ts";
 import type { IReplicatorService, ISettingService } from "@lib/services/base/IService.ts";
@@ -10,11 +10,14 @@ export type ChunkFetcherOptions = {
     settingService: ISettingService;
     chunkManager: ChunkManager;
     replicatorService: IReplicatorService;
+    deliveryStallTimeoutMs?: number;
 };
 export declare class ChunkFetcher {
     options: ChunkFetcherOptions;
     get chunkManager(): ChunkManager;
     queue: DocumentID[];
+    private readonly pendingClaims;
+    private destroyed;
     get interval(): number;
     get concurrency(): number;
     abort: AbortController;
@@ -22,6 +25,12 @@ export declare class ChunkFetcher {
     destroy(): void;
     onEventHandler: (ids: DocumentID[]) => void;
     onEvent(ids: DocumentID[]): void;
+    private ensureClaims;
+    private removePendingDelivery;
+    private onClaimStalled;
+    private settleClaim;
+    private touchClaims;
+    private waitForActivityBoundary;
     /**
      * Processing requests
      */

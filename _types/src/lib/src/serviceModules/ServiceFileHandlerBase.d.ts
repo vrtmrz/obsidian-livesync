@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { AnyEntry, FilePath, FilePathWithPrefix, MetaEntry, UXFileInfo, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
 import type { IFileHandler } from "@lib/interfaces/FileHandler.ts";
 import { ServiceModuleBase } from "@lib/serviceModules/ServiceModuleBase";
@@ -39,6 +39,7 @@ export declare abstract class ServiceFileHandlerBase extends ServiceModuleBase<S
     private infoToStub;
     storeFileToDB(info: UXFileInfoStub | UXFileInfo | UXInternalFileInfoStub | FilePathWithPrefix, force?: boolean, onlyChunks?: boolean): Promise<boolean>;
     deleteFileFromDB(info: UXFileInfoStub | UXInternalFileInfoStub | FilePath): Promise<boolean>;
+    renameFileInDB(info: UXFileInfoStub | UXFileInfo, oldPath: FilePath | FilePathWithPrefix): Promise<boolean>;
     deleteRevisionFromDB(info: UXFileInfoStub | FilePath | FilePathWithPrefix, rev: string): Promise<boolean | undefined>;
     resolveConflictedByDeletingRevision(info: UXFileInfoStub | FilePath, rev: string): Promise<boolean | undefined>;
     dbToStorageWithSpecificRev(info: UXFileInfoStub | UXFileInfo | FilePath | null, rev: string, force?: boolean): Promise<boolean>;

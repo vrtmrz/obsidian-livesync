@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { UXDataWriteOptions } from "@lib/common/types.ts";
 /**
  * Vault adapter interface
@@ -34,6 +34,10 @@ export interface IVaultAdapter<TNativeFile = unknown, TNativeFolder = unknown> {
      * Create a new file with binary content
      */
     createBinary(path: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<TNativeFile>;
+    /**
+     * Rename or move an existing file
+     */
+    rename(file: TNativeFile, newPath: string): Promise<void>;
     /**
      * Delete a file or folder
      */

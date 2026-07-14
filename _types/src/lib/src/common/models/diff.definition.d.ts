@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { AUTO_MERGED, CANCELLED, MISSING_OR_ERROR, NOT_CONFLICTED } from "./shared.const.symbols";
 export type diff_result_leaf = {
     rev: string;

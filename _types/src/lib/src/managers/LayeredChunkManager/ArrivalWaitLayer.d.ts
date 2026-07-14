@@ -1,34 +1,32 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { DocumentID, EntryLeaf } from "@lib/common/types";
 import type { IReadLayer } from "./ChunkLayerInterfaces";
 import type { ChunkReadOptions } from "./types.ts";
+import { ChunkDeliveryCoordinator } from "@lib/managers/ChunkDeliveryCoordinator.ts";
+export type ChunkAvailabilityRecheck = (ids: readonly DocumentID[]) => Promise<readonly (EntryLeaf | false)[]>;
 /**
- * Arrival wait layer - emits events for fetcher, and waits for chunks to arrive
+ * Waits only for a delivery lifecycle which is already observable when the
+ * local miss is handled. It does not guess at an arrival delay.
  */
 export declare class ArrivalWaitLayer implements IReadLayer {
-    private waitingMap;
-    private readonly DEFAULT_TIMEOUT;
+    private readonly recheckAvailability?;
+    private readonly waitingMap;
     private readonly eventEmitter;
-    constructor(eventEmitter: (eventName: string, data: DocumentID[]) => void);
+    private readonly deliveryCoordinator;
+    private readonly ownsDeliveryCoordinator;
+    private readonly stopObservingActivity;
+    constructor(eventEmitter: (eventName: string, data: DocumentID[]) => void, deliveryCoordinator?: ChunkDeliveryCoordinator, recheckAvailability?: ChunkAvailabilityRecheck | undefined);
     private enqueueWaiting;
-    private withTimeout;
-    /**
-     * Handle chunk arrival (called when a chunk document arrives)
-     */
+    private settle;
+    private settleAfterObservedActivity;
+    private refreshActivity;
+    /** Handle a chunk document becoming available. */
     onChunkArrived(doc: EntryLeaf, deleted?: boolean): void;
-    /**
-     * Handle missing chunk (called when a chunk is confirmed missing)
-     */
+    /** Handle an explicit remote-missing result. */
     onMissingChunk(id: DocumentID): void;
     read(ids: DocumentID[], options: ChunkReadOptions, next: (remaining: DocumentID[]) => Promise<(EntryLeaf | false)[]>): Promise<(EntryLeaf | false)[]>;
-    /**
-     * Clear all waiting requests
-     */
     clearWaiting(): void;
     tearDown(): void;
-    /**
-     * Get count of waiting chunks
-     */
     getWaitingCount(): number;
 }

@@ -1,6 +1,8 @@
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
+import { FSAPIFileSystemAdapter } from "./FSAPIFileSystemAdapter";
 import { FSAPIStorageAdapter } from "./FSAPIStorageAdapter";
+import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 
 class MemoryFileHandle {
     readonly kind = "file";
@@ -35,19 +37,32 @@ class MemoryDirectoryHandle {
     readonly kind = "directory";
     private readonly children = new Map<string, MemoryDirectoryHandle | MemoryFileHandle>();
 
-    constructor(readonly name: string) {}
+    constructor(
+        readonly name: string,
+        private readonly caseInsensitive = false
+    ) {}
 
-    async getDirectoryHandle(name: string, options?: FileSystemGetDirectoryOptions): Promise<FileSystemDirectoryHandle> {
-        const existing = this.children.get(name);
+    private resolveName(name: string): string {
+        if (!this.caseInsensitive || this.children.has(name)) return name;
+        return [...this.children.keys()].find((childName) => childName.toLowerCase() === name.toLowerCase()) ?? name;
+    }
+
+    async getDirectoryHandle(
+        name: string,
+        options?: FileSystemGetDirectoryOptions
+    ): Promise<FileSystemDirectoryHandle> {
+        const resolvedName = this.resolveName(name);
+        const existing = this.children.get(resolvedName);
         if (existing instanceof MemoryDirectoryHandle) return existing as unknown as FileSystemDirectoryHandle;
         if (existing !== undefined || !options?.create) throw new DOMException("Directory not found", "NotFoundError");
-        const directory = new MemoryDirectoryHandle(name);
+        const directory = new MemoryDirectoryHandle(name, this.caseInsensitive);
         this.children.set(name, directory);
         return directory as unknown as FileSystemDirectoryHandle;
     }
 
     async getFileHandle(name: string, options?: FileSystemGetFileOptions): Promise<FileSystemFileHandle> {
-        const existing = this.children.get(name);
+        const resolvedName = this.resolveName(name);
+        const existing = this.children.get(resolvedName);
         if (existing instanceof MemoryFileHandle) return existing as unknown as FileSystemFileHandle;
         if (existing !== undefined || !options?.create) throw new DOMException("File not found", "NotFoundError");
         const file = new MemoryFileHandle(name);
@@ -56,18 +71,23 @@ class MemoryDirectoryHandle {
     }
 
     async removeEntry(name: string, options?: FileSystemRemoveOptions): Promise<void> {
-        const existing = this.children.get(name);
+        const resolvedName = this.resolveName(name);
+        const existing = this.children.get(resolvedName);
         if (existing === undefined) throw new DOMException("Entry not found", "NotFoundError");
         if (existing instanceof MemoryDirectoryHandle && !options?.recursive && existing.children.size > 0) {
             throw new DOMException("Directory is not empty", "InvalidModificationError");
         }
-        this.children.delete(name);
+        this.children.delete(resolvedName);
     }
 
     async *entries(): AsyncIterableIterator<[string, FileSystemHandle]> {
         for (const [name, entry] of this.children) {
             yield [name, entry as unknown as FileSystemHandle];
         }
+    }
+
+    names(): string[] {
+        return [...this.children.keys()];
     }
 }
 
@@ -78,4 +98,35 @@ describe("FSAPIStorageAdapter", () => {
             await contractCase.run(new FSAPIStorageAdapter(root));
         });
     }
+});
+
+describe("FSAPIVaultAdapter.rename", () => {
+    it("moves the file through a temporary copy while preserving content", async () => {
+        const memoryRoot = new MemoryDirectoryHandle("root");
+        const root = memoryRoot as unknown as FileSystemDirectoryHandle;
+        const adapter = new FSAPIVaultAdapter(root);
+        const file = await adapter.create("Calculus.md", "content");
+
+        await adapter.rename(file, "calculus.md");
+
+        expect(memoryRoot.names()).toEqual(["calculus.md"]);
+        const renamedHandle = await root.getFileHandle("calculus.md");
+        expect(await (await renamedHandle.getFile()).text()).toBe("content");
+        expect(file.path).toBe("calculus.md");
+    });
+});
+
+describe("FSAPIFileSystemAdapter path case", () => {
+    it("returns the stored path case from a case-insensitive file system", async () => {
+        const memoryRoot = new MemoryDirectoryHandle("root", true);
+        const root = memoryRoot as unknown as FileSystemDirectoryHandle;
+        const vault = new FSAPIVaultAdapter(root);
+        await vault.create("Calculus.md", "content");
+        const adapter = new FSAPIFileSystemAdapter(root);
+
+        await expect(adapter.getAbstractFileByPath("calculus.md")).resolves.toBeNull();
+        await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toEqual(
+            expect.objectContaining({ path: "Calculus.md" })
+        );
+    });
 });

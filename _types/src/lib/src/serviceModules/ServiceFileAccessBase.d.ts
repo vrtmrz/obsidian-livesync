@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
 import type { FilePath, FilePathWithPrefix, UXDataWriteOptions, UXFileInfo, UXFileInfoStub, UXFolderInfo, UXStat } from "@lib/common/types";
 import { ServiceModuleBase } from "@lib/serviceModules/ServiceModuleBase";
 import type { APIService } from "@lib/services/base/APIService";
@@ -36,6 +36,7 @@ export declare class ServiceFileAccessBase<TAdapter extends IFileSystemAdapter<a
     readFileAuto(path: string): Promise<string | ArrayBuffer>;
     readFileText(path: string): Promise<string>;
     isExists(path: string): Promise<boolean>;
+    renameFile(file: UXFileInfoStub | FilePathWithPrefix, newPath: FilePathWithPrefix): Promise<UXFileInfoStub | null>;
     writeHiddenFileAuto(path: string, data: string | ArrayBuffer, opt?: UXDataWriteOptions): Promise<boolean>;
     appendHiddenFile(path: string, data: string, opt?: UXDataWriteOptions): Promise<boolean>;
     stat(path: string): Promise<UXStat | null>;
