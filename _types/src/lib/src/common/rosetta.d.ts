@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 /**
 # Rosetta stone
 - To localise messages to your language, please write a translation to this file and submit a PR.

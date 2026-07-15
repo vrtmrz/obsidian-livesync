@@ -31,6 +31,7 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@lib/common/i18n.ts";
 import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector.ts";
+import { hasRemoteActivity } from "./RemoteActivityStatus.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 import { isValidPath } from "@/common/utils.ts";
@@ -152,8 +153,13 @@ export class ModuleLog extends AbstractObsidianModule {
         const queueCountLabel = () => queueCountLabelX.value;
 
         const requestingStatLabel = computed(() => {
-            const diff = this.services.API.requestCount.value - this.services.API.responseCount.value;
-            return diff != 0 ? "📲 " : "";
+            return hasRemoteActivity(
+                this.services.API.requestCount.value,
+                this.services.API.responseCount.value,
+                this.services.replicator.boundedRemoteActivityCount.value
+            )
+                ? "📲 "
+                : "";
         });
 
         const replicationStatLabel = computed(() => {

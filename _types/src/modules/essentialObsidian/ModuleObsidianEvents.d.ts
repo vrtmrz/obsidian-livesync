@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import type { TFile } from "@/deps.ts";
 import { type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
@@ -12,6 +12,11 @@ export declare class ModuleObsidianEvents extends AbstractObsidianModule {
     registerWatchEvents(): void;
     hasFocus: boolean;
     isLastHidden: boolean;
+    private boundedRemoteActivityEndHandler?;
+    private deferredBoundedLifecycle?;
+    private keepReplicationActiveInBackground;
+    private applyDeferredBoundedActivityLifecycle;
+    private deferLifecycleUntilBoundedRemoteActivityEnds;
     setHasFocus(hasFocus: boolean): void;
     watchWindowVisibility(): void;
     watchOnline(): void;

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { Menu, WorkspaceLeaf } from "@/deps.ts";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
 import { type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";

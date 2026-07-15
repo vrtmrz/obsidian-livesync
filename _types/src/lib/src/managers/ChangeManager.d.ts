@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { FallbackWeakRef } from "octagonal-wheels/common/polyfill";
 /**
  * Options for configuring the ChangeManager.

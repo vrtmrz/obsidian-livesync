@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
 import type { UseP2PReplicatorResult } from "./UseP2PReplicatorResult";
 /**

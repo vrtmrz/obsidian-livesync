@@ -99,6 +99,54 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
     hasFocus = true;
     isLastHidden = false;
+    private boundedRemoteActivityEndHandler?: (value: { readonly value: number }) => unknown;
+    private deferredBoundedLifecycle?: "suspend-if-hidden" | "restart-continuous-if-visible";
+
+    private keepReplicationActiveInBackground() {
+        return (
+            this.settings.keepReplicationActiveInBackground &&
+            (this.settings.liveSync || this.settings.periodicReplication) &&
+            !this.services.API.isMobile()
+        );
+    }
+
+    private async applyDeferredBoundedActivityLifecycle() {
+        const count = this.services.replicator.boundedRemoteActivityCount;
+        if (count.value !== 0) {
+            this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            return;
+        }
+        const deferredLifecycle = this.deferredBoundedLifecycle;
+        this.deferredBoundedLifecycle = undefined;
+        const keepActiveInBackground = this.keepReplicationActiveInBackground();
+        if (deferredLifecycle === "suspend-if-hidden" && activeWindow.document.hidden) {
+            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
+            return;
+        }
+        if (
+            deferredLifecycle === "restart-continuous-if-visible" &&
+            !activeWindow.document.hidden &&
+            keepActiveInBackground &&
+            this.settings.liveSync
+        ) {
+            await this.services.appLifecycle.onSuspending();
+            await this.services.appLifecycle.onResuming();
+            await this.services.appLifecycle.onResumed();
+        }
+    }
+
+    private deferLifecycleUntilBoundedRemoteActivityEnds() {
+        if (this.boundedRemoteActivityEndHandler) return;
+        const count = this.services.replicator.boundedRemoteActivityCount;
+        const handler = (value: { readonly value: number }) => {
+            if (value.value !== 0) return;
+            count.offChanged(handler);
+            this.boundedRemoteActivityEndHandler = undefined;
+            fireAndForget(() => this.applyDeferredBoundedActivityLifecycle());
+        };
+        this.boundedRemoteActivityEndHandler = handler;
+        count.onChanged(handler);
+    }
 
     setHasFocus(hasFocus: boolean) {
         this.hasFocus = hasFocus;
@@ -122,7 +170,19 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     }
 
     async watchWindowVisibilityAsync() {
-        if (this.settings.suspendFileWatching) return;
+        if (this.settings.suspendFileWatching) {
+            if (
+                this.settings.isConfigured &&
+                this.services.appLifecycle.isReady() &&
+                this.services.replicator.boundedRemoteActivityCount.value > 0
+            ) {
+                const isHidden = activeWindow.document.hidden;
+                this.isLastHidden = isHidden;
+                this.deferredBoundedLifecycle = isHidden ? "suspend-if-hidden" : undefined;
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            }
+            return;
+        }
         if (!this.settings.isConfigured) return;
         if (!this.services.appLifecycle.isReady()) return;
 
@@ -135,6 +195,13 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         if (this.isLastHidden === isHidden) {
             return;
         }
+
+        const boundedRemoteActivityInProgress = this.services.replicator.boundedRemoteActivityCount.value > 0;
+        if (!isHidden && boundedRemoteActivityInProgress && this.deferredBoundedLifecycle === "suspend-if-hidden") {
+            this.isLastHidden = false;
+            this.deferredBoundedLifecycle = undefined;
+            return;
+        }
         this.isLastHidden = isHidden;
 
         await this.services.fileProcessing.commitPendingFileEvents();
@@ -144,16 +211,23 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // modes (LiveSync's continuous replication and Periodic's timer both stall otherwise);
         // becoming visible reopens normally, and for LiveSync additionally forces a teardown first
         // (see the resume branch) so a stalled continuous channel is always replaced.
-        const keepActiveInBackground =
-            this.settings.keepReplicationActiveInBackground &&
-            (this.settings.liveSync || this.settings.periodicReplication) &&
-            !this.services.API.isMobile();
+        const keepActiveInBackground = this.keepReplicationActiveInBackground();
 
         if (isHidden) {
-            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
+            if (boundedRemoteActivityInProgress && !keepActiveInBackground) {
+                this.deferredBoundedLifecycle = "suspend-if-hidden";
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            } else if (!keepActiveInBackground) {
+                await this.services.appLifecycle.onSuspending();
+            }
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
+            if (boundedRemoteActivityInProgress && keepActiveInBackground && this.settings.liveSync) {
+                this.deferredBoundedLifecycle = "restart-continuous-if-visible";
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+                return;
+            }
             // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
             // emits paused/retry while the replicator keeps its AbortController set, so the reopen
             // below would no-op on exactly the channel that needs replacing. Force a teardown first

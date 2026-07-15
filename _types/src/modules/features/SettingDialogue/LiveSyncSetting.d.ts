@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { Setting, TextComponent, type ToggleComponent, type DropdownComponent, ButtonComponent, type TextAreaComponent, type ValueComponent } from "@/deps.ts";
 import { type ConfigurationItem } from "@lib/common/types.ts";
 import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";

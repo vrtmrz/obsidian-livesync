@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 /**

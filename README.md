@@ -64,7 +64,7 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 Synchronisation status is shown in the status bar with the following icons.
 
 -   Activity Indicator
-    -   📲 Network request
+    -   📲 Remote activity
 -   Status
     -   ⏹️ Stopped
     -   💤 LiveSync enabled. Waiting for changes

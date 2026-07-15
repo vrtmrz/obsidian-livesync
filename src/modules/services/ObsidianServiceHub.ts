@@ -22,6 +22,7 @@ import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
 import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
+import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
 
 // InjectableServiceHub
 
@@ -55,6 +56,11 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const path = new ObsidianPathService(context, {
             settingService: setting,
         });
+        const screenWakeLock = createScreenWakeLockManager();
+        appLifecycle.onUnload.addHandler(async () => {
+            await screenWakeLock.dispose();
+            return true;
+        });
         const database = new ObsidianDatabaseService(context, {
             path: path,
             vault: vault,
@@ -74,6 +80,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             settingService: setting,
             appLifecycleService: appLifecycle,
             databaseEventService: databaseEvents,
+            activityRunner: screenWakeLock,
         });
         const replication = new ObsidianReplicationService(context, {
             APIService: API,

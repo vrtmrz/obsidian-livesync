@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 export declare const isValidRemoteCouchDBURI: (uri: string) => boolean;
 export declare function isCloudantURI(uri: string): boolean;
 export declare function isErrorOfMissingDoc(ex: unknown): boolean;

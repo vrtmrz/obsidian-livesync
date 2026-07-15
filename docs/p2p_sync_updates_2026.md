@@ -39,7 +39,11 @@ The status card now shows a stable **Room ID suffix** above **Peer ID**. The Roo
 Two actions are available per peer:
 
 - **Sync** — Starts a bidirectional synchronisation (Pull then Push) and keeps the dialogue open so you can monitor progress or sync with additional peers.
-- **Start Sync & Close** — Starts the same bidirectional sync in the background and **immediately closes the dialogue**, so you can continue working without waiting.
+- **Start Sync & Close** — Runs the same bidirectional synchronisation, waits for it to settle, then closes the dialogue. After a successful synchronisation, it also closes the signalling connection.
+
+On supported mobile and desktop devices, LiveSync keeps the screen awake while this peer-selection dialogue is open and while its synchronisations finish. This is intentional: display sleep can interrupt peer discovery or connection establishment and require detection to start again. Wake Lock support remains best effort, does not keep a hidden application running in the background, and does not override operating-system sleep or suspension.
+
+During a P2P rebuild, peer discovery and selection remain protected after the rebuild has started. Keep Obsidian visible until a peer is selected and the transfer finishes, because mobile platform restrictions can still pause or terminate a hidden application.
 
 ## 5. Syncing with Registered Targets via Command Palette
 
@@ -56,4 +60,3 @@ This command synchronises with every peer whose **SYNC** toggle is enabled in th
 - **Decoupled Architecture:** The UI is now strictly separated from the core logic, making the plug-in more stable across different platforms (Mobile, Desktop, and Web).
 - **Svelte 5 UI:** The interface has been rebuilt for better responsiveness and clearer status indicators.
 - **Security:** All data remains end-to-end encrypted. Even the signalling relay never sees your actual notes.
-

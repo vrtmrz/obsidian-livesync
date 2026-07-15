@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { TaggedType } from "octagonal-wheels/common/types";
 export type { TaggedType };
 export type CustomRegExpSource = TaggedType<string, "CustomRegExp">;

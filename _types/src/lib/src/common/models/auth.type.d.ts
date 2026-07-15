@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 export type CouchDBCredentials = BasicCredentials | JWTCredentials;
 export type JWTAlgorithm = "HS256" | "HS512" | "ES256" | "ES512" | "";
 export type Credential = {

@@ -1,4 +1,4 @@
-import { App } from "@/deps.ts";
+import type { App } from "@/deps.ts";
 import { Logger } from "@lib/common/logger";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
 import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
@@ -20,52 +20,54 @@ export function createOpenReplicationUI(
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
+                let resolved = false;
+                let sessionResult = false;
+                let activeSynchronisations = 0;
+                let closed = false;
+                const safeResolve = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    resolve(sessionResult);
+                };
+                const settleClosedSession = () => {
+                    if (closed && activeSynchronisations === 0) safeResolve();
+                };
+                const synchronise = async (peerId: string, closeConnection: boolean) => {
+                    activeSynchronisations++;
+                    try {
+                        // Pull first, then push only when the pull succeeds.
+                        const pullResult = await replicator.replicateFrom(peerId, showResult);
+                        if (!pullResult?.ok) {
+                            sessionResult = false;
+                            return;
+                        }
+                        const pushResult = await replicator.requestSynchroniseToPeer(peerId);
+                        sessionResult = pushResult?.ok ?? true;
+                        if (sessionResult && closeConnection) await replicator.close();
+                    } catch (e) {
+                        Logger(
+                            `Error in bidirectional sync with ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
+                            logLevel
+                        );
+                        sessionResult = false;
+                    } finally {
+                        activeSynchronisations--;
+                        settleClosedSession();
+                    }
+                };
                 const modal = new P2POpenReplicationModal(
                     app,
                     replicator,
                     {
-                        onSync: async (peerId: string) => {
-                            try {
-                                // pull (replicateFrom) first; push only on success
-                                const pullResult = await replicator.replicateFrom(peerId, showResult);
-                                if (pullResult?.ok) {
-                                    const pushResult = await replicator.requestSynchroniseToPeer(peerId);
-                                    resolve(pushResult?.ok ?? true);
-                                } else {
-                                    resolve(false);
-                                }
-                            } catch (e) {
-                                Logger(
-                                    `Error in bidirectional sync with ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
-                                    logLevel
-                                );
-                                resolve(false);
-                            }
-                        },
-                        onSyncAndClose: async (peerId: string) => {
-                            try {
-                                const pullResult = await replicator.replicateFrom(peerId, showResult);
-                                if (pullResult?.ok) {
-                                    const pushResult = await replicator.requestSynchroniseToPeer(peerId);
-                                    if (pushResult?.ok ?? true) {
-                                        await replicator.close();
-                                        resolve(true);
-                                    } else {
-                                        resolve(false);
-                                    }
-                                } else {
-                                    resolve(false);
-                                }
-                            } catch (e) {
-                                Logger(
-                                    `Error in bidirectional sync with ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
-                                    logLevel
-                                );
-                                resolve(false);
-                            }
-                        },
+                        onSync: (peerId: string) => synchronise(peerId, false),
+                        onSyncAndClose: (peerId: string) => synchronise(peerId, true),
                     },
-                    showResult
+                    showResult,
+                    "P2P Replication",
+                    () => {
+                        closed = true;
+                        settleClosedSession();
+                    }
                 );
                 modal.open();
             });
@@ -89,27 +91,42 @@ export function createOpenRebuildUI(
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
                 let resolved = false;
+                let activeSynchronisations = 0;
+                let closed = false;
+                let operationCompleted = false;
+                let sessionResult = false;
                 const safeResolve = (val: boolean) => {
                     if (!resolved) {
                         resolved = true;
                         resolve(val);
                     }
                 };
+                const settleSession = () => {
+                    if (activeSynchronisations !== 0) return;
+                    if (closed || operationCompleted) safeResolve(sessionResult);
+                };
 
                 const doRebuild = async (peerId: string) => {
-                    replicator.setOnSetup();
+                    activeSynchronisations++;
                     try {
+                        replicator.setOnSetup();
                         Logger(`Rebuilding from peer ${peerId}`, logLevel);
                         const result = await replicator.replicateFrom(peerId, showResult);
-                        safeResolve(result?.ok ?? false);
+                        sessionResult = result?.ok ?? false;
                     } catch (e) {
                         Logger(
                             `Error in rebuild from ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
                             logLevel
                         );
-                        safeResolve(false);
+                        sessionResult = false;
                     } finally {
-                        replicator.clearOnSetup();
+                        try {
+                            replicator.clearOnSetup();
+                        } finally {
+                            operationCompleted = true;
+                            activeSynchronisations--;
+                            settleSession();
+                        }
                     }
                 };
 
@@ -122,7 +139,10 @@ export function createOpenRebuildUI(
                     },
                     showResult,
                     "P2P Rebuild",
-                    () => safeResolve(false),
+                    () => {
+                        closed = true;
+                        settleSession();
+                    },
                     true
                 );
                 modal.open();

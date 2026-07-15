@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type ConfigLevel } from "@lib/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
 export declare const combineOnUpdate: (func1: OnUpdateFunc, func2: OnUpdateFunc) => OnUpdateFunc;

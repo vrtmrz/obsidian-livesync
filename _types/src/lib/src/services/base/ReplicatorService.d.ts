@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
 import type { IReplicatorService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";
@@ -7,16 +7,19 @@ import type { SettingService } from "./SettingService";
 import type { AppLifecycleService } from "./AppLifecycleService";
 import { UnresolvedErrorManager } from "./UnresolvedErrorManager";
 import type { DatabaseEventService } from "./DatabaseEventService";
+import { type AsyncActivityOptions, type AsyncActivityRunner } from "@lib/interfaces/AsyncActivityRunner.ts";
 export interface ReplicatorServiceDependencies {
     settingService: SettingService;
     appLifecycleService: AppLifecycleService;
     databaseEventService: DatabaseEventService;
+    activityRunner?: AsyncActivityRunner;
 }
 /**
  * The ReplicatorService provides methods for managing replication.
  */
 export declare abstract class ReplicatorService<T extends ServiceContext = ServiceContext> extends ServiceBase<T> implements IReplicatorService {
     protected dependencies: ReplicatorServiceDependencies;
+    readonly boundedRemoteActivityCount: import("octagonal-wheels/dataobject/reactive_v2").ReactiveSource<number>;
     _log: (msg: unknown, level?: import("octagonal-wheels/common/logger").LOG_LEVEL, key?: string) => void;
     private settingService;
     private databaseEventService;
@@ -25,6 +28,11 @@ export declare abstract class ReplicatorService<T extends ServiceContext = Servi
     private appLifecycleService;
     _unresolvedErrorManager: UnresolvedErrorManager;
     constructor(context: T, dependencies: ReplicatorServiceDependencies);
+    /**
+     * Runs one finite remote operation while exposing its lifetime to host policy and status UI.
+     * Continuous replication must not use this boundary.
+     */
+    runBoundedRemoteActivity<TValue>(task: () => TValue | PromiseLike<TValue>, options?: AsyncActivityOptions): Promise<TValue>;
     private suspendReplication;
     private reinitialiseReplicator;
     private disposeReplicator;

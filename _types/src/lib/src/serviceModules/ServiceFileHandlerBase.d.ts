@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { AnyEntry, FilePath, FilePathWithPrefix, MetaEntry, UXFileInfo, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
 import type { IFileHandler } from "@lib/interfaces/FileHandler.ts";
 import { ServiceModuleBase } from "@lib/serviceModules/ServiceModuleBase";

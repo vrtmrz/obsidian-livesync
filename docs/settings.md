@@ -491,7 +491,9 @@ Sync automatically after merging files
 #### Keep replication active in the background
 
 Setting key: keepReplicationActiveInBackground
-Desktop only; uses more battery and network.
+Desktop only; uses more battery and network. This setting applies to continuous and periodic replication.
+
+Finite remote operations, including one-shot replication, P2P peer discovery and selection, rebuilds, fetches, and remote chunk fetching, request best-effort screen-awake protection automatically and do not require this setting. That protection does not guarantee execution while Obsidian is hidden or while the operating system suspends the device.
 
 ### 3. Update thinning
 

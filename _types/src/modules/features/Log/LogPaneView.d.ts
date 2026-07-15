@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { WorkspaceLeaf } from "@/deps.ts";
 import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
