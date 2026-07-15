@@ -126,6 +126,26 @@ export async function createCouchDbDatabase(config: CouchDbConfig, dbName: strin
     }
 }
 
+export async function putCouchDbDocument(
+    config: CouchDbConfig,
+    dbName: string,
+    document: CouchDbDocument
+): Promise<void> {
+    const response = await fetch(databaseUrl(config, dbName, `/${encodeURIComponent(document._id)}`), {
+        method: "PUT",
+        headers: {
+            authorization: authHeader(config),
+            "content-type": "application/json",
+        },
+        body: JSON.stringify(document),
+    });
+    if (!response.ok) {
+        throw new Error(
+            `Failed to write CouchDB document ${document._id}. HTTP ${response.status}: ${await response.text()}`
+        );
+    }
+}
+
 export async function deleteCouchDbDatabase(config: CouchDbConfig, dbName: string): Promise<void> {
     const response = await fetch(databaseUrl(config, dbName), {
         method: "DELETE",

@@ -5,6 +5,7 @@ import {
     deleteCouchDbDatabase,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
+    putCouchDbDocument,
     waitForCouchDbDocs,
 } from "../runner/couchdb.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
@@ -12,10 +13,18 @@ import {
     assertEqual,
     configureCouchDb,
     prepareRemote,
-    pushLocalChanges,
     waitForLiveSyncCoreReady,
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
+import { captureRemoteActivityDiagnostics, waitForRemoteActivityState } from "../runner/remoteActivity.ts";
+import {
+    cleanUpHeldRemoteActivity,
+    clearHeldRemoteActivity,
+    finishHeldRemoteActivity,
+    startHeldChunkFetch,
+    startHeldOneShotReplication,
+    waitForRestoredChunk,
+} from "../runner/remoteActivityWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
@@ -72,6 +81,7 @@ async function main(): Promise<void> {
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "obsidian-upload");
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
+    let activityStage = "session-startup";
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -104,8 +114,25 @@ async function main(): Promise<void> {
         assertEqual(configured.syncOnSave, false, "Sync on save should remain disabled during this workflow.");
 
         await prepareRemote(cli.binary, session.cliEnv);
+        activityStage = "initial-idle";
+        const initialIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
         const localEntry = await createNoteAndWaitForLocalDb(cli.binary, session.cliEnv);
-        await pushLocalChanges(cli.binary, session.cliEnv);
+
+        activityStage = "one-shot-active";
+        await startHeldOneShotReplication(cli.binary, session.cliEnv);
+        const oneShotActive = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            "finite-replication-active"
+        );
+        const oneShotResult = await finishHeldRemoteActivity(cli.binary, session.cliEnv);
+        assertEqual(oneShotResult.error, undefined, "One-shot replication failed while its activity was observed.");
+        assertEqual(oneShotResult.result, true, "One-shot replication did not report success.");
+        activityStage = "one-shot-idle";
+        const oneShotIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
+        if (oneShotIdle.requestCount <= initialIdle.requestCount) {
+            throw new Error("One-shot replication did not make an observed remote request.");
+        }
+        await clearHeldRemoteActivity(cli.binary, session.cliEnv);
 
         const remoteDocs = await waitForCouchDbDocs(couchDb, dbName, (docs) => {
             const ids = new Set(docs.map((doc) => doc._id));
@@ -118,11 +145,73 @@ async function main(): Promise<void> {
             "Remote metadata path did not match the local database entry."
         );
 
+        const sourceChunkId = localEntry.children[0];
+        if (!sourceChunkId) throw new Error("The uploaded note did not produce a chunk for the fetch workflow.");
+        const sourceChunk = remoteDocs.find((document) => document._id === sourceChunkId);
+        if (!sourceChunk || sourceChunk.type !== "leaf") {
+            throw new Error(`The uploaded source chunk was not found in CouchDB: ${sourceChunkId}`);
+        }
+        const { _rev: _sourceRevision, ...remoteOnlyChunk } = sourceChunk;
+        const chunkId = `h:e2e-remote-activity-${Date.now().toString(36)}`;
+        await putCouchDbDocument(couchDb, dbName, { ...remoteOnlyChunk, _id: chunkId });
+        activityStage = "chunk-fetch-active";
+        await startHeldChunkFetch(cli.binary, session.cliEnv, chunkId);
+        const chunkFetchActive = await waitForRemoteActivityState(session.remoteDebuggingPort, "chunk-fetch-active");
+        const chunkFetchResult = await finishHeldRemoteActivity(cli.binary, session.cliEnv);
+        assertEqual(
+            chunkFetchResult.error,
+            undefined,
+            "On-demand chunk fetching failed while its activity was observed."
+        );
+        if (!chunkFetchResult.requestedIds?.includes(chunkId)) {
+            throw new Error(`The on-demand chunk request did not include the selected chunk: ${chunkId}`);
+        }
+        if ((chunkFetchResult.resultCount ?? 0) < 1) {
+            throw new Error(`The remote did not return the selected chunk: ${chunkId}`);
+        }
+        const restoredChunk = await waitForRestoredChunk(cli.binary, session.cliEnv, chunkId);
+        assertEqual(restoredChunk.id, chunkId, "The restored chunk ID did not match the requested chunk.");
+        activityStage = "chunk-fetch-idle";
+        const chunkFetchIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
+        if (chunkFetchIdle.requestCount <= oneShotIdle.requestCount) {
+            throw new Error("On-demand chunk fetching did not make an observed remote request.");
+        }
+        await clearHeldRemoteActivity(cli.binary, session.cliEnv);
+
         console.log(
             `Uploaded metadata ${localEntry.id} and ${localEntry.children.length} chunk(s) to CouchDB database ${dbName}`
         );
+        console.log(
+            [
+                `One-shot activity: ${oneShotActive.statusBarText.trim()} -> idle`,
+                `Chunk-fetch activity: ${chunkFetchActive.statusBarText.trim()} -> idle`,
+                `Balanced remote requests: ${chunkFetchIdle.requestCount}/${chunkFetchIdle.responseCount}`,
+            ].join("\n")
+        );
+    } catch (error) {
+        if (session) {
+            const diagnostics = await captureRemoteActivityDiagnostics(
+                session.remoteDebuggingPort,
+                `couchdb-upload-${activityStage}`
+            ).catch((diagnosticError: unknown) => {
+                console.warn(
+                    `Could not capture remote activity diagnostics: ${
+                        diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)
+                    }`
+                );
+                return undefined;
+            });
+            if (diagnostics) {
+                console.error(`Remote activity screenshot: ${diagnostics.screenshotPath}`);
+                console.error(`Remote activity snapshot: ${diagnostics.snapshotPath}`);
+            }
+        }
+        throw error;
     } finally {
         if (session) {
+            await cleanUpHeldRemoteActivity(cli.binary, session.cliEnv).catch((error: unknown) => {
+                console.warn(error instanceof Error ? error.message : error);
+            });
             await session.app.stop();
         }
         await vault.dispose();

@@ -150,7 +150,11 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                         this.localDatabase.clearCaches();
                         // Perform the synchronisation once.
-                        if (await this.core.replicator.openReplication(this.settings, false, showMessage, true)) {
+                        const replicated = await this.services.replicator.runFiniteReplicationActivity(
+                            () => this.core.replicator.openReplication(this.settings, false, showMessage, true),
+                            { label: "replication" }
+                        );
+                        if (replicated) {
                             await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
                             await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                             this.localDatabase.clearCaches();

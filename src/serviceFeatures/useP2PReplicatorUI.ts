@@ -87,7 +87,7 @@ export function useP2PReplicatorUI(
         const activeReplicator = replicator.replicator;
         if (!activeReplicator) return;
         const settings = host.services.setting.currentSettings();
-        void host.services.replicator.runBoundedRemoteActivity(
+        void host.services.replicator.runFiniteReplicationActivity(
             () => activeReplicator.openReplication(settings, false, true, false),
             { label: "replication" }
         );

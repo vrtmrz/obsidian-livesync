@@ -31,13 +31,15 @@ The boundary has the following contract:
 - allow overlapping tasks, so transitions may be `0 → 1 → 2 → 1 → 0`; and
 - count logical operations, not physical connections, sockets, HTTP requests, queued work, or retry delays outside the bounded task.
 
+`ReplicatorService` also owns a narrower `finiteReplicationActivityCount`. Callers enter it through the typed `runFiniteReplicationActivity` method; diagnostic labels do not determine behaviour. The narrower count describes operations which may still place replicated documents in the local database; it excludes rebuilds, chunk-fetch claims, and other bounded work which cannot satisfy an arbitrary missing-chunk read. It is a delivery-lifecycle capability, not a second Wake Lock policy or a connection counter.
+
 The Obsidian host injects the screen wake-lock manager from the `octagonal-wheels` package in the Fancy Kit monorepo as the activity runner on both mobile and desktop. Unsupported or rejected wake-lock requests remain best effort and do not prevent the remote task from running. The manager is disposed when the plug-in unloads.
 
-Finite replication enters the boundary only after readiness checks have succeeded and leaves it after `openReplication(..., continuous: false, ...)` settles. Failure handling runs afterwards so a mismatch or recovery dialogue does not retain the activity. This includes the direct start-up synchronisation path as well as manual, event-driven, and periodic calls through `ReplicationService`. Continuous replication does not enter the boundary.
+Finite replication enters both counts only after readiness checks have succeeded and leaves them after `openReplication(..., continuous: false, ...)` settles. A successful completion has reached the latest sequence in that operation's scope and is therefore an authoritative quiescence boundary for chunk retrieval. A failed operation does not prove latest state, but can no longer deliver documents from that attempt. Failure handling runs afterwards so a mismatch or recovery dialogue does not retain the activity. This includes the direct start-up synchronisation path as well as manual, event-driven, and periodic calls through `ReplicationService`. The unbounded continuous channel does not enter either boundary, but its finite initial pull-only catch-up does; the one-shot parameter fallback chain remains inside that boundary.
 
-Manual P2P commands which bypass `ReplicationService` enter the same boundary. Direct P2P pull and push entry points also create finite transfer activities, covering the Obsidian panes, CLI, and Webapp. Automatic synchronisation on peer discovery, a pull requested by a remote peer, and a watched pull following a peer progress notification enter the same boundary. A normal P2P peer-selection dialogue represents one finite session: it remains inside the boundary while waiting for a peer and while the person may perform repeated synchronisations, then settles when the dialogue closes and any in-flight synchronisation has finished. Closing without synchronising returns a failed result and releases the boundary. The 'Start Sync & Close' action completes its synchronisation before closing. This deliberately protects peer discovery and selection, because display sleep can interrupt discovery or connection establishment and require the person to start detection again. It may therefore retain a Wake Lock longer than the network transfer alone. A transfer performed inside that session temporarily adds a nested activity; the count remains a logical-operation count rather than a connection total.
+Manual P2P commands which bypass `ReplicationService` enter the broad boundary. Direct P2P pull and push entry points are therefore both protected as finite remote work, covering the Obsidian panes, CLI, and Webapp. A pull or bidirectional synchronisation also enters the narrower finite-replication boundary because it can place documents in the local database. A push-only request remains broad-only: it cannot satisfy a local missing-chunk read and must not present itself as a delivery source. Automatic synchronisation on peer discovery, a pull requested by a remote peer, and a watched pull following a peer progress notification enter both boundaries because each can deliver local documents. A normal P2P peer-selection dialogue represents one broad finite session: it remains inside the boundary while waiting for a peer and while the person may perform repeated synchronisations, then settles when the dialogue closes and any in-flight synchronisation has finished. Closing without synchronising returns a failed result and releases the boundary. The 'Start Sync & Close' action completes its synchronisation before closing. This deliberately protects peer discovery and selection, because display sleep can interrupt discovery or connection establishment and require the person to start detection again. It may therefore retain a Wake Lock longer than the network transfer alone. A transfer performed inside that session temporarily adds a nested activity; the count remains a logical-operation count rather than a connection total.
 
-`ChunkFetcher` enters the same boundary only around the actual `fetchRemoteChunks` request. Queue waiting, interval throttling, and local chunk validation or persistence remain outside the remote activity scope.
+`ChunkFetcher` enters the broad boundary synchronously when it accepts newly missing chunk identifiers, but it does not increment the finite-replication count. A typed per-identifier claim keeps the broad boundary active through queue waiting, interval throttling, `fetchRemoteChunks`, validation, local persistence, and terminal event delivery. Duplicate requests share the existing claim. Explicit absence, failure, cancellation, or a conservative five-minute period without fetcher-observable progress settles the affected claim. The five-minute value is only a last-resort leak fuse: it prevents a never-settling integration from retaining the per-identifier claim and waiter indefinitely and, once the activity runner has entered the claim task, lets the associated Wake Lock, lifecycle deferral, and indicator finish. It is not an arrival estimate, proof of remote absence, or a transport deadline. This scope is defined in detail by the chunk-arrival-quiescence ADR.
 
 Rebuild operations use the same boundary at their destructive or remote phase:
 
@@ -58,9 +60,11 @@ If the desktop background setting applies, its existing continuous or periodic p
 
 The status-bar remote-work indicator is shown when either the existing HTTP request balance is non-zero or the bounded remote activity count is non-zero. This preserves coverage from the existing counters while adding finite replication, peer waiting, and remote chunk fetching. The combined icon reports broader remote work, not an exact physical connection state; connection-level telemetry remains a separate concern.
 
+Each physical HTTP attempt owns one balanced counter pair. The request counter is incremented immediately before invoking the selected fetch implementation, and the response counter is incremented in `finally`, whether the attempt returns or rejects. A web-fetch failure followed by the native fallback is two physical attempts and therefore contributes two balanced pairs. Callers must not add another pair around `performFetch`, because duplicated or missing increments leave the status indicator permanently active.
+
 ## Ownership
 
-`ReplicatorService` is the shared ownership point because both `ReplicationService` and `ChunkFetcher` already depend on it. Placing the activity state in `ReplicationService` would make chunk fetching depend in the opposite direction and risk a service dependency cycle. Adding another Service Hub service would introduce a wider capability surface without a distinct lifecycle owner.
+`ReplicatorService` is the shared ownership point because both `ReplicationService` and `ChunkFetcher` already depend on it. It owns the broad activity count and classifies the semantic subset which represents finite replication. Placing either activity state in `ReplicationService` would make chunk fetching depend in the opposite direction and risk a service dependency cycle. Adding another Service Hub service would introduce a wider capability surface without a distinct lifecycle owner.
 
 The platform activity runner remains injected. Common library and headless consumers can omit it while retaining the same bounded activity count and operation semantics.
 
@@ -83,13 +87,15 @@ Unit tests cover:
 - count cleanup after rejection;
 - entry into the boundary only after replication readiness succeeds;
 - replication failure handling occurring after the finite activity ends;
-- start-up one-shot replication entering the boundary while continuous start-up does not;
+- start-up one-shot replication and continuous start-up's finite pull-only catch-up entering the boundary, while the unbounded live channel does not;
 - start-up readiness failure avoiding the boundary;
 - direct P2P commands entering the boundary;
-- direct P2P pull and push entry points entering the boundary;
+- direct P2P pull and push entry points entering the broad boundary, while only pull and bidirectional operations enter the finite-delivery boundary;
 - automatic synchronisation on peer discovery, remote pull requests, and watched peer progress entering the boundary;
 - P2P peer-selection sessions settling on close, including cancellation, repeated synchronisation, and a close during in-flight work;
-- remote chunk fetching through the shared boundary;
+- remote chunk fetching remaining inside the shared boundary from synchronous queue acceptance through local persistence and terminal notification;
+- missing-chunk waiters rechecking local storage when observed per-identifier claims and finite replication have settled;
+- the finite-replication count excluding other bounded work;
 - standard, fast, remote, and combined rebuild activity boundaries;
 - Rebuilder-owned confirmation and completion dialogues remaining outside rebuild activity;
 - fallback from fast fetch avoiding a nested activity boundary;
