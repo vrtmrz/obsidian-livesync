@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { EntryDoc } from "@lib/common/models/db.definition";
 import type { AnyEntry, EntryLeaf } from "@lib/common/models/db.type";
 type DBSequence = number | string;

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type SavingEntry } from "@lib/common/types.ts";
 import { type ContentSplitterOptions, type SplitOptions } from "./ContentSplitter.ts";
 export declare abstract class ContentSplitterCore {

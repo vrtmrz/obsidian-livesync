@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type LOG_LEVEL } from "@lib/common/types";
 import type { IAPIService, IDatabaseService, IFileProcessingService, IReplicationService, IReplicatorService, ISettingService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";
@@ -60,9 +60,10 @@ export declare abstract class ReplicationService<T extends ServiceContext = Serv
      */
     isReplicationReady(showMessage?: boolean): Promise<boolean>;
     onReplicationFailed: import("@lib/services/lib/HandlerUtils").BooleanMultipleHandlerFunction<(showMessage?: boolean) => Promise<boolean>>;
+    private performReplicationRequest;
     /**
-     * perform replication. The actual replication logic should be implemented in the handler of this event.
-     * @param showMessage
+     * Perform replication and handle a failed result.
+     * @param showMessage Whether to show replication progress messages.
      */
     performReplication(showMessage?: boolean): Promise<boolean | void>;
     /**

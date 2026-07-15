@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { IFileHandler } from "@lib/interfaces/FileHandler";
 import type { APIService } from "@lib/services/base/APIService";
 import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
@@ -52,8 +52,10 @@ export declare class ServiceRebuilder extends ServiceModuleBase<ServiceRebuilder
         enableOverwrite?: boolean;
     }): Promise<void>;
     rebuildRemote(): Promise<void>;
+    private performRemoteRebuild;
     $rebuildRemote(): Promise<void>;
     rebuildEverything(): Promise<void>;
+    private performRebuildEverything;
     $rebuildEverything(): Promise<void>;
     $fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean): Promise<void>;
     $fetchLocalDBFast(autoResume: boolean): Promise<void>;
@@ -65,7 +67,9 @@ export declare class ServiceRebuilder extends ServiceModuleBase<ServiceRebuilder
     suspendReflectingDatabase(ignoreMinIO?: boolean): Promise<void>;
     resumeReflectingDatabase(ignoreMinIO?: boolean): Promise<void>;
     fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean, autoResume?: boolean): Promise<void>;
+    private performFetchLocal;
     fetchLocalDBFast(autoResume: boolean): Promise<void>;
+    private performFetchLocalDBFast;
     /**
      * Finish rebuild process with resuming the reflection.
      *

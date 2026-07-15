@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { arrayBufferToBase64, base64ToArrayBuffer, base64ToArrayBufferInternalBrowser, readString, writeString, tryConvertBase64ToArrayBuffer } from "octagonal-wheels/binary";
 export { arrayBufferToBase64, base64ToArrayBuffer, base64ToArrayBufferInternalBrowser, readString, writeString, tryConvertBase64ToArrayBuffer, };
 export declare function arrayBufferToBase64Single(buffer: Uint8Array | ArrayBuffer): Promise<string>;

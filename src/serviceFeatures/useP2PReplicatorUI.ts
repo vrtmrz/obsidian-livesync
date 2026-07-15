@@ -83,6 +83,15 @@ export function useP2PReplicatorUI(
         }
         return api.showWindow(VIEW_TYPE_P2P_SERVER_STATUS);
     };
+    const runOpenReplication = () => {
+        const activeReplicator = replicator.replicator;
+        if (!activeReplicator) return;
+        const settings = host.services.setting.currentSettings();
+        void host.services.replicator.runBoundedRemoteActivity(
+            () => activeReplicator.openReplication(settings, false, true, false),
+            { label: "replication" }
+        );
+    };
     api.registerWindow(viewType, factory);
     api.registerWindow(VIEW_TYPE_P2P_SERVER_STATUS, statusFactory);
 
@@ -115,7 +124,7 @@ export function useP2PReplicatorUI(
                     if (settings.remoteType == REMOTE_P2P) return false;
                     return replicator.replicator?.server?.isServing ?? false;
                 }
-                void replicator.replicator?.openReplication(settings, false, true, false);
+                runOpenReplication();
             },
         });
         host.services.API.addCommand({
@@ -127,7 +136,7 @@ export function useP2PReplicatorUI(
                     if (settings.remoteType == REMOTE_P2P) return false;
                     return replicator.replicator?.server?.isServing ?? false;
                 }
-                void replicator.replicator?.openReplication(settings, false, true, false);
+                runOpenReplication();
             },
         });
 

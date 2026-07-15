@@ -28,7 +28,15 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
                 fireAndForget(async () => {
                     const canReplicate = await this.services.replication.isReplicationReady(false);
                     if (!canReplicate) return;
-                    void this.core.replicator.openReplication(this.settings, continuous, false, false);
+                    const openReplication = () =>
+                        this.core.replicator.openReplication(this.settings, continuous, false, false);
+                    if (continuous) {
+                        void openReplication();
+                    } else {
+                        await this.services.replicator.runBoundedRemoteActivity(openReplication, {
+                            label: "replication",
+                        });
+                    }
                 });
             }
         }

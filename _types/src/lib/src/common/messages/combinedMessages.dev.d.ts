@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { PartialMessages as def } from "./def.ts";
 import { type MESSAGE } from "@lib/common/rosetta.ts";
 type MessageKeys = keyof typeof def.def;

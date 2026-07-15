@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type ServiceInstances } from "@lib/services/ServiceHub.ts";
 import type { UIService } from "@lib/services/implements/base/UIService.ts";
 import type { ConfigService } from "@lib/services/base/ConfigService.ts";

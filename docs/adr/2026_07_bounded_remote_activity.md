@@ -1,0 +1,110 @@
+# Architectural Decision Record: Bounded Remote Activity
+
+## Status
+
+Accepted
+
+## Context
+
+Self-hosted LiveSync performs remote work through more than one path:
+
+- finite, or bounded, replication starts for manual, event-driven, periodic, and start-up synchronisation;
+- long-running rebuild uploads, standard fetches, and fast fetches;
+- continuous replication keeps a channel open until the application lifecycle stops it; and
+- remote chunk fetching can occur independently of replication, for example while reading history.
+
+The existing API request and response counters do not cover every one of these paths. They therefore cannot, by themselves, provide an accurate remote-work indicator.
+
+Long-running finite operations can also be interrupted by platform lifecycle behaviour. A mobile or desktop display may sleep while an operation is in progress. Changing Obsidian to a hidden or minimised state normally invokes the suspension lifecycle, which closes the active replicator. The existing desktop-only `keepReplicationActiveInBackground` setting deliberately provides a broader, opt-in policy for continuous and periodic replication, and should not be made a prerequisite for completing a finite operation.
+
+Screen wake lock and background execution are related platform effects, but they are not equivalent. A screen wake lock prevents display sleep only while the platform and document visibility permit it. It does not guarantee background execution, prevent operating-system suspension, or override an explicit system sleep action.
+
+## Decision
+
+`ReplicatorService` owns a reactive `boundedRemoteActivityCount` and a `runBoundedRemoteActivity` closure boundary.
+
+The boundary has the following contract:
+
+- increment the count immediately before running a finite remote task;
+- run the task through an optional host-provided activity runner;
+- decrement the count in `finally`, including when the task rejects;
+- allow overlapping tasks, so transitions may be `0 → 1 → 2 → 1 → 0`; and
+- count logical operations, not physical connections, sockets, HTTP requests, queued work, or retry delays outside the bounded task.
+
+The Obsidian host injects the screen wake-lock manager from the `octagonal-wheels` package in the Fancy Kit monorepo as the activity runner on both mobile and desktop. Unsupported or rejected wake-lock requests remain best effort and do not prevent the remote task from running. The manager is disposed when the plug-in unloads.
+
+Finite replication enters the boundary only after readiness checks have succeeded and leaves it after `openReplication(..., continuous: false, ...)` settles. Failure handling runs afterwards so a mismatch or recovery dialogue does not retain the activity. This includes the direct start-up synchronisation path as well as manual, event-driven, and periodic calls through `ReplicationService`. Continuous replication does not enter the boundary.
+
+Manual P2P commands which bypass `ReplicationService` enter the same boundary. Direct P2P pull and push entry points also create finite transfer activities, covering the Obsidian panes, CLI, and Webapp. Automatic synchronisation on peer discovery, a pull requested by a remote peer, and a watched pull following a peer progress notification enter the same boundary. A normal P2P peer-selection dialogue represents one finite session: it remains inside the boundary while waiting for a peer and while the person may perform repeated synchronisations, then settles when the dialogue closes and any in-flight synchronisation has finished. Closing without synchronising returns a failed result and releases the boundary. The 'Start Sync & Close' action completes its synchronisation before closing. This deliberately protects peer discovery and selection, because display sleep can interrupt discovery or connection establishment and require the person to start detection again. It may therefore retain a Wake Lock longer than the network transfer alone. A transfer performed inside that session temporarily adds a nested activity; the count remains a logical-operation count rather than a connection total.
+
+`ChunkFetcher` enters the same boundary only around the actual `fetchRemoteChunks` request. Queue waiting, interval throttling, and local chunk validation or persistence remain outside the remote activity scope.
+
+Rebuild operations use the same boundary at their destructive or remote phase:
+
+- remote rebuild covers settings application, remote reset, and both upload passes, but releases before the completion dialogue;
+- rebuild everything covers local and remote reset and both upload passes, but releases before the completion dialogue;
+- standard fetch starts after any user confirmation and covers local reset, both download passes, and automatic reflection resumption; and
+- fast fetch starts after remote-type selection and covers reset, resumable download retries, reflection resumption when requested, and checkpoint removal. A non-CouchDB fallback enters only the standard-fetch boundary.
+
+Rebuilder-owned confirmation before destructive work and completion dialogues remain outside the boundary so a person cannot hold a Wake Lock indefinitely merely by leaving a dialogue open. P2P peer discovery and selection during a rebuild deliberately remain inside the boundary. They occur after destructive work has begun, and releasing protection at that point would both leave a partial rebuild unprotected and allow display sleep to interrupt peer detection, forcing the person to repeat it. The protected selection period is therefore part of the rebuild operation rather than an incidental confirmation dialogue.
+
+The deprecated database-clean-up workflow also places its connection, one-shot replication, balancing, and remote resolution inside one `database-cleanup` boundary after the user's choice. Its preliminary count and choice dialogue remain outside.
+
+On every platform, a visibility change to hidden defers the normal suspension lifecycle while the bounded count is non-zero. When the last bounded operation ends, the deferred suspension runs if the document is still hidden and the existing desktop background-replication setting does not apply. This does not bypass mobile operating-system restrictions: a hidden document loses its Screen Wake Lock, and the operating system may still pause or terminate the application. LiveSync merely avoids aborting the operation itself while it may still be able to finish.
+
+Fetch rebuilds temporarily suspend file watching. Their visibility event still records the observed hidden state and a pending lifecycle suspension while bounded activity is in progress, without committing or processing file events. A hidden application is suspended after the rebuild boundary ends and can therefore resume normally when it becomes visible. If it becomes visible before the boundary ends, the pending suspension is cancelled and no unmatched resume lifecycle is emitted.
+
+If the desktop background setting applies, its existing continuous or periodic policy remains authoritative. When a Desktop LiveSync window becomes visible during bounded activity, the normal continuous-channel teardown and resume sequence is also deferred until that activity ends, so recovery does not abort the finite operation.
+
+The status-bar remote-work indicator is shown when either the existing HTTP request balance is non-zero or the bounded remote activity count is non-zero. This preserves coverage from the existing counters while adding finite replication, peer waiting, and remote chunk fetching. The combined icon reports broader remote work, not an exact physical connection state; connection-level telemetry remains a separate concern.
+
+## Ownership
+
+`ReplicatorService` is the shared ownership point because both `ReplicationService` and `ChunkFetcher` already depend on it. Placing the activity state in `ReplicationService` would make chunk fetching depend in the opposite direction and risk a service dependency cycle. Adding another Service Hub service would introduce a wider capability surface without a distinct lifecycle owner.
+
+The platform activity runner remains injected. Common library and headless consumers can omit it while retaining the same bounded activity count and operation semantics.
+
+## Non-Goals
+
+- Do not count continuous replication as a bounded activity.
+- Do not reinterpret the count as an exact number of network connections or HTTP requests.
+- Do not use this logical-operation count as a replacement for future connection-level telemetry.
+- Do not claim or implement privileged mobile background execution.
+- Do not guarantee protection against operating-system suspension, closing a laptop lid, forced termination, network loss, or a user-initiated sleep action.
+- Do not add a lifecycle timeout which would abort an unusually slow rebuild. A genuinely stalled operation may postpone LiveSync's visibility suspension until it settles, but the platform may still suspend or terminate background work.
+- Do not broaden `keepReplicationActiveInBackground`; it remains an opt-in desktop policy for continuous and periodic operation after finite work has ended.
+- Do not include local storage reflection in this boundary. It is re-entrant and offline-capable, and needs a separate decision if activity reporting or power policy is added later.
+
+## Verification
+
+Unit tests cover:
+
+- overlapping bounded activities and their reactive count transitions;
+- count cleanup after rejection;
+- entry into the boundary only after replication readiness succeeds;
+- replication failure handling occurring after the finite activity ends;
+- start-up one-shot replication entering the boundary while continuous start-up does not;
+- start-up readiness failure avoiding the boundary;
+- direct P2P commands entering the boundary;
+- direct P2P pull and push entry points entering the boundary;
+- automatic synchronisation on peer discovery, remote pull requests, and watched peer progress entering the boundary;
+- P2P peer-selection sessions settling on close, including cancellation, repeated synchronisation, and a close during in-flight work;
+- remote chunk fetching through the shared boundary;
+- standard, fast, remote, and combined rebuild activity boundaries;
+- Rebuilder-owned confirmation and completion dialogues remaining outside rebuild activity;
+- fallback from fast fetch avoiding a nested activity boundary;
+- fast-fetch reflection resumption and checkpoint removal remaining inside the activity;
+- visibility suspension being deferred while bounded activity is in progress on desktop and mobile;
+- rebuild-time file-watching suspension preserving the deferred lifecycle action;
+- deferred suspension after the final activity ends while the document remains hidden;
+- hidden-to-visible transitions before the final activity avoiding an unmatched resume; and
+- continuous-channel recovery being deferred when a desktop window becomes visible during bounded activity.
+
+The exact Fancy Kit screen wake-lock behaviour is covered by its package and Harness tests. A real Obsidian smoke test remains appropriate when changing the platform adapter or lifecycle integration, but is not required for changes confined to the already-tested injected activity-runner contract.
+
+## Consequences
+
+- One finite activity definition drives Wake Lock, lifecycle protection, and status UI without coupling common library code to Obsidian or browser globals.
+- Callers can observe accurate logical activity even in CLI and Webapp hosts which do not inject a Wake Lock implementation.
+- Rebuild operations now retain Wake Lock and lifecycle protection across their longest interruption-sensitive phases without retaining them for Rebuilder-owned pre-operation or completion dialogues. Post-reset P2P discovery and selection remain protected as an intentional part of completing the rebuild.
+- Future remote-work indicators should distinguish logical activity from connection-level telemetry when that distinction matters to users.

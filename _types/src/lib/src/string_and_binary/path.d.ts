@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import { type AnyEntry, type DocumentID, type EntryHasPath, type FilePath, type FilePathWithPrefix } from "@lib/common/types.ts";
 export declare function isValidFilenameInWidows(filename: string): boolean;
 export declare function isValidFilenameInDarwin(filename: string): boolean;

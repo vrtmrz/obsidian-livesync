@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 
 import { ModuleObsidianEvents } from "./ModuleObsidianEvents";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@lib/common/types";
+import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 
 type SetupOptions = {
     settings?: Partial<typeof DEFAULT_SETTINGS>;
@@ -22,6 +23,7 @@ function setup(opts: SetupOptions) {
         onResumed: vi.fn(async () => true),
     };
     const fileProcessing = { commitPendingFileEvents: vi.fn(async () => true) };
+    const boundedRemoteActivityCount = reactiveSource(0);
 
     const core = {
         _services: {
@@ -36,6 +38,7 @@ function setup(opts: SetupOptions) {
             setting: { saveSettingData: vi.fn(async () => undefined) },
             appLifecycle,
             fileProcessing,
+            replicator: { boundedRemoteActivityCount },
         },
         settings: {
             ...DEFAULT_SETTINGS,
@@ -53,7 +56,7 @@ function setup(opts: SetupOptions) {
     // The handler reads `activeWindow.document.hidden`.
     (globalThis as any).activeWindow = { document: { hidden: opts.hidden } };
 
-    return { module, appLifecycle, fileProcessing };
+    return { module, appLifecycle, fileProcessing, boundedRemoteActivityCount };
 }
 
 describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () => {
@@ -81,6 +84,106 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
         expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
     });
 
+    it("defers desktop suspension while bounded remote activity is running", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: false },
+            hidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+    });
+
+    it("suspends a hidden desktop window after the final bounded remote activity ends", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: false },
+            hidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+        await module.watchWindowVisibilityAsync();
+
+        boundedRemoteActivityCount.value = 0;
+
+        await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
+    });
+
+    it("defers mobile suspension while bounded remote activity is running", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: false },
+            hidden: true,
+            isMobile: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+
+        boundedRemoteActivityCount.value = 0;
+
+        await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
+    });
+
+    it("records deferred suspension while rebuild file watching is suspended", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount, fileProcessing } = setup({
+            settings: { suspendFileWatching: true },
+            hidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+        expect(fileProcessing.commitPendingFileEvents).not.toHaveBeenCalled();
+
+        boundedRemoteActivityCount.value = 0;
+
+        await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
+    });
+
+    it("resumes after a hidden rebuild finishes and the window becomes visible", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { suspendFileWatching: true },
+            hidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+        boundedRemoteActivityCount.value = 0;
+        await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
+
+        (module.settings as typeof DEFAULT_SETTINGS).suspendFileWatching = false;
+        (globalThis as any).activeWindow.document.hidden = false;
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onResuming).toHaveBeenCalledTimes(1);
+        expect(appLifecycle.onResumed).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not resume when the window becomes visible before deferred suspension runs", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: false },
+            hidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+        await module.watchWindowVisibilityAsync();
+
+        (globalThis as any).activeWindow.document.hidden = false;
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+        expect(appLifecycle.onResuming).not.toHaveBeenCalled();
+        expect(appLifecycle.onResumed).not.toHaveBeenCalled();
+
+        boundedRemoteActivityCount.value = 0;
+        await Promise.resolve();
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+        expect(appLifecycle.onResuming).not.toHaveBeenCalled();
+        expect(appLifecycle.onResumed).not.toHaveBeenCalled();
+    });
+
     it("forces onSuspending before the resume on becoming visible when enabled (LiveSync teardown)", async () => {
         const { module, appLifecycle } = setup({
             settings: { keepReplicationActiveInBackground: true, liveSync: true },
@@ -94,6 +197,30 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
         expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
         expect(appLifecycle.onResuming).toHaveBeenCalledTimes(1);
         expect(appLifecycle.onResumed).toHaveBeenCalledTimes(1);
+        expect(appLifecycle.onSuspending.mock.invocationCallOrder[0]).toBeLessThan(
+            appLifecycle.onResuming.mock.invocationCallOrder[0]
+        );
+    });
+
+    it("defers the LiveSync teardown on becoming visible until bounded remote activity ends", async () => {
+        const { module, appLifecycle, boundedRemoteActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: true, liveSync: true },
+            hidden: false,
+            isLastHidden: true,
+        });
+        boundedRemoteActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+        expect(appLifecycle.onResuming).not.toHaveBeenCalled();
+        expect(appLifecycle.onResumed).not.toHaveBeenCalled();
+
+        boundedRemoteActivityCount.value = 0;
+
+        await vi.waitFor(() => expect(appLifecycle.onResumed).toHaveBeenCalledTimes(1));
+        expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
+        expect(appLifecycle.onResuming).toHaveBeenCalledTimes(1);
         expect(appLifecycle.onSuspending.mock.invocationCallOrder[0]).toBeLessThan(
             appLifecycle.onResuming.mock.invocationCallOrder[0]
         );

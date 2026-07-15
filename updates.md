@@ -8,6 +8,12 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Fixed
 
 - Refresh the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018).
+- The P2P **Start Sync & Close** action now waits for synchronisation to settle before closing the dialogue, avoiding premature release of screen-awake protection while work remains in flight.
+
+### Improved
+
+- On supported mobile and desktop devices, one-shot replication, P2P peer discovery and selection, database rebuild and fetch operations, and remote chunk fetching now keep the screen awake for the duration of these finite remote operations. LiveSync also postpones its normal visibility suspension until the operation finishes, although platform restrictions may still pause or terminate background work.
+- The 📲 status-bar indicator now covers finite remote work as well as HTTP requests. It reports broad remote activity, such as P2P peer selection and remote chunk fetching, rather than an exact physical connection count.
 
 ## 0.25.81
 

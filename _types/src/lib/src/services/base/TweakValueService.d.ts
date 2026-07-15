@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 import type { RemoteDBSettings, TweakValues } from "@lib/common/types";
 import type { ITweakValueService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";

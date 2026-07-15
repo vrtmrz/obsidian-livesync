@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: ef1bdf0
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: a58965f
 export declare const MAX_DOC_SIZE = 1000;
 export declare const MAX_DOC_SIZE_BIN = 102400;
 export declare const VER = 12;

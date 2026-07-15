@@ -69,18 +69,6 @@
         }
     }
 
-    async function handleSyncAndClose(peerId: string) {
-        fireAndForget(async () => {
-            try {
-                Logger(`Starting sync with ${peerId}`, logLevel);
-                await onSync(peerId);
-                Logger(`Sync completed with ${peerId}`, logLevel);
-            } catch (e) {
-                Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
-            }
-        });
-        onClose();
-    }
     async function disconnect() {
         try {
             await liveSyncReplicator.close();
@@ -142,7 +130,7 @@
                                 <button
                                     class="btn {rebuildMode ? 'btn-primary' : 'btn-secondary'}"
                                     disabled={syncingPeerId !== null}
-                                    onclick={() => handleSyncAndClose(peer.peerId)}
+                                    onclick={() => handleSyncThenClose(peer.peerId)}
                                 >
                                     {syncingPeerId === peer.peerId ? "Syncing..." : "Start Sync & Close"}
                                 </button>
