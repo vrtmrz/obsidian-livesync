@@ -5,15 +5,29 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+## 0.25.82
+
+15th July, 2026
+
+Recently, I created a repository called Fancy Kit and have been trying to build some proper infrastructure around it. Does any of this look like cumbersome bureaucracy? No need to worry: you can carry on as usual. Codex is simply tidying up my usual rambling prose, terrible pull requests, and disjointed remarks.
+
 ### Fixed
 
-- Refresh the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018).
+- Refreshed the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018).
 - The P2P **Start Sync & Close** action now waits for synchronisation to settle before closing the dialogue, avoiding premature release of screen-awake protection while work remains in flight.
 
 ### Improved
 
 - On supported mobile and desktop devices, one-shot replication, P2P peer discovery and selection, database rebuild and fetch operations, and remote chunk fetching now keep the screen awake for the duration of these finite remote operations. LiveSync also postpones its normal visibility suspension until the operation finishes, although platform restrictions may still pause or terminate background work.
 - The 📲 status-bar indicator now covers finite remote work as well as HTTP requests. It reports broad remote activity, such as P2P peer selection and remote chunk fetching, rather than an exact physical connection count.
+
+### Improved (CLI)
+
+- CLI container images are now published for both AMD64 and ARM64 platforms.
+
+### Testing
+
+- Added a local real-Obsidian compatibility test that writes an encrypted, path-obfuscated note through the LiveSync CLI and verifies that the plug-in materialises the same content.
 
 ## 0.25.81
 

@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "0.25.81-webpeer",
+    "version": "0.25.82-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -12,7 +12,7 @@
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.50"
+        "octagonal-wheels": "^0.1.51"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",

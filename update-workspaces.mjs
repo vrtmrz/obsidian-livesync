@@ -105,6 +105,13 @@ for (const dir of workspaceDirs) {
                     console.log(`  Dependency '${dep}': ${oldVer} -> ${newVer}`);
                     pkg.dependencies[dep] = newVer;
                 }
+                if (lockWorkspace) {
+                    lockWorkspace.dependencies ??= {};
+                    if (lockWorkspace.dependencies[dep] !== newVer) {
+                        lockWorkspace.dependencies[dep] = newVer;
+                        packageLockChanged = true;
+                    }
+                }
             }
         }
     }
@@ -118,6 +125,13 @@ for (const dir of workspaceDirs) {
                 if (oldVer !== newVer) {
                     console.log(`  DevDependency '${dep}': ${oldVer} -> ${newVer}`);
                     pkg.devDependencies[dep] = newVer;
+                }
+                if (lockWorkspace) {
+                    lockWorkspace.devDependencies ??= {};
+                    if (lockWorkspace.devDependencies[dep] !== newVer) {
+                        lockWorkspace.devDependencies[dep] = newVer;
+                        packageLockChanged = true;
+                    }
                 }
             }
         }
