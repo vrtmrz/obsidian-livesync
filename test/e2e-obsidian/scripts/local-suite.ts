@@ -8,10 +8,17 @@ type Step = {
 
 const testSteps: Step[] = [
     { name: "build", args: ["run", "build"] },
+    ...(process.env.LIVESYNC_CLI_COMMAND === undefined
+        ? [{ name: "CLI build", args: ["run", "build", "-w", "self-hosted-livesync-cli"] }]
+        : []),
     { name: "discover", args: ["run", "test:e2e:obsidian:discover"] },
     { name: "smoke", args: ["run", "test:e2e:obsidian:smoke"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
+    {
+        name: "CLI to real Obsidian synchronisation",
+        args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
+    },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
