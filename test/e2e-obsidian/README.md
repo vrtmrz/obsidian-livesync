@@ -76,10 +76,10 @@ For example, to test an executable on `PATH`:
 LIVESYNC_CLI_COMMAND='livesync-cli' npm run test:e2e:obsidian:cli-to-obsidian-sync
 ```
 
-On Linux, the published Docker image can run against the local CouchDB fixture by sharing the temporary directory, using host networking, preserving the host user's file ownership, and overriding the image entrypoint so that the runner can supply its explicit database path. The published image is currently built for AMD64; Docker emulation is therefore required on an ARM host.
+On Linux, a multi-architecture published Docker image can run against the local CouchDB fixture by sharing the temporary directory, using host networking, preserving the host user's file ownership, and overriding the image entrypoint so that the runner can supply its explicit database path. Images published before ARM64 support remain AMD64-only and require configured Docker emulation on an ARM host.
 
 ```bash
-LIVESYNC_CLI_COMMAND="docker run --rm --platform linux/amd64 --network host --user $(id -u):$(id -g) --volume /tmp:/tmp --entrypoint node ghcr.io/vrtmrz/livesync-cli:0.25.81-cli /app/dist/index.cjs" \
+LIVESYNC_CLI_COMMAND="docker run --rm --network host --user $(id -u):$(id -g) --volume /tmp:/tmp --entrypoint node ghcr.io/vrtmrz/livesync-cli:edge /app/dist/index.cjs" \
   npm run test:e2e:obsidian:cli-to-obsidian-sync
 ```
 
