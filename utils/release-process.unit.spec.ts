@@ -167,9 +167,18 @@ describe("workspace version update", () => {
     it("keeps workspace package and lockfile versions together", () => {
         const directory = makeTemporaryDirectory();
         const workspaces = ["src/apps/cli", "src/apps/webpeer", "src/apps/webapp"];
-        writeJson(directory, "package.json", { version: "0.25.81", workspaces });
+        writeJson(directory, "package.json", {
+            version: "0.25.81",
+            workspaces,
+            dependencies: { "octagonal-wheels": "^0.1.51" },
+            devDependencies: { typescript: "^5.9.3" },
+        });
         for (const workspace of ["cli", "webpeer", "webapp"]) {
-            writeJson(directory, `src/apps/${workspace}/package.json`, { version: `0.25.80-${workspace}` });
+            writeJson(directory, `src/apps/${workspace}/package.json`, {
+                version: `0.25.80-${workspace}`,
+                dependencies: { "octagonal-wheels": "^0.1.50" },
+                devDependencies: { typescript: "^5.8.0" },
+            });
         }
         writeJson(directory, "package-lock.json", {
             name: "obsidian-livesync",
@@ -177,9 +186,21 @@ describe("workspace version update", () => {
             lockfileVersion: 3,
             packages: {
                 "": { version: "0.25.80", workspaces },
-                "src/apps/cli": { version: "0.25.80-cli" },
-                "src/apps/webpeer": { version: "0.25.80-webpeer" },
-                "src/apps/webapp": { version: "0.25.80-webapp" },
+                "src/apps/cli": {
+                    version: "0.25.80-cli",
+                    dependencies: { "octagonal-wheels": "^0.1.50" },
+                    devDependencies: { typescript: "^5.8.0" },
+                },
+                "src/apps/webpeer": {
+                    version: "0.25.80-webpeer",
+                    dependencies: { "octagonal-wheels": "^0.1.50" },
+                    devDependencies: { typescript: "^5.8.0" },
+                },
+                "src/apps/webapp": {
+                    version: "0.25.80-webapp",
+                    dependencies: { "octagonal-wheels": "^0.1.50" },
+                    devDependencies: { typescript: "^5.8.0" },
+                },
             },
         });
 
@@ -189,6 +210,8 @@ describe("workspace version update", () => {
         for (const workspace of ["cli", "webpeer", "webapp"]) {
             const packageJson = JSON.parse(readFileSync(join(directory, `src/apps/${workspace}/package.json`), "utf8"));
             expect(packageJson.version).toBe(`0.25.81-${workspace}`);
+            expect(packageJson.dependencies["octagonal-wheels"]).toBe("^0.1.51");
+            expect(packageJson.devDependencies.typescript).toBe("^5.9.3");
         }
         const packageLock = JSON.parse(readFileSync(join(directory, "package-lock.json"), "utf8"));
         expect(packageLock.version).toBe("0.25.81");
@@ -196,5 +219,9 @@ describe("workspace version update", () => {
         expect(packageLock.packages["src/apps/cli"].version).toBe("0.25.81-cli");
         expect(packageLock.packages["src/apps/webpeer"].version).toBe("0.25.81-webpeer");
         expect(packageLock.packages["src/apps/webapp"].version).toBe("0.25.81-webapp");
+        for (const workspace of workspaces) {
+            expect(packageLock.packages[workspace].dependencies["octagonal-wheels"]).toBe("^0.1.51");
+            expect(packageLock.packages[workspace].devDependencies.typescript).toBe("^5.9.3");
+        }
     });
 });
