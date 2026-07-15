@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+## 0.25.82
+
+15th July, 2026
+
 ### Fixed
 
 - Refresh the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018).
