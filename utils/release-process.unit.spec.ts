@@ -113,6 +113,15 @@ describe("release workflow", () => {
         expect(workflow).toMatch(/git add[^\n]*_types/);
     });
 
+    it("installs Deno before post-processing fallback type definitions", () => {
+        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+        const setupDeno = workflow.indexOf("denoland/setup-deno@v2");
+        const buildTypes = workflow.indexOf("npm run build:lib:types");
+
+        expect(setupDeno).toBeGreaterThan(-1);
+        expect(setupDeno).toBeLessThan(buildTypes);
+    });
+
     it("keeps the release PR in draft until BRAT validation", () => {
         const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
 
