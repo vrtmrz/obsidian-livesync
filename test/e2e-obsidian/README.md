@@ -51,6 +51,7 @@ npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:vault-reflection
 npm run test:e2e:obsidian:couchdb-upload
+npm run test:e2e:obsidian:cli-to-obsidian-sync
 npm run test:e2e:obsidian:minio-upload
 npm run test:e2e:obsidian:startup-scan
 npm run test:e2e:obsidian:two-vault-sync
@@ -61,9 +62,26 @@ npm run test:e2e:obsidian:local-suite
 npm run test:e2e:obsidian:local-suite:services
 ```
 
-`test:e2e:obsidian:local-suite` runs `npm run build`, discovery, smoke, vault reflection, CouchDB upload, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
+`test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
 
 `test:e2e:obsidian:couchdb-upload` reuses the CouchDB variables from `.test.env` or the process environment. It expects a reachable CouchDB service, creates a unique database, configures Self-hosted LiveSync through `obsidian-cli eval`, creates a note in real Obsidian, commits the note into the local database, runs one-shot synchronisation, and verifies that the remote database contains both the metadata document and its chunk documents.
+
+`test:e2e:obsidian:cli-to-obsidian-sync` is the cross-runtime compatibility check for the official LiveSync CLI and the real Obsidian plug-in. Build the plug-in first, and build the local CLI too when no external CLI command is selected. The script uses E2EE, Path Obfuscation, and the current preferred chunk settings to create and synchronise a note through the CLI, starts real Obsidian with an isolated Vault and profile, synchronises the same CouchDB database, and verifies that the plug-in materialises identical note content. This covers the boundary that CLI-only and plug-in-only round trips do not exercise.
+
+By default, the compatibility check runs `node src/apps/cli/dist/index.cjs`. Set `LIVESYNC_CLI_COMMAND` to test another CLI build or distribution. The value may be a quoted command line or a JSON array of executable and prefix arguments; the scenario arguments are appended without going through a shell.
+
+For example, to test an executable on `PATH`:
+
+```bash
+LIVESYNC_CLI_COMMAND='livesync-cli' npm run test:e2e:obsidian:cli-to-obsidian-sync
+```
+
+On Linux, the published Docker image can run against the local CouchDB fixture by sharing the temporary directory, using host networking, preserving the host user's file ownership, and overriding the image entrypoint so that the runner can supply its explicit database path. The published image is currently built for AMD64; Docker emulation is therefore required on an ARM host.
+
+```bash
+LIVESYNC_CLI_COMMAND="docker run --rm --platform linux/amd64 --network host --user $(id -u):$(id -g) --volume /tmp:/tmp --entrypoint node ghcr.io/vrtmrz/livesync-cli:0.25.81-cli /app/dist/index.cjs" \
+  npm run test:e2e:obsidian:cli-to-obsidian-sync
+```
 
 `test:e2e:obsidian:minio-upload` reuses the Object Storage variables from `.test.env` or the process environment. It expects a reachable S3-compatible service, configures Self-hosted LiveSync for Object Storage through `obsidian-cli eval`, creates a note in real Obsidian, runs one-shot Journal Sync, and verifies through the AWS SDK that objects were written under a unique bucket prefix.
 
@@ -104,6 +122,8 @@ Useful environment variables:
 - `E2E_OBSIDIAN_READY_TIMEOUT_MS`: plug-in readiness timeout in milliseconds.
 - `E2E_OBSIDIAN_CLI_READY_TIMEOUT_MS`: timeout for waiting until the vault-side Obsidian CLI exposes the plug-in catalogue.
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.
+- `E2E_LIVESYNC_CLI_TIMEOUT_MS`: timeout for each official LiveSync CLI invocation in the CLI-to-Obsidian compatibility check; default is 60 seconds.
+- `LIVESYNC_CLI_COMMAND`: optional LiveSync CLI executable and prefix arguments used by the CLI-to-Obsidian compatibility check. The default is the locally built CLI.
 - `E2E_OBSIDIAN_FILE_TIMEOUT_MS`: timeout for waiting until a note created through Obsidian's vault API is reflected to disk.
 - `E2E_OBSIDIAN_CORE_READY_TIMEOUT_MS`: timeout for waiting until Self-hosted LiveSync reports that its core lifecycle and local database are ready.
 - `E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS`: timeout for waiting until a file appears in Self-hosted LiveSync's local database.
