@@ -33,7 +33,7 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
                     if (continuous) {
                         void openReplication();
                     } else {
-                        await this.services.replicator.runBoundedRemoteActivity(openReplication, {
+                        await this.services.replicator.runFiniteReplicationActivity(openReplication, {
                             label: "replication",
                         });
                     }

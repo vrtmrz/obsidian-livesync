@@ -69,6 +69,7 @@ describe("ModuleReplicator legacy cleanup", () => {
                 activityFinished();
             }
         });
+        const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const openReplication = vi.fn(async () => true);
         const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as any), {
             connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: {} })),
@@ -90,6 +91,7 @@ describe("ModuleReplicator legacy cleanup", () => {
             replicator: {
                 getActiveReplicator: vi.fn(() => activeReplicator),
                 runBoundedRemoteActivity,
+                runFiniteReplicationActivity,
             },
         };
         const localDatabase = {
@@ -110,6 +112,9 @@ describe("ModuleReplicator legacy cleanup", () => {
 
         expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "database-cleanup",
+        });
+        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
+            label: "replication",
         });
         expect(openReplication).toHaveBeenCalledOnce();
         expect(openReplication.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);

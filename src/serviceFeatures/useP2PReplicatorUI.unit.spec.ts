@@ -12,11 +12,11 @@ vi.mock("@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView", () => ({
 import { useP2PReplicatorUI } from "./useP2PReplicatorUI";
 
 describe("useP2PReplicatorUI commands", () => {
-    it("runs a direct modal P2P replication command through the shared activity boundary", async () => {
+    it("exposes a direct modal P2P replication command as finite replication activity", async () => {
         const commands: Array<{ id: string; checkCallback?: (isChecking: boolean) => unknown }> = [];
         let initialise: (() => Promise<unknown>) | undefined;
         const openReplication = vi.fn(async () => true);
-        const runBoundedRemoteActivity = vi.fn(async (task: () => unknown) => await task());
+        const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const host = {
             services: {
                 API: {
@@ -35,7 +35,7 @@ describe("useP2PReplicatorUI commands", () => {
                     onLayoutReady: { addHandler: vi.fn() },
                 },
                 setting: { currentSettings: vi.fn(() => ({ remoteType: "COUCHDB" })) },
-                replicator: { runBoundedRemoteActivity },
+                replicator: { runFiniteReplicationActivity },
             },
         } as any;
         const p2p = {
@@ -51,7 +51,7 @@ describe("useP2PReplicatorUI commands", () => {
         commands.find((command) => command.id === "replicate-now-by-p2p")?.checkCallback?.(false);
 
         await vi.waitFor(() => expect(openReplication).toHaveBeenCalledOnce());
-        expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
+        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "replication",
         });
     });
