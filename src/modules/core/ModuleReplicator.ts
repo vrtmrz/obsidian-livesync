@@ -49,7 +49,8 @@ async function canReplicateWithPBKDF2(
     // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
     // tagged as network error at beginning for error filtering with NetworkWarningStyles
     const ensureMessage = `${MARK_LOG_NETWORK_ERROR}Failed to initialise the encryption key, preventing replication.`;
-    const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, true);
+    // A remote database rebuild replaces the Security Seed while this process may still hold the previous one.
+    const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, false);
     if (!ensureResult) {
         errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         return false;
