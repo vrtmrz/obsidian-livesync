@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import * as fflate from "fflate";
 import type { EntryDoc } from "@lib/common/types";
 export declare function _compressText(text: string): Promise<string>;

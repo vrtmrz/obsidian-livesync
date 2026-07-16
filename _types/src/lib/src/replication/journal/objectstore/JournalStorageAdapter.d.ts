@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { RemoteDBStatus } from "@lib/replication/LiveSyncAbstractReplicator.ts";
 import type { BucketSyncSetting } from "@lib/common/types.ts";
 export interface IJournalStorage {

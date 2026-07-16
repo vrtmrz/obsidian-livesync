@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { HashAlgorithm } from "@lib/common/models/setting.type.ts";
 import { HashManagerCore, type HashManagerCoreOptions } from "./HashManagerCore.ts";
 /**

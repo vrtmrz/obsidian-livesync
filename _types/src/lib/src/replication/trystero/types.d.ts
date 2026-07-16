@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { JsonLike } from "@lib/rpc";
 import type { P2PSyncSetting, EntryDoc } from "@lib/common/types";
 import type { SimpleStore } from "@lib/common/utils";
