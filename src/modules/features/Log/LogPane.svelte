@@ -42,7 +42,7 @@
 </script>
 
 <div class="logpane">
-    <!-- <h1>{msg("logPane.title", {}, lang)}</h1> -->
+    <!-- <h1>{msg("Self-hosted LiveSync Log", {}, lang)}</h1> -->
     <div class="control">
         <div class="row">
             <label>
@@ -58,7 +58,7 @@
                 <span>{msg("logPane.pause", {}, lang)}</span>
             </label>
             <span class="spacer"></span>
-            <button onclick={() => closeDialogue()}>Close</button>
+            <button onclick={() => closeDialogue()}>{msg("Close")}</button>
         </div>
     </div>
     <div class="log" bind:this={scroll}>

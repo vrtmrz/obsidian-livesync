@@ -13,6 +13,7 @@
     import { decryptString } from "@lib/encryption/stringEncryption.ts";
     import type { GuestDialogProps } from "@lib/UI/svelteDialog.ts";
     import { TYPE_CANCELLED, type UseSetupURIResultType } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     type Props = GuestDialogProps<UseSetupURIResultType, string>;
     const { setResult, getInitialData }: Props = $props();
@@ -34,7 +35,7 @@
         error = "";
         if (!seemsValid) return;
         if (!passphrase) {
-            error = "Passphrase is required.";
+            error = msg("Passphrase is required.");
             return;
         }
         try {
@@ -47,7 +48,7 @@
             // Logger("Settings imported successfully", LOG_LEVEL_NOTICE);
             return;
         } catch (e) {
-            error = "Failed to parse Setup-URI.";
+            error = msg("Failed to parse Setup-URI.");
             return;
         }
     }
@@ -58,9 +59,12 @@
 
 <DialogHeader title="Enter Setup URI" />
 <Guidance
-    >Please enter the Setup URI that was generated during server installation or on another device, along with the vault
-    passphrase.<br />
-    Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.</Guidance
+    >{msg(
+        "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase."
+    )}<br />
+    {msg(
+        'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.'
+    )}</Guidance
 >
 
 <InputRow label="Setup-URI">
@@ -74,9 +78,9 @@
         required
     />
 </InputRow>
-<InfoNote visible={seemsValid}>The Setup-URI is valid and ready to use.</InfoNote>
+<InfoNote visible={seemsValid}>{msg("The Setup-URI is valid and ready to use.")}</InfoNote>
 <InfoNote warning visible={!seemsValid && setupURI.trim() != ""}>
-    The Setup-URI does not appear to be valid. Please check that you have copied it correctly.
+    {msg("The Setup-URI does not appear to be valid. Please check that you have copied it correctly.")}
 </InfoNote>
 <InputRow label="Passphrase">
     <Password placeholder="Enter your passphrase" bind:value={passphrase} required />

@@ -12,23 +12,23 @@ export function paneSyncSettings(
     { addPanel, addPane }: PageFunctions
 ): void {
     this.createEl(paneEl, "div", {
-        text: $msg("obsidianLiveSyncSettingTab.msgSelectAndApplyPreset"),
+        text: $msg("Please select and apply any preset item to complete the wizard."),
         cls: "wizardOnly",
     }).addClasses(["op-warn-info"]);
 
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationPreset")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Synchronization Preset")).then((paneEl) => {
         const options: Record<string, string> =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
                       NONE: "",
-                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                      LIVESYNC: $msg("LiveSync"),
+                      PERIODIC: $msg("Periodic w/ batch"),
+                      DISABLE: $msg("Disable all automatic"),
                   }
                 : {
                       NONE: "",
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicWithBatch"),
-                      DISABLE: $msg("obsidianLiveSyncSettingTab.optionDisableAllAutomatic"),
+                      PERIODIC: $msg("Periodic w/ batch"),
+                      DISABLE: $msg("Disable all automatic"),
                   };
 
         new Setting(paneEl)
@@ -46,7 +46,7 @@ export function paneSyncSettings(
 
         this.addOnSaved("preset", async (currentPreset) => {
             if (currentPreset == "") {
-                Logger($msg("obsidianLiveSyncSettingTab.logSelectAnyPreset"), LOG_LEVEL_NOTICE);
+                Logger($msg("Select any preset."), LOG_LEVEL_NOTICE);
                 return;
             }
             const presetAllDisabled = {
@@ -79,15 +79,15 @@ export function paneSyncSettings(
                     ...this.editingSettings,
                     ...presetLiveSync,
                 };
-                Logger($msg("obsidianLiveSyncSettingTab.logConfiguredLiveSync"), LOG_LEVEL_NOTICE);
+                Logger($msg("Configured synchronization mode: LiveSync"), LOG_LEVEL_NOTICE);
             } else if (currentPreset == "PERIODIC") {
                 this.editingSettings = {
                     ...this.editingSettings,
                     ...presetPeriodic,
                 };
-                Logger($msg("obsidianLiveSyncSettingTab.logConfiguredPeriodic"), LOG_LEVEL_NOTICE);
+                Logger($msg("Configured synchronization mode: Periodic"), LOG_LEVEL_NOTICE);
             } else {
-                Logger($msg("obsidianLiveSyncSettingTab.logConfiguredDisabled"), LOG_LEVEL_NOTICE);
+                Logger($msg("Configured synchronization mode: DISABLED"), LOG_LEVEL_NOTICE);
                 this.editingSettings = {
                     ...this.editingSettings,
                     ...presetAllDisabled,
@@ -105,10 +105,10 @@ export function paneSyncSettings(
                     // this.resetEditingSettings();
                     if (
                         (await this.core.confirm.askYesNoDialog(
-                            $msg("obsidianLiveSyncSettingTab.msgGenerateSetupURI"),
+                            $msg("All done! Do you want to generate a setup URI to set up other devices?"),
                             {
                                 defaultOption: "Yes",
-                                title: $msg("obsidianLiveSyncSettingTab.titleCongratulations"),
+                                title: $msg("Congratulations!"),
                             }
                         )) == "yes"
                     ) {
@@ -129,7 +129,7 @@ export function paneSyncSettings(
             }
         });
     });
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationMethod")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Synchronization Method")).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
         // const onlyOnLiveSync = visibleOnly(() => this.isConfiguredAs("syncMode", "LIVESYNC"));
@@ -139,13 +139,13 @@ export function paneSyncSettings(
         const optionsSyncMode =
             this.editingSettings.remoteType == REMOTE_COUCHDB
                 ? {
-                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
-                      LIVESYNC: $msg("obsidianLiveSyncSettingTab.optionLiveSync"),
+                      ONEVENTS: $msg("On events"),
+                      PERIODIC: $msg("Periodic and on events"),
+                      LIVESYNC: $msg("LiveSync"),
                   }
                 : {
-                      ONEVENTS: $msg("obsidianLiveSyncSettingTab.optionOnEvents"),
-                      PERIODIC: $msg("obsidianLiveSyncSettingTab.optionPeriodicAndEvents"),
+                      ONEVENTS: $msg("On events"),
+                      PERIODIC: $msg("Periodic and on events"),
                   };
 
         new Setting(paneEl)
@@ -198,7 +198,7 @@ export function paneSyncSettings(
 
     void addPanel(
         paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleUpdateThinning"),
+        $msg("Update Thinning"),
         undefined,
         visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"))
     ).then((paneEl) => {
@@ -216,7 +216,7 @@ export function paneSyncSettings(
 
     void addPanel(
         paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleDeletionPropagation"),
+        $msg("Deletion Propagation"),
         undefined,
         undefined,
         LEVEL_ADVANCED
@@ -228,7 +228,7 @@ export function paneSyncSettings(
     });
     void addPanel(
         paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleConflictResolution"),
+        $msg("Conflict resolution"),
         undefined,
         undefined,
         LEVEL_ADVANCED
@@ -244,7 +244,7 @@ export function paneSyncSettings(
 
     void addPanel(
         paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleSyncSettingsViaMarkdown"),
+        $msg("Sync Settings via Markdown"),
         undefined,
         undefined,
         LEVEL_ADVANCED
@@ -266,21 +266,21 @@ export function paneSyncSettings(
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
 
-        const LABEL_ENABLED = $msg("obsidianLiveSyncSettingTab.labelEnabled");
-        const LABEL_DISABLED = $msg("obsidianLiveSyncSettingTab.labelDisabled");
+        const LABEL_ENABLED = $msg("🔁 : Enabled");
+        const LABEL_DISABLED = $msg("⏹️ : Disabled");
 
         const hiddenFileSyncSetting = new Setting(paneEl)
-            .setName($msg("obsidianLiveSyncSettingTab.nameHiddenFileSynchronization"))
+            .setName($msg("Hidden file synchronization"))
             .setClass("wizardHidden");
         const hiddenFileSyncSettingEl = hiddenFileSyncSetting.settingEl;
         const hiddenFileSyncSettingDiv = hiddenFileSyncSettingEl.createDiv("");
         hiddenFileSyncSettingDiv.innerText = this.editingSettings.syncInternalFiles ? LABEL_ENABLED : LABEL_DISABLED;
         if (this.editingSettings.syncInternalFiles) {
             new Setting(paneEl)
-                .setName($msg("obsidianLiveSyncSettingTab.nameDisableHiddenFileSync"))
+                .setName($msg("Disable Hidden files sync"))
                 .setClass("wizardHidden")
                 .addButton((button) => {
-                    button.setButtonText($msg("obsidianLiveSyncSettingTab.btnDisable")).onClick(async () => {
+                    button.setButtonText($msg("Disable")).onClick(async () => {
                         this.editingSettings.syncInternalFiles = false;
                         await this.saveAllDirtySettings();
                         this.display();
@@ -288,7 +288,7 @@ export function paneSyncSettings(
                 });
         } else {
             new Setting(paneEl)
-                .setName($msg("obsidianLiveSyncSettingTab.nameEnableHiddenFileSync"))
+                .setName($msg("Enable Hidden files sync"))
                 .setClass("wizardHidden")
                 .addButton((button) => {
                     button.setButtonText("Merge").onClick(async () => {

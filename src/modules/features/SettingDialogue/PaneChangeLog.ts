@@ -28,7 +28,7 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
         },
         undefined
     );
-    this.createEl(cx, "button", { text: $msg("obsidianLiveSyncSettingTab.btnGotItAndUpdated") }, (e) => {
+    this.createEl(cx, "button", { text: $msg("I got it and updated.") }, (e) => {
         e.addClass("mod-cta");
         e.addEventListener("click", () => {
             fireAndForget(async () => {
@@ -42,9 +42,9 @@ export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElem
     // tmpDiv.addClass("sls-header-button");
     tmpDiv.addClass("op-warn-info");
 
-    tmpDiv.createEl("p", { text: $msg("obsidianLiveSyncSettingTab.msgNewVersionNote") });
+    tmpDiv.createEl("p", { text: $msg("Here due to an upgrade notification? Please review the version history. If you're satisfied, click the button. A new update will prompt this again.") });
     const readEverythingButton = tmpDiv.createEl("button", {
-        text: $msg("obsidianLiveSyncSettingTab.optionOkReadEverything"),
+        text: $msg("OK, I have read everything."),
     });
     if (lastVersion > (this.editingSettings?.lastReadUpdates || 0)) {
         const informationButtonDiv = informationDivEl.appendChild(tmpDiv);

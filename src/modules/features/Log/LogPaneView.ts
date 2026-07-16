@@ -38,6 +38,6 @@ export class LogPaneView extends SvelteItemView {
 
     getDisplayText() {
         // TODO: This function is not reactive and does not update the title based on the current language
-        return $msg("logPane.title");
+        return $msg("Self-hosted LiveSync Log");
     }
 }

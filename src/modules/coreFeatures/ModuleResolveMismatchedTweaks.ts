@@ -69,12 +69,12 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
                 return undefined;
             }
             this._hasNotifiedAutoAcceptCompatibleUndefined = true;
-            const CHOICE_ENABLE = $msg("TweakMismatchResolve.Action.EnableAutoAcceptCompatible");
-            const CHOICE_DISABLE = $msg("TweakMismatchResolve.Action.DisableAutoAcceptCompatible");
+            const CHOICE_ENABLE = $msg("Enable auto-accept");
+            const CHOICE_DISABLE = $msg("Disable auto-accept");
             const CHOICES = [CHOICE_ENABLE, CHOICE_DISABLE] as const;
             const message = $msg("TweakMismatchResolve.Message.AutoAcceptCompatibleUndefined");
             const ret = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
-                title: $msg("TweakMismatchResolve.Title.AutoAcceptCompatible"),
+                title: $msg("Auto-Accept Available"),
                 timeout: 0,
                 defaultAction: CHOICE_ENABLE,
             });
@@ -173,7 +173,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
 
             // table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
             tableRows.push(
-                $msg("TweakMismatchResolve.Table.Row", {
+                $msg("| ${name} | ${self} | ${remote} |", {
                     name: confName(key),
                     self: valueToString(valueMine),
                     remote: valueToString(valuePreferred),
@@ -197,12 +197,12 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             additionalMessage: [additionalMessage, additionalMessage2].filter((v) => v).join("\n"),
         });
 
-        const CHOICE_USE_REMOTE = $msg("TweakMismatchResolve.Action.UseRemote");
-        const CHOICE_USE_REMOTE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteWithRebuild");
-        const CHOICE_USE_REMOTE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteAcceptIncompatible");
-        const CHOICE_USE_MINE = $msg("TweakMismatchResolve.Action.UseMine");
-        const CHOICE_USE_MINE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseMineWithRebuild");
-        const CHOICE_USE_MINE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseMineAcceptIncompatible");
+        const CHOICE_USE_REMOTE = $msg("Apply settings to this device");
+        const CHOICE_USE_REMOTE_WITH_REBUILD = $msg("Apply settings to this device, and fetch again");
+        const CHOICE_USE_REMOTE_PREVENT_REBUILD = $msg("Apply settings to this device, but and ignore incompatibility");
+        const CHOICE_USE_MINE = $msg("Update remote database settings");
+        const CHOICE_USE_MINE_WITH_REBUILD = $msg("Update remote database settings and rebuild again");
+        const CHOICE_USE_MINE_PREVENT_REBUILD = $msg("Update remote database settings but keep as is");
         const CHOICE_DISMISS = $msg("TweakMismatchResolve.Action.Dismiss");
 
         const CHOICE_AND_VALUES = [] as [string, [result: TweakValues | boolean, rebuild: boolean]][];
@@ -251,7 +251,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             if (rebuildRequired) {
                 await this.core.rebuilder.$rebuildRemote();
             }
-            Logger($msg("TweakMismatchResolve.Message.remoteUpdated"), LOG_LEVEL_NOTICE);
+            Logger($msg("The configuration stored remotely has been updated."), LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
         if (conf) {
@@ -261,7 +261,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }
-            Logger($msg("TweakMismatchResolve.Message.mineUpdated"), LOG_LEVEL_NOTICE);
+            Logger($msg("The device configuration have been adjusted."), LOG_LEVEL_NOTICE);
             return "CHECKAGAIN";
         }
         return "IGNORE";
@@ -351,7 +351,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
                 continue;
             }
             tableRows.push(
-                $msg("TweakMismatchResolve.Table.Row", {
+                $msg("| ${name} | ${self} | ${remote} |", {
                     name: confName(key),
                     self: currentValueForDisplay,
                     remote: remoteValueForDisplay,
@@ -387,7 +387,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         //     [CHOICE_DISMISS, false]]
         const CHOICES = [CHOICE_USE_REMOTE, CHOICE_DISMISS];
         const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
-            title: $msg("TweakMismatchResolve.Title.UseRemoteConfig"),
+            title: $msg("Use Remote Configuration"),
             timeout: 0,
             defaultAction: CHOICE_DISMISS,
         });

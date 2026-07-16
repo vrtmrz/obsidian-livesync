@@ -27,6 +27,7 @@
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
     import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
     import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -125,11 +126,11 @@
                 // context.holdingSettings = trialRemoteSetting;
 
                 if (replicator.knownAdvertisements.length === 0) {
-                    return "Your settings seem correct, but no other peers were found.";
+                    return msg("Your settings seem correct, but no other peers were found.");
                 }
                 return "";
             } catch (e) {
-                return `Failed to connect to other peers: ${e}`;
+                return msg("Failed to connect to other peers: ${error}", { error: String(e) });
             } finally {
                 try {
                     replicator.close();
@@ -171,7 +172,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = msg("Error during connection test: ${error}", { error: String(e) });
             return;
         }
     }
@@ -193,7 +194,7 @@
 </script>
 
 <DialogHeader title="P2P Configuration" />
-<Guidance>Please enter the Peer-to-Peer Synchronisation information below.</Guidance>
+<Guidance>{msg("Please enter the Peer-to-Peer Synchronisation information below.")}</Guidance>
 <InputRow label="Enabled">
     <input type="checkbox" name="p2p-enabled" bind:checked={syncSetting.P2P_Enabled} />
 </InputRow>
@@ -201,13 +202,13 @@
     <input
         type="text"
         name="p2p-relay-url"
-        placeholder="Enter the Relay URL)"
+        placeholder={msg("Enter the Relay URL)")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
         bind:value={syncSetting.P2P_relays}
     />
-    <button class="button" onclick={() => setDefaultRelay()}>Use vrtmrz's relay</button>
+    <button class="button" onclick={() => setDefaultRelay()}>{msg("Use vrtmrz's relay")}</button>
 </InputRow>
 <InputRow label="Group ID">
     <input
@@ -219,15 +220,16 @@
         spellcheck="false"
         bind:value={syncSetting.P2P_roomID}
     />
-    <button class="button" onclick={() => generateDefaultGroupId()}>Generate Random ID</button>
+    <button class="button" onclick={() => generateDefaultGroupId()}>{msg("Generate Random ID")}</button>
 </InputRow>
 <InputRow label="Passphrase">
     <Password name="p2p-password" placeholder="Enter your passphrase" bind:value={syncSetting.P2P_passphrase} />
 </InputRow>
 <InfoNote>
-    The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and
-    passphrase on all devices you want to synchronise.<br />
-    Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.
+    {msg(
+        "The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise."
+    )}<br />
+    {msg("Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.")}
 </InfoNote>
 <InputRow label="Device Peer ID">
     <input
@@ -244,26 +246,28 @@
     <input type="checkbox" name="p2p-auto-start" bind:checked={syncSetting.P2P_AutoStart} />
 </InputRow>
 <InfoNote>
-    If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in
-    launches.
+    {msg(
+        'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.'
+    )}
 </InfoNote>
 <InputRow label="Auto Broadcast Changes">
     <input type="checkbox" name="p2p-auto-broadcast" bind:checked={syncSetting.P2P_AutoBroadcast} />
 </InputRow>
 <InfoNote>
-    If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without
-    requiring manual intervention. This requests peers to fetch this device's changes.
+    {msg(
+        'If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without requiring manual intervention. This requests peers to fetch this device\'s changes.'
+    )}
 </InfoNote>
 <ExtraItems title="Advanced Settings">
     <InfoNote>
-        TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P
-        connections. In most cases, you can leave these fields blank.
+        {msg(
+            "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank."
+        )}
     </InfoNote>
     <InfoNote warning>
-        Using public TURN servers may have privacy implications, as your data will be relayed through third-party
-        servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN
-        server provider before using their services. Also your `network administrator` too. You should consider setting
-        up your own TURN server for your FQDN, if possible.
+        {msg(
+            "Using public TURN servers may have privacy implications, as your data will be relayed through third-party servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN server provider before using their services. Also your `network administrator` too. You should consider setting up your own TURN server for your FQDN, if possible."
+        )}
     </InfoNote>
     <InputRow label="TURN Server URLs (comma-separated)">
         <textarea
@@ -279,7 +283,7 @@
         <input
             type="text"
             name="p2p-turn-username"
-            placeholder="Enter TURN username"
+            placeholder={msg("Enter TURN username")}
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
@@ -298,7 +302,7 @@
     {error}
 </InfoNote>
 {#if processing}
-    Checking connection... Please wait.
+    {msg("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
         <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />

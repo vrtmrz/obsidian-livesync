@@ -18,6 +18,7 @@
         type RebuildEverythingResult,
         type ResultTypeBackup,
     } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     type Props = {
         setResult: (result: RebuildEverythingResult) => void;
@@ -50,37 +51,39 @@
 
 <DialogHeader title="Final Confirmation: Overwrite Server Data with This Device's Files" />
 <Guidance
-    >This procedure will first delete all existing synchronisation data from the server. Following this, the server data
-    will be completely rebuilt, using the current state of your Vault on this device (including its local database) as
-    <strong>the single, authoritative master copy</strong>.</Guidance
+    >{msg(
+        "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as"
+    )}
+    <strong>{msg("the single, authoritative master copy")}</strong>.</Guidance
 >
 <InfoNote>
-    You should perform this operation only in exceptional circumstances, such as when the server data is completely
-    corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually
-    large in comparison to the Vault size.
+    {msg(
+        "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size."
+    )}
 </InfoNote>
 <Guidance important title="⚠️ Please Confirm the Following">
     <Check
         title="I understand that all changes made on other smartphones or computers possibly could be lost."
         bind:value={confirmationCheck1}
     >
-        <InfoNote>There is a way to resolve this on other devices.</InfoNote>
-        <InfoNote>Of course, we can back up the data before proceeding.</InfoNote>
+        <InfoNote>{msg("There is a way to resolve this on other devices.")}</InfoNote>
+        <InfoNote>{msg("Of course, we can back up the data before proceeding.")}</InfoNote>
     </Check>
     <Check
         title="I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information."
         bind:value={confirmationCheck2}
     >
-        <InfoNote>by resetting the remote, you will be informed on other devices.</InfoNote>
+        <InfoNote>{msg("by resetting the remote, you will be informed on other devices.")}</InfoNote>
     </Check>
     <Check title="I understand that this action is irreversible once performed." bind:value={confirmationCheck3} />
 </Guidance>
 <hr />
 <Instruction>
-    <Question>Have you created a backup before proceeding?</Question>
+    <Question>{msg("Have you created a backup before proceeding?")}</Question>
     <InfoNote warning>
-        This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe
-        location.
+        {msg(
+            "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location."
+        )}
     </InfoNote>
     <Options>
         <Option selectedValue={TYPE_BACKUP_DONE} title="I have created a backup of my Vault." bind:value={backupType} />
@@ -96,8 +99,12 @@
         >
             <InfoNote error visible={backupType === TYPE_UNABLE_TO_BACKUP}>
                 <strong
-                    >You should create a new synchronisation destination and rebuild your data there. <br /> After that,
-                    synchronise to a brand new vault on each other device with the new remote one by one.</strong
+                    >{msg(
+                        "You should create a new synchronisation destination and rebuild your data there."
+                    )} <br />
+                    {msg(
+                        "After that, synchronise to a brand new vault on each other device with the new remote one by one."
+                    )}</strong
                 >
             </InfoNote>
         </Option>

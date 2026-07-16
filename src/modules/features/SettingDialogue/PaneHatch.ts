@@ -30,10 +30,10 @@ import { isNotFoundError } from "@lib/common/utils.doc.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");
-    void addPanel(paneEl, $msg("Setting.TroubleShooting")).then((paneEl) => {
+    void addPanel(paneEl, $msg("TroubleShooting")).then((paneEl) => {
         new Setting(paneEl)
-            .setName($msg("Setting.TroubleShooting.Doctor"))
-            .setDesc($msg("Setting.TroubleShooting.Doctor.Desc"))
+            .setName($msg("Setting Doctor"))
+            .setDesc($msg("Detects non optimal settings. (Same as during migration)"))
             .addButton((button) =>
                 button
                     .setButtonText($msg("Run Doctor"))
@@ -46,7 +46,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             );
         new Setting(paneEl)
             .setName($msg("Setting.TroubleShooting.ScanBrokenFiles"))
-            .setDesc($msg("Setting.TroubleShooting.ScanBrokenFiles.Desc"))
+            .setDesc($msg("Scans for files that are not stored correctly in the database."))
             .addButton((button) =>
                 button
                     .setButtonText("Scan for Broken files")

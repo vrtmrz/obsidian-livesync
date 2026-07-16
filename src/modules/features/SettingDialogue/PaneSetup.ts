@@ -20,10 +20,10 @@ export function paneSetup(
     paneEl: HTMLElement,
     { addPanel, addPane }: PageFunctions
 ): void {
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleQuickSetup")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Quick Setup")).then((paneEl) => {
         new Setting(paneEl)
-            .setName($msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"))
-            .setDesc($msg("obsidianLiveSyncSettingTab.descConnectSetupURI"))
+            .setName($msg("Connect with Setup URI"))
+            .setDesc($msg("This is the recommended method to set up Self-hosted LiveSync with a Setup URI."))
             .addButton((text) => {
                 text.setButtonText($msg("obsidianLiveSyncSettingTab.btnUse")).onClick(() => {
                     this.closeSetting();
@@ -43,11 +43,11 @@ export function paneSetup(
             });
 
         new Setting(paneEl)
-            .setName($msg("obsidianLiveSyncSettingTab.nameEnableLiveSync"))
-            .setDesc($msg("obsidianLiveSyncSettingTab.descEnableLiveSync"))
+            .setName($msg("Enable LiveSync"))
+            .setDesc($msg("Only enable this after configuring either of the above two options or completing all configuration manually."))
             .addOnUpdate(visibleOnly(() => !this.isConfiguredAs("isConfigured", true)))
             .addButton((text) => {
-                text.setButtonText($msg("obsidianLiveSyncSettingTab.btnEnable")).onClick(async () => {
+                text.setButtonText($msg("Enable")).onClick(async () => {
                     this.editingSettings.isConfigured = true;
                     await this.saveAllDirtySettings();
                     this.services.appLifecycle.askRestart();
@@ -57,13 +57,13 @@ export function paneSetup(
 
     void addPanel(
         paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleSetupOtherDevices"),
+        $msg("To setup other devices"),
         undefined,
         visibleOnly(() => this.isConfiguredAs("isConfigured", true))
     ).then((paneEl) => {
         new Setting(paneEl)
-            .setName($msg("obsidianLiveSyncSettingTab.nameCopySetupURI"))
-            .setDesc($msg("obsidianLiveSyncSettingTab.descCopySetupURI"))
+            .setName($msg("Copy the current settings to a Setup URI"))
+            .setDesc($msg("Perfect for setting up a new device!"))
             .addButton((text) => {
                 text.setButtonText($msg("obsidianLiveSyncSettingTab.btnCopy")).onClick(() => {
                     // await this.plugin.addOnSetup.command_copySetupURI();
@@ -71,10 +71,10 @@ export function paneSetup(
                 });
             });
         new Setting(paneEl)
-            .setName($msg("Setup.ShowQRCode"))
-            .setDesc($msg("Setup.ShowQRCode.Desc"))
+            .setName($msg("Show QR code"))
+            .setDesc($msg("Show QR code to transfer the settings."))
             .addButton((text) => {
-                text.setButtonText($msg("Setup.ShowQRCode")).onClick(() => {
+                text.setButtonText($msg("Show QR code")).onClick(() => {
                     eventHub.emitEvent(EVENT_REQUEST_SHOW_SETUP_QR);
                 });
             });
@@ -82,13 +82,13 @@ export function paneSetup(
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleReset")).then((paneEl) => {
         new Setting(paneEl)
-            .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
+            .setName($msg("Discard existing settings and databases"))
             .addButton((text) => {
-                text.setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
+                text.setButtonText($msg("Discard"))
                     .onClick(async () => {
                         if (
                             (await this.core.confirm.askYesNoDialog(
-                                $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
+                                $msg("Do you really want to discard existing settings and databases?"),
                                 { defaultOption: "No" }
                             )) == "yes"
                         ) {
@@ -106,7 +106,7 @@ export function paneSetup(
             .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
     });
 
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleExtraFeatures")).then((paneEl) => {
+    void addPanel(paneEl, $msg("Enable extra and advanced features")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("useAdvancedMode");
 
         new Setting(paneEl).autoWireToggle("usePowerUserMode");
@@ -117,13 +117,13 @@ export function paneSetup(
         this.addOnSaved("useEdgeCaseMode", () => this.display());
     });
 
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleOnlineTips")).then((paneEl) => {
-        // this.createEl(paneEl, "h3", { text: $msg("obsidianLiveSyncSettingTab.titleOnlineTips") });
+    void addPanel(paneEl, $msg("Online Tips")).then((paneEl) => {
+        // this.createEl(paneEl, "h3", { text: $msg("Online Tips") });
         const repo = "vrtmrz/obsidian-livesync";
         const topPath = $msg("obsidianLiveSyncSettingTab.linkTroubleshooting");
         const rawRepoURI = `https://raw.githubusercontent.com/${repo}/main`;
         this.createEl(paneEl, "div", "", (el) => {
-            el.createEl("a", { text: $msg("obsidianLiveSyncSettingTab.linkOpenInBrowser") }, (anchor) => {
+            el.createEl("a", { text: $msg("Open in browser") }, (anchor) => {
                 anchor.href = `https://github.com/${repo}/blob/main${topPath}`;
                 anchor.target = "_blank";
                 anchor.rel = "noopener";
@@ -148,7 +148,7 @@ export function paneSetup(
                 remoteTroubleShootMDSrc = await request(`${rawRepoURI}${basePath}/${filename}`);
             } catch (ex) {
                 const err = LiveSyncError.fromError(ex);
-                remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${err.toString()}`;
+                remoteTroubleShootMDSrc = `${$msg("An error occurred!!")}\n${err.toString()}`;
             }
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                 /\((.*?(.png)|(.jpg))\)/g,
@@ -157,7 +157,7 @@ export function paneSetup(
             // Render markdown
             await MarkdownRenderer.render(
                 this.plugin.app,
-                `<a class='sls-troubleshoot-anchor'></a> [${$msg("obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting")}](${topPath}) [${$msg("obsidianLiveSyncSettingTab.linkPageTop")}](${filename})\n\n${remoteTroubleShootMD}`,
+                `<a class='sls-troubleshoot-anchor'></a> [${$msg("Tips and Troubleshooting")}](${topPath}) [${$msg("Page Top")}](${filename})\n\n${remoteTroubleShootMD}`,
                 troubleShootEl,
                 `${rawRepoURI}`,
                 this.lifetimeComponent

@@ -13,6 +13,7 @@
     import type { P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
     import { extractP2PRoomSuffix } from "@lib/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     interface Props {
         liveSyncReplicator: LiveSyncTrysteroReplicator;
@@ -91,40 +92,40 @@
 </script>
 
 <div class="server-status">
-    <h3>Signalling Status</h3>
+    <h3>{msg("Signalling Status")}</h3>
 
     <div class="status-item">
-        <span>Connection:</span>
+        <span>{msg("Connection:")}</span>
         <span class="status-value {isConnected ? 'connected' : 'disconnected'}">
-            {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+            {isConnected ? "🟢 " + msg("Connected") : "🔴 " + msg("Disconnected")}
         </span>
     </div>
 
     <div class="status-item status-action">
         {#if !isConnected}
-            <button onclick={onOpenConnection}>Open connection</button>
+            <button onclick={onOpenConnection}>{msg("Open connection")}</button>
         {:else}
-            <button onclick={onDisconnect}>Close connection</button>
+            <button onclick={onDisconnect}>{msg("Close connection")}</button>
         {/if}
     </div>
 
     {#if serverInfo}
         <div class="status-item">
-            <span>Room ID suffix:</span>
-            <span class="room-suffix-display" title={roomSuffix || "Not configured"}>
+            <span>{msg("Room ID suffix:")}</span>
+            <span class="room-suffix-display" title={roomSuffix || msg("Not configured")}>
                 {roomSuffix || "-"}
             </span>
         </div>
 
         <div class="status-item">
-            <span>Peer ID:</span>
+            <span>{msg("Peer ID:")}</span>
             <span class="peer-id-display" title={serverInfo.serverPeerId}>
                 {serverInfo.serverPeerId.slice(0, 12)}...
             </span>
         </div>
 
         <div class="status-item">
-            <span>Devices:</span>
+            <span>{msg("Devices:")}</span>
             <span>{serverInfo.knownAdvertisements.length}</span>
         </div>
     {/if}
@@ -133,15 +134,15 @@
     <div class="status-item status-action broadcast-row">
         <!-- Live-push to peers: stream this device's changes to connected peers for LiveSync -->
         <label class="broadcast-label" for="broadcast-toggle">
-            Live-push to peers
+            {msg("Live-push to peers")}
         </label>
         <button
             id="broadcast-toggle"
             class="broadcast-button {isBroadcasting ? 'is-on' : 'is-off'}"
             onclick={toggleBroadcast}
-            title={isBroadcasting ? 'Pushing changes to peers — click to stop' : 'Start pushing changes to peers'}
+            title={isBroadcasting ? msg('Pushing changes to peers — click to stop') : msg('Start pushing changes to peers')}
         >
-            {isBroadcasting ? '📡 On' : '📡 Off'}
+            {isBroadcasting ? '📡 ' + msg('On') : '📡 ' + msg('Off')}
         </button>
     </div>
     {/if}
@@ -149,39 +150,39 @@
     {#if core}
     <div class="status-item status-action diag-toggle-row">
         <label class="broadcast-label" for="diag-toggle">
-            🕵️ Diag
+            🕵️ {msg("Diag")}
         </label>
         <button
             id="diag-toggle"
             class="broadcast-button {useDiagRTC ? 'is-on' : 'is-off'}"
             onclick={toggleDiagRTC}
             title={useDiagRTC
-                ? 'Diagnostic RTCPeerConnection is enabled'
-                : 'Use Diagnostic RTCPeerConnection for statistics'}
+                ? msg('Diagnostic RTCPeerConnection is enabled')
+                : msg('Use Diagnostic RTCPeerConnection for statistics')}
         >
-            {useDiagRTC ? 'On' : 'Off'}
+            {useDiagRTC ? msg('On') : msg('Off')}
         </button>
     </div>
     {/if}
 
     {#if serverInfo}
         <div class="diag-section">
-            <h4>Stats</h4>
+            <h4>{msg("Stats")}</h4>
             <div class="diag-grid">
                 <div class="diag-item">
-                    <span>Incoming:</span>
+                    <span>{msg("Incoming:")}</span>
                     <span>{serverInfo.diag.totalNewConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Connected:</span>
+                    <span>{msg("Connected:")}</span>
                     <span>{serverInfo.diag.totalSuccessfulConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Failed:</span>
+                    <span>{msg("Failed:")}</span>
                     <span>{serverInfo.diag.totalFailedConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Closed:</span>
+                    <span>{msg("Closed:")}</span>
                     <span>{serverInfo.diag.totalClosedConnections}</span>
                 </div>
             </div>

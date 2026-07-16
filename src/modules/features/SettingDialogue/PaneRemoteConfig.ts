@@ -142,7 +142,7 @@ export function paneRemoteConfig(
     }
     {
         // TODO: very WIP. need to refactor the UI.
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer"), () => {}).then((paneEl) => {
+        void addPanel(paneEl, $msg("Remote Server"), () => {}).then((paneEl) => {
             const actions = new Setting(paneEl).setName("Remote Databases");
             // actions.addButton((button) =>
             //     button
@@ -651,7 +651,7 @@ export function paneRemoteConfig(
     //             const privateKeyPem = `> -----BEGIN PRIVATE KEY-----\n> ${encodedPrivateKey}\n> -----END PRIVATE KEY-----`;
     //             const publicKeyPem = `> -----BEGIN PUBLIC KEY-----\\n${encodedPublicKey}\\n-----END PUBLIC KEY-----`;
 
-    //             const title = $msg("Setting.GenerateKeyPair.Title");
+    //             const title = $msg("New key pair has been generated!");
     //             const msg = $msg("Setting.GenerateKeyPair.Desc", {
     //                 public_key: publicKeyPem,
     //                 private_key: privateKeyPem,
@@ -672,7 +672,7 @@ export function paneRemoteConfig(
     //         )
     //     );
 
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification"), () => {}).then((paneEl) => {
+    void addPanel(paneEl, $msg("Notification"), () => {}).then((paneEl) => {
         paneEl.addClass("wizardHidden");
         new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
     });
@@ -686,10 +686,10 @@ export function paneRemoteConfig(
     //             if (!(await checkConfig(checkResultDiv))) {
     //                 if (
     //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgConfigCheckFailed"),
+    //                         $msg("The configuration check has failed. Do you want to continue anyway?"),
     //                         {
     //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleRemoteConfigCheckFailed"),
+    //                             title: $msg("Remote Configuration Check Failed"),
     //                         }
     //                     )) == "no"
     //                 ) {
@@ -701,10 +701,10 @@ export function paneRemoteConfig(
     //             if (isEncryptionFullyEnabled) {
     //                 if (
     //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgEnableEncryptionRecommendation"),
+    //                         $msg("We recommend enabling End-To-End Encryption, and Path Obfuscation. Are you sure you want to continue without encryption?"),
     //                         {
     //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleEncryptionNotEnabled"),
+    //                             title: $msg("Encryption is not enabled"),
     //                         }
     //                     )) == "no"
     //                 ) {
@@ -717,10 +717,10 @@ export function paneRemoteConfig(
     //             if (!(await this.isPassphraseValid())) {
     //                 if (
     //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgInvalidPassphrase"),
+    //                         $msg("Your encryption passphrase might be invalid. Are you sure you want to continue?"),
     //                         {
     //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleEncryptionPassphraseInvalid"),
+    //                             title: $msg("Encryption Passphrase Invalid"),
     //                         }
     //                     )) == "no"
     //                 ) {
@@ -736,8 +736,8 @@ export function paneRemoteConfig(
     //             }
     //             if (
     //                 (await this.plugin.confirm.askYesNoDialog(
-    //                     $msg("obsidianLiveSyncSettingTab.msgFetchConfigFromRemote"),
-    //                     { defaultOption: "Yes", title: $msg("obsidianLiveSyncSettingTab.titleFetchConfig") }
+    //                     $msg("Do you want to fetch the config from the remote server?"),
+    //                     { defaultOption: "Yes", title: $msg("Fetch Config") }
     //                 )) == "yes"
     //             ) {
     //                 const trialSetting = { ...this.initialSettings, ...this.editingSettings };

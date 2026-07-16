@@ -6,6 +6,7 @@
     import Decision from "@lib/UI/components/Decision.svelte";
     import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
     import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
+    import { $msg as msg } from "@lib/common/i18n.ts";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;
     };
@@ -19,7 +20,11 @@
             detectedIssues = fixResults;
         } catch (e) {
             console.error("Error during testAndFixSettings:", e);
-            detectedIssues.push({ message: `Error during testAndFixSettings: ${e}`, result: "error", classes: [] });
+            detectedIssues.push({
+                message: msg("Error during testAndFixSettings: ${error}", { error: String(e) }),
+                result: "error",
+                classes: [],
+            });
         }
     }
     function isErrorResult(result: ConfigCheckResult): result is ResultError<unknown> | ResultErrorMessage {
@@ -58,7 +63,7 @@
         </div>
         {#if isFixableError(issue)}
             <div class="operations">
-                <button onclick={() => fixIssue(issue)} class="mod-cta" disabled={processing}>Fix</button>
+                <button onclick={() => fixIssue(issue)} class="mod-cta" disabled={processing}>{msg("Fix")}</button>
             </div>
         {/if}
     </div>
@@ -70,15 +75,15 @@
     <details open={!isAllSuccess}>
         <summary>
             {#if detectedIssues.length === 0}
-                No checks have been performed yet.
+                {msg("No checks have been performed yet.")}
             {:else if isAllSuccess}
-                All checks passed successfully!
+                {msg("All checks passed successfully!")}
             {:else}
-                {errorIssueCount} issue(s) detected!
+                {msg("${count} issue(s) detected!", { count: String(errorIssueCount) })}
             {/if}
         </summary>
         {#if detectedIssues.length > 0}
-            <h3>Issue detection log:</h3>
+            <h3>{msg("Issue detection log:")}</h3>
             {#each detectedIssues as issue}
                 {@render result(issue)}
             {/each}

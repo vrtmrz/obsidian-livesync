@@ -62,11 +62,11 @@ export type OnSavedHandler<T extends AllSettingItemKey> = {
 
 export function getLevelStr(level: ConfigLevel) {
     return level == LEVEL_POWER_USER
-        ? $msg("obsidianLiveSyncSettingTab.levelPowerUser")
+        ? $msg(" (Power User)")
         : level == LEVEL_ADVANCED
-          ? $msg("obsidianLiveSyncSettingTab.levelAdvanced")
+          ? $msg(" (Advanced)")
           : level == LEVEL_EDGE_CASE
-            ? $msg("obsidianLiveSyncSettingTab.levelEdgeCase")
+            ? $msg(" (Edge Case)")
             : "";
 }
 

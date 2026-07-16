@@ -21,8 +21,8 @@ export class ModuleLiveSyncMain extends AbstractModule {
         if (!(await this.core.services.appLifecycle.onLayoutReady())) return false;
         eventHub.emitEvent(EVENT_LAYOUT_READY);
         if (this.settings.suspendFileWatching || this.settings.suspendParseReplicationResult) {
-            const ANSWER_KEEP = $msg("moduleLiveSyncMain.optionKeepLiveSyncDisabled");
-            const ANSWER_RESUME = $msg("moduleLiveSyncMain.optionResumeAndRestart");
+            const ANSWER_KEEP = $msg("Keep LiveSync disabled");
+            const ANSWER_RESUME = $msg("Resume and restart Obsidian");
             const message = $msg("moduleLiveSyncMain.msgScramEnabled", {
                 fileWatchingStatus: this.settings.suspendFileWatching ? "suspended" : "active",
                 parseReplicationStatus: this.settings.suspendParseReplicationResult ? "suspended" : "active",
@@ -30,7 +30,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             if (
                 (await this.core.confirm.askSelectStringDialogue(message, [ANSWER_KEEP, ANSWER_RESUME], {
                     defaultAction: ANSWER_KEEP,
-                    title: $msg("moduleLiveSyncMain.titleScramEnabled"),
+                    title: $msg("Scram Enabled"),
                 })) == ANSWER_RESUME
             ) {
                 this.settings.suspendFileWatching = false;
@@ -49,11 +49,11 @@ export class ModuleLiveSyncMain extends AbstractModule {
         // await this.core.$$realizeSettingSyncMode();
         await this.services.control.applySettings();
         fireAndForget(async () => {
-            this._log($msg("moduleLiveSyncMain.logAdditionalSafetyScan"), LOG_LEVEL_VERBOSE);
+            this._log($msg("Additional safety scan..."), LOG_LEVEL_VERBOSE);
             if (!(await this.services.appLifecycle.onScanningStartupIssues())) {
-                this._log($msg("moduleLiveSyncMain.logSafetyScanFailed"), LOG_LEVEL_NOTICE);
+                this._log($msg("Additional safety scan has failed on a module"), LOG_LEVEL_NOTICE);
             } else {
-                this._log($msg("moduleLiveSyncMain.logSafetyScanCompleted"), LOG_LEVEL_VERBOSE);
+                this._log($msg("Additional safety scan completed"), LOG_LEVEL_VERBOSE);
             }
         });
         return true;
@@ -85,16 +85,16 @@ export class ModuleLiveSyncMain extends AbstractModule {
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED);
-        this._log($msg("moduleLiveSyncMain.logLoadingPlugin"));
+        this._log($msg("Loading plugin..."));
         if (!(await this.services.appLifecycle.onInitialise())) {
-            this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
+            this._log($msg("Plugin initialisation was cancelled by a module"), LOG_LEVEL_NOTICE);
             return false;
         }
         // this.addUIs();
-        this._log($msg("moduleLiveSyncMain.logPluginVersion", { manifestVersion, packageVersion }));
+        this._log($msg("Self-hosted LiveSync v${manifestVersion} ${packageVersion}", { manifestVersion, packageVersion }));
         await this.services.setting.loadSettings();
         if (!(await this.services.appLifecycle.onSettingLoaded())) {
-            this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
+            this._log($msg("Plugin initialisation was cancelled by a module"), LOG_LEVEL_NOTICE);
             return false;
         }
         const lsKey = "obsidian-live-sync-ver" + this.services.vault.getVaultName();
@@ -102,7 +102,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
 
         const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
         if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            this._log($msg("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
+            this._log($msg("LiveSync has updated, please read the changelog!"), LOG_LEVEL_NOTICE);
         }
 
         // //@ts-ignore
@@ -117,7 +117,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this.settings.syncOnFileOpen = false;
             this.settings.syncAfterMerge = false;
             this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
+            this.settings.versionUpFlash = $msg("LiveSync has been updated, In case of breaking updates, all automatic synchronization has been temporarily disabled. Ensure that all devices are up to date before enabling.");
             await this.saveSettings();
         }
         compatGlobal.localStorage.setItem(lsKey, `${VER}`);
@@ -154,7 +154,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
     //     }
     //     eventHub.emitEvent(EVENT_PLATFORM_UNLOADED);
     //     eventHub.offAll();
-    //     this._log($msg("moduleLiveSyncMain.logUnloadingPlugin"));
+    //     this._log($msg("Unloading plugin..."));
     //     return;
     // }
 

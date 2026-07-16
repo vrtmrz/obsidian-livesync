@@ -22,6 +22,7 @@
     import { copyTo, pickCouchDBSyncSettings } from "@lib/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
     import { TYPE_CANCELLED, type SetupRemoteCouchDBResultType } from "./setupDialogTypes";
+    import { $msg as msg } from "@lib/common/i18n.ts";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
@@ -66,17 +67,17 @@
             const trialRemoteSetting = generateSetting();
             const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
             if (!replicator) {
-                return "Failed to create replicator instance.";
+                return msg("Failed to create replicator instance.");
             }
             try {
                 const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
                 if (result) {
                     return "";
                 } else {
-                    return "Failed to connect to the server. Please check your settings.";
+                    return msg("Failed to connect to the server. Please check your settings.");
                 }
             } catch (e) {
-                return `Failed to connect to the server: ${e}`;
+                return msg("Failed to connect to the server: ${error}", { error: String(e) });
             }
         } finally {
             processing = false;
@@ -93,7 +94,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = msg("Error during connection test: ${error}", { error: String(e) });
             return;
         }
     }
@@ -135,7 +136,7 @@
 </script>
 
 <DialogHeader title="CouchDB Configuration" />
-<Guidance>Please enter the CouchDB server information below.</Guidance>
+<Guidance>{msg("Please enter the CouchDB server information below.")}</Guidance>
 <InputRow label="URL">
     <input
         type="text"
@@ -149,12 +150,14 @@
         pattern="^https?://.+"
     />
 </InputRow>
-<InfoNote warning visible={isURIInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
+<InfoNote warning visible={isURIInsecure}
+    >{msg("We can use only Secure (HTTPS) connections on Obsidian Mobile.")}</InfoNote
+>
 <InputRow label="Username">
     <input
         type="text"
         name="couchdb-username"
-        placeholder="Enter your username"
+        placeholder={msg("Enter your username")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -175,7 +178,7 @@
     <input
         type="text"
         name="couchdb-database"
-        placeholder="Enter your database name"
+        placeholder={msg("Enter your database name")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -185,16 +188,17 @@
     />
 </InputRow>
 <InfoNote>
-    You cannot use capital letters, spaces, or special characters in the database name. And not allowed to start with an
-    underscore (_).
+    {msg(
+        "You cannot use capital letters, spaces, or special characters in the database name. And not allowed to start with an underscore (_)."
+    )}
 </InfoNote>
 <InputRow label="Use Internal API">
     <input type="checkbox" name="couchdb-use-internal-api" bind:checked={syncSetting.useRequestAPI} />
 </InputRow>
 <InfoNote>
-    If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate
-    with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian
-    versions.
+    {msg(
+        "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions."
+    )}
 </InfoNote>
 
 <ExtraItems title="Advanced Settings">
@@ -236,20 +240,21 @@
             rows="5"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="Enter your JWT secret or private key"
+            placeholder={msg("Enter your JWT secret or private key")}
             bind:value={syncSetting.jwtKey}
             disabled={!isUseJWT}
         ></textarea>
     </InputRow>
     <InfoNote>
-        For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8
-        PEM-formatted private key.
+        {msg(
+            "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key."
+        )}
     </InfoNote>
     <InputRow label="JWT Key ID (kid)">
         <input
             type="text"
             name="couchdb-jwt-kid"
-            placeholder="Enter your JWT Key ID"
+            placeholder={msg("Enter your JWT Key ID")}
             bind:value={syncSetting.jwtKid}
             disabled={!isUseJWT}
         />
@@ -258,15 +263,15 @@
         <input
             type="text"
             name="couchdb-jwt-sub"
-            placeholder="Enter your JWT Subject (CouchDB Username)"
+            placeholder={msg("Enter your JWT Subject (CouchDB Username)")}
             bind:value={syncSetting.jwtSub}
             disabled={!isUseJWT}
         />
     </InputRow>
     <InfoNote warning>
-        JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens.
-        Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the
-        server's configuration. Incidentally, I have not verified it very thoroughly.
+        {msg(
+            "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly."
+        )}
     </InfoNote>
 </ExtraItems>
 
@@ -278,7 +283,7 @@
 </InfoNote>
 
 {#if processing}
-    Checking connection... Please wait.
+    {msg("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
         <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />

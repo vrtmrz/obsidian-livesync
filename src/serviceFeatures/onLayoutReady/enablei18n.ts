@@ -38,11 +38,11 @@ export const enableI18nFeature = createServiceFeature(async ({ services: { setti
         }
     }
     if (isChanged) {
-        const revert = $msg("dialog.yourLanguageAvailable.btnRevertToDefault");
+        const revert = $msg("Keep %{lang-def}");
         if (
             (await API.confirm.askSelectStringDialogue($msg(`dialog.yourLanguageAvailable`), ["OK", revert], {
                 defaultAction: "OK",
-                title: $msg(`dialog.yourLanguageAvailable.Title`),
+                title: $msg(" Translation is available!"),
             })) == revert
         ) {
             await setting.applyPartial({ displayLanguage: "def" });

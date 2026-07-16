@@ -6,6 +6,7 @@
         type PluginDataExFile,
     } from "./CmdConfigSync.ts";
     import { Logger } from "@lib/common/logger";
+    import { $msg as msg } from "@lib/common/i18n.ts";
     import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/types";
     import { getDocData, timeDeltaToHumanReadable, unique } from "@lib/common/utils";
     import type ObsidianLiveSyncPlugin from "@/main";
@@ -61,25 +62,25 @@
             // NO OP. what's happened?
             freshness = "";
         } else if (local && !remote) {
-            freshness = "Local only";
+            freshness = msg("Local only");
         } else if (remote && !local) {
-            freshness = "Remote only";
+            freshness = msg("Remote only");
             canApply = true;
         } else {
             const dtDiff = (local?.mtime ?? 0) - (remote?.mtime ?? 0);
             const diff = timeDeltaToHumanReadable(Math.abs(dtDiff));
             if (dtDiff / 1000 < -10) {
                 // freshness = "✓ Newer";
-                freshness = `Newer (${diff})`;
+                freshness = msg("Newer (${diff})", { diff: String(diff) });
                 canApply = true;
                 contentCheck = true;
             } else if (dtDiff / 1000 > 10) {
                 // freshness = "⚠ Older";
-                freshness = `Older (${diff})`;
+                freshness = msg("Older (${diff})", { diff: String(diff) });
                 canApply = true;
                 contentCheck = true;
             } else {
-                freshness = "Same";
+                freshness = msg("Same");
                 canApply = false;
                 contentCheck = true;
             }
@@ -89,11 +90,11 @@
         if (local?.version || remote?.version) {
             const compare = `${localVersionStr}`.localeCompare(remoteVersionStr, undefined, { numeric: true });
             if (compare == 0) {
-                version = "Same";
+                version = msg("Same");
             } else if (compare < 0) {
-                version = `Lower (${localVersionStr} < ${remoteVersionStr})`;
+                version = msg("Lower (${a} < ${b})", { a: String(localVersionStr), b: String(remoteVersionStr) });
             } else if (compare > 0) {
-                version = `Higher (${localVersionStr} > ${remoteVersionStr})`;
+                version = msg("Higher (${a} > ${b})", { a: String(localVersionStr), b: String(remoteVersionStr) });
             }
         }
 
@@ -135,19 +136,19 @@
             })
             .reduce((p, c) => p | (c as number), 0 as number);
         if (matchingStatus == 0b0000100) {
-            equivalency = "Same";
+            equivalency = msg("Same");
             canApply = false;
         } else if (matchingStatus <= 0b0000100) {
-            equivalency = "Same or local only";
+            equivalency = msg("Same or local only");
             canApply = false;
         } else if (matchingStatus == 0b0010000) {
             canApply = true;
             canCompare = true;
-            equivalency = "Different";
+            equivalency = msg("Different");
         } else {
             canApply = true;
             canCompare = true;
-            equivalency = "Mixed";
+            equivalency = msg("Mixed");
         }
         return { equivalency, canApply, canCompare };
     }
@@ -244,7 +245,7 @@
         if (selected == "") {
             // NO OP.
         } else if (selected == thisTerm) {
-            freshness = "This device";
+            freshness = msg("This device");
             canApply = false;
         } else {
             const local = list.find((e) => e.term == thisTerm);
@@ -304,11 +305,11 @@
         if (!local) return;
         if (!selectedItem) return;
         const menu = new Menu();
-        menu.addItem((item) => item.setTitle("Compare file").setIsLabel(true));
+        menu.addItem((item) => item.setTitle(msg("Compare file")).setIsLabel(true));
         menu.addSeparator();
         const files = unique(local.files.map((e) => e.filename).concat(selectedItem.files.map((e) => e.filename)));
         const convDate = (dt: PluginDataExFile | undefined) => {
-            if (!dt) return "(Missing)";
+            if (!dt) return msg("(Missing)");
             const d = new Date(dt.mtime);
             return d.toLocaleString();
         };
@@ -335,10 +336,10 @@
             Logger(`Could not find local item`, LOG_LEVEL_VERBOSE);
             return;
         }
-        const duplicateTermName = await core.confirm.askString("Duplicate", "device name", "");
+        const duplicateTermName = await core.confirm.askString(msg("Duplicate"), msg("device name"), "");
         if (duplicateTermName) {
             if (duplicateTermName.contains("/")) {
-                Logger(`We can not use "/" to the device name`, LOG_LEVEL_NOTICE);
+                Logger(msg('We can not use "/" to the device name'), LOG_LEVEL_NOTICE);
                 return;
             }
             const key = `${plugin.core.services.API.getSystemConfigDir()}/${local.files[0].filename}`;
@@ -391,7 +392,7 @@
     {/if}
 {:else}
     <span class="spacer"></span>
-    <span class="message even">All the same or non-existent</span>
+    <span class="message even">{msg("All the same or non-existent")}</span>
     <!-- svelte-ignore a11y_consider_explicit_label -->
     <button disabled></button>
     <!-- svelte-ignore a11y_consider_explicit_label -->
