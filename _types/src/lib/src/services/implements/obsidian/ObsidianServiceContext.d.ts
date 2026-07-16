@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { App, Plugin } from "@/deps";

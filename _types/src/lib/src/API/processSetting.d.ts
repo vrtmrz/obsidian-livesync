@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { type ObsidianLiveSyncSettings } from "@lib/common/types";
 /**
  * Encode settings to a tiny array to encode in QRCode,

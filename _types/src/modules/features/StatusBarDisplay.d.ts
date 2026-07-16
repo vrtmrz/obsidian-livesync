@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
 export declare const STATUS_COUNTER_INACTIVE_LINGER_MS = 3000;
 export type DisposableReactiveValue<T> = ReactiveValue<T> & {
