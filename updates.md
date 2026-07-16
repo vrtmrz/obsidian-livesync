@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+## 0.25.83
+
+16th July, 2026
+
 ### Fixed
 
 - Fixed the 📲 remote-activity indicator remaining visible after CouchDB requests had completed.
