@@ -58,9 +58,13 @@ Fetch rebuilds temporarily suspend file watching. Their visibility event still r
 
 If the desktop background setting applies, its existing continuous or periodic policy remains authoritative. When a Desktop LiveSync window becomes visible during bounded activity, the normal continuous-channel teardown and resume sequence is also deferred until that activity ends, so recovery does not abort the finite operation.
 
-The status-bar remote-work indicator is shown when either the existing HTTP request balance is non-zero or the bounded remote activity count is non-zero. This preserves coverage from the existing counters while adding finite replication, peer waiting, and remote chunk fetching. The combined icon reports broader remote work, not an exact physical connection state; connection-level telemetry remains a separate concern.
+The status bar separates the two meanings. `📲` is shown while the bounded remote activity count is non-zero. It therefore reports a finite logical operation, including periods such as P2P peer selection or chunk-fetch queueing when no request is currently crossing the network. An adjacent `🌐N` reports the approximate number of tracked physical-request units currently in progress. The icon values and the physical indicator's 150 ms minimum display time are named constants so their presentation can be revised without changing the activity contract.
 
 Each physical HTTP attempt owns one balanced counter pair. The request counter is incremented immediately before invoking the selected fetch implementation, and the response counter is incremented in `finally`, whether the attempt returns or rejects. A web-fetch failure followed by the native fallback is two physical attempts and therefore contributes two balanced pairs. Callers must not add another pair around `performFetch`, because duplicated or missing increments leave the status indicator permanently active.
+
+Object Storage contributes one approximate unit for each AWS SDK command issued by its adapter, including upload, download, listing, deletion, availability, and usage requests. A download remains active until its response body has been consumed. This boundary is above the request-handler choice, so it covers both the standard SDK handler and Obsidian's internal request API without double counting. SDK-internal retries remain within one reported command. The displayed value is therefore intentionally approximate and is not an exact count of sockets, HTTP exchanges, or bytes transferred.
+
+P2P does not yet contribute to the physical-request count because it does not have a request unit comparable with CouchDB HTTP attempts or Object Storage SDK commands. Its finite operations remain visible through `📲`. A future P2P transfer metric should be added only when it has a stable meaning, rather than being inferred from the broad logical-operation count.
 
 ## Ownership
 
@@ -72,7 +76,7 @@ The platform activity runner remains injected. Common library and headless consu
 
 - Do not count continuous replication as a bounded activity.
 - Do not reinterpret the count as an exact number of network connections or HTTP requests.
-- Do not use this logical-operation count as a replacement for future connection-level telemetry.
+- Do not use either diagnostic count for replication completion, throttling, protocol correctness, or power-policy decisions.
 - Do not claim or implement privileged mobile background execution.
 - Do not guarantee protection against operating-system suspension, closing a laptop lid, forced termination, network loss, or a user-initiated sleep action.
 - Do not add a lifecycle timeout which would abort an unusually slow rebuild. A genuinely stalled operation may postpone LiveSync's visibility suspension until it settles, but the platform may still suspend or terminate background work.
@@ -106,6 +110,8 @@ Unit tests cover:
 - hidden-to-visible transitions before the final activity avoiding an unmatched resume; and
 - continuous-channel recovery being deferred when a desktop window becomes visible during bounded activity.
 
+Additional tests cover balanced physical-request counters after success and rejection, each Object Storage command boundary, response-body consumption for downloads, the split `📲` and `🌐N` status labels, and a deterministic real-Obsidian CouchDB request held while the physical indicator is observed. The Object Storage integration and real-Obsidian MinIO workflows verify that actual AWS SDK operations advance and rebalance the shared counters.
+
 The exact Fancy Kit screen wake-lock behaviour is covered by its package and Harness tests. A real Obsidian smoke test remains appropriate when changing the platform adapter or lifecycle integration, but is not required for changes confined to the already-tested injected activity-runner contract.
 
 ## Consequences
@@ -113,4 +119,4 @@ The exact Fancy Kit screen wake-lock behaviour is covered by its package and Har
 - One finite activity definition drives Wake Lock, lifecycle protection, and status UI without coupling common library code to Obsidian or browser globals.
 - Callers can observe accurate logical activity even in CLI and Webapp hosts which do not inject a Wake Lock implementation.
 - Rebuild operations now retain Wake Lock and lifecycle protection across their longest interruption-sensitive phases without retaining them for Rebuilder-owned pre-operation or completion dialogues. Post-reset P2P discovery and selection remain protected as an intentional part of completing the rebuild.
-- Future remote-work indicators should distinguish logical activity from connection-level telemetry when that distinction matters to users.
+- Users can now distinguish the lifetime of a finite remote operation from approximate request activity within it.

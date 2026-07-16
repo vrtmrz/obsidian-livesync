@@ -17,6 +17,7 @@ import {
 } from "../runner/objectStorage.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
+import { REMOTE_ACTIVITY_EXPECTED_STATE, waitForRemoteActivityState } from "../runner/remoteActivity.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 
@@ -115,13 +116,29 @@ async function main(): Promise<void> {
         assertEqual(configured.liveSync, false, "LiveSync should remain disabled during this one-shot workflow.");
 
         await prepareRemote(cli.binary, session.cliEnv);
+        const activityBeforeUpload = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
         const localEntry = await createNoteAndWaitForLocalDb(cli.binary, session.cliEnv);
         await pushLocalChanges(cli.binary, session.cliEnv);
+        const activityAfterUpload = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
+        if (activityAfterUpload.requestCount <= activityBeforeUpload.requestCount) {
+            throw new Error("Object Storage synchronisation did not advance the tracked remote-request count.");
+        }
+        assertEqual(
+            activityAfterUpload.responseCount,
+            activityAfterUpload.requestCount,
+            "Object Storage remote-request counters did not rebalance after synchronisation."
+        );
 
         const keys = await waitForObjectStorageObjects(bucketPrefix);
 
         console.log(
-            `Uploaded ${localEntry.path} through Journal Sync to ${objectStorage.bucket}/${bucketPrefix} (${keys.length} object(s))`
+            `Uploaded ${localEntry.path} through Journal Sync to ${objectStorage.bucket}/${bucketPrefix} (${keys.length} object(s)); tracked requests: ${activityAfterUpload.requestCount - activityBeforeUpload.requestCount}`
         );
     } finally {
         if (session) {

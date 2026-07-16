@@ -31,7 +31,12 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@lib/common/i18n.ts";
 import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector.ts";
-import { hasRemoteActivity } from "./RemoteActivityStatus.ts";
+import {
+    REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS,
+    formatRemoteActivityStatusLabel,
+    getTrackedRequestCount,
+} from "./RemoteActivityStatus.ts";
+import { createMinimumVisibleActivityCount, createPaddedCounterLabel } from "./StatusBarDisplay.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@lib/common/LSError.ts";
 import { isValidPath } from "@/common/utils.ts";
@@ -118,48 +123,43 @@ export class ModuleLog extends AbstractObsidianModule {
     p2pLogCollector = new P2PLogCollector();
 
     observeForLogs() {
-        const padSpaces = `\u{2007}`.repeat(10);
-        // const emptyMark = `\u{2003}`;
-        function padLeftSpComputed(numI: ReactiveValue<number>, mark: string) {
-            const formatted = reactiveSource("");
-            let timer: number | undefined = undefined;
-            let maxLen = 1;
-            numI.onChanged((numX) => {
-                const num = numX.value;
-                const numLen = `${Math.abs(num)}`.length + 1;
-                maxLen = maxLen < numLen ? numLen : maxLen;
-                if (timer) compatGlobal.clearTimeout(timer);
-                if (num == 0) {
-                    timer = compatGlobal.setTimeout(() => {
-                        formatted.value = "";
-                        maxLen = 1;
-                    }, 3000);
-                }
-                formatted.value = ` ${mark}${`${padSpaces}${num}`.slice(-maxLen)}`;
-            });
-            return computed(() => formatted.value);
-        }
-        const labelReplication = padLeftSpComputed(this.services.replication.replicationResultCount, `📥`);
-        const labelDBCount = padLeftSpComputed(this.services.replication.databaseQueueCount, `📄`);
-        const labelStorageCount = padLeftSpComputed(this.services.replication.storageApplyingCount, `💾`);
-        const labelChunkCount = padLeftSpComputed(collectingChunks, `🧩`);
-        const labelPluginScanCount = padLeftSpComputed(pluginScanningCount, `🔌`);
-        const labelConflictProcessCount = padLeftSpComputed(this.services.conflict.conflictProcessQueueCount, `🔩`);
+        const registerDisplay = <T extends { dispose(): void }>(display: T): T => {
+            this.plugin.register(() => display.dispose());
+            return display;
+        };
+        const labelReplication = registerDisplay(
+            createPaddedCounterLabel(this.services.replication.replicationResultCount, `📥`)
+        );
+        const labelDBCount = registerDisplay(
+            createPaddedCounterLabel(this.services.replication.databaseQueueCount, `📄`)
+        );
+        const labelStorageCount = registerDisplay(
+            createPaddedCounterLabel(this.services.replication.storageApplyingCount, `💾`)
+        );
+        const labelChunkCount = registerDisplay(createPaddedCounterLabel(collectingChunks, `🧩`));
+        const labelPluginScanCount = registerDisplay(createPaddedCounterLabel(pluginScanningCount, `🔌`));
+        const labelConflictProcessCount = registerDisplay(
+            createPaddedCounterLabel(this.services.conflict.conflictProcessQueueCount, `🔩`)
+        );
         const hiddenFilesCount = reactive(() => hiddenFilesEventCount.value - hiddenFilesProcessingCount.value);
-        const labelHiddenFilesCount = padLeftSpComputed(hiddenFilesCount, `⚙️`);
+        const labelHiddenFilesCount = registerDisplay(createPaddedCounterLabel(hiddenFilesCount, `⚙️`));
         const queueCountLabelX = reactive(() => {
-            return `${labelReplication()}${labelDBCount()}${labelStorageCount()}${labelChunkCount()}${labelPluginScanCount()}${labelHiddenFilesCount()}${labelConflictProcessCount()}`;
+            return `${labelReplication.value}${labelDBCount.value}${labelStorageCount.value}${labelChunkCount.value}${labelPluginScanCount.value}${labelHiddenFilesCount.value}${labelConflictProcessCount.value}`;
         });
         const queueCountLabel = () => queueCountLabelX.value;
 
+        const trackedRequestCount = reactive(() => {
+            return getTrackedRequestCount(this.services.API.requestCount.value, this.services.API.responseCount.value);
+        });
+        const displayedTrackedRequestCount = registerDisplay(
+            createMinimumVisibleActivityCount(trackedRequestCount, REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS)
+        );
+
         const requestingStatLabel = computed(() => {
-            return hasRemoteActivity(
-                this.services.API.requestCount.value,
-                this.services.API.responseCount.value,
-                this.services.replicator.boundedRemoteActivityCount.value
-            )
-                ? "📲 "
-                : "";
+            return formatRemoteActivityStatusLabel({
+                remoteOperationCount: Math.max(0, this.services.replicator.boundedRemoteActivityCount.value),
+                trackedRequestCount: displayedTrackedRequestCount.value,
+            });
         });
 
         const replicationStatLabel = computed(() => {
@@ -215,11 +215,11 @@ export class ModuleLog extends AbstractObsidianModule {
             }
             return { w, sent, pushLast, arrived, pullLast };
         });
-        const labelProc = padLeftSpComputed(this.services.fileProcessing.processing, `⏳`);
-        const labelPend = padLeftSpComputed(this.services.fileProcessing.totalQueued, `🛫`);
-        const labelInBatchDelay = padLeftSpComputed(this.services.fileProcessing.batched, `📬`);
+        const labelProc = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.processing, `⏳`));
+        const labelPend = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.totalQueued, `🛫`));
+        const labelInBatchDelay = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.batched, `📬`));
         const waitingLabel = computed(() => {
-            return `${labelProc()}${labelPend()}${labelInBatchDelay()}`;
+            return `${labelProc.value}${labelPend.value}${labelInBatchDelay.value}`;
         });
         const statusLineLabel = computed(() => {
             const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel();

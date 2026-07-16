@@ -64,7 +64,8 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 Synchronisation status is shown in the status bar with the following icons.
 
 -   Activity Indicator
-    -   📲 Remote activity
+    -   📲 A finite remote operation is in progress
+    -   🌐N Approximate remote requests currently in progress
 -   Status
     -   ⏹️ Stopped
     -   💤 LiveSync enabled. Waiting for changes

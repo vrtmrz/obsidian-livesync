@@ -10,6 +10,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Fixed the 📲 remote-activity indicator remaining visible after CouchDB requests had completed.
 - Fixed missing chunks being reported unavailable while an in-progress on-demand fetch or finite replication could still deliver them. Reads now follow the actual delivery lifecycle and recheck the local database when it finishes.
 
+### Improved
+
+- Split the status-bar remote activity display into `📲` for a finite remote operation and `🌐N` for the approximate number of tracked CouchDB or Object Storage requests currently in progress.
+
 ## 0.25.82
 
 15th July, 2026

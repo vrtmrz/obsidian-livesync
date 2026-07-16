@@ -1,11 +1,15 @@
 import { evalObsidianJson } from "./cli.ts";
-import { REMOTE_ACTIVITY_E2E_STATE_KEY } from "./remoteActivity.ts";
+import {
+    REMOTE_ACTIVITY_E2E_STATE_KEY,
+    REMOTE_ACTIVITY_GATE_KIND,
+    type RemoteActivityGateKind,
+} from "./remoteActivity.ts";
 
 export type HeldRemoteActivityResult = {
     done: boolean;
     entered: boolean;
     error?: string;
-    kind: "chunk-fetch" | "one-shot";
+    kind: RemoteActivityGateKind;
     requestedIds?: string[];
     result?: boolean;
     resultCount?: number;
@@ -27,7 +31,7 @@ export async function startHeldOneShotReplication(cliBinary: string, env: NodeJS
             "const original=replicator.openReplication;",
             "let releaseGate;",
             "const gate=new Promise((resolve)=>{releaseGate=resolve;});",
-            "const state={kind:'one-shot',entered:false,done:false,released:false,error:undefined,result:undefined,promise:undefined,release:undefined,restore:undefined};",
+            `const state={kind:${JSON.stringify(REMOTE_ACTIVITY_GATE_KIND.oneShot)},entered:false,done:false,released:false,error:undefined,result:undefined,promise:undefined,release:undefined,restore:undefined};`,
             "state.release=()=>{if(!state.released){state.released=true;releaseGate();}};",
             "state.restore=()=>{replicator.openReplication=original;};",
             "host[stateKey]=state;",
@@ -74,7 +78,7 @@ export async function startHeldChunkFetch(cliBinary: string, env: NodeJS.Process
             "let resolveDone;",
             "const gate=new Promise((resolve)=>{releaseGate=resolve;});",
             "const donePromise=new Promise((resolve)=>{resolveDone=resolve;});",
-            "const state={kind:'chunk-fetch',entered:false,done:false,released:false,error:undefined,resultCount:undefined,requestedIds:undefined,promise:donePromise,release:undefined,restore:undefined};",
+            `const state={kind:${JSON.stringify(REMOTE_ACTIVITY_GATE_KIND.chunkFetch)},entered:false,done:false,released:false,error:undefined,resultCount:undefined,requestedIds:undefined,promise:donePromise,release:undefined,restore:undefined};`,
             "state.release=()=>{if(!state.released){state.released=true;releaseGate();}};",
             "state.restore=()=>{replicator.fetchRemoteChunks=original;};",
             "host[stateKey]=state;",
@@ -96,6 +100,51 @@ export async function startHeldChunkFetch(cliBinary: string, env: NodeJS.Process
             "}",
             "};",
             "core.localDatabase.managers.chunkFetcher.onEvent([chunkId]);",
+            "return JSON.stringify({started:true});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+export async function startHeldTrackedRequest(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await evalObsidianJson<{ started: boolean }>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const stateKey=${stateKeySource};`,
+            "const host=globalThis;",
+            "if(host[stateKey]) throw new Error('A remote activity E2E gate is already installed.');",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const remote=core.services.remote;",
+            "const api=core.services.API;",
+            "const settings=core.services.setting.currentSettings();",
+            "const original=api.webCompatFetch;",
+            "let releaseGate;",
+            "const gate=new Promise((resolve)=>{releaseGate=resolve;});",
+            `const state={kind:${JSON.stringify(REMOTE_ACTIVITY_GATE_KIND.trackedRequest)},entered:false,done:false,released:false,error:undefined,result:undefined,promise:undefined,release:undefined,restore:undefined};`,
+            "state.release=()=>{if(!state.released){state.released=true;releaseGate();}};",
+            "state.restore=()=>{api.webCompatFetch=original;};",
+            "host[stateKey]=state;",
+            "api.webCompatFetch=async function(...args){",
+            "state.entered=true;",
+            "await gate;",
+            "return await original.apply(this,args);",
+            "};",
+            "state.promise=(async()=>{",
+            "try{",
+            "const base=String(settings.couchDB_URI).replace(/\\/$/,'');",
+            "const database=encodeURIComponent(settings.couchDB_DBNAME);",
+            "const credentials=btoa(`${settings.couchDB_USER}:${settings.couchDB_PASSWORD}`);",
+            "const response=await remote.performFetch(`${base}/${database}/_all_docs?limit=0`,{headers:{Authorization:`Basic ${credentials}`}});",
+            "state.result=response.ok;",
+            "}catch(error){",
+            "state.error=error instanceof Error?error.message:String(error);",
+            "}finally{",
+            "state.restore();",
+            "state.done=true;",
+            "}",
+            "})();",
             "return JSON.stringify({started:true});",
             "})()",
         ].join(""),
