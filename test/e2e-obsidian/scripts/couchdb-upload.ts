@@ -16,13 +16,18 @@ import {
     waitForLiveSyncCoreReady,
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
-import { captureRemoteActivityDiagnostics, waitForRemoteActivityState } from "../runner/remoteActivity.ts";
+import {
+    REMOTE_ACTIVITY_EXPECTED_STATE,
+    captureRemoteActivityDiagnostics,
+    waitForRemoteActivityState,
+} from "../runner/remoteActivity.ts";
 import {
     cleanUpHeldRemoteActivity,
     clearHeldRemoteActivity,
     finishHeldRemoteActivity,
     startHeldChunkFetch,
     startHeldOneShotReplication,
+    startHeldTrackedRequest,
     waitForRestoredChunk,
 } from "../runner/remoteActivityWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
@@ -115,21 +120,46 @@ async function main(): Promise<void> {
 
         await prepareRemote(cli.binary, session.cliEnv);
         activityStage = "initial-idle";
-        const initialIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
+        const initialIdle = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
         const localEntry = await createNoteAndWaitForLocalDb(cli.binary, session.cliEnv);
+
+        activityStage = REMOTE_ACTIVITY_EXPECTED_STATE.trackedRequestActive;
+        await startHeldTrackedRequest(cli.binary, session.cliEnv);
+        const trackedRequestActive = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.trackedRequestActive
+        );
+        const trackedRequestResult = await finishHeldRemoteActivity(cli.binary, session.cliEnv);
+        assertEqual(trackedRequestResult.error, undefined, "The observed CouchDB request failed.");
+        assertEqual(trackedRequestResult.result, true, "The observed CouchDB request did not report success.");
+        activityStage = "tracked-request-idle";
+        const trackedRequestIdle = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
+        if (trackedRequestIdle.requestCount <= initialIdle.requestCount) {
+            throw new Error("The held CouchDB request did not advance the tracked remote-request count.");
+        }
+        await clearHeldRemoteActivity(cli.binary, session.cliEnv);
 
         activityStage = "one-shot-active";
         await startHeldOneShotReplication(cli.binary, session.cliEnv);
         const oneShotActive = await waitForRemoteActivityState(
             session.remoteDebuggingPort,
-            "finite-replication-active"
+            REMOTE_ACTIVITY_EXPECTED_STATE.finiteReplicationActive
         );
         const oneShotResult = await finishHeldRemoteActivity(cli.binary, session.cliEnv);
         assertEqual(oneShotResult.error, undefined, "One-shot replication failed while its activity was observed.");
         assertEqual(oneShotResult.result, true, "One-shot replication did not report success.");
         activityStage = "one-shot-idle";
-        const oneShotIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
-        if (oneShotIdle.requestCount <= initialIdle.requestCount) {
+        const oneShotIdle = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
+        if (oneShotIdle.requestCount <= trackedRequestIdle.requestCount) {
             throw new Error("One-shot replication did not make an observed remote request.");
         }
         await clearHeldRemoteActivity(cli.binary, session.cliEnv);
@@ -154,9 +184,12 @@ async function main(): Promise<void> {
         const { _rev: _sourceRevision, ...remoteOnlyChunk } = sourceChunk;
         const chunkId = `h:e2e-remote-activity-${Date.now().toString(36)}`;
         await putCouchDbDocument(couchDb, dbName, { ...remoteOnlyChunk, _id: chunkId });
-        activityStage = "chunk-fetch-active";
+        activityStage = REMOTE_ACTIVITY_EXPECTED_STATE.chunkFetchActive;
         await startHeldChunkFetch(cli.binary, session.cliEnv, chunkId);
-        const chunkFetchActive = await waitForRemoteActivityState(session.remoteDebuggingPort, "chunk-fetch-active");
+        const chunkFetchActive = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.chunkFetchActive
+        );
         const chunkFetchResult = await finishHeldRemoteActivity(cli.binary, session.cliEnv);
         assertEqual(
             chunkFetchResult.error,
@@ -172,7 +205,10 @@ async function main(): Promise<void> {
         const restoredChunk = await waitForRestoredChunk(cli.binary, session.cliEnv, chunkId);
         assertEqual(restoredChunk.id, chunkId, "The restored chunk ID did not match the requested chunk.");
         activityStage = "chunk-fetch-idle";
-        const chunkFetchIdle = await waitForRemoteActivityState(session.remoteDebuggingPort, "idle");
+        const chunkFetchIdle = await waitForRemoteActivityState(
+            session.remoteDebuggingPort,
+            REMOTE_ACTIVITY_EXPECTED_STATE.idle
+        );
         if (chunkFetchIdle.requestCount <= oneShotIdle.requestCount) {
             throw new Error("On-demand chunk fetching did not make an observed remote request.");
         }
@@ -183,6 +219,7 @@ async function main(): Promise<void> {
         );
         console.log(
             [
+                `Tracked request: ${trackedRequestActive.statusBarText.trim()} -> idle`,
                 `One-shot activity: ${oneShotActive.statusBarText.trim()} -> idle`,
                 `Chunk-fetch activity: ${chunkFetchActive.statusBarText.trim()} -> idle`,
                 `Balanced remote requests: ${chunkFetchIdle.requestCount}/${chunkFetchIdle.responseCount}`,
