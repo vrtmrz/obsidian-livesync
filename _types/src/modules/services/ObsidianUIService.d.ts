@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { ConfigService } from "@lib/services/base/ConfigService";
 import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
 import type { ReplicatorService } from "@lib/services/base/ReplicatorService";

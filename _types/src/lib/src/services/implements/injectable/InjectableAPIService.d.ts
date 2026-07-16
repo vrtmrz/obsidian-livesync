@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import { APIService } from "@lib/services/base/APIService";
 import type { ServiceContext } from "@lib/services/base/ServiceBase";
 export declare abstract class InjectableAPIService<T extends ServiceContext> extends APIService<T> {

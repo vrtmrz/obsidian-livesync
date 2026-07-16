@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { EncryptHKDFProcessItem, EncryptProcessItem, SplitProcessItem, ProcessItem } from "./universalTypes.ts";
 export type SplitArguments = {
     key: number;

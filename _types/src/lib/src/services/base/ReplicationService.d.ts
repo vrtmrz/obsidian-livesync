@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import { type LOG_LEVEL } from "@lib/common/types";
 import type { IAPIService, IDatabaseService, IFileProcessingService, IReplicationService, IReplicatorService, ISettingService } from "./IService";
 import { ServiceBase, type ServiceContext } from "./ServiceBase";
