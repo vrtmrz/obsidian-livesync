@@ -78,7 +78,6 @@ jobs:
                   git switch -c "${BRANCH}"
                   npm version "${VERSION}" --no-git-tag-version
                   node utils/release-notes.mjs prepare "${VERSION}"
-                  npm run pretty:json
                   npm run build:lib:types
 
                   git add package.json package-lock.json manifest.json versions.json updates.md src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json _types

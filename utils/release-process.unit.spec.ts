@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { ensureTags } from "./release-tags.mjs";
 
 const releaseNotesScript = fileURLToPath(new URL("./release-notes.mjs", import.meta.url));
 const versionBumpScript =
@@ -11,6 +12,7 @@ const versionBumpScript =
 const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
 const prepareReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/prepare-release.yml", import.meta.url));
 const finaliseReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/finalise-release.yml", import.meta.url));
+const releaseWorkflow = fileURLToPath(new URL("../.github/workflows/release.yml", import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -37,6 +39,28 @@ function runNode(script: string, args: string[], cwd: string, env: Record<string
         encoding: "utf8",
         env: { ...process.env, ...env },
     });
+}
+
+function createTagGit(expectedRevision: string, initialTags: Record<string, string> = {}) {
+    const tags = new Map(Object.entries(initialTags));
+    const git = (args: string[], allowMissing = false): string | undefined => {
+        if (args[0] === "rev-parse") {
+            const revision = args.at(-1);
+            if (revision === `${expectedRevision}^{commit}`) return expectedRevision;
+            const tagMatch = revision?.match(/^refs\/tags\/(.+)\^\{commit\}$/);
+            if (tagMatch) {
+                const commit = tags.get(tagMatch[1]);
+                if (commit !== undefined) return commit;
+                if (allowMissing) return undefined;
+            }
+        }
+        if (args[0] === "tag" && args.length === 3) {
+            tags.set(args[1], args[2]);
+            return "";
+        }
+        throw new Error(`Unexpected git command: ${args.join(" ")}`);
+    };
+    return { git, tags };
 }
 
 function createReleaseFixture(version = "0.25.81"): string {
@@ -137,9 +161,49 @@ describe("release workflow", () => {
         const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
 
         expect(workflow).toContain("actions: write");
+        expect(workflow).toContain('node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"');
+        expect(workflow).toContain('git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"');
+        expect(workflow).not.toContain("Tag already exists");
         expect(workflow).toContain("gh workflow run release.yml");
         expect(workflow).toContain("gh workflow run cli-docker.yml");
         expect(workflow).toContain("dry_run=false");
+    });
+
+    it("publishes only by explicit dispatch and validates the selected release", () => {
+        const workflow = readFileSync(releaseWorkflow, "utf8");
+
+        expect(workflow).not.toMatch(/^\s+push:/m);
+        expect(workflow).toContain("ref: ${{ inputs.tag }}");
+        expect(workflow).toContain('node utils/release-notes.mjs validate "${TAG}"');
+        expect(workflow).toContain('TAG_SHA="$(git rev-parse "refs/tags/${TAG}^{commit}")"');
+        expect(workflow).not.toContain("Get Version");
+    });
+});
+
+describe("release tags", () => {
+    it("creates missing tags and accepts matching tags on retry", () => {
+        const head = "a".repeat(40);
+        const { git, tags } = createTagGit(head);
+        const messages: string[] = [];
+
+        ensureTags("0.25.84", head, git, (message) => messages.push(message));
+        expect(tags.get("0.25.84")).toBe(head);
+        expect(tags.get("0.25.84-cli")).toBe(head);
+
+        ensureTags("0.25.84", head, git, (message) => messages.push(message));
+        expect(messages).toContain(`Tag 0.25.84 already points to the expected commit ${head}.`);
+        expect(messages).toContain(`Tag 0.25.84-cli already points to the expected commit ${head}.`);
+    });
+
+    it("rejects an existing release tag that points to another commit without creating missing tags", () => {
+        const previousHead = "b".repeat(40);
+        const expectedHead = "a".repeat(40);
+        const { git, tags } = createTagGit(expectedHead, { "0.25.84-cli": previousHead });
+
+        expect(() => ensureTags("0.25.84", expectedHead, git)).toThrow(
+            `Tag 0.25.84-cli points to ${previousHead}; expected ${expectedHead}.`
+        );
+        expect(tags.has("0.25.84")).toBe(false);
     });
 });
 
