@@ -5,11 +5,18 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+## 0.25.83
+
+16th July, 2026
+
+Our plug-in continues to improve every day thanks to all of your contributions. We have finally resolved an issue first reported in 2023. Thank you for everything you contribute.
+
 ### Fixed
 
 - Fixed the 📲 remote-activity indicator remaining visible after CouchDB requests had completed.
 - Fixed missing chunks being reported unavailable while an in-progress on-demand fetch or finite replication could still deliver them. Reads now follow the actual delivery lifecycle and recheck the local database when it finishes.
-- Fixed an issue where changing only the letter case of a file name within the same directory could delete it on other devices when 'Handle files as Case-Sensitive' was disabled. Directory case changes remain unsupported (#198).
+- Fixed an issue where changing only the letter case of a file name within the same directory could delete it on other devices when 'Handle files as Case-Sensitive' was disabled. Directory case changes remain unsupported (#198, PR #1014; [commonlib PR #68](https://github.com/vrtmrz/livesync-commonlib/pull/68)). Thank you to @metrovoc for the fix!
+- Fixed **Resolve All conflicted files by the newer one** displaying a separate success notice for every resolved file and updating its progress notice for nine out of every ten checked files. Successful per-file results are now logged, progress updates every ten files, and errors and non-bulk success notices remain visible (#1016, PR #1017). Thank you to @apple-ouyang for the fix!
 
 ### Improved
 
@@ -23,7 +30,7 @@ Recently, I created a repository called Fancy Kit and have been trying to build 
 
 ### Fixed
 
-- Refreshed the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018).
+- Refreshed the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018, PR #1019). Thank you to @apple-ouyang for the fix!
 - The P2P **Start Sync & Close** action now waits for synchronisation to settle before closing the dialogue, avoiding premature release of screen-awake protection while work remains in flight.
 
 ### Improved
