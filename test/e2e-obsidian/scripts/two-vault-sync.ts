@@ -31,6 +31,8 @@ const updatePath = "E2E/two-vault/update.md";
 const deletePath = "E2E/two-vault/delete.md";
 const renameFromPath = "E2E/two-vault/rename-source.md";
 const renameToPath = "E2E/two-vault/renamed/rename-target.md";
+const caseRenameFromPath = "E2E/two-vault/Case-Rename.md";
+const caseRenameToPath = "E2E/two-vault/case-rename.md";
 const conflictPath = "E2E/two-vault/conflict.md";
 const targetMismatchPath = "E2E/two-vault/target-mismatch.md";
 const encryptedPath = "E2E/two-vault/encrypted.md";
@@ -362,6 +364,39 @@ async function runRename(context: RunnerContext, vaultA: TemporaryVault, vaultB:
     console.log("Two-vault note rename round-tripped.");
 }
 
+async function runCaseOnlyRename(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const fileContent = "# Case-only rename\n\nThe document ID should remain live.\n";
+
+    let session = await startConfiguredSession(context, vaultA);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, fileContent);
+    await uploadNote(context, session, caseRenameFromPath);
+    await session.app.stop();
+
+    session = await startConfiguredSession(context, vaultB);
+    await syncAndApply(context, session);
+    await waitForPathContent(vaultB.path, caseRenameFromPath, (content) => content === fileContent);
+    await session.app.stop();
+
+    session = await startConfiguredSession(context, vaultA);
+    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, caseRenameToPath);
+    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, caseRenameToPath);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await session.app.stop();
+
+    session = await startConfiguredSession(context, vaultB);
+    await syncAndApply(context, session);
+    const renamedOnB = await waitForPathContent(vaultB.path, caseRenameToPath, (content) => content === fileContent);
+    await waitForPathDeleted(vaultB.path, caseRenameFromPath);
+    await session.app.stop();
+
+    assertEqual(renamedOnB, fileContent, "Case-only note rename did not round-trip to the second vault.");
+    console.log("Two-vault case-only note rename round-tripped without a tombstone.");
+}
+
 async function runEncryptedRoundTrip(
     context: RunnerContext,
     vaultA: TemporaryVault,
@@ -498,6 +533,7 @@ async function main(): Promise<void> {
 
         await runCreateUpdateDelete(context, vaultA, vaultB);
         await runRename(context, vaultA, vaultB);
+        await runCaseOnlyRename(context, vaultA, vaultB);
         if (process.env.E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT === "true") {
             await runMarkdownAutoMerge(context, vaultA, vaultB);
         }
