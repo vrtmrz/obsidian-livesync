@@ -859,6 +859,8 @@ If this enabled, all chunks will be stored with the revision made from its conte
 Setting key: handleFilenameCaseSensitive
 If this enabled, All files are handled as case-Sensitive (Previous behaviour).
 
+When this setting is disabled, changing only the letter case of a file name within the same directory is synchronised as a rename. Changing the letter case of a directory name is not supported by this handling.
+
 ### 4. Compatibility (Internal API Usage)
 
 #### Scan changes on customisation sync
