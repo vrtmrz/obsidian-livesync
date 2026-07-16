@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { FilePathWithPrefix, LoadedEntry, MetaEntry, UXFileInfo, UXFileInfoStub } from "@lib/common/types";
 export interface DatabaseFileAccess {
     delete: (file: UXFileInfoStub | FilePathWithPrefix, rev?: string) => Promise<boolean>;

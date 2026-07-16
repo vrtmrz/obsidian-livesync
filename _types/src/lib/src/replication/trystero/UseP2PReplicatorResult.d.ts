@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncTrysteroReplicator } from "./LiveSyncTrysteroReplicator";
 import type { P2PLogCollector } from "./P2PLogCollector";

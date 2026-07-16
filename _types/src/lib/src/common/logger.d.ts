@@ -1,4 +1,4 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 export * from "octagonal-wheels/common/logger";
 export type * from "octagonal-wheels/common/logger";

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: bbf2539
 import type { FilePath, UXStat } from "@lib/common/types";
 import type { IFileSystemAdapter, IPathAdapter, ITypeGuardAdapter, IConversionAdapter, IStorageAdapter, IVaultAdapter } from "@lib/serviceModules/adapters";
 import type { TAbstractFile, TFile, TFolder, Stat, App } from "obsidian";
