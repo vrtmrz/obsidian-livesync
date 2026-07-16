@@ -48,8 +48,26 @@ describe("ModuleConflictResolver bulk newest resolution", () => {
     it("retains the success notice for a non-bulk newest resolution", async () => {
         const { module } = createModule();
         const path = "example.md" as FilePathWithPrefix;
+        module.core.databaseFileAccess.fetchEntryMeta = vi.fn(
+            async (_path: unknown, rev?: string): Promise<MetaEntry> =>
+                ({
+                    _id: "doc-id",
+                    _rev: rev ?? "2-current",
+                    path,
+                    ctime: 1,
+                    mtime: rev ? 1 : 2,
+                    size: 0,
+                    children: [],
+                    type: "plain",
+                    eden: {},
+                }) as unknown as MetaEntry
+        );
+        module.core.databaseFileAccess.getConflictedRevs = vi
+            .fn()
+            .mockResolvedValueOnce(["1-old"])
+            .mockResolvedValue([]);
 
-        await (module as any)._resolveConflictByDeletingRev(path, "2-old", "NEWEST");
+        await (module as any)._anyResolveConflictByNewest(path);
 
         expect(module._log).toHaveBeenLastCalledWith(`${path} has been merged automatically`, LOG_LEVEL_NOTICE);
     });
