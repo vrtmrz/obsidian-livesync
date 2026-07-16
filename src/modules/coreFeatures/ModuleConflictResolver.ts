@@ -30,7 +30,8 @@ export class ModuleConflictResolver extends AbstractModule {
     private async _resolveConflictByDeletingRev(
         path: FilePathWithPrefix,
         deleteRevision: string,
-        subTitle = ""
+        subTitle = "",
+        showNotice = true
     ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> {
         const title = `Resolving ${subTitle ? `[${subTitle}]` : ""}:`;
         if (!(await this.core.fileHandler.deleteRevisionFromDB(path, deleteRevision))) {
@@ -58,7 +59,7 @@ export class ModuleConflictResolver extends AbstractModule {
             this._log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
-        const level = subTitle.indexOf("same") !== -1 || subTitle === "NEWEST" ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
+        const level = subTitle.indexOf("same") !== -1 || !showNotice ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
         this._log(`${path} has been merged automatically`, level);
         return AUTO_MERGED;
     }
@@ -165,7 +166,7 @@ export class ModuleConflictResolver extends AbstractModule {
         });
     }
 
-    private async _anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+    private async _anyResolveConflictByNewest(filename: FilePathWithPrefix, showNotice = true): Promise<boolean> {
         const currentRev = await this.core.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
         if (currentRev == false) {
             this._log(`Could not get current revision of ${filename}`);
@@ -203,7 +204,7 @@ export class ModuleConflictResolver extends AbstractModule {
             this._log(
                 `conflict: Deleting the older revision ${mTimeAndRev[i][1]} (${new Date(mTimeAndRev[i][0]).toLocaleString()}) of ${filename}`
             );
-            await this.services.conflict.resolveByDeletingRevision(filename, mTimeAndRev[i][1], "NEWEST");
+            await this._resolveConflictByDeletingRev(filename, mTimeAndRev[i][1], "NEWEST", showNotice);
         }
         return true;
     }
@@ -221,7 +222,7 @@ export class ModuleConflictResolver extends AbstractModule {
                     LOG_LEVEL_NOTICE,
                     "resolveAllConflictedFilesByNewerOnes"
                 );
-            await this.services.conflict.resolveByNewest(file);
+            await this._anyResolveConflictByNewest(file, false);
         }
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     }
