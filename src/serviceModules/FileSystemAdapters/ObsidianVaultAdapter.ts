@@ -2,6 +2,7 @@ import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IVaultAdapter } from "@lib/serviceModules/adapters";
 import { toArrayBuffer } from "@lib/serviceModules/FileAccessBase";
 import type { TFile, App, TFolder } from "obsidian";
+import { toIntegerTimestamps } from "./sanitizeWriteOptions";
 
 /**
  * Vault adapter implementation for Obsidian
@@ -22,19 +23,19 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
     }
 
     async modify(file: TFile, data: string, options?: UXDataWriteOptions): Promise<void> {
-        return await this.app.vault.modify(file, data, options);
+        return await this.app.vault.modify(file, data, toIntegerTimestamps(options));
     }
 
     async modifyBinary(file: TFile, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<void> {
-        return await this.app.vault.modifyBinary(file, toArrayBuffer(data), options);
+        return await this.app.vault.modifyBinary(file, toArrayBuffer(data), toIntegerTimestamps(options));
     }
 
     async create(path: string, data: string, options?: UXDataWriteOptions): Promise<TFile> {
-        return await this.app.vault.create(path, data, options);
+        return await this.app.vault.create(path, data, toIntegerTimestamps(options));
     }
 
     async createBinary(path: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<TFile> {
-        return await this.app.vault.createBinary(path, toArrayBuffer(data), options);
+        return await this.app.vault.createBinary(path, toArrayBuffer(data), toIntegerTimestamps(options));
     }
 
     async delete(file: TFile | TFolder, force = false): Promise<void> {
