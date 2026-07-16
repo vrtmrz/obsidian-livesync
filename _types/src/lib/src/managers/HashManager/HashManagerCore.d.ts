@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import type { ISettingService } from "@lib/services/base/IService.ts";
 import type { HashAlgorithm } from "@lib/common/models/setting.type.ts";
 /**

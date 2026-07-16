@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 /** Status icon for a finite remote operation whose lifetime is known. */
 export declare const REMOTE_OPERATION_ACTIVITY_ICON = "\uD83D\uDCF2";
 /** Status icon for approximate physical remote-request activity. */

@@ -8,7 +8,10 @@ class MemoryFileHandle {
     readonly kind = "file";
     private data = new Uint8Array();
 
-    constructor(readonly name: string) {}
+    constructor(
+        readonly name: string,
+        private readonly shouldFailWrite: () => boolean = () => false
+    ) {}
 
     async getFile(): Promise<File> {
         return new File([this.data], this.name, { lastModified: 1 });
@@ -18,6 +21,7 @@ class MemoryFileHandle {
         const handle = this;
         return {
             async write(data: FileSystemWriteChunkType) {
+                if (handle.shouldFailWrite()) throw new Error(`write failed: ${handle.name}`);
                 if (typeof data === "string") {
                     handle.data = new TextEncoder().encode(data);
                 } else if (data instanceof ArrayBuffer) {
@@ -36,6 +40,7 @@ class MemoryFileHandle {
 class MemoryDirectoryHandle {
     readonly kind = "directory";
     private readonly children = new Map<string, MemoryDirectoryHandle | MemoryFileHandle>();
+    private readonly failedWriteNames = new Set<string>();
 
     constructor(
         readonly name: string,
@@ -65,7 +70,7 @@ class MemoryDirectoryHandle {
         const existing = this.children.get(resolvedName);
         if (existing instanceof MemoryFileHandle) return existing as unknown as FileSystemFileHandle;
         if (existing !== undefined || !options?.create) throw new DOMException("File not found", "NotFoundError");
-        const file = new MemoryFileHandle(name);
+        const file = new MemoryFileHandle(name, () => this.failedWriteNames.has(name));
         this.children.set(name, file);
         return file as unknown as FileSystemFileHandle;
     }
@@ -88,6 +93,10 @@ class MemoryDirectoryHandle {
 
     names(): string[] {
         return [...this.children.keys()];
+    }
+
+    failWritesTo(name: string): void {
+        this.failedWriteNames.add(name);
     }
 }
 
@@ -113,6 +122,21 @@ describe("FSAPIVaultAdapter.rename", () => {
         const renamedHandle = await root.getFileHandle("calculus.md");
         expect(await (await renamedHandle.getFile()).text()).toBe("content");
         expect(file.path).toBe("calculus.md");
+    });
+
+    it("removes a partially created target before restoring the source", async () => {
+        const memoryRoot = new MemoryDirectoryHandle("root");
+        const root = memoryRoot as unknown as FileSystemDirectoryHandle;
+        const adapter = new FSAPIVaultAdapter(root);
+        const file = await adapter.create("Calculus.md", "content");
+        memoryRoot.failWritesTo("calculus.md");
+
+        await expect(adapter.rename(file, "calculus.md")).rejects.toThrow("write failed");
+
+        expect(memoryRoot.names()).toEqual(["Calculus.md"]);
+        const restoredHandle = await root.getFileHandle("Calculus.md");
+        expect(await (await restoredHandle.getFile()).text()).toBe("content");
+        expect(file.path).toBe("Calculus.md");
     });
 });
 
