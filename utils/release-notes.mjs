@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, writeSync } from "fs";
 
 const updatesPath = "updates.md";
 
@@ -8,7 +8,7 @@ const updatesPath = "updates.md";
 // allowed.
 
 function fail(message) {
-    console.error(message);
+    writeSync(process.stderr.fd, `${message}\n`);
     process.exit(1);
 }
 

@@ -60,24 +60,16 @@ jobs:
                     exit 1
                   fi
                   node utils/release-notes.mjs validate "${VERSION}"
-                  git fetch --tags --force
-                  if git rev-parse --verify --quiet "refs/tags/${VERSION}" >/dev/null; then
-                    echo "Tag already exists: ${VERSION}" >&2
-                    exit 1
-                  fi
-                  if git rev-parse --verify --quiet "refs/tags/${VERSION}-cli" >/dev/null; then
-                    echo "Tag already exists: ${VERSION}-cli" >&2
-                    exit 1
-                  fi
 
-            - name: Create and push release tags
+            - name: Ensure and push release tags
               env:
                   VERSION: ${{ inputs.version }}
+                  EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
               run: |
                   set -euo pipefail
-                  git tag "${VERSION}"
-                  git tag "${VERSION}-cli"
-                  git push origin "${VERSION}" "${VERSION}-cli"
+                  git fetch --tags --force
+                  node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"
+                  git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"
 
             - name: Dispatch release workflows
               env:
@@ -100,7 +92,7 @@ jobs:
                   VERSION: ${{ inputs.version }}
               run: |
                   {
-                    echo "Created tags \`${VERSION}\` and \`${VERSION}-cli\`."
+                    echo "Ensured tags \`${VERSION}\` and \`${VERSION}-cli\` point to the reviewed release commit."
                     echo ""
                     echo "Dispatched the plug-in release workflow for \`${VERSION}\`. After approval for the release environment, it creates a draft GitHub Release."
                     echo "Dispatched the CLI Docker workflow for \`${VERSION}-cli\`. It publishes the version, major-minor, latest, and SHA-qualified image tags."

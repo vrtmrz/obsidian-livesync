@@ -1,10 +1,5 @@
 name: Release Obsidian Plugin
 on:
-  push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-    - '*' # Push events to matching any tag format, i.e. 1.0, 20.15.10
-    - '!*-cli' # Exclude command-line interface tags
   workflow_dispatch:
     inputs:
       tag:
@@ -33,29 +28,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+        fetch-depth: 0
         submodules: recursive
-        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+        ref: ${{ inputs.tag }}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '24.x' # You might need to adjust this value to your own version
-    # Get the version number and put it in a variable
-    - name: Get Version
-      id: version
+        node-version: '24.x'
+    - name: Validate release
+      env:
+        TAG: ${{ inputs.tag }}
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          TAG="${{ inputs.tag }}"
-          DRAFT="${{ inputs.draft }}"
-          PRERELEASE="${{ inputs.prerelease }}"
-        else
-          TAG="${GITHUB_REF_NAME}"
-          DRAFT="true"
-          PRERELEASE="false"
+        set -euo pipefail
+        node utils/release-notes.mjs validate "${TAG}"
+        HEAD_SHA="$(git rev-parse HEAD)"
+        TAG_SHA="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+        if [[ "${HEAD_SHA}" != "${TAG_SHA}" ]]; then
+          echo "Checked-out commit is ${HEAD_SHA}, but tag ${TAG} points to ${TAG_SHA}." >&2
+          exit 1
         fi
-        echo "tag=${TAG}" >> $GITHUB_OUTPUT
-        echo "draft=${DRAFT}" >> $GITHUB_OUTPUT
-        echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
     # Build the plugin
     - name: Build
       id: build
@@ -84,7 +75,7 @@ jobs:
           main.js
           manifest.json
           styles.css
-        name: ${{ steps.version.outputs.tag }}
-        tag_name: ${{ steps.version.outputs.tag }}
-        draft: ${{ steps.version.outputs.draft }}
-        prerelease: ${{ steps.version.outputs.prerelease }}
+        name: ${{ inputs.tag }}
+        tag_name: ${{ inputs.tag }}
+        draft: ${{ inputs.draft }}
+        prerelease: ${{ inputs.prerelease }}
