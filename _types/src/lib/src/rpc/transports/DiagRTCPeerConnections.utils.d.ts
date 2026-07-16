@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { type DiagRTCPeerConnectionInternalStateHistory, type DiagRTCFailureDiagnosis, type DiagRTCPeerConnectionMetrics, type DiagRTCFailureStats } from "./DiagRTCPeerConnections.types";
 /**
  * Diagnoses the failure reason of a failed RTCPeerConnection based on its internal state history and selected candidate pair information.

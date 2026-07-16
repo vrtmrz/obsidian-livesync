@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { ServiceContext } from "@lib/services/base/ServiceBase";
 import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
 import type { DatabaseService } from "@lib/services/base/DatabaseService.ts";

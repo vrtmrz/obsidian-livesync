@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import { type EncryptHKDFProcessItem, type ResultPayload } from "./universalTypes.ts";
 import { type EncryptProcessItem } from "./universalTypes.ts";
 import { type EncryptHKDFArguments } from "./universalTypes.ts";

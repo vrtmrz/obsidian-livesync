@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 export declare function generatePatchObj(from: Record<string | number | symbol, unknown>, to: Record<string | number | symbol, unknown>): Record<string | number | symbol, unknown>;
 export declare function applyPatch(from: Record<string | number | symbol, unknown>, patch: Record<string | number | symbol, unknown>): Record<string | number | symbol, unknown>;
 export declare function mergeObject(objA: Record<string | number | symbol, unknown> | [unknown], objB: Record<string | number | symbol, unknown> | [unknown]): unknown[] | {

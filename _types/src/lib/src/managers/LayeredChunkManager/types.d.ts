@@ -1,5 +1,5 @@
 // @ts-nocheck
-// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 05d4714
+// REPO: https://github.com/vrtmrz/livesync-commonlib  Commit hash: 96033e1
 import type { EntryDoc } from "@lib/common/models/db.definition";
 import type { DocumentID, EntryLeaf } from "@lib/common/models/db.type";
 import type { ISettingService } from "@lib/services/base/IService";

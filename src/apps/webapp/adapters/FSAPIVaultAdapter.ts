@@ -97,6 +97,23 @@ export class FSAPIVaultAdapter implements IVaultAdapter<FSAPIFile> {
         };
     }
 
+    private async deletePathIfExists(path: string): Promise<void> {
+        const parts = path.split("/").filter((part) => part !== "");
+        const name = parts.pop();
+        if (!name) return;
+
+        try {
+            let currentHandle = this.rootHandle;
+            for (const part of parts) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+            await currentHandle.removeEntry(name);
+        } catch (error) {
+            if ((error as { name?: unknown })?.name === "NotFoundError") return;
+            throw error;
+        }
+    }
+
     async rename(file: FSAPIFile, newPath: string): Promise<void> {
         const source = await file.handle.getFile();
         const data = await source.arrayBuffer();
@@ -120,6 +137,13 @@ export class FSAPIVaultAdapter implements IVaultAdapter<FSAPIFile> {
             file.stat = renamedFile.stat;
             file.handle = renamedFile.handle;
         } catch (error) {
+            try {
+                await this.deletePathIfExists(newPath);
+            } catch (cleanupError) {
+                throw new Error(
+                    `Could not rename ${oldPath} to ${newPath}, or remove the incomplete target. A temporary copy remains at ${temporaryPath}. Rename error: ${String(error)}. Cleanup error: ${String(cleanupError)}`
+                );
+            }
             try {
                 const restoredFile = await this.createBinary(oldPath, data);
                 file.path = restoredFile.path;
