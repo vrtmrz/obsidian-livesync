@@ -84,6 +84,27 @@ describe("CLIStorageEventManagerAdapter", () => {
         expect(created.stat?.size).toBe(42);
     });
 
+    it("floors sub-millisecond stat timestamps so mobile clients do not receive floats", async () => {
+        const basePath = "/vault/base";
+        const adapter = new CLIStorageEventManagerAdapter(basePath, undefined, true);
+        const handlers = makeHandlers();
+
+        await adapter.watch.beginWatch(handlers);
+
+        const addCallback = mockWatcher.on.mock.calls.find(([event]) => event === "add")![1] as (
+            filePath: string,
+            stats: any
+        ) => void;
+
+        // Linux fs.Stats carry nanosecond-derived sub-millisecond precision.
+        const floatStats = { ctimeMs: 1778511180024.462, mtimeMs: 1778511180999.913, size: 7 };
+        addCallback(`${basePath}/note.md`, floatStats);
+
+        const created = (handlers.onCreate as ReturnType<typeof vi.fn>).mock.calls[0][0] as NodeFile;
+        expect(created.stat?.ctime).toBe(1778511180024);
+        expect(created.stat?.mtime).toBe(1778511180999);
+    });
+
     it("close() calls watcher.close()", async () => {
         const adapter = new CLIStorageEventManagerAdapter("/base", undefined, true);
         const handlers = makeHandlers();

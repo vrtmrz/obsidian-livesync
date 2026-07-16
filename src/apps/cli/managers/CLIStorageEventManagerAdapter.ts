@@ -116,8 +116,10 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         return {
             path: path.relative(this.basePath, filePath).replace(/\\/g, "/") as FilePath,
             stat: {
-                ctime: stats?.ctimeMs ?? Date.now(),
-                mtime: stats?.mtimeMs ?? Date.now(),
+                // Floor to integer milliseconds; Linux fs.Stats.*Ms carry sub-millisecond
+                // precision, and timestamps are stored as integer ms everywhere else.
+                ctime: Math.floor(stats?.ctimeMs ?? Date.now()),
+                mtime: Math.floor(stats?.mtimeMs ?? Date.now()),
                 size: stats?.size ?? 0,
                 type: "file",
             },
