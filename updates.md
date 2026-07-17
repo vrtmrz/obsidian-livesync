@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Improved
+
+- Downloaded document batches now retain best-effort screen-awake and lifecycle protection until every queued file has been applied to local storage (#1031).
+
 ## 0.25.83
 
 16th July, 2026

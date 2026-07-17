@@ -70,6 +70,9 @@ export declare class ReplicateResultProcessor {
      * List of changes being processed.
      */
     private _processingChanges;
+    private _processingActivity?;
+    private _processingActivityDone?;
+    private updateProcessingActivity;
     /**
      * Enqueue the given document change for processing.
      * @param doc Document change to enqueue

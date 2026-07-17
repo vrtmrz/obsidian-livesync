@@ -18,6 +18,7 @@ import {
     type LOG_LEVEL,
 } from "@lib/common/logger";
 import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
+import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
@@ -65,9 +66,11 @@ export class ReplicateResultProcessor {
 
     public suspend() {
         this._suspended = true;
+        this._processingActivityDone?.resolve();
     }
     public resume() {
         this._suspended = false;
+        this.updateProcessingActivity();
         fireAndForget(() => this.runProcessQueue());
     }
 
@@ -229,6 +232,31 @@ export class ReplicateResultProcessor {
      */
     private _processingChanges: PouchDB.Core.ExistingDocument<EntryDoc>[] = [];
 
+    private _processingActivity?: Promise<void>;
+    private _processingActivityDone?: PromiseWithResolvers<void>;
+
+    private updateProcessingActivity() {
+        const hasPendingDocuments = this._queuedChanges.length > 0 || this._processingChanges.length > 0;
+        if (!hasPendingDocuments) {
+            this._processingActivityDone?.resolve();
+            return;
+        }
+        if (this._processingActivity || this.isSuspended) return;
+
+        const activityDone = promiseWithResolvers<void>();
+        this._processingActivityDone = activityDone;
+        this._processingActivity = this.services.replicator
+            .runBoundedRemoteActivity(() => activityDone.promise, {
+                label: "replicated-document-application",
+            })
+            .catch((error) => this.logError(error))
+            .finally(() => {
+                if (this._processingActivityDone === activityDone) this._processingActivityDone = undefined;
+                this._processingActivity = undefined;
+                this.updateProcessingActivity();
+            });
+    }
+
     /**
      * Enqueue the given document change for processing.
      * @param doc Document change to enqueue
@@ -256,6 +284,7 @@ export class ReplicateResultProcessor {
         }
         // Enqueue the change
         this._queuedChanges.push(doc);
+        this.updateProcessingActivity();
         this.triggerTakeSnapshot();
         this.triggerProcessQueue();
     }
@@ -363,7 +392,15 @@ export class ReplicateResultProcessor {
         } finally {
             // Remove from processing queue
             this._processingChanges = this._processingChanges.filter((e) => e !== change);
-            this.triggerTakeSnapshot();
+            try {
+                if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
+                    await this._takeSnapshot();
+                } else {
+                    this.triggerTakeSnapshot();
+                }
+            } finally {
+                this.updateProcessingActivity();
+            }
         }
     }
 
