@@ -12,7 +12,7 @@
         "buildDev": "node esbuild.config.mjs dev",
         "lint": "eslint --cache --concurrency auto src",
         "lint:community": "eslint --config eslint.community.config.mjs --concurrency auto src",
-        "svelte-check": "svelte-check --tsconfig ./tsconfig.json",
+        "svelte-check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
         "tsc-check": "tsc --noEmit",
         "tsc-check:apps": "tsc --noEmit -p src/apps/browser/tsconfig.json && tsc --noEmit -p src/apps/cli/tsconfig.json && tsc --noEmit -p src/apps/webapp/tsconfig.json && tsc --noEmit -p src/apps/webpeer/tsconfig.app.json && tsc --noEmit -p src/apps/webpeer/tsconfig.node.json",
         "pretty:importpath": "cd utilsdeno && deno run -A ./normalise-imports.ts",

@@ -23,8 +23,11 @@
     let { liveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
-    let roomSuffix = $state<string>(extractP2PRoomSuffix(core?.services.setting.currentSettings()?.P2P_roomID ?? ""));
-    let useDiagRTC = $state<boolean>(core?.services.setting.currentSettings()?.P2P_useDiagRTC ?? false);
+    // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
+    const readCurrentSettings = () => core?.services.setting.currentSettings();
+    const initialSettings = readCurrentSettings();
+    let roomSuffix = $state<string>(extractP2PRoomSuffix(initialSettings?.P2P_roomID ?? ""));
+    let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
         await Promise.resolve(liveSyncReplicator.requestStatus());

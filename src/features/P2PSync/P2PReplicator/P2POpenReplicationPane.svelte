@@ -27,7 +27,7 @@
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
 
-    const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+    const logLevel = $derived(showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
     async function requestServerStatus() {
         await liveSyncReplicator.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);

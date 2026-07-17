@@ -12,33 +12,33 @@
     //      */
     //     onSetupContext?(props: DialogSvelteComponentBaseProps): void;
     // };
-    const { setTitle, closeDialog, setResult, mountComponent, getInitialData, onSetupContext }: DialogHostProps =
-        $props();
+    const props: DialogHostProps = $props();
     const contextProps = {
-        setTitle,
-        closeDialog,
-        setResult,
-        getInitialData,
-    } satisfies DialogSvelteComponentBaseProps<any,any>
+        setTitle: (title: string) => props.setTitle(title),
+        closeDialog: () => props.closeDialog(),
+        setResult: (result: any) => props.setResult(result),
+        getInitialData: () => props.getInitialData?.(),
+    } satisfies DialogSvelteComponentBaseProps<any, any>;
 
-    // Call the onSetupContext function to setup the dialog context
-    onSetupContext?.(contextProps);
+    // Context must be established during component initialisation. The callbacks retain live access to the host props.
+    const setupContext = () => props.onSetupContext?.(contextProps);
+    setupContext();
 
     /**
      * Wrapper around setResult to also close the dialog
      * @param result
      */
     const setResultWrapper = (result: any) => {
-        setResult(result);
-        closeDialog();
+        props.setResult(result);
+        props.closeDialog();
     };
 
-    const Component = mountComponent;
+    const Component = $derived(props.mountComponent);
     let thisElement: HTMLElement;
 </script>
 
 <div class="dialog-host" bind:this={thisElement}>
-    <Component setResult={setResultWrapper} {getInitialData}></Component>
+    <Component setResult={setResultWrapper} getInitialData={props.getInitialData}></Component>
 </div>
 
 <style>

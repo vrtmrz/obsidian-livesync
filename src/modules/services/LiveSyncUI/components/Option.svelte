@@ -22,7 +22,7 @@
         group,
         children,
     }: Props = $props();
-    const actualGroup = group ?? definedGroupContext;
+    const actualGroup = $derived(group ?? definedGroupContext);
     const translatedTitle = $derived.by(() => translate(title));
 </script>
 

@@ -33,16 +33,17 @@
     let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
     const COMMUNICATION_HOLD_MS = 2500;
-    let syncOnReplicationSetting = $state(core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "");
+    // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
+    const readCurrentSettings = () => core.services.setting.currentSettings();
+    const initialSettings = readCurrentSettings();
+    let syncOnReplicationSetting = $state(initialSettings?.P2P_SyncOnReplication ?? "");
     type P2PRemoteOption = {
         id: string;
         name: string;
         roomSuffix: string;
     };
     let p2pRemoteOptions = $state<P2PRemoteOption[]>([]);
-    let selectedP2PRemoteConfigurationId = $state(
-        core.services.setting.currentSettings()?.P2P_ActiveRemoteConfigurationId ?? ""
-    );
+    let selectedP2PRemoteConfigurationId = $state(initialSettings?.P2P_ActiveRemoteConfigurationId ?? "");
     let selectingP2PRemote = $state(false);
 
     function addToList(item: string, list: string): string {
